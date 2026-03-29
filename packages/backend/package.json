@@ -1,0 +1,31 @@
+{
+  "name": "@buildpanda/backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --dts",
+    "start": "node dist/server.js",
+    "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
+    "db:rollback": "knex migrate:rollback --knexfile knexfile.ts",
+    "db:seed": "knex seed:run --knexfile knexfile.ts",
+    "db:make-migration": "knex migrate:make --knexfile knexfile.ts -x ts",
+    "db:make-seed": "knex seed:make --knexfile knexfile.ts -x ts",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/env": "^5.0.0",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.0",
+    "knex": "^3.1.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.7.0"
+  }
+}

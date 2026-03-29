@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: buildpanda-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - appnet
+
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+      target: dev
+    container_name: buildpanda-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+    volumes:
+      - ./packages/backend/src:/app/src
+      - ./packages/backend/knexfile.ts:/app/knexfile.ts
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - appnet
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+      target: dev
+    container_name: buildpanda-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    volumes:
+      - ./packages/frontend/src:/app/src
+      - ./packages/frontend/index.html:/app/index.html
+      - ./packages/frontend/vite.config.ts:/app/vite.config.ts
+    networks:
+      - appnet
+
+networks:
+  appnet:
+
+volumes:
+  postgres_data:
