@@ -1,27 +1,5 @@
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { authClient } from "@/lib/auth-client";
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+export const useSession = authClient.useSession;
 
-interface AuthState {
-  token: string | null;
-  user: User | null;
-  setAuth: (token: string, user: User) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  devtools(
-    (set) => ({
-      token: null,
-      user: null,
-      setAuth: (token, user) => set({ token, user }, false, "setAuth"),
-      logout: () => set({ token: null, user: null }, false, "logout"),
-    }),
-    { name: "auth-store" }
-  )
-);
+export type Session = typeof authClient.$Infer.Session;

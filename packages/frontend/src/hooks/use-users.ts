@@ -1,6 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/api/client";
-import type { User } from "@/stores/auth";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export const userKeys = {
   all: ["users"] as const,
@@ -24,19 +31,6 @@ export function useUsers() {
     queryFn: async () => {
       const { data } = await api.get<User[]>("/users");
       return data;
-    },
-  });
-}
-
-export function useCreateUser() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: { name: string; email: string }) => {
-      const { data } = await api.post<User>("/users", payload);
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: userKeys.all });
     },
   });
 }

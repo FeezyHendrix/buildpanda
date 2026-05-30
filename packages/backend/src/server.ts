@@ -1,6 +1,7 @@
 import Fastify, { type FastifyError } from "fastify";
 import cors from "@fastify/cors";
 import databasePlugin from "./plugins/database.js";
+import authPlugin from "./plugins/auth.js";
 import healthRoutes from "./routes/health.js";
 import userRoutes from "./routes/users.js";
 
@@ -16,9 +17,11 @@ async function buildApp() {
 
   await app.register(cors, {
     origin: process.env["CORS_ORIGIN"] ?? true,
+    credentials: true,
   });
 
   await app.register(databasePlugin);
+  await app.register(authPlugin);
   await app.register(healthRoutes);
   await app.register(userRoutes);
 
