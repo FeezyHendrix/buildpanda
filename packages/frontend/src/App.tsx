@@ -9,8 +9,25 @@ const ResetPassword = lazy(() => import("@/pages/auth/reset-password"));
 const VerifyEmail = lazy(() => import("@/pages/auth/verify-email"));
 
 const DashboardLayout = lazy(() => import("@/layouts/dashboard-layout"));
+const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const CreateProject = lazy(() => import("@/pages/project/create"));
+
+const ProjectOverview = lazy(() => import("@/pages/project/overview"));
+const ProjectUpdates = lazy(() => import("@/pages/project/updates"));
+const ProjectFinances = lazy(() => import("@/pages/project/finances"));
+const ProjectBudgetAllocation = lazy(
+  () => import("@/pages/project/budget-allocation"),
+);
+const ProjectMilestonePayments = lazy(
+  () => import("@/pages/project/milestone-payments"),
+);
+const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
+const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
+const ProjectContractors = lazy(() => import("@/pages/project/contractors"));
+const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
+const ProjectMessages = lazy(() => import("@/pages/project/messages"));
+const ProjectSettings = lazy(() => import("@/pages/project/settings"));
 
 const router = createBrowserRouter([
   {
@@ -32,13 +49,35 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <DashboardLayout />,
-    children: [
-      { index: true, element: <Dashboard /> },
-    ],
+    children: [{ index: true, element: <Dashboard /> }],
   },
   {
     path: "/project/create",
     element: <CreateProject />,
+  },
+  {
+    path: "/project/:projectId",
+    element: <ProjectLayout />,
+    children: [
+      { index: true, element: <Navigate to="overview" replace /> },
+      { path: "overview", element: <ProjectOverview /> },
+      { path: "updates", element: <ProjectUpdates /> },
+      { path: "finances", element: <ProjectFinances /> },
+      {
+        path: "finances/budget-allocation",
+        element: <ProjectBudgetAllocation />,
+      },
+      {
+        path: "finances/milestone-payments",
+        element: <ProjectMilestonePayments />,
+      },
+      { path: "materials", element: <ProjectMaterials /> },
+      { path: "documents", element: <ProjectDocuments /> },
+      { path: "contractors", element: <ProjectContractors /> },
+      { path: "inspections", element: <ProjectInspections /> },
+      { path: "messages", element: <ProjectMessages /> },
+      { path: "settings", element: <ProjectSettings /> },
+    ],
   },
 ]);
 

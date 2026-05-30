@@ -1,8 +1,9 @@
+import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/atoms/avatar";
-import { SearchInput } from "@/components/atoms/search-input";
 import { NotificationBell } from "@/components/atoms/notification-bell";
+import { SearchInput } from "@/components/atoms/search-input";
+import { cn } from "@/lib/utils";
 import logo from "@/assets/images/logo.svg";
 
 interface NavbarUser {
@@ -10,40 +11,56 @@ interface NavbarUser {
   avatarUrl?: string | null;
 }
 
-interface NavbarProps {
-  user: NavbarUser;
+type NavbarUserSlot =
+  | { userSlot: ReactNode; user?: NavbarUser }
+  | { userSlot?: undefined; user: NavbarUser };
+
+type NavbarProps = {
   notificationCount?: number;
   showLogo?: boolean;
   sticky?: boolean;
-}
+  searchPlaceholder?: string;
+  className?: string;
+} & NavbarUserSlot;
 
-export default function Navbar({
+function Navbar({
   user,
   notificationCount = 0,
   showLogo = false,
   sticky = false,
+  searchPlaceholder = "Search Build Panda",
+  userSlot,
+  className,
 }: NavbarProps) {
   return (
     <nav
       className={cn(
         "flex h-16 items-center border-b border-[#F6F6F6] bg-white px-8 py-3",
         sticky && "sticky top-0 z-40",
+        className,
       )}
     >
       {showLogo && (
-        <Link to="/" className="mr-[172px] shrink-0">
+        <Link to="/" className="mr-12 shrink-0 xl:mr-[172px]">
           <img src={logo} alt="BuildPanda" className="h-9" />
         </Link>
       )}
 
-      <SearchInput className="w-72" />
+      <SearchInput
+        className="w-72 bg-[#F6F6F6]"
+        placeholder={searchPlaceholder}
+      />
 
       <div className="ml-auto flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
         <NotificationBell count={notificationCount} />
-        <Avatar name={user.name} src={user.avatarUrl} size="sm" />
+        {userSlot ??
+          (user && <Avatar name={user.name} src={user.avatarUrl} size="sm" />)}
       </div>
     </nav>
   );
 }
 
-export { type NavbarProps, type NavbarUser };
+Navbar.displayName = "Navbar";
+
+export default Navbar;
+export { Navbar, type NavbarProps, type NavbarUser };
