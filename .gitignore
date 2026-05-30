@@ -33,3 +33,10 @@ postgres_data/
 
 # TypeScript
 *.tsbuildinfo
+
+# Test artifacts / agent internal
+.playwright-mcp/
+.sisyphus/
+
+# Design source archives
+screenshots/

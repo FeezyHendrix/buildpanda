@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -15,10 +15,8 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import {
-  useProjectRiskFactors,
-  useProjectUpdates,
-} from "@/hooks/use-projects";
+import { useProjectUpdates } from "@/hooks/use-updates";
+import { useProjectRiskFactors } from "@/hooks/use-risks";
 import { formatCurrency, formatTimeAgo, pct } from "@/lib/formatters";
 import {
   PROJECT_STATUS_TONE,
@@ -36,6 +34,7 @@ const RECENT_UPDATE_LIMIT = 2;
 
 export default function ProjectOverview() {
   const { project } = useProjectContext();
+  const navigate = useNavigate();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
 
@@ -97,7 +96,14 @@ export default function ProjectOverview() {
               <span className="text-xs font-medium text-[#C26A00]">
                 Requires attention
               </span>
-              <Button size="sm" variant="secondary" className="h-7 px-3 text-xs">
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 px-3 text-xs"
+                onClick={() =>
+                  navigate(`/project/${project.id}/finances/milestone-payments`)
+                }
+              >
                 Open
               </Button>
             </div>
@@ -127,7 +133,11 @@ export default function ProjectOverview() {
               5-stage construction roadmap
             </p>
           </div>
-          <Button variant="secondary" size="sm">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(`/project/${project.id}/schedule`)}
+          >
             View Detailed Gantt
           </Button>
         </div>

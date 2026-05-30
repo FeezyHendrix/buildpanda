@@ -4,6 +4,7 @@ import { IconBox } from "@/components/atoms/icon-box";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
+  CalendarIcon,
   ContractorsIcon,
   DocumentsIcon,
   FinancesIcon,
@@ -12,6 +13,7 @@ import {
   MaterialsIcon,
   MessagesIcon,
   OverviewIcon,
+  TrendingUpIcon,
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
@@ -32,11 +34,14 @@ interface ProjectNavItem extends NavEntry {
 const NAV_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
   { label: "Updates", slug: "updates", Icon: UpdatesIcon },
-  { label: "Finances", slug: "finances", Icon: FinancesIcon },
-  { label: "Materials", slug: "materials", Icon: MaterialsIcon },
-  { label: "Documents", slug: "documents", Icon: DocumentsIcon },
-  { label: "Contractors", slug: "contractors", Icon: ContractorsIcon },
+  { label: "Site Activities", slug: "activities", Icon: TrendingUpIcon },
+  { label: "Schedule", slug: "schedule", Icon: CalendarIcon },
+  { label: "Daily Log", slug: "daily-log", Icon: CalendarIcon },
   { label: "Inspections", slug: "inspections", Icon: InspectionsIcon },
+  { label: "Finances", slug: "finances", Icon: FinancesIcon },
+  { label: "Documents", slug: "documents", Icon: DocumentsIcon },
+  { label: "Materials", slug: "materials", Icon: MaterialsIcon },
+  { label: "Contractors", slug: "contractors", Icon: ContractorsIcon },
   { label: "Messages", slug: "messages", Icon: MessagesIcon },
   { label: "Settings", slug: "settings", Icon: SettingsIcon },
 ] as const;

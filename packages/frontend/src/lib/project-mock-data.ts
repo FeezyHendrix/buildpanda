@@ -1,18 +1,47 @@
 export type RiskLevel = "Low" | "Medium" | "High";
 export type ProjectStatus = "On Track" | "At Risk" | "Delayed";
 export type PhaseStatus = "Done" | "InProgress" | "Pending";
+export type Currency = "NGN" | "USD";
+export type Tone =
+  | "brand"
+  | "orange"
+  | "green"
+  | "purple"
+  | "amber"
+  | "red"
+  | "gray";
+
 export type UpdateCategory =
   | "Progress"
   | "Material Delivery"
   | "Inspections"
   | "Issues";
+export type UpdateStatus =
+  | "Open"
+  | "Approved"
+  | "Inspected"
+  | "Resolved"
+  | "Escalated";
+
 export type MediaType = "photo" | "video";
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
-export type InspectionStatus =
-  | "Action Required"
-  | "Completed"
-  | "Scheduled";
+export type InspectionStatus = "Action Required" | "Completed" | "Scheduled";
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
+export type LedgerType = "Release" | "Deposit" | "Hold";
+export type DisputeStatus = "Open" | "Resolved" | "Withdrawn";
+export type ActivityStatus =
+  | "Planned"
+  | "InProgress"
+  | "Completed"
+  | "Cancelled";
+export type WeatherCondition =
+  | "Sunny"
+  | "Cloudy"
+  | "Rain"
+  | "Storm"
+  | "Fog"
+  | "ExtremeHeat";
 export type InspectionCategory =
   | "All Reports"
   | "Structural"
@@ -20,27 +49,13 @@ export type InspectionCategory =
   | "General Progress"
   | "Electrical"
   | "Plumbing";
-
-export interface Project {
-  id: string;
-  name: string;
-  address: string;
-  status: ProjectStatus;
-  healthScore: number;
-  risk: RiskLevel;
-  progressPercent: number;
-  budgetTotal: number;
-  budgetUsed: number;
-  currency: "NGN" | "USD";
-  pendingApprovals: number;
-  nextInspection: {
-    type: string;
-    date: string;
-  };
-  folderTone: "orange" | "brand" | "green" | "purple";
-  lastUpdatedAt: string;
-  timeline: ProjectPhase[];
-}
+export type NotificationType =
+  | "update_posted"
+  | "update_action_required"
+  | "inspection_scheduled"
+  | "milestone_released"
+  | "milestone_disputed"
+  | "document_uploaded";
 
 export interface ProjectPhase {
   id: string;
@@ -49,12 +64,32 @@ export interface ProjectPhase {
   dateRange: string;
 }
 
+export interface Project {
+  id: string;
+  ownerId: string | null;
+  name: string;
+  address: string;
+  status: ProjectStatus;
+  healthScore: number;
+  risk: RiskLevel;
+  progressPercent: number;
+  budgetTotal: number;
+  budgetUsed: number;
+  currency: Currency;
+  pendingApprovals: number;
+  nextInspection: { type: string; date: string };
+  folderTone: "orange" | "brand" | "green" | "purple";
+  updatedAt: string;
+  createdAt: string;
+  timeline: ProjectPhase[];
+}
+
 export interface Person {
   id: string;
   name: string;
   role: string;
   avatarUrl?: string;
-  initialsTone?: "orange" | "brand" | "green" | "purple" | "amber" | "red";
+  initialsTone?: Tone;
 }
 
 export interface MediaItem {
@@ -63,9 +98,16 @@ export interface MediaItem {
   url: string;
 }
 
+export interface UpdateAction {
+  status: UpdateStatus;
+  takenAt: string | null;
+  takenBy: { id: string; name: string } | null;
+}
+
 export interface ProjectUpdate {
   id: string;
   projectId: string;
+  activityId: string | null;
   author: Person;
   category: UpdateCategory;
   title: string;
@@ -73,6 +115,16 @@ export interface ProjectUpdate {
   media: MediaItem[];
   cta: { label: string; tone: "primary" | "secondary" };
   secondaryAction?: { label: string };
+  status: UpdateStatus;
+  action: UpdateAction;
+  createdAt: string;
+}
+
+export interface UpdateComment {
+  id: string;
+  updateId: string;
+  author: { id: string; name: string };
+  body: string;
   createdAt: string;
 }
 
@@ -81,7 +133,7 @@ export interface DocumentCategory {
   name: string;
   fileCount: number;
   totalSize: string;
-  tone: "brand" | "orange" | "green" | "purple" | "amber" | "red";
+  tone: Tone;
 }
 
 export interface ProjectDocument {
@@ -121,7 +173,7 @@ export interface MaterialProcurement {
   purchasedAt: string;
   receipt: string;
   amount: number;
-  thumbnailTone: "orange" | "brand" | "green" | "purple" | "amber";
+  thumbnailTone: Tone;
 }
 
 export interface MilestonePayment {
@@ -132,7 +184,7 @@ export interface MilestonePayment {
   percentComplete: number;
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
-  inspectorSignOff: "Verified" | "Scheduled" | "Pending";
+  inspectorSignOff: SignOffStatus;
 }
 
 export interface PaymentLedgerEntry {
@@ -140,12 +192,12 @@ export interface PaymentLedgerEntry {
   date: string;
   description: string;
   amount: number;
-  type: "Release" | "Deposit" | "Hold";
+  type: LedgerType;
 }
 
 export interface ProjectFinances {
   projectId: string;
-  currency: "NGN" | "USD";
+  currency: Currency;
   totalBudget: number;
   fundsDeposited: number;
   fundsReleased: number;
@@ -157,6 +209,16 @@ export interface ProjectFinances {
   ledger: PaymentLedgerEntry[];
 }
 
+export interface MilestoneDispute {
+  id: string;
+  milestoneId: string;
+  raisedBy: { id: string; name: string };
+  reason: string;
+  status: DisputeStatus;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
 export interface RiskFactor {
   id: string;
   title: string;
@@ -164,393 +226,130 @@ export interface RiskFactor {
   severity: RiskLevel;
 }
 
-export const PROJECTS: Project[] = [
-  {
-    id: "marbella",
-    name: "Project Marbella",
-    address: "30, John great court, Lekki, Lagos state",
-    status: "On Track",
-    healthScore: 92,
-    risk: "Low",
-    progressPercent: 12,
-    budgetTotal: 45_000_000,
-    budgetUsed: 3_300_500,
-    currency: "NGN",
-    pendingApprovals: 2,
-    nextInspection: {
-      type: "Structural Integrity",
-      date: "April 12",
-    },
-    folderTone: "orange",
-    lastUpdatedAt: "30 minutes ago",
-    timeline: [
-      { id: "p1", name: "Foundation", status: "Done", dateRange: "Jan – Feb" },
-      {
-        id: "p2",
-        name: "Structural Shell",
-        status: "InProgress",
-        dateRange: "Mar – Apr",
-      },
-      {
-        id: "p3",
-        name: "Roofing & MEP",
-        status: "Pending",
-        dateRange: "May – Jun",
-      },
-      {
-        id: "p4",
-        name: "Interior Fit",
-        status: "Pending",
-        dateRange: "Jul – Aug",
-      },
-      {
-        id: "p5",
-        name: "Completion",
-        status: "Pending",
-        dateRange: "Sep – Oct",
-      },
-    ],
-  },
-];
-
-const MEDIA_BASE = [
-  "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=640&q=70",
-  "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=640&q=70",
-  "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=640&q=70",
-  "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=640&q=70",
-];
-
-function mediaSet(seed: number, count: number, type: MediaType = "photo"): MediaItem[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `m-${seed}-${i}`,
-    type: i === count - 1 && count > 2 ? type : "photo",
-    url: MEDIA_BASE[(seed + i) % MEDIA_BASE.length]!,
-  }));
+export interface ActivityDelay {
+  id: string;
+  activityId: string;
+  reasonCode: string;
+  reasonName: string;
+  reasonCategory: string;
+  description: string | null;
+  startedAt: string;
+  resolvedAt: string | null;
+  costImpact: number;
+  currency: Currency;
+  preventionNotes: string | null;
+  recordedBy: { id: string; name: string | null } | null;
+  createdAt: string;
 }
 
-export const UPDATES: ProjectUpdate[] = [
-  {
-    id: "u1",
-    projectId: "marbella",
-    author: {
-      id: "p1",
-      name: "Arinze Obi",
-      role: "Lead Contractor",
-      initialsTone: "orange",
-    },
-    category: "Progress",
-    title: "Roofing installation started",
-    description:
-      "Roof framing complete, sheets being installed, and trusses being secured by the structural crew.",
-    media: mediaSet(0, 3, "video"),
-    cta: { label: "Approve", tone: "primary" },
-    secondaryAction: { label: "Verify with Panda AI" },
-    createdAt: "2026-04-21T10:15:00Z",
-  },
-  {
-    id: "u2",
-    projectId: "marbella",
-    author: {
-      id: "p2",
-      name: "Tunde Bakare",
-      role: "Site Inspector",
-      initialsTone: "brand",
-    },
-    category: "Material Delivery",
-    title: "Plumbing fixtures delivered",
-    description:
-      "German supplier fixtures inspected on-site, sorted by floor, and stored in the secure container.",
-    media: mediaSet(2, 2),
-    cta: { label: "Mark as Inspected", tone: "primary" },
-    secondaryAction: { label: "View Report" },
-    createdAt: "2026-04-20T14:30:00Z",
-  },
-  {
-    id: "u3",
-    projectId: "marbella",
-    author: {
-      id: "p3",
-      name: "Engr. David Okonjo",
-      role: "Structural Engineer",
-      initialsTone: "purple",
-    },
-    category: "Inspections",
-    title: "Structural Integrity Inspection – Foundation Phase",
-    description:
-      "Concrete strength tests and reinforcement alignment verified across all foundation grids.",
-    media: [],
-    cta: { label: "Approve", tone: "primary" },
-    secondaryAction: { label: "View Report" },
-    createdAt: "2026-04-19T09:00:00Z",
-  },
-  {
-    id: "u4",
-    projectId: "marbella",
-    author: {
-      id: "p2",
-      name: "Tunde Bakare",
-      role: "Site Inspector",
-      initialsTone: "brand",
-    },
-    category: "Issues",
-    title: "Drainage Blockage at North Perimeter",
-    description:
-      "Heavy rainfall caused the perimeter trench to block; landscaping crew paused until cleared.",
-    media: mediaSet(1, 2),
-    cta: { label: "View Resolution Plan", tone: "secondary" },
-    secondaryAction: { label: "Escalation Details" },
-    createdAt: "2026-04-18T16:45:00Z",
-  },
-];
+export interface Activity {
+  id: string;
+  projectId: string;
+  phaseId: string | null;
+  phaseName: string | null;
+  name: string;
+  activityType: string;
+  location: string | null;
+  status: ActivityStatus;
+  isDelayed: boolean;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  actualStartAt: string | null;
+  actualEndAt: string | null;
+  workerCountPlanned: number;
+  notes: string | null;
+  delays: ActivityDelay[];
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const DOCUMENT_CATEGORIES: DocumentCategory[] = [
-  { id: "land", name: "Land Documents", fileCount: 12, totalSize: "4.2 MB", tone: "amber" },
-  {
-    id: "architectural",
-    name: "Architectural Plans",
-    fileCount: 28,
-    totalSize: "156 MB",
-    tone: "brand",
-  },
-  {
-    id: "contracts",
-    name: "Contracts & Agreements",
-    fileCount: 12,
-    totalSize: "4.2 MB",
-    tone: "purple",
-  },
-  {
-    id: "invoices",
-    name: "Invoices & Receipts",
-    fileCount: 142,
-    totalSize: "22 MB",
-    tone: "green",
-  },
-  {
-    id: "approvals",
-    name: "Government Approvals",
-    fileCount: 5,
-    totalSize: "3.8 MB",
-    tone: "red",
-  },
-  {
-    id: "inspections",
-    name: "Inspection Certs",
-    fileCount: 19,
-    totalSize: "8.4 MB",
-    tone: "orange",
-  },
-];
+export interface DelayReason {
+  code: string;
+  category: string;
+  name: string;
+  description: string;
+  is_active?: boolean;
+}
 
-export const DOCUMENTS: ProjectDocument[] = [
-  {
-    id: "d1",
-    projectId: "marbella",
-    fileName: "C_of_O_Lagos_Villa.pdf",
-    size: "4.2 MB",
-    category: "Land Documents",
-    uploadedAt: "Oct 24, 2023",
-    status: "Verified",
-  },
-  {
-    id: "d2",
-    projectId: "marbella",
-    fileName: "Main_Structure_RevB.dwg",
-    size: "4.2 MB",
-    category: "Architectural Plans",
-    uploadedAt: "Oct 24, 2023",
-    status: "Pending",
-  },
-  {
-    id: "d3",
-    projectId: "marbella",
-    fileName: "Env_Impact_Permit_2023.jpg",
-    size: "4.2 MB",
-    category: "Government Approvals",
-    uploadedAt: "Oct 24, 2023",
-    status: "Verified",
-  },
-  {
-    id: "d4",
-    projectId: "marbella",
-    fileName: "Site_Inspection_Q4.pdf",
-    size: "4.2 MB",
-    category: "Inspection Certs",
-    uploadedAt: "Oct 24, 2023",
-    status: "Pending",
-  },
-  {
-    id: "d5",
-    projectId: "marbella",
-    fileName: "Env_Impact_Permit_2023.pdf",
-    size: "4.2 MB",
-    category: "Government Approvals",
-    uploadedAt: "Oct 24, 2023",
-    status: "Expired",
-  },
-];
+export interface DailyLogActivityLink {
+  activityId: string;
+  activityName: string;
+  hoursLogged: number;
+}
 
-export const INSPECTIONS: InspectionReport[] = [
-  {
-    id: "i1",
-    projectId: "marbella",
-    inspector: {
-      id: "p3",
-      name: "Engr. David Okonjo",
-      role: "Structural Engineer",
-      initialsTone: "purple",
-    },
-    title: "Structural Foundation Check",
-    category: "Structural",
-    description:
-      "Roof framing complete, roofing sheets being installed, trusses secured by the structural crew.",
-    status: "Action Required",
-    riskLevel: "High",
-    scheduledAt: "Oct 21, 2023 • 02:15 PM",
-    media: mediaSet(3, 3, "video"),
-    reportUrl: "#",
-  },
-  {
-    id: "i2",
-    projectId: "marbella",
-    inspector: {
-      id: "p3",
-      name: "Engr. David Okonjo",
-      role: "Structural Engineer",
-      initialsTone: "purple",
-    },
-    title: "Structural Foundation Check",
-    category: "Structural",
-    description:
-      "Foundation work passed all standard checks. Documentation has been filed with LASBCA.",
-    status: "Completed",
-    riskLevel: "Low",
-    scheduledAt: "Oct 21, 2023 • 02:15 PM",
-    media: mediaSet(0, 3, "video"),
-    reportUrl: "#",
-  },
-];
+export interface DailyLog {
+  projectId: string;
+  logDate: string;
+  weatherCondition: WeatherCondition | null;
+  temperatureC: number | null;
+  precipitationMm: number | null;
+  windKph: number | null;
+  workersExpected: number;
+  workersPresent: number;
+  totalHours: number;
+  summary: string | null;
+  activities: DailyLogActivityLink[];
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const RISK_FACTORS: RiskFactor[] = [];
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  projectId: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
 
-export const FINANCES: Record<string, ProjectFinances> = {
-  marbella: {
-    projectId: "marbella",
-    currency: "NGN",
-    totalBudget: 45_300_500,
-    fundsDeposited: 23_300_500,
-    fundsReleased: 13_300_500,
-    lockedInEscrow: 10_300_500,
-    remainingBalance: 3_300_500,
-    budgetAllocation: [
-      { id: "ba1", name: "Foundation", planned: 4_445_000, actual: 4_402_300 },
-      {
-        id: "ba2",
-        name: "Superstructure",
-        planned: 8_880_000,
-        actual: 8_888_500,
-      },
-      { id: "ba3", name: "Roofing", planned: 6_500_000, actual: 0 },
-      { id: "ba4", name: "MEP", planned: 7_200_000, actual: 0 },
-      { id: "ba5", name: "Finishing", planned: 9_500_000, actual: 0 },
-      { id: "ba6", name: "Contingency", planned: 4_775_500, actual: 0 },
-    ],
-    materialsProcured: [
-      {
-        id: "mp1",
-        name: "16mm Reinforcement Steel",
-        purchasedAt: "11-04-2026, 11:12 AM",
-        receipt: "reciept_INV-4029.jpeg",
-        amount: 8_880_000,
-        thumbnailTone: "brand",
-      },
-      {
-        id: "mp2",
-        name: "Dangote Grade 42.5 Cement",
-        purchasedAt: "10-04-2026, 11:12 AM",
-        receipt: "reciept_INV-4028.jpeg",
-        amount: 4_880_000,
-        thumbnailTone: "amber",
-      },
-      {
-        id: "mp3",
-        name: "Dangote Grade 32.5 Cement",
-        purchasedAt: "10-04-2026, 9:12 AM",
-        receipt: "reciept_INV-4027.jpeg",
-        amount: 3_780_000,
-        thumbnailTone: "orange",
-      },
-      {
-        id: "mp4",
-        name: "Dangote Grade 32.5 Cement",
-        purchasedAt: "10-04-2026, 9:12 AM",
-        receipt: "reciept_INV-4027.jpeg",
-        amount: 3_780_000,
-        thumbnailTone: "orange",
-      },
-      {
-        id: "mp5",
-        name: "Dangote Grade 32.5 Cement",
-        purchasedAt: "10-04-2026, 9:12 AM",
-        receipt: "reciept_INV-4027.jpeg",
-        amount: 3_780_000,
-        thumbnailTone: "orange",
-      },
-    ],
-    milestones: [
-      {
-        id: "m1",
-        name: "Main Roof Structure",
-        phase: "Roofing",
-        status: "Completed",
-        percentComplete: 100,
-        amount: 8_880_000,
-        proof: { fileName: "inspection_report_R01.pdf", verified: true },
-        inspectorSignOff: "Verified",
-      },
-      {
-        id: "m2",
-        name: "Electric Rough-in",
-        phase: "Systems",
-        status: "InProgress",
-        percentComplete: 75,
-        amount: 8_880_000,
-        proof: null,
-        inspectorSignOff: "Scheduled",
-      },
-      {
-        id: "m3",
-        name: "Electric Rough-in",
-        phase: "Systems",
-        status: "Pending",
-        percentComplete: 0,
-        amount: 0,
-        proof: null,
-        inspectorSignOff: "Pending",
-      },
-    ],
-    ledger: [
-      {
-        id: "l1",
-        date: "11-04-2026",
-        description: "Release · Main Roof Structure",
-        amount: 8_880_000,
-        type: "Release",
-      },
-      {
-        id: "l2",
-        date: "01-04-2026",
-        description: "Deposit · Project funding",
-        amount: 23_300_500,
-        type: "Deposit",
-      },
-      {
-        id: "l3",
-        date: "10-03-2026",
-        description: "Hold · Electric Rough-in (escrow)",
-        amount: 8_880_000,
-        type: "Hold",
-      },
-    ],
-  },
-};
+export interface NotificationListResult {
+  notifications: Notification[];
+  unreadCount: number;
+}
+
+export interface SearchProjectHit {
+  id: string;
+  name: string;
+  address: string;
+  snippet: string;
+}
+
+export interface SearchUpdateHit {
+  id: string;
+  projectId: string;
+  title: string;
+  snippet: string;
+  category: string;
+}
+
+export interface SearchDocumentHit {
+  id: string;
+  projectId: string;
+  fileName: string;
+  category: string;
+}
+
+export interface SearchInspectionHit {
+  id: string;
+  projectId: string;
+  title: string;
+  snippet: string;
+  category: string;
+}
+
+export interface SearchResults {
+  query: string;
+  projects: SearchProjectHit[];
+  updates: SearchUpdateHit[];
+  documents: SearchDocumentHit[];
+  inspections: SearchInspectionHit[];
+}
+
+export interface UploadedFile {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}

@@ -28,6 +28,9 @@ const ProjectContractors = lazy(() => import("@/pages/project/contractors"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
 const ProjectMessages = lazy(() => import("@/pages/project/messages"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
+const ProjectActivities = lazy(() => import("@/pages/project/activities"));
+const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
+const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 
 const router = createBrowserRouter([
   {
@@ -77,6 +80,10 @@ const router = createBrowserRouter([
       { path: "inspections", element: <ProjectInspections /> },
       { path: "messages", element: <ProjectMessages /> },
       { path: "settings", element: <ProjectSettings /> },
+      { path: "activities", element: <ProjectActivities /> },
+      { path: "activities/:activityId", element: <ProjectActivities /> },
+      { path: "schedule", element: <ProjectSchedule /> },
+      { path: "daily-log", element: <ProjectDailyLog /> },
     ],
   },
 ]);

@@ -9,8 +9,12 @@ import {
 } from "@/components/atoms/project-nav-icons";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
+import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInspections } from "@/hooks/use-projects";
+import {
+  useProjectInspections,
+  useRequestInspection,
+} from "@/hooks/use-inspections";
 import {
   INSPECTION_STATUS_TONE,
   RISK_LEVEL_TONE,
@@ -35,6 +39,8 @@ export default function ProjectInspections() {
   const { data: inspections = [] } = useProjectInspections(project.id);
   const [activeFilter, setActiveFilter] =
     useState<InspectionCategory>("All Reports");
+  const [requestOpen, setRequestOpen] = useState(false);
+  const requestInspection = useRequestInspection();
 
   const visible = useMemo(
     () =>
@@ -50,11 +56,32 @@ export default function ProjectInspections() {
         title="Independent Inspections & Quality Reports"
         description="Verified structural and progress assessments for peace of mind."
         actions={
-          <Button variant="primary" size="md">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setRequestOpen(true)}
+          >
             <PlusIcon className="size-4" />
             Request New Inspection
           </Button>
         }
+      />
+
+      <RequestInspectionDialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        isSubmitting={requestInspection.isPending}
+        error={
+          requestInspection.error
+            ? (requestInspection.error as Error).message
+            : null
+        }
+        onSubmit={(input) => {
+          requestInspection.mutate(
+            { projectId: project.id, ...input },
+            { onSuccess: () => setRequestOpen(false) },
+          );
+        }}
       />
 
       <FilterTabs
@@ -154,13 +181,17 @@ function InspectionCard({ report }: { report: InspectionReport }) {
         <span className="text-xs text-gray-500">
           Category · {report.category}
         </span>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
-        >
-          View Full Report
-          <ChevronRightIcon className="size-3.5" />
-        </button>
+        {report.reportUrl && report.reportUrl !== "#" ? (
+          <a
+            href={report.reportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+          >
+            View Full Report
+            <ChevronRightIcon className="size-3.5" />
+          </a>
+        ) : null}
       </div>
     </Card>
   );

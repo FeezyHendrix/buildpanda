@@ -11,7 +11,12 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useSession } from "@/stores/auth";
 import { useProjects } from "@/hooks/use-projects";
-import { firstName, formatCurrency, timeOfDay } from "@/lib/formatters";
+import {
+  firstName,
+  formatCurrency,
+  formatTimeAgo,
+  timeOfDay,
+} from "@/lib/formatters";
 import type { Project } from "@/lib/project-mock-data";
 import emptyIcon from "@/assets/images/empty-icon.svg";
 
@@ -134,7 +139,7 @@ function ProjectCard({ project }: { project: Project }) {
 
       <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-3">
         <p className="text-xs text-gray-500">
-          Last updated {project.lastUpdatedAt}
+          Last updated {formatTimeAgo(project.updatedAt)}
         </p>
         <Link
           to={`/project/${project.id}/overview`}

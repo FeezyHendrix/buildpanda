@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
@@ -29,7 +30,9 @@ export default function DashboardLayout() {
         }
       />
       <main className="flex-1 overflow-y-auto bg-white">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

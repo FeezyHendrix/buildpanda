@@ -3,7 +3,7 @@ import { Card } from "@/components/atoms/card";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectFinances } from "@/hooks/use-projects";
+import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type {

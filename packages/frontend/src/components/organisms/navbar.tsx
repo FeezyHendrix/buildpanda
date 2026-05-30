@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Avatar } from "@/components/atoms/avatar";
 import { NotificationBell } from "@/components/atoms/notification-bell";
-import { SearchInput } from "@/components/atoms/search-input";
+import { GlobalSearch } from "@/components/molecules/global-search";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/images/logo.svg";
 
@@ -46,10 +46,7 @@ function Navbar({
         </Link>
       )}
 
-      <SearchInput
-        className="w-72 bg-[#F6F6F6]"
-        placeholder={searchPlaceholder}
-      />
+      <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
 
       <div className="ml-auto flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
         <NotificationBell count={notificationCount} />

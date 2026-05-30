@@ -33,7 +33,8 @@ function MilestoneCard({
   onReleaseFunds,
   className,
 }: MilestoneCardProps) {
-  const releaseEnabled = milestone.status === "Completed";
+  const releaseEnabled =
+    milestone.status !== "Completed" && milestone.proof?.verified === true;
   const amountLabel = milestone.amount
     ? formatCurrency(milestone.amount, currency)
     : "—";

@@ -16,6 +16,7 @@ import {
 import { ProjectTitleStep } from "@/components/molecules/project-title-step";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
 import type { SwitcherValue } from "@/components/atoms";
+import { useCreateProject } from "@/hooks/use-projects";
 
 const TOTAL_STEPS = 5;
 
@@ -52,6 +53,7 @@ function useWizardStep() {
 export default function CreateProject() {
   const navigate = useNavigate();
   const [step, isReview, setStep] = useWizardStep();
+  const createProject = useCreateProject();
 
   const [projectType, setProjectType] = useState<ProjectType | null>(null);
 
@@ -61,7 +63,7 @@ export default function CreateProject() {
   const [_files, setFiles] = useState<FileList | null>(null);
 
   const [buildingType, setBuildingType] = useState<string | null>(null);
-  const [currency, setCurrency] = useState("NGN");
+  const [currency, setCurrency] = useState<string>("NGN");
   const [budget, setBudget] = useState<[number, number]>([25_000, 350_000]);
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
@@ -93,7 +95,37 @@ export default function CreateProject() {
 
   const handleContinue = () => {
     if (isReview) {
-      navigate("/dashboard");
+      if (
+        !projectType ||
+        !locationState ||
+        !buildingType ||
+        !timeline ||
+        !fundingMethod ||
+        !involvementLevel
+      ) {
+        return;
+      }
+      createProject.mutate({
+        title: projectTitle.trim(),
+        projectType,
+        location: {
+          state: locationState,
+          city: city.trim(),
+          ownsLand: ownsLand === "yes",
+        },
+        details: {
+          buildingType,
+          currency: "NGN",
+          budgetMin: budget[0],
+          budgetMax: budget[1],
+          timeline,
+          fundingMethod,
+        },
+        management: {
+          involvementLevel,
+          riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
+        },
+      });
     } else if (step === TOTAL_STEPS) {
       setStep("review");
     } else {
@@ -117,8 +149,14 @@ export default function CreateProject() {
       totalSteps={TOTAL_STEPS}
       onCancel={handleBack}
       onContinue={handleContinue}
-      continueDisabled={!canContinue()}
-      continueLabel={isReview ? "Finish" : "Continue"}
+      continueDisabled={!canContinue() || createProject.isPending}
+      continueLabel={
+        isReview
+          ? createProject.isPending
+            ? "Creating…"
+            : "Finish"
+          : "Continue"
+      }
       hideStepper={isReview}
     >
       {!isReview && step === 1 && (

@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
-import db from "../db/connection.js";
+import db from "../db/connection.ts";
 import type { Knex } from "knex";
 
 declare module "fastify" {

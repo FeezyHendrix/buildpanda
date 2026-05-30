@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { IconBox } from "@/components/atoms/icon-box";
 import {
   ChevronRightIcon,
@@ -12,11 +13,18 @@ import {
   AiInsightsCard,
   type AiInsight,
 } from "@/components/molecules/ai-insights-card";
+import { FundProjectDialog } from "@/components/molecules/fund-project-dialog";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectFinances } from "@/hooks/use-projects";
+import {
+  useFundProject,
+  useProjectFinances,
+  useRaiseDispute,
+  useReleaseMilestone,
+} from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type {
@@ -54,6 +62,14 @@ export default function ProjectFinances() {
   const { project } = useProjectContext();
   const { data: finances, isPending } = useProjectFinances(project.id);
 
+  const [fundOpen, setFundOpen] = useState(false);
+  const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(null);
+  const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
+
+  const fundProject = useFundProject();
+  const releaseMilestone = useReleaseMilestone();
+  const raiseDispute = useRaiseDispute();
+
   if (isPending) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
@@ -82,7 +98,11 @@ export default function ProjectFinances() {
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
         actions={
-          <Button variant="primary" size="md">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setFundOpen(true)}
+          >
             <PlusIcon className="size-4" />
             Fund Project
           </Button>
@@ -137,9 +157,61 @@ export default function ProjectFinances() {
           projectId={project.id}
           milestones={finances.milestones}
           currency={finances.currency}
+          onRequestRelease={setReleaseTarget}
+          onRequestDispute={setDisputeTarget}
           className="lg:col-span-2"
         />
       </div>
+
+      <FundProjectDialog
+        open={fundOpen}
+        onOpenChange={setFundOpen}
+        isSubmitting={fundProject.isPending}
+        error={fundProject.error ? (fundProject.error as Error).message : null}
+        onSubmit={(input) => {
+          fundProject.mutate(
+            { projectId: project.id, ...input },
+            { onSuccess: () => setFundOpen(false) },
+          );
+        }}
+      />
+
+      <ConfirmDialog
+        open={releaseTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setReleaseTarget(null);
+        }}
+        title={`Release ${releaseTarget?.name ?? "milestone"} funds?`}
+        description={`${
+          releaseTarget ? formatCurrency(releaseTarget.amount, finances.currency) : ""
+        } will be released from escrow to the contractor.`}
+        confirmLabel="Release funds"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (!releaseTarget) return;
+          releaseMilestone.mutate(
+            { projectId: project.id, milestoneId: releaseTarget.id },
+            { onSettled: () => setReleaseTarget(null) },
+          );
+        }}
+      />
+
+      <RaiseDisputeDialog
+        open={disputeTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDisputeTarget(null);
+        }}
+        milestoneName={disputeTarget?.name ?? ""}
+        isSubmitting={raiseDispute.isPending}
+        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
+        onSubmit={({ reason }) => {
+          if (!disputeTarget) return;
+          raiseDispute.mutate(
+            { projectId: project.id, milestoneId: disputeTarget.id, reason },
+            { onSuccess: () => setDisputeTarget(null) },
+          );
+        }}
+      />
     </div>
   );
 }
@@ -408,6 +480,8 @@ interface MilestonePaymentsCardProps {
   projectId: string;
   milestones: MilestonePayment[];
   currency: ProjectFinancesData["currency"];
+  onRequestRelease: (milestone: MilestonePayment) => void;
+  onRequestDispute: (milestone: MilestonePayment) => void;
   className?: string;
 }
 
@@ -415,6 +489,8 @@ function MilestonePaymentsCard({
   projectId,
   milestones,
   currency,
+  onRequestRelease,
+  onRequestDispute,
   className,
 }: MilestonePaymentsCardProps) {
   return (
@@ -443,6 +519,8 @@ function MilestonePaymentsCard({
             milestone={milestone}
             currency={currency}
             variant="compact"
+            onReleaseFunds={() => onRequestRelease(milestone)}
+            onRaiseDispute={() => onRequestDispute(milestone)}
           />
         ))}
       </div>

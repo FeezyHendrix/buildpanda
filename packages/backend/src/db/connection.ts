@@ -1,5 +1,9 @@
 import knex from "knex";
 import type { Knex } from "knex";
+import { types as pgTypes } from "pg";
+
+const PG_DATE_OID = 1082;
+pgTypes.setTypeParser(PG_DATE_OID, (value: string) => value);
 
 const env = process.env["NODE_ENV"] ?? "development";
 

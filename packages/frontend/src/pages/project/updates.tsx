@@ -7,18 +7,42 @@ import {
   ChevronRightIcon,
   MessagesIcon,
 } from "@/components/atoms/project-nav-icons";
+import { CommentPanel } from "@/components/molecules/comment-panel";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectUpdates } from "@/hooks/use-projects";
-import { formatDateTime } from "@/lib/formatters";
+import {
+  useAddComment,
+  useProjectUpdates,
+  useTransitionUpdate,
+  useUpdateComments,
+} from "@/hooks/use-updates";
+import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
 import { UPDATE_CATEGORY_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import type {
   Person,
   ProjectUpdate,
   UpdateCategory,
+  UpdateStatus,
 } from "@/lib/project-mock-data";
+
+const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
+  Progress: "Approved",
+  "Material Delivery": "Inspected",
+  Inspections: "Approved",
+  Issues: "Resolved",
+};
+
+const STATUS_BADGE_TONE: Record<
+  Exclude<UpdateStatus, "Open">,
+  "success" | "info" | "warning" | "danger"
+> = {
+  Approved: "success",
+  Inspected: "info",
+  Resolved: "success",
+  Escalated: "warning",
+};
 
 type CategoryFilter = "All" | UpdateCategory;
 
@@ -75,7 +99,11 @@ export default function ProjectUpdates() {
             </Card>
           ) : (
             visible.map((update) => (
-              <UpdateCard key={update.id} update={update} />
+              <UpdateCard
+                key={update.id}
+                projectId={project.id}
+                update={update}
+              />
             ))
           )}
         </section>
@@ -121,7 +149,37 @@ function filterUpdates(
   });
 }
 
-function UpdateCard({ update }: { update: ProjectUpdate }) {
+function UpdateCard({
+  projectId,
+  update,
+}: {
+  projectId: string;
+  update: ProjectUpdate;
+}) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const transition = useTransitionUpdate();
+  const addComment = useAddComment();
+  const commentsQuery = useUpdateComments(
+    commentsOpen ? projectId : undefined,
+    commentsOpen ? update.id : undefined,
+  );
+
+  const isOpen = update.status === "Open";
+  const targetStatus = CATEGORY_TARGET_STATUS[update.category];
+
+  function handleTransition(): void {
+    if (!isOpen || transition.isPending) return;
+    transition.mutate({
+      projectId,
+      updateId: update.id,
+      status: targetStatus,
+    });
+  }
+
+  function handlePostComment(body: string): void {
+    addComment.mutate({ projectId, updateId: update.id, body });
+  }
+
   return (
     <Card padding="lg" className="flex flex-col gap-4">
       <header className="flex items-start justify-between gap-3">
@@ -140,9 +198,16 @@ function UpdateCard({ update }: { update: ProjectUpdate }) {
             </p>
           </div>
         </div>
-        <Badge tone={UPDATE_CATEGORY_TONE[update.category]} size="md">
-          {update.category}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {update.status !== "Open" && (
+            <Badge tone={STATUS_BADGE_TONE[update.status]} size="md" dot>
+              {update.status}
+            </Badge>
+          )}
+          <Badge tone={UPDATE_CATEGORY_TONE[update.category]} size="md">
+            {update.category}
+          </Badge>
+        </div>
       </header>
 
       <div>
@@ -152,6 +217,12 @@ function UpdateCard({ update }: { update: ProjectUpdate }) {
         <p className="mt-1 text-sm text-gray-600 text-pretty">
           {update.description}
         </p>
+        {!isOpen && update.action.takenBy && update.action.takenAt && (
+          <p className="mt-1.5 text-[11px] text-gray-500">
+            {update.status} by {update.action.takenBy.name} ·{" "}
+            {formatTimeAgo(update.action.takenAt)}
+          </p>
+        )}
       </div>
 
       <MediaGallery items={update.media} />
@@ -160,10 +231,11 @@ function UpdateCard({ update }: { update: ProjectUpdate }) {
         <div className="flex items-center gap-4">
           <button
             type="button"
+            onClick={() => setCommentsOpen((prev) => !prev)}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
           >
             <MessagesIcon className="size-4" />
-            Comment
+            {commentsOpen ? "Hide comments" : "Comment"}
           </button>
           {update.secondaryAction && (
             <button
@@ -178,10 +250,25 @@ function UpdateCard({ update }: { update: ProjectUpdate }) {
         <Button
           size="sm"
           variant={update.cta.tone === "primary" ? "primary" : "secondary"}
+          disabled={!isOpen || transition.isPending}
+          onClick={handleTransition}
         >
-          {update.cta.label}
+          {transition.isPending
+            ? "Submitting…"
+            : !isOpen
+              ? update.status
+              : update.cta.label}
         </Button>
       </footer>
+
+      {commentsOpen && (
+        <CommentPanel
+          comments={commentsQuery.data ?? []}
+          isLoading={commentsQuery.isLoading}
+          isSubmitting={addComment.isPending}
+          onSubmit={handlePostComment}
+        />
+      )}
     </Card>
   );
 }

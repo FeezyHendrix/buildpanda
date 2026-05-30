@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
-import { sendEmail } from "./mail.js";
+import { sendEmail } from "./mail.ts";
 
 const pool = new Pool({
   host: process.env["DB_HOST"] ?? "localhost",

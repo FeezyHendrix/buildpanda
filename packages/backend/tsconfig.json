@@ -11,11 +11,13 @@
     "rootDir": "./src",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src/**/*", "knexfile.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

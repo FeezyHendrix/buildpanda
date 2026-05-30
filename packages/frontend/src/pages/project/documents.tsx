@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -7,11 +8,14 @@ import {
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
+  useCreateDocument,
   useProjectDocumentCategories,
   useProjectDocuments,
-} from "@/hooks/use-projects";
+} from "@/hooks/use-documents";
+import { useUploadFile } from "@/hooks/use-files";
 import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import type {
@@ -24,17 +28,54 @@ export default function ProjectDocuments() {
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
 
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const uploadFile = useUploadFile();
+  const createDocument = useCreateDocument();
+  const isUploading = uploadFile.isPending || createDocument.isPending;
+  const uploadError =
+    (uploadFile.error as Error | undefined)?.message ??
+    (createDocument.error as Error | undefined)?.message ??
+    null;
+
+  function handleUpload(input: { categoryId: string; file: File }): void {
+    uploadFile.mutate(input.file, {
+      onSuccess: (uploaded) => {
+        createDocument.mutate(
+          {
+            projectId: project.id,
+            categoryId: input.categoryId,
+            fileId: uploaded.id,
+          },
+          { onSuccess: () => setUploadOpen(false) },
+        );
+      },
+    });
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Documents"
         description="Secure, centralized management for project compliance."
         actions={
-          <Button variant="primary" size="md">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setUploadOpen(true)}
+          >
             <PlusIcon className="size-4" />
             Upload document
           </Button>
         }
+      />
+
+      <UploadDocumentDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        categories={categories}
+        isSubmitting={isUploading}
+        error={uploadError}
+        onSubmit={handleUpload}
       />
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

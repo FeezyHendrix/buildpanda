@@ -10,6 +10,7 @@ export { BudgetSlider, type BudgetSliderProps } from "./budget-slider";
 export { Button, type ButtonProps } from "./button";
 export { Card, type CardProps, type CardPadding } from "./card";
 export { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";
+export { ErrorBoundary, type ErrorBoundaryProps } from "./error-boundary";
 export { CountrySelect, type CountrySelectProps } from "./country-select";
 export { CurrencyPicker, type CurrencyPickerProps } from "./currency-picker";
 export { FileUpload, type FileUploadProps } from "./file-upload";

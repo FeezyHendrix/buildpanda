@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import type { ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
+import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
@@ -60,7 +61,9 @@ export default function ProjectLayout() {
       <div className="flex flex-1 overflow-hidden">
         <ProjectSidebar project={project} />
         <main className="flex-1 overflow-y-auto bg-[#FCFCFD]">
-          <Outlet context={{ project } satisfies ProjectOutletContext} />
+          <ErrorBoundary>
+            <Outlet context={{ project } satisfies ProjectOutletContext} />
+          </ErrorBoundary>
         </main>
       </div>
     </AppShell>

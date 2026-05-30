@@ -20,6 +20,44 @@ services:
     networks:
       - appnet
 
+  minio:
+    image: minio/minio:latest
+    container_name: buildpanda-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - appnet
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: buildpanda-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}
+        mc mb --ignore-existing local/${S3_BUCKET:-buildpanda}
+        echo "bucket ${S3_BUCKET:-buildpanda} ready"
+    networks:
+      - appnet
+
   backend:
     build:
       context: .
@@ -32,6 +70,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       PORT: 3000
       DB_HOST: db
@@ -40,6 +80,13 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-buildpanda}
+      S3_FORCE_PATH_STYLE: "true"
+      S3_ENSURE_BUCKET: "true"
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - ./packages/backend/src:/app/src
       - ./packages/backend/knexfile.ts:/app/knexfile.ts
@@ -78,3 +125,4 @@ networks:
 
 volumes:
   postgres_data:
+  minio_data:

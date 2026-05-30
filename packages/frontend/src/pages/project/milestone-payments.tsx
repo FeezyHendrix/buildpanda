@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectFinances } from "@/hooks/use-projects";
+import {
+  useProjectFinances,
+  useRaiseDispute,
+  useReleaseMilestone,
+} from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { LEDGER_TYPE_TONE } from "@/lib/project-meta";
 import type {
+  MilestonePayment,
   PaymentLedgerEntry,
   ProjectFinances,
 } from "@/lib/project-mock-data";
@@ -15,6 +23,11 @@ import type {
 export default function ProjectMilestonePayments() {
   const { project } = useProjectContext();
   const { data: finances, isPending } = useProjectFinances(project.id);
+
+  const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(null);
+  const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
+  const releaseMilestone = useReleaseMilestone();
+  const raiseDispute = useRaiseDispute();
 
   if (isPending || !finances) {
     return (
@@ -51,6 +64,8 @@ export default function ProjectMilestonePayments() {
               milestone={milestone}
               currency={finances.currency}
               variant="detailed"
+              onReleaseFunds={() => setReleaseTarget(milestone)}
+              onRaiseDispute={() => setDisputeTarget(milestone)}
             />
           ))}
         </div>
@@ -59,6 +74,43 @@ export default function ProjectMilestonePayments() {
       <PaymentLedger
         entries={finances.ledger}
         currency={finances.currency}
+      />
+
+      <ConfirmDialog
+        open={releaseTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setReleaseTarget(null);
+        }}
+        title={`Release ${releaseTarget?.name ?? "milestone"} funds?`}
+        description={`${
+          releaseTarget ? formatCurrency(releaseTarget.amount, finances.currency) : ""
+        } will be released from escrow.`}
+        confirmLabel="Release funds"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          if (!releaseTarget) return;
+          releaseMilestone.mutate(
+            { projectId: project.id, milestoneId: releaseTarget.id },
+            { onSettled: () => setReleaseTarget(null) },
+          );
+        }}
+      />
+
+      <RaiseDisputeDialog
+        open={disputeTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDisputeTarget(null);
+        }}
+        milestoneName={disputeTarget?.name ?? ""}
+        isSubmitting={raiseDispute.isPending}
+        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
+        onSubmit={({ reason }) => {
+          if (!disputeTarget) return;
+          raiseDispute.mutate(
+            { projectId: project.id, milestoneId: disputeTarget.id, reason },
+            { onSuccess: () => setDisputeTarget(null) },
+          );
+        }}
       />
     </div>
   );
