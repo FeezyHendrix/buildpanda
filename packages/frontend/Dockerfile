@@ -9,6 +9,9 @@ EXPOSE 5173
 CMD ["npx", "vite", "--host", "0.0.0.0"]
 
 FROM base AS build
+# Vite inlines VITE_* at build time, so the value must reach `vite build` (not runtime).
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 COPY package.json ./
 RUN npm install
 COPY . ./
