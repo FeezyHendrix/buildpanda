@@ -30,9 +30,23 @@ export const config = {
   http: {
     host: optional("HOST", "0.0.0.0"),
     port: optionalNumber("PORT", 3000),
-    corsOrigin: optional("CORS_ORIGIN", "http://localhost:5173"),
+    // Comma-separated list. Defaults include the app (5173) and admin (5174).
+    corsOrigins: optional(
+      "CORS_ORIGIN",
+      "http://localhost:5173,http://localhost:5174",
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
     logLevel: optional("LOG_LEVEL", "info"),
   },
+
+  // Emails auto-promoted to the global `admin` role on login (bootstraps the
+  // first platform admin without manual DB edits). Comma-separated.
+  adminEmails: optional("ADMIN_EMAILS", "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
 
   db:
     env === "production"

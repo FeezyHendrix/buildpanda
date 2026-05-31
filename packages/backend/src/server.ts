@@ -18,6 +18,7 @@ import searchRoutes from "./modules/search/routes.ts";
 import fileRoutes from "./modules/files/routes.ts";
 import activityRoutes from "./modules/activities/routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
+import adminRoutes from "./modules/admin/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -26,7 +27,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: config.http.corsOrigin,
+    origin: config.http.corsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
@@ -49,6 +50,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(fileRoutes);
   await app.register(activityRoutes);
   await app.register(dailyLogRoutes);
+  await app.register(adminRoutes);
 
   return app;
 }
