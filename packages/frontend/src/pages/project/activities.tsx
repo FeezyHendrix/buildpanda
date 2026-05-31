@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   AlertIcon,
   CalendarIcon,
@@ -14,8 +15,10 @@ import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateActivity,
+  useDeleteActivity,
   useProjectActivities,
   useRaiseDelay,
+  useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
 import { formatCurrency, formatTimeAgo } from "@/lib/formatters";
@@ -44,9 +47,11 @@ export default function ProjectActivities() {
   const { data: reasons = [] } = useDelayReasons();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
 
   const createActivity = useCreateActivity();
+  const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
 
   return (
@@ -91,7 +96,12 @@ export default function ProjectActivities() {
           activities.map((activity) => (
             <ActivityCard
               key={activity.id}
+              projectId={project.id}
               activity={activity}
+              onEdit={() => {
+                setEditingTarget(activity);
+                setCreateOpen(true);
+              }}
               onRaiseDelay={() => setDelayTarget(activity)}
             />
           ))
@@ -100,15 +110,37 @@ export default function ProjectActivities() {
 
       <CreateActivityDialog
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={(next) => {
+          setCreateOpen(next);
+          if (!next) setEditingTarget(null);
+        }}
         phases={project.timeline}
-        isSubmitting={createActivity.isPending}
+        initial={editingTarget}
+        isSubmitting={createActivity.isPending || updateActivity.isPending}
         error={
-          createActivity.error
-            ? (createActivity.error as Error).message
+          createActivity.error || updateActivity.error
+            ? ((createActivity.error ?? updateActivity.error) as Error).message
             : null
         }
         onSubmit={(values) => {
+          if (editingTarget) {
+            updateActivity.mutate(
+              {
+                projectId: project.id,
+                activityId: editingTarget.id,
+                ...values,
+                location: values.location || null,
+                notes: values.notes || null,
+              },
+              {
+                onSuccess: () => {
+                  setCreateOpen(false);
+                  setEditingTarget(null);
+                },
+              },
+            );
+            return;
+          }
           createActivity.mutate(
             { projectId: project.id, ...values },
             { onSuccess: () => setCreateOpen(false) },
@@ -144,12 +176,18 @@ export default function ProjectActivities() {
 }
 
 function ActivityCard({
+  projectId,
   activity,
+  onEdit,
   onRaiseDelay,
 }: {
+  projectId: string;
   activity: Activity;
+  onEdit: () => void;
   onRaiseDelay: () => void;
 }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteActivity = useDeleteActivity();
   const plannedDays = daysBetween(activity.plannedStartAt, activity.plannedEndAt);
   const actualDays =
     activity.actualStartAt && activity.actualEndAt
@@ -250,17 +288,47 @@ function ActivityCard({
             ? `${openDelays.length} open delay${openDelays.length === 1 ? "" : "s"}`
             : "No open delays"}
         </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="h-8 px-3 text-xs"
-          onClick={onRaiseDelay}
-        >
-          <AlertIcon className="size-3.5" />
-          Log a delay
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={onEdit}
+          >
+            Edit
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={onRaiseDelay}
+          >
+            <AlertIcon className="size-3.5" />
+            Log a delay
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs text-red-500 hover:text-red-600"
+            onClick={() => setDeleteOpen(true)}
+          >
+            Delete
+          </Button>
+        </div>
       </footer>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={() => deleteActivity.mutate({ projectId, activityId: activity.id })}
+        title="Delete activity"
+        description="This permanently removes the activity and its logged delays. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </Card>
   );
 }

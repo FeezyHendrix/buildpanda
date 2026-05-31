@@ -82,6 +82,8 @@ const router = createBrowserRouter([
       { path: "settings", element: <ProjectSettings /> },
       { path: "activities", element: <ProjectActivities /> },
       { path: "activities/:activityId", element: <ProjectActivities /> },
+      { path: "milestones", element: <ProjectMilestonePayments /> },
+      { path: "project-chart", element: <ProjectSchedule /> },
       { path: "schedule", element: <ProjectSchedule /> },
       { path: "daily-log", element: <ProjectDailyLog /> },
     ],

@@ -1,10 +1,11 @@
 import { useMemo, type ComponentType, type SVGAttributes } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { IconBox } from "@/components/atoms/icon-box";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
   CalendarIcon,
+  ChevronRightIcon,
   ContractorsIcon,
   DocumentsIcon,
   FinancesIcon,
@@ -31,19 +32,54 @@ interface ProjectNavItem extends NavEntry {
   to: string;
 }
 
+interface ScheduleNavItem extends ProjectNavItem {
+  helper: string;
+}
+
 const NAV_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
   { label: "Updates", slug: "updates", Icon: UpdatesIcon },
-  { label: "Site Activities", slug: "activities", Icon: TrendingUpIcon },
-  { label: "Schedule", slug: "schedule", Icon: CalendarIcon },
-  { label: "Daily Log", slug: "daily-log", Icon: CalendarIcon },
   { label: "Inspections", slug: "inspections", Icon: InspectionsIcon },
+  { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon },
   { label: "Finances", slug: "finances", Icon: FinancesIcon },
   { label: "Documents", slug: "documents", Icon: DocumentsIcon },
   { label: "Materials", slug: "materials", Icon: MaterialsIcon },
-  { label: "Contractors", slug: "contractors", Icon: ContractorsIcon },
+  { label: "Team", slug: "team", Icon: ContractorsIcon },
   { label: "Messages", slug: "messages", Icon: MessagesIcon },
   { label: "Settings", slug: "settings", Icon: SettingsIcon },
+] as const;
+
+const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "Build Stages",
+    slug: "stages",
+    Icon: OverviewIcon,
+    helper: "Phases & progress",
+  },
+  {
+    label: "Site Activity",
+    slug: "activities",
+    Icon: TrendingUpIcon,
+    helper: "Work items",
+  },
+  {
+    label: "Daily Log",
+    slug: "daily-log",
+    Icon: CalendarIcon,
+    helper: "Field reports",
+  },
+  {
+    label: "Project Chart",
+    slug: "project-chart",
+    Icon: CalendarIcon,
+    helper: "Gantt chart",
+  },
+  {
+    label: "Milestones",
+    slug: "milestones",
+    Icon: FinancesIcon,
+    helper: "Cost gates",
+  },
 ] as const;
 
 interface ProjectSidebarProps {
@@ -52,6 +88,7 @@ interface ProjectSidebarProps {
 }
 
 function ProjectSidebar({ project, className }: ProjectSidebarProps) {
+  const location = useLocation();
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -59,6 +96,19 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
         to: `/project/${project.id}/${entry.slug}`,
       })),
     [project.id],
+  );
+  const scheduleItems = useMemo<ScheduleNavItem[]>(
+    () =>
+      SCHEDULE_ENTRIES.map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id],
+  );
+
+  const isScheduleActive = scheduleItems.some(
+    (item) =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
 
   return (
@@ -101,11 +151,70 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
         <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
           Main menu
         </p>
-        {items.map((item) => (
+        {items.slice(0, 2).map((item) => (
+          <ProjectNavLink key={item.slug} item={item} />
+        ))}
+        <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
+        {items.slice(2).map((item) => (
           <ProjectNavLink key={item.slug} item={item} />
         ))}
       </nav>
     </aside>
+  );
+}
+
+function ScheduleNavGroup({
+  items,
+  active,
+}: {
+  items: ScheduleNavItem[];
+  active: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-white/70 p-1 ring-1 ring-[#EDEDED]">
+      <div
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold",
+          active ? "text-gray-900" : "text-gray-600",
+        )}
+      >
+        <CalendarIcon />
+        <span className="flex-1 truncate">Schedules</span>
+        <ChevronRightIcon
+          className={cn("size-4 text-gray-400 transition-transform", active && "rotate-90")}
+        />
+      </div>
+      <div className="mt-1 flex flex-col gap-1 border-l border-[#E5E7EB] pl-3">
+        {items.map((item) => (
+          <ProjectScheduleNavLink key={item.slug} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectScheduleNavLink({ item }: { item: ScheduleNavItem }) {
+  const { Icon, label, helper, to } = item;
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium text-gray-500",
+          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "hover:bg-[#EDEDED]/60 hover:text-gray-900",
+          isActive && "bg-[#EDEDED] text-gray-900",
+        )
+      }
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{label}</span>
+        <span className="block truncate text-[10px] font-normal text-gray-400">
+          {helper}
+        </span>
+      </span>
+    </NavLink>
   );
 }
 

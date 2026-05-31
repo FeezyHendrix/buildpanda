@@ -19,6 +19,8 @@ interface MilestoneCardProps {
   currency: ProjectFinances["currency"];
   variant?: MilestoneVariant;
   onViewDocs?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onRaiseDispute?: () => void;
   onReleaseFunds?: () => void;
   className?: string;
@@ -29,6 +31,8 @@ function MilestoneCard({
   currency,
   variant = "compact",
   onViewDocs,
+  onEdit,
+  onDelete,
   onRaiseDispute,
   onReleaseFunds,
   className,
@@ -93,6 +97,20 @@ function MilestoneCard({
         )}
       >
         <div className="flex gap-3 text-[11px]">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-gray-500 hover:text-gray-900"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-red-500 hover:text-red-600"
+          >
+            Delete
+          </button>
           <button
             type="button"
             onClick={onViewDocs}

@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
+import { UpsertMilestoneDialog } from "@/components/molecules/upsert-milestone-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectFinances,
+  useDeleteMilestone,
   useRaiseDispute,
   useReleaseMilestone,
+  useUpsertMilestone,
 } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { LEDGER_TYPE_TONE } from "@/lib/project-meta";
@@ -24,8 +29,13 @@ export default function ProjectMilestonePayments() {
   const { project } = useProjectContext();
   const { data: finances, isPending } = useProjectFinances(project.id);
 
+  const [upsertOpen, setUpsertOpen] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<MilestonePayment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MilestonePayment | null>(null);
   const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(null);
   const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
+  const upsertMilestone = useUpsertMilestone();
+  const deleteMilestone = useDeleteMilestone();
   const releaseMilestone = useReleaseMilestone();
   const raiseDispute = useRaiseDispute();
 
@@ -41,21 +51,34 @@ export default function ProjectMilestonePayments() {
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
-          { label: "Milestone Payments" },
+          { label: "Schedules", to: `/project/${project.id}/project-chart` },
+          { label: "Milestones" },
         ]}
         className="mb-4"
       />
       <PageHeader
-        title="Milestone Payments"
-        description="Manage fund releases based on verified project completion."
+        title="Milestones"
+        description="Use milestone cost gates to organize the work items that drive the project schedule."
+        actions={
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => {
+              setEditingTarget(null);
+              setUpsertOpen(true);
+            }}
+          >
+            <PlusIcon className="size-4" />
+            New milestone
+          </Button>
+        }
       />
 
       <EscrowSummary finances={finances} />
 
       <section className="mt-6">
         <h2 className="mb-4 text-base font-semibold text-gray-900">
-          Milestone Payments
+          Project milestones
         </h2>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {finances.milestones.map((milestone, idx) => (
@@ -64,6 +87,11 @@ export default function ProjectMilestonePayments() {
               milestone={milestone}
               currency={finances.currency}
               variant="detailed"
+              onEdit={() => {
+                setEditingTarget(milestone);
+                setUpsertOpen(true);
+              }}
+              onDelete={() => setDeleteTarget(milestone)}
               onReleaseFunds={() => setReleaseTarget(milestone)}
               onRaiseDispute={() => setDisputeTarget(milestone)}
             />
@@ -74,6 +102,24 @@ export default function ProjectMilestonePayments() {
       <PaymentLedger
         entries={finances.ledger}
         currency={finances.currency}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null);
+        }}
+        title={`Delete ${deleteTarget?.name ?? "milestone"}?`}
+        description="This removes the milestone cost gate. Site activities remain assigned to their project phase."
+        confirmLabel="Delete milestone"
+        variant="danger"
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteMilestone.mutate(
+            { projectId: project.id, milestoneId: deleteTarget.id },
+            { onSettled: () => setDeleteTarget(null) },
+          );
+        }}
       />
 
       <ConfirmDialog
@@ -109,6 +155,33 @@ export default function ProjectMilestonePayments() {
           raiseDispute.mutate(
             { projectId: project.id, milestoneId: disputeTarget.id, reason },
             { onSuccess: () => setDisputeTarget(null) },
+          );
+        }}
+      />
+
+      <UpsertMilestoneDialog
+        open={upsertOpen}
+        onOpenChange={(next) => {
+          setUpsertOpen(next);
+          if (!next) setEditingTarget(null);
+        }}
+        phases={project.timeline}
+        initial={editingTarget}
+        isSubmitting={upsertMilestone.isPending}
+        error={upsertMilestone.error ? (upsertMilestone.error as Error).message : null}
+        onSubmit={(values) => {
+          upsertMilestone.mutate(
+            {
+              projectId: project.id,
+              milestoneId: editingTarget?.id,
+              ...values,
+            },
+            {
+              onSuccess: () => {
+                setUpsertOpen(false);
+                setEditingTarget(null);
+              },
+            },
           );
         }}
       />

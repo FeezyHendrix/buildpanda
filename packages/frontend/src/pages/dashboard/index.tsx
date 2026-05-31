@@ -4,6 +4,7 @@ import { Card } from "@/components/atoms/card";
 import { IconBox } from "@/components/atoms/icon-box";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import {
+  CalendarIcon,
   ExternalLinkIcon,
   FolderIcon,
   PlusIcon,
@@ -98,8 +99,16 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
 
 function ProjectCard({ project }: { project: Project }) {
   const progress = project.progressPercent;
+  const activePhase =
+    project.timeline.find((phase) => phase.status === "InProgress") ??
+    project.timeline.find((phase) => phase.status === "Pending") ??
+    project.timeline.at(-1);
+
   return (
-    <Card padding="md" className="flex flex-col gap-4">
+    <Card
+      padding="md"
+      className="relative flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-[#004DE7]/20"
+    >
       <div className="flex items-start gap-3">
         <IconBox
           tone={project.folderTone}
@@ -137,13 +146,35 @@ function ProjectCard({ project }: { project: Project }) {
         </p>
       </div>
 
+      {activePhase && (
+        <Link
+          to={`/project/${project.id}/project-chart`}
+          className="relative z-10 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3 outline-none transition-colors hover:bg-[#F4F7FF] focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-900">
+                <CalendarIcon className="size-3.5 text-[#004DE7]" />
+                Project schedule
+              </p>
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {activePhase.name}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-medium text-gray-500 ring-1 ring-[#EDEDED]">
+              {activePhase.dateRange || "Timeline"}
+            </span>
+          </div>
+        </Link>
+      )}
+
       <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-3">
         <p className="text-xs text-gray-500">
           Last updated {formatTimeAgo(project.updatedAt)}
         </p>
         <Link
           to={`/project/${project.id}/overview`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] outline-none hover:underline after:absolute after:inset-0 after:z-[1] after:rounded-2xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
         >
           Open
           <ExternalLinkIcon className="size-3.5" />

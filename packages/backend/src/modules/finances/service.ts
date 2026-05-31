@@ -26,6 +26,24 @@ export interface RaiseDisputeInput {
   reason: string;
 }
 
+export interface CreateMilestoneInput {
+  name: string;
+  phase: string;
+  amount: number;
+  percentComplete?: number;
+  status?: "Completed" | "InProgress" | "Pending";
+  inspectorSignOff?: "Verified" | "Scheduled" | "Pending";
+}
+
+export interface UpdateMilestoneInput {
+  name?: string;
+  phase?: string;
+  amount?: number;
+  percentComplete?: number;
+  status?: "Completed" | "InProgress" | "Pending";
+  inspectorSignOff?: "Verified" | "Scheduled" | "Pending";
+}
+
 function toDispute(row: MilestoneDisputeRow): MilestoneDispute {
   return {
     id: row.id,
@@ -131,12 +149,61 @@ export function financesService(repository: FinancesRepository) {
       }
       await repository.deposit({
         projectId,
-        amount: input.amount,
+        amount: String(input.amount),
         description: input.description ?? "Deposit · Project funding",
         entryDate: input.entryDate ?? new Date().toISOString().slice(0, 10),
         ledgerId: generateId("ledger"),
       });
       return this.getByProject(projectId);
+    },
+
+    async createMilestone(
+      projectId: string,
+      input: CreateMilestoneInput,
+    ): Promise<MilestonePayment> {
+      if (input.amount < 0) throw new BadRequestError("Milestone amount cannot be negative");
+      const row = await repository.createMilestone({
+        id: generateId("milestone"),
+        project_id: projectId,
+        name: input.name,
+        phase: input.phase,
+        status: input.status ?? "Pending",
+        percent_complete: input.percentComplete ?? 0,
+        amount: input.amount,
+        proof_file_name: null,
+        proof_verified: false,
+        inspector_sign_off: input.inspectorSignOff ?? "Pending",
+      });
+      return toMilestone(row);
+    },
+
+    async updateMilestone(
+      projectId: string,
+      milestoneId: string,
+      input: UpdateMilestoneInput,
+    ): Promise<MilestonePayment> {
+      if (input.amount !== undefined && input.amount < 0) {
+        throw new BadRequestError("Milestone amount cannot be negative");
+      }
+      const row = await repository.updateMilestone(projectId, milestoneId, {
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.phase !== undefined ? { phase: input.phase } : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.percentComplete !== undefined
+          ? { percent_complete: input.percentComplete }
+          : {}),
+        ...(input.amount !== undefined ? { amount: String(input.amount) } : {}),
+        ...(input.inspectorSignOff !== undefined
+          ? { inspector_sign_off: input.inspectorSignOff }
+          : {}),
+      });
+      if (!row) throw new NotFoundError("Milestone");
+      return toMilestone(row);
+    },
+
+    async deleteMilestone(projectId: string, milestoneId: string): Promise<void> {
+      const deleted = await repository.deleteMilestone(projectId, milestoneId);
+      if (deleted === 0) throw new NotFoundError("Milestone");
     },
 
     async releaseMilestone(

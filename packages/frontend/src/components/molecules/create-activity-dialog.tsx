@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDialog } from "./form-dialog";
 import { Label } from "@/components/atoms/label";
-import type { ProjectPhase } from "@/lib/project-mock-data";
+import type { Activity, ProjectPhase } from "@/lib/project-mock-data";
 
 export interface CreateActivityValues {
   name: string;
@@ -18,6 +18,7 @@ interface CreateActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   phases: ProjectPhase[];
+  initial?: Activity | null;
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -34,6 +35,7 @@ function CreateActivityDialog({
   open,
   onOpenChange,
   phases,
+  initial,
   onSubmit,
   isSubmitting = false,
   error,
@@ -50,17 +52,22 @@ function CreateActivityDialog({
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    if (!open) {
-      setName("");
-      setActivityType("");
-      setPhaseId("");
-      setLocation("");
-      setPlannedStartAt(toLocalInput(new Date()));
-      setPlannedEndAt(toLocalInput(new Date(Date.now() + 7 * 24 * 3600 * 1000)));
-      setWorkerCountPlanned("8");
-      setNotes("");
-    }
-  }, [open]);
+    if (!open) return;
+    setName(initial?.name ?? "");
+    setActivityType(initial?.activityType ?? "");
+    setPhaseId(initial?.phaseId ?? "");
+    setLocation(initial?.location ?? "");
+    setPlannedStartAt(
+      initial ? toLocalInput(new Date(initial.plannedStartAt)) : toLocalInput(new Date()),
+    );
+    setPlannedEndAt(
+      initial
+        ? toLocalInput(new Date(initial.plannedEndAt))
+        : toLocalInput(new Date(Date.now() + 7 * 24 * 3600 * 1000)),
+    );
+    setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
+    setNotes(initial?.notes ?? "");
+  }, [initial, open]);
 
   const isValid =
     name.trim().length > 0 &&
@@ -87,9 +94,9 @@ function CreateActivityDialog({
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="New site activity"
-      description="Track a discrete piece of work with planned dates and crew size."
-      submitLabel="Create activity"
+      title={initial ? "Edit site activity" : "New site activity"}
+      description="Track a milestone work item with planned dates, crew size, and schedule impact."
+      submitLabel={initial ? "Save activity" : "Create activity"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? null}
@@ -121,14 +128,14 @@ function CreateActivityDialog({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="activity-phase">Phase (optional)</Label>
+        <Label htmlFor="activity-phase">Milestone (optional)</Label>
           <select
             id="activity-phase"
             value={phaseId}
             onChange={(e) => setPhaseId(e.target.value)}
             className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
           >
-            <option value="">— Unassigned —</option>
+          <option value="">— Unassigned milestone —</option>
             {phases.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

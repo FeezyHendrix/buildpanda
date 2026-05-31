@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { IconBox } from "@/components/atoms/icon-box";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import {
@@ -9,14 +11,26 @@ import {
   CalendarIcon,
   CheckIcon,
   HeartPulseIcon,
+  PlusIcon,
   ShieldIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import {
+  UpsertRiskDialog,
+  type UpsertRiskValues,
+} from "@/components/molecules/upsert-risk-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { useProjectFinances } from "@/hooks/use-finances";
 import { useProjectUpdates } from "@/hooks/use-updates";
-import { useProjectRiskFactors } from "@/hooks/use-risks";
+import {
+  useCreateRiskFactor,
+  useDeleteRiskFactor,
+  useEditRiskFactor,
+  useProjectRiskFactors,
+} from "@/hooks/use-risks";
 import { formatCurrency, formatTimeAgo, pct } from "@/lib/formatters";
 import {
   PROJECT_STATUS_TONE,
@@ -24,6 +38,9 @@ import {
   UPDATE_CATEGORY_TONE,
 } from "@/lib/project-meta";
 import type {
+  Activity,
+  Currency,
+  MilestonePayment,
   PhaseStatus,
   ProjectPhase,
   ProjectUpdate,
@@ -37,6 +54,8 @@ export default function ProjectOverview() {
   const navigate = useNavigate();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
+  const { data: activities = [] } = useProjectActivities(project.id);
+  const { data: finances } = useProjectFinances(project.id);
 
   const budgetPct = pct(project.budgetUsed, project.budgetTotal);
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
@@ -136,12 +155,17 @@ export default function ProjectOverview() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate(`/project/${project.id}/schedule`)}
+            onClick={() => navigate(`/project/${project.id}/project-chart`)}
           >
-            View Detailed Gantt
+            View Project Chart
           </Button>
         </div>
-        <TimelineStepper phases={project.timeline} />
+        <TimelineStepper
+          phases={project.timeline}
+          activities={activities}
+          milestones={finances?.milestones ?? []}
+          currency={project.currency}
+        />
       </Card>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -150,7 +174,7 @@ export default function ProjectOverview() {
           projectId={project.id}
           className="lg:col-span-2"
         />
-        <RiskFactorsPanel risks={risks} />
+        <RiskFactorsPanel projectId={project.id} risks={risks} />
       </div>
     </div>
   );
@@ -196,12 +220,47 @@ function RecentUpdatesPanel({
   );
 }
 
-function RiskFactorsPanel({ risks }: { risks: RiskFactor[] }) {
+const RISK_SEVERITY_TONE: Record<
+  RiskFactor["severity"],
+  "success" | "warning" | "danger"
+> = {
+  Low: "success",
+  Medium: "warning",
+  High: "danger",
+};
+
+function RiskFactorsPanel({
+  projectId,
+  risks,
+}: {
+  projectId: string;
+  risks: RiskFactor[];
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const createRisk = useCreateRiskFactor();
+
+  function handleCreate(values: UpsertRiskValues): void {
+    createRisk.mutate(
+      { projectId, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
+  }
+
   return (
     <Card padding="lg">
-      <h2 className="mb-4 text-base font-semibold text-gray-900">
-        Identified Risk Factors
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-gray-900">
+          Identified Risk Factors
+        </h2>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+        >
+          <PlusIcon className="size-4" />
+          Add risk
+        </Button>
+      </div>
       {risks.length === 0 ? (
         <EmptyState
           icon={
@@ -212,42 +271,126 @@ function RiskFactorsPanel({ risks }: { risks: RiskFactor[] }) {
             />
           }
           title="No active risks"
-          description="Risks identified by Panda AI will appear here as they're detected."
+          description="Add a risk factor to track and mitigate issues on this project."
           className="py-6"
         />
       ) : (
         <ul className="flex flex-col gap-3">
           {risks.map((risk) => (
-            <li
-              key={risk.id}
-              className="flex items-start gap-3 rounded-xl border border-[#FDECEC] bg-[#FFF7F7] p-3"
-            >
-              <IconBox
-                tone="red"
-                size="sm"
-                icon={<AlertIcon className="size-4" />}
-              />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-900">
-                  {risk.title}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">{risk.description}</p>
-              </div>
-            </li>
+            <RiskFactorRow key={risk.id} projectId={projectId} risk={risk} />
           ))}
         </ul>
       )}
+
+      <UpsertRiskDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        onSubmit={handleCreate}
+        isSubmitting={createRisk.isPending}
+        error={(createRisk.error as Error | undefined)?.message ?? null}
+      />
     </Card>
   );
 }
 
-function TimelineStepper({ phases }: { phases: ProjectPhase[] }) {
+function RiskFactorRow({
+  projectId,
+  risk,
+}: {
+  projectId: string;
+  risk: RiskFactor;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const editRisk = useEditRiskFactor();
+  const deleteRisk = useDeleteRiskFactor();
+
+  function handleEdit(values: UpsertRiskValues): void {
+    editRisk.mutate(
+      { projectId, riskId: risk.id, ...values },
+      { onSuccess: () => setEditOpen(false) },
+    );
+  }
+
+  function handleDelete(): void {
+    deleteRisk.mutate({ projectId, riskId: risk.id });
+  }
+
+  return (
+    <li className="flex items-start gap-3 rounded-xl border border-[#FDECEC] bg-[#FFF7F7] p-3">
+      <IconBox tone="red" size="sm" icon={<AlertIcon className="size-4" />} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900">{risk.title}</p>
+        <p className="mt-1 text-xs text-gray-500">{risk.description}</p>
+        <div className="mt-2 flex items-center gap-3">
+          <Badge tone={RISK_SEVERITY_TONE[risk.severity]} size="sm">
+            {risk.severity}
+          </Badge>
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-900"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-xs font-medium text-red-500 hover:text-red-600"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <UpsertRiskDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        mode="edit"
+        initial={{
+          title: risk.title,
+          description: risk.description,
+          severity: risk.severity,
+        }}
+        onSubmit={handleEdit}
+        isSubmitting={editRisk.isPending}
+        error={(editRisk.error as Error | undefined)?.message ?? null}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        title="Delete risk factor"
+        description="This permanently removes the risk factor. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
+    </li>
+  );
+}
+
+function TimelineStepper({
+  phases,
+  activities,
+  milestones,
+  currency,
+}: {
+  phases: ProjectPhase[];
+  activities: Activity[];
+  milestones: MilestonePayment[];
+  currency: Currency;
+}) {
   return (
     <ol className="relative flex flex-col gap-6 sm:flex-row sm:gap-0">
       {phases.map((phase, idx) => (
         <TimelineStep
           key={phase.id}
           phase={phase}
+          activities={activities.filter((activity) => activity.phaseId === phase.id)}
+          milestone={milestones.find((milestone) => milestone.phase === phase.name)}
+          currency={currency}
           index={idx + 1}
           isLast={idx === phases.length - 1}
         />
@@ -258,13 +401,24 @@ function TimelineStepper({ phases }: { phases: ProjectPhase[] }) {
 
 function TimelineStep({
   phase,
+  activities,
+  milestone,
+  currency,
   index,
   isLast,
 }: {
   phase: ProjectPhase;
+  activities: Activity[];
+  milestone: MilestonePayment | undefined;
+  currency: Currency;
   index: number;
   isLast: boolean;
 }) {
+  const delayCount = activities.reduce(
+    (count, activity) => count + activity.delays.length,
+    0,
+  );
+
   return (
     <li className="flex flex-1 items-start gap-3 sm:flex-col sm:gap-2">
       <div className="relative flex items-center sm:w-full sm:justify-start">
@@ -280,6 +434,21 @@ function TimelineStep({
       <div className="min-w-0 sm:pr-3">
         <p className="text-sm font-semibold text-gray-900">{phase.name}</p>
         <p className="mt-0.5 text-xs text-gray-500">{phase.dateRange}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge tone="neutral" size="sm">
+            {activities.length} work item{activities.length === 1 ? "" : "s"}
+          </Badge>
+          {milestone && (
+            <Badge tone="warning" size="sm">
+              {formatCurrency(milestone.amount, currency, { compact: true })}
+            </Badge>
+          )}
+          {delayCount > 0 && (
+            <Badge tone="danger" size="sm" dot>
+              {delayCount} delay{delayCount === 1 ? "" : "s"}
+            </Badge>
+          )}
+        </div>
         {phase.status === "InProgress" && (
           <Badge tone="info" size="sm" dot className="mt-1.5">
             In Progress
