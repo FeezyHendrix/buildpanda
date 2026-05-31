@@ -1,0 +1,33 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { RequireAdmin } from "@/components/require-admin";
+import { Layout } from "@/components/layout";
+import SignInPage from "@/pages/sign-in";
+import DashboardPage from "@/pages/dashboard";
+import UsersPage from "@/pages/users";
+import UserDetailPage from "@/pages/user-detail";
+import OrganizationsPage from "@/pages/organizations";
+import OrganizationDetailPage from "@/pages/organization-detail";
+import ProjectsPage from "@/pages/projects";
+import ProjectDetailPage from "@/pages/project-detail";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/sign-in" element={<SignInPage />} />
+        <Route element={<RequireAdmin />}>
+          <Route element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="users/:id" element={<UserDetailPage />} />
+            <Route path="organizations" element={<OrganizationsPage />} />
+            <Route path="organizations/:id" element={<OrganizationDetailPage />} />
+            <Route path="projects" element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectDetailPage />} />
+          </Route>
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
