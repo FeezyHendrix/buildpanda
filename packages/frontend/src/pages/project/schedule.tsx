@@ -126,18 +126,22 @@ export default function ProjectSchedule() {
   const hasSchedule = tasks.some((task) => task.type === "task");
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Schedule"
-        description="Gantt timeline of site activities grouped by project phase, with planned dates and progress."
-      />
+    <div className="flex h-full w-full flex-col bg-[#FCFCFD]">
+      <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
+        <PageHeader
+          title="Schedule"
+          description="Gantt timeline of site activities grouped by project phase, with planned dates and progress."
+        />
+      </div>
 
-      <section className="mt-8">
-        {isPending ? (
+      {isPending ? (
+        <div className="flex flex-1 items-center justify-center p-6">
           <Card padding="lg" className="text-center text-sm text-gray-500">
             Loading schedule…
           </Card>
-        ) : !hasSchedule ? (
+        </div>
+      ) : !hasSchedule ? (
+        <div className="flex flex-1 items-center justify-center p-6">
           <Card padding="lg">
             <EmptyState
               icon={<CalendarIcon className="size-8 text-gray-300" />}
@@ -145,22 +149,22 @@ export default function ProjectSchedule() {
               description="Activities with planned start and end dates appear here as a Gantt timeline."
             />
           </Card>
-        ) : (
-          <div className="h-[640px] w-full overflow-hidden rounded-2xl border border-[#EDEDED] bg-white">
-            <Willow>
-              <Gantt
-                tasks={tasks}
-                scales={SCALES}
-                start={rangeStart}
-                end={rangeEnd}
-                cellWidth={100}
-                cellHeight={38}
-                readonly
-              />
-            </Willow>
-          </div>
-        )}
-      </section>
+        </div>
+      ) : (
+        <div className="min-h-0 w-full flex-1 overflow-hidden bg-white [&>.wx-willow-theme]:h-full">
+          <Willow>
+            <Gantt
+              tasks={tasks}
+              scales={SCALES}
+              start={rangeStart}
+              end={rangeEnd}
+              cellWidth={100}
+              cellHeight={38}
+              readonly
+            />
+          </Willow>
+        </div>
+      )}
     </div>
   );
 }
