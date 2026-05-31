@@ -1,0 +1,42 @@
+# @buildpanda/web
+
+The BuildPanda marketing website for **buildpanda.io**.
+
+Static, SEO-optimised site built with Next.js (App Router, `output: "export"`),
+Tailwind CSS v4 and Plus Jakarta Sans, matching the BuildPanda app's brand
+(primary `#004DE7`, white background).
+
+## Pages
+
+- `/` — Home
+- `/product` — The construction management software
+- `/construction` — The managed construction service
+- `/about` — About us and contact
+
+## Develop
+
+```bash
+pnpm --filter @buildpanda/web dev      # http://localhost:3001
+```
+
+## Build (static export)
+
+```bash
+pnpm --filter @buildpanda/web build    # outputs static site to packages/web/out
+```
+
+Serve the `out/` directory from any static host or CDN.
+
+## Configuration
+
+- `NEXT_PUBLIC_LEADS_ENDPOINT` — where the consultation form POSTs leads (JSON).
+  Copy `.env.example` to `.env.local` and set it. When unset, submissions are
+  logged to the console so nothing breaks in development.
+- Update contact details (`email`, `phoneDisplay`, `appUrl`) in `lib/site.ts`.
+
+## SEO
+
+- Per-page `title`, `description`, canonical, OpenGraph and Twitter metadata.
+- JSON-LD: `Organization` (global), `SoftwareApplication` (product),
+  `Service` (construction).
+- `sitemap.xml` and `robots.txt` generated at build time.

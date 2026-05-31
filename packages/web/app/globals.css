@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand palette — sourced from the BuildPanda app and logo */
+  --color-brand: #004de7;
+  --color-brand-hover: #0041c4;
+  --color-brand-active: #003aad;
+  --color-brand-soft: #f0f4ff;
+  --color-brand-tint: #e6effe;
+
+  --color-ink: #0d1321;
+  --color-muted: #5b6472;
+
+  --color-success: #1b8e45;
+  --color-success-soft: #e8f7ee;
+  --color-warning: #c26a00;
+  --color-warning-soft: #fff3e0;
+  --color-danger: #c72525;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f6f6;
+  --color-surface-faint: #fafafa;
+  --color-line: #ededed;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #ffffff;
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background-color: #004de7;
+  color: #ffffff;
+}
