@@ -2,9 +2,9 @@
 
 The BuildPanda marketing website for **buildpanda.io**.
 
-Static, SEO-optimised site built with Next.js (App Router, `output: "export"`),
-Tailwind CSS v4 and Plus Jakarta Sans, matching the BuildPanda app's brand
-(primary `#004DE7`, white background).
+SEO-optimised site built with Next.js (App Router), Tailwind CSS v4 and Plus
+Jakarta Sans, matching the BuildPanda app's brand (primary `#004DE7`, white
+background). Runs as a Node server (`next start`).
 
 ## Pages
 
@@ -19,13 +19,12 @@ Tailwind CSS v4 and Plus Jakarta Sans, matching the BuildPanda app's brand
 pnpm --filter @buildpanda/web dev      # http://localhost:3001
 ```
 
-## Build (static export)
+## Build & run (server)
 
 ```bash
-pnpm --filter @buildpanda/web build    # outputs static site to packages/web/out
+pnpm --filter @buildpanda/web build    # production build to packages/web/.next
+pnpm --filter @buildpanda/web start    # next start on http://localhost:3001
 ```
-
-Serve the `out/` directory from any static host or CDN.
 
 ## Configuration
 
