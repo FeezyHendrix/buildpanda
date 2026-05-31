@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FormDrawer } from "./form-drawer";
+import { FormDialog } from "./form-dialog";
 import { Label } from "@/components/atoms/label";
 import type {
   MilestonePayment,
@@ -74,7 +74,7 @@ function UpsertMilestoneDialog({
   }
 
   return (
-    <FormDrawer
+    <FormDialog
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit milestone" : "New milestone"}
@@ -168,7 +168,7 @@ function UpsertMilestoneDialog({
           </select>
         </div>
       </div>
-    </FormDrawer>
+    </FormDialog>
   );
 }
 

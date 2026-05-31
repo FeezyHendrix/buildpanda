@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
+import { assertCanModify } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { financesRepository } from "./repository.ts";
@@ -88,7 +88,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       const finances = await service.deposit(project.id, request.body);
       return reply.status(201).send(finances);
@@ -102,7 +102,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       const milestone = await service.createMilestone(project.id, request.body);
       return reply.status(201).send(milestone);
@@ -119,7 +119,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       return service.updateMilestone(
         project.id,
@@ -136,7 +136,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       await service.deleteMilestone(project.id, request.params.milestoneId);
       return reply.status(204).send();
@@ -150,7 +150,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       const milestone = await service.releaseMilestone(
         project.id,
@@ -179,7 +179,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+      assertCanModify({ ownerId: project.owner_id }, { id: user.id });
 
       const dispute = await service.raiseDispute(
         project.id,
