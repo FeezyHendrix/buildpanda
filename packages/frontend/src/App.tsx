@@ -22,6 +22,7 @@ const ProjectBudgetAllocation = lazy(
 const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
+const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectContractors = lazy(() => import("@/pages/project/contractors"));
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
         path: "finances/milestone-payments",
         element: <ProjectMilestonePayments />,
       },
+      { path: "finances/invoices", element: <ProjectInvoices /> },
       { path: "materials", element: <ProjectMaterials /> },
       { path: "documents", element: <ProjectDocuments /> },
       { path: "contractors", element: <ProjectContractors /> },
