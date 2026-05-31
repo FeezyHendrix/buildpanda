@@ -1,4 +1,4 @@
-import { useMemo, type ComponentType, type SVGAttributes } from "react";
+import { useMemo, useState, type ComponentType, type SVGAttributes } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { IconBox } from "@/components/atoms/icon-box";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
@@ -74,12 +74,6 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
-  {
-    label: "Milestones",
-    slug: "milestones",
-    Icon: FinancesIcon,
-    helper: "Cost gates",
-  },
 ] as const;
 
 interface ProjectSidebarProps {
@@ -89,6 +83,12 @@ interface ProjectSidebarProps {
 
 function ProjectSidebar({ project, className }: ProjectSidebarProps) {
   const location = useLocation();
+  const [scheduleOpen, setScheduleOpen] = useState(() =>
+    location.pathname.includes("/stages") ||
+    location.pathname.includes("/activities") ||
+    location.pathname.includes("/daily-log") ||
+    location.pathname.includes("/project-chart"),
+  );
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -154,7 +154,12 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
         {items.slice(0, 2).map((item) => (
           <ProjectNavLink key={item.slug} item={item} />
         ))}
-        <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
+        <ScheduleNavGroup
+          items={scheduleItems}
+          active={isScheduleActive}
+          open={scheduleOpen}
+          onToggle={() => setScheduleOpen((open) => !open)}
+        />
         {items.slice(2).map((item) => (
           <ProjectNavLink key={item.slug} item={item} />
         ))}
@@ -166,29 +171,39 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
 function ScheduleNavGroup({
   items,
   active,
+  open,
+  onToggle,
 }: {
   items: ScheduleNavItem[];
   active: boolean;
+  open: boolean;
+  onToggle: () => void;
 }) {
   return (
     <div className="rounded-xl bg-white/70 p-1 ring-1 ring-[#EDEDED]">
-      <div
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
         className={cn(
-          "flex items-center gap-3 rounded-lg px-2 py-2 text-sm font-semibold",
+          "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm font-semibold",
+          "outline-none transition-colors hover:bg-[#EDEDED]/60 focus-visible:ring-2 focus-visible:ring-gray-900/10",
           active ? "text-gray-900" : "text-gray-600",
         )}
       >
         <CalendarIcon />
         <span className="flex-1 truncate">Schedules</span>
         <ChevronRightIcon
-          className={cn("size-4 text-gray-400 transition-transform", active && "rotate-90")}
+          className={cn("size-4 text-gray-400 transition-transform", open && "rotate-90")}
         />
-      </div>
-      <div className="mt-1 flex flex-col gap-1 border-l border-[#E5E7EB] pl-3">
-        {items.map((item) => (
-          <ProjectScheduleNavLink key={item.slug} item={item} />
-        ))}
-      </div>
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-col gap-1 border-l border-[#E5E7EB] pl-3">
+          {items.map((item) => (
+            <ProjectScheduleNavLink key={item.slug} item={item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
