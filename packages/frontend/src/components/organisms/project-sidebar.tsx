@@ -32,29 +32,13 @@ interface ProjectNavItem extends NavEntry {
   to: string;
 }
 
-interface ScheduleNavItem extends ProjectNavItem {
-  helper: string;
-}
-
-interface MaterialsNavItem extends ProjectNavItem {
+interface GroupNavItem extends ProjectNavItem {
   helper: string;
 }
 
 const NAV_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
   { label: "Updates", slug: "updates", Icon: UpdatesIcon },
-  { label: "Inspections", slug: "inspections", Icon: InspectionsIcon },
-  { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon },
-  { label: "Queries", slug: "queries", Icon: MessagesIcon },
-  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
-  { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon },
-  { label: "Permits", slug: "permits", Icon: DocumentsIcon },
-  { label: "Finances", slug: "finances", Icon: FinancesIcon },
-  { label: "Documents", slug: "documents", Icon: DocumentsIcon },
-  { label: "Team", slug: "team", Icon: ContractorsIcon },
-  { label: "Messages", slug: "messages", Icon: MessagesIcon },
-  { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon },
-  { label: "Settings", slug: "settings", Icon: SettingsIcon },
 ] as const;
 
 const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -112,6 +96,40 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
+const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  { label: "Inspections", slug: "inspections", Icon: InspectionsIcon, helper: "Quality checks" },
+  { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
+  { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
+  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
+  { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
+  { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
+] as const;
+
+const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow" },
+  { label: "Budgeting", slug: "finances/budget", Icon: FinancesIcon, helper: "Cost codes" },
+  {
+    label: "Budget Allocation",
+    slug: "finances/budget-allocation",
+    Icon: FinancesIcon,
+    helper: "Planned vs actual",
+  },
+  { label: "Invoicing", slug: "finances/invoices", Icon: FinancesIcon, helper: "Vendor bills" },
+  {
+    label: "Milestone Payments",
+    slug: "finances/milestone-payments",
+    Icon: FinancesIcon,
+    helper: "Payment gates",
+  },
+] as const;
+
+const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
+  { label: "Messages", slug: "messages", Icon: MessagesIcon, helper: "Conversations" },
+  { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon, helper: "Assistant" },
+  { label: "Settings", slug: "settings", Icon: SettingsIcon, helper: "Project setup" },
+] as const;
+
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
 const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
@@ -138,7 +156,7 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
       })),
     [project.id],
   );
-  const scheduleItems = useMemo<ScheduleNavItem[]>(
+  const scheduleItems = useMemo<GroupNavItem[]>(
     () =>
       SCHEDULE_ENTRIES.map((entry) => ({
         ...entry,
@@ -146,9 +164,33 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
       })),
     [project.id],
   );
-  const materialsItems = useMemo<MaterialsNavItem[]>(
+  const materialsItems = useMemo<GroupNavItem[]>(
     () =>
       MATERIALS_ENTRIES.map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id],
+  );
+  const siteControlItems = useMemo<GroupNavItem[]>(
+    () =>
+      SITE_CONTROL_ENTRIES.map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id],
+  );
+  const financeItems = useMemo<GroupNavItem[]>(
+    () =>
+      FINANCE_ENTRIES.map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id],
+  );
+  const teamAdminItems = useMemo<GroupNavItem[]>(
+    () =>
+      TEAM_ADMIN_ENTRIES.map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -160,6 +202,18 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
   const isMaterialsActive = materialsItems.some(
+    (item) =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
+  const isSiteControlActive = siteControlItems.some(
+    (item) =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
+  const isFinanceActive = financeItems.some(
+    (item) =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
+  const isTeamAdminActive = teamAdminItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
@@ -220,26 +274,63 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
           {items.slice(0, 2).map((item) => (
             <ProjectNavLink key={item.slug} item={item} />
           ))}
-          <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
-          {items.slice(2, 9).map((item) => (
-            <ProjectNavLink key={item.slug} item={item} />
-          ))}
-          <MaterialsNavGroup items={materialsItems} active={isMaterialsActive} />
-          {items.slice(9).map((item) => (
-            <ProjectNavLink key={item.slug} item={item} />
-          ))}
+          <SidebarNavGroup
+            label="Schedules"
+            Icon={CalendarIcon}
+            items={scheduleItems}
+            active={isScheduleActive}
+          />
+          <SidebarNavGroup
+            label="Site Control"
+            Icon={InspectionsIcon}
+            items={siteControlItems}
+            active={isSiteControlActive}
+          />
+          <SidebarNavGroup
+            label="Materials & Equipment"
+            Icon={MaterialsIcon}
+            items={materialsItems}
+            active={isMaterialsActive}
+            activeIconClassName="text-[#004DE7]"
+          />
+          <SidebarNavGroup
+            label="Finance"
+            Icon={FinancesIcon}
+            items={financeItems}
+            active={isFinanceActive}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Documents",
+              slug: "documents",
+              Icon: DocumentsIcon,
+              to: `/project/${project.id}/documents`,
+            }}
+          />
+          <SidebarNavGroup
+            label="Team & Admin"
+            Icon={ContractorsIcon}
+            items={teamAdminItems}
+            active={isTeamAdminActive}
+          />
         </nav>
       )}
     </aside>
   );
 }
 
-function ScheduleNavGroup({
+function SidebarNavGroup({
+  label,
+  Icon,
   items,
   active,
+  activeIconClassName,
 }: {
-  items: ScheduleNavItem[];
+  label: string;
+  Icon: IconComponent;
+  items: GroupNavItem[];
   active: boolean;
+  activeIconClassName?: string;
 }) {
   const [open, setOpen] = useState(active);
   return (
@@ -255,8 +346,8 @@ function ScheduleNavGroup({
           active ? "text-gray-900" : "text-gray-500 hover:text-gray-900",
         )}
       >
-        <CalendarIcon />
-        <span className="flex-1 truncate text-left">Schedules</span>
+        <Icon className={cn("size-[18px]", active && activeIconClassName)} />
+        <span className="flex-1 truncate text-left">{label}</span>
         <ChevronRightIcon
           className={cn(
             "size-4 text-gray-400 transition-transform duration-200",
@@ -267,7 +358,7 @@ function ScheduleNavGroup({
       {open && (
         <div className="mt-0.5 flex flex-col gap-0.5 pl-4">
           {items.map((item) => (
-            <ProjectScheduleNavLink key={item.slug} item={item} />
+            <ProjectGroupNavLink key={item.slug} item={item} />
           ))}
         </div>
       )}
@@ -275,71 +366,27 @@ function ScheduleNavGroup({
   );
 }
 
-function ProjectScheduleNavLink({ item }: { item: ScheduleNavItem }) {
-  const { Icon, label, to } = item;
+function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
+  const { Icon, label, slug, to } = item;
+  const location = useLocation();
+  const isActive =
+    slug === "finances"
+      ? location.pathname === to
+      : location.pathname === to || location.pathname.startsWith(`${to}/`);
   return (
-    <NavLink
+    <Link
       to={to}
-      className={({ isActive }) =>
-        cn(
-          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500",
-          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          "hover:bg-[#EDEDED]/60 hover:text-gray-900",
-          isActive && "bg-[#EDEDED] text-gray-900",
-        )
-      }
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500",
+        "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+        "hover:bg-[#EDEDED]/60 hover:text-gray-900",
+        isActive && "bg-[#EDEDED] text-gray-900",
+      )}
     >
       <Icon className="size-4 shrink-0" />
       <span className="truncate">{label}</span>
-    </NavLink>
-  );
-}
-
-function MaterialsNavGroup({
-  items,
-  active,
-}: {
-  items: MaterialsNavItem[];
-  active: boolean;
-}) {
-  const [open, setOpen] = useState(active);
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
-          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          "hover:bg-[#EDEDED]/60",
-          active ? "text-gray-900" : "text-gray-600",
-        )}
-      >
-        <MaterialsIcon className={cn("size-[18px]", active ? "text-[#004DE7]" : "text-gray-500")} />
-        <span className="flex-1 text-left">Materials & Equipment</span>
-        <ChevronRightIcon className={cn("size-4 transition-transform", open && "rotate-90")} />
-      </button>
-      {open && (
-        <div className="mt-1 flex flex-col gap-1 pl-7">
-          {items.map((item) => (
-            <NavLink
-              key={item.slug}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  "rounded-lg px-3 py-2 text-xs transition-colors",
-                  isActive ? "bg-[#E6EFFE] text-[#004DE7]" : "text-gray-500 hover:bg-[#EDEDED]/60 hover:text-gray-900",
-                )
-              }
-            >
-              <span className="block font-semibold">{item.label}</span>
-              <span className="block text-[11px] opacity-80">{item.helper}</span>
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
+    </Link>
   );
 }
 
