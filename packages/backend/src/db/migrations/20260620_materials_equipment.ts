@@ -76,7 +76,6 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp("created_at", { useTz: true }).notNullable().defaultTo(knex.fn.now());
     table.timestamp("updated_at", { useTz: true }).notNullable().defaultTo(knex.fn.now());
     table.index(["project_id", "status"]);
-    table.index(["project_id", "route_bucket"]);
     table.index(["project_id", "needed_from"]);
     table.index(["phase_id"]);
     table.index(["activity_id"]);
