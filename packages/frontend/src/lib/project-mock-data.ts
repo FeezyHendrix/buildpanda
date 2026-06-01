@@ -249,6 +249,48 @@ export interface WhatsNext {
 
 export type StageStatus = PhaseStatus;
 
+export type ParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type ParticipantStatus = "invited" | "active" | "revoked";
+
+export interface ProjectParticipant {
+  id: string;
+  projectId: string;
+  userId: string | null;
+  name: string | null;
+  email: string;
+  role: ParticipantRole;
+  status: ParticipantStatus;
+  createdAt: string;
+}
+
+export interface ProjectAccess {
+  relationship: "company" | ParticipantRole | "none";
+  orgRole: string | null;
+  capabilities: {
+    canManage: boolean;
+    canViewAll: boolean;
+    canManageParticipants: boolean;
+    canDecideApprovals: boolean;
+    canRaiseQueries: boolean;
+    canComment: boolean;
+  };
+}
+
+export interface MyProjectCard {
+  id: string;
+  name: string;
+  address: string | null;
+  status: string;
+  health_score: number | null;
+  risk: string | null;
+  progress_percent: number | null;
+  budget_total: number | null;
+  budget_used: number | null;
+  currency: string;
+  folder_tone: string | null;
+  updated_at: string;
+}
+
 export interface Stage {
   id: string;
   projectId: string;

@@ -13,6 +13,7 @@ import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
+import { useProjectAccess } from "@/hooks/use-participants";
 import type { Session } from "@/stores/auth";
 import type { Project } from "@/lib/project-mock-data";
 
@@ -28,6 +29,7 @@ export default function ProjectLayout() {
   const { session, isPending: sessionPending, logout } = useAuthGuard();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isPending: projectPending } = useProject(projectId);
+  const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
 
   if (sessionPending || projectPending) {
@@ -59,7 +61,7 @@ export default function ProjectLayout() {
   return (
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden">
-        <ProjectSidebar project={project} />
+        <ProjectSidebar project={project} relationship={access?.relationship} />
         <main className="flex-1 overflow-y-auto bg-[#FCFCFD]">
           <ErrorBoundary>
             <Outlet context={{ project } satisfies ProjectOutletContext} />

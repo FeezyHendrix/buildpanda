@@ -16,7 +16,7 @@ export default function SignInForm() {
     setError(null);
     setLoading(true);
 
-    const { error: signInError } = await authClient.signIn.email({
+    const { data, error: signInError } = await authClient.signIn.email({
       email,
       password,
     });
@@ -28,7 +28,9 @@ export default function SignInForm() {
       return;
     }
 
-    navigate("/dashboard");
+    // Homeowners land in their own "My Build" portal; company staff in the dashboard.
+    const accountType = (data?.user as { accountType?: string } | undefined)?.accountType;
+    navigate(accountType === "project_owner" ? "/my-build" : "/dashboard");
   }
 
   async function handleGoogleSignIn() {

@@ -112,13 +112,24 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
+// Homeowner / client portal: a curated, read-mostly subset of the workspace.
+const CLIENT_ENTRIES: readonly NavEntry[] = [
+  { label: "Overview", slug: "overview", Icon: OverviewIcon },
+  { label: "What's Next", slug: "whats-next", Icon: TrendingUpIcon },
+  { label: "Build Stages", slug: "stages", Icon: OverviewIcon },
+  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
+  { label: "Queries", slug: "queries", Icon: MessagesIcon },
+];
+
 interface ProjectSidebarProps {
   project: Project;
   className?: string;
+  relationship?: string;
 }
 
-function ProjectSidebar({ project, className }: ProjectSidebarProps) {
+function ProjectSidebar({ project, className, relationship }: ProjectSidebarProps) {
   const location = useLocation();
+  const isClient = relationship === "client";
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -189,22 +200,36 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1">
-        <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-          Main menu
-        </p>
-        {items.slice(0, 2).map((item) => (
-          <ProjectNavLink key={item.slug} item={item} />
-        ))}
-        <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
-        {items.slice(2, 9).map((item) => (
-          <ProjectNavLink key={item.slug} item={item} />
-        ))}
-        <MaterialsNavGroup items={materialsItems} active={isMaterialsActive} />
-        {items.slice(9).map((item) => (
-          <ProjectNavLink key={item.slug} item={item} />
-        ))}
-      </nav>
+      {isClient ? (
+        <nav className="flex flex-1 flex-col gap-1">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            My build
+          </p>
+          {CLIENT_ENTRIES.map((entry) => (
+            <ProjectNavLink
+              key={entry.slug}
+              item={{ ...entry, to: `/project/${project.id}/${entry.slug}` }}
+            />
+          ))}
+        </nav>
+      ) : (
+        <nav className="flex flex-1 flex-col gap-1">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            Main menu
+          </p>
+          {items.slice(0, 2).map((item) => (
+            <ProjectNavLink key={item.slug} item={item} />
+          ))}
+          <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
+          {items.slice(2, 9).map((item) => (
+            <ProjectNavLink key={item.slug} item={item} />
+          ))}
+          <MaterialsNavGroup items={materialsItems} active={isMaterialsActive} />
+          {items.slice(9).map((item) => (
+            <ProjectNavLink key={item.slug} item={item} />
+          ))}
+        </nav>
+      )}
     </aside>
   );
 }

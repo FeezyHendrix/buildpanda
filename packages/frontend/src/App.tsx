@@ -47,6 +47,9 @@ const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
 const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
+const ProjectPeople = lazy(() => import("@/pages/project/people"));
+const MyBuild = lazy(() => import("@/pages/my-build"));
+const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 
 const router = createBrowserRouter([
   {
@@ -76,6 +79,14 @@ const router = createBrowserRouter([
   {
     path: "/accept-invitation/:invitationId",
     element: <AcceptInvitation />,
+  },
+  {
+    path: "/accept-project-invite/:token",
+    element: <AcceptProjectInvite />,
+  },
+  {
+    path: "/my-build",
+    element: <MyBuild />,
   },
   {
     path: "/project/create",
@@ -123,6 +134,7 @@ const router = createBrowserRouter([
       { path: "permits", element: <ProjectPermits /> },
       { path: "key-dates", element: <ProjectKeyDates /> },
       { path: "whats-next", element: <ProjectWhatsNext /> },
+      { path: "people", element: <ProjectPeople /> },
       { path: "daily-log", element: <ProjectDailyLog /> },
     ],
   },
