@@ -19,6 +19,7 @@ import fileRoutes from "./modules/files/routes.ts";
 import activityRoutes from "./modules/activities/routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
 import invoiceRoutes from "./modules/invoices/routes.ts";
+import budgetRoutes from "./modules/budget/routes.ts";
 import adminRoutes from "./modules/admin/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -52,6 +53,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(activityRoutes);
   await app.register(dailyLogRoutes);
   await app.register(invoiceRoutes);
+  await app.register(budgetRoutes);
   await app.register(adminRoutes);
 
   return app;

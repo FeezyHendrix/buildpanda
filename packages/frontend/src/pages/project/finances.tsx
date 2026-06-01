@@ -103,6 +103,13 @@ export default function ProjectFinances() {
             <Button
               variant="secondary"
               size="md"
+              onClick={() => navigate(`/project/${project.id}/finances/budget`)}
+            >
+              Budget
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => navigate(`/project/${project.id}/finances/invoices`)}
             >
               Invoices

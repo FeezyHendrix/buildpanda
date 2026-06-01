@@ -42,6 +42,11 @@ export const invoiceKeys = {
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
 };
 
+export const budgetKeys = {
+  all: (projectId: string) => ["projects", projectId, "budget"] as const,
+  detail: (projectId: string) => [...budgetKeys.all(projectId), "detail"] as const,
+};
+
 export const riskKeys = {
   all: (projectId: string) =>
     ["projects", projectId, "risk-factors"] as const,
