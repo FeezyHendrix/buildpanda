@@ -167,7 +167,7 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
   return (
     <aside
       className={cn(
-        "flex w-[260px] shrink-0 flex-col gap-6 border-r border-[#F0F0F0] bg-[#FAFAFA] px-4 py-6",
+        "flex max-h-full w-[260px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[#F0F0F0] bg-[#FAFAFA] px-4 py-6",
         className,
       )}
     >
@@ -201,7 +201,7 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
       </div>
 
       {isClient ? (
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
@@ -213,7 +213,7 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
           ))}
         </nav>
       ) : (
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             Main menu
           </p>
