@@ -102,7 +102,7 @@ function ProjectCard({ project }: { project: Project }) {
   const activePhase =
     project.timeline.find((phase) => phase.status === "InProgress") ??
     project.timeline.find((phase) => phase.status === "Pending") ??
-    project.timeline.at(-1);
+    project.timeline[project.timeline.length - 1];
 
   return (
     <Card
