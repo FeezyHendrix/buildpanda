@@ -1,5 +1,28 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
-import { lazy } from "react";
+import { lazy as reactLazy, type ComponentType } from "react";
+
+// After a deploy, Vite emits new hashed chunk filenames. A browser holding a
+// stale index.html (or an open tab) requests an old chunk that no longer exists
+// and the dynamic import rejects. Reload once to fetch the fresh entry + chunks
+// instead of crashing the route; a session flag prevents an infinite loop.
+function lazy<T extends ComponentType<unknown>>(factory: () => Promise<{ default: T }>) {
+  const RELOAD_KEY = "buildpanda:chunk-reloaded";
+  return reactLazy(() =>
+    factory()
+      .then((mod) => {
+        sessionStorage.removeItem(RELOAD_KEY);
+        return mod;
+      })
+      .catch((error: unknown) => {
+        if (!sessionStorage.getItem(RELOAD_KEY)) {
+          sessionStorage.setItem(RELOAD_KEY, "1");
+          window.location.reload();
+          return new Promise<{ default: T }>(() => {}); // hold render until reload
+        }
+        throw error;
+      }),
+  );
+}
 
 const AuthLayout = lazy(() => import("@/layouts/auth-layout"));
 const SignUp = lazy(() => import("@/pages/auth/sign-up"));
