@@ -1,6 +1,10 @@
 import { generateId } from "../../lib/ids.ts";
 import { NotFoundError } from "../../lib/errors.ts";
-import { assertCanAccessProject, type AccessContext } from "../../lib/authorization.ts";
+import {
+  assertCanAccessProject,
+  assertCanModifyProject,
+  type AccessContext,
+} from "../../lib/authorization.ts";
 import type {
   NewPhaseRecord,
   NewProjectRecord,
@@ -12,6 +16,7 @@ import type {
   ProjectPhase,
   ProjectPhaseRow,
   ProjectRow,
+  UpdateProjectBudgetInput,
 } from "./types.ts";
 
 const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> = [
@@ -47,6 +52,8 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
     progressPercent: row.progress_percent,
     budgetTotal: Number(row.budget_total),
     budgetUsed: Number(row.budget_used),
+    budgetMin: row.budget_min === null ? null : Number(row.budget_min),
+    budgetMax: row.budget_max === null ? null : Number(row.budget_max),
     currency: row.currency,
     pendingApprovals: row.pending_approvals,
     nextInspection: {
@@ -157,6 +164,26 @@ export function projectsService(repository: ProjectsRepository) {
         remaining_balance: project.budget_total,
       });
       return this.getById(project.id);
+    },
+
+    async updateBudgetForUser(
+      id: string,
+      input: UpdateProjectBudgetInput,
+      ctx: AccessContext,
+    ): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanModifyProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      await repository.update(id, {
+        budget_min: input.budgetMin,
+        budget_max: input.budgetMax,
+        budget_total: input.budgetMax,
+        ...(input.currency ? { currency: input.currency } : {}),
+      });
+      return this.getById(id);
     },
   };
 }

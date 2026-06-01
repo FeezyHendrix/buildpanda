@@ -314,6 +314,8 @@ export interface Project {
   progressPercent: number;
   budgetTotal: number;
   budgetUsed: number;
+  budgetMin: number | null;
+  budgetMax: number | null;
   currency: Currency;
   pendingApprovals: number;
   nextInspection: { type: string; date: string };

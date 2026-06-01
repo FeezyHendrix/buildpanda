@@ -25,6 +25,13 @@ export interface NewProjectRecord {
   setup: ProjectSetup;
 }
 
+export interface ProjectUpdatePatch {
+  budget_total?: number;
+  budget_min?: number;
+  budget_max?: number;
+  currency?: "NGN" | "USD";
+}
+
 export interface NewPhaseRecord {
   id: string;
   project_id: string;
@@ -60,6 +67,12 @@ export function projectsRepository(db: Knex) {
 
     findById(id: string): Promise<ProjectRow | undefined> {
       return db<ProjectRow>("projects").where({ id }).first();
+    },
+
+    async update(id: string, patch: ProjectUpdatePatch): Promise<void> {
+      await db("projects")
+        .where({ id })
+        .update({ ...patch, updated_at: db.fn.now() });
     },
 
     findPhasesByProject(projectId: string): Promise<ProjectPhaseRow[]> {
