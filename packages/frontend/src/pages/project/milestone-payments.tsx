@@ -4,7 +4,6 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
@@ -49,13 +48,6 @@ export default function ProjectMilestonePayments() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedules", to: `/project/${project.id}/project-chart` },
-          { label: "Milestones" },
-        ]}
-        className="mb-4"
-      />
       <PageHeader
         title="Milestones"
         description="Use milestone cost gates to organize the work items that drive the project schedule."

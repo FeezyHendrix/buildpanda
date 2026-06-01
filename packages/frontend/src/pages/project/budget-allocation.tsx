@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Card } from "@/components/atoms/card";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectFinances } from "@/hooks/use-finances";
@@ -38,13 +37,6 @@ export default function ProjectBudgetAllocation() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
-          { label: "Budget Allocation & Analysis" },
-        ]}
-        className="mb-4"
-      />
       <PageHeader
         title="Budget Allocation & Analysis"
         description="Detailed phase-by-phase planned vs actual breakdown with variance tracking."

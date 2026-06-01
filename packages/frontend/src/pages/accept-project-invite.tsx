@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { Button } from "@/components/atoms/button";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import { useAcceptProjectInvite, useProjectInvite } from "@/hooks/use-participants";
 import { authClient } from "@/lib/auth-client";
 import logo from "@/assets/images/logo.svg";
@@ -21,6 +22,7 @@ export default function AcceptProjectInvite() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] p-6">
       <Card padding="lg" className="w-full max-w-md text-center">
+        <RouteBreadcrumbs className="mb-6 justify-center" />
         <img src={logo} alt="BuildPanda" className="mx-auto h-8 w-auto" />
         {isLoading ? (
           <p className="mt-6 text-sm text-gray-500">Loading invitation…</p>

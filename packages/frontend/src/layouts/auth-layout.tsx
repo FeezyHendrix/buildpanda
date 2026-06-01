@@ -1,4 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import authBgOne from "@/assets/images/auth-bg-one.svg";
 import authBgTwo from "@/assets/images/auth-bg-two.svg";
 import logo from "@/assets/images/logo.svg";
@@ -56,6 +57,7 @@ export default function AuthLayout() {
 
         <main className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-md">
+            <RouteBreadcrumbs className="mb-6" />
             <Outlet />
           </div>
         </main>

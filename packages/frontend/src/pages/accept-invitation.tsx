@@ -1,6 +1,7 @@
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import { authClient } from "@/lib/auth-client";
 import {
   useAcceptInvitation,
@@ -159,6 +160,7 @@ function InvitationShell({ title, children }: InvitationShellProps) {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-[#FAFAFA] px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
+        <RouteBreadcrumbs className="mb-6" />
         {title && (
           <h1 className="text-xl font-bold text-gray-900 text-balance">
             {title}

@@ -9,6 +9,7 @@ import {
   FolderIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useSession } from "@/stores/auth";
 import { useProjects } from "@/hooks/use-projects";
@@ -38,6 +39,7 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
+      <RouteBreadcrumbs className="mb-6" />
       <Greeting name={session?.user.name ?? ""} />
 
       <section className="mt-10">
@@ -76,7 +78,8 @@ function Greeting({ name }: { name: string }) {
 
 function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-1 items-start justify-center pt-[150px]">
+    <div className="mx-auto w-full max-w-5xl px-6 pt-10">
+      <RouteBreadcrumbs className="mb-16" />
       <EmptyState
         icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"

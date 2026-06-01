@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/organisms/navbar";
 import { StepperBar } from "@/components/atoms/stepper-bar";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import { WizardFooter } from "@/components/molecules/wizard-footer";
 
 const MOCK_USER = {
@@ -42,6 +43,8 @@ function WizardLayout({
           className,
         )}
       >
+        <RouteBreadcrumbs className="mb-6" />
+
         {!hideStepper && (
           <StepperBar
             currentStep={currentStep}

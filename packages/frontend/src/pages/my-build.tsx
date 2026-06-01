@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
+import { RouteBreadcrumbs } from "@/components/molecules/breadcrumbs";
 import { useMyProjects } from "@/hooks/use-participants";
 import { authClient } from "@/lib/auth-client";
 import logo from "@/assets/images/logo.svg";
@@ -33,6 +34,7 @@ export default function MyBuild() {
       </header>
 
       <main className="mx-auto w-full max-w-5xl px-6 py-10">
+        <RouteBreadcrumbs className="mb-6" />
         <h1 className="text-2xl font-bold text-gray-900">My Build</h1>
         <p className="mt-1 text-sm text-gray-500">Follow your project's progress, approve selections and ask questions.</p>
 

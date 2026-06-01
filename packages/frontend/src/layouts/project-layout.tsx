@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { UserMenu } from "@/components/molecules/user-menu";
+import { ProjectBreadcrumbNameProvider } from "@/components/molecules/breadcrumbs";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
@@ -63,9 +64,11 @@ export default function ProjectLayout() {
       <div className="flex flex-1 overflow-hidden">
         <ProjectSidebar project={project} relationship={access?.relationship} />
         <main className="flex-1 overflow-y-auto bg-[#FCFCFD]">
-          <ErrorBoundary>
-            <Outlet context={{ project } satisfies ProjectOutletContext} />
-          </ErrorBoundary>
+          <ProjectBreadcrumbNameProvider value={project.name}>
+            <ErrorBoundary>
+              <Outlet context={{ project } satisfies ProjectOutletContext} />
+            </ErrorBoundary>
+          </ProjectBreadcrumbNameProvider>
         </main>
       </div>
     </AppShell>
