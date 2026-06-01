@@ -64,7 +64,7 @@ export default function CreateProject() {
 
   const [buildingType, setBuildingType] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string>("NGN");
-  const [budget, setBudget] = useState<[number, number]>([25_000, 350_000]);
+  const [budget, setBudget] = useState<[number, number]>([10_000_000, 50_000_000]);
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
 
