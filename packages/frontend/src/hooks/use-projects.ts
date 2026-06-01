@@ -26,6 +26,12 @@ export interface CreateProjectInput {
   };
 }
 
+export interface UpdateProjectBudgetInput {
+  budgetMin: number;
+  budgetMax: number;
+  currency?: "NGN" | "USD";
+}
+
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.list(),
@@ -60,6 +66,24 @@ export function useCreateProject() {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.setQueryData(projectKeys.detail(project.id), project);
       navigate(`/project/${project.id}/overview`);
+    },
+  });
+}
+
+export function useUpdateProjectBudget(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateProjectBudgetInput) => {
+      const { data } = await api.patch<Project>(
+        `/projects/${projectId}/budget`,
+        input,
+      );
+      return data;
+    },
+    onSuccess: (project) => {
+      queryClient.setQueryData(projectKeys.detail(project.id), project);
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     },
   });
 }

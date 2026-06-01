@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -60,6 +60,7 @@ const VARIANCE_TABLE_LIMIT = 2;
 
 export default function ProjectFinances() {
   const { project } = useProjectContext();
+  const navigate = useNavigate();
   const { data: finances, isPending } = useProjectFinances(project.id);
 
   const [fundOpen, setFundOpen] = useState(false);
@@ -98,14 +99,30 @@ export default function ProjectFinances() {
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setFundOpen(true)}
-          >
-            <PlusIcon className="size-4" />
-            Fund Project
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => navigate(`/project/${project.id}/finances/budget`)}
+            >
+              Budget
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => navigate(`/project/${project.id}/finances/invoices`)}
+            >
+              Invoices
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setFundOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              Fund Project
+            </Button>
+          </div>
         }
       />
 

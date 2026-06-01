@@ -1,12 +1,14 @@
+import { useState } from "react";
 import {
   RadioCard,
-  CurrencyPicker,
   BudgetSlider,
   TimelinePicker,
   type TimelineOption,
 } from "@/components/atoms";
 
-const CURRENCIES = ["NGN", "USD", "CAD", "EUR", "GBP"] as const;
+// Budgets are in Naira only. Beyond the slider ceiling, a custom amount is used.
+const CURRENCY = "NGN";
+const SLIDER_MAX = 10_000_000_000;
 
 const BUILDING_TYPES = [
   {
@@ -68,16 +70,26 @@ interface ProjectDetailsStepProps {
 
 function ProjectDetailsStep({
   buildingType,
-  currency,
   budget,
   fundingMethod,
   timeline,
   onBuildingTypeChange,
-  onCurrencyChange,
   onBudgetChange,
   onFundingMethodChange,
   onTimelineChange,
 }: ProjectDetailsStepProps) {
+  // Default to custom entry when the budget is beyond the slider's range
+  // (e.g. a ₦45M house build doesn't fit the preset slider).
+  const [custom, setCustom] = useState(
+    () => budget[0] > SLIDER_MAX || budget[1] > SLIDER_MAX,
+  );
+
+  function setBudgetField(index: 0 | 1, raw: string): void {
+    const amount = Math.max(0, Math.round(Number(raw.replace(/[^0-9.]/g, "")) || 0));
+    const next: [number, number] = index === 0 ? [amount, budget[1]] : [budget[0], amount];
+    onBudgetChange(next);
+  }
+
   return (
     <div>
       <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
@@ -107,20 +119,46 @@ function ProjectDetailsStep({
         </section>
 
         <section>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Estimated Budget
-          </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-900">
+              Estimated Budget
+            </h3>
+            <button
+              type="button"
+              onClick={() => setCustom((c) => !c)}
+              className="text-sm font-medium text-[#004DE7] hover:text-[#0041c4]"
+            >
+              {custom ? "Use the slider" : "Enter a custom amount"}
+            </button>
+          </div>
           <div className="space-y-4">
-            <CurrencyPicker
-              currencies={CURRENCIES}
-              value={currency}
-              onChange={onCurrencyChange}
-            />
-            <BudgetSlider
-              value={budget}
-              onChange={onBudgetChange}
-              currency={currency}
-            />
+            {custom ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <CustomBudgetInput
+                  label="Minimum"
+                  currency={CURRENCY}
+                  value={budget[0]}
+                  onChange={(raw) => setBudgetField(0, raw)}
+                />
+                <CustomBudgetInput
+                  label="Maximum"
+                  currency={CURRENCY}
+                  value={budget[1]}
+                  onChange={(raw) => setBudgetField(1, raw)}
+                />
+              </div>
+            ) : (
+              <BudgetSlider
+                value={budget}
+                onChange={onBudgetChange}
+                currency={CURRENCY}
+              />
+            )}
+            {custom && budget[1] < budget[0] && (
+              <p className="text-xs text-[#C72525]">
+                Maximum budget should be greater than the minimum.
+              </p>
+            )}
           </div>
         </section>
 
@@ -153,6 +191,35 @@ function ProjectDetailsStep({
         </section>
       </div>
     </div>
+  );
+}
+
+function CustomBudgetInput({
+  label,
+  currency,
+  value,
+  onChange,
+}: {
+  label: string;
+  currency: string;
+  value: number;
+  onChange: (raw: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-gray-900">{label}</span>
+      <div className="flex h-12 items-center rounded-lg border border-[#EDEDED] bg-white px-3 focus-within:ring-2 focus-within:ring-gray-900/10">
+        <span className="mr-2 shrink-0 text-sm font-medium text-gray-500">{currency}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={value ? value.toLocaleString("en-US") : ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="0"
+          className="w-full bg-transparent text-sm text-gray-900 outline-none"
+        />
+      </div>
+    </label>
   );
 }
 

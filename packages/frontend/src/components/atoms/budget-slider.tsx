@@ -19,15 +19,16 @@ function formatCurrency(amount: number, currency: string) {
 }
 
 function formatLabel(amount: number) {
+  if (amount >= 1_000_000_000) return `${amount / 1_000_000_000}B`;
   if (amount >= 1_000_000) return `${amount / 1_000_000}M`;
   if (amount >= 1_000) return `${amount / 1_000}k`;
   return String(amount);
 }
 
 function BudgetSlider({
-  min = 10_000,
-  max = 1_000_000,
-  step = 10_000,
+  min = 10_000_000,
+  max = 10_000_000_000,
+  step = 10_000_000,
   value,
   onChange,
   currency = "NGN",
@@ -37,7 +38,7 @@ function BudgetSlider({
   const leftPct = ((value[0] - min) / range) * 100;
   const rightPct = 100 - ((value[1] - min) / range) * 100;
 
-  const labels = [min, 250_000, 500_000, 750_000, max];
+  const labels = [min, max * 0.25, max * 0.5, max * 0.75, max];
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -86,7 +87,7 @@ function BudgetSlider({
 
       <div className="flex justify-between text-xs text-gray-500">
         {labels.map((l) => (
-          <span key={l}>${formatLabel(l)}</span>
+          <span key={l}>₦{formatLabel(l)}</span>
         ))}
       </div>
     </div>

@@ -215,6 +215,11 @@ export function activitiesService(repository: ActivitiesRepository) {
       return buildOne(updated);
     },
 
+    async remove(projectId: string, activityId: string): Promise<void> {
+      await loadProjectActivity(projectId, activityId);
+      await repository.deleteActivity(activityId);
+    },
+
     async raiseDelay(
       projectId: string,
       activityId: string,

@@ -4,6 +4,7 @@ import { config } from "./config/index.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
+import queuePlugin from "./plugins/queue.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
 import userRoutes from "./modules/users/routes.ts";
@@ -18,6 +19,21 @@ import searchRoutes from "./modules/search/routes.ts";
 import fileRoutes from "./modules/files/routes.ts";
 import activityRoutes from "./modules/activities/routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
+import teamMemberRoutes from "./modules/team-members/routes.ts";
+import invoiceRoutes from "./modules/invoices/routes.ts";
+import budgetRoutes from "./modules/budget/routes.ts";
+import adminRoutes from "./modules/admin/routes.ts";
+import stageRoutes from "./modules/stages/routes.ts";
+import actionItemRoutes from "./modules/action-items/routes.ts";
+import queryRoutes from "./modules/queries/routes.ts";
+import approvalRoutes from "./modules/approvals/routes.ts";
+import changeRequestRoutes from "./modules/change-requests/routes.ts";
+import permitRoutes from "./modules/permits/index.ts";
+import keyDateRoutes from "./modules/key-dates/index.ts";
+import insightsRoutes from "./modules/insights/index.ts";
+import participantRoutes from "./modules/participants/index.ts";
+import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
+import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -26,7 +42,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cors, {
-    origin: config.http.corsOrigin,
+    origin: config.http.corsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
@@ -34,6 +50,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(databasePlugin);
   await app.register(errorHandlerPlugin);
   await app.register(authContextPlugin);
+  await app.register(queuePlugin);
 
   await app.register(authRoutes);
   await app.register(healthRoutes);
@@ -49,6 +66,21 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(fileRoutes);
   await app.register(activityRoutes);
   await app.register(dailyLogRoutes);
+  await app.register(teamMemberRoutes);
+  await app.register(invoiceRoutes);
+  await app.register(budgetRoutes);
+  await app.register(adminRoutes);
+  await app.register(stageRoutes);
+  await app.register(actionItemRoutes);
+  await app.register(queryRoutes);
+  await app.register(approvalRoutes);
+  await app.register(changeRequestRoutes);
+  await app.register(permitRoutes);
+  await app.register(keyDateRoutes);
+  await app.register(insightsRoutes);
+  await app.register(participantRoutes);
+  await app.register(materialsEquipmentRoutes);
+  await app.register(pandaAiRoutes);
 
   return app;
 }

@@ -34,6 +34,29 @@ export interface ReleaseOperation {
   ledgerId: string;
 }
 
+export interface NewMilestoneRecord {
+  id: string;
+  project_id: string;
+  name: string;
+  phase: string;
+  status: MilestonePaymentRow["status"];
+  percent_complete: number;
+  amount: string;
+  proof_file_name: string | null;
+  proof_verified: boolean;
+  inspector_sign_off: MilestonePaymentRow["inspector_sign_off"];
+  sort_order: number;
+}
+
+export interface MilestoneUpdatePatch {
+  name?: string;
+  phase?: string;
+  status?: MilestonePaymentRow["status"];
+  percent_complete?: number;
+  amount?: string;
+  inspector_sign_off?: MilestonePaymentRow["inspector_sign_off"];
+}
+
 export function financesRepository(db: Knex) {
   return {
     findSummary(projectId: string): Promise<FinancesRow | undefined> {
@@ -61,6 +84,42 @@ export function financesRepository(db: Knex) {
     },
     findMilestone(milestoneId: string): Promise<MilestonePaymentRow | undefined> {
       return db<MilestonePaymentRow>("milestone_payments").where({ id: milestoneId }).first();
+    },
+
+    async createMilestone(record: Omit<NewMilestoneRecord, "sort_order">): Promise<MilestonePaymentRow> {
+      const nextSortOrder =
+        Number(
+          (
+            await db("milestone_payments")
+              .where({ project_id: record.project_id })
+              .max<{ max: number | null }>({ max: "sort_order" })
+              .first()
+          )?.max ?? -1,
+        ) + 1;
+
+      const [row] = await db<MilestonePaymentRow>("milestone_payments")
+        .insert({ ...record, sort_order: nextSortOrder })
+        .returning("*");
+      if (!row) throw new Error("Failed to insert milestone");
+      return row;
+    },
+
+    async updateMilestone(
+      projectId: string,
+      milestoneId: string,
+      patch: MilestoneUpdatePatch,
+    ): Promise<MilestonePaymentRow | undefined> {
+      const [row] = await db<MilestonePaymentRow>("milestone_payments")
+        .where({ project_id: projectId, id: milestoneId })
+        .update(patch)
+        .returning("*");
+      return row;
+    },
+
+    async deleteMilestone(projectId: string, milestoneId: string): Promise<number> {
+      return db<MilestonePaymentRow>("milestone_payments")
+        .where({ project_id: projectId, id: milestoneId })
+        .delete();
     },
 
     listDisputesForMilestone(milestoneId: string): Promise<MilestoneDisputeRow[]> {

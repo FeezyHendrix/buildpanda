@@ -30,9 +30,23 @@ export const config = {
   http: {
     host: optional("HOST", "0.0.0.0"),
     port: optionalNumber("PORT", 3000),
-    corsOrigin: optional("CORS_ORIGIN", "http://localhost:5173"),
+    // Comma-separated list. Defaults include the app (5173) and admin (5174).
+    corsOrigins: optional(
+      "CORS_ORIGIN",
+      "http://localhost:5173,http://localhost:5174",
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
     logLevel: optional("LOG_LEVEL", "info"),
   },
+
+  // Emails auto-promoted to the global `admin` role on login (bootstraps the
+  // first platform admin without manual DB edits). Comma-separated.
+  adminEmails: optional("ADMIN_EMAILS", "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
 
   db:
     env === "production"
@@ -58,6 +72,21 @@ export const config = {
 
   uploads: {
     maxFileBytes: optionalNumber("UPLOAD_MAX_BYTES", 25 * 1024 * 1024),
+  },
+
+  // Background jobs. When url is empty the queue runs in inline mode (see
+  // QueueManager) so the app still functions without a Redis server.
+  redis: {
+    url: optional("REDIS_URL", ""),
+  },
+
+  // Panda AI insights. When apiKey is empty the engine falls back to a
+  // deterministic local analyzer instead of calling Moonshot/KIMI.
+  ai: {
+    apiKey: optional("KIMI_API_KEY", ""),
+    baseUrl: optional("KIMI_BASE_URL", "https://api.moonshot.ai/v1"),
+    model: optional("KIMI_MODEL", "kimi-k2-0905-preview"),
+    timeoutMs: optionalNumber("KIMI_TIMEOUT_MS", 45_000),
   },
 
   storage: {

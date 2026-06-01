@@ -118,6 +118,13 @@ export function activitiesRepository(db: Knex) {
       return row;
     },
 
+    async deleteActivity(id: string): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("activity_delays").where({ activity_id: id }).del();
+        await trx("activities").where({ id }).del();
+      });
+    },
+
     async createDelay(record: NewDelayRecord): Promise<ActivityDelayRow> {
       const [row] = await db("activity_delays").insert(record).returning<ActivityDelayRow[]>("*");
       if (!row) throw new Error("Failed to insert activity delay");

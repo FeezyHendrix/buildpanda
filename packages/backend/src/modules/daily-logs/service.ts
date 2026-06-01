@@ -127,6 +127,13 @@ export function dailyLogsService(repository: DailyLogsRepository) {
         input.hoursLogged,
       );
     },
+
+    async remove(projectId: string, logDate: string): Promise<void> {
+      assertDate(logDate, "logDate");
+      const existing = await repository.findOne({ projectId, logDate });
+      if (!existing) throw new NotFoundError("Daily log");
+      await repository.deleteOne({ projectId, logDate });
+    },
   };
 }
 

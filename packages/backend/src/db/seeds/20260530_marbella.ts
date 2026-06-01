@@ -37,11 +37,244 @@ export async function seed(knex: Knex): Promise<void> {
   });
 
   await knex("project_phases").insert([
-    { id: "p1", project_id: PROJECT_ID, name: "Foundation", status: "Done", date_range: "Jan – Feb", sort_order: 0 },
-    { id: "p2", project_id: PROJECT_ID, name: "Structural Shell", status: "InProgress", date_range: "Mar – Apr", sort_order: 1 },
-    { id: "p3", project_id: PROJECT_ID, name: "Roofing & MEP", status: "Pending", date_range: "May – Jun", sort_order: 2 },
-    { id: "p4", project_id: PROJECT_ID, name: "Interior Fit", status: "Pending", date_range: "Jul – Aug", sort_order: 3 },
-    { id: "p5", project_id: PROJECT_ID, name: "Completion", status: "Pending", date_range: "Sep – Oct", sort_order: 4 },
+    { id: "p1", project_id: PROJECT_ID, name: "Foundation", status: "Done", date_range: "Jan – Feb", start_date: "2026-01-06", end_date: "2026-02-27", progress_percent: 100, sort_order: 0 },
+    { id: "p2", project_id: PROJECT_ID, name: "Structural Shell", status: "InProgress", date_range: "Mar – Apr", start_date: "2026-03-02", end_date: "2026-04-30", progress_percent: 45, sort_order: 1 },
+    { id: "p3", project_id: PROJECT_ID, name: "Roofing & MEP", status: "Pending", date_range: "May – Jun", start_date: "2026-05-01", end_date: "2026-06-30", progress_percent: 0, sort_order: 2 },
+    { id: "p4", project_id: PROJECT_ID, name: "Interior Fit", status: "Pending", date_range: "Jul – Aug", start_date: "2026-07-01", end_date: "2026-08-31", progress_percent: 0, sort_order: 3 },
+    { id: "p5", project_id: PROJECT_ID, name: "Completion", status: "Pending", date_range: "Sep – Oct", start_date: "2026-09-01", end_date: "2026-10-31", progress_percent: 0, sort_order: 4 },
+  ]);
+
+  await knex("action_items").insert([
+    {
+      id: "ai1",
+      project_id: PROJECT_ID,
+      title: "Resolve boundary setback with town planning",
+      description: "Survey shows the east wall is 0.4m inside the required setback. Confirm with the planning office before block work continues.",
+      status: "InProgress",
+      priority: "High",
+      assignee_id: null,
+      due_date: "2026-04-18",
+      created_by_id: null,
+    },
+    {
+      id: "ai2",
+      project_id: PROJECT_ID,
+      title: "Confirm rebar grade for first-floor slab",
+      description: "Structural engineer to confirm whether Y12 or Y16 is specified for the suspended slab.",
+      status: "Open",
+      priority: "Urgent",
+      assignee_id: null,
+      due_date: "2026-04-10",
+      created_by_id: null,
+    },
+    {
+      id: "ai3",
+      project_id: PROJECT_ID,
+      title: "Order waterproofing membrane for roof",
+      description: "Lead time is ~3 weeks; place the order before roofing stage begins.",
+      status: "Open",
+      priority: "Medium",
+      assignee_id: null,
+      due_date: "2026-04-25",
+      created_by_id: null,
+    },
+    {
+      id: "ai4",
+      project_id: PROJECT_ID,
+      title: "Snag list from foundation inspection",
+      description: "Two minor honeycombing spots patched and re-checked.",
+      status: "Resolved",
+      priority: "Low",
+      assignee_id: null,
+      due_date: null,
+      resolved_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      created_by_id: null,
+    },
+  ]);
+
+  await knex("action_item_comments").insert([
+    { id: "aic1", action_item_id: "ai1", author_id: "seed-pm", author_name: "Site Manager", body: "Booked a meeting with the planning office for next week.", created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "aic2", action_item_id: "ai2", author_id: "seed-eng", author_name: "Engr. David Okonjo", body: "Checking the structural drawings, will confirm by Friday.", created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+  ]);
+
+  await knex("queries").insert([
+    {
+      id: "q1",
+      project_id: PROJECT_ID,
+      subject: "Which tile finish for the living areas?",
+      question: "Owner is deciding between matte and polished porcelain for the ground floor.",
+      status: "Answered",
+      answer: "Go with matte porcelain — better slip resistance for a family home.",
+      due_date: "2026-05-10",
+      asked_by_id: null,
+      answered_by_id: null,
+      answered_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "q2",
+      project_id: PROJECT_ID,
+      subject: "Position of the kitchen plumbing stack",
+      question: "Can the soil stack move 300mm to clear the proposed island? Need confirmation before slab pour.",
+      status: "Open",
+      answer: null,
+      due_date: "2026-04-15",
+      asked_by_id: null,
+      answered_by_id: null,
+    },
+    {
+      id: "q3",
+      project_id: PROJECT_ID,
+      subject: "Generator vs inverter sizing",
+      question: "What backup capacity should we plan the changeover panel for?",
+      status: "Closed",
+      answer: "Plan for a 10kVA inverter with solar; no diesel generator required.",
+      due_date: null,
+      asked_by_id: null,
+      answered_by_id: null,
+      answered_at: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ]);
+
+  await knex("query_comments").insert([
+    { id: "qc1", query_id: "q1", author_id: "seed-owner", author_name: "Homeowner", body: "Agreed, matte it is. Thank you.", created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "qc2", query_id: "q2", author_id: "seed-pm", author_name: "Site Manager", body: "Awaiting the architect's revised plumbing layout.", created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+  ]);
+
+  await knex("approvals").insert([
+    {
+      id: "apr1",
+      project_id: PROJECT_ID,
+      title: "Living room tile selection",
+      category: "Finishes",
+      description: "Matte porcelain, 600x600, light grey. Sample submitted for sign-off.",
+      status: "Approved",
+      response: "Approved. Proceed with the matte porcelain as sampled.",
+      due_date: "2026-05-08",
+      submitted_by_id: null,
+      reviewed_by_id: null,
+      reviewed_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "apr2",
+      project_id: PROJECT_ID,
+      title: "Bathroom fittings specification",
+      category: "Fittings",
+      description: "Proposed brand and model list for all three bathrooms.",
+      status: "Pending",
+      response: null,
+      due_date: "2026-05-20",
+      submitted_by_id: null,
+      reviewed_by_id: null,
+    },
+    {
+      id: "apr3",
+      project_id: PROJECT_ID,
+      title: "External wall paint colour",
+      category: "Finishes",
+      description: "Off-white with charcoal trim.",
+      status: "Resubmit",
+      response: "Owner prefers a warmer tone — please resubmit with a cream option.",
+      due_date: "2026-06-01",
+      submitted_by_id: null,
+      reviewed_by_id: null,
+      reviewed_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ]);
+
+  await knex("approval_comments").insert([
+    { id: "aprc1", approval_id: "apr1", author_id: "seed-owner", author_name: "Homeowner", body: "Looks great, happy to proceed.", created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+  ]);
+
+  await knex("change_requests").insert([
+    {
+      id: "chg1",
+      project_id: PROJECT_ID,
+      title: "Upgrade ground-floor flooring to imported porcelain",
+      description: "Owner requested a higher-grade imported tile for the living and dining areas.",
+      reason: "Owner preference / finish upgrade",
+      status: "Approved",
+      cost_impact: "850000.00",
+      time_impact_days: 7,
+      currency: "NGN",
+      submitted_by_id: null,
+      decided_by_id: null,
+      decided_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "chg2",
+      project_id: PROJECT_ID,
+      title: "Add a study partition on the first floor",
+      description: "Convert part of the landing into an enclosed study.",
+      reason: "Scope addition",
+      status: "Submitted",
+      cost_impact: "1200000.00",
+      time_impact_days: 10,
+      currency: "NGN",
+      submitted_by_id: null,
+    },
+  ]);
+
+  await knex("change_request_comments").insert([
+    { id: "chgc1", change_request_id: "chg1", author_id: "seed-pm", author_name: "Site Manager", body: "Cost confirmed with the tiler; proceeding.", created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString() },
+  ]);
+
+  await knex("permits").insert([
+    {
+      id: "permit1",
+      project_id: PROJECT_ID,
+      title: "Building permit",
+      authority: "Lagos State Building Control Agency (LASBCA)",
+      reference_no: "LASBCA/2026/04821",
+      status: "Approved",
+      applied_date: "2025-11-10",
+      approved_date: "2026-01-04",
+      expiry_date: "2027-01-04",
+      notes: "Approved for the full 4-bedroom duplex scope.",
+    },
+    {
+      id: "permit2",
+      project_id: PROJECT_ID,
+      title: "Town planning approval",
+      authority: "Lekki Town Planning Authority",
+      reference_no: "LTPA/2026/1190",
+      status: "Applied",
+      applied_date: "2026-02-15",
+      approved_date: null,
+      expiry_date: null,
+      notes: "Awaiting site assessment visit.",
+    },
+    {
+      id: "permit3",
+      project_id: PROJECT_ID,
+      title: "Environmental impact clearance",
+      authority: "Lagos State Ministry of Environment",
+      reference_no: null,
+      status: "NotStarted",
+      applied_date: null,
+      approved_date: null,
+      expiry_date: null,
+      notes: "Required before external works begin.",
+    },
+  ]);
+
+  await knex("key_dates").insert([
+    { id: "kd1", project_id: PROJECT_ID, label: "Foundation complete", target_date: "2026-02-25", actual_date: "2026-02-27", status: "Met", notes: null, sort_order: 0 },
+    { id: "kd2", project_id: PROJECT_ID, label: "Roof on (weathertight)", target_date: "2026-06-20", actual_date: null, status: "Upcoming", notes: null, sort_order: 1 },
+    { id: "kd3", project_id: PROJECT_ID, label: "Move-in target", target_date: "2026-10-31", actual_date: null, status: "Upcoming", notes: "Owner relocating from the UK.", sort_order: 2 },
+  ]);
+
+  await knex("project_participants").insert([
+    {
+      id: "pp1",
+      project_id: PROJECT_ID,
+      user_id: null,
+      email: "homeowner@example.com",
+      role: "client",
+      status: "invited",
+      invited_by_id: null,
+      invite_token: "seed-invite-token-marbella",
+      invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    },
   ]);
 
   const updates = [
@@ -135,12 +368,17 @@ export async function seed(knex: Knex): Promise<void> {
   if (updateMedia.length) await knex("update_media").insert(updateMedia);
 
   await knex("document_categories").insert([
-    { id: "cat-land", name: "Land Documents", tone: "amber" },
-    { id: "cat-architectural", name: "Architectural Plans", tone: "brand" },
-    { id: "cat-contracts", name: "Contracts & Agreements", tone: "purple" },
-    { id: "cat-invoices", name: "Invoices & Receipts", tone: "green" },
-    { id: "cat-approvals", name: "Government Approvals", tone: "red" },
-    { id: "cat-inspections", name: "Inspection Certs", tone: "orange" },
+    { id: "cat-land", name: "Land Documents", tone: "amber", group: "document" },
+    { id: "cat-contracts", name: "Contracts & Agreements", tone: "purple", group: "document" },
+    { id: "cat-invoices", name: "Invoices & Receipts", tone: "green", group: "document" },
+    { id: "cat-approvals", name: "Government Approvals", tone: "red", group: "document" },
+    { id: "cat-inspections", name: "Inspection Certs", tone: "orange", group: "document" },
+    // Plan disciplines (shown under the Plans tab).
+    { id: "cat-architectural", name: "Architectural", tone: "brand", group: "plan" },
+    { id: "cat_plan_structural", name: "Structural", tone: "orange", group: "plan" },
+    { id: "cat_plan_mep", name: "MEP", tone: "green", group: "plan" },
+    { id: "cat_plan_civil", name: "Civil / Site", tone: "purple", group: "plan" },
+    { id: "cat_plan_survey", name: "Survey", tone: "amber", group: "plan" },
   ]);
 
   const documents = [
@@ -238,11 +476,11 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex("material_procurements").insert([
-    { id: "mp1", project_id: PROJECT_ID, name: "16mm Reinforcement Steel", purchased_at: "11-04-2026, 11:12 AM", receipt: "reciept_INV-4029.jpeg", amount: 8_880_000, thumbnail_tone: "brand", sort_order: 0 },
-    { id: "mp2", project_id: PROJECT_ID, name: "Dangote Grade 42.5 Cement", purchased_at: "10-04-2026, 11:12 AM", receipt: "reciept_INV-4028.jpeg", amount: 4_880_000, thumbnail_tone: "amber", sort_order: 1 },
-    { id: "mp3", project_id: PROJECT_ID, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 2 },
-    { id: "mp4", project_id: PROJECT_ID, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 3 },
-    { id: "mp5", project_id: PROJECT_ID, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 4 },
+    { id: "mp1", project_id: PROJECT_ID, material_order_id: null, name: "16mm Reinforcement Steel", purchased_at: "11-04-2026, 11:12 AM", receipt: "reciept_INV-4029.jpeg", amount: 8_880_000, thumbnail_tone: "brand", sort_order: 0 },
+    { id: "mp2", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 42.5 Cement", purchased_at: "10-04-2026, 11:12 AM", receipt: "reciept_INV-4028.jpeg", amount: 4_880_000, thumbnail_tone: "amber", sort_order: 1 },
+    { id: "mp3", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 2 },
+    { id: "mp4", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 3 },
+    { id: "mp5", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 32.5 Cement", purchased_at: "10-04-2026, 9:12 AM", receipt: "reciept_INV-4027.jpeg", amount: 3_780_000, thumbnail_tone: "orange", sort_order: 4 },
   ]);
 
   await knex("milestone_payments").insert([
@@ -337,6 +575,137 @@ export async function seed(knex: Knex): Promise<void> {
       actual_start_at: null,
       actual_end_at: null,
       worker_count_planned: 8,
+    },
+  ]);
+
+  await knex("material_orders").insert([
+    {
+      id: "mo-seed-1",
+      project_id: PROJECT_ID,
+      title: "Roofing sheets for Block A",
+      material_name: "Long-span aluminium roofing sheets",
+      quantity: 420,
+      unit: "sqm",
+      supplier: "Lekki Roofing Supplies",
+      status: "Ordered",
+      priority: "High",
+      phase_id: "p3",
+      activity_id: "act-3",
+      document_id: "d2",
+      requested_by_id: null,
+      needed_by: "2026-05-04",
+      ordered_at: "2026-04-24",
+      expected_delivery_at: "2026-05-02",
+      delivered_at: null,
+      estimated_cost: 5_600_000,
+      actual_cost: 0,
+      currency: "NGN",
+      delivery_location: "Block A roof staging area",
+      notes: "Must arrive before roofing installation starts; keep receipt against finance materials.",
+    },
+    {
+      id: "mo-seed-2",
+      project_id: PROJECT_ID,
+      title: "Concrete pump fuel and spare hose",
+      material_name: "Pump hose kit and diesel",
+      quantity: 1,
+      unit: "lot",
+      supplier: "Prime Plant Hire",
+      status: "Delivered",
+      priority: "Critical",
+      phase_id: "p2",
+      activity_id: "act-2",
+      document_id: "d4",
+      requested_by_id: null,
+      needed_by: "2026-04-23",
+      ordered_at: "2026-04-21",
+      expected_delivery_at: "2026-04-23",
+      delivered_at: "2026-04-23",
+      estimated_cost: 650_000,
+      actual_cost: 620_000,
+      currency: "NGN",
+      delivery_location: "Block A · Floor 2 pour zone",
+      notes: "Resolved material-delivery delay risk on slab pour.",
+    },
+  ]);
+
+  await knex("material_procurements").where({ id: "mp5" }).update({ material_order_id: "mo-seed-2" });
+
+  await knex("equipment_requests").insert([
+    {
+      id: "er-seed-1",
+      project_id: PROJECT_ID,
+      title: "Mobile crane for roof trusses",
+      equipment_name: "50-ton mobile crane",
+      equipment_type: "Lifting equipment",
+      quantity: 1,
+      supplier: "Prime Plant Hire",
+      status: "Approved",
+      priority: "High",
+      phase_id: "p3",
+      activity_id: "act-3",
+      document_id: "d2",
+      requested_by_id: null,
+      needed_from: "2026-05-05",
+      needed_until: "2026-05-07",
+      mobilized_at: null,
+      returned_at: null,
+      estimated_cost: 1_450_000,
+      actual_cost: 0,
+      currency: "NGN",
+      delivery_location: "North access crane pad",
+      operator_required: "Yes",
+      notes: "Schedule after roofing sheets arrive; keep lift plan in documents.",
+    },
+    {
+      id: "er-seed-2",
+      project_id: PROJECT_ID,
+      title: "Concrete pump hire for slab pour",
+      equipment_name: "Trailer-mounted concrete pump",
+      equipment_type: "Concrete equipment",
+      quantity: 1,
+      supplier: "Prime Plant Hire",
+      status: "OnHire",
+      priority: "Critical",
+      phase_id: "p2",
+      activity_id: "act-2",
+      document_id: "d4",
+      requested_by_id: null,
+      needed_from: "2026-04-23",
+      needed_until: "2026-04-24",
+      mobilized_at: "2026-04-23T06:30:00Z",
+      returned_at: null,
+      estimated_cost: 850_000,
+      actual_cost: 0,
+      currency: "NGN",
+      delivery_location: "Block A · Floor 2 pour zone",
+      operator_required: "Yes",
+      notes: "Open delay references late arrival; return after final pour washout.",
+    },
+    {
+      id: "er-seed-3",
+      project_id: PROJECT_ID,
+      title: "Generator backup for site welding",
+      equipment_name: "80kVA generator",
+      equipment_type: "Power",
+      quantity: 1,
+      supplier: "Lagos Power Rentals",
+      status: "Returned",
+      priority: "Normal",
+      phase_id: "p2",
+      activity_id: "act-1",
+      document_id: null,
+      requested_by_id: null,
+      needed_from: "2026-04-15",
+      needed_until: "2026-04-18",
+      mobilized_at: "2026-04-15T06:00:00Z",
+      returned_at: "2026-04-18T18:30:00Z",
+      estimated_cost: 420_000,
+      actual_cost: 410_000,
+      currency: "NGN",
+      delivery_location: "Site electrical yard",
+      operator_required: "No",
+      notes: "Closed with column placement work package.",
     },
   ]);
 

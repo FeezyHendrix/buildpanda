@@ -8,6 +8,7 @@ import type {
 export interface NewProjectRecord {
   id: string;
   owner_id: string;
+  organization_id: string | null;
   name: string;
   address: string;
   status: "On Track";
@@ -22,6 +23,13 @@ export interface NewProjectRecord {
   budget_min: number;
   budget_max: number;
   setup: ProjectSetup;
+}
+
+export interface ProjectUpdatePatch {
+  budget_total?: number;
+  budget_min?: number;
+  budget_max?: number;
+  currency?: "NGN" | "USD";
 }
 
 export interface NewPhaseRecord {
@@ -45,16 +53,26 @@ export interface NewFinancesRecord {
 
 export function projectsRepository(db: Knex) {
   return {
-    listForOwner(ownerId: string): Promise<ProjectRow[]> {
+    listForOwner(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
       return db<ProjectRow>("projects")
         .where(function () {
-          this.where("owner_id", ownerId).orWhereNull("owner_id");
+          this.where("owner_id", ownerId)
+            .orWhere(function () {
+              this.whereNull("owner_id").whereNull("organization_id");
+            });
+          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
         })
         .orderBy("updated_at", "desc");
     },
 
     findById(id: string): Promise<ProjectRow | undefined> {
       return db<ProjectRow>("projects").where({ id }).first();
+    },
+
+    async update(id: string, patch: ProjectUpdatePatch): Promise<void> {
+      await db("projects")
+        .where({ id })
+        .update({ ...patch, updated_at: db.fn.now() });
     },
 
     findPhasesByProject(projectId: string): Promise<ProjectPhaseRow[]> {

@@ -16,6 +16,8 @@ export const documentKeys = {
   list: (projectId: string) => [...documentKeys.all(projectId), "list"] as const,
   categories: (projectId: string) =>
     [...documentKeys.all(projectId), "categories"] as const,
+  versions: (projectId: string, documentId: string) =>
+    [...documentKeys.all(projectId), "versions", documentId] as const,
 };
 
 export const inspectionKeys = {
@@ -37,9 +39,36 @@ export const financeKeys = {
     ] as const,
 };
 
+export const materialKeys = {
+  all: (projectId: string) => ["projects", projectId, "materials"] as const,
+  orders: (projectId: string, status?: string) =>
+    [...materialKeys.all(projectId), "orders", status ?? "all"] as const,
+};
+
+export const equipmentRequestKeys = {
+  all: (projectId: string) => ["projects", projectId, "equipment-requests"] as const,
+  list: (projectId: string, bucket?: string) =>
+    [...equipmentRequestKeys.all(projectId), "list", bucket ?? "all"] as const,
+};
+
+export const invoiceKeys = {
+  all: (projectId: string) => ["projects", projectId, "invoices"] as const,
+  list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
+};
+
+export const budgetKeys = {
+  all: (projectId: string) => ["projects", projectId, "budget"] as const,
+  detail: (projectId: string) => [...budgetKeys.all(projectId), "detail"] as const,
+};
+
 export const riskKeys = {
   all: (projectId: string) =>
     ["projects", projectId, "risk-factors"] as const,
+};
+
+export const teamKeys = {
+  all: (projectId: string) => ["projects", projectId, "team-members"] as const,
+  list: (projectId: string) => [...teamKeys.all(projectId), "list"] as const,
 };
 
 export const activityKeys = {
@@ -48,6 +77,58 @@ export const activityKeys = {
     [...activityKeys.all(projectId), "list"] as const,
   detail: (projectId: string, activityId: string) =>
     [...activityKeys.all(projectId), "detail", activityId] as const,
+};
+
+export const stageKeys = {
+  all: (projectId: string) => ["projects", projectId, "stages"] as const,
+  list: (projectId: string) => [...stageKeys.all(projectId), "list"] as const,
+};
+
+export const actionItemKeys = {
+  all: (projectId: string) => ["projects", projectId, "action-items"] as const,
+  list: (projectId: string, status?: string) =>
+    [...actionItemKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, itemId: string) =>
+    [...actionItemKeys.all(projectId), "detail", itemId] as const,
+};
+
+export const siteQueryKeys = {
+  all: (projectId: string) => ["projects", projectId, "queries"] as const,
+  list: (projectId: string, status?: string) =>
+    [...siteQueryKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, queryId: string) =>
+    [...siteQueryKeys.all(projectId), "detail", queryId] as const,
+};
+
+export const approvalKeys = {
+  all: (projectId: string) => ["projects", projectId, "approvals"] as const,
+  list: (projectId: string, status?: string) =>
+    [...approvalKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, approvalId: string) =>
+    [...approvalKeys.all(projectId), "detail", approvalId] as const,
+};
+
+export const changeRequestKeys = {
+  all: (projectId: string) => ["projects", projectId, "change-requests"] as const,
+  list: (projectId: string, status?: string) =>
+    [...changeRequestKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, changeId: string) =>
+    [...changeRequestKeys.all(projectId), "detail", changeId] as const,
+};
+
+export const permitKeys = {
+  all: (projectId: string) => ["projects", projectId, "permits"] as const,
+  list: (projectId: string) => [...permitKeys.all(projectId), "list"] as const,
+};
+
+export const keyDateKeys = {
+  all: (projectId: string) => ["projects", projectId, "key-dates"] as const,
+  list: (projectId: string) => [...keyDateKeys.all(projectId), "list"] as const,
+};
+
+export const insightKeys = {
+  insights: (projectId: string) => ["projects", projectId, "insights"] as const,
+  whatsNext: (projectId: string) => ["projects", projectId, "whats-next"] as const,
 };
 
 export const dailyLogKeys = {
@@ -75,4 +156,26 @@ export const searchKeys = {
 
 export const delayReasonKeys = {
   all: ["delay-reasons"] as const,
+};
+
+export const organizationKeys = {
+  all: ["organization"] as const,
+  list: () => [...organizationKeys.all, "list"] as const,
+  active: () => [...organizationKeys.all, "active"] as const,
+  full: (organizationId: string) =>
+    [...organizationKeys.all, "full", organizationId] as const,
+  members: (organizationId: string) =>
+    [...organizationKeys.all, organizationId, "members"] as const,
+  invitations: (organizationId: string) =>
+    [...organizationKeys.all, organizationId, "invitations"] as const,
+  roles: (organizationId: string) =>
+    [...organizationKeys.all, organizationId, "roles"] as const,
+  userInvitations: () =>
+    [...organizationKeys.all, "user-invitations"] as const,
+};
+
+export const pandaAiKeys = {
+  all: (projectId: string) => ["projects", projectId, "ai-insights"] as const,
+  latest: (projectId: string) =>
+    [...pandaAiKeys.all(projectId), "latest"] as const,
 };

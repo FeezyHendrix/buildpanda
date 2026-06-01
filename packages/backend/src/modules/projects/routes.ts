@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
-import type { CreateProjectInput } from "./types.ts";
+import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -63,12 +63,23 @@ const createProjectBody = {
   },
 } as const;
 
+const updateBudgetBody = {
+  type: "object",
+  required: ["budgetMin", "budgetMax"],
+  additionalProperties: false,
+  properties: {
+    budgetMin: { type: "number", minimum: 0 },
+    budgetMax: { type: "number", minimum: 0 },
+    currency: { type: "string", enum: ["NGN", "USD"] },
+  },
+} as const;
+
 const projectRoutes: FastifyPluginAsync = async (fastify) => {
   const service = projectsService(projectsRepository(fastify.db));
 
   fastify.get("/projects", async (request) => {
     const user = request.requireAuth();
-    return service.listForOwner(user.id);
+    return service.listForOwner(user.id, [...request.orgRoles.keys()]);
   });
 
   fastify.post<{ Body: CreateProjectInput }>(
@@ -76,7 +87,10 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { body: createProjectBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const project = await service.create(request.body, user.id);
+      const activeOrg = request.activeOrganizationId;
+      const organizationId =
+        activeOrg !== null && request.orgRoles.has(activeOrg) ? activeOrg : null;
+      const project = await service.create(request.body, user.id, organizationId);
       return reply.status(201).send(project);
     },
   );
@@ -85,8 +99,23 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.getById(request.params.id);
+      const user = request.requireAuth();
+      return service.getByIdForUser(request.params.id, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
+    },
+  );
+
+  fastify.patch<{ Params: { id: string }; Body: UpdateProjectBudgetInput }>(
+    "/projects/:id/budget",
+    { schema: { params: projectIdParams, body: updateBudgetBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.updateBudgetForUser(request.params.id, request.body, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
     },
   );
 };

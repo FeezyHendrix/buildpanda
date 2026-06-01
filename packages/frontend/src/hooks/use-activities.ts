@@ -74,9 +74,16 @@ export function useCreateActivity() {
 export interface UpdateActivityInput {
   projectId: string;
   activityId: string;
+  name?: string;
+  activityType?: string;
+  phaseId?: string | null;
+  location?: string | null;
   status?: ActivityStatus;
+  plannedStartAt?: string;
+  plannedEndAt?: string;
   actualStartAt?: string | null;
   actualEndAt?: string | null;
+  workerCountPlanned?: number;
   notes?: string | null;
 }
 
@@ -100,6 +107,24 @@ export function useUpdateActivity() {
         queryKey: activityKeys.detail(projectId, activityId),
       });
       queryClient.invalidateQueries({ queryKey: activityKeys.list(projectId) });
+    },
+  });
+}
+
+export interface DeleteActivityInput {
+  projectId: string;
+  activityId: string;
+}
+
+export function useDeleteActivity() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, activityId }: DeleteActivityInput) => {
+      await api.delete(`/projects/${projectId}/activities/${activityId}`);
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: activityKeys.all(projectId) });
     },
   });
 }

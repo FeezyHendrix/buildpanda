@@ -22,6 +22,8 @@ export interface Project {
   progressPercent: number;
   budgetTotal: number;
   budgetUsed: number;
+  budgetMin: number | null;
+  budgetMax: number | null;
   currency: Currency;
   pendingApprovals: number;
   nextInspection: { type: string; date: string };
@@ -34,6 +36,7 @@ export interface Project {
 export interface ProjectRow {
   id: string;
   owner_id: string | null;
+  organization_id: string | null;
   name: string;
   address: string;
   status: ProjectStatus;
@@ -97,4 +100,10 @@ export interface CreateProjectInput {
     involvementLevel: string;
     riskOptions: string[];
   };
+}
+
+export interface UpdateProjectBudgetInput {
+  budgetMin: number;
+  budgetMax: number;
+  currency?: Currency;
 }

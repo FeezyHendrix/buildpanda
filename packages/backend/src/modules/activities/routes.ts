@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModify } from "../../lib/authorization.ts";
+import { assertCanModifyProject } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { activitiesRepository } from "./repository.ts";
@@ -119,7 +119,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       const activity = await service.create(project.id, request.body, {
         id: user.id,
@@ -148,9 +148,23 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       return service.update(project.id, request.params.activityId, request.body);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; activityId: string } }>(
+    "/projects/:id/activities/:activityId",
+    { schema: { params: activityParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const project = await projects.findById(request.params.id);
+      if (!project) throw new NotFoundError("Project");
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+
+      await service.remove(project.id, request.params.activityId);
+      return reply.status(204).send();
     },
   );
 
@@ -164,7 +178,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       const delay = await service.raiseDelay(
         project.id,
@@ -186,7 +200,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       return service.resolveDelay(
         project.id,

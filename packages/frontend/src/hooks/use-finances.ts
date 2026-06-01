@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { financeKeys } from "./query-keys";
 import type {
+  MilestoneStatus,
   MilestoneDispute,
   MilestonePayment,
   ProjectFinances,
+  SignOffStatus,
 } from "@/lib/project-mock-data";
 
 export function useProjectFinances(projectId: string | undefined) {
@@ -57,6 +59,61 @@ export function useFundProject() {
         { amount, ...(description ? { description } : {}) },
       );
       return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+    },
+  });
+}
+
+export interface UpsertMilestoneInput {
+  projectId: string;
+  milestoneId?: string;
+  name: string;
+  phase: string;
+  amount: number;
+  percentComplete?: number;
+  status?: MilestoneStatus;
+  inspectorSignOff?: SignOffStatus;
+}
+
+export function useUpsertMilestone() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      milestoneId,
+      ...body
+    }: UpsertMilestoneInput) => {
+      const { data } = milestoneId
+        ? await api.patch<MilestonePayment>(
+            `/projects/${projectId}/finances/milestones/${milestoneId}`,
+            body,
+          )
+        : await api.post<MilestonePayment>(
+            `/projects/${projectId}/finances/milestones`,
+            body,
+          );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+    },
+  });
+}
+
+export interface DeleteMilestoneInput {
+  projectId: string;
+  milestoneId: string;
+}
+
+export function useDeleteMilestone() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, milestoneId }: DeleteMilestoneInput) => {
+      await api.delete(`/projects/${projectId}/finances/milestones/${milestoneId}`);
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });

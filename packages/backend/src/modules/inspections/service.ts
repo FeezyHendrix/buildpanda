@@ -5,14 +5,31 @@ import type {
   InspectionMediaRow,
   InspectionReport,
   InspectionRow,
+  InspectionStatus,
 } from "./types.ts";
 import type { MediaItem } from "../updates/types.ts";
+import type { RiskLevel } from "../projects/types.ts";
+import { NotFoundError, ConflictError } from "../../lib/errors.ts";
 
 export interface RequestInspectionInput {
   title: string;
   category: InspectionCategory;
   description: string;
   scheduledAt: string;
+  inspector?: {
+    id?: string;
+    name: string;
+    role: string;
+  };
+}
+
+export interface EditInspectionInput {
+  title?: string;
+  category?: InspectionCategory;
+  description?: string;
+  scheduledAt?: string;
+  status?: InspectionStatus;
+  riskLevel?: RiskLevel;
   inspector?: {
     id?: string;
     name: string;
@@ -48,6 +65,17 @@ function toReport(row: InspectionRow, media: InspectionMediaRow[]): InspectionRe
 }
 
 export function inspectionsService(repository: InspectionsRepository) {
+  async function loadProjectInspection(
+    projectId: string,
+    inspectionId: string,
+  ): Promise<InspectionRow> {
+    const row = await repository.findById(inspectionId);
+    if (!row || row.project_id !== projectId) {
+      throw new NotFoundError("Inspection");
+    }
+    return row;
+  }
+
   return {
     async listByProject(projectId: string): Promise<InspectionReport[]> {
       const rows = await repository.listByProject(projectId);
@@ -81,6 +109,37 @@ export function inspectionsService(repository: InspectionsRepository) {
         scheduled_at: input.scheduledAt,
       });
       return toReport(row, []);
+    },
+
+    async edit(
+      projectId: string,
+      inspectionId: string,
+      input: EditInspectionInput,
+    ): Promise<InspectionReport> {
+      await loadProjectInspection(projectId, inspectionId);
+
+      const patch: Parameters<typeof repository.update>[1] = {};
+      if (input.title !== undefined) patch.title = input.title;
+      if (input.category !== undefined) patch.category = input.category;
+      if (input.description !== undefined) patch.description = input.description;
+      if (input.scheduledAt !== undefined) patch.scheduled_at = input.scheduledAt;
+      if (input.status !== undefined) patch.status = input.status;
+      if (input.riskLevel !== undefined) patch.risk_level = input.riskLevel;
+      if (input.inspector !== undefined) {
+        if (input.inspector.id !== undefined) patch.inspector_id = input.inspector.id;
+        patch.inspector_name = input.inspector.name;
+        patch.inspector_role = input.inspector.role;
+      }
+
+      const updated = await repository.update(inspectionId, patch);
+      if (!updated) throw new ConflictError("Inspection update failed");
+      const media = await repository.mediaForInspections([inspectionId]);
+      return toReport(updated, media);
+    },
+
+    async remove(projectId: string, inspectionId: string): Promise<void> {
+      await loadProjectInspection(projectId, inspectionId);
+      await repository.deleteInspection(inspectionId);
     },
   };
 }

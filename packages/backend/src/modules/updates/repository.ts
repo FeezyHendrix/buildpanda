@@ -1,6 +1,9 @@
 import type { Knex } from "knex";
 import { ConflictError } from "../../lib/errors.ts";
+import type { Tone } from "../projects/types.ts";
 import type {
+  CtaTone,
+  UpdateCategory,
   UpdateCommentRow,
   UpdateMediaRow,
   UpdateRow,
@@ -13,6 +16,30 @@ export interface NewCommentRecord {
   author_id: string;
   author_name: string;
   body: string;
+}
+
+export interface NewUpdateRecord {
+  id: string;
+  project_id: string;
+  author_id: string;
+  author_name: string;
+  author_role: string;
+  author_initials_tone: Tone;
+  category: UpdateCategory;
+  title: string;
+  description: string;
+  cta_label: string;
+  cta_tone: CtaTone;
+  status: UpdateStatus;
+  created_at: Date;
+}
+
+export interface UpdateContentPatch {
+  title?: string;
+  description?: string;
+  category?: UpdateCategory;
+  cta_label?: string;
+  cta_tone?: CtaTone;
 }
 
 export interface StatusTransition {
@@ -79,6 +106,54 @@ export function updatesRepository(db: Knex) {
       const [row] = await db<UpdateCommentRow>("update_comments").insert(record).returning("*");
       if (!row) throw new Error("Failed to insert comment");
       return row;
+    },
+
+    async createUpdate(
+      record: NewUpdateRecord,
+      media: UpdateMediaRow[] = [],
+    ): Promise<UpdateRow> {
+      return db.transaction(async (trx) => {
+        const [row] = await trx<UpdateRow>("project_updates")
+          .insert(record)
+          .returning("*");
+        if (!row) throw new Error("Failed to insert update");
+        if (media.length > 0) {
+          await trx<UpdateMediaRow>("update_media").insert(media);
+        }
+        return row;
+      });
+    },
+
+    async editUpdate(
+      updateId: string,
+      patch: UpdateContentPatch,
+    ): Promise<UpdateRow> {
+      const [row] = await db<UpdateRow>("project_updates")
+        .where({ id: updateId })
+        .update(patch)
+        .returning("*");
+      if (!row) throw new ConflictError("Update not found");
+      return row;
+    },
+
+    async replaceMedia(
+      updateId: string,
+      media: UpdateMediaRow[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("update_media").where({ update_id: updateId }).del();
+        if (media.length > 0) {
+          await trx<UpdateMediaRow>("update_media").insert(media);
+        }
+      });
+    },
+
+    async deleteUpdate(updateId: string): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("update_comments").where({ update_id: updateId }).del();
+        await trx("update_media").where({ update_id: updateId }).del();
+        await trx("project_updates").where({ id: updateId }).del();
+      });
     },
   };
 }

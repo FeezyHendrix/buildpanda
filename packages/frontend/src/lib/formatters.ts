@@ -25,6 +25,21 @@ export function formatCurrency(
   }).format(value);
 }
 
+export function currencySymbol(currency: string): string {
+  const locale = CURRENCY_LOCALE[currency] ?? "en-US";
+  try {
+    const parts = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? currency;
+  } catch {
+    return currency;
+  }
+}
+
 export function timeOfDay(date = new Date()): TimeOfDay {
   const h = date.getHours();
   if (h < 12) return "Morning";

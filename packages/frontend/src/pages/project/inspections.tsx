@@ -10,10 +10,14 @@ import {
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
+import { UpsertInspectionDialog, type UpsertInspectionValues } from "@/components/molecules/upsert-inspection-dialog";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectInspections,
   useRequestInspection,
+  useEditInspection,
+  useDeleteInspection,
 } from "@/hooks/use-inspections";
 import {
   INSPECTION_STATUS_TONE,
@@ -98,7 +102,7 @@ export default function ProjectInspections() {
           </Card>
         ) : (
           visible.map((report) => (
-            <InspectionCard key={report.id} report={report} />
+            <InspectionCard key={report.id} projectId={project.id} report={report} />
           ))
         )}
       </section>
@@ -142,7 +146,29 @@ function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
   );
 }
 
-function InspectionCard({ report }: { report: InspectionReport }) {
+function InspectionCard({
+  projectId,
+  report,
+}: {
+  projectId: string;
+  report: InspectionReport;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const editInspection = useEditInspection();
+  const deleteInspection = useDeleteInspection();
+
+  function handleEdit(values: UpsertInspectionValues): void {
+    editInspection.mutate(
+      { projectId, inspectionId: report.id, ...values },
+      { onSuccess: () => setEditOpen(false) },
+    );
+  }
+
+  function handleDelete(): void {
+    deleteInspection.mutate({ projectId, inspectionId: report.id });
+  }
+
   return (
     <Card padding="lg" className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -170,6 +196,22 @@ function InspectionCard({ report }: { report: InspectionReport }) {
           <Badge tone={RISK_LEVEL_TONE[report.riskLevel]} size="md" dot>
             {report.riskLevel}
           </Badge>
+          <div className="ml-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-900"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="text-xs font-medium text-red-500 hover:text-red-600"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -193,6 +235,33 @@ function InspectionCard({ report }: { report: InspectionReport }) {
           </a>
         ) : null}
       </div>
+
+      <UpsertInspectionDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        mode="edit"
+        initial={{
+          title: report.title,
+          category: report.category as Exclude<InspectionCategory, "All Reports">,
+          description: report.description,
+          scheduledAt: report.scheduledAt,
+          status: report.status,
+          riskLevel: report.riskLevel,
+        }}
+        onSubmit={handleEdit}
+        isSubmitting={editInspection.isPending}
+        error={(editInspection.error as Error | undefined)?.message ?? null}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        title="Delete inspection"
+        description="This permanently removes the inspection report. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </Card>
   );
 }

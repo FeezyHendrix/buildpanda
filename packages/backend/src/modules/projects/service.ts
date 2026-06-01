@@ -1,5 +1,10 @@
 import { generateId } from "../../lib/ids.ts";
 import { NotFoundError } from "../../lib/errors.ts";
+import {
+  assertCanAccessProject,
+  assertCanModifyProject,
+  type AccessContext,
+} from "../../lib/authorization.ts";
 import type {
   NewPhaseRecord,
   NewProjectRecord,
@@ -11,6 +16,7 @@ import type {
   ProjectPhase,
   ProjectPhaseRow,
   ProjectRow,
+  UpdateProjectBudgetInput,
 } from "./types.ts";
 
 const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> = [
@@ -46,6 +52,8 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
     progressPercent: row.progress_percent,
     budgetTotal: Number(row.budget_total),
     budgetUsed: Number(row.budget_used),
+    budgetMin: row.budget_min === null ? null : Number(row.budget_min),
+    budgetMax: row.budget_max === null ? null : Number(row.budget_max),
     currency: row.currency,
     pendingApprovals: row.pending_approvals,
     nextInspection: {
@@ -62,6 +70,7 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
 function buildCreate(
   input: CreateProjectInput,
   ownerId: string,
+  organizationId: string | null,
 ): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: "NGN" | "USD" } {
   const projectId = generateId("prj");
   const address = `${input.location.city}, ${input.location.state}`;
@@ -69,6 +78,7 @@ function buildCreate(
   const project: NewProjectRecord = {
     id: projectId,
     owner_id: ownerId,
+    organization_id: organizationId,
     name: input.title,
     address,
     status: "On Track",
@@ -107,8 +117,8 @@ function buildCreate(
 
 export function projectsService(repository: ProjectsRepository) {
   return {
-    async listForOwner(ownerId: string): Promise<Project[]> {
-      const rows = await repository.listForOwner(ownerId);
+    async listForOwner(ownerId: string, orgIds: string[]): Promise<Project[]> {
+      const rows = await repository.listForOwner(ownerId, orgIds);
       if (rows.length === 0) return [];
       const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
       const grouped = new Map<string, ProjectPhaseRow[]>();
@@ -127,8 +137,23 @@ export function projectsService(repository: ProjectsRepository) {
       return toProject(row, phases);
     },
 
-    async create(input: CreateProjectInput, ownerId: string): Promise<Project> {
-      const { project, phases, financesCurrency } = buildCreate(input, ownerId);
+    async getByIdForUser(id: string, ctx: AccessContext): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanAccessProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      const phases = await repository.findPhasesByProject(id);
+      return toProject(row, phases);
+    },
+
+    async create(
+      input: CreateProjectInput,
+      ownerId: string,
+      organizationId: string | null,
+    ): Promise<Project> {
+      const { project, phases, financesCurrency } = buildCreate(input, ownerId, organizationId);
       await repository.create(project, phases, {
         project_id: project.id,
         currency: financesCurrency,
@@ -139,6 +164,26 @@ export function projectsService(repository: ProjectsRepository) {
         remaining_balance: project.budget_total,
       });
       return this.getById(project.id);
+    },
+
+    async updateBudgetForUser(
+      id: string,
+      input: UpdateProjectBudgetInput,
+      ctx: AccessContext,
+    ): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanModifyProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      await repository.update(id, {
+        budget_min: input.budgetMin,
+        budget_max: input.budgetMax,
+        budget_total: input.budgetMax,
+        ...(input.currency ? { currency: input.currency } : {}),
+      });
+      return this.getById(id);
     },
   };
 }

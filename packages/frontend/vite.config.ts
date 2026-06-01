@@ -26,4 +26,13 @@ export default defineConfig({
       },
     },
   },
+  // Production preview (Railway): always revalidate so a new deploy's chunk
+  // hashes are picked up immediately instead of serving a stale index.html
+  // that points at chunks which no longer exist.
+  preview: {
+    host: true,
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  },
 });

@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui-components/react/dialog";
-import { type FormEvent, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,10 @@ interface FormDialogProps {
   className?: string;
 }
 
+interface SubmitEventLike {
+  preventDefault(): void;
+}
+
 function FormDialog({
   open,
   onOpenChange,
@@ -32,7 +36,7 @@ function FormDialog({
   children,
   className,
 }: FormDialogProps) {
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  function handleSubmit(event: SubmitEventLike): void {
     event.preventDefault();
     if (submitting || submitDisabled) return;
     void onSubmit();
@@ -44,8 +48,8 @@ function FormDialog({
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2",
-            "rounded-2xl bg-white shadow-xl outline-none",
+            "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
+            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
             className,
           )}
         >
@@ -61,7 +65,7 @@ function FormDialog({
               )}
             </header>
 
-            <div className="flex flex-col gap-4 px-6 py-5">{children}</div>
+            <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">{children}</div>
 
             {error && (
               <p className="mx-6 mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
@@ -69,7 +73,7 @@ function FormDialog({
               </p>
             )}
 
-            <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
               <Dialog.Close
                 render={
                   <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">

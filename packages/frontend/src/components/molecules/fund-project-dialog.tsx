@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -41,47 +41,43 @@ function FundProjectDialog({
   }
 
   return (
-    <FormDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Fund Project"
-      description="Top up the project escrow. The full amount becomes available for milestone releases."
-      submitLabel="Fund Project"
-      submitDisabled={!isValid}
-      submitting={isSubmitting}
-      error={error ?? null}
-      onSubmit={handleSubmit}
-    >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="fund-amount">Amount (NGN)</Label>
-        <input
-          id="fund-amount"
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="5,000,000"
-          autoFocus
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-        {preview && (
-          <p className="text-xs tabular-nums text-gray-500">{preview}</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="fund-description">Description (optional)</Label>
-        <input
-          id="fund-description"
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Top-up funding for MEP phase"
-          maxLength={200}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
-    </FormDialog>
+    <FormDrawer open={open}
+    onOpenChange={onOpenChange}
+    title="Fund Project"
+    description="Top up the project escrow. The full amount becomes available for milestone releases."
+    submitLabel="Fund Project"
+    submitDisabled={!isValid}
+    submitting={isSubmitting}
+    error={error ?? null}
+    onSubmit={handleSubmit}><div className="flex flex-col gap-1.5">
+      <Label htmlFor="fund-amount">Amount (NGN)</Label>
+      <input
+        id="fund-amount"
+        type="text"
+        inputMode="decimal"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="5,000,000"
+        autoFocus
+        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+      />
+      {preview && (
+        <p className="text-xs tabular-nums text-gray-500">{preview}</p>
+      )}
+    </div>
+    
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="fund-description">Description (optional)</Label>
+      <input
+        id="fund-description"
+        type="text"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="e.g. Top-up funding for MEP phase"
+        maxLength={200}
+        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+      />
+    </div></FormDrawer>
   );
 }
 

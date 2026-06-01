@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
+import { OrgSwitcher } from "@/components/molecules/org-switcher";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function DashboardLayout() {
@@ -20,6 +21,7 @@ export default function DashboardLayout() {
       <Navbar
         showLogo
         sticky
+        leadingSlot={<OrgSwitcher />}
         userSlot={
           <UserMenu
             name={session.user.name}

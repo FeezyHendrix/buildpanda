@@ -58,10 +58,27 @@ services:
     networks:
       - appnet
 
+  redis:
+    image: redis:7-alpine
+    container_name: buildpanda-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - appnet
+
   backend:
     build:
-      context: .
-      dockerfile: packages/backend/Dockerfile
+      context: ./packages/backend
+      dockerfile: Dockerfile
       target: dev
     container_name: buildpanda-backend
     restart: unless-stopped
@@ -72,6 +89,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       PORT: 3000
       DB_HOST: db
@@ -80,6 +99,8 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_URL: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://redis:6379"
+      KIMI_API_KEY: ${KIMI_API_KEY:-}
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-buildpanda}
       S3_FORCE_PATH_STYLE: "true"
@@ -101,8 +122,8 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: packages/frontend/Dockerfile
+      context: ./packages/frontend
+      dockerfile: Dockerfile
       target: dev
     container_name: buildpanda-frontend
     restart: unless-stopped
@@ -126,3 +147,4 @@ networks:
 volumes:
   postgres_data:
   minio_data:
+  redis_data:
