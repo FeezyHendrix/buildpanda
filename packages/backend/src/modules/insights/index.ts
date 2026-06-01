@@ -39,8 +39,8 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     const project = await projects.findById(id);
     if (!project) throw new NotFoundError("Project");
     assertCanAccessProject(
-      { ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles },
+      { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+      { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
     );
     return project;
   }

@@ -263,6 +263,20 @@ export async function seed(knex: Knex): Promise<void> {
     { id: "kd3", project_id: PROJECT_ID, label: "Move-in target", target_date: "2026-10-31", actual_date: null, status: "Upcoming", notes: "Owner relocating from the UK.", sort_order: 2 },
   ]);
 
+  await knex("project_participants").insert([
+    {
+      id: "pp1",
+      project_id: PROJECT_ID,
+      user_id: null,
+      email: "homeowner@example.com",
+      role: "client",
+      status: "invited",
+      invited_by_id: null,
+      invite_token: "seed-invite-token-marbella",
+      invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+  ]);
+
   const updates = [
     {
       id: "u1",

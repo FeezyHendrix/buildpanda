@@ -84,8 +84,8 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.list(project.id);
     },
@@ -98,8 +98,8 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       const stage = await service.create(project.id, request.body);
       return reply.status(201).send(stage);
@@ -113,8 +113,8 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.reorder(project.id, request.body.stageIds);
     },
@@ -127,8 +127,8 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.update(project.id, request.params.stageId, request.body);
     },
@@ -141,8 +141,8 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       await service.remove(project.id, request.params.stageId);
       return reply.status(204).send();

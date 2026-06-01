@@ -1,5 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
+import {
+  assertCanAccessProject,
+  assertCanActAsClient,
+  assertCanModifyProject,
+} from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { queriesRepository } from "./repository.ts";
@@ -83,8 +87,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.list(project.id, request.query.status);
     },
@@ -96,9 +100,10 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+      // The homeowner (client) can raise queries, as well as company staff.
+      assertCanActAsClient(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
@@ -112,8 +117,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.get(project.id, request.params.queryId);
     },
@@ -126,8 +131,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       return service.update(project.id, request.params.queryId, request.body, user.id);
     },
@@ -140,8 +145,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       await service.remove(project.id, request.params.queryId);
       return reply.status(204).send();
@@ -155,8 +160,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
       assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
       const comment = await service.addComment(project.id, request.params.queryId, request.body.body, {
         id: user.id,

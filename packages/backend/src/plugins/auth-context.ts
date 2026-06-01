@@ -17,6 +17,7 @@ declare module "fastify" {
   interface FastifyRequest {
     user: AuthUser | null;
     orgRoles: ReadonlyMap<string, string>;
+    projectRoles: ReadonlyMap<string, string>;
     activeOrganizationId: string | null;
     requireAuth(): AuthUser;
     requireAdmin(): AuthUser;
@@ -25,6 +26,11 @@ declare module "fastify" {
 
 interface MemberRoleRow {
   organizationId: string;
+  role: string;
+}
+
+interface ParticipantRoleRow {
+  project_id: string;
   role: string;
 }
 
@@ -58,6 +64,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
 
   fastify.addHook("preHandler", async (request) => {
     request.orgRoles = new Map<string, string>();
+    request.projectRoles = new Map<string, string>();
     if (request.url.startsWith("/api/auth/")) return;
 
     try {
@@ -85,6 +92,11 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           .where({ userId: session.user.id })
           .select("organizationId", "role");
         request.orgRoles = new Map(rows.map((row) => [row.organizationId, row.role]));
+
+        const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
+          .where({ user_id: session.user.id, status: "active" })
+          .select("project_id", "role");
+        request.projectRoles = new Map(participantRows.map((row) => [row.project_id, row.role]));
       }
     } catch (error) {
       request.log.warn({ err: error }, "Failed to resolve auth session");
