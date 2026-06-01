@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 
 interface InviteMemberDialogProps {
@@ -40,7 +40,7 @@ function InviteMemberDialog({
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title="Invite a team member"
@@ -80,7 +80,7 @@ function InviteMemberDialog({
           ))}
         </select>
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

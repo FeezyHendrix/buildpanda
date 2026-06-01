@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import type { QueryStatus } from "@/lib/project-mock-data";
 
 export interface UpsertQueryValues {
@@ -63,7 +63,7 @@ function UpsertQueryDialog({
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? "Raise a query" : "Edit query"}
@@ -115,7 +115,7 @@ function UpsertQueryDialog({
           <input id="q-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
         </div>
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

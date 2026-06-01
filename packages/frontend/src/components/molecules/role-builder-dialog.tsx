@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
 import {
@@ -118,7 +118,7 @@ function RoleBuilderDialog({
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title="Create a custom role"
@@ -190,7 +190,7 @@ function RoleBuilderDialog({
           </div>
         ))}
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

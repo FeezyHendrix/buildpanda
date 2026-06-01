@@ -13,7 +13,7 @@ import {
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { FormDialog } from "@/components/molecules/form-dialog";
+import { FormDrawer } from "@/components/molecules/form-drawer";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -353,7 +353,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
 
   const valid = title.trim() && materialName.trim() && Number(quantity) > 0 && unit.trim() && neededBy;
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit material order" : "New material order"}
@@ -400,7 +400,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
         <Label htmlFor="mat-notes">Lifecycle notes</Label>
         <textarea id="mat-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

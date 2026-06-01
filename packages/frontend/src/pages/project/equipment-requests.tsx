@@ -13,7 +13,7 @@ import {
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { FormDialog } from "@/components/molecules/form-dialog";
+import { FormDrawer } from "@/components/molecules/form-drawer";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -316,7 +316,7 @@ function EquipmentRequestDialog({ open, onOpenChange, initial, onSubmit, isSubmi
 
   const valid = title.trim() && equipmentName.trim() && equipmentType.trim() && Number(quantity) > 0 && neededFrom && neededUntil;
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit equipment request" : "New equipment request"}
@@ -372,7 +372,7 @@ function EquipmentRequestDialog({ open, onOpenChange, initial, onSubmit, isSubmi
         <Label htmlFor="eq-notes">Lifecycle notes</Label>
         <textarea id="eq-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

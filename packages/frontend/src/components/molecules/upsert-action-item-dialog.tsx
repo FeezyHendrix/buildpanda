@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import type { ActionPriority, ActionStatus } from "@/lib/project-mock-data";
 
 export interface UpsertActionItemValues {
@@ -70,7 +70,7 @@ function UpsertActionItemDialog({
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? "New action item" : "Edit action item"}
@@ -131,7 +131,7 @@ function UpsertActionItemDialog({
         <Label htmlFor="ai-due">Due date</Label>
         <input id="ai-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

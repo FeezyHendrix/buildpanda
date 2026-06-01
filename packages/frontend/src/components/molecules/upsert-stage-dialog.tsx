@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import type { StageStatus } from "@/lib/project-mock-data";
 
 export interface UpsertStageValues {
@@ -67,7 +67,7 @@ function UpsertStageDialog({
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? "Add stage" : "Edit stage"}
@@ -141,7 +141,7 @@ function UpsertStageDialog({
           className="accent-[#004DE7]"
         />
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import type { ChangeStatus } from "@/lib/project-mock-data";
 
 export interface UpsertChangeValues {
@@ -68,7 +68,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? "New change request" : "Edit change request"}
@@ -120,7 +120,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
           </select>
         </div>
       )}
-    </FormDialog>
+    </FormDrawer>
   );
 }
 

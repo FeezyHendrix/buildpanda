@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
-import { FormDialog } from "./form-dialog";
+import { FormDrawer } from "./form-drawer";
 import type { PermitStatus } from "@/lib/project-mock-data";
 
 export interface UpsertPermitValues {
@@ -74,7 +74,7 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
   }
 
   return (
-    <FormDialog
+    <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
       title={mode === "create" ? "Add permit / approval" : "Edit permit"}
@@ -123,7 +123,7 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
         <Label htmlFor="pm-notes">Notes</Label>
         <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={2} className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
-    </FormDialog>
+    </FormDrawer>
   );
 }
 
