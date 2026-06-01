@@ -1,11 +1,13 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModify } from "../../lib/authorization.ts";
+import { assertCanModifyProject } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { updatesRepository } from "./repository.ts";
 import {
   updatesService,
   type AddCommentInput,
+  type CreateUpdateInput,
+  type EditUpdateInput,
   type TransitionUpdateInput,
 } from "./service.ts";
 
@@ -47,6 +49,51 @@ const commentBody = {
   },
 } as const;
 
+const updateCategoryEnum = [
+  "Progress",
+  "Material Delivery",
+  "Inspections",
+  "Issues",
+] as const;
+
+const mediaItems = {
+  type: "array",
+  maxItems: 10,
+  items: {
+    type: "object",
+    required: ["type", "url"],
+    additionalProperties: false,
+    properties: {
+      type: { type: "string", enum: ["photo", "video"] },
+      url: { type: "string", minLength: 1, maxLength: 2000 },
+    },
+  },
+} as const;
+
+const createUpdateBody = {
+  type: "object",
+  required: ["category", "title", "description"],
+  additionalProperties: false,
+  properties: {
+    category: { type: "string", enum: [...updateCategoryEnum] },
+    title: { type: "string", minLength: 1, maxLength: 200 },
+    description: { type: "string", minLength: 1, maxLength: 2000 },
+    media: mediaItems,
+  },
+} as const;
+
+const editUpdateBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    category: { type: "string", enum: [...updateCategoryEnum] },
+    title: { type: "string", minLength: 1, maxLength: 200 },
+    description: { type: "string", minLength: 1, maxLength: 2000 },
+    media: mediaItems,
+  },
+} as const;
+
 const updateRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
   const service = updatesService(updatesRepository(fastify.db));
@@ -60,6 +107,53 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.post<{ Params: { id: string }; Body: CreateUpdateInput }>(
+    "/projects/:id/updates",
+    { schema: { params: projectIdParams, body: createUpdateBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const project = await projects.findById(request.params.id);
+      if (!project) throw new NotFoundError("Project");
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+
+      const update = await service.create(project.id, request.body, {
+        id: user.id,
+        name: user.name,
+      });
+      return reply.status(201).send(update);
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string; updateId: string };
+    Body: EditUpdateInput;
+  }>(
+    "/projects/:id/updates/:updateId",
+    { schema: { params: updateIdParams, body: editUpdateBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const project = await projects.findById(request.params.id);
+      if (!project) throw new NotFoundError("Project");
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+
+      return service.edit(project.id, request.params.updateId, request.body);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; updateId: string } }>(
+    "/projects/:id/updates/:updateId",
+    { schema: { params: updateIdParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const project = await projects.findById(request.params.id);
+      if (!project) throw new NotFoundError("Project");
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+
+      await service.remove(project.id, request.params.updateId);
+      return reply.status(204).send();
+    },
+  );
+
   fastify.patch<{
     Params: { id: string; updateId: string };
     Body: TransitionUpdateInput;
@@ -70,7 +164,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       return service.transition(
         project.id,
@@ -100,7 +194,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       const comment = await service.addComment(
         project.id,

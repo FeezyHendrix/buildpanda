@@ -34,6 +34,7 @@ export interface Project {
 export interface ProjectRow {
   id: string;
   owner_id: string | null;
+  organization_id: string | null;
   name: string;
   address: string;
   status: ProjectStatus;

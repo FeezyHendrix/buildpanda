@@ -1,10 +1,13 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import type { UpdatesRepository } from "./repository.ts";
+import type { UpdateContentPatch, UpdatesRepository } from "./repository.ts";
 import type {
+  CtaTone,
   MediaItem,
+  MediaType,
   ProjectUpdate,
   UpdateAction,
+  UpdateCategory,
   UpdateComment,
   UpdateCommentRow,
   UpdateMediaRow,
@@ -19,6 +22,13 @@ const ALLOWED_TRANSITIONS: Record<string, UpdateStatus[]> = {
   Issues: ["Resolved", "Escalated"],
 };
 
+const CTA_DEFAULTS: Record<UpdateCategory, { label: string; tone: CtaTone }> = {
+  Progress: { label: "Approve", tone: "primary" },
+  "Material Delivery": { label: "Mark as Inspected", tone: "primary" },
+  Inspections: { label: "Approve", tone: "primary" },
+  Issues: { label: "View Resolution Plan", tone: "secondary" },
+};
+
 export interface TransitionUpdateInput {
   status: UpdateStatus;
 }
@@ -27,8 +37,41 @@ export interface AddCommentInput {
   body: string;
 }
 
+export interface MediaInput {
+  type: MediaType;
+  url: string;
+}
+
+export interface CreateUpdateInput {
+  category: UpdateCategory;
+  title: string;
+  description: string;
+  media?: MediaInput[];
+}
+
+export interface EditUpdateInput {
+  category?: UpdateCategory;
+  title?: string;
+  description?: string;
+  media?: MediaInput[];
+}
+
 function toMedia(row: UpdateMediaRow): MediaItem {
   return { id: row.id, type: row.type, url: row.url };
+}
+
+function buildMediaRows(
+  updateId: string,
+  media: MediaInput[] | undefined,
+): UpdateMediaRow[] {
+  if (!media) return [];
+  return media.map((item, index) => ({
+    id: generateId("media"),
+    update_id: updateId,
+    type: item.type,
+    url: item.url,
+    sort_order: index,
+  }));
 }
 
 function toAction(row: UpdateRow): UpdateAction {
@@ -157,6 +200,73 @@ export function updatesService(repository: UpdatesRepository) {
         body: input.body,
       });
       return toComment(row);
+    },
+
+    async create(
+      projectId: string,
+      input: CreateUpdateInput,
+      actor: { id: string; name: string },
+    ): Promise<ProjectUpdate> {
+      const cta = CTA_DEFAULTS[input.category];
+      const updateId = generateId("update");
+      const mediaRows = buildMediaRows(updateId, input.media);
+      const row = await repository.createUpdate(
+        {
+          id: updateId,
+          project_id: projectId,
+          author_id: actor.id,
+          author_name: actor.name,
+          author_role: "Project Manager",
+          author_initials_tone: "brand",
+          category: input.category,
+          title: input.title,
+          description: input.description,
+          cta_label: cta.label,
+          cta_tone: cta.tone,
+          status: "Open",
+          created_at: new Date(),
+        },
+        mediaRows,
+      );
+      return toUpdate(row, mediaRows);
+    },
+
+    async edit(
+      projectId: string,
+      updateId: string,
+      input: EditUpdateInput,
+    ): Promise<ProjectUpdate> {
+      await loadUpdate(projectId, updateId);
+
+      const patch: UpdateContentPatch = {};
+      if (input.title !== undefined) patch.title = input.title;
+      if (input.description !== undefined) patch.description = input.description;
+      if (input.category !== undefined) {
+        patch.category = input.category;
+        const cta = CTA_DEFAULTS[input.category];
+        patch.cta_label = cta.label;
+        patch.cta_tone = cta.tone;
+      }
+      if (Object.keys(patch).length === 0 && input.media === undefined) {
+        throw new BadRequestError("No fields to update");
+      }
+
+      const row =
+        Object.keys(patch).length > 0
+          ? await repository.editUpdate(updateId, patch)
+          : await loadUpdate(projectId, updateId);
+
+      if (input.media !== undefined) {
+        await repository.replaceMedia(updateId, buildMediaRows(updateId, input.media));
+      }
+
+      const media = await repository.mediaForUpdates([updateId]);
+      return toUpdate(row, media);
+    },
+
+    async remove(projectId: string, updateId: string): Promise<void> {
+      await loadUpdate(projectId, updateId);
+      await repository.deleteUpdate(updateId);
     },
   };
 }

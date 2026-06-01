@@ -2,10 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { updateKeys } from "./query-keys";
 import type {
+  MediaType,
   ProjectUpdate,
+  UpdateCategory,
   UpdateComment,
   UpdateStatus,
 } from "@/lib/project-mock-data";
+
+interface UpdateMediaInput {
+  type: MediaType;
+  url: string;
+}
 
 export function useProjectUpdates(projectId: string | undefined) {
   return useQuery({
@@ -85,6 +92,85 @@ export function useAddComment() {
       queryClient.invalidateQueries({
         queryKey: updateKeys.comments(projectId, updateId),
       });
+    },
+  });
+}
+
+interface CreateUpdateVariables {
+  projectId: string;
+  category: UpdateCategory;
+  title: string;
+  description: string;
+  media: UpdateMediaInput[];
+}
+
+export function useCreateUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      category,
+      title,
+      description,
+      media,
+    }: CreateUpdateVariables) => {
+      const { data } = await api.post<ProjectUpdate>(
+        `/projects/${projectId}/updates`,
+        { category, title, description, media },
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
+    },
+  });
+}
+
+interface EditUpdateVariables {
+  projectId: string;
+  updateId: string;
+  category?: UpdateCategory;
+  title?: string;
+  description?: string;
+  media?: UpdateMediaInput[];
+}
+
+export function useEditUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      updateId,
+      ...patch
+    }: EditUpdateVariables) => {
+      const { data } = await api.put<ProjectUpdate>(
+        `/projects/${projectId}/updates/${updateId}`,
+        patch,
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
+    },
+  });
+}
+
+interface DeleteUpdateVariables {
+  projectId: string;
+  updateId: string;
+}
+
+export function useDeleteUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, updateId }: DeleteUpdateVariables) => {
+      await api.delete(`/projects/${projectId}/updates/${updateId}`);
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
   });
 }

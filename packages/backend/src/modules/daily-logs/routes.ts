@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModify } from "../../lib/authorization.ts";
+import { assertCanModifyProject } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { dailyLogsRepository } from "./repository.ts";
@@ -93,7 +93,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       return service.upsert(project.id, request.params.date, request.body, user.id);
     },
@@ -109,7 +109,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const project = await projects.findById(request.params.id);
       if (!project) throw new NotFoundError("Project");
-      assertCanModify({ ownerId: project.owner_id }, user);
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
 
       const link = await service.linkActivity(
         project.id,
@@ -122,6 +122,20 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         activityId: link.activity_id,
         hoursLogged: Number(link.hours_logged),
       });
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; date: string } }>(
+    "/projects/:id/daily-logs/:date",
+    { schema: { params: dateParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const project = await projects.findById(request.params.id);
+      if (!project) throw new NotFoundError("Project");
+      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
+
+      await service.remove(project.id, request.params.date);
+      return reply.status(204).send();
     },
   );
 };

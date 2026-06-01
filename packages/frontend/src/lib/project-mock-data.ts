@@ -64,6 +64,203 @@ export interface ProjectPhase {
   dateRange: string;
 }
 
+export type ActionStatus = "Open" | "InProgress" | "Blocked" | "Resolved";
+export type ActionPriority = "Low" | "Medium" | "High" | "Urgent";
+
+export interface ActionItem {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: ActionStatus;
+  priority: ActionPriority;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  dueDate: string | null;
+  resolvedAt: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionComment {
+  id: string;
+  actionItemId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ActionItemDetail extends ActionItem {
+  comments: ActionComment[];
+}
+
+export type QueryStatus = "Open" | "Answered" | "Closed";
+
+export interface SiteQuery {
+  id: string;
+  projectId: string;
+  subject: string;
+  question: string;
+  status: QueryStatus;
+  answer: string | null;
+  dueDate: string | null;
+  askedById: string | null;
+  answeredById: string | null;
+  answeredByName: string | null;
+  answeredAt: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SiteQueryComment {
+  id: string;
+  queryId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface SiteQueryDetail extends SiteQuery {
+  comments: SiteQueryComment[];
+}
+
+export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Resubmit";
+
+export interface Approval {
+  id: string;
+  projectId: string;
+  title: string;
+  category: string | null;
+  description: string | null;
+  status: ApprovalStatus;
+  response: string | null;
+  dueDate: string | null;
+  submittedById: string | null;
+  reviewedById: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalComment {
+  id: string;
+  approvalId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ApprovalDetail extends Approval {
+  comments: ApprovalComment[];
+}
+
+export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
+
+export interface ChangeRequest {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  reason: string | null;
+  status: ChangeStatus;
+  costImpact: number;
+  timeImpactDays: number;
+  currency: "NGN" | "USD";
+  submittedById: string | null;
+  decidedById: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChangeComment {
+  id: string;
+  changeRequestId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ChangeRequestDetail extends ChangeRequest {
+  comments: ChangeComment[];
+}
+
+export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
+
+export interface Permit {
+  id: string;
+  projectId: string;
+  title: string;
+  authority: string | null;
+  referenceNo: string | null;
+  status: PermitStatus;
+  appliedDate: string | null;
+  approvedDate: string | null;
+  expiryDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KeyDateStatus = "Upcoming" | "Met" | "Missed";
+
+export interface KeyDate {
+  id: string;
+  projectId: string;
+  label: string;
+  targetDate: string | null;
+  actualDate: string | null;
+  status: KeyDateStatus;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectInsights {
+  progress: { stagesTotal: number; stagesComplete: number; overallPercent: number };
+  openItems: { actionItems: number; blocked: number; queries: number; awaitingApproval: number };
+  budget: { currency: string; total: number; released: number; remaining: number; approvedChangeCost: number };
+  scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number; blockedItems: number };
+}
+
+export interface WhatsNext {
+  windowDays: number;
+  from: string;
+  to: string;
+  stagesInProgress: Array<{ id: string; name: string; progress_percent: number; date_range: string | null }>;
+  upcomingStages: Array<{ id: string; name: string; start_date: string }>;
+  dueActionItems: Array<{ id: string; title: string; priority: string; due_date: string; status: string }>;
+  dueQueries: Array<{ id: string; subject: string; due_date: string }>;
+  dueApprovals: Array<{ id: string; title: string; due_date: string; status: string }>;
+  upcomingKeyDates: Array<{ id: string; label: string; target_date: string }>;
+  expiringPermits: Array<{ id: string; title: string; expiry_date: string }>;
+}
+
+export type StageStatus = PhaseStatus;
+
+export interface Stage {
+  id: string;
+  projectId: string;
+  name: string;
+  status: StageStatus;
+  startDate: string | null;
+  endDate: string | null;
+  dateRange: string | null;
+  progressPercent: number;
+  sortOrder: number;
+}
+
 export interface Project {
   id: string;
   ownerId: string | null;
@@ -128,12 +325,15 @@ export interface UpdateComment {
   createdAt: string;
 }
 
+export type CategoryGroup = "document" | "plan";
+
 export interface DocumentCategory {
   id: string;
   name: string;
   fileCount: number;
   totalSize: string;
   tone: Tone;
+  group: CategoryGroup;
 }
 
 export interface ProjectDocument {
@@ -142,8 +342,26 @@ export interface ProjectDocument {
   fileName: string;
   size: string;
   category: string;
+  categoryId: string | null;
+  group: CategoryGroup;
   uploadedAt: string;
   status: DocumentStatus;
+  versionNo: number;
+  versionCount: number;
+  currentVersionId: string | null;
+}
+
+export interface DocumentVersion {
+  id: string;
+  documentId: string;
+  versionNo: number;
+  revisionLabel: string | null;
+  fileName: string;
+  size: string;
+  notes: string | null;
+  uploadedById: string | null;
+  isCurrent: boolean;
+  createdAt: string;
 }
 
 export interface InspectionReport {
@@ -174,6 +392,85 @@ export interface MaterialProcurement {
   receipt: string;
   amount: number;
   thumbnailTone: Tone;
+}
+
+export type MaterialOrderStatus =
+  | "Draft"
+  | "Requested"
+  | "Approved"
+  | "Ordered"
+  | "PartiallyDelivered"
+  | "Delivered"
+  | "Cancelled";
+export type EquipmentRequestStatus =
+  | "Draft"
+  | "Requested"
+  | "Approved"
+  | "Scheduled"
+  | "OnHire"
+  | "Returned"
+  | "Cancelled";
+export type RequestPriority = "Low" | "Normal" | "High" | "Critical";
+export type EquipmentBucket = "requests" | "approvals" | "schedule" | "on-hire" | "returns";
+
+export interface LifecycleLinks {
+  phaseId: string | null;
+  phaseName: string | null;
+  activityId: string | null;
+  activityName: string | null;
+  documentId: string | null;
+  documentName: string | null;
+}
+
+export interface MaterialOrder extends LifecycleLinks {
+  id: string;
+  projectId: string;
+  title: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  supplier: string | null;
+  status: MaterialOrderStatus;
+  priority: RequestPriority;
+  neededBy: string;
+  orderedAt: string | null;
+  expectedDeliveryAt: string | null;
+  deliveredAt: string | null;
+  estimatedCost: number;
+  actualCost: number;
+  currency: Currency;
+  deliveryLocation: string | null;
+  notes: string | null;
+  requestedById: string | null;
+  procurementId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EquipmentRequest extends LifecycleLinks {
+  id: string;
+  projectId: string;
+  title: string;
+  equipmentName: string;
+  equipmentType: string;
+  quantity: number;
+  supplier: string | null;
+  status: EquipmentRequestStatus;
+  bucket: EquipmentBucket;
+  priority: RequestPriority;
+  neededFrom: string;
+  neededUntil: string;
+  mobilizedAt: string | null;
+  returnedAt: string | null;
+  estimatedCost: number;
+  actualCost: number;
+  currency: Currency;
+  deliveryLocation: string | null;
+  operatorRequired: boolean;
+  notes: string | null;
+  requestedById: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MilestonePayment {

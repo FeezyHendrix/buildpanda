@@ -7,11 +7,11 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsup src/server.ts --format esm --dts",
     "start": "node dist/server.js",
-    "db:migrate": "knex migrate:latest --knexfile knexfile.ts",
-    "db:rollback": "knex migrate:rollback --knexfile knexfile.ts",
-    "db:seed": "knex seed:run --knexfile knexfile.ts",
-    "db:make-migration": "knex migrate:make --knexfile knexfile.ts -x ts",
-    "db:make-seed": "knex seed:make --knexfile knexfile.ts -x ts",
+    "db:migrate": "tsx ./node_modules/knex/bin/cli.js migrate:latest --knexfile knexfile.ts",
+    "db:rollback": "tsx ./node_modules/knex/bin/cli.js migrate:rollback --knexfile knexfile.ts",
+    "db:seed": "tsx ./node_modules/knex/bin/cli.js seed:run --knexfile knexfile.ts",
+    "db:make-migration": "tsx ./node_modules/knex/bin/cli.js migrate:make --knexfile knexfile.ts -x ts",
+    "db:make-seed": "tsx ./node_modules/knex/bin/cli.js seed:make --knexfile knexfile.ts -x ts",
     "lint": "eslint src/"
   },
   "dependencies": {
@@ -21,8 +21,10 @@
     "@fastify/env": "^5.0.0",
     "@fastify/multipart": "^10.0.0",
     "better-auth": "^1.5.6",
+    "bullmq": "^5.77.6",
     "fastify": "^5.2.0",
     "fastify-plugin": "^5.0.0",
+    "ioredis": "5.10.1",
     "knex": "^3.1.0",
     "pg": "^8.13.0",
     "zeptomail": "^7.0.2"

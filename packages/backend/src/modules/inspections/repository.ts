@@ -22,12 +22,28 @@ export interface NewInspectionRecord {
   scheduled_at: string;
 }
 
+export interface InspectionUpdatePatch {
+  inspector_id?: string;
+  inspector_name?: string;
+  inspector_role?: string;
+  title?: string;
+  category?: InspectionCategory;
+  description?: string;
+  status?: InspectionStatus;
+  risk_level?: RiskLevel;
+  scheduled_at?: string;
+}
+
 export function inspectionsRepository(db: Knex) {
   return {
     listByProject(projectId: string): Promise<InspectionRow[]> {
       return db<InspectionRow>("inspections")
         .where({ project_id: projectId })
         .orderBy("created_at", "desc");
+    },
+
+    findById(id: string): Promise<InspectionRow | undefined> {
+      return db<InspectionRow>("inspections").where({ id }).first();
     },
 
     mediaForInspections(inspectionIds: string[]): Promise<InspectionMediaRow[]> {
@@ -44,6 +60,24 @@ export function inspectionsRepository(db: Knex) {
       const [row] = await db<InspectionRow>("inspections").insert(record).returning("*");
       if (!row) throw new Error("Failed to insert inspection");
       return row;
+    },
+
+    async update(
+      id: string,
+      patch: InspectionUpdatePatch,
+    ): Promise<InspectionRow | undefined> {
+      const [row] = await db<InspectionRow>("inspections")
+        .where({ id })
+        .update(patch)
+        .returning("*");
+      return row;
+    },
+
+    async deleteInspection(id: string): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("inspection_media").where({ inspection_id: id }).del();
+        await trx("inspections").where({ id }).del();
+      });
     },
   };
 }

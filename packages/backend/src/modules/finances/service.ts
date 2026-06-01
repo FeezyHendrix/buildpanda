@@ -149,7 +149,7 @@ export function financesService(repository: FinancesRepository) {
       }
       await repository.deposit({
         projectId,
-        amount: String(input.amount),
+        amount: input.amount,
         description: input.description ?? "Deposit · Project funding",
         entryDate: input.entryDate ?? new Date().toISOString().slice(0, 10),
         ledgerId: generateId("ledger"),
@@ -169,7 +169,7 @@ export function financesService(repository: FinancesRepository) {
         phase: input.phase,
         status: input.status ?? "Pending",
         percent_complete: input.percentComplete ?? 0,
-        amount: input.amount,
+        amount: String(input.amount),
         proof_file_name: null,
         proof_verified: false,
         inspector_sign_off: input.inspectorSignOff ?? "Pending",

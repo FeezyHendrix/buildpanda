@@ -3,16 +3,25 @@ import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   ChevronRightIcon,
   MessagesIcon,
+  PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { CommentPanel } from "@/components/molecules/comment-panel";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
+import {
+  UpsertUpdateDialog,
+  type UpsertUpdateValues,
+} from "@/components/molecules/upsert-update-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useAddComment,
+  useCreateUpdate,
+  useDeleteUpdate,
+  useEditUpdate,
   useProjectUpdates,
   useTransitionUpdate,
   useUpdateComments,
@@ -72,6 +81,8 @@ export default function ProjectUpdates() {
   const { project } = useProjectContext();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [createOpen, setCreateOpen] = useState(false);
+  const createUpdate = useCreateUpdate();
 
   const contractors = useMemo(() => uniqueContractors(updates), [updates]);
   const visible = useMemo(
@@ -84,11 +95,33 @@ export default function ProjectUpdates() {
     value: FilterState[K],
   ) => setFilters((prev) => ({ ...prev, [key]: value }));
 
+  function handleCreate(values: UpsertUpdateValues): void {
+    createUpdate.mutate(
+      { projectId: project.id, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Updates"
         description="Track construction progress with real-time reports from the site."
+        actions={
+          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="size-4" />
+            New update
+          </Button>
+        }
+      />
+
+      <UpsertUpdateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        onSubmit={handleCreate}
+        isSubmitting={createUpdate.isPending}
+        error={(createUpdate.error as Error | undefined)?.message ?? null}
       />
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
@@ -157,8 +190,12 @@ function UpdateCard({
   update: ProjectUpdate;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const transition = useTransitionUpdate();
   const addComment = useAddComment();
+  const editUpdate = useEditUpdate();
+  const deleteUpdate = useDeleteUpdate();
   const commentsQuery = useUpdateComments(
     commentsOpen ? projectId : undefined,
     commentsOpen ? update.id : undefined,
@@ -178,6 +215,17 @@ function UpdateCard({
 
   function handlePostComment(body: string): void {
     addComment.mutate({ projectId, updateId: update.id, body });
+  }
+
+  function handleEdit(values: UpsertUpdateValues): void {
+    editUpdate.mutate(
+      { projectId, updateId: update.id, ...values },
+      { onSuccess: () => setEditOpen(false) },
+    );
+  }
+
+  function handleDelete(): void {
+    deleteUpdate.mutate({ projectId, updateId: update.id });
   }
 
   return (
@@ -246,6 +294,20 @@ function UpdateCard({
               <ChevronRightIcon className="size-3.5" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-900"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-xs font-medium text-red-500 hover:text-red-600"
+          >
+            Delete
+          </button>
         </div>
         <Button
           size="sm"
@@ -269,6 +331,31 @@ function UpdateCard({
           onSubmit={handlePostComment}
         />
       )}
+
+      <UpsertUpdateDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        mode="edit"
+        initial={{
+          category: update.category,
+          title: update.title,
+          description: update.description,
+          media: update.media.map((m) => ({ type: m.type, url: m.url })),
+        }}
+        onSubmit={handleEdit}
+        isSubmitting={editUpdate.isPending}
+        error={(editUpdate.error as Error | undefined)?.message ?? null}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        title="Delete update"
+        description="This permanently removes the update and its comments. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </Card>
   );
 }

@@ -1,5 +1,6 @@
 import { generateId } from "../../lib/ids.ts";
 import { NotFoundError } from "../../lib/errors.ts";
+import { assertCanAccessProject, type AccessContext } from "../../lib/authorization.ts";
 import type {
   NewPhaseRecord,
   NewProjectRecord,
@@ -62,6 +63,7 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
 function buildCreate(
   input: CreateProjectInput,
   ownerId: string,
+  organizationId: string | null,
 ): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: "NGN" | "USD" } {
   const projectId = generateId("prj");
   const address = `${input.location.city}, ${input.location.state}`;
@@ -69,6 +71,7 @@ function buildCreate(
   const project: NewProjectRecord = {
     id: projectId,
     owner_id: ownerId,
+    organization_id: organizationId,
     name: input.title,
     address,
     status: "On Track",
@@ -107,8 +110,8 @@ function buildCreate(
 
 export function projectsService(repository: ProjectsRepository) {
   return {
-    async listForOwner(ownerId: string): Promise<Project[]> {
-      const rows = await repository.listForOwner(ownerId);
+    async listForOwner(ownerId: string, orgIds: string[]): Promise<Project[]> {
+      const rows = await repository.listForOwner(ownerId, orgIds);
       if (rows.length === 0) return [];
       const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
       const grouped = new Map<string, ProjectPhaseRow[]>();
@@ -127,8 +130,23 @@ export function projectsService(repository: ProjectsRepository) {
       return toProject(row, phases);
     },
 
-    async create(input: CreateProjectInput, ownerId: string): Promise<Project> {
-      const { project, phases, financesCurrency } = buildCreate(input, ownerId);
+    async getByIdForUser(id: string, ctx: AccessContext): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanAccessProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      const phases = await repository.findPhasesByProject(id);
+      return toProject(row, phases);
+    },
+
+    async create(
+      input: CreateProjectInput,
+      ownerId: string,
+      organizationId: string | null,
+    ): Promise<Project> {
+      const { project, phases, financesCurrency } = buildCreate(input, ownerId, organizationId);
       await repository.create(project, phases, {
         project_id: project.id,
         currency: financesCurrency,

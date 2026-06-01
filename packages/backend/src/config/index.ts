@@ -74,6 +74,21 @@ export const config = {
     maxFileBytes: optionalNumber("UPLOAD_MAX_BYTES", 25 * 1024 * 1024),
   },
 
+  // Background jobs. When url is empty the queue runs in inline mode (see
+  // QueueManager) so the app still functions without a Redis server.
+  redis: {
+    url: optional("REDIS_URL", ""),
+  },
+
+  // Panda AI insights. When apiKey is empty the engine falls back to a
+  // deterministic local analyzer instead of calling Moonshot/KIMI.
+  ai: {
+    apiKey: optional("KIMI_API_KEY", ""),
+    baseUrl: optional("KIMI_BASE_URL", "https://api.moonshot.ai/v1"),
+    model: optional("KIMI_MODEL", "kimi-k2-0905-preview"),
+    timeoutMs: optionalNumber("KIMI_TIMEOUT_MS", 45_000),
+  },
+
   storage: {
     bucket: optional("S3_BUCKET", "buildpanda"),
     region: optional("AWS_REGION", "us-east-1"),

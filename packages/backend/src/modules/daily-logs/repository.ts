@@ -149,6 +149,17 @@ export function dailyLogsRepository(db: Knex) {
         .select<{ id: string }>("id")
         .first();
     },
+
+    async deleteOne(key: DailyLogKey): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("daily_log_activities")
+          .where({ project_id: key.projectId, log_date: key.logDate })
+          .del();
+        await trx("daily_logs")
+          .where({ project_id: key.projectId, log_date: key.logDate })
+          .del();
+      });
+    },
   };
 }
 

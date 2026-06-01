@@ -36,25 +36,55 @@ interface ScheduleNavItem extends ProjectNavItem {
   helper: string;
 }
 
+interface MaterialsNavItem extends ProjectNavItem {
+  helper: string;
+}
+
 const NAV_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
   { label: "Updates", slug: "updates", Icon: UpdatesIcon },
   { label: "Inspections", slug: "inspections", Icon: InspectionsIcon },
   { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon },
+  { label: "Queries", slug: "queries", Icon: MessagesIcon },
+  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
+  { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon },
+  { label: "Permits", slug: "permits", Icon: DocumentsIcon },
   { label: "Finances", slug: "finances", Icon: FinancesIcon },
   { label: "Documents", slug: "documents", Icon: DocumentsIcon },
-  { label: "Materials", slug: "materials", Icon: MaterialsIcon },
   { label: "Team", slug: "team", Icon: ContractorsIcon },
   { label: "Messages", slug: "messages", Icon: MessagesIcon },
+  { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon },
   { label: "Settings", slug: "settings", Icon: SettingsIcon },
 ] as const;
 
+const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  { label: "Materials", slug: "materials", Icon: MaterialsIcon, helper: "Orders & requests" },
+  {
+    label: "Equipment Requests",
+    slug: "equipment-requests",
+    Icon: MaterialsIcon,
+    helper: "Rental workflow",
+  },
+] as const;
+
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "What's Next",
+    slug: "whats-next",
+    Icon: TrendingUpIcon,
+    helper: "Next 2 weeks",
+  },
   {
     label: "Build Stages",
     slug: "stages",
     Icon: OverviewIcon,
     helper: "Phases & progress",
+  },
+  {
+    label: "Key Dates",
+    slug: "key-dates",
+    Icon: CalendarIcon,
+    helper: "Milestone dates",
   },
   {
     label: "Site Activity",
@@ -74,6 +104,12 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
+  {
+    label: "Milestones",
+    slug: "milestones",
+    Icon: FinancesIcon,
+    helper: "Cost gates",
+  },
 ] as const;
 
 interface ProjectSidebarProps {
@@ -83,12 +119,6 @@ interface ProjectSidebarProps {
 
 function ProjectSidebar({ project, className }: ProjectSidebarProps) {
   const location = useLocation();
-  const [scheduleOpen, setScheduleOpen] = useState(() =>
-    location.pathname.includes("/stages") ||
-    location.pathname.includes("/activities") ||
-    location.pathname.includes("/daily-log") ||
-    location.pathname.includes("/project-chart"),
-  );
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -105,8 +135,20 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
       })),
     [project.id],
   );
+  const materialsItems = useMemo<MaterialsNavItem[]>(
+    () =>
+      MATERIALS_ENTRIES.map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id],
+  );
 
   const isScheduleActive = scheduleItems.some(
+    (item) =>
+      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
+  const isMaterialsActive = materialsItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
@@ -154,13 +196,12 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
         {items.slice(0, 2).map((item) => (
           <ProjectNavLink key={item.slug} item={item} />
         ))}
-        <ScheduleNavGroup
-          items={scheduleItems}
-          active={isScheduleActive}
-          open={scheduleOpen}
-          onToggle={() => setScheduleOpen((open) => !open)}
-        />
-        {items.slice(2).map((item) => (
+        <ScheduleNavGroup items={scheduleItems} active={isScheduleActive} />
+        {items.slice(2, 9).map((item) => (
+          <ProjectNavLink key={item.slug} item={item} />
+        ))}
+        <MaterialsNavGroup items={materialsItems} active={isMaterialsActive} />
+        {items.slice(9).map((item) => (
           <ProjectNavLink key={item.slug} item={item} />
         ))}
       </nav>
@@ -171,34 +212,35 @@ function ProjectSidebar({ project, className }: ProjectSidebarProps) {
 function ScheduleNavGroup({
   items,
   active,
-  open,
-  onToggle,
 }: {
   items: ScheduleNavItem[];
   active: boolean;
-  open: boolean;
-  onToggle: () => void;
 }) {
+  const [open, setOpen] = useState(active);
   return (
-    <div className="rounded-xl bg-white/70 p-1 ring-1 ring-[#EDEDED]">
+    <div>
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm font-semibold",
-          "outline-none transition-colors hover:bg-[#EDEDED]/60 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          active ? "text-gray-900" : "text-gray-600",
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "hover:bg-[#EDEDED]/60",
+          active ? "text-gray-900" : "text-gray-500 hover:text-gray-900",
         )}
       >
         <CalendarIcon />
-        <span className="flex-1 truncate">Schedules</span>
+        <span className="flex-1 truncate text-left">Schedules</span>
         <ChevronRightIcon
-          className={cn("size-4 text-gray-400 transition-transform", open && "rotate-90")}
+          className={cn(
+            "size-4 text-gray-400 transition-transform duration-200",
+            open && "rotate-90",
+          )}
         />
       </button>
       {open && (
-        <div className="mt-1 flex flex-col gap-1 border-l border-[#E5E7EB] pl-3">
+        <div className="mt-0.5 flex flex-col gap-0.5 pl-4">
           {items.map((item) => (
             <ProjectScheduleNavLink key={item.slug} item={item} />
           ))}
@@ -209,13 +251,13 @@ function ScheduleNavGroup({
 }
 
 function ProjectScheduleNavLink({ item }: { item: ScheduleNavItem }) {
-  const { Icon, label, helper, to } = item;
+  const { Icon, label, to } = item;
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2 rounded-lg px-2 py-2 text-xs font-medium text-gray-500",
+          "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500",
           "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
           "hover:bg-[#EDEDED]/60 hover:text-gray-900",
           isActive && "bg-[#EDEDED] text-gray-900",
@@ -223,13 +265,56 @@ function ProjectScheduleNavLink({ item }: { item: ScheduleNavItem }) {
       }
     >
       <Icon className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate">{label}</span>
-        <span className="block truncate text-[10px] font-normal text-gray-400">
-          {helper}
-        </span>
-      </span>
+      <span className="truncate">{label}</span>
     </NavLink>
+  );
+}
+
+function MaterialsNavGroup({
+  items,
+  active,
+}: {
+  items: MaterialsNavItem[];
+  active: boolean;
+}) {
+  const [open, setOpen] = useState(active);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium",
+          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "hover:bg-[#EDEDED]/60",
+          active ? "text-gray-900" : "text-gray-600",
+        )}
+      >
+        <MaterialsIcon className={cn("size-[18px]", active ? "text-[#004DE7]" : "text-gray-500")} />
+        <span className="flex-1 text-left">Materials & Equipment</span>
+        <ChevronRightIcon className={cn("size-4 transition-transform", open && "rotate-90")} />
+      </button>
+      {open && (
+        <div className="mt-1 flex flex-col gap-1 pl-7">
+          {items.map((item) => (
+            <NavLink
+              key={item.slug}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "rounded-lg px-3 py-2 text-xs transition-colors",
+                  isActive ? "bg-[#E6EFFE] text-[#004DE7]" : "text-gray-500 hover:bg-[#EDEDED]/60 hover:text-gray-900",
+                )
+              }
+            >
+              <span className="block font-semibold">{item.label}</span>
+              <span className="block text-[11px] opacity-80">{item.helper}</span>
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

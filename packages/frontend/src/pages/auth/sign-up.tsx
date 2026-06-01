@@ -2,24 +2,78 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { CountrySelect } from "@/components/atoms";
+import { RadioCard } from "@/components/atoms";
+import { SearchableSelect } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { Label } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
 import type { Country } from "@/lib/countries";
 
+const ACCOUNT_TYPES = [
+  {
+    id: "project_owner",
+    title: "Project Owner",
+    description: "You own the project and oversee its delivery.",
+  },
+  {
+    id: "construction_company",
+    title: "Construction Company",
+    description: "You are the construction team delivering the build.",
+  },
+  {
+    id: "project_manager",
+    title: "Project Manager",
+    description: "You manage delivery as a builder, QS, architect, or similar.",
+  },
+] as const;
+
+const PROFESSIONS = [
+  "Builder",
+  "Quantity Surveyor",
+  "Architect",
+  "Engineer",
+  "Site Supervisor",
+  "Other",
+] as const;
+
+type AccountType = (typeof ACCOUNT_TYPES)[number]["id"];
+
 export default function SignUpForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [profession, setProfession] = useState<string | null>(null);
   const [country, setCountry] = useState<Country | null>(null);
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const isProjectManager = accountType === "project_manager";
+  const personaComplete =
+    accountType !== null && (!isProjectManager || profession !== null);
+
+  function selectAccountType(value: AccountType) {
+    setAccountType(value);
+    if (value !== "project_manager") {
+      setProfession(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+
+    if (!accountType) {
+      setError("Please select who is creating this account.");
+      return;
+    }
+    if (isProjectManager && !profession) {
+      setError("Please select your profession.");
+      return;
+    }
+
     setLoading(true);
 
     const { error: signUpError } = await authClient.signUp.email({
@@ -28,6 +82,8 @@ export default function SignUpForm() {
       password,
       country: country?.code ?? "",
       phone,
+      accountType,
+      profession: isProjectManager ? (profession ?? "") : "",
     });
 
     setLoading(false);
@@ -58,6 +114,34 @@ export default function SignUpForm() {
       )}
 
       <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
+          <Label>Who is creating this account?</Label>
+          <div className="flex flex-col gap-3">
+            {ACCOUNT_TYPES.map((type) => (
+              <RadioCard
+                key={type.id}
+                title={type.title}
+                description={type.description}
+                selected={accountType === type.id}
+                onClick={() => selectAccountType(type.id)}
+              />
+            ))}
+          </div>
+
+          {isProjectManager && (
+            <div className="flex flex-col gap-1.5">
+              <Label>Your profession</Label>
+              <SearchableSelect
+                items={PROFESSIONS}
+                value={profession}
+                onChange={setProfession}
+                placeholder="Select your profession"
+                searchPlaceholder="Search professions…"
+              />
+            </div>
+          )}
+        </div>
+
         <FormField
           label="Full name"
           name="name"
@@ -138,7 +222,7 @@ export default function SignUpForm() {
         </p>
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full" disabled={loading || !personaComplete}>
         {loading ? "Creating account..." : "Create Account"}
       </Button>
     </form>

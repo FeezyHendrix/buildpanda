@@ -11,6 +11,10 @@ const VerifyEmail = lazy(() => import("@/pages/auth/verify-email"));
 const DashboardLayout = lazy(() => import("@/layouts/dashboard-layout"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
+const TeamSettings = lazy(() => import("@/pages/dashboard/settings/team"));
+const AcceptInvitation = lazy(
+  () => import("@/pages/accept-invitation"),
+);
 const CreateProject = lazy(() => import("@/pages/project/create"));
 
 const ProjectOverview = lazy(() => import("@/pages/project/overview"));
@@ -24,15 +28,25 @@ const ProjectMilestonePayments = lazy(
 );
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
+const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
+const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
-const ProjectContractors = lazy(() => import("@/pages/project/contractors"));
+const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
 const ProjectMessages = lazy(() => import("@/pages/project/messages"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
 const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
+const ProjectStages = lazy(() => import("@/pages/project/stages"));
+const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
+const ProjectQueries = lazy(() => import("@/pages/project/queries"));
+const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
+const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
+const ProjectPermits = lazy(() => import("@/pages/project/permits"));
+const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
+const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
 
 const router = createBrowserRouter([
   {
@@ -54,7 +68,14 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <DashboardLayout />,
-    children: [{ index: true, element: <Dashboard /> }],
+    children: [
+      { index: true, element: <Dashboard /> },
+      { path: "settings/team", element: <TeamSettings /> },
+    ],
+  },
+  {
+    path: "/accept-invitation/:invitationId",
+    element: <AcceptInvitation />,
   },
   {
     path: "/project/create",
@@ -78,9 +99,14 @@ const router = createBrowserRouter([
       },
       { path: "finances/invoices", element: <ProjectInvoices /> },
       { path: "finances/budget", element: <ProjectBudget /> },
+      { path: "panda-ai", element: <ProjectPandaAi /> },
       { path: "materials", element: <ProjectMaterials /> },
+      { path: "materials/orders", element: <ProjectMaterials /> },
+      { path: "materials/requests", element: <ProjectMaterials /> },
+      { path: "equipment-requests", element: <ProjectEquipmentRequests /> },
+      { path: "equipment-requests/:bucket", element: <ProjectEquipmentRequests /> },
       { path: "documents", element: <ProjectDocuments /> },
-      { path: "contractors", element: <ProjectContractors /> },
+      { path: "team", element: <ProjectTeam /> },
       { path: "inspections", element: <ProjectInspections /> },
       { path: "messages", element: <ProjectMessages /> },
       { path: "settings", element: <ProjectSettings /> },
@@ -89,6 +115,14 @@ const router = createBrowserRouter([
       { path: "milestones", element: <ProjectMilestonePayments /> },
       { path: "project-chart", element: <ProjectSchedule /> },
       { path: "schedule", element: <ProjectSchedule /> },
+      { path: "stages", element: <ProjectStages /> },
+      { path: "action-items", element: <ProjectActionItems /> },
+      { path: "queries", element: <ProjectQueries /> },
+      { path: "approvals", element: <ProjectApprovals /> },
+      { path: "change-requests", element: <ProjectChangeRequests /> },
+      { path: "permits", element: <ProjectPermits /> },
+      { path: "key-dates", element: <ProjectKeyDates /> },
+      { path: "whats-next", element: <ProjectWhatsNext /> },
       { path: "daily-log", element: <ProjectDailyLog /> },
     ],
   },

@@ -8,6 +8,7 @@ import type {
 export interface NewProjectRecord {
   id: string;
   owner_id: string;
+  organization_id: string | null;
   name: string;
   address: string;
   status: "On Track";
@@ -45,10 +46,14 @@ export interface NewFinancesRecord {
 
 export function projectsRepository(db: Knex) {
   return {
-    listForOwner(ownerId: string): Promise<ProjectRow[]> {
+    listForOwner(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
       return db<ProjectRow>("projects")
         .where(function () {
-          this.where("owner_id", ownerId).orWhereNull("owner_id");
+          this.where("owner_id", ownerId)
+            .orWhere(function () {
+              this.whereNull("owner_id").whereNull("organization_id");
+            });
+          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
         })
         .orderBy("updated_at", "desc");
     },

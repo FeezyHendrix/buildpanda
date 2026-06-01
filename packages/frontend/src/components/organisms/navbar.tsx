@@ -20,6 +20,7 @@ type NavbarProps = {
   showLogo?: boolean;
   sticky?: boolean;
   searchPlaceholder?: string;
+  leadingSlot?: ReactNode;
   className?: string;
 } & NavbarUserSlot;
 
@@ -29,6 +30,7 @@ function Navbar({
   showLogo = false,
   sticky = false,
   searchPlaceholder = "Search Build Panda",
+  leadingSlot,
   userSlot,
   className,
 }: NavbarProps) {
@@ -47,6 +49,8 @@ function Navbar({
       )}
 
       <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+
+      {leadingSlot && <div className="ml-4 flex items-center">{leadingSlot}</div>}
 
       <div className="ml-auto flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
         <NotificationBell count={notificationCount} />

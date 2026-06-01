@@ -1,0 +1,61 @@
+export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
+export type Currency = "NGN" | "USD";
+
+export interface ChangeRequest {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  reason: string | null;
+  status: ChangeStatus;
+  costImpact: number;
+  timeImpactDays: number;
+  currency: Currency;
+  submittedById: string | null;
+  decidedById: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChangeComment {
+  id: string;
+  changeRequestId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface ChangeRequestDetail extends ChangeRequest {
+  comments: ChangeComment[];
+}
+
+export interface ChangeRequestRow {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  reason: string | null;
+  status: ChangeStatus;
+  cost_impact: string;
+  time_impact_days: number;
+  currency: Currency;
+  submitted_by_id: string | null;
+  decided_by_id: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChangeCommentRow {
+  id: string;
+  change_request_id: string;
+  author_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+}

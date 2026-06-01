@@ -45,3 +45,49 @@ export function useRequestInspection() {
     },
   });
 }
+
+interface EditInspectionVariables {
+  projectId: string;
+  inspectionId: string;
+  title?: string;
+  category?: Exclude<InspectionCategory, "All Reports">;
+  description?: string;
+  scheduledAt?: string;
+  status?: "Scheduled" | "Action Required" | "Completed";
+  riskLevel?: "Low" | "Medium" | "High";
+}
+
+export function useEditInspection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, inspectionId, ...patch }: EditInspectionVariables) => {
+      const { data } = await api.put<InspectionReport>(
+        `/projects/${projectId}/inspections/${inspectionId}`,
+        patch,
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
+    },
+  });
+}
+
+interface DeleteInspectionVariables {
+  projectId: string;
+  inspectionId: string;
+}
+
+export function useDeleteInspection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, inspectionId }: DeleteInspectionVariables) => {
+      await api.delete(`/projects/${projectId}/inspections/${inspectionId}`);
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
+    },
+  });
+}
