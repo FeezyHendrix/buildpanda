@@ -1,10 +1,7 @@
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import {
-  CheckIcon,
-  ExternalLinkIcon,
-} from "@/components/atoms/project-nav-icons";
+import { ExternalLinkIcon } from "@/components/atoms/project-nav-icons";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type {
@@ -33,8 +30,6 @@ function MilestoneCard({
   currency,
   variant = "compact",
   onViewDocs,
-  onEdit,
-  onDelete,
   onRaiseDispute,
   onReleaseFunds,
   className,

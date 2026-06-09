@@ -6,33 +6,31 @@ import { Badge, ProgressBar } from "../atoms";
 import { icons } from "@/assets/icons/icons";
 
 interface KpiCardProps {
-  // label: string;
-  // children: ReactNode;
   padding?: CardPadding;
   className?: string;
-  title: string;
+  title?: string;
+  label?: string;
   value?: string | number;
   subValue?: string;
-  icon: string;
-  progress?: number
+  icon?: string;
+  progress?: number;
   required?: boolean;
-  // badgeClassName?: string
-  // badge?: ReactNode
+  children?: ReactNode;
 }
 
 function KpiCard({
-  // label,
-  // children,
   padding = "md",
   className,
   title,
+  label,
   value,
   subValue,
   icon,
   progress,
   required,
-  // badge,
+  children,
 }: KpiCardProps) {
+  const heading = title ?? label;
   return (
     <Card padding={padding} className={cn(
         "flex flex-col gap-4 bg-[#F8F8F8] p-5 flex-1 min-w-0 rounded-[1px] border-none",
@@ -41,22 +39,15 @@ function KpiCard({
       {/* Icon + title */}
       <div className="flex items-center justify-between">
         <div className={cn("flex items-center gap-2")}>
-          <ReactSVG src={icon} />
-          <p className="text-[12px] text-black-300 font-medium">{title}</p>
+          {icon && <ReactSVG src={icon} />}
+          {heading && (
+            <p className="text-[12px] text-black-300 font-medium">{heading}</p>
+          )}
         </div>
-        {/* {badge && (
-          <span
-            className={cn(
-              "text-[11px] font-semibold px-2.5 py-1 rounded-full",
-              badgeClassName ?? "bg-success-50 text-success-700"
-            )}
-          >
-            {label}
-          </span>
-        )} */}
       </div>
 
-      {/* Value */}
+      {children}
+
       {value && (
         <div className='flex flex-col gap-2'>
           <p className="text-[20px] font-semibold text-black-500">{value}</p>
