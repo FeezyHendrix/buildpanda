@@ -6,6 +6,7 @@ import {
   type AiSuggestion,
 } from "@/hooks/use-panda-ai";
 import { PageHeader } from "@/components/molecules/page-header";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { KpiCard } from "@/components/molecules/kpi-card";
@@ -180,6 +181,7 @@ export default function ProjectPandaAi() {
 
   return (
     <div className="mx-auto max-w-6xl pb-24">
+      <Breadcrumbs items={[{ label: "Panda AI" }]} className="mb-4" />
       <PageHeader
         title="Panda AI"
         description="AI monitoring of project health with prioritized suggestions."

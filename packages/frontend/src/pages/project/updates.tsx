@@ -4,11 +4,6 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import {
-  ChevronRightIcon,
-  MessagesIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
 import { CommentPanel } from "@/components/molecules/comment-panel";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -35,6 +30,8 @@ import type {
   UpdateCategory,
   UpdateStatus,
 } from "@/lib/project-mock-data";
+import { ReactSVG } from "react-svg";
+import { icons } from "@/assets/icons/icons";
 
 const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
   Progress: "Approved",
@@ -107,12 +104,12 @@ export default function ProjectUpdates() {
       <PageHeader
         title="Updates"
         description="Track construction progress with real-time reports from the site."
-        actions={
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            New update
-          </Button>
-        }
+        // actions={
+        //   <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+        //     <PlusIcon className="size-4" />
+        //     New update
+        //   </Button>
+        // }
       />
 
       <UpsertUpdateDialog
@@ -124,8 +121,9 @@ export default function ProjectUpdates() {
         error={(createUpdate.error as Error | undefined)?.message ?? null}
       />
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]">
-        <section className="flex flex-col gap-4">
+      {/* <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]"> */}
+      <div className='flex items-start gap-8 relative mt-4'>
+        <section className="flex flex-col flex-1 gap-4 min-w-0">
           {visible.length === 0 ? (
             <Card padding="lg" className="text-center text-sm text-gray-500">
               No updates match the current filters.
@@ -141,11 +139,13 @@ export default function ProjectUpdates() {
           )}
         </section>
 
-        <FiltersPanel
-          filters={filters}
-          contractors={contractors}
-          onChange={updateFilter}
-        />
+        <div className="w-[377px] shrink-0 sticky top-8">
+          <FiltersPanel
+            filters={filters}
+            contractors={contractors}
+            onChange={updateFilter}
+          />
+        </div>
       </div>
     </div>
   );
@@ -229,19 +229,20 @@ function UpdateCard({
   }
 
   return (
-    <Card padding="lg" className="flex flex-col gap-4">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+    <Card className="flex flex-col gap-4 border border-[#F6F6F6] rounded-[8px] p-[24px]">
+      <header className="flex items-center justify-between">
+        <div className="flex gap-2">
           <Avatar
             name={update.author.name}
             src={update.author.avatarUrl}
             size="md"
+            className={cn("h-[40px] w-[40px] rounded-[12px]")}
           />
           <div>
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-[#131B2E] font-semibold text-[13px]">
               {update.author.name}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-black-300 text-[13px]">
               {update.author.role} · {formatDateTime(update.createdAt)}
             </p>
           </div>
@@ -258,40 +259,44 @@ function UpdateCard({
         </div>
       </header>
 
-      <div>
-        <h3 className="text-base font-semibold text-gray-900">
-          {update.title}
-        </h3>
-        <p className="mt-1 text-sm text-gray-600 text-pretty">
-          {update.description}
-        </p>
-        {!isOpen && update.action.takenBy && update.action.takenAt && (
-          <p className="mt-1.5 text-[11px] text-gray-500">
-            {update.status} by {update.action.takenBy.name} ·{" "}
-            {formatTimeAgo(update.action.takenAt)}
+      <div className='flex flex-col gap-6'>
+        <div>
+          <h3 className="font-semibold text-[#131B2E]">
+            {update.title}
+          </h3>
+          <p className="text-[13px] text-black-300">
+            {update.description}
           </p>
-        )}
+          {!isOpen && update.action.takenBy && update.action.takenAt && (
+            <p className="mt-1.5 text-[11px] text-gray-500">
+              {update.status} by {update.action.takenBy.name} ·{" "}
+              {formatTimeAgo(update.action.takenAt)}
+            </p>
+          )}
+        </div>
+        <MediaGallery items={update.media} />
       </div>
 
-      <MediaGallery items={update.media} />
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[#F0F0F0] pt-4">
+      <footer className='flex justify-between items-center border-t border-[#F6F6F6] pt-6'>
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setCommentsOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black-300 hover:text-black-500 cursor-pointer p-0"
           >
-            <MessagesIcon className="size-4" />
-            {commentsOpen ? "Hide comments" : "Comment"}
+            <ReactSVG src={icons.comment} />
+            <p>{commentsOpen ? "Hide comments" : "Comment"}</p>
           </button>
           {update.secondaryAction && (
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-black-300 hover:text-black-500 p-0 cursor-pointer"
             >
-              {update.secondaryAction.label}
-              <ChevronRightIcon className="size-3.5" />
+              {update.secondaryAction.label === 'View Report' && <ReactSVG src={icons.report} />}
+              {update.secondaryAction.label === 'Escalation Details' && <ReactSVG src={icons.warningCircle} />}
+              {update.secondaryAction.label === 'Verify with Panda AI' && <ReactSVG src={icons.aiVerify} />}
+              <p>{update.secondaryAction.label}</p>
             </button>
           )}
           <button
@@ -368,89 +373,113 @@ interface FiltersPanelProps {
 
 function FiltersPanel({ filters, contractors, onChange }: FiltersPanelProps) {
   return (
-    <aside className="flex h-fit flex-col gap-6 lg:sticky lg:top-24">
-      <Card padding="md">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          By Categories
-        </h3>
-        <div className="flex flex-col gap-1">
-          {CATEGORY_FILTERS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange("category", c)}
-              className={cn(
-                "flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
-                "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-                filters.category === c
-                  ? "bg-[#EDEDED] font-semibold text-gray-900"
-                  : "text-gray-600 hover:bg-[#F6F6F6]",
-              )}
-            >
-              {c}
-            </button>
-          ))}
+    <aside className="h-fit lg:sticky lg:top-24 rounded-[16px] bg-[#F8F8F8] flex flex-col">
+      <div className="flex items-center justify-between py-3 px-5">
+        <div className="flex gap-2 items-center">
+          <ReactSVG src={icons.filter} />
+          <h3 className="text-[13px] font-semibold text-black-300">Filter Menu</h3>
         </div>
-      </Card>
+      </div>
 
-      <Card padding="md">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          By Contractors
-        </h3>
-        <div className="flex flex-col gap-1">
-          <RadioRow
-            label="Anyone"
-            checked={filters.contractor === null}
-            onChange={() => onChange("contractor", null)}
-          />
-          {contractors.map((c) => (
-            <RadioRow
-              key={c.id}
-              label={c.name}
-              sublabel={c.role}
-              checked={filters.contractor === c.id}
-              onChange={() => onChange("contractor", c.id)}
+      <div className="bg-white rounded-[12px] h-full m-1 p-6 flex flex-col gap-4">
+        <div>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            By Categories
+          </h3>
+          <div className="flex flex-wrap gap-4">
+            {CATEGORY_FILTERS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onChange("category", c)}
+                className={cn(
+                  "flex items-center justify-between rounded-[15px] px-[10px] py-[4px] text-[13px] h-[24px] bg-[#F6F6F6] transition-colors",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 cursor-pointer",
+                  filters.category === c
+                    ? "bg-primary-50 font-semibold text-primary"
+                    : "text-black-300 hover:bg-primary-50 hover:text-primary",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className='border-t border-[#F6F6F6] pt-6'>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            By Contractors
+          </h3>
+          <div className="flex flex-col gap-1">
+            {contractors.map((c) => (
+              <RadioRow
+                key={c.id}
+                label={c.name}
+                sublabel={c.role}
+                checked={filters.contractor === c.id}
+                onChange={() => onChange("contractor", c.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className='border-t border-[#F6F6F6] pt-6'>
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            By Date Range
+          </h3>
+          <div className="flex flex-row justify-between items-center">
+            <DateField
+              // label="From"
+              value={filters.dateFrom}
+              onChange={(v) => onChange("dateFrom", v)}
             />
-          ))}
+            <span>-</span>
+            <DateField
+              // label="To"
+              value={filters.dateTo}
+              onChange={(v) => onChange("dateTo", v)}
+            />
+          </div>
         </div>
-      </Card>
-
-      <Card padding="md">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          By Date Range
-        </h3>
-        <div className="flex flex-col gap-3">
-          <DateField
-            label="From"
-            value={filters.dateFrom}
-            onChange={(v) => onChange("dateFrom", v)}
-          />
-          <DateField
-            label="To"
-            value={filters.dateTo}
-            onChange={(v) => onChange("dateTo", v)}
-          />
-        </div>
-      </Card>
+      </div>
     </aside>
   );
 }
 
 interface RadioRowProps {
   label: string;
+  img?: string;
   sublabel?: string;
   checked: boolean;
   onChange: () => void;
 }
 
-function RadioRow({ label, sublabel, checked, onChange }: RadioRowProps) {
+function RadioRow({ label, img, sublabel, checked, onChange }: RadioRowProps) {
   return (
     <label
       className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[#F6F6F6]",
+        "flex justify-between cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[#F6F6F6]",
         checked && "bg-[#F6F6F6]",
       )}
     >
+      <div className='flex gap-2'>
+        <Avatar
+          name={label}
+          src={img}
+          size="md"
+          className={cn("h-[34px] w-[34px] rounded-[8px]")}
+        />
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] text-[#131B2E]">
+            {label}
+          </span>
+          {sublabel && (
+            <span className="block truncate text-[11px] text-black-300">
+              {sublabel}
+            </span>
+          )}
+        </span>
+      </div>
       <span
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-full border",
@@ -458,16 +487,6 @@ function RadioRow({ label, sublabel, checked, onChange }: RadioRowProps) {
         )}
       >
         {checked && <span className="size-2 rounded-full bg-[#004DE7]" />}
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-medium text-gray-900">
-          {label}
-        </span>
-        {sublabel && (
-          <span className="block truncate text-[11px] text-gray-500">
-            {sublabel}
-          </span>
-        )}
       </span>
       <input
         type="radio"
@@ -484,7 +503,7 @@ function DateField({
   value,
   onChange,
 }: {
-  label: string;
+  label?: string;
   value: string;
   onChange: (value: string) => void;
 }) {

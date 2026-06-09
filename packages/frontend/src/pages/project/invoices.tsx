@@ -7,6 +7,7 @@ import {
   FinancesIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -100,6 +101,13 @@ export default function ProjectInvoices() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Finances", to: `/project/${project.id}/finances` },
+          { label: "Invoices" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Invoices"
         description="Track vendor invoices, retainage withheld, and payments made across the project."
