@@ -1,6 +1,5 @@
 import { useMemo, useState, type ComponentType, type SVGAttributes } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { IconBox } from "@/components/atoms/icon-box";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
@@ -9,7 +8,6 @@ import {
   ContractorsIcon,
   DocumentsIcon,
   FinancesIcon,
-  FolderIcon,
   InspectionsIcon,
   MaterialsIcon,
   MessagesIcon,

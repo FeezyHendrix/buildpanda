@@ -1,12 +1,8 @@
 import { useMemo, useState } from "react";
-import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import {
-  ChevronRightIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
+import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";

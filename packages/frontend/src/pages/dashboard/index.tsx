@@ -1,12 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import { IconBox } from "@/components/atoms/icon-box";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import {
-  CalendarIcon,
   ExternalLinkIcon,
-  FolderIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -104,10 +101,6 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
 
 function ProjectCard({ project }: { project: Project }) {
   const progress = project.progressPercent;
-  const activePhase =
-    project.timeline.find((phase) => phase.status === "InProgress") ??
-    project.timeline.find((phase) => phase.status === "Pending") ??
-    project.timeline[project.timeline.length - 1];
 
   return (
     <Card
