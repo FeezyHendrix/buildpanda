@@ -20,6 +20,8 @@ import {
 } from "@/lib/formatters";
 import type { Project } from "@/lib/project-mock-data";
 import emptyIcon from "@/assets/images/empty-icon.svg";
+import { icons } from "@/assets/icons/icons";
+import { ReactSVG } from "react-svg"
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -37,16 +39,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
+    // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-6xl mx-auto w-full">
       <Greeting name={session?.user.name ?? ""} />
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-center gap-2">
-          <FolderIcon className="size-5 text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
+      <section className="flex flex-col gap-4 mt-10">
+        <div className="flex items-center gap-1 ml-14">
+          <ReactSVG src={icons.folder} />
+          {/* <FolderIcon className="size-5 text-gray-500" /> */}
+          <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"> */}
+        <div className="flex flex-wrap justify-center gap-6">
           {list.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
@@ -67,7 +72,7 @@ function LoadingSpinner() {
 
 function Greeting({ name }: { name: string }) {
   return (
-    <h1 className="text-2xl font-bold sm:text-[28px]">
+    <h1 className="sm:text-[28px] text-center mb-6 text-[25px] font-semibold  text-black-300">
       <span className="text-gray-500">Good {timeOfDay()}, </span>
       <span className="text-gray-900">{firstName(name)}.</span>
     </h1>
@@ -107,25 +112,30 @@ function ProjectCard({ project }: { project: Project }) {
   return (
     <Card
       padding="md"
-      className="relative flex flex-col gap-4 transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-[#004DE7]/20"
+      className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 w-[334.82px]"
     >
-      <div className="flex items-start gap-3">
-        <IconBox
+      <div className="flex gap-8">
+        {/* <IconBox
           tone={project.folderTone}
           size="md"
           icon={<FolderIcon className="size-5" />}
-        />
-        <div className="min-w-0 flex-1">
+        /> */}
+        <ReactSVG src={icons.coloredFolder} />
+        <div className='text'>
+         <p className='text-[#0F172A] font-semibold'>{project.name}</p>
+         <p className='text-[13px] text-black-300'>{project.address}</p>   
+        </div>
+        {/* <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold text-gray-900">
             {project.name}
           </p>
           <p className="line-clamp-2 text-xs text-gray-500">
             {project.address}
           </p>
-        </div>
+        </div> */}
       </div>
 
-      <div>
+      {/* <div className='flex flex-col gap-2'>
         <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
           <span>Completion</span>
           <span className="font-semibold tabular-nums text-gray-900">
@@ -133,20 +143,28 @@ function ProjectCard({ project }: { project: Project }) {
           </span>
         </div>
         <ProgressBar value={progress} tone="success" size="sm" />
+      </div> */}
+
+      <div className='flex flex-col gap-2'>
+        <div className="flex justify-between">
+          <p className='text-black-300 text-[11px]'>Completion</p>
+          <p className="text-[13px] text-black-500 font-semibold">{progress}%</p>
+        </div>
+        <ProgressBar value={progress} tone="success" size="sm" className='h-[7px]' />
       </div>
 
       <div>
-        <p className="text-xs text-gray-500">Budget Usage</p>
-        <p className="mt-0.5 text-sm font-semibold tabular-nums text-gray-900">
+        <p className="text-black-300 text-[11px]">Budget Usage</p>
+        <p className="text-[13px] font-semibold text-black-500">
           {formatCurrency(project.budgetUsed, project.currency)}
-          <span className="font-normal text-gray-400">
+          <span className="text-black-300">
             {" "}
             / {formatCurrency(project.budgetTotal, project.currency)}
           </span>
         </p>
       </div>
 
-      {activePhase && (
+      {/* {activePhase && (
         <Link
           to={`/project/${project.id}/project-chart`}
           className="relative z-10 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3 outline-none transition-colors hover:bg-[#F4F7FF] focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
@@ -166,7 +184,7 @@ function ProjectCard({ project }: { project: Project }) {
             </span>
           </div>
         </Link>
-      )}
+      )} */}
 
       <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-3">
         <p className="text-xs text-gray-500">
@@ -188,15 +206,21 @@ function NewProjectCard() {
   return (
     <Link
       to="/project/create"
-      className="group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#BFD3FF] bg-[#F5F8FF] p-6 text-center transition-colors hover:bg-[#EBF2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
+    //   className="group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#BFD3FF] bg-[#F5F8FF] p-6 text-center transition-colors hover:bg-[#EBF2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
     >
-      <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-white text-[#004DE7] shadow-sm ring-1 ring-[#BFD3FF]">
-        <PlusIcon className="size-6" />
+      <ReactSVG src={icons.addFolder} />
+      <p className='text-primary text-[16px] font-semibold'>New project</p>
+      <p className="text-[11px] text-black-300">Spin up a new construction project from scratch.</p>
+      {/* <div className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[0.5px] border-primary rounded-2xl p-8 w-[334.82px]'>
+          </div> */}
+      {/* <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-white text-[#004DE7] shadow-sm ring-1 ring-[#BFD3FF]">
+        <ReactSVG src={icons.addFolder} />
       </div>
       <p className="text-sm font-semibold text-[#004DE7]">New project</p>
       <p className="text-xs text-gray-500">
         Spin up a new construction project from scratch.
-      </p>
+      </p> */}
     </Link>
   );
 }

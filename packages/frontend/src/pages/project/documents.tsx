@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ReactSVG } from "react-svg";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -8,6 +9,7 @@ import {
   DocumentsIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
+import { icons } from "@/assets/icons/icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import {
@@ -33,6 +35,26 @@ import type {
   DocumentCategory,
   ProjectDocument,
 } from "@/lib/project-mock-data";
+
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"]);
+
+function getFileTypeIcon(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (IMAGE_EXTS.has(ext)) return icons.jpg;
+  if (ext === "pdf") return icons.pdf;
+  // doc, docx, txt, csv, xlsx, xls, ppt, pptx, dwg, dxf, and anything else → doc icon
+  return icons.doc;
+}
+
+const STATUS_ICON: Record<string, string> = {
+  Verified: icons.verified,
+  Pending: icons.pending,
+  Expired: icons.expired,
+};
+
+function getStatusIcon(status: string): string {
+  return STATUS_ICON[status] ?? icons.pending;
+}
 
 export default function ProjectDocuments() {
   const { project } = useProjectContext();
@@ -82,8 +104,9 @@ export default function ProjectDocuments() {
             variant="primary"
             size="md"
             onClick={() => setUploadOpen(true)}
+            className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
           >
-            <PlusIcon className="size-4" />
+            <ReactSVG src={icons.upload} />
             {isPlans ? "Upload plan" : "Upload document"}
           </Button>
         }
@@ -116,9 +139,9 @@ export default function ProjectDocuments() {
         onSubmit={handleUpload}
       />
 
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {visibleCategories.map((category) => (
-          <CategoryCard key={category.id} category={category} />
+          <CategoryMetricsCard key={category.id} category={category} />
         ))}
       </section>
 
@@ -166,6 +189,53 @@ function CategoryCard({ category }: { category: DocumentCategory }) {
   );
 }
 
+// ── Stubs: fill in values per category name when ready ────────────────────
+const CATEGORY_ICON_STUBS: Record<string, string> = {
+  "Land Documents": icons.folderBlue,
+  "Architectural Plans": icons.note,
+  "Contracts & Agreements": icons.hammer,
+  "Invoices & Receipts": icons.receipt,
+  "Government Approvals": icons.protect,
+  "Inspection Certs": icons.clipboard,
+};
+
+const CATEGORY_BG: Record<string, string> = {
+  "Land Documents": "bg-primary-50",
+  "Architectural Plans": "bg-[#E0FFFC]",
+  "Contracts & Agreements": "bg-[#FFF3DE]",
+  "Invoices & Receipts": "bg-[#EDE2FF]",
+  "Government Approvals": "bg-[#FFE6F0]",
+  "Inspection Certs": "bg-[#DEEAFF]",
+};
+
+function CategoryMetricsCard({ category }: { category: DocumentCategory }) {
+  const iconSrc = CATEGORY_ICON_STUBS[category.name] ?? "";
+  const bgColor = CATEGORY_BG[category.name] ?? "bg-primary-50";
+
+  return (
+    <Card padding="md" interactive>
+      <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex items-center justify-center w-[38px] h-[38px] rounded-[8px] p-[10px]",
+            bgColor,
+          )}
+        >
+          <ReactSVG src={iconSrc} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-900">
+            {category.name}
+          </p>
+          <p className="mt-1 text-xs tabular-nums text-gray-500">
+            {category.fileCount} Files · {category.totalSize}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function DocumentsTable({
   documents,
   projectId,
@@ -176,14 +246,14 @@ function DocumentsTable({
   categories: DocumentCategory[];
 }) {
   return (
-    <Card padding="none" className="overflow-hidden">
+    <Card padding="none" className="overflow-hidden border-none">
       <table className="w-full text-left">
         <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
           <tr>
-            <TableHeader>File Name</TableHeader>
-            <TableHeader>Category</TableHeader>
-            <TableHeader>Date Uploaded</TableHeader>
-            <TableHeader className="pr-6 text-right">Status</TableHeader>
+            <TableHeader className="pr-6 font-semibold capitalize">File Name</TableHeader>
+            <TableHeader className="pr-6 font-semibold capitalize">Category</TableHeader>
+            <TableHeader className="pr-6  font-semibold capitalize">Date Uploaded</TableHeader>
+            <TableHeader className="pr-6 font-semibold capitalize">Status</TableHeader>
           </tr>
         </thead>
         <tbody>
@@ -249,11 +319,7 @@ function DocumentRow({
       <tr className={isLast ? undefined : "border-b border-[#F0F0F0]"}>
         <TableCell>
           <div className="flex items-center gap-3">
-            <IconBox
-              tone="gray"
-              size="sm"
-              icon={<DocumentsIcon className="size-4" />}
-            />
+            <ReactSVG src={getFileTypeIcon(doc.fileName)} className="shrink-0" />
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-900">
                 {doc.fileName}
@@ -269,12 +335,13 @@ function DocumentRow({
         <TableCell className="whitespace-nowrap text-sm text-gray-600">
           {doc.uploadedAt}
         </TableCell>
-        <TableCell className="pr-6 text-right">
-          <div className="flex items-center justify-end gap-3">
-            <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" dot>
-              {doc.status}
+        <TableCell className="pr-6">
+          <div className="flex items-center gap-3">
+            <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex items-center gap-1.5 bg-transparent">
+              <ReactSVG src={getStatusIcon(doc.status)} className="shrink-0" />
+              <p>{doc.status}</p>
             </Badge>
-            {doc.currentVersionId && (
+            {/* {doc.currentVersionId && (
               <button
                 type="button"
                 onClick={() => setViewerOpen(true)}
@@ -303,7 +370,7 @@ function DocumentRow({
               className="text-xs font-medium text-red-500 hover:text-red-600"
             >
               Delete
-            </button>
+            </button> */}
           </div>
         </TableCell>
       </tr>

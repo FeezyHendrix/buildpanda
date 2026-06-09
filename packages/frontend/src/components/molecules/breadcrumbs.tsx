@@ -23,7 +23,7 @@ function Breadcrumbs({ items, className }: BreadcrumbsProps) {
               {item.to && !isLast ? (
                 <Link
                   to={item.to}
-                  className="text-gray-500 hover:text-gray-900 hover:underline"
+                  className="text-gray-500 hover:text-primary"
                 >
                   {item.label}
                 </Link>
@@ -31,7 +31,7 @@ function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                 <span
                   className={
                     isLast
-                      ? "font-semibold text-gray-900"
+                      ? "font-semibold text-primary"
                       : "text-gray-500"
                   }
                   aria-current={isLast ? "page" : undefined}

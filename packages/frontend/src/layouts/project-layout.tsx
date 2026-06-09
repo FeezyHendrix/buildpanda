@@ -60,9 +60,9 @@ export default function ProjectLayout() {
 
   return (
     <AppShell session={session} onLogout={logout}>
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden no-scrollbar">
         <ProjectSidebar project={project} relationship={access?.relationship} />
-        <main className="flex-1 overflow-y-auto bg-[#FCFCFD]">
+        <main className="flex-1 overflow-y-auto no-scrollbar">
           <ErrorBoundary>
             <Outlet context={{ project } satisfies ProjectOutletContext} />
           </ErrorBoundary>

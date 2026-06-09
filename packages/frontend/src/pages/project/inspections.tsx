@@ -28,6 +28,8 @@ import type {
   InspectionCategory,
   InspectionReport,
 } from "@/lib/project-mock-data";
+import { icons } from "@/assets/icons/icons";
+import { ReactSVG } from "react-svg";
 
 const FILTERS: InspectionCategory[] = [
   "All Reports",
@@ -64,8 +66,9 @@ export default function ProjectInspections() {
             variant="primary"
             size="md"
             onClick={() => setRequestOpen(true)}
+            className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
           >
-            <PlusIcon className="size-4" />
+            <ReactSVG src={icons.plusCircle} />
             Request New Inspection
           </Button>
         }
@@ -95,16 +98,18 @@ export default function ProjectInspections() {
         className="mt-8"
       />
 
-      <section className="mt-6 flex flex-col gap-4">
-        {visible.length === 0 ? (
-          <Card padding="lg" className="text-center text-sm text-gray-500">
-            No inspections match this filter.
-          </Card>
-        ) : (
-          visible.map((report) => (
-            <InspectionCard key={report.id} projectId={project.id} report={report} />
-          ))
-        )}
+      <section className="mt-6 flex gap-4 justify-center">
+        <div className="flex flex-col gap-4">
+          {visible.length === 0 ? (
+            <Card padding="lg" className="text-center text-sm text-gray-500">
+              No inspections match this filter.
+            </Card>
+          ) : (
+            visible.map((report) => (
+              <InspectionCard key={report.id} projectId={project.id} report={report} />
+            ))
+          )}
+        </div>
       </section>
     </div>
   );
@@ -122,7 +127,7 @@ function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
     <div
       role="tablist"
       aria-label="Inspection categories"
-      className={cn("flex flex-wrap gap-2", className)}
+      className={cn("flex bg-[#F6F6F6] rounded-[1000px] h-[32px] max-w-[657px]", className)}
     >
       {filters.map((filter) => (
         <button
@@ -132,11 +137,11 @@ function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
           aria-selected={filter === active}
           onClick={() => onChange(filter)}
           className={cn(
-            "h-9 rounded-full px-4 text-xs font-medium transition-colors",
+            "rounded-full px-4 text-xs font-medium transition-colors m-1 cursor-pointer",
             "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
             filter === active
-              ? "bg-[#004DE7] text-white"
-              : "bg-[#F6F6F6] text-gray-700 hover:bg-[#EDEDED]",
+              ? "bg-[#FFFFFF] text-black-500"
+              : "bg-transparent text-black-300 hover:bg-[#EDEDED]",
           )}
         >
           {filter}
@@ -172,20 +177,11 @@ function InspectionCard({
   return (
     <Card padding="lg" className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <Avatar
-            name={report.inspector.name}
-            src={report.inspector.avatarUrl}
-            size="md"
-          />
+        <div className="flex items-start gap-3 ">
           <div>
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-[#131B2E]">
               {report.title}
             </p>
-            <p className="text-xs text-gray-500">
-              {report.inspector.name} · {report.inspector.role}
-            </p>
-            <p className="mt-0.5 text-xs text-gray-400">{report.scheduledAt}</p>
           </div>
         </div>
 
@@ -193,25 +189,23 @@ function InspectionCard({
           <Badge tone={INSPECTION_STATUS_TONE[report.status]} size="md">
             {report.status}
           </Badge>
-          <Badge tone={RISK_LEVEL_TONE[report.riskLevel]} size="md" dot>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6 border-b border-[#F6F6F6] pb-6">
+        <div className='flex flex-col gap-1'>
+          <p className="text-[13px] font-medium text-black-300">Inspector</p>
+          <p className='text-[13px] text-black-500'>{report.inspector.name}</p>
+        </div>
+        <div className='flex flex-col gap-1'>
+          <p className="text-[13px] font-medium text-black-300">Date & Time</p>
+          <p className='text-[13px] text-black-500'>{report.scheduledAt}</p>
+        </div>
+        <div className='flex flex-col gap-1'>
+          <p className="text-[13px] font-medium text-black-300">Risk Level</p>
+          <Badge tone={RISK_LEVEL_TONE[report.riskLevel]} size="md" dot className='bg-transparent p-0 m-0'>
             {report.riskLevel}
           </Badge>
-          <div className="ml-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="text-xs font-medium text-red-500 hover:text-red-600"
-            >
-              Delete
-            </button>
-          </div>
         </div>
       </div>
 
