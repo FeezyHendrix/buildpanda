@@ -49,7 +49,7 @@ const outlineStyles: Record<BadgeTone, string> = {
 
 const dotStyles: Record<BadgeTone, string> = {
   neutral: "bg-gray-500",
-  success: "bg-[#1B8E45]",
+  success: "bg-success-500",
   warning: "bg-[#C26A00]",
   danger: "bg-[#C72525]",
   info: "bg-[#004DE7]",

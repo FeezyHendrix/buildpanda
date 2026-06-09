@@ -1,7 +1,221 @@
 @import "tailwindcss";
 
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
 @theme {
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* primary */
+  --color-primary-50:  #E6EDFD;
+  --color-primary-100: #B0C8F8;
+  --color-primary-200: #8BACF1;
+  --color-primary-300: #5488EF;
+  --color-primary-400: #3371EE;
+  --color-primary-500: #004DE7;
+  --color-primary-600: #0046D2;
+  --color-primary-700: #0037A4;
+  --color-primary-800: #002A7F;
+  --color-primary-900: #002061;
+
+  /* success */
+  --color-success-50:  #E8FCF4;
+  --color-success-100: #B8F7DD;
+  --color-success-200: #96F3CD;
+  --color-success-300: #66EEB6;
+  --color-success-400: #48EAA8;
+  --color-success-500: #1AE592;
+  --color-success-600: #18D085;
+  --color-success-700: #13A368;
+  --color-success-800: #0E7E50;
+  --color-success-900: #0B603D;
+
+  /* error */
+  --color-error-50:  #FDEAE8;
+  --color-error-100: #F8BFB9;
+  --color-error-200: #F5A097;
+  --color-error-300: #F07467;
+  --color-error-400: #ED5949;
+  --color-error-500: #E9301C;
+  --color-error-600: #D42C19;
+  --color-error-700: #A52214;
+  --color-error-800: #801A0F;
+  --color-error-900: #62140C;
+
+  /* black */
+  --color-black-50:  #E7E7E7;
+  --color-black-100: #B5B5B5;
+  --color-black-200: #929292;
+  --color-black-300: #606060;
+  --color-black-400: #414141;
+  --color-black-500: #111111;
+  --color-black-600: #0F0F0F;
+  --color-black-700: #0C0C0C;
+  --color-black-800: #090909;
+  --color-black-900: #070707;
+
+  /* grey */
+  --color-grey-50:  #EDEDED;
+  --color-grey-100: #C8C8C8;
+  --color-grey-200: #ADADAD;
+  --color-grey-300: #888888;
+  --color-grey-400: #717171;
+  --color-grey-500: #4D4D4D;
+  --color-grey-600: #464646;
+  --color-grey-700: #373737;
+  --color-grey-800: #2A2A2A;
+  --color-grey-900: #202020;
+
+  /* warning */
+  --color-warning-50:  #FAFFE6;
+  --color-warning-100: #EEFFB0;
+  --color-warning-200: #E6FF8A;
+  --color-warning-300: #D8FF54;
+  --color-warning-400: #D3FF33;
+  --color-warning-500: #C8FF00;
+  --color-warning-600: #B6E800;
+  --color-warning-700: #8EB500;
+  --color-warning-800: #6E8C00;
+  --color-warning-900: #546B00;
+}
+
+/* ─── shadcn semantic vars ────────────────────────────────────────────────── */
+/* Written outside @layer so @tailwindcss/vite emits them in both dev + build. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #004DE7;
+  --primary-foreground: #E6EDFD;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: #E9301C;
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(92.191% 0.0001 271.152 / 0.618);
+  --input: oklch(0.922 0 0);
+  --ring: #3371EE;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.067);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #004DE7;
+  --sidebar-primary-foreground: #E6EDFD;
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: #3371EE;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #3371EE;
+  --primary-foreground: #002061;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: #ED5949;
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #004DE7;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.067);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #3371EE;
+  --sidebar-primary-foreground: #002061;
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #004DE7;
+}
+
+/* ─── shadcn → Tailwind utility mappings ─────────────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  outline: none;
+}
+
+:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Or if you're using plain focus */
+:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes authBgFade {

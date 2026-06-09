@@ -25,22 +25,18 @@ function MediaGallery({
 }: MediaGalleryProps) {
   if (items.length === 0) return null;
 
-  const cols =
-    items.length === 1
-      ? "grid-cols-1"
-      : items.length === 2
-        ? "grid-cols-2"
-        : maxColumns === 2
-          ? "grid-cols-2"
-          : "grid-cols-3";
-
   return (
-    <div className={cn("grid gap-2", cols, className)}>
+    <div
+      className={cn(
+        "flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 no-scrollbar",
+        className,
+      )}
+    >
       {items.map((item, idx) => (
         <div
           key={item.id}
           className={cn(
-            "relative overflow-hidden rounded-xl bg-[#F6F6F6]",
+            "relative overflow-hidden rounded-[4px] bg-[#F6F6F6] w-[215.33px] shrink-0 snap-start",
             ASPECT[aspectRatio],
           )}
         >

@@ -19,13 +19,15 @@ import {
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/project-mock-data";
+import { ReactSVG } from "react-svg";
+import { icons } from "@/assets/icons/icons";
 
 type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
 interface NavEntry {
   label: string;
   slug: string;
-  Icon: IconComponent;
+  Icon: IconComponent | string;
 }
 
 interface ProjectNavItem extends NavEntry {
@@ -221,7 +223,7 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
   return (
     <aside
       className={cn(
-        "flex max-h-full w-[260px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[#F0F0F0] bg-[#FAFAFA] px-4 py-6",
+        "flex max-h-full w-[260px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[#F0F0F0]  px-4 py-6",
         className,
       )}
     >
@@ -236,13 +238,9 @@ function ProjectSidebar({ project, className, relationship }: ProjectSidebarProp
         Projects
       </Link>
 
-      <div className="rounded-2xl border border-[#EDEDED] bg-white p-3">
+      <div className="bg-white">
         <div className="flex items-start gap-3">
-          <IconBox
-            tone={project.folderTone}
-            size="md"
-            icon={<FolderIcon className="size-5" />}
-          />
+          <ReactSVG src={icons.coloredFolder} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-gray-900">
               {project.name}

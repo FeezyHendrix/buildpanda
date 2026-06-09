@@ -1,4 +1,15 @@
 import { useMemo, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  Tooltip,
+  ResponsiveContainer,
+  useActiveTooltipLabel,
+  useActiveTooltipDataPoints,
+  useIsTooltipActive,
+} from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -33,6 +44,9 @@ import type {
   MilestonePayment,
   ProjectFinances as ProjectFinancesData,
 } from "@/lib/project-mock-data";
+import { ReactSVG } from "react-svg";
+import { icons } from "@/assets/icons/icons";
+import { Avatar } from "@/components/atoms/avatar";
 
 const INSIGHTS: AiInsight[] = [
   {
@@ -100,7 +114,7 @@ export default function ProjectFinances() {
         description="Track spending, control payments, and monitor budget transparency across all phases."
         actions={
           <div className="flex items-center gap-2">
-            <Button
+            {/* <Button
               variant="secondary"
               size="md"
               onClick={() => navigate(`/project/${project.id}/finances/budget`)}
@@ -113,13 +127,14 @@ export default function ProjectFinances() {
               onClick={() => navigate(`/project/${project.id}/finances/invoices`)}
             >
               Invoices
-            </Button>
+            </Button> */}
             <Button
               variant="primary"
               size="md"
               onClick={() => setFundOpen(true)}
+              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
             >
-              <PlusIcon className="size-4" />
+              <ReactSVG src={icons.plusCircle} />
               Fund Project
             </Button>
           </div>
@@ -130,53 +145,59 @@ export default function ProjectFinances() {
         aria-label="Finance summary"
         className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
       >
-        <SummaryTile
-          label="Total Budget"
+        <KpiCard
+          title="Total Budget"
+          icon={icons.moneyBag}
           value={formatCurrency(finances.totalBudget, finances.currency)}
+          className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px]"
         />
-        <SummaryTile
-          label="Funds Deposited"
+        <KpiCard
+          title="Funds Deposited"
+          icon={icons.money}
           value={formatCurrency(finances.fundsDeposited, finances.currency)}
         />
-        <SummaryTile
-          label="Funds Released"
+        <KpiCard
+          title="Funds Released"
+          icon={icons.hand}
           value={formatCurrency(finances.fundsReleased, finances.currency)}
         />
-        <SummaryTile
-          label="Locked In Escrow"
+        <KpiCard
+          title="Locked In Escrow"
+          icon={icons.safeSquare}
           value={formatCurrency(finances.lockedInEscrow, finances.currency)}
-          accent
         />
-        <SummaryTile
-          label="Remaining Balance"
+        <KpiCard
+          title="Remaining Balance"
+          icon={icons.wallet}
           value={formatCurrency(finances.remainingBalance, finances.currency)}
-          accent
+          className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />
       </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-6 flex gap-6">
         <BudgetAllocationCard
           projectId={project.id}
           allocation={finances.budgetAllocation}
           currency={finances.currency}
-          className="lg:col-span-2"
+          className="w-[60%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
         <MaterialsProcurementCard
           projectId={project.id}
           materials={finances.materialsProcured}
           currency={finances.currency}
+          className="w-[40%]rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <AiInsightsCard insights={INSIGHTS} className="lg:col-span-1" />
+      <div className="mt-6">
+        {/* <AiInsightsCard insights={INSIGHTS} className="lg:col-span-1" /> */}
         <MilestonePaymentsCard
           projectId={project.id}
           milestones={finances.milestones}
           currency={finances.currency}
           onRequestRelease={setReleaseTarget}
           onRequestDispute={setDisputeTarget}
-          className="lg:col-span-2"
+          className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
 
@@ -233,28 +254,6 @@ export default function ProjectFinances() {
   );
 }
 
-function SummaryTile({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <KpiCard label={label} padding="md">
-      <p
-        className={cn(
-          "text-base font-bold tabular-nums",
-          accent ? "text-[#004DE7]" : "text-gray-900",
-        )}
-      >
-        {value}
-      </p>
-    </KpiCard>
-  );
-}
 
 interface BudgetAllocationCardProps {
   projectId: string;
@@ -269,94 +268,150 @@ function BudgetAllocationCard({
   currency,
   className,
 }: BudgetAllocationCardProps) {
-  const maxValue = useMemo(
-    () => Math.max(...allocation.flatMap((p) => [p.planned, p.actual]), 1),
-    [allocation],
-  );
-  const variancePhases = useMemo(
-    () => allocation.filter((p) => p.actual > 0).slice(0, VARIANCE_TABLE_LIMIT),
+  const variancePhases = allocation
+    .filter((p) => p.actual > 0)
+    .slice(0, VARIANCE_TABLE_LIMIT);
+
+  // Per-phase, decide which value is larger (goes behind) and which is smaller (goes in front).
+  // The larger bar renders first so the smaller bar can partially cover it from the bottom up,
+  // leaving only the excess peeking out at the top — matching the Figma overlap effect exactly.
+  const chartData = useMemo(
+    () =>
+      allocation.map((item) => ({
+        ...item,
+        backValue: Math.max(item.planned, item.actual),
+        frontValue: Math.min(item.planned, item.actual),
+        backColor: item.planned >= item.actual ? "#004DE7" : "#B0C8F8",
+        frontColor: item.planned < item.actual ? "#004DE7" : "#B0C8F8",
+      })),
     [allocation],
   );
 
   return (
-    <Card padding="lg" className={className}>
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">
+    <Card className={className}>
+      <div className="flex items-center justify-between py-3 px-5">
+        <div className="flex gap-2 items-center">
+          <ReactSVG src={icons.chart} />
+          <h3 className="text-[13px] font-semibold text-black-300">
             Budget Allocation & Analysis
-          </h2>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Planned vs actual spend across construction phases.
-          </p>
+          </h3>
         </div>
         <Link
           to={`/project/${projectId}/finances/budget-allocation`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+          className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
         >
           View More
-          <ChevronRightIcon className="size-3.5" />
         </Link>
       </div>
 
-      <ChartLegend />
+      <div className="bg-white rounded-[12px] h-full m-1 p-6">
+        <ChartLegend />
 
-      <div className="flex h-44 items-stretch gap-3">
-        {allocation.map((phase) => (
-          <PhaseBars
-            key={phase.id}
-            phase={phase}
-            maxValue={maxValue}
-            currency={currency}
-          />
-        ))}
+        <div className="mt-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart
+              data={chartData}
+              barSize={32}
+              barGap={-32}
+              barCategoryGap="30%"
+              margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tick={{
+                  fontSize: 9,
+                  fill: "#606060",
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                }}
+                tickFormatter={(v: string) => v.toUpperCase()}
+              />
+              <Tooltip
+                content={<BudgetTooltip currency={currency} />}
+                cursor={{ fill: "#F8F9FF", radius: 6 }}
+              />
+              {/* Background bar: always the larger value, colour driven by Cell */}
+              <Bar dataKey="backValue" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                {chartData.map((entry, idx) => (
+                  <Cell key={`back-${idx}`} fill={entry.backColor} />
+                ))}
+              </Bar>
+              {/* Foreground bar: always the smaller value, colour driven by Cell */}
+              <Bar dataKey="frontValue" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                {chartData.map((entry, idx) => (
+                  <Cell key={`front-${idx}`} fill={entry.frontColor} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <VarianceTable phases={variancePhases} currency={currency} />
       </div>
-
-      <VarianceTable phases={variancePhases} currency={currency} />
     </Card>
   );
 }
 
 function ChartLegend() {
   return (
-    <div className="mb-4 flex items-center gap-4 text-xs">
-      <span className="inline-flex items-center gap-1.5 text-gray-600">
-        <span className="size-2.5 rounded-sm bg-[#004DE7]" /> Planned
+    <div className="flex items-center justify-end gap-4 text-xs">
+      <span className="inline-flex items-center gap-1.5 text-black-300">
+        <span className="size-2.5 rounded-full bg-[#004DE7]" /> Planned
       </span>
-      <span className="inline-flex items-center gap-1.5 text-gray-600">
-        <span className="size-2.5 rounded-sm bg-[#1B8E45]" /> Actual
+      <span className="inline-flex items-center gap-1.5 text-black-300">
+        <span className="size-2.5 rounded-full bg-[#B0C8F8]" /> Actual
       </span>
     </div>
   );
 }
 
-function PhaseBars({
-  phase,
-  maxValue,
-  currency,
-}: {
-  phase: BudgetPhase;
-  maxValue: number;
-  currency: ProjectFinancesData["currency"];
-}) {
-  const plannedH = Math.max(4, (phase.planned / maxValue) * 100);
-  const actualH = Math.max(2, (phase.actual / maxValue) * 100);
+// Recharts 3 custom tooltip.
+// The chart now uses backValue/frontValue — so we read the original planned/actual
+// directly from the first data point's payload (the full chartData row).
+function BudgetTooltip({ currency }: { currency: ProjectFinancesData["currency"] }) {
+  const isActive = useIsTooltipActive();
+  const label = useActiveTooltipLabel();
+  // useActiveTooltipDataPoints returns the raw chartData rows (not recharts payload wrappers),
+  // so planned/actual live directly on each item, not under a .payload property.
+  const dataPoints = useActiveTooltipDataPoints<{
+    planned?: number;
+    actual?: number;
+  }>();
+
+  if (!isActive || !dataPoints?.length) return null;
+
+  const row = dataPoints[0];
+  const planned = row?.planned ?? 0;
+  const actual = row?.actual ?? 0;
+
+  const rows = [
+    { label: "Planned", value: planned, color: "#004DE7" },
+    { label: "Actual",  value: actual,  color: "#B0C8F8" },
+  ];
+
   return (
-    <div className="flex flex-1 flex-col items-center gap-2">
-      <div className="flex w-full flex-1 items-end justify-center gap-1">
-        <div
-          className="w-3 rounded-t-md bg-[#004DE7]"
-          style={{ height: `${plannedH}%` }}
-          title={`Planned: ${formatCurrency(phase.planned, currency)}`}
-        />
-        <div
-          className="w-3 rounded-t-md bg-[#1B8E45]"
-          style={{ height: `${actualH}%` }}
-          title={`Actual: ${formatCurrency(phase.actual, currency)}`}
-        />
+    <div className="rounded-xl bg-white shadow-lg border border-grey-100 px-4 py-3 min-w-[180px]">
+      <p className="text-[13px] font-semibold text-black-500 mb-3">
+        {String(label ?? "")}
+      </p>
+      <div className="flex flex-col gap-2">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center justify-between gap-6">
+            <span className="flex items-center gap-1.5 text-[12px] text-black-300">
+              <span
+                className="size-2 rounded-full shrink-0"
+                style={{ backgroundColor: r.color }}
+              />
+              {r.label}
+            </span>
+            <span className="text-[12px] font-semibold text-black-500 tabular-nums">
+              {formatCurrency(r.value, currency)}
+            </span>
+          </div>
+        ))}
       </div>
-      <span className="line-clamp-1 max-w-full text-[10px] text-gray-500">
-        {phase.name}
-      </span>
     </div>
   );
 }
@@ -370,12 +425,12 @@ function VarianceTable({
 }) {
   return (
     <table className="mt-6 w-full text-left text-xs">
-      <thead>
-        <tr className="border-b border-[#F0F0F0] text-gray-500">
-          <th className="py-2 font-medium">Phase</th>
-          <th className="py-2 text-right font-medium">Planned</th>
-          <th className="py-2 text-right font-medium">Actual</th>
-          <th className="py-2 text-right font-medium">Variance</th>
+      <thead className="bg-[#F6F6F6]">
+        <tr className="border-b border-[#F0F0F0] text-black-300 font-semibold">
+          <th className="py-2 px-3 font-medium text-black-300 font-semibold">Phase</th>
+          <th className="py-2 font-medium text-black-300 font-semibold">Planned</th>
+          <th className="py-2 text-black-300 font-semibold">Actual</th>
+          <th className="py-2 text-black-300 font-semibold">Variance</th>
         </tr>
       </thead>
       <tbody>
@@ -399,17 +454,17 @@ function VarianceRow({
   const pctOff = Math.abs((variance / phase.planned) * 100).toFixed(1);
   return (
     <tr className="border-b border-[#F8F8F8]">
-      <td className="py-2.5 text-gray-700">{phase.name}</td>
-      <td className="py-2.5 text-right tabular-nums text-gray-700">
+      <td className="py-2.5 px-3 font-semibold text-black-500">{phase.name}</td>
+      <td className="py-2.5 tabular-nums text-[#131B2E]">
         {formatCurrency(phase.planned, currency)}
       </td>
-      <td className="py-2.5 text-right tabular-nums text-gray-700">
+      <td className="py-2.5 tabular-nums text-[#131B2E]">
         {formatCurrency(phase.actual, currency)}
       </td>
       <td
         className={cn(
-          "py-2.5 text-right font-semibold tabular-nums",
-          isOver ? "text-[#C72525]" : "text-[#1B8E45]",
+          "py-2.5  font-semibold tabular-nums",
+          isOver ? "text-[#C72525]" : "text-[#0039B1]",
         )}
       >
         {isOver ? "+" : "−"}
@@ -420,43 +475,46 @@ function VarianceRow({
 }
 
 interface MaterialsProcurementCardProps {
+  className: string;
   projectId: string;
   materials: MaterialProcurement[];
   currency: ProjectFinancesData["currency"];
 }
 
 function MaterialsProcurementCard({
+  className,
   projectId,
   materials,
   currency,
 }: MaterialsProcurementCardProps) {
   const preview = materials.slice(0, MATERIALS_PREVIEW_LIMIT);
   return (
-    <Card padding="lg">
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">
+    <Card className={`${className}`}>
+      <div className="flex items-center justify-between py-3 px-5">
+        <div className="flex gap-2 items-center">
+          <ReactSVG src={icons.chart} />
+          <h3 className="text-[13px] font-semibold text-black-300">
             Materials Procurement
-          </h2>
-          <p className="mt-0.5 text-xs text-gray-500">Recent purchases.</p>
+          </h3>
         </div>
         <Link
           to={`/project/${projectId}/materials`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+          className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
         >
           View More
-          <ChevronRightIcon className="size-3.5" />
         </Link>
       </div>
-      <ul className="flex flex-col">
-        {preview.map((material, idx) => (
-          <MaterialRow
-            key={`${material.id}-${idx}`}
-            material={material}
-            currency={currency}
-          />
-        ))}
-      </ul>
+      <div className="bg-white rounded-[12px] h-full m-1 px-6">
+        <ul className="flex flex-col">
+          {preview.map((material, idx) => (
+            <MaterialRow
+              key={`${material.id}-${idx}`}
+              material={material}
+              currency={currency}
+            />
+          ))}
+        </ul>
+      </div>
     </Card>
   );
 }
@@ -469,22 +527,28 @@ function MaterialRow({
   currency: ProjectFinancesData["currency"];
 }) {
   return (
-    <li className="flex items-center gap-3 border-b border-[#F0F0F0] py-3 last:border-b-0">
-      <IconBox
-        tone={material.thumbnailTone}
-        size="sm"
-        icon={<MaterialsIcon className="size-4" />}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
-          {material.name}
-        </p>
-        <p className="text-[11px] text-gray-500">
-          {material.purchasedAt} ·{" "}
-          <a className="text-[#004DE7] hover:underline" href="#">
-            {material.receipt}
-          </a>
-        </p>
+    <li className="flex gap-3 items-center justify-between border-b border-[#F0F0F0] py-3 last:border-b-0">
+      <div className='flex gap-2 items-center'>
+        <Avatar
+          name={material.name}
+          src={''}
+          size="md"
+          className={cn("h-[62px] w-[62px] rounded-[4px]")}
+        />
+        <div className="flex flex-col gap-1">
+          <p className="truncate text-[13px] font-medium text-black-500">
+            {material.name}
+          </p>
+          <p className="text-[11px] text-black-300">
+            {material.purchasedAt} ·{" "}
+          </p>
+          <div className='flex gap-1 items-center'>
+            <ReactSVG src={icons.paperclip} className='mt-1' />
+            <a className="text-[#004DE7] hover:underline text-[13px]" href="#">
+              {material.receipt}
+            </a>
+          </div>
+        </div>
       </div>
       <p className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
         {formatCurrency(material.amount, currency)}
@@ -511,35 +575,35 @@ function MilestonePaymentsCard({
   className,
 }: MilestonePaymentsCardProps) {
   return (
-    <Card padding="lg" className={className}>
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">
+    <Card className={className}>
+      <div className="flex items-center justify-between py-3 px-5">
+        <div className="flex gap-2 items-center">
+          <ReactSVG src={icons.money} />
+          <h3 className="text-[13px] font-semibold text-black-300">
             Milestone Payments
-          </h2>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Release funds based on verified completion.
-          </p>
+          </h3>
         </div>
         <Link
           to={`/project/${projectId}/finances/milestone-payments`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+          className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
         >
           View More
-          <ChevronRightIcon className="size-3.5" />
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {milestones.map((milestone, idx) => (
-          <MilestoneCard
-            key={`${milestone.id}-${idx}`}
-            milestone={milestone}
-            currency={currency}
-            variant="compact"
-            onReleaseFunds={() => onRequestRelease(milestone)}
-            onRaiseDispute={() => onRequestDispute(milestone)}
-          />
-        ))}
+
+      <div className="bg-white rounded-[12px] h-full m-1 p-6">
+        <div className="flex items-center gap-4 overflow-x-auto">
+          {milestones.map((milestone, idx) => (
+            <MilestoneCard
+              key={`${milestone.id}-${idx}`}
+              milestone={milestone}
+              currency={currency}
+              variant="compact"
+              onReleaseFunds={() => onRequestRelease(milestone)}
+              onRaiseDispute={() => onRequestDispute(milestone)}
+            />
+          ))}
+        </div>
       </div>
     </Card>
   );

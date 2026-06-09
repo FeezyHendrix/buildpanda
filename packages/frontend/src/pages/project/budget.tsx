@@ -3,6 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -116,6 +117,14 @@ export default function ProjectBudget() {
 
   return (
     <div className="mx-auto max-w-6xl pb-24">
+      <Breadcrumbs
+        items={[
+          { label: "Finances", to: `/project/${project.id}/finances` },
+          { label: "Budget" },
+        ]}
+        className="mb-4"
+      />
+
       <PageHeader
         title="Budget"
         description="Track and manage the project's financial budget, cost categories, and cash flow."

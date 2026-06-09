@@ -15,7 +15,7 @@ interface ProgressBarProps extends HTMLAttributes<HTMLDivElement> {
 
 const fillStyles: Record<ProgressTone, string> = {
   brand: "bg-[#004DE7]",
-  success: "bg-[#1B8E45]",
+  success: "bg-success-500",
   warning: "bg-[#C26A00]",
   danger: "bg-[#C72525]",
   neutral: "bg-gray-700",
@@ -52,7 +52,7 @@ const ProgressBar = forwardRef<HTMLDivElement, ProgressBarProps>(
         aria-valuemin={0}
         aria-valuemax={max}
         className={cn(
-          "w-full overflow-hidden rounded-full bg-[#EDEDED]",
+          "w-full overflow-hidden rounded-full bg-success-50",
           trackHeight[size],
           trackClassName,
           className,
