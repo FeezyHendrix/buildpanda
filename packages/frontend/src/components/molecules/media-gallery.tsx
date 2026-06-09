@@ -19,7 +19,6 @@ const ASPECT: Record<NonNullable<MediaGalleryProps["aspectRatio"]>, string> = {
 function MediaGallery({
   items,
   aspectRatio = "4/3",
-  maxColumns = 3,
   eagerFirst = true,
   className,
 }: MediaGalleryProps) {

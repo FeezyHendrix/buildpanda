@@ -10,20 +10,10 @@ import {
   useActiveTooltipDataPoints,
   useIsTooltipActive,
 } from "recharts";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { IconBox } from "@/components/atoms/icon-box";
-import {
-  ChevronRightIcon,
-  MaterialsIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
-import {
-  AiInsightsCard,
-  type AiInsight,
-} from "@/components/molecules/ai-insights-card";
 import { FundProjectDialog } from "@/components/molecules/fund-project-dialog";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
@@ -48,33 +38,11 @@ import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { Avatar } from "@/components/atoms/avatar";
 
-const INSIGHTS: AiInsight[] = [
-  {
-    id: "ai1",
-    kind: "trend",
-    message:
-      "Steel prices are 14% above market average for Lagos. Recommend locking bulk purchase now.",
-  },
-  {
-    id: "ai2",
-    kind: "good",
-    message:
-      "Foundation spending is 6% below estimate due to optimized logistics.",
-  },
-  {
-    id: "ai3",
-    kind: "warning",
-    message:
-      "Finishing stage may exceed budget by 5% based on current material selection.",
-  },
-];
-
 const MATERIALS_PREVIEW_LIMIT = 5;
 const VARIANCE_TABLE_LIMIT = 2;
 
 export default function ProjectFinances() {
   const { project } = useProjectContext();
-  const navigate = useNavigate();
   const { data: finances, isPending } = useProjectFinances(project.id);
 
   const [fundOpen, setFundOpen] = useState(false);

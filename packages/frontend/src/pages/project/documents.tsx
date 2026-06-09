@@ -4,11 +4,6 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { IconBox } from "@/components/atoms/icon-box";
-import {
-  DocumentsIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
 import { icons } from "@/assets/icons/icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
@@ -164,28 +159,6 @@ export default function ProjectDocuments() {
         />
       </section>
     </div>
-  );
-}
-
-function CategoryCard({ category }: { category: DocumentCategory }) {
-  return (
-    <Card padding="md" interactive>
-      <div className="flex items-start gap-3">
-        <IconBox
-          tone={category.tone}
-          size="md"
-          icon={<DocumentsIcon className="size-5" />}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900">
-            {category.name}
-          </p>
-          <p className="mt-1 text-xs tabular-nums text-gray-500">
-            {category.fileCount} Files · {category.totalSize}
-          </p>
-        </div>
-      </div>
-    </Card>
   );
 }
 

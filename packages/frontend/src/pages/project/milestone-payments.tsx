@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -254,29 +252,6 @@ function EscrowSummary({ finances }: { finances: ProjectFinances }) {
         /> */}
       </div>
     </Card>
-  );
-}
-
-function SummaryStat({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
-  return (
-    <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p
-        className={`mt-1 text-lg font-bold tabular-nums ${
-          accent ? "text-[#004DE7]" : "text-gray-900"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
   );
 }
 
