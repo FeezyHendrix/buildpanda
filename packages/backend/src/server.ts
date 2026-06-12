@@ -36,6 +36,8 @@ import insightsRoutes from "./modules/insights/index.ts";
 import participantRoutes from "./modules/participants/index.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
+import orgProfileRoutes from "./modules/org-profile/routes.ts";
+import proposalRoutes from "./modules/proposals/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -85,6 +87,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(participantRoutes);
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
+  await app.register(orgProfileRoutes);
+  await app.register(proposalRoutes);
 
   return app;
 }

@@ -187,3 +187,17 @@ export const leadKeys = {
       ? ([...leadKeys.all, "list", filters] as const)
       : ([...leadKeys.all, "list"] as const),
 };
+
+export const orgProfileKeys = {
+  all: ["org-profile"] as const,
+  detail: () => [...orgProfileKeys.all, "detail"] as const,
+};
+
+export const proposalKeys = {
+  all: ["proposals"] as const,
+  list: (filters?: { status?: string; limit?: number; offset?: number }) =>
+    filters
+      ? ([...proposalKeys.all, "list", filters] as const)
+      : ([...proposalKeys.all, "list"] as const),
+  detail: (id: string) => [...proposalKeys.all, "detail", id] as const,
+};
