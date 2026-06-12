@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container, ButtonLink, Badge, SectionHeading, FeatureCard } from "@/components/ui";
+import { site } from "@/lib/site";
 import { HeroVisual } from "@/components/hero-visual";
 import { ConsultationSection } from "@/components/consultation-section";
 import {
@@ -96,12 +97,12 @@ export default function HomePage() {
               dashboard.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/#consultation" size="lg">
-                Book a consultation
+              <ButtonLink href={site.appUrl} size="lg">
+                Get started
                 <ArrowRightIcon className="h-5 w-5" />
               </ButtonLink>
-              <ButtonLink href="/product/" variant="outline" size="lg">
-                See the product
+              <ButtonLink href="/#consultation" variant="outline" size="lg">
+                Talk to us
               </ButtonLink>
             </div>
             <p className="text-sm text-muted">

@@ -52,14 +52,11 @@ export function Navbar() {
         </ul>
 
         <div className="hidden items-center gap-3 md:flex">
-          <ButtonLink href="/about/#contact" variant="ghost" size="md" className="h-10 px-4">
-            Talk to us
-          </ButtonLink>
           <ButtonLink href={site.appUrl} variant="ghost" size="md" className="h-10 px-4">
             Log in
           </ButtonLink>
-          <ButtonLink href="/#consultation" size="md" className="h-10 px-4">
-            Book a consultation
+          <ButtonLink href={site.appUrl} size="md" className="h-10 px-4">
+            Get started
           </ButtonLink>
         </div>
 
@@ -101,8 +98,8 @@ export function Navbar() {
               </ButtonLink>
             </li>
             <li className="mt-2">
-              <ButtonLink href="/#consultation" size="md" className="w-full">
-                Book a consultation
+              <ButtonLink href={site.appUrl} size="md" className="w-full">
+                Get started
               </ButtonLink>
             </li>
           </ul>
