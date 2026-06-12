@@ -8,6 +8,7 @@ import {
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
+import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
 import { projectsRepository } from "../projects/repository.ts";
 
@@ -205,22 +206,16 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
 
       const inviteUrl = `${appUrl}/accept-project-invite/${token}`;
       try {
+        const { subject, html } = projectInviteEmail({
+          inviterName: user.name,
+          projectName: project.name,
+          url: inviteUrl,
+        });
         await sendEmail({
           to: email,
           toName: request.body.name ?? email,
-          subject: `You've been invited to follow ${project.name} on BuildPanda`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-              <h2 style="color: #111827;">Follow your build on BuildPanda</h2>
-              <p style="color: #4b5563; line-height: 1.6;">
-                ${user.name} invited you to follow <strong>${project.name}</strong>.
-                You'll get your own portal to see progress, approve selections and ask questions.
-              </p>
-              <a href="${inviteUrl}" style="display:inline-block;padding:12px 24px;background:#004DE7;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin:16px 0;">
-                Open my portal
-              </a>
-              <p style="color:#9ca3af;font-size:14px;">If you weren't expecting this, you can ignore this email.</p>
-            </div>`,
+          subject,
+          html,
         });
       } catch (error) {
         request.log.warn({ err: error }, "Failed to send project invite email");

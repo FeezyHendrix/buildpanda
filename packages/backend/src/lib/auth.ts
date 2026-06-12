@@ -2,6 +2,11 @@ import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendEmail } from "./mail.ts";
+import {
+  organizationInviteEmail,
+  passwordResetEmail,
+  verificationEmail,
+} from "./email-templates.ts";
 import { db } from "../db/connection.ts";
 import { generateId } from "./ids.ts";
 import { ac, roles } from "./permissions.ts";
@@ -132,52 +137,16 @@ export const auth = betterAuth({
     autoSignIn: false,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendEmail({
-        to: user.email,
-        toName: user.name,
-        subject: "Reset your password",
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-            <h2 style="color: #111827;">Reset your password</h2>
-            <p style="color: #4b5563; line-height: 1.6;">
-              Hi ${user.name},<br/>
-              We received a request to reset your password. Click the button below to choose a new one.
-            </p>
-            <a href="${url}" style="display: inline-block; padding: 12px 24px; background: #004DE7; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 16px 0;">
-              Reset Password
-            </a>
-            <p style="color: #9ca3af; font-size: 14px; line-height: 1.5;">
-              If you didn't request a password reset, you can safely ignore this email. The link expires in 1 hour.
-            </p>
-          </div>
-        `,
-      });
+      const { subject, html } = passwordResetEmail({ name: user.name, url });
+      await sendEmail({ to: user.email, toName: user.name, subject, html });
     },
     resetPasswordTokenExpiresIn: 3600,
   },
 
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      await sendEmail({
-        to: user.email,
-        toName: user.name,
-        subject: "Verify your email address",
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-            <h2 style="color: #111827;">Verify your email</h2>
-            <p style="color: #4b5563; line-height: 1.6;">
-              Hi ${user.name},<br/>
-              Thanks for signing up for BuildPanda! Please verify your email address by clicking the button below.
-            </p>
-            <a href="${url}" style="display: inline-block; padding: 12px 24px; background: #004DE7; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 16px 0;">
-              Verify Email
-            </a>
-            <p style="color: #9ca3af; font-size: 14px; line-height: 1.5;">
-              If you didn't create an account, you can safely ignore this email.
-            </p>
-          </div>
-        `,
-      });
+      const { subject, html } = verificationEmail({ name: user.name, url });
+      await sendEmail({ to: user.email, toName: user.name, subject, html });
     },
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
@@ -233,27 +202,12 @@ export const auth = betterAuth({
         enabled: true,
       },
       sendInvitationEmail: async (data) => {
-        const inviteUrl = `${APP_URL}/accept-invitation/${data.id}`;
-        await sendEmail({
-          to: data.email,
-          toName: data.email,
-          subject: `You're invited to join ${data.organization.name} on BuildPanda`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-              <h2 style="color: #111827;">Join ${data.organization.name}</h2>
-              <p style="color: #4b5563; line-height: 1.6;">
-                ${data.inviter.user.name} invited you to collaborate on
-                ${data.organization.name} in BuildPanda. Click below to accept.
-              </p>
-              <a href="${inviteUrl}" style="display: inline-block; padding: 12px 24px; background: #004DE7; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 16px 0;">
-                Accept Invitation
-              </a>
-              <p style="color: #9ca3af; font-size: 14px; line-height: 1.5;">
-                If you weren't expecting this invitation, you can ignore this email.
-              </p>
-            </div>
-          `,
+        const { subject, html } = organizationInviteEmail({
+          inviterName: data.inviter.user.name,
+          organizationName: data.organization.name,
+          url: `${APP_URL}/accept-invitation/${data.id}`,
         });
+        await sendEmail({ to: data.email, subject, html });
       },
     }),
     admin({

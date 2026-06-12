@@ -30,10 +30,12 @@ export const config = {
   http: {
     host: optional("HOST", "0.0.0.0"),
     port: optionalNumber("PORT", 3000),
-    // Comma-separated list. Defaults include the app (5173) and admin (5174).
+    // Comma-separated list. Defaults include the app (5173), admin (5174) and
+    // marketing site (3001, posts consultation leads). In production this must
+    // include https://buildpanda.io (and www) for the lead form to work.
     corsOrigins: optional(
       "CORS_ORIGIN",
-      "http://localhost:5173,http://localhost:5174",
+      "http://localhost:5173,http://localhost:5174,http://localhost:3001",
     )
       .split(",")
       .map((value) => value.trim())
@@ -66,8 +68,27 @@ export const config = {
 
   mail: {
     token: optional("ZEPTOMAIL_TOKEN", ""),
-    fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.com"),
+    fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
     fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
+    // Link target for the logo in email headers (the app sign-in origin).
+    appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
+      .split(",")[0]!
+      .trim(),
+    // Where the email header logo is hosted. Defaults to the API's own
+    // /static/email-logo.png route so it works wherever the backend deploys.
+    logoUrl: optional(
+      "EMAIL_LOGO_URL",
+      `${optional("BETTER_AUTH_URL", "http://localhost:3000")}/static/email-logo.png`,
+    ),
+    // Inboxes that receive "Book a consultation" leads from the marketing
+    // site. Comma-separated.
+    leadsNotifyAddresses: optional(
+      "LEADS_NOTIFY_EMAIL",
+      "buildpanda.io@gmail.com,michaelade.build@gmail.com",
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
   },
 
   uploads: {

@@ -6,7 +6,9 @@ import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
 import queuePlugin from "./plugins/queue.ts";
 import authRoutes from "./modules/auth/routes.ts";
+import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
+import leadRoutes from "./modules/leads/routes.ts";
 import userRoutes from "./modules/users/routes.ts";
 import projectRoutes from "./modules/projects/routes.ts";
 import updateRoutes from "./modules/updates/routes.ts";
@@ -53,7 +55,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(queuePlugin);
 
   await app.register(authRoutes);
+  await app.register(assetRoutes);
   await app.register(healthRoutes);
+  await app.register(leadRoutes);
   await app.register(userRoutes);
   await app.register(projectRoutes);
   await app.register(updateRoutes);

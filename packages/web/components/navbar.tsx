@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { nav } from "@/lib/site";
+import { nav, site } from "@/lib/site";
 import { ButtonLink } from "@/components/ui";
 
 export function Navbar() {
@@ -55,6 +55,9 @@ export function Navbar() {
           <ButtonLink href="/about/#contact" variant="ghost" size="md" className="h-10 px-4">
             Talk to us
           </ButtonLink>
+          <ButtonLink href={site.appUrl} variant="ghost" size="md" className="h-10 px-4">
+            Log in
+          </ButtonLink>
           <ButtonLink href="/#consultation" size="md" className="h-10 px-4">
             Book a consultation
           </ButtonLink>
@@ -92,6 +95,11 @@ export function Navbar() {
                 </Link>
               </li>
             ))}
+            <li className="mt-2">
+              <ButtonLink href={site.appUrl} variant="ghost" size="md" className="w-full">
+                Log in
+              </ButtonLink>
+            </li>
             <li className="mt-2">
               <ButtonLink href="/#consultation" size="md" className="w-full">
                 Book a consultation

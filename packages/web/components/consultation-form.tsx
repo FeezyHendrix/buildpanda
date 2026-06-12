@@ -6,7 +6,14 @@ import { CheckIcon } from "@/components/icons";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-const endpoint = process.env.NEXT_PUBLIC_LEADS_ENDPOINT;
+// Backend lead-capture endpoint (POST /leads/consultation emails the lead to
+// the team inbox). Overridable per environment; in dev with no override the
+// submission is logged to the console instead.
+const endpoint =
+  process.env.NEXT_PUBLIC_LEADS_ENDPOINT ||
+  (process.env.NODE_ENV === "production"
+    ? "https://api.buildpanda.com/leads/consultation"
+    : undefined);
 
 const fieldClass =
   "h-[50px] w-full rounded-lg border border-line bg-white px-4 text-sm text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/15";
