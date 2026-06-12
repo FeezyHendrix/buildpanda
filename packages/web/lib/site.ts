@@ -8,7 +8,7 @@ export const site = {
   // Configure these for the live site.
   email: "hello@buildpanda.io",
   phoneDisplay: "+234 800 000 0000",
-  appUrl: "https://app.buildpanda.com",
+  appUrl: "https://app.buildpanda.io",
 } as const;
 
 export const nav = [
