@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType } from "react";
+import { HomeRedirect, RequireAuth, RequireCompany } from "@/lib/route-guards";
 
 // After a deploy, Vite emits new hashed chunk filenames. A browser holding a
 // stale index.html (or an open tab) requests an old chunk that no longer exists
@@ -77,7 +78,7 @@ const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate to="/dashboard" replace />,
+    element: <HomeRedirect />,
   },
   {
     path: "/auth",
@@ -93,7 +94,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: <DashboardLayout />,
+    element: (
+      <RequireCompany>
+        <DashboardLayout />
+      </RequireCompany>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: "settings/team", element: <TeamSettings /> },
@@ -109,15 +114,30 @@ const router = createBrowserRouter([
   },
   {
     path: "/my-build",
-    element: <MyBuild />,
+    element: (
+      <RequireAuth>
+        <MyBuild />
+      </RequireAuth>
+    ),
   },
   {
     path: "/project/create",
-    element: <CreateProject />,
+    element: (
+      <RequireCompany>
+        <CreateProject />
+      </RequireCompany>
+    ),
   },
   {
+    // Both account types may open a project: company staff manage it, owners
+    // and other participants get the scoped portal view. The backend's
+    // org/participant checks are the real authorization.
     path: "/project/:projectId",
-    element: <ProjectLayout />,
+    element: (
+      <RequireAuth>
+        <ProjectLayout />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <Navigate to="overview" replace /> },
       { path: "overview", element: <ProjectOverview /> },

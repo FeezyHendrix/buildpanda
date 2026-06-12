@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { authClient } from "@/lib/auth-client";
+import { homePathFor } from "@/lib/route-guards";
 
 export default function SignInForm() {
   const [email, setEmail] = useState("");
@@ -30,13 +31,14 @@ export default function SignInForm() {
 
     // Homeowners land in their own "My Build" portal; company staff in the dashboard.
     const accountType = (data?.user as { accountType?: string } | undefined)?.accountType;
-    navigate(accountType === "project_owner" ? "/my-build" : "/dashboard");
+    navigate(homePathFor(accountType));
   }
 
   async function handleGoogleSignIn() {
+    // Land on "/" so HomeRedirect routes by accountType (owners → /my-build).
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/dashboard",
+      callbackURL: "/",
     });
   }
 

@@ -48,8 +48,8 @@ export default function ProjectLayout() {
             title="Project not found"
             description="We couldn't find the project you're looking for. It may have been removed or you don't have access."
             action={
-              <Button variant="primary" onClick={() => navigate("/dashboard")}>
-                Back to dashboard
+              <Button variant="primary" onClick={() => navigate("/")}>
+                Back to home
               </Button>
             }
           />
