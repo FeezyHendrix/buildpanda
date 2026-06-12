@@ -105,9 +105,10 @@ export default function VerifyEmailPage() {
           Email verified!
         </p>
 
-        <Link to="/dashboard">
+        {/* "/" routes each account type to its home (owners → My Build). */}
+        <Link to="/">
           <Button type="button" className="w-full">
-            Continue to dashboard
+            Continue
           </Button>
         </Link>
       </div>
