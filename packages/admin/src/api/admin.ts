@@ -13,6 +13,7 @@ export interface AdminOverview {
     inspections: number;
     documents: number;
     openDisputes: number;
+    unassignedLeads: number;
   };
   finance: { totalBudget: number; fundsReleased: number };
   recentUsers: Array<{
@@ -135,6 +136,20 @@ function params(args: ListArgs = {}) {
   return p;
 }
 
+export interface AdminLeadRow {
+  id: string;
+  org_id: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  location: string | null;
+  project_type: string | null;
+  source: string;
+  status: string;
+  created_at: string;
+  organizationName: string | null;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -157,4 +172,9 @@ export const adminApi = {
   getProject: (id: string) => api.get<AdminProjectDetail>(`/admin/projects/${id}`).then((r) => r.data),
   projectCollection: <T = Record<string, unknown>>(id: string, kind: string) =>
     api.get<T>(`/admin/projects/${id}/${kind}`).then((r) => r.data),
+
+  listLeads: (args?: ListArgs) =>
+    api.get<Paginated<AdminLeadRow>>("/admin/leads", { params: params(args) }).then((r) => r.data),
+  assignLead: (id: string, organizationId: string) =>
+    api.post<AdminLeadRow>(`/admin/leads/${id}/assign`, { organizationId }).then((r) => r.data),
 };

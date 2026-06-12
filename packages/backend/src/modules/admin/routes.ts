@@ -139,6 +139,38 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  // --- Leads ---
+  fastify.get<{ Querystring: ListQuery }>(
+    "/admin/leads",
+    { schema: { querystring: listQuery } },
+    async (request) => repo.listLeads(toListParams(request.query)),
+  );
+
+  fastify.post<{ Params: { id: string }; Body: { organizationId: string } }>(
+    "/admin/leads/:id/assign",
+    {
+      schema: {
+        params: idParams,
+        body: {
+          type: "object",
+          required: ["organizationId"],
+          additionalProperties: false,
+          properties: { organizationId: { type: "string", minLength: 1 } },
+        } as const,
+      },
+    },
+    async (request, reply) => {
+      const admin = request.requireAdmin();
+      const lead = await repo.assignLead(
+        request.params.id,
+        request.body.organizationId,
+        admin.id,
+      );
+      if (!lead) throw new NotFoundError("Lead or Organization");
+      return reply.send(lead);
+    },
+  );
+
   // Read-only drill-down collections for a project.
   fastify.get<{ Params: { id: string } }>(
     "/admin/projects/:id/finances",

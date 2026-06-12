@@ -21,8 +21,13 @@ function useGuardSession() {
   return { isPending, signedIn: Boolean(data?.user), accountType };
 }
 
+const LAST_SUITE_KEY = "buildpanda:last-suite";
+
 export function homePathFor(accountType: string | null | undefined): string {
-  return accountType === "project_owner" ? "/my-build" : "/dashboard";
+  if (accountType === "project_owner") return "/my-build";
+  // Company users return to whichever suite they were last in
+  const lastSuite = localStorage.getItem(LAST_SUITE_KEY);
+  return lastSuite === "sales" ? "/sales" : "/dashboard";
 }
 
 function FullScreenLoader() {

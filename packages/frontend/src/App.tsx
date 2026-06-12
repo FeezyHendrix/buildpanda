@@ -33,6 +33,10 @@ const ResetPassword = lazy(() => import("@/pages/auth/reset-password"));
 const VerifyEmail = lazy(() => import("@/pages/auth/verify-email"));
 
 const DashboardLayout = lazy(() => import("@/layouts/dashboard-layout"));
+const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
+const SalesDashboard = lazy(() => import("@/pages/sales/index"));
+const SalesLeads = lazy(() => import("@/pages/sales/leads"));
+const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const TeamSettings = lazy(() => import("@/pages/dashboard/settings/team"));
@@ -102,6 +106,19 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "settings/team", element: <TeamSettings /> },
+    ],
+  },
+  {
+    path: "/sales",
+    element: (
+      <RequireCompany>
+        <SalesLayout />
+      </RequireCompany>
+    ),
+    children: [
+      { index: true, element: <SalesDashboard /> },
+      { path: "leads", element: <SalesLeads /> },
+      { path: "settings", element: <SalesSettings /> },
     ],
   },
   {

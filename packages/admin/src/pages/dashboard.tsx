@@ -20,6 +20,7 @@ export default function DashboardPage() {
     { label: "Inspections", value: data.counts.inspections },
     { label: "Documents", value: data.counts.documents },
     { label: "Open disputes", value: data.counts.openDisputes },
+    { label: "Unassigned leads", value: data.counts.unassignedLeads, to: "/leads" },
   ];
 
   return (
