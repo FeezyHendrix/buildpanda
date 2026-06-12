@@ -9,6 +9,7 @@ import OrganizationsPage from "@/pages/organizations";
 import OrganizationDetailPage from "@/pages/organization-detail";
 import ProjectsPage from "@/pages/projects";
 import ProjectDetailPage from "@/pages/project-detail";
+import LeadsPage from "@/pages/leads";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/:id" element={<ProjectDetailPage />} />
+            <Route path="leads" element={<LeadsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
