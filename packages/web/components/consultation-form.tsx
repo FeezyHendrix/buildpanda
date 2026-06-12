@@ -12,7 +12,7 @@ type Status = "idle" | "submitting" | "success" | "error";
 const endpoint =
   process.env.NEXT_PUBLIC_LEADS_ENDPOINT ||
   (process.env.NODE_ENV === "production"
-    ? "https://api.buildpanda.com/leads/consultation"
+    ? "https://api.buildpanda.io/leads/consultation"
     : undefined);
 
 const fieldClass =

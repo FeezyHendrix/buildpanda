@@ -120,7 +120,7 @@ export const auth = betterAuth({
     .filter(Boolean),
 
   // Allow cookies on cross-site requests (e.g. localhost frontend hitting the
-  // Railway-hosted API at api.buildpanda.com). When the frontend ever lives on
+  // Railway-hosted API at api.buildpanda.io). When the frontend ever lives on
   // a sibling subdomain of the API, switch to `advanced.crossSubDomainCookies`
   // and drop SameSite=None.
   advanced: {
