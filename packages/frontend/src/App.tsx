@@ -36,6 +36,8 @@ const DashboardLayout = lazy(() => import("@/layouts/dashboard-layout"));
 const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
 const SalesDashboard = lazy(() => import("@/pages/sales/index"));
 const SalesLeads = lazy(() => import("@/pages/sales/leads"));
+const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
+const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
@@ -118,6 +120,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <SalesDashboard /> },
       { path: "leads", element: <SalesLeads /> },
+      { path: "proposals", element: <SalesProposals /> },
+      { path: "proposals/:id", element: <SalesProposalWorkspace /> },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
