@@ -179,3 +179,11 @@ export const pandaAiKeys = {
   latest: (projectId: string) =>
     [...pandaAiKeys.all(projectId), "latest"] as const,
 };
+
+export const leadKeys = {
+  all: ["leads"] as const,
+  list: (filters?: { status?: string }) =>
+    filters
+      ? ([...leadKeys.all, "list", filters] as const)
+      : ([...leadKeys.all, "list"] as const),
+};

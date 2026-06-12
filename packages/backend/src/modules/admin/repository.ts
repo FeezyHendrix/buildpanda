@@ -38,6 +38,7 @@ export function adminRepository(db: Knex) {
       documents,
       openDisputes,
       finance,
+      unassignedLeads,
     ] = await Promise.all([
       db("user").count<{ count: string }[]>("id as count").first(),
       db("organization").count<{ count: string }[]>("id as count").first(),
@@ -54,6 +55,7 @@ export function adminRepository(db: Knex) {
           released: "funds_released",
         })
         .first(),
+      db("leads").whereNull("org_id").count<{ count: string }[]>("id as count").first(),
     ]);
 
     const recentUsers = await db("user")
@@ -85,6 +87,7 @@ export function adminRepository(db: Knex) {
         inspections: num(inspections),
         documents: num(documents),
         openDisputes: num(openDisputes),
+        unassignedLeads: num(unassignedLeads),
       },
       finance: {
         totalBudget: Number(finance?.budget ?? 0),
@@ -318,6 +321,56 @@ export function adminRepository(db: Knex) {
     return db(table).where({ project_id: projectId }).orderBy(orderBy, dir);
   }
 
+  // --- Leads ---
+
+  async function listLeads(params: ListParams) {
+    const base = db("leads as l").leftJoin("organization as o", "o.id", "l.org_id");
+    if (params.search) {
+      const like = `%${params.search}%`;
+      base.where((qb) => {
+        qb.whereILike("l.name", like).orWhereILike("l.email", like);
+      });
+    }
+    if (params.status) base.where("l.status", params.status);
+    const totalRow = await base.clone().count<{ count: string }[]>("l.id as count").first();
+    const rows = await base
+      .clone()
+      .select(
+        "l.id",
+        "l.org_id",
+        "l.name",
+        "l.email",
+        "l.phone",
+        "l.location",
+        "l.project_type",
+        "l.source",
+        "l.status",
+        "l.created_at",
+        "o.name as organizationName",
+      )
+      .orderBy("l.created_at", "desc")
+      .limit(params.limit)
+      .offset(params.offset);
+    return { total: Number(totalRow?.count ?? 0), rows };
+  }
+
+  async function assignLead(leadId: string, orgId: string, adoptedBy: string) {
+    const org = await db("organization").where({ id: orgId }).first();
+    if (!org) return null;
+    await db("leads").where({ id: leadId }).update({
+      org_id: orgId,
+      adopted_by: adoptedBy,
+      adopted_at: db.fn.now(),
+      updated_at: db.fn.now(),
+    });
+    const lead = await db("leads as l")
+      .leftJoin("organization as o", "o.id", "l.org_id")
+      .where("l.id", leadId)
+      .select("l.*", "o.name as organizationName")
+      .first();
+    return lead ?? null;
+  }
+
   return {
     overview,
     listUsers,
@@ -329,6 +382,8 @@ export function adminRepository(db: Knex) {
     listProjects,
     getProject,
     projectCollection,
+    listLeads,
+    assignLead,
   };
 }
 

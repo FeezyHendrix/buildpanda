@@ -8,6 +8,7 @@ import {
   OrgIcon,
   ProjectIcon,
   LogoutIcon,
+  LeadsIcon,
 } from "@/components/icons";
 
 const nav = [
@@ -15,6 +16,7 @@ const nav = [
   { to: "/users", label: "Users", icon: UsersIcon, end: false },
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
+  { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
 ];
 
 export function Layout() {
