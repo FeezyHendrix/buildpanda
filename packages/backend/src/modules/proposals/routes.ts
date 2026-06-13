@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
@@ -564,7 +565,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       const schedule = estimate ? await repo.getSchedule(estimate.id) : [];
 
       // projects.currency only accepts NGN | USD
-      const currency: "NGN" | "USD" =
+      const currency: CurrencyCode =
         proposalRow.currency === "USD" ? "USD" : "NGN";
 
       const projectId = generateId("prj");

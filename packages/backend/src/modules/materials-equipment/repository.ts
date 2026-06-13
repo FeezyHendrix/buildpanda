@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   EquipmentBucket,
   EquipmentRequestRow,
@@ -28,7 +29,7 @@ export interface NewMaterialOrderRecord {
   delivered_at: string | null;
   estimated_cost: string;
   actual_cost: string;
-  currency: "NGN" | "USD";
+  currency: CurrencyCode;
   delivery_location: string | null;
   notes: string | null;
 }
@@ -57,7 +58,7 @@ export interface NewEquipmentRequestRecord {
   returned_at: string | null;
   estimated_cost: string;
   actual_cost: string;
-  currency: "NGN" | "USD";
+  currency: CurrencyCode;
   delivery_location: string | null;
   operator_required: string;
   notes: string | null;
