@@ -38,6 +38,7 @@ import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import proposalRoutes from "./modules/proposals/routes.ts";
+import publicProposalRoutes from "./modules/proposals/public-routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -89,6 +90,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(pandaAiRoutes);
   await app.register(orgProfileRoutes);
   await app.register(proposalRoutes);
+  await app.register(publicProposalRoutes);
 
   return app;
 }
