@@ -14,11 +14,17 @@ export interface CreateActivityValues {
   notes: string;
 }
 
+export interface ActivityPrefill {
+  name: string;
+  activityType: string;
+}
+
 interface CreateActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   phases: ProjectPhase[];
   initial?: Activity | null;
+  prefill?: ActivityPrefill | null;
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -36,6 +42,7 @@ function CreateActivityDialog({
   onOpenChange,
   phases,
   initial,
+  prefill,
   onSubmit,
   isSubmitting = false,
   error,
@@ -53,8 +60,8 @@ function CreateActivityDialog({
 
   useEffect(() => {
     if (!open) return;
-    setName(initial?.name ?? "");
-    setActivityType(initial?.activityType ?? "");
+    setName(initial?.name ?? prefill?.name ?? "");
+    setActivityType(initial?.activityType ?? prefill?.activityType ?? "");
     setPhaseId(initial?.phaseId ?? "");
     setLocation(initial?.location ?? "");
     setPlannedStartAt(

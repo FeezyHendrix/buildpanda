@@ -8,7 +8,11 @@ import {
   CalendarIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
-import { CreateActivityDialog } from "@/components/molecules/create-activity-dialog";
+import {
+  CreateActivityDialog,
+  type ActivityPrefill,
+} from "@/components/molecules/create-activity-dialog";
+import { ActivityTemplateDialog } from "@/components/molecules/activity-template-dialog";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
@@ -35,12 +39,20 @@ export default function ProjectActivities() {
   const { data: reasons = [] } = useDelayReasons();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [prefill, setPrefill] = useState<ActivityPrefill | null>(null);
   const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
 
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
+
+  function startNewActivity(): void {
+    setEditingTarget(null);
+    setPrefill(null);
+    setTemplateOpen(true);
+  }
 
   return (
     <div className="w-full px-6 py-8 sm:px-10">
@@ -51,7 +63,7 @@ export default function ProjectActivities() {
           <Button
             variant="primary"
             size="md"
-            onClick={() => setCreateOpen(true)}
+            onClick={startNewActivity}
           >
             <PlusIcon className="size-4" />
             New activity
@@ -73,7 +85,7 @@ export default function ProjectActivities() {
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => setCreateOpen(true)}
+                onClick={startNewActivity}
               >
                 <PlusIcon className="size-4" />
                 Add the first one
@@ -96,14 +108,33 @@ export default function ProjectActivities() {
         )}
       </section>
 
+      <ActivityTemplateDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        onPick={(item) => {
+          setPrefill({ name: item.name, activityType: item.type });
+          setTemplateOpen(false);
+          setCreateOpen(true);
+        }}
+        onBlank={() => {
+          setPrefill(null);
+          setTemplateOpen(false);
+          setCreateOpen(true);
+        }}
+      />
+
       <CreateActivityDialog
         open={createOpen}
         onOpenChange={(next) => {
           setCreateOpen(next);
-          if (!next) setEditingTarget(null);
+          if (!next) {
+            setEditingTarget(null);
+            setPrefill(null);
+          }
         }}
         phases={project.timeline}
         initial={editingTarget}
+        prefill={prefill}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
         error={
           createActivity.error || updateActivity.error
