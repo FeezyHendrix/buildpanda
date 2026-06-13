@@ -13,6 +13,8 @@ import {
   ApprovalDetailDialog,
   APPROVAL_STATUS_META,
 } from "@/components/molecules/approval-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { APPROVAL_COLUMNS, assigneeFooter, textMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useApprovals,
@@ -40,6 +42,7 @@ export default function ProjectApprovals() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ApprovalStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: approvals = [], isLoading } = useApprovals(
     project.id,
     filter === "all" ? undefined : filter,
@@ -54,6 +57,11 @@ export default function ProjectApprovals() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const pendingCount = approvals.filter((a) => a.status === "Pending").length;
+
+  function handleMove(approval: Approval, status: ApprovalStatus): void {
+    if (approval.status === status) return;
+    updateApproval.mutate({ projectId: project.id, approvalId: approval.id, status });
+  }
 
   function handleCreate(values: UpsertApprovalValues): void {
     createApproval.mutate(
@@ -71,7 +79,12 @@ export default function ProjectApprovals() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div
+      className={cn(
+        "mx-auto w-full px-6 py-8 sm:px-10",
+        view === "board" ? "max-w-none" : "max-w-7xl",
+      )}
+    >
       <PageHeader
         title="Approvals"
         description="Submit selections and specs for sign-off, and track what's awaiting a decision."
@@ -99,9 +112,46 @@ export default function ProjectApprovals() {
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-500">{pendingCount} awaiting sign-off</p>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">{pendingCount} awaiting sign-off</p>
+        </div>
       </div>
 
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={approvals}
+              columns={APPROVAL_COLUMNS}
+              canManage={canManage}
+              getId={(a) => a.id}
+              getStatus={(a) => a.status}
+              getTitle={(a) => a.title}
+              renderMeta={(a) => textMeta(a.category)}
+              renderFooter={(a) => assigneeFooter(a.reviewedByName, a.dueDate)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+            />
+          )}
+        </div>
+      ) : (
       <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
@@ -138,6 +188,7 @@ export default function ProjectApprovals() {
           ))
         )}
       </div>
+      )}
 
       <UpsertApprovalDialog
         open={createOpen}

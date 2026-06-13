@@ -1,42 +1,34 @@
+import { type ReactNode } from "react";
 import { Menu } from "@base-ui-components/react/menu";
-import { Avatar } from "@/components/atoms/avatar";
-import { Badge } from "@/components/atoms/badge";
 import { cn } from "@/lib/utils";
-import { formatDayMonth } from "@/lib/formatters";
-import {
-  ACTION_PRIORITY_META,
-  ACTION_STATUS_META,
-} from "@/components/molecules/action-item-detail-dialog";
-import type { ActionItem, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
 
-const COLUMNS: ActionStatus[] = ["Open", "InProgress", "Blocked", "Resolved"];
-
-const columnAccent: Record<ActionStatus, string> = {
-  Open: "bg-gray-300",
-  InProgress: "bg-[#004DE7]",
-  Blocked: "bg-amber-500",
-  Resolved: "bg-emerald-500",
-};
-
-function recurrenceShort(unit: RecurrenceUnit, interval: number | null): string {
-  const count = interval ?? 1;
-  const noun = unit === "day" ? "day" : unit === "week" ? "week" : "month";
-  return count === 1 ? `every ${noun}` : `every ${count} ${noun}s`;
+export interface KanbanColumn<S extends string> {
+  status: S;
+  label: string;
+  accent: string;
 }
 
-interface KanbanBoardProps {
-  items: ActionItem[];
+export interface KanbanBoardProps<T, S extends string> {
+  items: T[];
+  columns: KanbanColumn<S>[];
   canManage: boolean;
-  onMove: (item: ActionItem, status: ActionStatus) => void;
-  onOpen: (itemId: string) => void;
+  getId: (item: T) => string;
+  getStatus: (item: T) => S;
+  getTitle: (item: T) => string;
+  renderMeta?: (item: T) => ReactNode;
+  renderFooter?: (item: T) => ReactNode;
+  onMove: (item: T, status: S) => void;
+  onOpen: (id: string) => void;
 }
 
-function MoveMenu({
+function MoveMenu<S extends string>({
   current,
+  columns,
   onMove,
 }: {
-  current: ActionStatus;
-  onMove: (status: ActionStatus) => void;
+  current: S;
+  columns: KanbanColumn<S>[];
+  onMove: (status: S) => void;
 }) {
   return (
     <Menu.Root>
@@ -57,18 +49,20 @@ function MoveMenu({
               "z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none",
             )}
           >
-            {COLUMNS.filter((s) => s !== current).map((s) => (
-              <Menu.Item
-                key={s}
-                className={cn(
-                  "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
-                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
-                )}
-                onClick={() => onMove(s)}
-              >
-                {ACTION_STATUS_META[s].label}
-              </Menu.Item>
-            ))}
+            {columns
+              .filter((c) => c.status !== current)
+              .map((c) => (
+                <Menu.Item
+                  key={c.status}
+                  className={cn(
+                    "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
+                    "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                  )}
+                  onClick={() => onMove(c.status)}
+                >
+                  {c.label}
+                </Menu.Item>
+              ))}
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
@@ -76,67 +70,31 @@ function MoveMenu({
   );
 }
 
-function BoardCard({
-  item,
+function KanbanBoard<T, S extends string>({
+  items,
+  columns,
   canManage,
+  getId,
+  getStatus,
+  getTitle,
+  renderMeta,
+  renderFooter,
   onMove,
   onOpen,
-}: {
-  item: ActionItem;
-  canManage: boolean;
-  onMove: (item: ActionItem, status: ActionStatus) => void;
-  onOpen: (itemId: string) => void;
-}) {
+}: KanbanBoardProps<T, S>) {
   return (
-    <div className="rounded-xl border border-[#EDEDED] bg-white p-3 shadow-sm transition-shadow hover:shadow-md">
-      <button type="button" onClick={() => onOpen(item.id)} className="w-full text-left">
-        <p className="text-sm font-semibold text-gray-900">{item.title}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <Badge tone={ACTION_PRIORITY_META[item.priority].tone} size="sm">
-            {item.priority}
-          </Badge>
-          {item.recurrenceUnit && (
-            <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
-              Repeats {recurrenceShort(item.recurrenceUnit, item.recurrenceInterval)}
-            </span>
-          )}
-        </div>
-      </button>
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-2">
-          {item.assigneeName ? (
-            <>
-              <Avatar name={item.assigneeName} size="sm" />
-              <span className="truncate text-xs text-gray-500">{item.assigneeName}</span>
-            </>
-          ) : (
-            <span className="text-xs text-gray-400">Unassigned</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {item.dueDate && (
-            <span className="text-xs text-gray-500">{formatDayMonth(item.dueDate)}</span>
-          )}
-          {canManage && <MoveMenu current={item.status} onMove={(s) => onMove(item, s)} />}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function KanbanBoard({ items, canManage, onMove, onOpen }: KanbanBoardProps) {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-      {COLUMNS.map((status) => {
-        const colItems = items.filter((i) => i.status === status);
+    <div
+      className="grid gap-4"
+      style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
+    >
+      {columns.map((column) => {
+        const colItems = items.filter((i) => getStatus(i) === column.status);
         return (
-          <div key={status} className="flex flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3">
+          <div key={column.status} className="flex flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3">
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2">
-                <span className={cn("size-2 rounded-full", columnAccent[status])} />
-                <span className="text-sm font-semibold text-gray-900">
-                  {ACTION_STATUS_META[status].label}
-                </span>
+                <span className={cn("size-2 rounded-full", column.accent)} />
+                <span className="text-sm font-semibold text-gray-900">{column.label}</span>
               </div>
               <span className="text-xs font-medium text-gray-400">{colItems.length}</span>
             </div>
@@ -144,15 +102,40 @@ function KanbanBoard({ items, canManage, onMove, onOpen }: KanbanBoardProps) {
               {colItems.length === 0 ? (
                 <p className="px-1 py-6 text-center text-xs text-gray-400">Nothing here</p>
               ) : (
-                colItems.map((item) => (
-                  <BoardCard
-                    key={item.id}
-                    item={item}
-                    canManage={canManage}
-                    onMove={onMove}
-                    onOpen={onOpen}
-                  />
-                ))
+                colItems.map((item) => {
+                  const id = getId(item);
+                  return (
+                    <div
+                      key={id}
+                      className="rounded-xl border border-[#EDEDED] bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onOpen(id)}
+                        className="w-full text-left"
+                      >
+                        <p className="text-sm font-semibold text-gray-900">{getTitle(item)}</p>
+                        {renderMeta && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {renderMeta(item)}
+                          </div>
+                        )}
+                      </button>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {renderFooter ? renderFooter(item) : <span />}
+                        </div>
+                        {canManage && (
+                          <MoveMenu
+                            current={column.status}
+                            columns={columns}
+                            onMove={(s) => onMove(item, s)}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -164,4 +147,4 @@ function KanbanBoard({ items, canManage, onMove, onOpen }: KanbanBoardProps) {
 
 KanbanBoard.displayName = "KanbanBoard";
 
-export { KanbanBoard, type KanbanBoardProps };
+export { KanbanBoard };
