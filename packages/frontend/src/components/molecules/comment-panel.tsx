@@ -3,7 +3,7 @@ import { Avatar } from "@/components/atoms/avatar";
 import { Button } from "@/components/atoms/button";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { UpdateComment } from "@/lib/project-mock-data";
+import type { UpdateComment } from "@/lib/project-types";
 
 interface CommentPanelProps {
   comments: UpdateComment[];

@@ -13,6 +13,7 @@ import {
   useIsTooltipActive,
 } from "recharts";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -22,7 +23,7 @@ import { cn } from "@/lib/utils";
 import type {
   BudgetPhase,
   ProjectFinances,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
@@ -52,7 +53,7 @@ export default function ProjectBudgetAllocation() {
   if (isPending || !finances) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+        <Spinner size="lg" />
       </div>
     );
   }

@@ -8,7 +8,7 @@ import type {
   MaterialOrder,
   MaterialOrderStatus,
   RequestPriority,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export interface MaterialOrderInput {
   title: string;

@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { generateId } from "../../lib/ids.ts";
 import type {
   Proposal,
   ProposalRow,
@@ -14,6 +15,11 @@ import type {
   ProposalEventRow,
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
+  ProposalPlan,
+  ProposalPlanRow,
+  ProposalBoqItem,
+  ProposalBoqItemRow,
+  CreateBoqItemInput,
 } from "./types.ts";
 
 function toProposal(row: ProposalRow): Proposal {
@@ -595,6 +601,104 @@ export function proposalsRepository(db: Knex) {
     }));
   }
 
+  async function listPlans(proposalId: string): Promise<ProposalPlan[]> {
+    const rows = await db<ProposalPlanRow>("proposal_plans as pp")
+      .where("pp.proposal_id", proposalId)
+      .leftJoin("uploaded_files as f", "f.id", "pp.file_id")
+      .orderBy("pp.sort", "asc")
+      .orderBy("pp.uploaded_at", "asc")
+      .select(
+        "pp.id",
+        "pp.proposal_id",
+        "pp.file_id",
+        "pp.label",
+        "pp.uploaded_by",
+        "pp.uploaded_at",
+        "pp.sort",
+        "f.file_name as file_name",
+        "f.size_bytes as size_bytes",
+        "f.mime_type as mime_type",
+      );
+    return rows.map((r) => {
+      const joined = r as unknown as ProposalPlanRow & {
+        file_name: string | null;
+        size_bytes: string | number | null;
+        mime_type: string | null;
+      };
+      return {
+        id: joined.id,
+        proposalId: joined.proposal_id,
+        fileId: joined.file_id,
+        fileName: joined.file_name ?? "(missing file)",
+        sizeBytes: Number(joined.size_bytes ?? 0),
+        mimeType: joined.mime_type ?? "application/octet-stream",
+        label: joined.label,
+        uploadedBy: joined.uploaded_by,
+        uploadedAt: joined.uploaded_at,
+        sort: joined.sort,
+      };
+    });
+  }
+
+  async function insertPlan(data: {
+    id: string;
+    proposalId: string;
+    fileId: string;
+    label: string | null;
+    uploadedBy: string;
+    sort: number;
+  }): Promise<void> {
+    await db<ProposalPlanRow>("proposal_plans").insert({
+      id: data.id,
+      proposal_id: data.proposalId,
+      file_id: data.fileId,
+      label: data.label,
+      uploaded_by: data.uploadedBy,
+      sort: data.sort,
+    });
+  }
+
+  async function deletePlan(planId: string, proposalId: string): Promise<number> {
+    return db("proposal_plans")
+      .where({ id: planId, proposal_id: proposalId })
+      .delete();
+  }
+
+  async function listBoqItems(proposalId: string): Promise<ProposalBoqItem[]> {
+    const rows = await db<ProposalBoqItemRow>("proposal_boq_items")
+      .where({ proposal_id: proposalId })
+      .orderBy("sort", "asc");
+    return rows.map((r) => ({
+      id: r.id,
+      proposalId: r.proposal_id,
+      groupLabel: r.group_label,
+      description: r.description,
+      qty: Number(r.qty),
+      unit: r.unit,
+      sort: r.sort,
+    }));
+  }
+
+  async function replaceBoqItems(
+    proposalId: string,
+    items: CreateBoqItemInput[],
+  ): Promise<void> {
+    await db.transaction(async (trx) => {
+      await trx("proposal_boq_items").where({ proposal_id: proposalId }).delete();
+      if (items.length === 0) return;
+      const rows = items.map((item, idx) => ({
+        id: generateId("boq"),
+        proposal_id: proposalId,
+        group_label: item.groupLabel,
+        description: item.description,
+        qty: item.qty,
+        unit: item.unit,
+        sort: item.sort ?? idx,
+      }));
+      await trx("proposal_boq_items").insert(rows);
+    });
+  }
+
   return {
     allocateNumber,
     insertProposal,
@@ -623,6 +727,11 @@ export function proposalsRepository(db: Knex) {
     getProposalsExpiringWithinDays,
     toProposal,
     toEstimate,
+    listPlans,
+    insertPlan,
+    deletePlan,
+    listBoqItems,
+    replaceBoqItems,
   };
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/atoms/input";
+import { Spinner } from "@/components/atoms/spinner";
 import { Label } from "@/components/atoms/label";
 import { Button } from "@/components/atoms/button";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
@@ -60,7 +61,7 @@ export default function SalesSettings() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="size-7 animate-spin rounded-full border-2 border-gray-200 border-t-[#004DE7]" />
+        <Spinner size="md" />
       </div>
     );
   }

@@ -11,7 +11,8 @@ import {
 } from "@/components/molecules/upsert-permit-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreatePermit, useDeletePermit, usePermits, useUpdatePermit } from "@/hooks/use-permits";
-import type { Permit, PermitStatus } from "@/lib/project-mock-data";
+import { formatShortDate } from "@/lib/formatters";
+import type { Permit, PermitStatus } from "@/lib/project-types";
 
 const STATUS_META: Record<PermitStatus, { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" }> = {
   NotStarted: { label: "Not started", tone: "neutral" },
@@ -22,14 +23,12 @@ const STATUS_META: Record<PermitStatus, { label: string; tone: "neutral" | "info
 };
 
 function fmt(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || "—";
 }
 
 export default function ProjectPermits() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: permits = [], isLoading } = usePermits(project.id);
   const createPermit = useCreatePermit();
   const updatePermit = useUpdatePermit();
@@ -52,12 +51,12 @@ export default function ProjectPermits() {
       <PageHeader
         title="Permits & Approvals"
         description="Regulatory permits and government approvals — track status, references and expiry."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Add permit
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-col gap-3">

@@ -3,13 +3,8 @@ import { Badge } from "@/components/atoms/badge";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useWhatsNext } from "@/hooks/use-insights";
+import { formatDayMonth as fmt } from "@/lib/formatters";
 import type { ReactNode } from "react";
-
-function fmt(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
-}
 
 function Section({ title, count, children }: { title: string; count: number; children: ReactNode }) {
   if (count === 0) return null;

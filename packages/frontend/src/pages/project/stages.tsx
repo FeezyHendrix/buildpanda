@@ -18,7 +18,7 @@ import {
   useUpdateStage,
 } from "@/hooks/use-stages";
 import { cn } from "@/lib/utils";
-import type { Stage, StageStatus } from "@/lib/project-mock-data";
+import type { Stage, StageStatus } from "@/lib/project-types";
 
 const STATUS_META: Record<StageStatus, { label: string; tone: "neutral" | "info" | "success" }> = {
   Pending: { label: "Not started", tone: "neutral" },
@@ -27,7 +27,8 @@ const STATUS_META: Record<StageStatus, { label: string; tone: "neutral" | "info"
 };
 
 export default function ProjectStages() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: stages = [], isLoading } = useStages(project.id);
   const createStage = useCreateStage();
   const updateStage = useUpdateStage();
@@ -66,12 +67,12 @@ export default function ProjectStages() {
       <PageHeader
         title="Build Stages"
         description="Break the build into stages and track progress all the way to handover."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Add stage
           </Button>
-        }
+        ) : undefined}
       />
 
       {stages.length > 0 && (

@@ -29,6 +29,8 @@ function snippet(text: string, query: string): string {
 export interface SearchInput {
   query: string;
   limit?: number;
+  orgIds?: string[];
+  participantProjectIds?: string[];
 }
 
 export function searchService(repository: SearchRepository) {
@@ -47,7 +49,13 @@ export function searchService(repository: SearchRepository) {
 
       const limit = input.limit ?? DEFAULT_LIMIT;
       const pattern = `%${escapeLikePattern(trimmed)}%`;
-      const scope = { userId, pattern, limit };
+      const scope = {
+        userId,
+        orgIds: input.orgIds ?? [],
+        participantProjectIds: input.participantProjectIds ?? [],
+        pattern,
+        limit,
+      };
 
       const [projectsRows, updatesRows, documentsRows, inspectionsRows] = await Promise.all([
         repository.projects(scope),

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { searchKeys } from "./query-keys";
-import type { SearchResults } from "@/lib/project-mock-data";
+import type { SearchResults } from "@/lib/project-types";
 
 const DEBOUNCED_STALE_MS = 30_000;
 

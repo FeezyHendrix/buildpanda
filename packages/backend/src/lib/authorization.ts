@@ -1,4 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
+import { mapAllows, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -15,6 +16,10 @@ export interface AccessContext {
   // Participant roles keyed by project id (e.g. "client"). Populated per-request
   // from project_participants for external stakeholders (homeowners, etc.).
   projectRoles?: ReadonlyMap<string, string>;
+}
+
+export interface EnrichedAccessContext extends AccessContext {
+  orgPermissions: ReadonlyMap<string, PermissionMap>;
 }
 
 function isMemberOf(orgId: string | null, ctx: AccessContext): boolean {
@@ -68,4 +73,119 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
   if (canModify(project, ctx)) return;
   if (participantRole(project, ctx) === "client") return;
   throw new ForbiddenError("You do not have permission to perform this action");
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: unified resource-action permission check
+// ---------------------------------------------------------------------------
+
+/** Additive capabilities granted to project participants (external stakeholders). */
+const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
+  client: {
+    project: ["view"],
+    finances: ["view", "dispute"],
+    approvals: ["view", "decide"],
+    queries: ["view", "raise"],
+    "change-requests": ["view"],
+    "action-items": ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+    comments: ["view", "post"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view"],
+    materials: ["view"],
+    contractors: ["view"],
+    dailyLog: ["view"],
+    messages: ["view", "send"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    schedule: ["view"],
+  },
+  architect: {
+    project: ["view"],
+    finances: ["view"],
+    approvals: ["view"],
+    queries: ["view", "raise"],
+    "change-requests": ["view"],
+    "action-items": ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+    comments: ["view", "post"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view"],
+    materials: ["view"],
+    contractors: ["view"],
+    dailyLog: ["view"],
+    messages: ["view", "send"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    schedule: ["view"],
+  },
+  inspector: {
+    project: ["view"],
+    finances: ["view"],
+    approvals: ["view"],
+    queries: ["view"],
+    "action-items": ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+    comments: ["view", "post"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view", "request"],
+    materials: ["view"],
+    contractors: ["view"],
+    dailyLog: ["view"],
+    participants: ["view"],
+    schedule: ["view"],
+  },
+  guest: {
+    project: ["view"],
+    finances: ["view"],
+    approvals: ["view"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view"],
+    materials: ["view"],
+    contractors: ["view"],
+    dailyLog: ["view"],
+    participants: ["view"],
+    schedule: ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+  },
+};
+
+/**
+ * Unified resource-action guard that composes org role + participant overlay.
+ * Replaces the per-resource assertCanModifyProject pattern for operations that
+ * need granular control (finances:approve, participants:manage, etc.).
+ */
+export function assertProjectPermission(
+  project: ProjectScope & { id: string },
+  ctx: EnrichedAccessContext,
+  resource: string,
+  action: string,
+): void {
+  // Personal project owners have full access
+  if (project.ownerId === ctx.userId) return;
+
+  // Tenant gate: must have org or participant access
+  assertCanAccessProject(project, ctx);
+
+  // Org-role permissions (bound to this project's org)
+  const orgId = project.organizationId;
+  const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
+  const orgAllowed = orgPerms ? mapAllows(orgPerms, resource, action) : false;
+
+  // Participant-role overlay (additive)
+  const pRole = participantRole(project, ctx);
+  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+  const participantAllowed = pPerms ? (pPerms[resource] ?? []).includes(action) : false;
+
+  if (!orgAllowed && !participantAllowed) {
+    throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
+  }
 }

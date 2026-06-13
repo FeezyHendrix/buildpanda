@@ -29,7 +29,7 @@ import type {
   ProjectUpdate,
   UpdateCategory,
   UpdateStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
@@ -75,7 +75,8 @@ const INITIAL_FILTERS: FilterState = {
 };
 
 export default function ProjectUpdates() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: updates = [] } = useProjectUpdates(project.id);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
@@ -134,6 +135,7 @@ export default function ProjectUpdates() {
                 key={update.id}
                 projectId={project.id}
                 update={update}
+                canManage={canManage}
               />
             ))
           )}
@@ -185,9 +187,11 @@ function filterUpdates(
 function UpdateCard({
   projectId,
   update,
+  canManage,
 }: {
   projectId: string;
   update: ProjectUpdate;
+  canManage: boolean;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -299,33 +303,39 @@ function UpdateCard({
               <p>{update.secondaryAction.label}</p>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setEditOpen(true)}
-            className="text-xs font-medium text-gray-500 hover:text-gray-900"
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => setDeleteOpen(true)}
-            className="text-xs font-medium text-red-500 hover:text-red-600"
-          >
-            Delete
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="text-xs font-medium text-gray-500 hover:text-gray-900"
+            >
+              Edit
+            </button>
+          )}
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="text-xs font-medium text-red-500 hover:text-red-600"
+            >
+              Delete
+            </button>
+          )}
         </div>
-        <Button
-          size="sm"
-          variant={update.cta.tone === "primary" ? "primary" : "secondary"}
-          disabled={!isOpen || transition.isPending}
-          onClick={handleTransition}
-        >
-          {transition.isPending
-            ? "Submitting…"
-            : !isOpen
-              ? update.status
-              : update.cta.label}
-        </Button>
+        {canManage && (
+          <Button
+            size="sm"
+            variant={update.cta.tone === "primary" ? "primary" : "secondary"}
+            disabled={!isOpen || transition.isPending}
+            onClick={handleTransition}
+          >
+            {transition.isPending
+              ? "Submitting…"
+              : !isOpen
+                ? update.status
+                : update.cta.label}
+          </Button>
+        )}
       </footer>
 
       {commentsOpen && (

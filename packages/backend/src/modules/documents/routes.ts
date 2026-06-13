@@ -1,9 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
 import { openStoredFile } from "../../lib/file-storage.ts";
 import { filesRepository } from "../files/repository.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { documentsRepository } from "./repository.ts";
 import {
   documentsService,
@@ -77,7 +74,6 @@ const addVersionBody = {
 } as const;
 
 const documentRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = documentsService(
     documentsRepository(fastify.db),
     filesRepository(fastify.db),
@@ -87,8 +83,8 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listByProject(project.id);
     },
   );
 
@@ -96,8 +92,8 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/categories",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.categoriesForProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.categoriesForProject(project.id);
     },
   );
 
@@ -105,11 +101,8 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents",
     { schema: { params: projectIdParams, body: createDocumentBody } },
     async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
       const doc = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(doc);
     },
@@ -122,11 +115,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId",
     { schema: { params: documentParams, body: editDocumentBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       return service.edit(project.id, request.params.documentId, request.body);
     },
   );
@@ -135,11 +124,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId",
     { schema: { params: documentParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectPermission(request.params.id, "documents", "delete");
       await service.remove(project.id, request.params.documentId);
       return reply.status(204).send();
     },
@@ -150,13 +135,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions",
     { schema: { params: documentParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.listVersions(project.id, request.params.documentId);
     },
   );
@@ -165,13 +144,8 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions",
     { schema: { params: documentParams, body: addVersionBody } },
     async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       const version = await service.addVersion(
         project.id,
         request.params.documentId,
@@ -187,13 +161,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions/:versionId/view",
     { schema: { params: versionViewParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       const file = await service.resolveVersionFile(
         project.id,
         request.params.documentId,

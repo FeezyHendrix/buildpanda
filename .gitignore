@@ -40,3 +40,6 @@ postgres_data/
 
 # Design source archives
 screenshots/
+
+# Stray QA PNGs at repo root (legit assets live in packages/*/src)
+/*.png

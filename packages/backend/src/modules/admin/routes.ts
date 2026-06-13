@@ -1,13 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { adminRepository, type ListParams } from "./repository.ts";
 import { NotFoundError } from "../../lib/errors.ts";
-
-const idParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
+import { idParams, paginationProperties } from "../../lib/schemas.ts";
 
 const listQuery = {
   type: "object",
@@ -15,8 +9,7 @@ const listQuery = {
   properties: {
     search: { type: "string", maxLength: 200 },
     status: { type: "string", maxLength: 50 },
-    limit: { type: "integer", minimum: 1, maximum: 100 },
-    offset: { type: "integer", minimum: 0 },
+    ...paginationProperties,
   },
 } as const;
 

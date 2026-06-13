@@ -196,3 +196,59 @@ export interface CreatePaymentScheduleInput {
   description?: string;
   sort?: number;
 }
+
+export interface ProposalPlanRow {
+  id: string;
+  proposal_id: string;
+  file_id: string;
+  label: string | null;
+  uploaded_by: string | null;
+  uploaded_at: string;
+  sort: number;
+}
+
+export interface ProposalPlan {
+  id: string;
+  proposalId: string;
+  fileId: string;
+  fileName: string;
+  sizeBytes: number;
+  mimeType: string;
+  label: string | null;
+  uploadedBy: string | null;
+  uploadedAt: string;
+  sort: number;
+}
+
+export interface CreateProposalPlanInput {
+  fileId: string;
+  label?: string;
+}
+
+export interface ProposalBoqItemRow {
+  id: string;
+  proposal_id: string;
+  group_label: string;
+  description: string;
+  qty: number | string;
+  unit: string;
+  sort: number;
+}
+
+export interface ProposalBoqItem {
+  id: string;
+  proposalId: string;
+  groupLabel: string;
+  description: string;
+  qty: number;
+  unit: string;
+  sort: number;
+}
+
+export interface CreateBoqItemInput {
+  groupLabel: string;
+  description: string;
+  qty: number;
+  unit: string;
+  sort?: number;
+}

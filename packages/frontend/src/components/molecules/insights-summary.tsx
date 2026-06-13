@@ -1,13 +1,10 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { useProjectInsights } from "@/hooks/use-insights";
+import { formatWholeCurrency } from "@/lib/formatters";
 
 function money(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return formatWholeCurrency(amount, currency);
 }
 
 interface Props {

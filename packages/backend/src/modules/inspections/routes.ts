@@ -1,16 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { inspectionsRepository } from "./repository.ts";
 import { inspectionsService, type RequestInspectionInput, type EditInspectionInput } from "./service.ts";
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
 
 const inspectionParams = {
   type: "object",
@@ -76,15 +67,14 @@ const editInspectionBody = {
 } as const;
 
 const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = inspectionsService(inspectionsRepository(fastify.db));
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/inspections",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listByProject(project.id);
     },
   );
 
@@ -92,11 +82,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections",
     { schema: { params: projectIdParams, body: requestInspectionBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       const inspection = await service.request(project.id, request.body);
       return reply.status(201).send(inspection);
     },
@@ -109,11 +95,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections/:inspectionId",
     { schema: { params: inspectionParams, body: editInspectionBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       return service.edit(project.id, request.params.inspectionId, request.body);
     },
   );
@@ -122,11 +104,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections/:inspectionId",
     { schema: { params: inspectionParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.inspectionId);
       return reply.status(204).send();
     },

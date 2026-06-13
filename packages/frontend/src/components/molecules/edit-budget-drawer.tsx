@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { BudgetSlider } from "@/components/atoms";
-import type { Project } from "@/lib/project-mock-data";
+import type { Project } from "@/lib/project-types";
 import { useUpdateProjectBudget } from "@/hooks/use-projects";
 
 const SLIDER_MAX = 10_000_000_000;

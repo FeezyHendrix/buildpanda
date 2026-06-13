@@ -6,7 +6,7 @@ import type {
   ActivityDelay,
   ActivityStatus,
   Currency,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useProjectActivities(projectId: string | undefined) {
   return useQuery({

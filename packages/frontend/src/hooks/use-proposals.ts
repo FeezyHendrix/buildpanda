@@ -4,7 +4,7 @@ import { proposalKeys } from "./query-keys";
 
 export function usePublicProposal(token: string) {
   return useQuery({
-    queryKey: ["public-proposal", token],
+    queryKey: proposalKeys.publicView(token),
     queryFn: () => proposalsApi.getPublic(token),
     enabled: !!token,
     retry: false,
@@ -13,7 +13,7 @@ export function usePublicProposal(token: string) {
 
 export function useProposalComments(proposalId: string) {
   return useQuery({
-    queryKey: ["proposal-comments", proposalId],
+    queryKey: proposalKeys.comments(proposalId),
     queryFn: () => proposalsApi.listComments(proposalId),
     enabled: !!proposalId,
   });
@@ -24,7 +24,7 @@ export function usePostComment(proposalId: string) {
   return useMutation({
     mutationFn: (body: string) => proposalsApi.postComment(proposalId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["proposal-comments", proposalId] });
+      qc.invalidateQueries({ queryKey: proposalKeys.comments(proposalId) });
     },
   });
 }
@@ -45,6 +45,53 @@ export function useConvertProposal(proposalId: string) {
     mutationFn: () => proposalsApi.convert(proposalId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function useProposalPlans(proposalId: string) {
+  return useQuery({
+    queryKey: proposalKeys.plans(proposalId),
+    queryFn: () => proposalsApi.listPlans(proposalId),
+    enabled: !!proposalId,
+  });
+}
+
+export function useAddPlan(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { fileId: string; label?: string }) => proposalsApi.addPlan(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
+    },
+  });
+}
+
+export function useDeletePlan(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) => proposalsApi.deletePlan(proposalId, planId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
+    },
+  });
+}
+
+export function useProposalBoq(proposalId: string) {
+  return useQuery({
+    queryKey: proposalKeys.boq(proposalId),
+    queryFn: () => proposalsApi.listBoq(proposalId),
+    enabled: !!proposalId,
+  });
+}
+
+export function useReplaceBoq(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: Array<{ groupLabel: string; description: string; qty: number; unit: string; sort: number }>) =>
+      proposalsApi.replaceBoq(proposalId, items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
     },
   });
 }

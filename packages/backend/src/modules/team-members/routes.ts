@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { teamMembersRepository } from "./repository.ts";
 import {
   teamMembersService,
@@ -59,15 +56,14 @@ const editMemberBody = {
 } as const;
 
 const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = teamMembersService(teamMembersRepository(fastify.db));
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/team-members",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listByProject(project.id);
     },
   );
 
@@ -75,14 +71,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members",
     { schema: { params: projectIdParams, body: createMemberBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
-
+      const project = await request.requireProjectWrite(request.params.id);
       const member = await service.create(project.id, request.body);
       return reply.status(201).send(member);
     },
@@ -95,14 +84,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members/:memberId",
     { schema: { params: memberParams, body: editMemberBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
-
+      const project = await request.requireProjectWrite(request.params.id);
       return service.edit(project.id, request.params.memberId, request.body);
     },
   );
@@ -111,14 +93,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members/:memberId",
     { schema: { params: memberParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
-
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.memberId);
       return reply.status(204).send();
     },

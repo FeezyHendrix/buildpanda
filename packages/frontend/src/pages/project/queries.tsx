@@ -21,7 +21,8 @@ import {
   useUpdateQuery,
 } from "@/hooks/use-queries";
 import { cn } from "@/lib/utils";
-import type { QueryStatus, SiteQuery } from "@/lib/project-mock-data";
+import { formatDayMonth } from "@/lib/formatters";
+import type { QueryStatus, SiteQuery } from "@/lib/project-types";
 
 const FILTERS: { value: QueryStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -31,14 +32,12 @@ const FILTERS: { value: QueryStatus | "all"; label: string }[] = [
 ];
 
 function formatDue(value: string | null): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return formatDayMonth(value) || null;
 }
 
 export default function ProjectQueries() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canRaiseQueries = access?.capabilities?.canRaiseQueries ?? false;
   const [filter, setFilter] = useState<QueryStatus | "all">("all");
   const { data: queries = [], isLoading } = useProjectQueries(
     project.id,
@@ -75,12 +74,12 @@ export default function ProjectQueries() {
       <PageHeader
         title="Queries"
         description="Site questions and clarifications between you, the builder and the design team."
-        actions={
+        actions={canRaiseQueries ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Raise query
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
