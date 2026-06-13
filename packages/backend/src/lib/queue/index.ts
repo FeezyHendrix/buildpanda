@@ -137,6 +137,48 @@ export class QueueManager {
   }
 
   /**
+   * Register and start a repeating background job. In redis mode the job is
+   * scheduled via BullMQ's repeat option; in inline mode a setInterval drives it.
+   * Call before startWorkers() or after — either way is safe.
+   */
+  startRepeating<TData>(
+    queueName: string,
+    intervalMs: number,
+    processor: JobProcessor<TData>,
+    data: TData,
+  ): void {
+    this.processors.set(queueName, processor as JobProcessor);
+
+    if (this.connection) {
+      const worker = new Worker(
+        queueName,
+        async (job: Job) => {
+          await processor(job.data as TData);
+        },
+        { connection: this.connection, concurrency: 1 },
+      );
+      worker.on("failed", (job, err) => {
+        this.logger.error({ err, jobId: job?.id, queue: queueName }, "Repeating job failed");
+      });
+      this.workers.set(queueName, worker);
+
+      const queue = new Queue(queueName, { connection: this.connection });
+      this.queues.set(queueName, queue);
+      void queue.add(queueName, data, {
+        repeat: { every: intervalMs },
+        removeOnComplete: 10,
+        removeOnFail: 50,
+      });
+    } else {
+      setInterval(() => {
+        void (processor(data) as Promise<void>).catch((err) => {
+          this.logger.error({ err, queue: queueName }, "Inline repeating job failed");
+        });
+      }, intervalMs);
+    }
+  }
+
+  /**
    * Gracefully drain workers, queues and the Redis connection.
    */
   async close(): Promise<void> {

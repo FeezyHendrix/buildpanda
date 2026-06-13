@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 import { QueueManager } from "../lib/queue/index.ts";
 import { config } from "../config/index.ts";
 import { registerPandaAiWorker } from "../modules/panda-ai/job.ts";
+import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -14,6 +15,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
   const manager = new QueueManager(config.redis.url || null, fastify.log);
 
   registerPandaAiWorker(fastify.db, manager);
+  registerProposalExpiryWorker(fastify.db, manager);
   manager.startWorkers();
 
   fastify.decorate("queue", manager);

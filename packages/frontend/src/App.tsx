@@ -80,6 +80,7 @@ const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
 const ProjectPeople = lazy(() => import("@/pages/project/people"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
+const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
 
 const router = createBrowserRouter([
   {
@@ -124,6 +125,10 @@ const router = createBrowserRouter([
       { path: "proposals/:id", element: <SalesProposalWorkspace /> },
       { path: "settings", element: <SalesSettings /> },
     ],
+  },
+  {
+    path: "/p/:token",
+    element: <PublicProposalPage />,
   },
   {
     path: "/accept-invitation/:invitationId",

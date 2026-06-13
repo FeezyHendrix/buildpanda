@@ -1,8 +1,13 @@
+import { randomBytes } from "crypto";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
 import { PROPOSAL_STATUSES } from "./types.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { sendEmail } from "../../lib/mail.ts";
+import { proposalSentEmail } from "../../lib/email-templates.ts";
+import { generateId } from "../../lib/ids.ts";
+import { config } from "../../config/index.ts";
 import type {
   CreateProposalInput,
   CreateEstimateItemInput,
@@ -299,6 +304,112 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
         repo.getSchedule(estimate.id),
       ]);
       return reply.send({ ...estimate, items, schedule });
+    },
+  );
+
+  // --- Send estimate ---
+
+  fastify.post<{ Params: { id: string; estimateId: string } }>(
+    "/proposals/:id/estimates/:estimateId/send",
+    { schema: { params: proposalEstimateParams } },
+    async (request, reply) => {
+      const orgId = orgScope(request);
+      const user = request.requireAuth();
+
+      const proposal = await repo.getById(request.params.id, orgId);
+      if (!proposal) throw new NotFoundError("Proposal");
+
+      const estimate = await repo.getEstimate(request.params.estimateId);
+      if (!estimate || estimate.proposalId !== request.params.id) throw new NotFoundError("Estimate");
+      if (estimate.status !== "Draft") {
+        throw new ForbiddenError("Only Draft estimates can be sent.");
+      }
+
+      // Generate share token — valid until proposal.valid_until or 30 days
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = proposal.valid_until
+        ? new Date(proposal.valid_until).toISOString()
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      await repo.setShareToken(request.params.estimateId, token, expiresAt);
+      await repo.updateEstimateMeta(request.params.estimateId, {
+        status: "Sent",
+        sentAt: new Date().toISOString(),
+      });
+      await repo.updateProposal(request.params.id, orgId, { status: "Sent" });
+      await repo.logEvent(request.params.id, "estimate_sent", user.id, {
+        estimateId: estimate.id,
+        revisionNo: estimate.revisionNo,
+      });
+
+      const shareUrl = `${config.mail.appUrl}/p/${token}`;
+
+      // Send email to client if we have their address
+      if (proposal.client_email) {
+        const org = await fastify.db("organization").where({ id: orgId }).select("name").first();
+        const tpl = proposalSentEmail({
+          clientName: proposal.client_name,
+          companyName: (org?.name as string | undefined) ?? "Your contractor",
+          proposalTitle: proposal.title,
+          proposalNumber: `BP-${String(proposal.number).padStart(4, "0")}`,
+          shareUrl,
+          validUntil: proposal.valid_until
+            ? new Date(proposal.valid_until).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
+            : undefined,
+        });
+        void sendEmail({ to: proposal.client_email, toName: proposal.client_name, ...tpl }).catch(
+          (err) => fastify.log.error({ err }, "Failed to send proposal sent email"),
+        );
+      }
+
+      return reply.status(200).send({ shareUrl, token });
+    },
+  );
+
+  // --- Comments ---
+
+  fastify.get<{ Params: { id: string } }>(
+    "/proposals/:id/comments",
+    { schema: { params: idParams } },
+    async (request) => {
+      const orgId = orgScope(request);
+      const proposal = await repo.getById(request.params.id, orgId);
+      if (!proposal) throw new NotFoundError("Proposal");
+      return repo.listComments(request.params.id);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: { body: string } }>(
+    "/proposals/:id/comments",
+    {
+      schema: {
+        params: idParams,
+        body: {
+          type: "object",
+          required: ["body"],
+          additionalProperties: false,
+          properties: { body: { type: "string", minLength: 1, maxLength: 5000 } },
+        } as const,
+      },
+    },
+    async (request, reply) => {
+      const orgId = orgScope(request);
+      const user = request.requireAuth();
+      const proposal = await repo.getById(request.params.id, orgId);
+      if (!proposal) throw new NotFoundError("Proposal");
+
+      const comment = await repo.insertComment({
+        id: generateId("cmt"),
+        proposalId: request.params.id,
+        authorId: user.id,
+        authorName: user.name ?? user.email ?? "Unknown",
+        body: request.body.body,
+      });
+      return reply.status(201).send(comment);
     },
   );
 };

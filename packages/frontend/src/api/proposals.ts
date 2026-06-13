@@ -137,6 +137,20 @@ export interface CreateProposalInput {
   leadId?: string;
 }
 
+export interface ProposalComment {
+  id: string;
+  proposalId: string;
+  authorId: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface PublicProposalView {
+  proposal: Proposal;
+  estimate: Estimate;
+}
+
 export const proposalsApi = {
   list: (args?: { status?: string; limit?: number; offset?: number }) =>
     api.get<PaginatedProposals>("/proposals", { params: args }).then((r) => r.data),
@@ -172,5 +186,27 @@ export const proposalsApi = {
   ) =>
     api
       .patch<Estimate>(`/proposals/${proposalId}/estimates/${estimateId}`, body)
+      .then((r) => r.data),
+
+  sendEstimate: (proposalId: string, estimateId: string) =>
+    api
+      .post<{ shareUrl: string; token: string }>(
+        `/proposals/${proposalId}/estimates/${estimateId}/send`,
+      )
+      .then((r) => r.data),
+
+  listComments: (proposalId: string) =>
+    api.get<ProposalComment[]>(`/proposals/${proposalId}/comments`).then((r) => r.data),
+
+  postComment: (proposalId: string, body: string) =>
+    api.post<ProposalComment>(`/proposals/${proposalId}/comments`, { body }).then((r) => r.data),
+
+  // Public endpoints — no auth required
+  getPublic: (token: string) =>
+    api.get<PublicProposalView>(`/proposals/public/${token}`).then((r) => r.data),
+
+  respond: (token: string, action: "accept" | "decline" | "change_requested", name?: string) =>
+    api
+      .post<{ ok: boolean; action: string }>(`/proposals/public/${token}/respond`, { action, name })
       .then((r) => r.data),
 };

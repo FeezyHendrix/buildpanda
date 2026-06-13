@@ -452,6 +452,149 @@ export function proposalsRepository(db: Knex) {
     });
   }
 
+  // --- Share tokens ---
+
+  async function setShareToken(
+    estimateId: string,
+    token: string,
+    expiresAt: string,
+  ): Promise<void> {
+    await db("estimates")
+      .where({ id: estimateId })
+      .update({ share_token: token, share_token_expires_at: expiresAt, updated_at: new Date().toISOString() });
+  }
+
+  async function getByShareToken(
+    token: string,
+  ): Promise<{ proposal: ProposalRow; estimate: EstimateRow } | null> {
+    const estimate = await db<EstimateRow>("estimates")
+      .where({ share_token: token })
+      .first();
+    if (!estimate) return null;
+    const proposal = await db<ProposalRow>("proposals")
+      .where({ id: estimate.proposal_id })
+      .first();
+    if (!proposal) return null;
+    return { proposal, estimate };
+  }
+
+  // --- Comments ---
+
+  interface CommentRow {
+    id: string;
+    proposal_id: string;
+    author_id: string | null;
+    author_name: string;
+    body: string;
+    created_at: string;
+  }
+
+  interface Comment {
+    id: string;
+    proposalId: string;
+    authorId: string | null;
+    authorName: string;
+    body: string;
+    createdAt: string;
+  }
+
+  function toComment(row: CommentRow): Comment {
+    return {
+      id: row.id,
+      proposalId: row.proposal_id,
+      authorId: row.author_id,
+      authorName: row.author_name,
+      body: row.body,
+      createdAt: row.created_at,
+    };
+  }
+
+  async function listComments(proposalId: string): Promise<Comment[]> {
+    const rows = await db<CommentRow>("proposal_comments")
+      .where({ proposal_id: proposalId })
+      .orderBy("created_at", "asc")
+      .limit(200);
+    return rows.map(toComment);
+  }
+
+  async function insertComment(data: {
+    id: string;
+    proposalId: string;
+    authorId: string | null;
+    authorName: string;
+    body: string;
+  }): Promise<Comment> {
+    const rows = await db<CommentRow>("proposal_comments")
+      .insert({
+        id: data.id,
+        proposal_id: data.proposalId,
+        author_id: data.authorId ?? null,
+        author_name: data.authorName,
+        body: data.body,
+      })
+      .returning("*");
+    return toComment(rows[0]!);
+  }
+
+  // --- Expiry sweep ---
+
+  async function expireOverdueEstimates(
+    now: string,
+  ): Promise<Array<{ proposalId: string; estimateId: string }>> {
+    const rows = await db<EstimateRow>("estimates")
+      .join("proposals", "proposals.id", "estimates.proposal_id")
+      .whereIn("estimates.status", ["Sent", "Draft"])
+      .whereNotNull("proposals.valid_until")
+      .where("proposals.valid_until", "<", now)
+      .select("estimates.id as estimate_id", "proposals.id as proposal_id");
+
+    if (rows.length === 0) return [];
+
+    const estimateIds = rows.map((r) => (r as unknown as { estimate_id: string }).estimate_id);
+    await db("estimates")
+      .whereIn("id", estimateIds)
+      .update({ status: "Expired", updated_at: now });
+
+    const proposalIds = [...new Set(rows.map((r) => (r as unknown as { proposal_id: string }).proposal_id))];
+    await db("proposals")
+      .whereIn("id", proposalIds)
+      .whereNotIn("status", ["Accepted", "Converted", "Lost"])
+      .update({ status: "Expired", updated_at: now });
+
+    return rows.map((r) => ({
+      proposalId: (r as unknown as { proposal_id: string }).proposal_id,
+      estimateId: (r as unknown as { estimate_id: string }).estimate_id,
+    }));
+  }
+
+  async function getProposalsExpiringWithinDays(
+    days: number,
+    now: string,
+  ): Promise<Array<{ proposal: ProposalRow; orgEmail: string | null; orgName: string }>> {
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() + days);
+    const cutoffStr = cutoff.toISOString();
+
+    const rows = await db<ProposalRow>("proposals as p")
+      .join("organization as o", "o.id", "p.org_id")
+      .whereIn("p.status", ["Sent", "Preparing"])
+      .whereNotNull("p.valid_until")
+      .where("p.valid_until", ">", now)
+      .where("p.valid_until", "<=", cutoffStr)
+      .whereNotExists(
+        db("proposal_events")
+          .where("proposal_id", db.raw("p.id"))
+          .where("type", "expiry_nudge_sent"),
+      )
+      .select("p.*", "o.contact_email as org_email", "o.name as org_name");
+
+    return rows.map((r) => ({
+      proposal: r,
+      orgEmail: (r as unknown as { org_email: string | null }).org_email,
+      orgName: (r as unknown as { org_name: string }).org_name,
+    }));
+  }
+
   return {
     allocateNumber,
     insertProposal,
@@ -472,7 +615,14 @@ export function proposalsRepository(db: Knex) {
     replaceItems,
     getSchedule,
     replaceSchedule,
+    setShareToken,
+    getByShareToken,
+    listComments,
+    insertComment,
+    expireOverdueEstimates,
+    getProposalsExpiringWithinDays,
     toProposal,
+    toEstimate,
   };
 }
 
