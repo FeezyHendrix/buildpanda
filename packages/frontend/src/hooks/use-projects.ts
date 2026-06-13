@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { projectKeys } from "./query-keys";
-import type { Project } from "@/lib/project-types";
+import type { Currency, Project } from "@/lib/project-types";
 
 export interface CreateProjectInput {
   title: string;
@@ -13,7 +13,7 @@ export interface CreateProjectInput {
   };
   details: {
     buildingType: string;
-    currency: "NGN" | "USD";
+    currency: Currency;
     budgetMin: number;
     budgetMax: number;
     timeline: string;
@@ -28,7 +28,7 @@ export interface CreateProjectInput {
 export interface UpdateProjectBudgetInput {
   budgetMin: number;
   budgetMax: number;
-  currency?: "NGN" | "USD";
+  currency?: Currency;
 }
 
 export function useProjects() {
@@ -77,6 +77,24 @@ export function useUpdateProjectBudget(projectId: string) {
       const { data } = await api.patch<Project>(
         `/projects/${projectId}/budget`,
         input,
+      );
+      return data;
+    },
+    onSuccess: (project) => {
+      queryClient.setQueryData(projectKeys.detail(project.id), project);
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+export function useUpdateProjectCurrency(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (currency: string) => {
+      const { data } = await api.patch<Project>(
+        `/projects/${projectId}/currency`,
+        { currency },
       );
       return data;
     },

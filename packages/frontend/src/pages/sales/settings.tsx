@@ -4,9 +4,8 @@ import { Spinner } from "@/components/atoms/spinner";
 import { Label } from "@/components/atoms/label";
 import { Button } from "@/components/atoms/button";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
+import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-
-const CURRENCIES = ["NGN", "USD", "GBP", "EUR", "GHS", "ZAR", "KES"] as const;
 
 const selectClass = cn(
   "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
@@ -134,9 +133,9 @@ export default function SalesSettings() {
               onChange={(e) => setDefaultCurrency(e.target.value)}
               className={selectClass}
             >
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {currencyLabel(c.code)}
                 </option>
               ))}
             </select>

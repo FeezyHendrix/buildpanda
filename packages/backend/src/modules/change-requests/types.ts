@@ -1,5 +1,6 @@
 export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
-export type Currency = "NGN" | "USD";
+import type { CurrencyCode } from "../../lib/currencies.ts";
+export type Currency = CurrencyCode;
 
 export interface ChangeRequest {
   id: string;

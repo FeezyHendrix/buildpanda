@@ -1,4 +1,5 @@
 import { generateId } from "../../lib/ids.ts";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import {
   assertCanAccessProject,
@@ -73,7 +74,7 @@ function buildCreate(
   input: CreateProjectInput,
   ownerId: string,
   organizationId: string | null,
-): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: "NGN" | "USD" } {
+): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: CurrencyCode } {
   const projectId = generateId("prj");
   const address = `${input.location.city}, ${input.location.state}`;
 
@@ -185,6 +186,21 @@ export function projectsService(repository: ProjectsRepository) {
         budget_total: input.budgetMax,
         ...(input.currency ? { currency: input.currency } : {}),
       });
+      return this.getById(id);
+    },
+
+    async updateCurrencyForUser(
+      id: string,
+      currency: CurrencyCode,
+      ctx: AccessContext,
+    ): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanModifyProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      await repository.updateCurrency(id, currency);
       return this.getById(id);
     },
   };

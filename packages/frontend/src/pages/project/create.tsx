@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useOrgProfile } from "@/hooks/use-org-profile";
+import type { Currency } from "@/lib/project-types";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import {
   ProjectTypeStep,
@@ -68,8 +70,15 @@ export default function CreateProject() {
   const [ownsLand, setOwnsLand] = useState<SwitcherValue>("no");
   const [landFiles, setLandFiles] = useState<FileList | null>(null);
 
+  const { data: orgProfile } = useOrgProfile();
   const [buildingType, setBuildingType] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<string>("NGN");
+  const [currency, setCurrency] = useState<Currency>("NGN");
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  useEffect(() => {
+    if (!currencyTouched && orgProfile?.defaultCurrency) {
+      setCurrency(orgProfile.defaultCurrency as Currency);
+    }
+  }, [orgProfile?.defaultCurrency, currencyTouched]);
   const [budget, setBudget] = useState<[number, number]>([10_000_000, 50_000_000]);
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
@@ -148,7 +157,7 @@ export default function CreateProject() {
         },
         details: {
           buildingType,
-          currency: currency === "USD" ? "USD" : "NGN",
+          currency,
           budgetMin: budget[0],
           budgetMax: budget[1],
           timeline,
@@ -227,7 +236,10 @@ export default function CreateProject() {
           timeline={timeline}
           fundingMethod={fundingMethod}
           onBuildingTypeChange={setBuildingType}
-          onCurrencyChange={setCurrency}
+          onCurrencyChange={(c) => {
+            setCurrencyTouched(true);
+            setCurrency(c as Currency);
+          }}
           onBudgetChange={setBudget}
           onTimelineChange={setTimeline}
           onFundingMethodChange={setFundingMethod}
@@ -257,7 +269,7 @@ export default function CreateProject() {
             city,
             ownsLand,
             buildingType,
-            currency,
+          currency,
             budget,
             timeline,
             fundingMethod,
