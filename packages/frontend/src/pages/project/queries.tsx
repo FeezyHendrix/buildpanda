@@ -70,7 +70,7 @@ export default function ProjectQueries() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Queries"
         description="Site questions and clarifications between you, the builder and the design team."
