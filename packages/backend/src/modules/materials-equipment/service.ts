@@ -1,4 +1,5 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { MaterialsEquipmentRepository } from "./repository.ts";
 import type {
@@ -29,7 +30,7 @@ export interface CreateMaterialOrderInput {
   deliveredAt?: string | null;
   estimatedCost?: number;
   actualCost?: number;
-  currency?: "NGN" | "USD";
+  currency?: CurrencyCode;
   deliveryLocation?: string | null;
   notes?: string | null;
 }
@@ -53,7 +54,7 @@ export interface CreateEquipmentRequestInput {
   returnedAt?: string | null;
   estimatedCost?: number;
   actualCost?: number;
-  currency?: "NGN" | "USD";
+  currency?: CurrencyCode;
   deliveryLocation?: string | null;
   operatorRequired?: boolean;
   notes?: string | null;
@@ -254,6 +255,19 @@ export function materialsEquipmentService(repository: MaterialsEquipmentReposito
       });
       if (status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return toMaterialOrder(row);
+    },
+
+    async bulkCreateMaterialOrders(
+      projectId: string,
+      inputs: CreateMaterialOrderInput[],
+      userId: string,
+    ): Promise<number> {
+      let created = 0;
+      for (const input of inputs) {
+        await this.createMaterialOrder(projectId, input, userId);
+        created += 1;
+      }
+      return created;
     },
 
     async updateMaterialOrder(projectId: string, orderId: string, input: UpdateMaterialOrderInput): Promise<MaterialOrder> {
