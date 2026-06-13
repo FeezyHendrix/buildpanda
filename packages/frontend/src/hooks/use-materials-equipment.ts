@@ -86,6 +86,84 @@ export function useCreateMaterialOrder() {
   });
 }
 
+export interface ParsedBoqMaterial {
+  materialName: string;
+  quantity: number;
+  unit: string;
+  estimatedCost: number;
+  supplier: string | null;
+}
+
+export type BoqJobStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface BoqImportJob {
+  id: string;
+  status: BoqJobStatus;
+  fileName: string;
+  materials: ParsedBoqMaterial[];
+  materialCount: number;
+  usedAi: boolean;
+  error: string | null;
+}
+
+export function useStartBoqImport() {
+  return useMutation({
+    mutationFn: async ({ projectId, file }: { projectId: string; file: File }) => {
+      const form = new FormData();
+      form.append("file", file);
+      const { data } = await api.post<BoqImportJob>(
+        `/projects/${projectId}/materials/import`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      return data;
+    },
+  });
+}
+
+export function useBoqImportJob(
+  projectId: string | undefined,
+  jobId: string | null,
+) {
+  return useQuery({
+    queryKey: ["projects", projectId ?? "__none__", "boq-import", jobId ?? "__none__"],
+    queryFn: async () => {
+      const { data } = await api.get<BoqImportJob>(
+        `/projects/${projectId!}/materials/import/${jobId!}`,
+      );
+      return data;
+    },
+    enabled: Boolean(projectId && jobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "pending" || status === "processing" ? 1500 : false;
+    },
+  });
+}
+
+export function useBulkCreateMaterials() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      materials,
+    }: {
+      projectId: string;
+      materials: ParsedBoqMaterial[];
+    }) => {
+      const { data } = await api.post<{ created: number }>(
+        `/projects/${projectId}/materials/bulk`,
+        { materials },
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+    },
+  });
+}
+
 export function useUpdateMaterialOrder() {
   const queryClient = useQueryClient();
   return useMutation({

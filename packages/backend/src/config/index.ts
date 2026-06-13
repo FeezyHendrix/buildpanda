@@ -105,6 +105,13 @@ export const config = {
     timeoutMs: optionalNumber("KIMI_TIMEOUT_MS", 45_000),
   },
 
+  openai: {
+    apiKey: optional("OPENAI_API_KEY", ""),
+    baseUrl: optional("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+    model: optional("OPENAI_MODEL", "gpt-4o-mini"),
+    timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
+  },
+
   storage: {
     bucket: optional("S3_BUCKET", "buildpanda"),
     region: optional("AWS_REGION", "us-east-1"),
