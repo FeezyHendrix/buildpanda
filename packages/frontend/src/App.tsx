@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType } from "react";
 import { HomeRedirect, RequireAuth, RequireCompany } from "@/lib/route-guards";
+import { Toaster } from "@/components/atoms/toaster";
 
 // After a deploy, Vite emits new hashed chunk filenames. A browser holding a
 // stale index.html (or an open tab) requests an old chunk that no longer exists
@@ -42,6 +43,7 @@ const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const TeamSettings = lazy(() => import("@/pages/dashboard/settings/team"));
+const NotificationSettings = lazy(() => import("@/pages/dashboard/settings/notifications"));
 const AcceptInvitation = lazy(
   () => import("@/pages/accept-invitation"),
 );
@@ -109,6 +111,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: "settings/team", element: <TeamSettings /> },
+      { path: "settings/notifications", element: <NotificationSettings /> },
     ],
   },
   {
@@ -210,5 +213,10 @@ const router = createBrowserRouter([
 ]);
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  );
 }

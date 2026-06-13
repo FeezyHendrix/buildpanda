@@ -7,7 +7,8 @@ import type {
   ActionItemDetail,
   ActionPriority,
   ActionStatus,
-} from "@/lib/project-mock-data";
+  RecurrenceUnit,
+} from "@/lib/project-types";
 
 export function useActionItems(projectId: string | undefined, status?: ActionStatus) {
   return useQuery({
@@ -41,6 +42,9 @@ export interface ActionItemInput {
   status?: ActionStatus;
   priority?: ActionPriority;
   dueDate?: string | null;
+  recurrenceUnit?: RecurrenceUnit | null;
+  recurrenceInterval?: number | null;
+  recurrenceUntil?: string | null;
 }
 
 export function useCreateActionItem() {
