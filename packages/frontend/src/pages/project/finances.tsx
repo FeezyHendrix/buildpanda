@@ -66,7 +66,7 @@ export default function ProjectFinances() {
 
   if (!finances) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <div className="w-full px-6 py-8 sm:px-10">
         <PageHeader
           title="Finances"
           description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -79,7 +79,7 @@ export default function ProjectFinances() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."

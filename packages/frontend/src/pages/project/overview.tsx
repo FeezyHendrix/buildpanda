@@ -49,7 +49,7 @@ export default function ProjectOverview() {
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Overview"
         description="Stay in control with real-time updates on progress, payments, and site activity."

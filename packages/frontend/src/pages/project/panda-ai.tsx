@@ -180,7 +180,7 @@ export default function ProjectPandaAi() {
     (!insight && isPending);
 
   return (
-    <div className="mx-auto max-w-7xl pb-24">
+    <div className="w-full px-6 pb-24">
       <Breadcrumbs items={[{ label: "Panda AI" }]} className="mb-4" />
       <PageHeader
         title="Panda AI"

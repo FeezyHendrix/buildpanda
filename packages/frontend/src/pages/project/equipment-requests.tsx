@@ -107,7 +107,7 @@ export default function ProjectEquipmentRequests() {
   const bookedCost = requests.reduce((sum, request) => sum + request.estimatedCost, 0);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Rental / equipment requests"
         description="Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan."

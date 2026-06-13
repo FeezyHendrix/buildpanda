@@ -34,7 +34,7 @@ export default function ProjectWhatsNext() {
 
   if (isLoading || !data) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <div className="w-full px-6 py-8 sm:px-10">
         <PageHeader title="What's Next" description="The next two weeks at a glance." />
         <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
       </div>
@@ -51,7 +51,7 @@ export default function ProjectWhatsNext() {
     data.expiringPermits.length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="What's Next"
         description={`Coming up between ${fmt(data.from)} and ${fmt(data.to)} — so you always know what's happening, wherever you are.`}

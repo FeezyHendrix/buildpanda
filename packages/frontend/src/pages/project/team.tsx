@@ -37,7 +37,7 @@ export default function ProjectTeam() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Project Team"
         description="The people delivering this build, their roles, and how to reach them."

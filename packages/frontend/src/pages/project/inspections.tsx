@@ -64,12 +64,7 @@ export default function ProjectInspections() {
   }
 
   return (
-    <div
-      className={cn(
-        "mx-auto w-full px-6 py-8 sm:px-10",
-        view === "board" ? "max-w-none" : "max-w-7xl",
-      )}
-    >
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Independent Inspections & Quality Reports"
         description="Verified structural and progress assessments for peace of mind."
