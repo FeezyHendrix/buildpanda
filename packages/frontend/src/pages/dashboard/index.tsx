@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   return (
     // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-6xl mx-auto w-full">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-7xl mx-auto w-full">
       <Greeting name={session?.user.name ?? ""} />
 
       <section className="flex flex-col gap-4 mt-10">

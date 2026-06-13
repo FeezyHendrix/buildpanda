@@ -31,7 +31,7 @@ export default function NotificationSettings() {
   const groups = useMemo(() => groupPreferences(preferences), [preferences]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Notifications"
         description="Choose which in-app notifications you want to receive. Changes apply immediately."
