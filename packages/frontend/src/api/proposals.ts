@@ -201,6 +201,9 @@ export const proposalsApi = {
   postComment: (proposalId: string, body: string) =>
     api.post<ProposalComment>(`/proposals/${proposalId}/comments`, { body }).then((r) => r.data),
 
+  convert: (proposalId: string) =>
+    api.post<{ projectId: string }>(`/proposals/${proposalId}/convert`).then((r) => r.data),
+
   // Public endpoints — no auth required
   getPublic: (token: string) =>
     api.get<PublicProposalView>(`/proposals/public/${token}`).then((r) => r.data),
