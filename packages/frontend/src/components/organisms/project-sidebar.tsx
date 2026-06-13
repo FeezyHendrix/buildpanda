@@ -251,7 +251,7 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       </div>
 
       {isClient ? (
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+        <nav data-tour="project-nav" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
