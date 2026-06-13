@@ -1,7 +1,17 @@
 import type { FastifyPluginAsync } from "fastify";
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from "../../lib/currencies.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
+
+const updateCurrencyBody = {
+  type: "object",
+  required: ["currency"],
+  additionalProperties: false,
+  properties: {
+    currency: { type: "string", enum: SUPPORTED_CURRENCIES },
+  },
+} as const;
 
 const projectIdParams = {
   type: "object",
@@ -117,6 +127,18 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       return service.updateBudgetForUser(request.params.id, request.body, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
+    },
+  );
+
+  fastify.patch<{ Params: { id: string }; Body: { currency: CurrencyCode } }>(
+    "/projects/:id/currency",
+    { schema: { params: projectIdParams, body: updateCurrencyBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.updateCurrencyForUser(request.params.id, request.body.currency, {
         userId: user.id,
         orgRoles: request.orgRoles,
       });

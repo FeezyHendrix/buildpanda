@@ -1,5 +1,6 @@
 export type ActivityStatus = "Planned" | "InProgress" | "Completed" | "Cancelled";
-export type Currency = "NGN" | "USD";
+import type { CurrencyCode } from "../../lib/currencies.ts";
+export type Currency = CurrencyCode;
 
 export interface ActivityDelay {
   id: string;

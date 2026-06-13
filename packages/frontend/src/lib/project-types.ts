@@ -1,7 +1,9 @@
+import type { CurrencyCode } from "./currency";
+
 export type RiskLevel = "Low" | "Medium" | "High";
 export type ProjectStatus = "On Track" | "At Risk" | "Delayed";
 export type PhaseStatus = "Done" | "InProgress" | "Pending";
-export type Currency = "NGN" | "USD";
+export type Currency = CurrencyCode;
 export type Tone =
   | "brand"
   | "orange"

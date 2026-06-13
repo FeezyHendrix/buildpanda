@@ -14,7 +14,9 @@ import {
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
+import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateMaterialOrder,
@@ -87,6 +89,7 @@ export default function ProjectMaterials() {
     filter === "all" ? undefined : filter,
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MaterialOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaterialOrder | null>(null);
   const createOrder = useCreateMaterialOrder();
@@ -123,12 +126,27 @@ export default function ProjectMaterials() {
               <ChevronRightIcon className="size-4" />
             </Link>
             {canManage && (
+              <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
+                Import from BoQ
+              </Button>
+            )}
+            {canManage && (
               <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
                 <PlusIcon className="size-4" />
                 New material order
               </Button>
             )}
           </div>
+        }
+      />
+
+      <ImportBoqDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        projectId={project.id}
+        currency={project.currency}
+        onImported={(count) =>
+          toast(`Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`, "success")
         }
       />
 
