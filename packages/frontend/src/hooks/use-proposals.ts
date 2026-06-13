@@ -39,6 +39,16 @@ export function useSendEstimate(proposalId: string) {
   });
 }
 
+export function useConvertProposal(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => proposalsApi.convert(proposalId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
 export function useProposals(filters?: { status?: string; limit?: number; offset?: number }) {
   return useQuery({
     queryKey: proposalKeys.list(filters),
