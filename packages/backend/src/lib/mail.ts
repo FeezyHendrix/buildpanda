@@ -23,10 +23,37 @@ export interface SendEmailOptions {
   toName?: string;
   subject: string;
   html: string;
+  text?: string;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
+      const text = label.replace(/<[^>]+>/g, "").trim();
+      return text && href && text !== href ? `${text} (${href})` : href || text;
+    })
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&copy;/g, "(c)")
+    .replace(/&zwnj;/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
   const recipients = Array.isArray(options.to) ? options.to : [options.to];
+  const text = options.text ?? htmlToText(options.html);
 
   if (!client) {
     const links = options.html.match(/href="([^"]+)"/g) ?? [];
@@ -39,6 +66,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
   try {
     await client.sendMail({
       from: { address: config.mail.fromAddress, name: config.mail.fromName },
+      reply_to: [
+        { address: config.mail.replyToAddress, name: config.mail.fromName },
+      ],
       to: recipients.map((address, index) => ({
         email_address: {
           address,
@@ -47,6 +77,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       })),
       subject: options.subject,
       htmlbody: options.html,
+      textbody: text,
     });
   } catch (error) {
     // ZeptoMail rejections arrive as objects with an `error.details` payload;

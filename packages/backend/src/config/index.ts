@@ -70,16 +70,11 @@ export const config = {
     token: optional("ZEPTOMAIL_TOKEN", ""),
     fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
     fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
-    // Link target for the logo in email headers (the app sign-in origin).
+    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.io"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),
-    // Where the email header logo is hosted. Defaults to the API's own
-    // /static/email-logo.png route so it works wherever the backend deploys.
-    logoUrl: optional(
-      "EMAIL_LOGO_URL",
-      `${optional("BETTER_AUTH_URL", "http://localhost:3000")}/static/email-logo.png`,
-    ),
+    logoUrl: optional("EMAIL_LOGO_URL", "https://buildpanda.io/logo.png"),
     // Inboxes that receive "Book a consultation" leads from the marketing
     // site. Comma-separated.
     leadsNotifyAddresses: optional(
