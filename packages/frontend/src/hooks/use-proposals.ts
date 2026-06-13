@@ -2,6 +2,43 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { proposalsApi, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
 import { proposalKeys } from "./query-keys";
 
+export function usePublicProposal(token: string) {
+  return useQuery({
+    queryKey: ["public-proposal", token],
+    queryFn: () => proposalsApi.getPublic(token),
+    enabled: !!token,
+    retry: false,
+  });
+}
+
+export function useProposalComments(proposalId: string) {
+  return useQuery({
+    queryKey: ["proposal-comments", proposalId],
+    queryFn: () => proposalsApi.listComments(proposalId),
+    enabled: !!proposalId,
+  });
+}
+
+export function usePostComment(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => proposalsApi.postComment(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["proposal-comments", proposalId] });
+    },
+  });
+}
+
+export function useSendEstimate(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (estimateId: string) => proposalsApi.sendEstimate(proposalId, estimateId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
 export function useProposals(filters?: { status?: string; limit?: number; offset?: number }) {
   return useQuery({
     queryKey: proposalKeys.list(filters),

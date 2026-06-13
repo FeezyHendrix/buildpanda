@@ -10,12 +10,15 @@ import {
   useProposalWorkspace,
   useCreateEstimate,
   usePatchEstimate,
+  useSendEstimate,
+  useProposalComments,
+  usePostComment,
 } from "@/hooks/use-proposals";
 import type { Estimate, ProposalStatus } from "@/api/proposals";
 import { proposalsApi } from "@/api/proposals";
 import { cn } from "@/lib/utils";
 
-type Tab = "overview" | "estimate";
+type Tab = "overview" | "estimate" | "messages";
 
 const STATUS_TONE: Record<
   ProposalStatus,
@@ -186,6 +189,74 @@ function itemsToApi(items: ItemDraft[]) {
   }));
 }
 
+function MessagesTab({ proposalId }: { proposalId: string }) {
+  const { data: comments = [], isLoading } = useProposalComments(proposalId);
+  const postComment = usePostComment(proposalId);
+  const [body, setBody] = useState("");
+
+  async function handleSend() {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    await postComment.mutateAsync(trimmed);
+    setBody("");
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <div className="size-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#004DE7]" />
+        </div>
+      ) : comments.length === 0 ? (
+        <EmptyState title="No messages yet" description="Leave an internal note or message for your team." />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {comments.map((c) => (
+            <div key={c.id} className="rounded-xl border border-gray-100 bg-white p-4">
+              <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium text-gray-800">{c.authorName}</span>
+                <span className="text-xs text-gray-400">
+                  {new Date(c.createdAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+              <p className="whitespace-pre-line text-sm text-gray-700">{c.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <textarea
+          rows={3}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write a note or message…"
+          className={cn(
+            "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
+            "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            "resize-none placeholder:text-gray-400",
+          )}
+        />
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSend}
+            disabled={!body.trim() || postComment.isPending}
+          >
+            {postComment.isPending ? "Sending…" : "Send"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EstimateTab({
   proposalId,
   estimate,
@@ -197,6 +268,9 @@ function EstimateTab({
 }) {
   const createEstimate = useCreateEstimate(proposalId);
   const patchEstimate = usePatchEstimate(proposalId);
+  const sendEstimate = useSendEstimate(proposalId);
+
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const [revisionDrawerOpen, setRevisionDrawerOpen] = useState(false);
   const [changeNote, setChangeNote] = useState("");
@@ -302,12 +376,53 @@ function EstimateTab({
             {estimate.status}
           </Badge>
         </div>
-        {estimate.status !== "Draft" && (
-          <Button variant="secondary" size="sm" onClick={() => setRevisionDrawerOpen(true)}>
-            New revision
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {estimate.status === "Draft" && (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={sendEstimate.isPending}
+              onClick={async () => {
+                const result = await sendEstimate.mutateAsync(estimate.id);
+                setShareUrl(result.shareUrl);
+              }}
+            >
+              {sendEstimate.isPending ? "Sending…" : "Send to client"}
+            </Button>
+          )}
+          {estimate.status !== "Draft" && (
+            <Button variant="secondary" size="sm" onClick={() => setRevisionDrawerOpen(true)}>
+              New revision
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Share link banner */}
+      {(shareUrl ?? estimate.shareToken) && (
+        <div className="flex items-center gap-3 rounded-xl border border-[#004DE7]/20 bg-blue-50 px-4 py-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0 text-[#004DE7]">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+          <span className="flex-1 truncate text-xs text-[#004DE7]">
+            {shareUrl ?? `${window.location.origin}/p/${estimate.shareToken}`}
+          </span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-medium text-[#004DE7] hover:underline"
+            onClick={() => {
+              void navigator.clipboard.writeText(shareUrl ?? `${window.location.origin}/p/${estimate.shareToken ?? ""}`);
+            }}
+          >
+            Copy link
+          </button>
+        </div>
+      )}
+
+      {sendEstimate.isError && (
+        <p className="text-xs text-red-600">Failed to send estimate. Please try again.</p>
+      )}
 
       {/* Line items */}
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -595,6 +710,9 @@ export default function ProposalWorkspace() {
             </span>
           )}
         </button>
+        <button type="button" className={tabClass("messages")} onClick={() => setTab("messages")}>
+          Messages
+        </button>
       </div>
 
       {/* Tab content */}
@@ -603,6 +721,7 @@ export default function ProposalWorkspace() {
         {tab === "estimate" && (
           <EstimateTab proposalId={id} estimate={estimate} currency={proposal.currency} />
         )}
+        {tab === "messages" && <MessagesTab proposalId={id} />}
       </div>
     </div>
   );

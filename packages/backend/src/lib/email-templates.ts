@@ -236,6 +236,129 @@ export function consultationLeadEmail(lead: ConsultationLead): {
   };
 }
 
+export function proposalSentEmail(options: {
+  clientName: string;
+  companyName: string;
+  proposalTitle: string;
+  proposalNumber: string;
+  shareUrl: string;
+  validUntil?: string;
+}): { subject: string; html: string } {
+  const client = escapeHtml(options.clientName);
+  const company = escapeHtml(options.companyName);
+  const title = escapeHtml(options.proposalTitle);
+  const num = escapeHtml(options.proposalNumber);
+  const expiry = options.validUntil
+    ? `<p style="margin:12px 0 0 0;">This proposal is valid until <strong style="color:${BRAND.heading};">${escapeHtml(options.validUntil)}</strong>.</p>`
+    : "";
+  return {
+    subject: `Your proposal from ${options.companyName} is ready`,
+    html: renderEmail({
+      preview: `${options.companyName} has sent you a proposal for ${options.proposalTitle}.`,
+      heading: "Your proposal is ready",
+      bodyHtml: `<p style="margin:0;">Hi ${client},</p>
+                 <p style="margin:12px 0 0 0;"><strong style="color:${BRAND.heading};">${company}</strong> has prepared proposal <strong style="color:${BRAND.heading};">${num}</strong> — <em>${title}</em> — for your review.</p>
+                 <p style="margin:12px 0 0 0;">You can view the full estimate, accept, or request changes by clicking the button below.</p>
+                 ${expiry}`,
+      cta: { label: "View Proposal", url: options.shareUrl },
+      footnote: "You can accept, decline, or request changes at any time before the proposal expires.",
+    }),
+  };
+}
+
+export function proposalResponseEmail(options: {
+  action: "accept" | "decline" | "change_requested";
+  clientName: string;
+  proposalTitle: string;
+  proposalNumber: string;
+  shareUrl: string;
+}): { subject: string; html: string } {
+  const client = escapeHtml(options.clientName);
+  const title = escapeHtml(options.proposalTitle);
+  const num = escapeHtml(options.proposalNumber);
+
+  const actionLabel =
+    options.action === "accept"
+      ? "accepted"
+      : options.action === "decline"
+        ? "declined"
+        : "requested changes on";
+
+  const subjectVerb =
+    options.action === "accept"
+      ? "Accepted"
+      : options.action === "decline"
+        ? "Declined"
+        : "Changes requested on";
+
+  const ctaLabel =
+    options.action === "accept"
+      ? "View Accepted Proposal"
+      : options.action === "decline"
+        ? "View Proposal"
+        : "View Proposal & Revise";
+
+  return {
+    subject: `${subjectVerb}: Proposal ${options.proposalNumber} — ${options.proposalTitle}`,
+    html: renderEmail({
+      preview: `${options.clientName} has ${actionLabel} proposal ${options.proposalNumber}.`,
+      heading: `Proposal ${actionLabel}`,
+      bodyHtml: `<p style="margin:0;"><strong style="color:${BRAND.heading};">${client}</strong> has ${actionLabel} your proposal <strong style="color:${BRAND.heading};">${num}</strong> — <em>${title}</em>.</p>
+                 ${options.action === "change_requested" ? `<p style="margin:12px 0 0 0;">Review the feedback and update the estimate as needed.</p>` : ""}
+                 ${options.action === "accept" ? `<p style="margin:12px 0 0 0;">You can now convert this proposal into a construction project.</p>` : ""}`,
+      cta: { label: ctaLabel, url: options.shareUrl },
+      footnote: "Log in to BuildPanda to take the next step.",
+    }),
+  };
+}
+
+export function proposalExpiryNudgeEmail(options: {
+  companyEmail: string;
+  proposalTitle: string;
+  proposalNumber: string;
+  clientName: string;
+  validUntil: string;
+  workspaceUrl: string;
+}): { subject: string; html: string } {
+  const title = escapeHtml(options.proposalTitle);
+  const num = escapeHtml(options.proposalNumber);
+  const client = escapeHtml(options.clientName);
+  const expiry = escapeHtml(options.validUntil);
+  return {
+    subject: `Proposal ${options.proposalNumber} expires soon`,
+    html: renderEmail({
+      preview: `Your proposal for ${options.clientName} expires on ${options.validUntil}.`,
+      heading: "Proposal expiring soon",
+      bodyHtml: `<p style="margin:0;">Proposal <strong style="color:${BRAND.heading};">${num}</strong> — <em>${title}</em> — for client <strong style="color:${BRAND.heading};">${client}</strong> will expire on <strong style="color:${BRAND.heading};">${expiry}</strong>.</p>
+                 <p style="margin:12px 0 0 0;">Consider following up with the client to keep the deal moving.</p>`,
+      cta: { label: "View Proposal", url: options.workspaceUrl },
+      footnote: "You're receiving this because you manage proposals on BuildPanda.",
+    }),
+  };
+}
+
+export function proposalExpiredEmail(options: {
+  proposalTitle: string;
+  proposalNumber: string;
+  clientName: string;
+  workspaceUrl: string;
+}): { subject: string; html: string } {
+  const title = escapeHtml(options.proposalTitle);
+  const num = escapeHtml(options.proposalNumber);
+  const client = escapeHtml(options.clientName);
+  return {
+    subject: `Proposal ${options.proposalNumber} has expired`,
+    html: renderEmail({
+      preview: `Your proposal for ${options.clientName} has expired.`,
+      heading: "Proposal expired",
+      bodyHtml: `<p style="margin:0;">Proposal <strong style="color:${BRAND.heading};">${num}</strong> — <em>${title}</em> — for client <strong style="color:${BRAND.heading};">${client}</strong> has expired.</p>
+                 <p style="margin:12px 0 0 0;">If you still want to proceed, open the workspace and create a new revision with an updated valid-until date.</p>`,
+      cta: { label: "View Proposal", url: options.workspaceUrl },
+      footnote: "You're receiving this because you manage proposals on BuildPanda.",
+    }),
+  };
+}
+
 export function projectInviteEmail(options: {
   inviterName: string;
   projectName: string;
