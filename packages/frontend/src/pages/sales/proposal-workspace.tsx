@@ -13,6 +13,7 @@ import {
   useSendEstimate,
   useProposalComments,
   usePostComment,
+  useConvertProposal,
 } from "@/hooks/use-proposals";
 import type { Estimate, ProposalStatus } from "@/api/proposals";
 import { proposalsApi } from "@/api/proposals";
@@ -57,8 +58,16 @@ function fmt(amount: number, currency: string) {
 
 function OverviewTab({ proposalId }: { proposalId: string }) {
   const { data } = useProposalWorkspace(proposalId);
+  const convert = useConvertProposal(proposalId);
+  const navigate = useNavigate();
   if (!data) return null;
   const { proposal, events } = data;
+
+  async function handleConvert() {
+    const { projectId } = await convert.mutateAsync();
+    localStorage.setItem("buildpanda:last-suite", "construction");
+    navigate(`/project/${projectId}/overview`);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,6 +171,45 @@ function OverviewTab({ proposalId }: { proposalId: string }) {
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {/* Convert / Go-to-project CTA */}
+      {proposal.status === "Accepted" && !proposal.projectId && (
+        <div className="rounded-xl border border-[#004DE7]/20 bg-[#004DE7]/5 p-5">
+          <h3 className="mb-1 text-sm font-semibold text-gray-900">Ready to build</h3>
+          <p className="mb-4 text-sm text-gray-500">
+            This proposal has been accepted. Convert it into a construction project to start
+            tracking phases, milestones, and finances.
+          </p>
+          {convert.error && (
+            <p className="mb-3 text-xs text-red-600">
+              Conversion failed — please try again.
+            </p>
+          )}
+          <Button
+            variant="primary"
+            onClick={handleConvert}
+            disabled={convert.isPending}
+          >
+            {convert.isPending ? "Converting…" : "Convert to project"}
+          </Button>
+        </div>
+      )}
+
+      {proposal.projectId && (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+          <h3 className="mb-1 text-sm font-semibold text-green-800">Project created</h3>
+          <p className="mb-4 text-sm text-green-700">
+            This proposal has been converted to a construction project.
+          </p>
+          <Link
+            to={`/project/${proposal.projectId}/overview`}
+            onClick={() => localStorage.setItem("buildpanda:last-suite", "construction")}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+          >
+            Go to project
+          </Link>
         </div>
       )}
     </div>
