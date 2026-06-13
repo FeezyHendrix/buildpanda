@@ -8,10 +8,16 @@ export interface UpsertActionItemValues {
   description: string | null;
   status: ActionStatus;
   priority: ActionPriority;
+  assigneeId: string | null;
   dueDate: string | null;
   recurrenceUnit: RecurrenceUnit | null;
   recurrenceInterval: number | null;
   recurrenceUntil: string | null;
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -19,6 +25,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initial?: Partial<UpsertActionItemValues>;
+  assigneeOptions?: AssigneeOption[];
   onSubmit: (values: UpsertActionItemValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -50,6 +57,7 @@ function UpsertActionItemDialog({
   onOpenChange,
   mode,
   initial,
+  assigneeOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
@@ -58,6 +66,7 @@ function UpsertActionItemDialog({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ActionStatus>("Open");
   const [priority, setPriority] = useState<ActionPriority>("Medium");
+  const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [repeat, setRepeat] = useState<"" | RecurrenceUnit>("");
   const [recurEvery, setRecurEvery] = useState("1");
@@ -69,6 +78,7 @@ function UpsertActionItemDialog({
       setDescription(initial?.description ?? "");
       setStatus(initial?.status ?? "Open");
       setPriority(initial?.priority ?? "Medium");
+      setAssigneeId(initial?.assigneeId ?? "");
       setDueDate(initial?.dueDate ?? "");
       setRepeat(initial?.recurrenceUnit ?? "");
       setRecurEvery(String(initial?.recurrenceInterval ?? 1));
@@ -84,6 +94,7 @@ function UpsertActionItemDialog({
       description: description.trim() || null,
       status,
       priority,
+      assigneeId: assigneeId || null,
       dueDate: dueDate || null,
       recurrenceUnit: unit,
       recurrenceInterval: unit ? Math.max(1, Number(recurEvery) || 1) : null,
@@ -152,6 +163,23 @@ function UpsertActionItemDialog({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ai-due">Due date</Label>
         <input id="ai-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="ai-assignee">Assignee</Label>
+        <select
+          id="ai-assignee"
+          value={assigneeId}
+          onChange={(e) => setAssigneeId(e.target.value)}
+          className={field}
+        >
+          <option value="">Unassigned</option>
+          {assigneeOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1.5">
