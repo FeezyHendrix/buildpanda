@@ -41,6 +41,7 @@ export interface ActionItemInput {
   description?: string | null;
   status?: ActionStatus;
   priority?: ActionPriority;
+  assigneeId?: string | null;
   dueDate?: string | null;
   recurrenceUnit?: RecurrenceUnit | null;
   recurrenceInterval?: number | null;
