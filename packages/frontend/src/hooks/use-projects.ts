@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { projectKeys } from "./query-keys";
 import type { Project } from "@/lib/project-types";
@@ -55,17 +54,17 @@ export function useProject(id: string | undefined) {
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
       const { data } = await api.post<Project>("/projects", input);
       return data;
     },
+    // Caller owns navigation so it can finish post-create work (e.g. uploading
+    // land documents) before leaving the page.
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.setQueryData(projectKeys.detail(project.id), project);
-      navigate(`/project/${project.id}/overview`);
     },
   });
 }
