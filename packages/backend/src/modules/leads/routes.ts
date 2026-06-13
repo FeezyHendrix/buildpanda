@@ -8,7 +8,8 @@ import { config } from "../../config/index.ts";
 import { leadsRepository } from "./repository.ts";
 import { leadsService } from "./service.ts";
 import { LEAD_STATUSES } from "./types.ts";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { NotFoundError } from "../../lib/errors.ts";
+import { idParams, paginationProperties } from "../../lib/schemas.ts";
 
 const consultationBody = {
   type: "object",
@@ -26,20 +27,12 @@ const consultationBody = {
   additionalProperties: false,
 } as const;
 
-const idParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
 const listQuery = {
   type: "object",
   additionalProperties: false,
   properties: {
     status: { type: "string", enum: LEAD_STATUSES },
-    limit: { type: "integer", minimum: 1, maximum: 100 },
-    offset: { type: "integer", minimum: 0 },
+    ...paginationProperties,
   },
 } as const;
 
@@ -50,6 +43,20 @@ const patchBody = {
   properties: {
     status: { type: "string", enum: LEAD_STATUSES },
     notes: { type: "string", maxLength: 5000 },
+  },
+} as const;
+
+const createLeadBody = {
+  type: "object",
+  required: ["name", "email"],
+  additionalProperties: false,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 200 },
+    email: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", maxLength: 320 },
+    phone: { type: "string", maxLength: 50 },
+    location: { type: "string", maxLength: 200 },
+    projectType: { type: "string", maxLength: 100 },
+    message: { type: "string", maxLength: 5000 },
   },
 } as const;
 
@@ -98,11 +105,7 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
     "/leads",
     { schema: { querystring: listQuery } },
     async (request) => {
-      request.requireAuth();
-      const orgId = request.activeOrganizationId;
-      if (!orgId || !request.orgRoles.has(orgId)) {
-        throw new ForbiddenError("No active organization");
-      }
+      const orgId = request.requireOrgScope();
       return service.listForOrg(orgId, {
         status: request.query.status,
         limit: request.query.limit ?? 25,
@@ -111,15 +114,39 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.post<{
+    Body: {
+      name: string;
+      email: string;
+      phone?: string;
+      location?: string;
+      projectType?: string;
+      message?: string;
+    };
+  }>(
+    "/leads",
+    { schema: { body: createLeadBody } },
+    async (request, reply) => {
+      const orgId = request.requireOrgPermission("leads", "create");
+      const lead = await service.createLead({
+        name: request.body.name,
+        email: request.body.email,
+        phone: request.body.phone,
+        location: request.body.location,
+        projectType: request.body.projectType,
+        message: request.body.message,
+        source: "manual",
+        orgId,
+      });
+      return reply.status(201).send(lead);
+    },
+  );
+
   fastify.patch<{ Params: { id: string }; Body: { status?: string; notes?: string } }>(
     "/leads/:id",
     { schema: { params: idParams, body: patchBody } },
     async (request, reply) => {
-      request.requireAuth();
-      const orgId = request.activeOrganizationId;
-      if (!orgId || !request.orgRoles.has(orgId)) {
-        throw new ForbiddenError("No active organization");
-      }
+      const orgId = request.requireOrgPermission("leads", "update");
       const { id } = request.params;
       const { status, notes } = request.body;
 

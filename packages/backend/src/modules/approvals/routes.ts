@@ -1,9 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import {
-  assertCanAccessProject,
-  assertCanActAsClient,
-  assertCanModifyProject,
-} from "../../lib/authorization.ts";
+import { assertCanActAsClient } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { approvalsRepository } from "./repository.ts";
@@ -86,12 +82,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.list(project.id, request.query.status);
     },
   );
@@ -100,12 +91,8 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
     },
@@ -115,12 +102,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals/:approvalId",
     { schema: { params: approvalParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.get(project.id, request.params.approvalId);
     },
   );
@@ -144,12 +126,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals/:approvalId",
     { schema: { params: approvalParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.approvalId);
       return reply.status(204).send();
     },
@@ -159,12 +136,8 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals/:approvalId/comments",
     { schema: { params: approvalParams, body: commentBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
       const comment = await service.addComment(project.id, request.params.approvalId, request.body.body, {
         id: user.id,
         name: user.name,

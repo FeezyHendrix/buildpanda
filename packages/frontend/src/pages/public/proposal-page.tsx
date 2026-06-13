@@ -1,22 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { usePublicProposal } from "@/hooks/use-proposals";
 import { proposalsApi } from "@/api/proposals";
+import { formatLongDate, formatWholeCurrency as fmt } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/images/logo.svg";
-
-function fmt(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
-}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -57,7 +47,7 @@ export default function PublicProposalPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F4F6FB]">
-        <div className="size-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#004DE7]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -80,33 +70,70 @@ export default function PublicProposalPage() {
   const currency = proposal.currency;
   const isClosed = estimate.status !== "Sent";
 
-  if (responded) {
-    const messages: Record<ResponseAction, { heading: string; body: string }> = {
-      accept: {
-        heading: "You've accepted the proposal!",
-        body: "The contractor has been notified. They'll be in touch to confirm next steps.",
-      },
-      decline: {
-        heading: "Proposal declined",
-        body: "The contractor has been notified. Thank you for letting them know.",
-      },
-      change_requested: {
-        heading: "Changes requested",
-        body: "The contractor has been notified and will review your request.",
-      },
-    };
-    const msg = messages[responseAction!];
+  const closedMessages: Record<"Accepted" | "Declined" | "Expired", { heading: string; body: string; icon: string; iconBg: string }> = {
+    Accepted: {
+      heading: "You've accepted this proposal",
+      body: "The contractor has been notified. They'll be in touch to confirm next steps.",
+      icon: "✓",
+      iconBg: "bg-green-100",
+    },
+    Declined: {
+      heading: "This proposal was declined",
+      body: "The contractor has been notified. Thank you for letting them know.",
+      icon: "✕",
+      iconBg: "bg-red-100",
+    },
+    Expired: {
+      heading: "This proposal has expired",
+      body: "Please get in touch with the contractor for an updated quote.",
+      icon: "⏱",
+      iconBg: "bg-gray-100",
+    },
+  };
+
+  const responseMessages: Record<ResponseAction, { heading: string; body: string }> = {
+    accept: {
+      heading: "You've accepted the proposal!",
+      body: "The contractor has been notified. They'll be in touch to confirm next steps.",
+    },
+    decline: {
+      heading: "Proposal declined",
+      body: "The contractor has been notified. Thank you for letting them know.",
+    },
+    change_requested: {
+      heading: "Changes requested",
+      body: "The contractor has been notified and will review your request.",
+    },
+  };
+
+  const showClosedState =
+    isClosed && estimate.status in closedMessages && !responded;
+  const closedState = showClosedState
+    ? closedMessages[estimate.status as keyof typeof closedMessages]
+    : null;
+
+  if (responded || closedState) {
+    const msg = responded ? responseMessages[responseAction!] : closedState!;
+    const icon = responded
+      ? responseAction === "accept" ? "✓" : responseAction === "decline" ? "✕" : "↩"
+      : closedState!.icon;
+    const iconBg = responded ? "bg-green-100" : closedState!.iconBg;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F4F6FB] px-4">
         <img src={logo} alt="BuildPanda" className="h-9" />
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm max-w-sm w-full">
           <div className="mb-4 flex justify-center">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl">
-              {responseAction === "accept" ? "✓" : responseAction === "decline" ? "✕" : "↩"}
+            <span className={cn("flex h-12 w-12 items-center justify-center rounded-full text-2xl", iconBg)}>
+              {icon}
             </span>
           </div>
           <h1 className="text-lg font-semibold text-gray-900">{msg.heading}</h1>
           <p className="mt-2 text-sm text-gray-500">{msg.body}</p>
+          <div className="mt-5 border-t border-gray-100 pt-4 text-left">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Proposal</p>
+            <p className="mt-1 text-sm font-medium text-gray-900">{proposal.title}</p>
+            <p className="text-xs text-gray-500">{proposal.numberLabel} · {fmt(estimate.total, currency)}</p>
+          </div>
         </div>
         <p className="text-xs text-gray-400">Powered by BuildPanda</p>
       </div>
@@ -244,12 +271,7 @@ export default function PublicProposalPage() {
             {/* Validity */}
             {proposal.validUntil && (
               <p className="text-center text-xs text-gray-400">
-                This proposal is valid until{" "}
-                {new Date(proposal.validUntil).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                This proposal is valid until {formatLongDate(proposal.validUntil)}
               </p>
             )}
 

@@ -5,7 +5,7 @@ import type {
   ParticipantRole,
   ProjectAccess,
   ProjectParticipant,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export const participantKeys = {
   list: (projectId: string) => ["projects", projectId, "participants"] as const,

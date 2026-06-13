@@ -22,6 +22,8 @@ const searchRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       return service.search(user.id, {
         query: request.query.q,
+        orgIds: [...request.orgRoles.keys()],
+        participantProjectIds: [...request.projectRoles.keys()],
         ...(request.query.limit !== undefined ? { limit: request.query.limit } : {}),
       });
     },

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { NotFoundError } from "../../lib/errors.ts";
 
 const CURRENCIES = ["NGN", "USD", "GBP", "EUR", "GHS", "KES", "ZAR"] as const;
 
@@ -30,9 +30,7 @@ interface OrgProfilePatch {
 
 const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/org-profile", async (request) => {
-    request.requireAuth();
-    const orgId = request.activeOrganizationId;
-    if (!orgId || !request.orgRoles.has(orgId)) throw new ForbiddenError("No active organization");
+    const orgId = request.requireOrgScope();
 
     const org = await fastify.db("organization")
       .where({ id: orgId })
@@ -63,14 +61,15 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
     "/org-profile",
     { schema: { body: patchBody } },
     async (request) => {
-      request.requireAuth();
-      const orgId = request.activeOrganizationId;
-      if (!orgId || !request.orgRoles.has(orgId)) throw new ForbiddenError("No active organization");
+      const orgId = request.requireOrgPermission("orgProfile", "manage");
 
       const { phone, address, contactEmail, website, defaultCurrency, defaultTaxLabel, defaultTaxPct } =
         request.body;
 
-      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      // The `organization` table is owned by better-auth: timestamps are
+      // camelCase (`updatedAt`). The profile columns are snake_case. Both
+      // conventions coexist on this one table.
+      const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (phone !== undefined) patch["phone"] = phone;
       if (address !== undefined) patch["address"] = address;
       if (contactEmail !== undefined) patch["contact_email"] = contactEmail;

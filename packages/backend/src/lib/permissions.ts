@@ -8,6 +8,7 @@ import {
 
 export const statement = {
   ...defaultStatements,
+  // Construction suite
   project: ["create", "update", "delete", "view"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
@@ -18,6 +19,13 @@ export const statement = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view", "manage"],
+  teamMembers: ["view", "manage"],
+  orgProfile: ["view", "manage"],
+  // Pre-construction suite
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -33,6 +41,10 @@ const constructionFull = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view", "manage"],
+  teamMembers: ["view", "manage"],
+  orgProfile: ["view", "manage"],
 } as const;
 
 const constructionContributor = {
@@ -46,6 +58,10 @@ const constructionContributor = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view"],
+  teamMembers: ["view", "manage"],
+  orgProfile: ["view"],
 } as const;
 
 const constructionReadOnly = {
@@ -59,21 +75,31 @@ const constructionReadOnly = {
   dailyLog: ["view"],
   updates: ["view"],
   messages: ["view"],
+  comments: ["view"],
+  participants: ["view"],
+  teamMembers: ["view"],
+  orgProfile: ["view"],
 } as const;
 
 export const owner = ac.newRole({
   ...ownerAc.statements,
   ...constructionFull,
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
 });
 
 export const admin = ac.newRole({
   ...adminAc.statements,
   ...constructionFull,
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
 });
 
 export const member = ac.newRole({
   ...memberAc.statements,
   ...constructionContributor,
+  proposals: ["view", "create", "update", "send"],
+  leads: ["view", "create", "update"],
 });
 
 export const viewer = ac.newRole({
@@ -83,8 +109,62 @@ export const viewer = ac.newRole({
   team: [],
   ac: [],
   ...constructionReadOnly,
+  proposals: ["view"],
+  leads: ["view"],
 });
 
 export const roles = { owner, admin, member, viewer };
 
 export type AppRoleName = keyof typeof roles;
+
+// ---------------------------------------------------------------------------
+// Runtime permission resolution (Phase 2).
+// Mirrors better-auth's has-permission.mjs merge so our guards and
+// better-auth's org endpoints agree on the effective permission set.
+// ---------------------------------------------------------------------------
+
+export type PermissionMap = ReadonlyMap<string, ReadonlySet<string>>;
+
+/** The four built-in org roles. Used to skip the custom-role DB query on the common path. */
+export const BUILTIN_ROLES: ReadonlySet<string> = new Set(Object.keys(roles));
+
+/**
+ * Resolves the effective permission map for a member's role(s) on one org.
+ * Mirrors better-auth has-permission.mjs: static statements ∪ custom JSON rows.
+ */
+export function resolvePermissionMap(
+  roleField: string,
+  customRows: { role: string; permission: string }[],
+): PermissionMap {
+  const merged = new Map<string, Set<string>>();
+  const customByName = new Map(customRows.map((r) => [r.role, r.permission]));
+
+  for (const name of roleField.split(",").map((s) => s.trim()).filter(Boolean)) {
+    // 1) Static statements for built-in roles (includes all construction + sales + org-mgmt perms)
+    const statics =
+      (roles as Record<string, { statements: Record<string, string[]> }>)[name]
+        ?.statements ?? {};
+    for (const [res, actions] of Object.entries(statics)) {
+      const set = merged.get(res) ?? new Set<string>();
+      actions.forEach((a) => set.add(a));
+      merged.set(res, set);
+    }
+
+    // 2) Merge custom-role JSON (allow-list from zero for brand-new role names)
+    const json = customByName.get(name);
+    if (json) {
+      const parsed = JSON.parse(json) as Record<string, string[]>;
+      for (const [res, actions] of Object.entries(parsed)) {
+        const set = merged.get(res) ?? new Set<string>();
+        actions.forEach((a) => set.add(a));
+        merged.set(res, set);
+      }
+    }
+  }
+
+  return merged;
+}
+
+export function mapAllows(map: PermissionMap, resource: string, action: string): boolean {
+  return map.get(resource)?.has(action) ?? false;
+}

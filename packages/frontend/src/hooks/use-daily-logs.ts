@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { dailyLogKeys } from "./query-keys";
-import type { DailyLog, WeatherCondition } from "@/lib/project-mock-data";
+import type { DailyLog, WeatherCondition } from "@/lib/project-types";
 
 export function useProjectDailyLogs(
   projectId: string | undefined,

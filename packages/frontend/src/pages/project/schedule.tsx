@@ -12,7 +12,7 @@ import { useProjectActivities } from "@/hooks/use-activities";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
-import type { Activity, ActivityDelay, ActivityStatus } from "@/lib/project-mock-data";
+import type { Activity, ActivityDelay, ActivityStatus } from "@/lib/project-types";
 
 const PROGRESS_BY_STATUS: Record<ActivityStatus, number> = {
   Planned: 0,

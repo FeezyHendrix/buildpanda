@@ -37,6 +37,7 @@ export {
   type SearchableSelectProps,
 } from "./searchable-select";
 export { SettingsIcon, type SettingsIconProps } from "./settings-icon";
+export { Spinner, type SpinnerProps } from "./spinner";
 export { StepperBar, type StepperBarProps } from "./stepper-bar";
 export { Switcher, type SwitcherProps, type SwitcherValue } from "./switcher";
 export {

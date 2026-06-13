@@ -4,8 +4,7 @@ import { adminApi, type AdminProjectRow } from "@/api/admin";
 import { Loading, ErrorState, PageHeader, StatusBadge } from "@/components/ui";
 import { DataTable, SearchBar, Pagination, type Column } from "@/components/data-table";
 import { cn, formatMoney } from "@/lib/utils";
-
-const LIMIT = 25;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
 const statuses = ["", "On Track", "At Risk", "Delayed"];
 
@@ -53,7 +52,7 @@ export default function ProjectsPage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "projects", search, status, offset],
-    queryFn: () => adminApi.listProjects({ search, status: status || undefined, limit: LIMIT, offset }),
+    queryFn: () => adminApi.listProjects({ search, status: status || undefined, limit: DEFAULT_PAGE_SIZE, offset }),
     placeholderData: keepPreviousData,
   });
 
@@ -100,7 +99,7 @@ export default function ProjectsPage() {
             rowHref={(p) => `/projects/${p.id}`}
             emptyLabel="No projects found."
           />
-          <Pagination total={data.total} limit={LIMIT} offset={offset} onChange={setOffset} />
+          <Pagination total={data.total} limit={DEFAULT_PAGE_SIZE} offset={offset} onChange={setOffset} />
         </>
       )}
     </div>

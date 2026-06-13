@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
-import type { PermitStatus } from "@/lib/project-mock-data";
+import type { PermitStatus } from "@/lib/project-types";
 
 export interface UpsertPermitValues {
   title: string;

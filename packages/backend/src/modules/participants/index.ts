@@ -1,16 +1,11 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import {
-  assertCanAccessProject,
-  assertCanModifyProject,
-  participantRole,
-} from "../../lib/authorization.ts";
+import { participantRole } from "../../lib/authorization.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
-import { projectsRepository } from "../projects/repository.ts";
 
 type ParticipantRole = "client" | "architect" | "inspector" | "guest";
 type ParticipantStatus = "invited" | "active" | "revoked";
@@ -142,25 +137,13 @@ function computeAccess(
 
 const participantRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
-  const projects = projectsRepository(db);
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   // --- Company-side participant management ---
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/participants",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const rows = await db<ParticipantRow>("project_participants as p")
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.project_id", project.id)
@@ -175,12 +158,8 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/participants/invite",
     { schema: { params: projectIdParams, body: inviteBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
 
       const email = request.body.email.trim().toLowerCase();
       const role = request.body.role ?? "client";
@@ -230,12 +209,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams, body: updateBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (request.body.role) patch.role = request.body.role;
       if (request.body.status) patch.status = request.body.status;
@@ -256,12 +230,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update({ status: "revoked", updated_at: new Date().toISOString() });
@@ -304,6 +273,9 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       if (invite.invite_expires_at && new Date(invite.invite_expires_at) < new Date()) {
         throw new BadRequestError("This invitation has expired.");
       }
+      if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
+        throw new BadRequestError("This invitation was sent to a different email address.");
+      }
       await db("project_participants").where({ id: invite.id }).update({
         user_id: user.id,
         status: "active",
@@ -335,12 +307,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/access",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return computeAccess(project, request);
     },
   );

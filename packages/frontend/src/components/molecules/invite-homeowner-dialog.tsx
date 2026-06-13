@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
-import type { ParticipantRole } from "@/lib/project-mock-data";
+import type { ParticipantRole } from "@/lib/project-types";
 
 export interface InviteHomeownerValues {
   email: string;

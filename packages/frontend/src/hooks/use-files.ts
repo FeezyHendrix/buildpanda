@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import type { UploadedFile } from "@/lib/project-mock-data";
+import type { UploadedFile } from "@/lib/project-types";
 
 export function useUploadFile() {
   return useMutation({

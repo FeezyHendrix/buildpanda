@@ -1,7 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import type { FastifyPluginAsync } from "fastify";
 import { materialsEquipmentRepository } from "./repository.ts";
 import {
   materialsEquipmentService,
@@ -125,43 +122,14 @@ const equipmentPatchBody = {
   properties: equipmentBody.properties,
 } as const;
 
-type ProjectRequest = FastifyRequest<{ Params: { id: string } }>;
-
 const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
-
-  async function requireProjectAccess(request: ProjectRequest) {
-    const user = request.requireAuth();
-    const project = await loadProject(request.params.id);
-    assertCanAccessProject(
-      { ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles },
-    );
-    return user;
-  }
-
-  async function requireProjectModify(request: ProjectRequest) {
-    const user = request.requireAuth();
-    const project = await loadProject(request.params.id);
-    assertCanModifyProject(
-      { ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles },
-    );
-    return user;
-  }
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: MaterialOrderStatus } }>(
     "/projects/:id/materials/orders",
     { schema: { params: projectIdParams, querystring: materialQuery } },
     async (request) => {
-      await requireProjectAccess(request);
+      await request.requireProjectAccess(request.params.id);
       return service.listMaterialOrders(request.params.id, request.query.status);
     },
   );
@@ -170,7 +138,8 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/orders",
     { schema: { params: projectIdParams, body: materialBody } },
     async (request) => {
-      const user = await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       return service.createMaterialOrder(request.params.id, request.body, user.id);
     },
   );
@@ -179,7 +148,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/orders/:orderId",
     { schema: { params: materialParams, body: materialPatchBody } },
     async (request) => {
-      await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
       return service.updateMaterialOrder(request.params.id, request.params.orderId, request.body);
     },
   );
@@ -188,7 +157,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/orders/:orderId",
     { schema: { params: materialParams } },
     async (request, reply) => {
-      await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
       await service.deleteMaterialOrder(request.params.id, request.params.orderId);
       return reply.status(204).send();
     },
@@ -198,7 +167,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/equipment-requests",
     { schema: { params: projectIdParams, querystring: equipmentQuery } },
     async (request) => {
-      await requireProjectAccess(request);
+      await request.requireProjectAccess(request.params.id);
       return service.listEquipmentRequests(request.params.id, request.query.bucket);
     },
   );
@@ -207,7 +176,8 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/equipment-requests",
     { schema: { params: projectIdParams, body: equipmentBody } },
     async (request) => {
-      const user = await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       return service.createEquipmentRequest(request.params.id, request.body, user.id);
     },
   );
@@ -216,7 +186,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/equipment-requests/:requestId",
     { schema: { params: equipmentParams, body: equipmentPatchBody } },
     async (request) => {
-      await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
       return service.updateEquipmentRequest(request.params.id, request.params.requestId, request.body);
     },
   );
@@ -225,7 +195,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/equipment-requests/:requestId",
     { schema: { params: equipmentParams } },
     async (request, reply) => {
-      await requireProjectModify(request);
+      await request.requireProjectWrite(request.params.id);
       await service.deleteEquipmentRequest(request.params.id, request.params.requestId);
       return reply.status(204).send();
     },

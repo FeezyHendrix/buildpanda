@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { PlayIcon } from "@/components/atoms/project-nav-icons";
-import type { MediaItem } from "@/lib/project-mock-data";
+import type { MediaItem } from "@/lib/project-types";
 
 interface MediaGalleryProps {
   items: readonly MediaItem[];

@@ -4,8 +4,7 @@ import { adminApi, type AdminUserRow } from "@/api/admin";
 import { Loading, ErrorState, PageHeader, RoleBadge, Badge, Avatar } from "@/components/ui";
 import { DataTable, SearchBar, Pagination, type Column } from "@/components/data-table";
 import { formatDate } from "@/lib/utils";
-
-const LIMIT = 25;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
 const columns: Column<AdminUserRow>[] = [
   {
@@ -45,7 +44,7 @@ export default function UsersPage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "users", search, offset],
-    queryFn: () => adminApi.listUsers({ search, limit: LIMIT, offset }),
+    queryFn: () => adminApi.listUsers({ search, limit: DEFAULT_PAGE_SIZE, offset }),
     placeholderData: keepPreviousData,
   });
 
@@ -67,7 +66,7 @@ export default function UsersPage() {
       ) : (
         <>
           <DataTable columns={columns} rows={data.rows} rowHref={(u) => `/users/${u.id}`} emptyLabel="No users found." />
-          <Pagination total={data.total} limit={LIMIT} offset={offset} onChange={setOffset} />
+          <Pagination total={data.total} limit={DEFAULT_PAGE_SIZE} offset={offset} onChange={setOffset} />
         </>
       )}
     </div>

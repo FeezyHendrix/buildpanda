@@ -5,7 +5,7 @@ import type {
   DocumentCategory,
   DocumentVersion,
   ProjectDocument,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 

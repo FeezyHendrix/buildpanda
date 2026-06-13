@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import type { NotificationRow, NotificationType } from "./types.ts";
+import type { NotificationPreferenceRow, NotificationRow, NotificationType } from "./types.ts";
 
 export interface NewNotificationRecord {
   id: string;
@@ -8,6 +8,14 @@ export interface NewNotificationRecord {
   title: string;
   body: string;
   project_id: string | null;
+}
+
+export interface NewNotificationPreferenceRecord {
+  id: string;
+  user_id: string;
+  type: string;
+  in_app_enabled: boolean;
+  email_enabled: boolean;
 }
 
 export interface ListFilters {
@@ -59,6 +67,30 @@ export function notificationsRepository(db: Knex) {
       const [row] = await db<NotificationRow>("notifications").insert(record).returning("*");
       if (!row) throw new Error("Failed to insert notification");
       return row;
+    },
+
+    listPreferences(userId: string): Promise<NotificationPreferenceRow[]> {
+      return db<NotificationPreferenceRow>("notification_preferences").where({ user_id: userId });
+    },
+
+    findPreference(
+      userId: string,
+      type: string,
+    ): Promise<NotificationPreferenceRow | undefined> {
+      return db<NotificationPreferenceRow>("notification_preferences")
+        .where({ user_id: userId, type })
+        .first();
+    },
+
+    async upsertPreference(record: NewNotificationPreferenceRecord): Promise<void> {
+      await db("notification_preferences")
+        .insert(record)
+        .onConflict(["user_id", "type"])
+        .merge({
+          in_app_enabled: record.in_app_enabled,
+          email_enabled: record.email_enabled,
+          updated_at: new Date(),
+        });
     },
   };
 }

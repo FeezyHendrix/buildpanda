@@ -1,10 +1,11 @@
 import { Dialog } from "@base-ui-components/react/dialog";
 import { useState } from "react";
+import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { useActionItem, useAddActionComment } from "@/hooks/use-action-items";
 import { cn } from "@/lib/utils";
-import type { ActionPriority, ActionStatus } from "@/lib/project-mock-data";
+import type { ActionPriority, ActionStatus } from "@/lib/project-types";
 
 export const ACTION_STATUS_META: Record<
   ActionStatus,
@@ -27,9 +28,7 @@ export const ACTION_PRIORITY_META: Record<
 };
 
 function formatWhen(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || value;
 }
 
 interface Props {

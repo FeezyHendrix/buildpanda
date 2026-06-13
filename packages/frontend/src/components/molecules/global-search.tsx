@@ -8,7 +8,7 @@ import type {
   SearchInspectionHit,
   SearchProjectHit,
   SearchUpdateHit,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 const DEBOUNCE_MS = 250;
 

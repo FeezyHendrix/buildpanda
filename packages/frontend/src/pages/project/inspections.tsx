@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import type {
   InspectionCategory,
   InspectionReport,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
 
@@ -37,7 +37,8 @@ const FILTERS: InspectionCategory[] = [
 ];
 
 export default function ProjectInspections() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canRequestInspection = (access?.capabilities?.canManage ?? false) || access?.relationship === "inspector";
   const { data: inspections = [] } = useProjectInspections(project.id);
   const [activeFilter, setActiveFilter] =
     useState<InspectionCategory>("All Reports");
@@ -58,15 +59,17 @@ export default function ProjectInspections() {
         title="Independent Inspections & Quality Reports"
         description="Verified structural and progress assessments for peace of mind."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setRequestOpen(true)}
-            className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-          >
-            <ReactSVG src={icons.plusCircle} />
-            Request New Inspection
-          </Button>
+          canRequestInspection ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setRequestOpen(true)}
+              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+            >
+              <ReactSVG src={icons.plusCircle} />
+              Request New Inspection
+            </Button>
+          ) : undefined
         }
       />
 

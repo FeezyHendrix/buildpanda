@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { keyDateKeys } from "./query-keys";
-import type { KeyDate, KeyDateStatus } from "@/lib/project-mock-data";
+import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
 
 export function useKeyDates(projectId: string | undefined) {
   return useQuery({

@@ -11,8 +11,7 @@ import {
 } from "@/components/ui";
 import { DataTable, SearchBar, Pagination, type Column } from "@/components/data-table";
 import { formatDate } from "@/lib/utils";
-
-const LIMIT = 25;
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
 const STATUS_TONE: Record<string, "neutral" | "brand" | "success" | "warning" | "danger"> = {
   New: "brand",
@@ -105,7 +104,7 @@ export default function LeadsPage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin", "leads", search, offset],
-    queryFn: () => adminApi.listLeads({ search, limit: LIMIT, offset }),
+    queryFn: () => adminApi.listLeads({ search, limit: DEFAULT_PAGE_SIZE, offset }),
     placeholderData: keepPreviousData,
   });
 
@@ -198,7 +197,7 @@ export default function LeadsPage() {
             rows={data.rows}
             emptyLabel="No leads found."
           />
-          <Pagination total={data.total} limit={LIMIT} offset={offset} onChange={setOffset} />
+          <Pagination total={data.total} limit={DEFAULT_PAGE_SIZE} offset={offset} onChange={setOffset} />
         </>
       )}
 

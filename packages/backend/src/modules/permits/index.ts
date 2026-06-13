@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 
 export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
 
@@ -55,13 +54,6 @@ function toPermit(r: PermitRow): Permit {
 }
 
 const STATUS = ["NotStarted", "Applied", "Approved", "Rejected", "Expired"] as const;
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
 
 const permitParams = {
   type: "object",
@@ -124,24 +116,12 @@ function toPatch(input: PermitInput): Record<string, unknown> {
 
 const permitRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
-  const projects = projectsRepository(db);
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/permits",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       const rows = await db<PermitRow>("permits")
         .where({ project_id: project.id })
         .orderBy("created_at", "desc");
@@ -153,12 +133,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const record = {
         id: generateId("permit"),
         project_id: project.id,
@@ -181,12 +156,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits/:permitId",
     { schema: { params: permitParams, body: updateBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const existing = await db<PermitRow>("permits")
         .where({ id: request.params.permitId, project_id: project.id })
         .first();
@@ -203,12 +173,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits/:permitId",
     { schema: { params: permitParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await db("permits").where({ id: request.params.permitId, project_id: project.id }).del();
       return reply.status(204).send();
     },

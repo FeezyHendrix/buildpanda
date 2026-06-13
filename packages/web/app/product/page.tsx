@@ -21,7 +21,7 @@ import {
 export const metadata: Metadata = {
   title: "Product",
   description:
-    "Inside BuildPanda: milestones and scheduling, milestone payments, budget and finances, documents, third-party inspections, drone monitoring, daily logs and AI insights. The construction management software for builders in Nigeria and the diaspora.",
+    "Inside BuildPanda, the Construction OS: leads, proposals and estimates, milestone payments, budget and finances, documents, third-party inspections, daily logs and AI insights. One platform to win the work and deliver it, from first enquiry to final handover.",
   alternates: { canonical: "https://buildpanda.io/product" },
 };
 
@@ -33,11 +33,24 @@ const softwareJsonLd = {
   operatingSystem: "Web",
   url: `${site.url}/product/`,
   description:
-    "Construction management software that manages a build from inception to handover, with milestones, milestone payments, budgeting, documents, inspections and on-site monitoring.",
+    "The Construction OS that runs a build from first enquiry to final handover, with leads, proposals and estimates, milestones, milestone payments, budgeting, documents, inspections and on-site monitoring.",
   offers: { "@type": "Offer", availability: "https://schema.org/InStock" },
 };
 
 const deepDives = [
+  {
+    id: "preconstruction",
+    eyebrow: "Win the work",
+    title: "Leads, proposals and estimates that close",
+    text: "Capture every enquiry, then turn it into a polished, line-by-line estimate and bill of quantities. Send a branded proposal your client can review and accept online, and the moment it is signed, convert it into a live project in one click.",
+    points: [
+      "Lead pipeline from new to won",
+      "Line-by-line estimates and bills of quantities",
+      "Branded proposals clients accept online",
+      "One-click convert to a live project",
+    ],
+    icon: <ClipboardIcon className="h-6 w-6" />,
+  },
   {
     id: "payments",
     eyebrow: "Money with accountability",
@@ -90,6 +103,16 @@ const deepDives = [
 
 const moreFeatures = [
   {
+    icon: <UsersIcon className="h-6 w-6" />,
+    title: "Leads & pipeline",
+    description: "Track every enquiry from new to won so nothing slips.",
+  },
+  {
+    icon: <DocumentIcon className="h-6 w-6" />,
+    title: "Proposals & BoQ",
+    description: "Line-by-line estimates and bills of quantities clients accept online.",
+  },
+  {
     icon: <MilestoneIcon className="h-6 w-6" />,
     title: "Milestones & schedule",
     description: "A living project schedule so timelines stay realistic and visible.",
@@ -134,12 +157,13 @@ export default function ProductPage() {
         <Container className="flex flex-col items-center gap-6 py-16 text-center sm:py-20 lg:py-24">
           <Badge>The product</Badge>
           <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-            The software that runs your build, end to end.
+            The Construction OS that runs your build, end to end.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            BuildPanda brings milestones, payments, budgets, documents,
-            inspections and monitoring into one platform, so every decision is
-            backed by what is really happening on site.
+            BuildPanda brings proposals, estimates, milestones, payments,
+            documents and inspections into one platform, so you win the work and
+            deliver it with every decision backed by what is really happening on
+            site.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/#consultation" size="lg">

@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { financesRepository } from "./repository.ts";
 import {
   financesService,
@@ -69,15 +66,14 @@ const milestonePatchBody = {
 } as const;
 
 const financeRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = financesService(financesRepository(fastify.db));
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/finances",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.getByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.getByProject(project.id);
     },
   );
 
@@ -85,11 +81,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/deposits",
     { schema: { params: projectIdParams, body: depositBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       const finances = await service.deposit(project.id, request.body);
       return reply.status(201).send(finances);
     },
@@ -99,11 +91,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones",
     { schema: { params: projectIdParams, body: milestoneBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       const milestone = await service.createMilestone(project.id, request.body);
       return reply.status(201).send(milestone);
     },
@@ -116,11 +104,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId",
     { schema: { params: milestoneParams, body: milestonePatchBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       return service.updateMilestone(
         project.id,
         request.params.milestoneId,
@@ -133,11 +117,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId",
     { schema: { params: milestoneParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       await service.deleteMilestone(project.id, request.params.milestoneId);
       return reply.status(204).send();
     },
@@ -147,11 +127,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId/release",
     { schema: { params: milestoneParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
       const milestone = await service.releaseMilestone(
         project.id,
         request.params.milestoneId,
@@ -164,8 +140,8 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId/disputes",
     { schema: { params: milestoneParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listDisputes(request.params.id, request.params.milestoneId);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listDisputes(project.id, request.params.milestoneId);
     },
   );
 
@@ -176,11 +152,8 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId/disputes",
     { schema: { params: milestoneParams, body: disputeBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "dispute");
       const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
       const dispute = await service.raiseDispute(
         project.id,
         request.params.milestoneId,

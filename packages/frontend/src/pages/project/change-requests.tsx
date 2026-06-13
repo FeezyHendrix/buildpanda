@@ -21,7 +21,8 @@ import {
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
 import { cn } from "@/lib/utils";
-import type { ChangeRequest, ChangeStatus } from "@/lib/project-mock-data";
+import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
+import { formatWholeCurrency } from "@/lib/formatters";
 
 const FILTERS: { value: ChangeStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -32,15 +33,12 @@ const FILTERS: { value: ChangeStatus | "all"; label: string }[] = [
 ];
 
 function money(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return formatWholeCurrency(amount, currency);
 }
 
 export default function ProjectChangeRequests() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
   const { data: items = [], isLoading } = useChangeRequests(project.id, filter === "all" ? undefined : filter);
   const createCr = useCreateChangeRequest();
@@ -67,12 +65,12 @@ export default function ProjectChangeRequests() {
       <PageHeader
         title="Change Requests"
         description="Proposed changes to scope, cost or schedule — with their budget and time impact."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             New change request
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
