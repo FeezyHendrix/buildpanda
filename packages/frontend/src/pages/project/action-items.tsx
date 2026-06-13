@@ -15,6 +15,11 @@ import {
   ACTION_STATUS_META,
 } from "@/components/molecules/action-item-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
+import {
+  ACTION_ITEM_COLUMNS,
+  actionItemMeta,
+  assigneeFooter,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useActionItems,
@@ -151,7 +156,13 @@ export default function ProjectActionItems() {
           ) : (
             <KanbanBoard
               items={items}
+              columns={ACTION_ITEM_COLUMNS}
               canManage={canManage}
+              getId={(i) => i.id}
+              getStatus={(i) => i.status}
+              getTitle={(i) => i.title}
+              renderMeta={actionItemMeta}
+              renderFooter={(i) => assigneeFooter(i.assigneeName, i.dueDate)}
               onMove={handleMove}
               onOpen={setDetailId}
             />

@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
 import { UpsertInspectionDialog, type UpsertInspectionValues } from "@/components/molecules/upsert-inspection-dialog";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { INSPECTION_COLUMNS, textMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectInspections,
@@ -23,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type {
   InspectionCategory,
   InspectionReport,
+  InspectionStatus,
 } from "@/lib/project-types";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
@@ -43,7 +46,9 @@ export default function ProjectInspections() {
   const [activeFilter, setActiveFilter] =
     useState<InspectionCategory>("All Reports");
   const [requestOpen, setRequestOpen] = useState(false);
+  const [view, setView] = useState<"list" | "board">("list");
   const requestInspection = useRequestInspection();
+  const editInspection = useEditInspection();
 
   const visible = useMemo(
     () =>
@@ -53,8 +58,18 @@ export default function ProjectInspections() {
     [inspections, activeFilter],
   );
 
+  function handleMove(report: InspectionReport, status: InspectionStatus): void {
+    if (report.status === status) return;
+    editInspection.mutate({ projectId: project.id, inspectionId: report.id, status });
+  }
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div
+      className={cn(
+        "mx-auto w-full px-6 py-8 sm:px-10",
+        view === "board" ? "max-w-none" : "max-w-7xl",
+      )}
+    >
       <PageHeader
         title="Independent Inspections & Quality Reports"
         description="Verified structural and progress assessments for peace of mind."
@@ -90,26 +105,61 @@ export default function ProjectInspections() {
         }}
       />
 
-      <FilterTabs
-        filters={FILTERS}
-        active={activeFilter}
-        onChange={setActiveFilter}
-        className="mt-8"
-      />
-
-      <section className="mt-6 flex gap-4 justify-center">
-        <div className="flex flex-col gap-4">
-          {visible.length === 0 ? (
-            <Card padding="lg" className="text-center text-sm text-gray-500">
-              No inspections match this filter.
-            </Card>
-          ) : (
-            visible.map((report) => (
-              <InspectionCard key={report.id} projectId={project.id} report={report} />
-            ))
-          )}
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <FilterTabs
+          filters={FILTERS}
+          active={activeFilter}
+          onChange={setActiveFilter}
+        />
+        <div className="inline-flex shrink-0 rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+          {(["list", "board"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+              )}
+            >
+              {v}
+            </button>
+          ))}
         </div>
-      </section>
+      </div>
+
+      {view === "board" ? (
+        <div className="mt-6">
+          <KanbanBoard
+            items={visible}
+            columns={INSPECTION_COLUMNS}
+            canManage={canRequestInspection}
+            getId={(r) => r.id}
+            getStatus={(r) => r.status}
+            getTitle={(r) => r.title}
+            renderMeta={(r) => textMeta(r.category)}
+            renderFooter={(r) => (
+              <span className="truncate text-xs text-gray-500">{r.inspector.name}</span>
+            )}
+            onMove={handleMove}
+            onOpen={() => undefined}
+          />
+        </div>
+      ) : (
+        <section className="mt-6 flex gap-4 justify-center">
+          <div className="flex flex-col gap-4">
+            {visible.length === 0 ? (
+              <Card padding="lg" className="text-center text-sm text-gray-500">
+                No inspections match this filter.
+              </Card>
+            ) : (
+              visible.map((report) => (
+                <InspectionCard key={report.id} projectId={project.id} report={report} />
+              ))
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

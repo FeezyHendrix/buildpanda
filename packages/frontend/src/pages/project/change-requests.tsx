@@ -13,6 +13,8 @@ import {
   ChangeRequestDetailDialog,
   CHANGE_STATUS_META,
 } from "@/components/molecules/change-request-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { CHANGE_COLUMNS, textMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useChangeRequests,
@@ -40,6 +42,7 @@ export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useChangeRequests(project.id, filter === "all" ? undefined : filter);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
@@ -52,6 +55,11 @@ export default function ProjectChangeRequests() {
 
   const approvedCost = items.filter((i) => i.status === "Approved").reduce((s, i) => s + i.costImpact, 0);
 
+  function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
+    if (cr.status === status) return;
+    updateCr.mutate({ projectId: project.id, changeId: cr.id, status });
+  }
+
   function handleCreate(values: UpsertChangeValues): void {
     createCr.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
   }
@@ -61,7 +69,12 @@ export default function ProjectChangeRequests() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div
+      className={cn(
+        "mx-auto w-full px-6 py-8 sm:px-10",
+        view === "board" ? "max-w-none" : "max-w-7xl",
+      )}
+    >
       <PageHeader
         title="Change Requests"
         description="Proposed changes to scope, cost or schedule — with their budget and time impact."
@@ -89,9 +102,45 @@ export default function ProjectChangeRequests() {
             </button>
           ))}
         </div>
-        {approvedCost > 0 && <p className="text-xs text-gray-500">Approved impact: {money(approvedCost, "NGN")}</p>}
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {approvedCost > 0 && <p className="text-xs text-gray-500">Approved impact: {money(approvedCost, "NGN")}</p>}
+        </div>
       </div>
 
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={items}
+              columns={CHANGE_COLUMNS}
+              canManage={canManage}
+              getId={(cr) => cr.id}
+              getStatus={(cr) => cr.status}
+              getTitle={(cr) => cr.title}
+              renderMeta={(cr) => textMeta(cr.costImpact ? money(cr.costImpact, cr.currency) : null)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+            />
+          )}
+        </div>
+      ) : (
       <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
@@ -124,6 +173,7 @@ export default function ProjectChangeRequests() {
           ))
         )}
       </div>
+      )}
 
       <UpsertChangeRequestDialog
         open={createOpen}

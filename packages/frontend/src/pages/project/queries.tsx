@@ -13,6 +13,8 @@ import {
   QueryDetailDialog,
   QUERY_STATUS_META,
 } from "@/components/molecules/query-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { QUERY_COLUMNS, dueMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateQuery,
@@ -39,6 +41,7 @@ export default function ProjectQueries() {
   const { project, access } = useProjectContext();
   const canRaiseQueries = access?.capabilities?.canRaiseQueries ?? false;
   const [filter, setFilter] = useState<QueryStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: queries = [], isLoading } = useProjectQueries(
     project.id,
     filter === "all" ? undefined : filter,
@@ -46,6 +49,11 @@ export default function ProjectQueries() {
   const createQuery = useCreateQuery();
   const updateQuery = useUpdateQuery();
   const deleteQuery = useDeleteQuery();
+
+  function handleMove(query: SiteQuery, status: QueryStatus): void {
+    if (query.status === status) return;
+    updateQuery.mutate({ projectId: project.id, queryId: query.id, status });
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editQuery, setEditQuery] = useState<SiteQuery | null>(null);
@@ -70,7 +78,12 @@ export default function ProjectQueries() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div
+      className={cn(
+        "mx-auto w-full px-6 py-8 sm:px-10",
+        view === "board" ? "max-w-none" : "max-w-7xl",
+      )}
+    >
       <PageHeader
         title="Queries"
         description="Site questions and clarifications between you, the builder and the design team."
@@ -98,9 +111,45 @@ export default function ProjectQueries() {
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-500">{openCount} open</p>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">{openCount} open</p>
+        </div>
       </div>
 
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={queries}
+              columns={QUERY_COLUMNS}
+              canManage={canRaiseQueries}
+              getId={(q) => q.id}
+              getStatus={(q) => q.status}
+              getTitle={(q) => q.subject}
+              renderMeta={(q) => dueMeta(q.dueDate)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+            />
+          )}
+        </div>
+      ) : (
       <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
@@ -136,6 +185,7 @@ export default function ProjectQueries() {
           ))
         )}
       </div>
+      )}
 
       <UpsertQueryDialog
         open={createOpen}
