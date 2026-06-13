@@ -35,7 +35,7 @@ export default function ProjectPeople() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="People"
         description="Homeowners and stakeholders with a portal on this build. Company staff are managed under Team."

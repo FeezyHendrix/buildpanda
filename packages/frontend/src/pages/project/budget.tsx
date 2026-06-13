@@ -117,7 +117,7 @@ export default function ProjectBudget() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl pb-24">
+    <div className="mx-auto max-w-7xl pb-24">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },

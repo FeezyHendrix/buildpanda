@@ -47,7 +47,7 @@ export default function ProjectPermits() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Permits & Approvals"
         description="Regulatory permits and government approvals — track status, references and expiry."

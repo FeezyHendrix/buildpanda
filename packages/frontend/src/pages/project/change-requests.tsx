@@ -61,7 +61,7 @@ export default function ProjectChangeRequests() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Change Requests"
         description="Proposed changes to scope, cost or schedule — with their budget and time impact."

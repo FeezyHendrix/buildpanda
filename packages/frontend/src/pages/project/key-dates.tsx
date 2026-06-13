@@ -45,7 +45,7 @@ export default function ProjectKeyDates() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Key Dates"
         description="The milestone dates that matter — target vs actual, so slippage is visible."

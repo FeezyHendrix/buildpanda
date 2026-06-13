@@ -71,7 +71,7 @@ export default function ProjectApprovals() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Approvals"
         description="Submit selections and specs for sign-off, and track what's awaiting a decision."

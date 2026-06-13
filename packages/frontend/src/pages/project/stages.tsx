@@ -63,7 +63,7 @@ export default function ProjectStages() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Build Stages"
         description="Break the build into stages and track progress all the way to handover."
