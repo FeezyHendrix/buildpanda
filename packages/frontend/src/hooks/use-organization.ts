@@ -23,6 +23,21 @@ export function useActiveOrganizationId(): string | undefined {
   return session?.session.activeOrganizationId ?? undefined;
 }
 
+/**
+ * Returns the current user's role in their active org (e.g. "owner", "admin",
+ * "member", "viewer"). Returns null while loading or if not in an org.
+ * Shares the same React Query cache as useMembers(), so pages that already
+ * call useMembers() get this for free.
+ */
+export function useMyOrgRole(): string | null {
+  const { data: session } = authClient.useSession();
+  const orgId = useActiveOrganizationId();
+  const { data: membersData } = useMembers(orgId);
+  const userId = session?.user.id;
+  if (!userId || !membersData) return null;
+  return membersData.members.find((m) => m.userId === userId)?.role ?? null;
+}
+
 export function useOrganizations() {
   return useQuery({
     queryKey: organizationKeys.list(),

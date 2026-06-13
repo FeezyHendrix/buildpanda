@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 import { auth } from "../lib/auth.ts";
 import { config } from "../config/index.ts";
 import { ForbiddenError, UnauthorizedError } from "../lib/errors.ts";
+import { hasPermission } from "../lib/permissions.ts";
 
 export interface AuthUser {
   id: string;
@@ -21,6 +22,9 @@ declare module "fastify" {
     activeOrganizationId: string | null;
     requireAuth(): AuthUser;
     requireAdmin(): AuthUser;
+    requireOrgScope(): string;
+    /** Verifies org membership AND that the member's role has the given permission. */
+    requireOrgPermission(resource: string, action: string): string;
   }
 }
 
@@ -61,6 +65,31 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     }
     return this.user;
   });
+  fastify.decorateRequest("requireOrgScope", function requireOrgScope(this: FastifyRequest) {
+    if (!this.user) throw new UnauthorizedError();
+    const orgId = this.activeOrganizationId;
+    if (!orgId || !this.orgRoles.has(orgId)) {
+      throw new ForbiddenError("No active organization");
+    }
+    return orgId;
+  });
+  fastify.decorateRequest(
+    "requireOrgPermission",
+    function requireOrgPermission(this: FastifyRequest, resource: string, action: string) {
+      if (!this.user) throw new UnauthorizedError();
+      const orgId = this.activeOrganizationId;
+      if (!orgId || !this.orgRoles.has(orgId)) {
+        throw new ForbiddenError("No active organization");
+      }
+      const role = this.orgRoles.get(orgId) ?? "";
+      if (!hasPermission(role, resource, action)) {
+        throw new ForbiddenError(
+          `Your role does not allow you to ${action} ${resource}`,
+        );
+      }
+      return orgId;
+    },
+  );
 
   fastify.addHook("preHandler", async (request) => {
     request.orgRoles = new Map<string, string>();

@@ -4,6 +4,7 @@ import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
 import { PROPOSAL_STATUSES } from "./types.ts";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalSentEmail } from "../../lib/email-templates.ts";
 import { generateId } from "../../lib/ids.ts";
@@ -22,13 +23,6 @@ const DEFAULT_PHASES = [
   { name: "Finishing & Handover", date_range: "Weeks 33 – 48" },
 ] as const;
 
-const idParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
 const proposalEstimateParams = {
   type: "object",
   properties: {
@@ -44,8 +38,7 @@ const listQuery = {
   additionalProperties: false,
   properties: {
     status: { type: "string", enum: PROPOSAL_STATUSES },
-    limit: { type: "integer", minimum: 1, maximum: 100 },
-    offset: { type: "integer", minimum: 0 },
+    ...paginationProperties,
   },
 } as const;
 
@@ -129,20 +122,9 @@ const patchEstimateBody = {
   },
 } as const;
 
-function requireOrgAccess(request: Parameters<FastifyPluginAsync>[0]["addHook"] extends (name: string, fn: (req: infer R) => unknown) => unknown ? R : never) {
-  void request;
-}
-
 const proposalRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = proposalsRepository(fastify.db);
   const service = proposalsService(repo);
-
-  function orgScope(request: { requireAuth: () => unknown; activeOrganizationId: string | null; orgRoles: ReadonlyMap<string, string> }) {
-    request.requireAuth();
-    const orgId = request.activeOrganizationId;
-    if (!orgId || !request.orgRoles.has(orgId)) throw new ForbiddenError("No active organization");
-    return orgId;
-  }
 
   // --- Proposals ---
 
@@ -150,7 +132,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals",
     { schema: { querystring: listQuery } },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgScope();
       return repo.listByOrg(orgId, {
         status: request.query.status,
         limit: request.query.limit ?? 25,
@@ -163,7 +145,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals",
     { schema: { body: createProposalBody } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "create");
       const user = request.requireAuth();
       const proposal = await service.createProposal(orgId, user.id, request.body);
       return reply.status(201).send(proposal);
@@ -174,7 +156,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id",
     { schema: { params: idParams } },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgScope();
       const workspace = await service.getWorkspace(request.params.id, orgId);
       if (!workspace) throw new NotFoundError("Proposal");
       return workspace;
@@ -185,7 +167,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id",
     { schema: { params: idParams, body: patchProposalBody } },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "update");
       const { id } = request.params;
       const updated = await repo.updateProposal(id, orgId, {
         title: request.body.title,
@@ -207,7 +189,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id",
     { schema: { params: idParams } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "delete");
       await repo.deleteProposal(request.params.id, orgId);
       return reply.status(204).send();
     },
@@ -217,10 +199,146 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/events",
     { schema: { params: idParams } },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgScope();
       const exists = await repo.getById(request.params.id, orgId);
       if (!exists) throw new NotFoundError("Proposal");
       return repo.listEvents(request.params.id);
+    },
+  );
+
+  // --- Plans ---
+
+  fastify.get<{ Params: { id: string } }>(
+    "/proposals/:id/plans",
+    { schema: { params: idParams } },
+    async (request) => {
+      const orgId = request.requireOrgScope();
+      const exists = await repo.getById(request.params.id, orgId);
+      if (!exists) throw new NotFoundError("Proposal");
+      return repo.listPlans(request.params.id);
+    },
+  );
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { fileId: string; label?: string };
+  }>(
+    "/proposals/:id/plans",
+    {
+      schema: {
+        params: idParams,
+        body: {
+          type: "object",
+          required: ["fileId"],
+          additionalProperties: false,
+          properties: {
+            fileId: { type: "string", minLength: 1, maxLength: 100 },
+            label: { type: "string", maxLength: 200 },
+          },
+        } as const,
+      },
+    },
+    async (request, reply) => {
+      const orgId = request.requireOrgPermission("proposals", "update");
+      const user = request.requireAuth();
+      const exists = await repo.getById(request.params.id, orgId);
+      if (!exists) throw new NotFoundError("Proposal");
+
+      const file = await fastify.db("uploaded_files")
+        .where({ id: request.body.fileId, owner_id: user.id })
+        .first();
+      if (!file) throw new NotFoundError("File");
+
+      const existing = await repo.listPlans(request.params.id);
+      await repo.insertPlan({
+        id: generateId("plan"),
+        proposalId: request.params.id,
+        fileId: request.body.fileId,
+        label: request.body.label?.trim() || null,
+        uploadedBy: user.id,
+        sort: existing.length,
+      });
+
+      const plans = await repo.listPlans(request.params.id);
+      return reply.status(201).send(plans);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; planId: string } }>(
+    "/proposals/:id/plans/:planId",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["id", "planId"],
+          additionalProperties: false,
+          properties: {
+            id: { type: "string", minLength: 1 },
+            planId: { type: "string", minLength: 1 },
+          },
+        } as const,
+      },
+    },
+    async (request, reply) => {
+      const orgId = request.requireOrgPermission("proposals", "update");
+      const exists = await repo.getById(request.params.id, orgId);
+      if (!exists) throw new NotFoundError("Proposal");
+      const removed = await repo.deletePlan(request.params.planId, request.params.id);
+      if (removed === 0) throw new NotFoundError("Plan");
+      return reply.status(204).send();
+    },
+  );
+
+  // --- BoQ items ---
+
+  fastify.get<{ Params: { id: string } }>(
+    "/proposals/:id/boq",
+    { schema: { params: idParams } },
+    async (request) => {
+      const orgId = request.requireOrgScope();
+      const exists = await repo.getById(request.params.id, orgId);
+      if (!exists) throw new NotFoundError("Proposal");
+      return repo.listBoqItems(request.params.id);
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string };
+    Body: Array<{
+      groupLabel: string;
+      description: string;
+      qty: number;
+      unit: string;
+      sort?: number;
+    }>;
+  }>(
+    "/proposals/:id/boq",
+    {
+      schema: {
+        params: idParams,
+        body: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["groupLabel", "description", "qty", "unit"],
+            additionalProperties: false,
+            properties: {
+              groupLabel: { type: "string", minLength: 1, maxLength: 100 },
+              description: { type: "string", minLength: 1, maxLength: 500 },
+              qty: { type: "number", minimum: 0 },
+              unit: { type: "string", minLength: 1, maxLength: 50 },
+              sort: { type: "integer", minimum: 0 },
+            },
+          },
+        } as const,
+      },
+    },
+    async (request) => {
+      const orgId = request.requireOrgPermission("proposals", "update");
+      const exists = await repo.getById(request.params.id, orgId);
+      if (!exists) throw new NotFoundError("Proposal");
+      await repo.replaceBoqItems(request.params.id, request.body);
+      return repo.listBoqItems(request.params.id);
     },
   );
 
@@ -230,7 +348,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/estimates",
     { schema: { params: idParams, body: createRevisionBody } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "create");
       const user = request.requireAuth();
 
       // Pull org defaults for tax
@@ -262,7 +380,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "update");
       return service.saveEstimateItems(
         request.params.estimateId,
         request.params.id,
@@ -281,7 +399,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "update");
       return service.savePaymentSchedule(
         request.params.estimateId,
         request.params.id,
@@ -298,7 +416,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/estimates/:estimateId",
     { schema: { params: proposalEstimateParams, body: patchEstimateBody } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "update");
       await service.updateEstimateMeta(
         request.params.estimateId,
         request.params.id,
@@ -321,7 +439,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/estimates/:estimateId/send",
     { schema: { params: proposalEstimateParams } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "send");
       const user = request.requireAuth();
 
       const proposal = await repo.getById(request.params.id, orgId);
@@ -384,7 +502,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/comments",
     { schema: { params: idParams } },
     async (request) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgScope();
       const proposal = await repo.getById(request.params.id, orgId);
       if (!proposal) throw new NotFoundError("Proposal");
       return repo.listComments(request.params.id);
@@ -405,7 +523,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "update");
       const user = request.requireAuth();
       const proposal = await repo.getById(request.params.id, orgId);
       if (!proposal) throw new NotFoundError("Proposal");
@@ -427,7 +545,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/convert",
     { schema: { params: idParams } },
     async (request, reply) => {
-      const orgId = orgScope(request);
+      const orgId = request.requireOrgPermission("proposals", "convert");
       const user = request.requireAuth();
 
       const proposalRow = await repo.getById(request.params.id, orgId);
@@ -518,6 +636,18 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
           );
         }
 
+        await trx("project_documents").insert({
+          id: generateId("doc"),
+          project_id: projectId,
+          category_id: "cat_proposal",
+          file_id: null,
+          file_name: `Proposal BP-${String(proposalRow.number).padStart(4, "0")} — snapshot`,
+          size: "—",
+          size_bytes: null,
+          status: "Verified",
+          uploaded_at: now,
+        });
+
         await trx("proposals")
           .where({ id: request.params.id })
           .update({ project_id: projectId, status: "Converted", updated_at: now });
@@ -536,8 +666,5 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 };
-
-// Remove unused import reference
-void requireOrgAccess;
 
 export default proposalRoutes;

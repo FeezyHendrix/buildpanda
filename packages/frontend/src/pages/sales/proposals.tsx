@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
+import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -8,44 +9,15 @@ import { Input } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { useProposals, useCreateProposal } from "@/hooks/use-proposals";
 import { PROPOSAL_STATUSES, type ProposalStatus, type ProposalListItem } from "@/api/proposals";
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
+import {
+  PROPOSAL_STATUS_LABEL as LABEL_MAP,
+  PROPOSAL_STATUS_TONE as STATUS_TONE,
+} from "@/lib/project-meta";
+import { canDo } from "@/lib/permissions";
+import { useMyOrgRole } from "@/hooks/use-organization";
 import { cn } from "@/lib/utils";
-
-const STATUS_TONE: Record<
-  ProposalStatus,
-  "neutral" | "info" | "warning" | "success" | "danger" | "accent"
-> = {
-  New: "info",
-  Preparing: "accent",
-  Sent: "warning",
-  UnderReview: "warning",
-  Revising: "accent",
-  Accepted: "success",
-  Converted: "success",
-  Lost: "danger",
-  Expired: "neutral",
-};
-
-const LABEL_MAP: Record<ProposalStatus, string> = {
-  New: "New",
-  Preparing: "Preparing",
-  Sent: "Sent",
-  UnderReview: "Under Review",
-  Revising: "Revising",
-  Accepted: "Accepted",
-  Converted: "Converted",
-  Lost: "Lost",
-  Expired: "Expired",
-};
-
-const LIMIT = 25;
-
-function fmt(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
 
 function ProposalRow({ row }: { row: ProposalListItem }) {
   const navigate = useNavigate();
@@ -68,35 +40,51 @@ function ProposalRow({ row }: { row: ProposalListItem }) {
         </Badge>
       </td>
       <td className="px-4 py-3 text-sm text-gray-700">
-        {row.estimateTotal != null ? fmt(row.estimateTotal, row.currency) : "—"}
+        {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "—"}
       </td>
-      <td className="px-4 py-3 text-xs text-gray-400">
-        {new Date(row.createdAt).toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })}
-      </td>
+      <td className="px-4 py-3 text-xs text-gray-400">{formatShortDate(row.createdAt)}</td>
     </tr>
   );
+}
+
+interface PrefillSource {
+  leadId?: string;
+  title?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  location?: string;
+  brief?: string;
 }
 
 function CreateProposalDrawer({
   open,
   onOpenChange,
+  prefill,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  prefill?: PrefillSource;
 }) {
   const navigate = useNavigate();
   const create = useCreateProposal();
 
-  const [title, setTitle] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [location, setLocation] = useState("");
-  const [brief, setBrief] = useState("");
+  const [title, setTitle] = useState(prefill?.title ?? "");
+  const [clientName, setClientName] = useState(prefill?.clientName ?? "");
+  const [clientEmail, setClientEmail] = useState(prefill?.clientEmail ?? "");
+  const [clientPhone, setClientPhone] = useState(prefill?.clientPhone ?? "");
+  const [location, setLocation] = useState(prefill?.location ?? "");
+  const [brief, setBrief] = useState(prefill?.brief ?? "");
+
+  useEffect(() => {
+    if (!open) return;
+    setTitle(prefill?.title ?? "");
+    setClientName(prefill?.clientName ?? "");
+    setClientEmail(prefill?.clientEmail ?? "");
+    setClientPhone(prefill?.clientPhone ?? "");
+    setLocation(prefill?.location ?? "");
+    setBrief(prefill?.brief ?? "");
+  }, [open, prefill]);
 
   const isValid = title.trim().length > 0 && clientName.trim().length > 0;
 
@@ -123,6 +111,7 @@ function CreateProposalDrawer({
       clientPhone: clientPhone.trim() || undefined,
       location: location.trim() || undefined,
       brief: brief.trim() || undefined,
+      leadId: prefill?.leadId,
     });
     onOpenChange(false);
     navigate(`/sales/proposals/${proposal.id}`);
@@ -214,19 +203,50 @@ function CreateProposalDrawer({
 }
 
 export default function ProposalsPage() {
+  const role = useMyOrgRole();
+  const canCreate = canDo(role, "proposals", "create");
+
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "">("");
   const [offset, setOffset] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const prefill: PrefillSource = {
+    leadId: searchParams.get("leadId") ?? undefined,
+    title: searchParams.get("title") ?? undefined,
+    clientName: searchParams.get("clientName") ?? undefined,
+    clientEmail: searchParams.get("clientEmail") ?? undefined,
+    clientPhone: searchParams.get("clientPhone") ?? undefined,
+    location: searchParams.get("location") ?? undefined,
+    brief: searchParams.get("brief") ?? undefined,
+  };
+
+  useEffect(() => {
+    if (searchParams.get("clientName") || searchParams.get("leadId")) {
+      setDrawerOpen(true);
+    }
+  }, [searchParams]);
+
+  function handleDrawerOpenChange(v: boolean) {
+    setDrawerOpen(v);
+    if (!v && (searchParams.get("leadId") || searchParams.get("clientName"))) {
+      const next = new URLSearchParams(searchParams);
+      ["leadId", "title", "clientName", "clientEmail", "clientPhone", "location", "brief"].forEach((k) =>
+        next.delete(k),
+      );
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   const { data, isLoading, isError } = useProposals({
     status: statusFilter || undefined,
-    limit: LIMIT,
+    limit: DEFAULT_PAGE_SIZE,
     offset,
   });
 
   const total = data?.total ?? 0;
   const rows = data?.rows ?? [];
-  const hasNext = offset + LIMIT < total;
+  const hasNext = offset + DEFAULT_PAGE_SIZE < total;
   const hasPrev = offset > 0;
 
   return (
@@ -238,9 +258,11 @@ export default function ProposalsPage() {
             Pre-construction proposals and estimates for your clients.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-          New proposal
-        </Button>
+        {canCreate && (
+          <Button variant="primary" onClick={() => setDrawerOpen(true)}>
+            New proposal
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -272,7 +294,7 @@ export default function ProposalsPage() {
 
       {isLoading && !data ? (
         <div className="flex items-center justify-center py-20">
-          <div className="size-7 animate-spin rounded-full border-2 border-gray-200 border-t-[#004DE7]" />
+          <Spinner size="md" />
         </div>
       ) : isError ? (
         <EmptyState
@@ -325,19 +347,19 @@ export default function ProposalsPage() {
           {(hasPrev || hasNext) && (
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">
-                {offset + 1}–{Math.min(offset + LIMIT, total)} of {total}
+                {offset + 1}–{Math.min(offset + DEFAULT_PAGE_SIZE, total)} of {total}
               </span>
               <div className="flex gap-2">
                 <Button
                   variant="secondary"
-                  onClick={() => setOffset(offset - LIMIT)}
+                  onClick={() => setOffset(offset - DEFAULT_PAGE_SIZE)}
                   disabled={!hasPrev}
                 >
                   Previous
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => setOffset(offset + LIMIT)}
+                  onClick={() => setOffset(offset + DEFAULT_PAGE_SIZE)}
                   disabled={!hasNext}
                 >
                   Next
@@ -348,7 +370,13 @@ export default function ProposalsPage() {
         </>
       )}
 
-      <CreateProposalDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+      {canCreate && (
+        <CreateProposalDrawer
+          open={drawerOpen}
+          onOpenChange={handleDrawerOpenChange}
+          prefill={prefill}
+        />
+      )}
     </div>
   );
 }
