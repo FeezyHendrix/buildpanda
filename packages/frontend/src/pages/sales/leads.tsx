@@ -11,8 +11,7 @@ import { useCreateLead, useLeads, useUpdateLead } from "@/hooks/use-leads";
 import { LEAD_STATUSES, type Lead, type LeadStatus } from "@/api/leads";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { formatShortDate } from "@/lib/formatters";
-import { canDo } from "@/lib/permissions";
-import { useMyOrgRole } from "@/hooks/use-organization";
+import { Can } from "@/components/atoms/can";
 import { cn } from "@/lib/utils";
 
 const STATUS_TONE: Record<LeadStatus, "neutral" | "info" | "warning" | "success" | "danger" | "accent"> = {
@@ -299,9 +298,6 @@ function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => void })
 }
 
 export default function LeadsPage() {
-  const role = useMyOrgRole();
-  const canCreate = canDo(role, "leads", "create");
-
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
   const [offset, setOffset] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -327,9 +323,9 @@ export default function LeadsPage() {
             Enquiries and prospects for your pre-construction pipeline.
           </p>
         </div>
-        {canCreate && (
+        <Can do="create" on="leads">
           <Button onClick={() => setCreateOpen(true)}>+ New lead</Button>
-        )}
+        </Can>
       </div>
 
       <div className="flex items-center gap-3">
@@ -422,9 +418,9 @@ export default function LeadsPage() {
         </>
       )}
 
-      {canCreate && (
+      <Can do="create" on="leads">
         <CreateLeadDrawer open={createOpen} onOpenChange={setCreateOpen} />
-      )}
+      </Can>
       <LeadDetailDrawer lead={activeLead} onClose={() => setActiveLead(null)} />
     </div>
   );

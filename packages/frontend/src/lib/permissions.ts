@@ -117,36 +117,3 @@ export const PROJECT_RESOURCES = [
 ] as const;
 
 export const SALES_RESOURCES = ["proposals", "leads"] as const;
-
-// ---------------------------------------------------------------------------
-// Client-side permission check — mirrors the server-side hasPermission().
-// Use canDo(role, resource, action) to gate UI elements.
-// ---------------------------------------------------------------------------
-
-const ROLE_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
-  owner:  {
-    proposals: ["view", "create", "update", "delete", "send", "convert"],
-    leads:     ["view", "create", "update", "delete"],
-  },
-  admin:  {
-    proposals: ["view", "create", "update", "delete", "send", "convert"],
-    leads:     ["view", "create", "update", "delete"],
-  },
-  member: {
-    proposals: ["view", "create", "update", "send"],
-    leads:     ["view", "create", "update"],
-  },
-  viewer: {
-    proposals: ["view"],
-    leads:     ["view"],
-  },
-};
-
-export function canDo(
-  role: string | null | undefined,
-  resource: string,
-  action: string,
-): boolean {
-  if (!role) return false;
-  return (ROLE_PERMISSIONS[role]?.[resource] ?? []).includes(action);
-}

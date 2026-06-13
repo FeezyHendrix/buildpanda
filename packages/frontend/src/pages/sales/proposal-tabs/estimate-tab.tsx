@@ -10,8 +10,7 @@ import {
   usePatchEstimate,
   useSendEstimate,
 } from "@/hooks/use-proposals";
-import { useMyOrgRole } from "@/hooks/use-organization";
-import { canDo } from "@/lib/permissions";
+import { useAbility } from "@/contexts/ability-context";
 import type { Estimate } from "@/api/proposals";
 import { proposalsApi } from "@/api/proposals";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
@@ -45,10 +44,10 @@ interface Props {
 }
 
 export function EstimateTab({ proposalId, estimate, currency }: Props) {
-  const role = useMyOrgRole();
-  const canCreate = canDo(role, "proposals", "create");
-  const canUpdate = canDo(role, "proposals", "update");
-  const canSend = canDo(role, "proposals", "send");
+  const ability = useAbility();
+  const canCreate = ability.can("create", "proposals");
+  const canUpdate = ability.can("update", "proposals");
+  const canSend = ability.can("send", "proposals");
 
   const createEstimate = useCreateEstimate(proposalId);
   const patchEstimate = usePatchEstimate(proposalId);

@@ -15,8 +15,7 @@ import {
   PROPOSAL_STATUS_LABEL as LABEL_MAP,
   PROPOSAL_STATUS_TONE as STATUS_TONE,
 } from "@/lib/project-meta";
-import { canDo } from "@/lib/permissions";
-import { useMyOrgRole } from "@/hooks/use-organization";
+import { Can } from "@/components/atoms/can";
 import { cn } from "@/lib/utils";
 
 function ProposalRow({ row }: { row: ProposalListItem }) {
@@ -203,9 +202,6 @@ function CreateProposalDrawer({
 }
 
 export default function ProposalsPage() {
-  const role = useMyOrgRole();
-  const canCreate = canDo(role, "proposals", "create");
-
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "">("");
   const [offset, setOffset] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -258,11 +254,11 @@ export default function ProposalsPage() {
             Pre-construction proposals and estimates for your clients.
           </p>
         </div>
-        {canCreate && (
+        <Can do="create" on="proposals">
           <Button variant="primary" onClick={() => setDrawerOpen(true)}>
             New proposal
           </Button>
-        )}
+        </Can>
       </div>
 
       <div className="flex items-center gap-3">
@@ -370,13 +366,13 @@ export default function ProposalsPage() {
         </>
       )}
 
-      {canCreate && (
+      <Can do="create" on="proposals">
         <CreateProposalDrawer
           open={drawerOpen}
           onOpenChange={handleDrawerOpenChange}
           prefill={prefill}
         />
-      )}
+      </Can>
     </div>
   );
 }

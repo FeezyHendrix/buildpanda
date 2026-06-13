@@ -1,8 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals";
-import { useMyOrgRole } from "@/hooks/use-organization";
-import { canDo } from "@/lib/permissions";
+import { useAbility } from "@/contexts/ability-context";
 import { formatDayMonth, formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -13,8 +12,7 @@ export function OverviewTab({ proposalId }: Props) {
   const { data } = useProposalWorkspace(proposalId);
   const convert = useConvertProposal(proposalId);
   const navigate = useNavigate();
-  const role = useMyOrgRole();
-  const canConvert = canDo(role, "proposals", "convert");
+  const ability = useAbility();
   if (!data) return null;
   const { proposal, events } = data;
 
@@ -119,7 +117,7 @@ export function OverviewTab({ proposalId }: Props) {
             This proposal has been accepted. Convert it into a construction project to start
             tracking phases, milestones, and finances.
           </p>
-          {canConvert ? (
+          {ability.can("convert", "proposals") ? (
             <>
               {convert.error && (
                 <p className="mb-3 text-xs text-red-600">
