@@ -105,7 +105,7 @@ export default function ProjectDocuments() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Documents"
         description={

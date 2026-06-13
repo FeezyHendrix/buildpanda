@@ -109,7 +109,7 @@ export default function ProjectMaterials() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Materials & equipment"
         description="Request materials, track deliveries, and connect every order to phases, site activities, receipts, and project cost control."

@@ -96,12 +96,7 @@ export default function ProjectActionItems() {
   const openCount = items.filter((i) => i.status !== "Resolved").length;
 
   return (
-    <div
-      className={cn(
-        "mx-auto w-full px-6 py-8 sm:px-10",
-        view === "board" ? "max-w-none" : "max-w-7xl",
-      )}
-    >
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Action Items"
         description="Open issues and to-dos that need attention to keep the build moving."

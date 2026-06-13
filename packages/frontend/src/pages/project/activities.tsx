@@ -43,7 +43,7 @@ export default function ProjectActivities() {
   const raiseDelay = useRaiseDelay();
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Site Activities"
         description="Track discrete work items with planned vs actual times and delay causes."

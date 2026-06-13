@@ -56,12 +56,7 @@ export default function ProjectPermits() {
   }
 
   return (
-    <div
-      className={cn(
-        "mx-auto w-full px-6 py-8 sm:px-10",
-        view === "board" ? "max-w-none" : "max-w-7xl",
-      )}
-    >
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Permits & Approvals"
         description="Regulatory permits and government approvals — track status, references and expiry."
