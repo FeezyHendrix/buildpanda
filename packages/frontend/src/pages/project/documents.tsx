@@ -24,6 +24,8 @@ import {
 } from "@/hooks/use-documents";
 import { useUploadFile } from "@/hooks/use-files";
 import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type {
   CategoryGroup,
@@ -66,10 +68,19 @@ export default function ProjectDocuments() {
   const visibleDocuments = documents.filter((d) => d.group === tab);
   const isPlans = tab === "plan";
   const isUploading = uploadFile.isPending || createDocument.isPending;
-  const uploadError =
-    (uploadFile.error as Error | undefined)?.message ??
-    (createDocument.error as Error | undefined)?.message ??
-    null;
+  const uploadError = uploadFile.error
+    ? getApiErrorMessage(uploadFile.error)
+    : createDocument.error
+      ? getApiErrorMessage(createDocument.error)
+      : null;
+
+  // 401/403 are already surfaced globally by the axios interceptor; toast the
+  // rest so an upload failure is never silent.
+  function notifyUploadError(err: unknown): void {
+    const status = getApiErrorStatus(err);
+    if (status === 401 || status === 403) return;
+    toast(getApiErrorMessage(err), "error");
+  }
 
   function handleUpload(input: { categoryId: string; file: File }): void {
     uploadFile.mutate(input.file, {
@@ -80,9 +91,16 @@ export default function ProjectDocuments() {
             categoryId: input.categoryId,
             fileId: uploaded.id,
           },
-          { onSuccess: () => setUploadOpen(false) },
+          {
+            onSuccess: () => {
+              setUploadOpen(false);
+              toast("Document uploaded", "success");
+            },
+            onError: notifyUploadError,
+          },
         );
       },
+      onError: notifyUploadError,
     });
   }
 
@@ -159,6 +177,7 @@ export default function ProjectDocuments() {
           documents={visibleDocuments}
           projectId={project.id}
           categories={visibleCategories}
+          canManage={canManage}
         />
       </section>
     </div>
@@ -216,10 +235,12 @@ function DocumentsTable({
   documents,
   projectId,
   categories,
+  canManage,
 }: {
   documents: ProjectDocument[];
   projectId: string;
   categories: DocumentCategory[];
+  canManage: boolean;
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
@@ -230,13 +251,14 @@ function DocumentsTable({
             <TableHeader className="pr-6 font-semibold capitalize">Category</TableHeader>
             <TableHeader className="pr-6  font-semibold capitalize">Date Uploaded</TableHeader>
             <TableHeader className="pr-6 font-semibold capitalize">Status</TableHeader>
+            <TableHeader className="pr-6 text-right font-semibold capitalize">Actions</TableHeader>
           </tr>
         </thead>
         <tbody>
           {documents.length === 0 ? (
             <tr>
               <td
-                colSpan={4}
+                colSpan={5}
                 className="px-6 py-10 text-center text-sm text-gray-500"
               >
                 No documents uploaded yet.
@@ -250,6 +272,7 @@ function DocumentsTable({
                 isLast={idx === documents.length - 1}
                 projectId={projectId}
                 categories={categories}
+                canManage={canManage}
               />
             ))
           )}
@@ -264,11 +287,13 @@ function DocumentRow({
   isLast,
   projectId,
   categories,
+  canManage,
 }: {
   doc: ProjectDocument;
   isLast: boolean;
   projectId: string;
   categories: DocumentCategory[];
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -282,12 +307,26 @@ function DocumentRow({
   function handleEdit(values: UpsertDocumentValues): void {
     editDocument.mutate(
       { projectId, documentId: doc.id, categoryId: values.categoryId },
-      { onSuccess: () => setEditOpen(false) },
+      {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast("Document updated", "success");
+        },
+      },
     );
   }
 
   function handleDelete(): void {
-    deleteDocument.mutate({ projectId, documentId: doc.id });
+    deleteDocument.mutate(
+      { projectId, documentId: doc.id },
+      {
+        onSuccess: () => toast("Document deleted", "success"),
+        onError: (err) => {
+          const status = getApiErrorStatus(err);
+          if (status !== 401 && status !== 403) toast(getApiErrorMessage(err), "error");
+        },
+      },
+    );
   }
 
   return (
@@ -311,13 +350,15 @@ function DocumentRow({
         <TableCell className="whitespace-nowrap text-sm text-gray-600">
           {doc.uploadedAt}
         </TableCell>
+        <TableCell>
+          <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex w-fit items-center gap-1.5 bg-transparent">
+            <ReactSVG src={getStatusIcon(doc.status)} className="shrink-0" />
+            <p>{doc.status}</p>
+          </Badge>
+        </TableCell>
         <TableCell className="pr-6">
-          <div className="flex items-center gap-3">
-            <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex items-center gap-1.5 bg-transparent">
-              <ReactSVG src={getStatusIcon(doc.status)} className="shrink-0" />
-              <p>{doc.status}</p>
-            </Badge>
-            {/* {doc.currentVersionId && (
+          <div className="flex items-center justify-end gap-3">
+            {doc.currentVersionId && (
               <button
                 type="button"
                 onClick={() => setViewerOpen(true)}
@@ -333,20 +374,24 @@ function DocumentRow({
             >
               Versions{doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}
             </button>
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="text-xs font-medium text-red-500 hover:text-red-600"
-            >
-              Delete
-            </button> */}
+            {canManage && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteOpen(true)}
+                  className="text-xs font-medium text-red-500 hover:text-red-600"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </TableCell>
       </tr>
@@ -361,7 +406,7 @@ function DocumentRow({
         }}
         onSubmit={handleEdit}
         isSubmitting={editDocument.isPending}
-        error={(editDocument.error as Error | undefined)?.message ?? null}
+        error={editDocument.error ? getApiErrorMessage(editDocument.error) : null}
       />
 
       <ConfirmDialog
@@ -379,6 +424,7 @@ function DocumentRow({
         onOpenChange={setVersionsOpen}
         projectId={projectId}
         document={doc}
+        canManage={canManage}
       />
 
       {doc.currentVersionId && (

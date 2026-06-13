@@ -3,6 +3,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useAddPlan, useDeletePlan, useProposalPlans } from "@/hooks/use-proposals";
 import api from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -32,12 +33,14 @@ export function PlansTab({ proposalId }: Props) {
     try {
       const form = new FormData();
       form.append("file", file);
+      // `undefined` lets the browser set multipart/form-data WITH a boundary;
+      // a hardcoded value omits it and the upload fails server-side.
       const { data: uploaded } = await api.post<{ id: string }>("/files", form, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": undefined },
       });
       await addPlan.mutateAsync({ fileId: uploaded.id });
-    } catch {
-      setError("Failed to upload. Try again.");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to upload. Try again."));
     } finally {
       setUploading(false);
     }
