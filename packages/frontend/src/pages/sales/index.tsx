@@ -4,8 +4,11 @@ import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { TourGuide } from "@/components/molecules/tour-guide";
 import { useProposals } from "@/hooks/use-proposals";
 import { useLeads } from "@/hooks/use-leads";
+import { useTour } from "@/hooks/use-tour";
+import { SALES_TOUR_KEY, SALES_TOUR_STEPS } from "@/lib/tour-steps";
 import type { ProposalListItem, ProposalStatus } from "@/api/proposals";
 import type { Lead, LeadStatus } from "@/api/leads";
 import { formatWholeCurrency } from "@/lib/formatters";
@@ -95,6 +98,12 @@ export default function SalesDashboard() {
   const proposals = proposalsData?.rows ?? [];
   const leads = leadsData?.rows ?? [];
 
+  const tour = useTour({
+    tourKey: SALES_TOUR_KEY,
+    steps: SALES_TOUR_STEPS,
+    enabled: !loadingProposals && !loadingLeads,
+  });
+
   const m = useMemo(() => {
     const inPipeline = proposals.filter((p) => FUNNEL_STAGES.includes(p.status));
     const awaiting = proposals.filter((p) => AWAITING_REPLY.includes(p.status));
@@ -156,7 +165,7 @@ export default function SalesDashboard() {
     <div className="flex flex-col gap-6 p-6">
       <Header onNew={() => navigate("/sales/proposals")} />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div data-tour="sales-metrics" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard tone="brand" label="Pipeline value" value={formatWholeCurrency(m.pipelineValue, CURRENCY)} sub={`${m.openCount} open proposal${m.openCount === 1 ? "" : "s"}`} />
         <MetricCard tone="amber" label="Awaiting reply" value={String(m.awaitingCount)} sub="sent, awaiting client" />
         <MetricCard tone="green" label="Win rate" value={`${m.winRate}%`} sub={`${m.wonCount} won · ${m.lostCount} lost`} />
@@ -164,14 +173,28 @@ export default function SalesDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <FunnelPanel rows={m.funnel} />
-        <AttentionPanel items={m.attention} />
+        <div data-tour="sales-funnel" className="lg:col-span-2">
+          <FunnelPanel rows={m.funnel} />
+        </div>
+        <div data-tour="sales-attention">
+          <AttentionPanel items={m.attention} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <RecentProposals rows={m.recent} />
         <LeadsPanel rows={m.leadRows} total={leads.length} />
       </div>
+
+      <TourGuide
+        active={tour.active}
+        step={tour.step}
+        index={tour.index}
+        total={tour.total}
+        onNext={tour.next}
+        onBack={tour.back}
+        onSkip={tour.skip}
+      />
     </div>
   );
 }
@@ -185,7 +208,7 @@ function Header({ onNew }: { onNew: () => void }) {
           Your sales pipeline — from first enquiry to a signed build.
         </p>
       </div>
-      <Button onClick={onNew}>New proposal</Button>
+      <Button data-tour="sales-new" onClick={onNew}>New proposal</Button>
     </div>
   );
 }
