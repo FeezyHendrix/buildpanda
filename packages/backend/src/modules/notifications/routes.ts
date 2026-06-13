@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { notificationsRepository } from "./repository.ts";
 import { notificationsService } from "./service.ts";
+import { NOTIFICATION_TYPE_VALUES, type NotificationType } from "./types.ts";
 
 const listQuery = {
   type: "object",
@@ -17,6 +18,17 @@ const notificationIdParams = {
   additionalProperties: false,
   properties: {
     id: { type: "string", minLength: 1 },
+  },
+} as const;
+
+const preferenceBody = {
+  type: "object",
+  required: ["type"],
+  additionalProperties: false,
+  properties: {
+    type: { type: "string", enum: NOTIFICATION_TYPE_VALUES },
+    inAppEnabled: { type: "boolean" },
+    emailEnabled: { type: "boolean" },
   },
 } as const;
 
@@ -53,6 +65,26 @@ const notificationRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       return service.markAllRead(user.id);
+    },
+  );
+
+  fastify.get("/notifications/preferences", async (request) => {
+    const user = request.requireAuth();
+    return service.getPreferences(user.id);
+  });
+
+  fastify.put<{
+    Body: { type: NotificationType; inAppEnabled?: boolean; emailEnabled?: boolean };
+  }>(
+    "/notifications/preferences",
+    { schema: { body: preferenceBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const { type, inAppEnabled, emailEnabled } = request.body;
+      return service.setPreference(user.id, type, {
+        ...(inAppEnabled !== undefined ? { inAppEnabled } : {}),
+        ...(emailEnabled !== undefined ? { emailEnabled } : {}),
+      });
     },
   );
 };

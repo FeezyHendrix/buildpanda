@@ -1,19 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
+import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { OrgSwitcher } from "@/components/molecules/org-switcher";
+import {
+  SuiteSwitcher,
+  LAST_SUITE_KEY,
+  SUITE_SALES,
+} from "@/components/molecules/suite-switcher";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { LogOutIcon } from "@/components/atoms/logout-icon";
 import { authClient } from "@/lib/auth-client";
-import logo from "@/assets/images/logo.svg";
+import { AbilityProvider } from "@/contexts/ability-context";
 
-// Persists the last visited top-level suite so HomeRedirect can route back
-export const LAST_SUITE_KEY = "buildpanda:last-suite";
-export const SUITE_SALES = "sales";
-export const SUITE_CONSTRUCTION = "construction";
+export { LAST_SUITE_KEY, SUITE_SALES };
+export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 
 const salesNav = [
   {
@@ -64,71 +68,6 @@ const salesNav = [
   },
 ];
 
-function SuiteSwitcher() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative px-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-lg px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        aria-haspopup="true"
-        aria-expanded={open}
-      >
-        <img src={logo} alt="BuildPanda" className="h-7" />
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="ml-auto size-3.5 text-gray-400">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-
-      {open && (
-        <div
-          className="absolute left-3 top-full z-50 mt-1 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-          role="menu"
-        >
-          <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-            Workspaces
-          </p>
-          <Link
-            to="/dashboard"
-            onClick={() => {
-              localStorage.setItem(LAST_SUITE_KEY, SUITE_CONSTRUCTION);
-              setOpen(false);
-            }}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
-            role="menuitem"
-          >
-            <span className="text-base">🏗</span>
-            <span>Construction</span>
-          </Link>
-          <div
-            className="flex items-center gap-3 bg-blue-50 px-3 py-2.5 text-sm font-medium text-[#004DE7]"
-            aria-current="true"
-          >
-            <span className="text-base">📐</span>
-            <span>Pre-Construction</span>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="ml-auto size-3.5 opacity-60">
-              <polyline points="20 6 9 17 4 12" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SalesNavLink({ item }: { item: typeof salesNav[0] }) {
   return (
     <NavLink
@@ -154,11 +93,8 @@ function SalesSidebar() {
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col bg-[#F8F8F8] pb-6">
-      <div className="py-5">
-        <SuiteSwitcher />
-        <p className="mt-4 px-4 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-          Pre-Construction
-        </p>
+      <div className="px-3 py-5">
+        <SuiteSwitcher variant="sidebar" />
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-4">
@@ -201,7 +137,7 @@ function SalesSidebar() {
 function FullPageLoader() {
   return (
     <div className="flex h-dvh items-center justify-center">
-      <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+      <Spinner size="lg" />
     </div>
   );
 }
@@ -238,7 +174,9 @@ export default function SalesLayout() {
         <SalesSidebar />
         <main className="flex-1 overflow-y-auto bg-white no-scrollbar">
           <ErrorBoundary>
-            <Outlet />
+            <AbilityProvider>
+              <Outlet />
+            </AbilityProvider>
           </ErrorBoundary>
         </main>
       </div>

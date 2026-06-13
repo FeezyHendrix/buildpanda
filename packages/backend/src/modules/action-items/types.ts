@@ -1,5 +1,6 @@
 export type ActionStatus = "Open" | "InProgress" | "Blocked" | "Resolved";
 export type ActionPriority = "Low" | "Medium" | "High" | "Urgent";
+export type RecurrenceUnit = "day" | "week" | "month";
 
 export interface ActionItem {
   id: string;
@@ -12,6 +13,10 @@ export interface ActionItem {
   assigneeName: string | null;
   dueDate: string | null;
   resolvedAt: string | null;
+  recurrenceUnit: RecurrenceUnit | null;
+  recurrenceInterval: number | null;
+  recurrenceUntil: string | null;
+  recurrenceParentId: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +46,11 @@ export interface ActionItemRow {
   assignee_name: string | null;
   due_date: string | null;
   resolved_at: string | null;
+  recur_unit: RecurrenceUnit | null;
+  recur_interval: number | null;
+  recur_until: string | null;
+  recur_parent_id: string | null;
+  reminded_at: string | null;
   created_by_id: string | null;
   created_at: string;
   updated_at: string;

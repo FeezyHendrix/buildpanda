@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { projectKeys } from "./query-keys";
-import type { Project } from "@/lib/project-mock-data";
+import type { Project } from "@/lib/project-types";
 
 export interface CreateProjectInput {
   title: string;

@@ -1,13 +1,28 @@
 import { NotFoundError } from "../../lib/errors.ts";
-import type {
-  ListFilters,
-  NotificationsRepository,
-} from "./repository.ts";
-import type { Notification, NotificationRow } from "./types.ts";
+import { generateId } from "../../lib/ids.ts";
+import type { ListFilters, NotificationsRepository } from "./repository.ts";
+import {
+  NOTIFICATION_TYPES,
+  type Notification,
+  type NotificationPreference,
+  type NotificationRow,
+  type NotificationType,
+} from "./types.ts";
 
 export interface NotificationListResult {
   notifications: Notification[];
   unreadCount: number;
+}
+
+export interface NotifyInput {
+  title: string;
+  body: string;
+  projectId?: string | null;
+}
+
+export interface PreferencePatch {
+  inAppEnabled?: boolean;
+  emailEnabled?: boolean;
 }
 
 function toNotification(row: NotificationRow): Notification {
@@ -49,6 +64,54 @@ export function notificationsService(repository: NotificationsRepository) {
     async markAllRead(userId: string): Promise<{ updated: number }> {
       const updated = await repository.markAllRead(userId);
       return { updated };
+    },
+
+    async notify(userId: string, type: NotificationType, input: NotifyInput): Promise<void> {
+      const pref = await repository.findPreference(userId, type);
+      if (pref && !pref.in_app_enabled) return;
+      await repository.create({
+        id: generateId("ntf"),
+        user_id: userId,
+        type,
+        title: input.title,
+        body: input.body,
+        project_id: input.projectId ?? null,
+      });
+    },
+
+    async getPreferences(userId: string): Promise<NotificationPreference[]> {
+      const rows = await repository.listPreferences(userId);
+      const byType = new Map(rows.map((r) => [r.type, r]));
+      return NOTIFICATION_TYPES.map((t) => {
+        const row = byType.get(t.type);
+        return {
+          type: t.type,
+          label: t.label,
+          group: t.group,
+          inAppEnabled: row ? row.in_app_enabled : true,
+          emailEnabled: row ? row.email_enabled : true,
+        };
+      });
+    },
+
+    async setPreference(
+      userId: string,
+      type: NotificationType,
+      patch: PreferencePatch,
+    ): Promise<NotificationPreference> {
+      const existing = await repository.findPreference(userId, type);
+      const inAppEnabled = patch.inAppEnabled ?? existing?.in_app_enabled ?? true;
+      const emailEnabled = patch.emailEnabled ?? existing?.email_enabled ?? true;
+      await repository.upsertPreference({
+        id: existing?.id ?? generateId("np"),
+        user_id: userId,
+        type,
+        in_app_enabled: inAppEnabled,
+        email_enabled: emailEnabled,
+      });
+      const meta = NOTIFICATION_TYPES.find((t) => t.type === type);
+      if (!meta) throw new NotFoundError("Notification type");
+      return { type, label: meta.label, group: meta.group, inAppEnabled, emailEnabled };
     },
   };
 }

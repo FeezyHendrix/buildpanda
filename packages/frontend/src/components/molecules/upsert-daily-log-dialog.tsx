@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
-import type { DailyLog, WeatherCondition } from "@/lib/project-mock-data";
+import type { DailyLog, WeatherCondition } from "@/lib/project-types";
 
 const WEATHER_OPTIONS: { value: WeatherCondition; label: string }[] = [
   { value: "Sunny", label: "Sunny" },

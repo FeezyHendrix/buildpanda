@@ -109,6 +109,14 @@ export default function TeamSettings() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-8 py-10">
+      {!canManage && currentRole && (
+        <div className="mb-6 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">
+          <svg className="size-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+            <path d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM8 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 5Zm0 6.5a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
+          </svg>
+          You are viewing team settings as a {currentRole} — only owners and admins can make changes.
+        </div>
+      )}
       <PageHeader
         title="Team & Roles"
         description="Invite teammates to your company, assign what each person can do, and build custom roles for your crew."

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
-import type { ActionPriority, ActionStatus } from "@/lib/project-mock-data";
+import type { ActionPriority, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
 
 export interface UpsertActionItemValues {
   title: string;
@@ -9,6 +9,9 @@ export interface UpsertActionItemValues {
   status: ActionStatus;
   priority: ActionPriority;
   dueDate: string | null;
+  recurrenceUnit: RecurrenceUnit | null;
+  recurrenceInterval: number | null;
+  recurrenceUntil: string | null;
 }
 
 interface Props {
@@ -30,6 +33,15 @@ const STATUS: { value: ActionStatus; label: string }[] = [
 
 const PRIORITY: ActionPriority[] = ["Low", "Medium", "High", "Urgent"];
 
+const REPEAT: { value: "" | RecurrenceUnit; label: string }[] = [
+  { value: "", label: "Does not repeat" },
+  { value: "day", label: "Daily" },
+  { value: "week", label: "Weekly" },
+  { value: "month", label: "Monthly" },
+];
+
+const UNIT_NOUN: Record<RecurrenceUnit, string> = { day: "day", week: "week", month: "month" };
+
 const field =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
@@ -47,6 +59,9 @@ function UpsertActionItemDialog({
   const [status, setStatus] = useState<ActionStatus>("Open");
   const [priority, setPriority] = useState<ActionPriority>("Medium");
   const [dueDate, setDueDate] = useState("");
+  const [repeat, setRepeat] = useState<"" | RecurrenceUnit>("");
+  const [recurEvery, setRecurEvery] = useState("1");
+  const [repeatUntil, setRepeatUntil] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -55,17 +70,24 @@ function UpsertActionItemDialog({
       setStatus(initial?.status ?? "Open");
       setPriority(initial?.priority ?? "Medium");
       setDueDate(initial?.dueDate ?? "");
+      setRepeat(initial?.recurrenceUnit ?? "");
+      setRecurEvery(String(initial?.recurrenceInterval ?? 1));
+      setRepeatUntil(initial?.recurrenceUntil ?? "");
     }
   }, [open, initial]);
 
   function handleSubmit(): void {
     if (!title.trim()) return;
+    const unit = repeat === "" ? null : repeat;
     onSubmit({
       title: title.trim(),
       description: description.trim() || null,
       status,
       priority,
       dueDate: dueDate || null,
+      recurrenceUnit: unit,
+      recurrenceInterval: unit ? Math.max(1, Number(recurEvery) || 1) : null,
+      recurrenceUntil: unit ? repeatUntil || null : null,
     });
   }
 
@@ -131,6 +153,55 @@ function UpsertActionItemDialog({
         <Label htmlFor="ai-due">Due date</Label>
         <input id="ai-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
       </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="ai-repeat">Repeat</Label>
+        <select
+          id="ai-repeat"
+          value={repeat}
+          onChange={(e) => setRepeat(e.target.value as "" | RecurrenceUnit)}
+          className={field}
+        >
+          {REPEAT.map((r) => (
+            <option key={r.value || "none"} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {repeat !== "" && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ai-interval">Every</Label>
+            <div className="flex items-center gap-2">
+              <input
+                id="ai-interval"
+                type="number"
+                min={1}
+                max={365}
+                value={recurEvery}
+                onChange={(e) => setRecurEvery(e.target.value)}
+                className={`${field} w-20`}
+              />
+              <span className="text-sm text-gray-500">
+                {UNIT_NOUN[repeat]}
+                {Number(recurEvery) > 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ai-until">Until (optional)</Label>
+            <input
+              id="ai-until"
+              type="date"
+              value={repeatUntil}
+              onChange={(e) => setRepeatUntil(e.target.value)}
+              className={field}
+            />
+          </div>
+        </div>
+      )}
     </FormDrawer>
   );
 }

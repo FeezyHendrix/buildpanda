@@ -4,6 +4,7 @@ import type {
   ActionItemRow,
   ActionPriority,
   ActionStatus,
+  RecurrenceUnit,
 } from "./types.ts";
 
 export interface NewActionItemRecord {
@@ -16,6 +17,10 @@ export interface NewActionItemRecord {
   assignee_id: string | null;
   due_date: string | null;
   created_by_id: string | null;
+  recur_unit: RecurrenceUnit | null;
+  recur_interval: number | null;
+  recur_until: string | null;
+  recur_parent_id: string | null;
 }
 
 export interface ActionItemUpdatePatch {
@@ -26,6 +31,11 @@ export interface ActionItemUpdatePatch {
   assignee_id?: string | null;
   due_date?: string | null;
   resolved_at?: string | null;
+  recur_unit?: RecurrenceUnit | null;
+  recur_interval?: number | null;
+  recur_until?: string | null;
+  recur_parent_id?: string | null;
+  reminded_at?: string | null;
   updated_at?: string;
 }
 
@@ -40,6 +50,11 @@ const SELECT = [
   "u.name as assignee_name",
   "ai.due_date",
   "ai.resolved_at",
+  "ai.recur_unit",
+  "ai.recur_interval",
+  "ai.recur_until",
+  "ai.recur_parent_id",
+  "ai.reminded_at",
   "ai.created_by_id",
   "ai.created_at",
   "ai.updated_at",
@@ -59,6 +74,21 @@ export function actionItemsRepository(db: Knex) {
 
     findById(id: string): Promise<ActionItemRow | undefined> {
       return base().where("ai.id", id).select(...SELECT).first();
+    },
+
+    listDueForReminder(asOf: string): Promise<ActionItemRow[]> {
+      return base()
+        .whereNotNull("ai.assignee_id")
+        .whereNotNull("ai.due_date")
+        .where("ai.due_date", "<=", asOf)
+        .whereNull("ai.reminded_at")
+        .whereNot("ai.status", "Resolved")
+        .select(...SELECT)
+        .orderBy("ai.due_date", "asc");
+    },
+
+    markReminded(id: string): Promise<number> {
+      return db("action_items").where({ id }).update({ reminded_at: new Date() });
     },
 
     async commentCounts(actionItemIds: string[]): Promise<Map<string, number>> {

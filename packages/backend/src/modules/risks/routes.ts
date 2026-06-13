@@ -1,16 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { risksRepository } from "./repository.ts";
 import { risksService, type CreateRiskInput, type EditRiskInput } from "./service.ts";
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
 
 const riskParams = {
   type: "object",
@@ -47,15 +38,14 @@ const editRiskBody = {
 } as const;
 
 const riskRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = risksService(risksRepository(fastify.db));
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/risk-factors",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listByProject(project.id);
     },
   );
 
@@ -63,11 +53,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors",
     { schema: { params: projectIdParams, body: createRiskBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       const risk = await service.create(project.id, request.body);
       return reply.status(201).send(risk);
     },
@@ -80,11 +66,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors/:riskId",
     { schema: { params: riskParams, body: editRiskBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       return service.edit(project.id, request.params.riskId, request.body);
     },
   );
@@ -93,11 +75,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors/:riskId",
     { schema: { params: riskParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.riskId);
       return reply.status(204).send();
     },

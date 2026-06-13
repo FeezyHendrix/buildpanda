@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { stagesRepository } from "./repository.ts";
 import {
   stagesService,
@@ -68,25 +65,13 @@ const reorderBody = {
 } as const;
 
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = stagesService(stagesRepository(fastify.db));
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/stages",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.list(project.id);
     },
   );
@@ -95,12 +80,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages",
     { schema: { params: projectIdParams, body: createStageBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const stage = await service.create(project.id, request.body);
       return reply.status(201).send(stage);
     },
@@ -110,12 +90,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/reorder",
     { schema: { params: projectIdParams, body: reorderBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       return service.reorder(project.id, request.body.stageIds);
     },
   );
@@ -124,12 +99,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/:stageId",
     { schema: { params: stageParams, body: updateStageBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       return service.update(project.id, request.params.stageId, request.body);
     },
   );
@@ -138,12 +108,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/:stageId",
     { schema: { params: stageParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.stageId);
       return reply.status(204).send();
     },

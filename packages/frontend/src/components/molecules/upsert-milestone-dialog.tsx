@@ -6,7 +6,7 @@ import type {
   MilestoneStatus,
   ProjectPhase,
   SignOffStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export interface UpsertMilestoneValues {
   name: string;

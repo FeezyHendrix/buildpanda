@@ -1,5 +1,6 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { ActionItemsRepository, ActionItemUpdatePatch } from "./repository.ts";
 import type {
   ActionComment,
@@ -9,6 +10,7 @@ import type {
   ActionItemRow,
   ActionPriority,
   ActionStatus,
+  RecurrenceUnit,
 } from "./types.ts";
 
 export interface CreateActionItemInput {
@@ -18,6 +20,9 @@ export interface CreateActionItemInput {
   priority?: ActionPriority;
   assigneeId?: string | null;
   dueDate?: string | null;
+  recurrenceUnit?: RecurrenceUnit | null;
+  recurrenceInterval?: number | null;
+  recurrenceUntil?: string | null;
 }
 
 export interface UpdateActionItemInput {
@@ -27,6 +32,13 @@ export interface UpdateActionItemInput {
   priority?: ActionPriority;
   assigneeId?: string | null;
   dueDate?: string | null;
+  recurrenceUnit?: RecurrenceUnit | null;
+  recurrenceInterval?: number | null;
+  recurrenceUntil?: string | null;
+}
+
+export interface ActionItemsDeps {
+  notifications?: NotificationsService;
 }
 
 function toItem(row: ActionItemRow, commentCount: number): ActionItem {
@@ -41,6 +53,10 @@ function toItem(row: ActionItemRow, commentCount: number): ActionItem {
     assigneeName: row.assignee_name,
     dueDate: row.due_date,
     resolvedAt: row.resolved_at,
+    recurrenceUnit: row.recur_unit,
+    recurrenceInterval: row.recur_interval,
+    recurrenceUntil: row.recur_until,
+    recurrenceParentId: row.recur_parent_id,
     commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -58,7 +74,62 @@ function toComment(row: ActionCommentRow): ActionComment {
   };
 }
 
-export function actionItemsService(repository: ActionItemsRepository) {
+function toDateString(value: string | null): string | null {
+  return value ? new Date(value).toISOString().slice(0, 10) : null;
+}
+
+function computeNextDue(from: string | null, unit: RecurrenceUnit, interval: number): string {
+  const base = from ? new Date(from) : new Date();
+  const step = interval >= 1 ? interval : 1;
+  if (unit === "day") base.setUTCDate(base.getUTCDate() + step);
+  else if (unit === "week") base.setUTCDate(base.getUTCDate() + step * 7);
+  else base.setUTCMonth(base.getUTCMonth() + step);
+  return base.toISOString().slice(0, 10);
+}
+
+async function spawnNextOccurrence(
+  repository: ActionItemsRepository,
+  origin: ActionItemRow,
+): Promise<void> {
+  if (!origin.recur_unit) return;
+  const nextDue = computeNextDue(origin.due_date, origin.recur_unit, origin.recur_interval ?? 1);
+  const until = toDateString(origin.recur_until);
+  if (until && nextDue > until) return;
+
+  await repository.create({
+    id: generateId("ai"),
+    project_id: origin.project_id,
+    title: origin.title,
+    description: origin.description,
+    status: "Open",
+    priority: origin.priority,
+    assignee_id: origin.assignee_id,
+    due_date: nextDue,
+    created_by_id: origin.created_by_id,
+    recur_unit: origin.recur_unit,
+    recur_interval: origin.recur_interval,
+    recur_until: origin.recur_until,
+    recur_parent_id: origin.recur_parent_id ?? origin.id,
+  });
+}
+
+function notifyAssignee(
+  deps: ActionItemsDeps,
+  row: ActionItemRow,
+  actorId: string,
+  title: string,
+): void {
+  if (!deps.notifications || !row.assignee_id || row.assignee_id === actorId) return;
+  void deps.notifications
+    .notify(row.assignee_id, "action_item_assigned", {
+      title: "New action item assigned to you",
+      body: title,
+      projectId: row.project_id,
+    })
+    .catch(() => {});
+}
+
+export function actionItemsService(repository: ActionItemsRepository, deps: ActionItemsDeps = {}) {
   return {
     async list(projectId: string, status?: ActionStatus): Promise<ActionItem[]> {
       const rows = await repository.listByProject(projectId, status);
@@ -79,6 +150,10 @@ export function actionItemsService(repository: ActionItemsRepository) {
       userId: string,
     ): Promise<ActionItem> {
       const status = input.status ?? "Open";
+      const recurUnit = input.recurrenceUnit ?? null;
+      const recurInterval = recurUnit ? (input.recurrenceInterval ?? 1) : null;
+      const recurUntil = recurUnit ? (input.recurrenceUntil ?? null) : null;
+
       const row = await repository.create({
         id: generateId("ai"),
         project_id: projectId,
@@ -89,12 +164,18 @@ export function actionItemsService(repository: ActionItemsRepository) {
         assignee_id: input.assigneeId ?? null,
         due_date: input.dueDate ?? null,
         created_by_id: userId,
+        recur_unit: recurUnit,
+        recur_interval: recurInterval,
+        recur_until: recurUntil,
+        recur_parent_id: null,
       });
-      // resolved_at if created already resolved
+
       if (status === "Resolved") {
         const updated = await repository.update(row.id, { resolved_at: new Date().toISOString() });
         return toItem(updated ?? row, 0);
       }
+
+      notifyAssignee(deps, row, userId, input.title);
       return toItem(row, 0);
     },
 
@@ -111,11 +192,29 @@ export function actionItemsService(repository: ActionItemsRepository) {
       if (input.description !== undefined) patch.description = input.description;
       if (input.priority !== undefined) patch.priority = input.priority;
       if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
-      if (input.dueDate !== undefined) patch.due_date = input.dueDate;
+      if (input.dueDate !== undefined) {
+        patch.due_date = input.dueDate;
+        if (input.dueDate !== existing.due_date) patch.reminded_at = null;
+      }
+      if (input.recurrenceUnit !== undefined) {
+        patch.recur_unit = input.recurrenceUnit;
+        if (input.recurrenceUnit === null) {
+          patch.recur_interval = null;
+          patch.recur_until = null;
+        } else {
+          patch.recur_interval = input.recurrenceInterval ?? existing.recur_interval ?? 1;
+        }
+      } else if (input.recurrenceInterval !== undefined) {
+        patch.recur_interval = input.recurrenceInterval;
+      }
+      if (input.recurrenceUntil !== undefined) patch.recur_until = input.recurrenceUntil;
+
+      let spawn = false;
       if (input.status !== undefined) {
         patch.status = input.status;
         if (input.status === "Resolved" && existing.status !== "Resolved") {
           patch.resolved_at = new Date().toISOString();
+          spawn = Boolean(existing.recur_unit);
         } else if (input.status !== "Resolved" && existing.status === "Resolved") {
           patch.resolved_at = null;
         }
@@ -123,6 +222,8 @@ export function actionItemsService(repository: ActionItemsRepository) {
 
       const updated = await repository.update(itemId, patch);
       if (!updated) throw new NotFoundError("Action item");
+      if (spawn) await spawnNextOccurrence(repository, existing);
+
       const counts = await repository.commentCounts([itemId]);
       return toItem(updated, counts.get(itemId) ?? 0);
     },

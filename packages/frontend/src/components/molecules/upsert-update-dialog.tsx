@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useUploadFile } from "@/hooks/use-files";
-import type { MediaType, UpdateCategory } from "@/lib/project-mock-data";
+import type { MediaType, UpdateCategory } from "@/lib/project-types";
 
 export interface UpsertUpdateMedia {
   type: MediaType;

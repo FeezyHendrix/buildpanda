@@ -4,7 +4,7 @@ import { notificationKeys } from "./query-keys";
 import type {
   Notification,
   NotificationListResult,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 const POLL_INTERVAL_MS = 60_000;
 

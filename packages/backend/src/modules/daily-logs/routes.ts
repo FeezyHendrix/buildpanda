@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { dailyLogsRepository } from "./repository.ts";
 import { dailyLogsService } from "./service.ts";
 import type { LinkActivityInput, UpsertDailyLogInput } from "./types.ts";
@@ -61,16 +58,15 @@ const linkActivityBody = {
 } as const;
 
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = dailyLogsService(dailyLogsRepository(fastify.db));
 
   fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string } }>(
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      request.requireAuth();
+      const project = await request.requireProjectAccess(request.params.id);
       return service.listByProject(
-        request.params.id,
+        project.id,
         request.query.from,
         request.query.to,
       );
@@ -81,8 +77,8 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date",
     { schema: { params: dateParams } },
     async (request) => {
-      request.requireAuth();
-      return service.getOne(request.params.id, request.params.date);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.getOne(project.id, request.params.date);
     },
   );
 
@@ -90,11 +86,8 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date",
     { schema: { params: dateParams, body: upsertBody } },
     async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
       return service.upsert(project.id, request.params.date, request.body, user.id);
     },
   );
@@ -106,11 +99,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date/activities",
     { schema: { params: dateParams, body: linkActivityBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       const link = await service.linkActivity(
         project.id,
         request.params.date,
@@ -129,11 +118,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date",
     { schema: { params: dateParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      assertCanModifyProject({ ownerId: project.owner_id, organizationId: project.organization_id }, { userId: user.id, orgRoles: request.orgRoles });
-
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.date);
       return reply.status(204).send();
     },

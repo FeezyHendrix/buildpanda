@@ -4,7 +4,7 @@ import { inspectionKeys } from "./query-keys";
 import type {
   InspectionReport,
   InspectionCategory,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useProjectInspections(projectId: string | undefined) {
   return useQuery({

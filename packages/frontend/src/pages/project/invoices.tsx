@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
+import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -29,20 +30,10 @@ import {
   useDeleteInvoicePayment,
   type Invoice,
   type InvoiceInput,
-  type InvoiceStatus,
 } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
+import { INVOICE_STATUS_TONE as STATUS_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
-
-const STATUS_TONE: Record<
-  InvoiceStatus,
-  "neutral" | "info" | "accent" | "success"
-> = {
-  Draft: "neutral",
-  Submitted: "info",
-  Approved: "accent",
-  Paid: "success",
-};
 
 function toInput(values: UpsertInvoiceValues): InvoiceInput {
   return {
@@ -73,7 +64,8 @@ function toValues(invoice: Invoice): UpsertInvoiceValues {
 }
 
 export default function ProjectInvoices() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const [createOpen, setCreateOpen] = useState(false);
@@ -111,12 +103,12 @@ export default function ProjectInvoices() {
       <PageHeader
         title="Invoices"
         description="Track vendor invoices, retainage withheld, and payments made across the project."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             New invoice
           </Button>
-        }
+        ) : undefined}
       />
 
       <UpsertInvoiceDialog
@@ -154,7 +146,7 @@ export default function ProjectInvoices() {
       <section className="mt-6">
         {isPending ? (
           <div className="flex flex-1 items-center justify-center py-20">
-            <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+            <Spinner size="lg" />
           </div>
         ) : invoices.length === 0 ? (
           <Card padding="lg">
@@ -162,7 +154,7 @@ export default function ProjectInvoices() {
               icon={<FinancesIcon className="size-6" />}
               title="No invoices yet"
               description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
-              action={
+              action={canManage ? (
                 <Button
                   variant="primary"
                   size="md"
@@ -171,7 +163,7 @@ export default function ProjectInvoices() {
                   <PlusIcon className="size-4" />
                   New invoice
                 </Button>
-              }
+              ) : undefined}
             />
           </Card>
         ) : (

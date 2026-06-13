@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
@@ -21,12 +22,14 @@ import type {
   MilestonePayment,
   PaymentLedgerEntry,
   ProjectFinances,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
 export default function ProjectMilestonePayments() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
+  const canDispute = canManage || access?.relationship === "client";
   const { data: finances, isPending } = useProjectFinances(project.id);
 
   const [upsertOpen, setUpsertOpen] = useState(false);
@@ -42,7 +45,7 @@ export default function ProjectMilestonePayments() {
   if (isPending || !finances) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -94,13 +97,13 @@ export default function ProjectMilestonePayments() {
                 milestone={milestone}
                 currency={finances.currency}
                 variant="detailed"
-                onEdit={() => {
+                onEdit={canManage ? () => {
                   setEditingTarget(milestone);
                   setUpsertOpen(true);
-                }}
-                onDelete={() => setDeleteTarget(milestone)}
-                onReleaseFunds={() => setReleaseTarget(milestone)}
-                onRaiseDispute={() => setDisputeTarget(milestone)}
+                } : undefined}
+                onDelete={canManage ? () => setDeleteTarget(milestone) : undefined}
+                onReleaseFunds={canManage ? () => setReleaseTarget(milestone) : undefined}
+                onRaiseDispute={canDispute ? () => setDisputeTarget(milestone) : undefined}
               />
             ))}
           </div>

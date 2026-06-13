@@ -90,6 +90,10 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       const activeOrg = request.activeOrganizationId;
       const organizationId =
         activeOrg !== null && request.orgRoles.has(activeOrg) ? activeOrg : null;
+      // Org projects require create permission; personal projects allow any authenticated user
+      if (organizationId !== null) {
+        request.requireOrgPermission("project", "create");
+      }
       const project = await service.create(request.body, user.id, organizationId);
       return reply.status(201).send(project);
     },

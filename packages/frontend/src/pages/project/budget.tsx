@@ -77,7 +77,8 @@ function formatMonth(yyyyMm: string): string {
 }
 
 export default function ProjectBudget() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
 
@@ -129,13 +130,15 @@ export default function ProjectBudget() {
         title="Budget"
         description="Track and manage the project's financial budget, cost categories, and cash flow."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setCreateCategoryOpen(true)}
-          >
-            <PlusIcon className="h-4 w-4" /> Add Category
-          </Button>
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateCategoryOpen(true)}
+            >
+              <PlusIcon className="h-4 w-4" /> Add Category
+            </Button>
+          ) : undefined
         }
       />
 
@@ -195,9 +198,11 @@ export default function ProjectBudget() {
             title="No cost categories"
             description="Add budget categories to track your planned vs actual costs."
             action={
-              <Button variant="secondary" size="sm" onClick={() => setCreateCategoryOpen(true)}>
-                Add category
-              </Button>
+              canManage ? (
+                <Button variant="secondary" size="sm" onClick={() => setCreateCategoryOpen(true)}>
+                  Add category
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -208,6 +213,7 @@ export default function ProjectBudget() {
                 projectId={project.id}
                 category={category}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>
@@ -219,13 +225,15 @@ export default function ProjectBudget() {
           <h2 className="text-xl font-semibold tracking-tight text-gray-900">
             Monthly Cash Flow
           </h2>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setCreatePeriodOpen(true)}
-          >
-            Add Month
-          </Button>
+          {canManage && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCreatePeriodOpen(true)}
+            >
+              Add Month
+            </Button>
+          )}
         </div>
 
         <UpsertBudgetPeriodDialog
@@ -243,9 +251,11 @@ export default function ProjectBudget() {
             title="No cash flow data"
             description="Add monthly forecasts to track your project's spend over time."
             action={
-              <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
-                Add month
-              </Button>
+              canManage ? (
+                <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
+                  Add month
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -256,6 +266,7 @@ export default function ProjectBudget() {
                 projectId={project.id}
                 period={period}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>
@@ -269,10 +280,12 @@ function CategoryCard({
   projectId,
   category,
   currency,
+  canManage,
 }: {
   projectId: string;
   category: BudgetCategory;
   currency: string;
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -300,18 +313,20 @@ function CategoryCard({
             <p className="mt-0.5 text-xs text-gray-500">{category.costCode}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            Delete
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -378,10 +393,12 @@ function PeriodCard({
   projectId,
   period,
   currency,
+  canManage,
 }: {
   projectId: string;
   period: BudgetPeriod;
   currency: string;
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -404,18 +421,20 @@ function PeriodCard({
             {formatMonth(period.period)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            Delete
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

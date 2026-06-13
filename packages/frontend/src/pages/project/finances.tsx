@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { FundProjectDialog } from "@/components/molecules/fund-project-dialog";
@@ -33,7 +34,7 @@ import type {
   MaterialProcurement,
   MilestonePayment,
   ProjectFinances as ProjectFinancesData,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { Avatar } from "@/components/atoms/avatar";
@@ -42,7 +43,9 @@ const MATERIALS_PREVIEW_LIMIT = 5;
 const VARIANCE_TABLE_LIMIT = 2;
 
 export default function ProjectFinances() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
+  const canDispute = canManage || access?.relationship === "client";
   const { data: finances, isPending } = useProjectFinances(project.id);
 
   const [fundOpen, setFundOpen] = useState(false);
@@ -56,7 +59,7 @@ export default function ProjectFinances() {
   if (isPending) {
     return (
       <div className="flex flex-1 items-center justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -81,31 +84,19 @@ export default function ProjectFinances() {
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
         actions={
-          <div className="flex items-center gap-2">
-            {/* <Button
-              variant="secondary"
-              size="md"
-              onClick={() => navigate(`/project/${project.id}/finances/budget`)}
-            >
-              Budget
-            </Button>
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => navigate(`/project/${project.id}/finances/invoices`)}
-            >
-              Invoices
-            </Button> */}
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setFundOpen(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-            >
-              <ReactSVG src={icons.plusCircle} />
-              Fund Project
-            </Button>
-          </div>
+          canManage ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setFundOpen(true)}
+                className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              >
+                <ReactSVG src={icons.plusCircle} />
+                Fund Project
+              </Button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -163,8 +154,8 @@ export default function ProjectFinances() {
           projectId={project.id}
           milestones={finances.milestones}
           currency={finances.currency}
-          onRequestRelease={setReleaseTarget}
-          onRequestDispute={setDisputeTarget}
+          onRequestRelease={canManage ? setReleaseTarget : undefined}
+          onRequestDispute={canDispute ? setDisputeTarget : undefined}
           className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
@@ -529,8 +520,8 @@ interface MilestonePaymentsCardProps {
   projectId: string;
   milestones: MilestonePayment[];
   currency: ProjectFinancesData["currency"];
-  onRequestRelease: (milestone: MilestonePayment) => void;
-  onRequestDispute: (milestone: MilestonePayment) => void;
+  onRequestRelease?: (milestone: MilestonePayment) => void;
+  onRequestDispute?: (milestone: MilestonePayment) => void;
   className?: string;
 }
 
@@ -567,8 +558,8 @@ function MilestonePaymentsCard({
               milestone={milestone}
               currency={currency}
               variant="compact"
-              onReleaseFunds={() => onRequestRelease(milestone)}
-              onRaiseDispute={() => onRequestDispute(milestone)}
+              onReleaseFunds={onRequestRelease ? () => onRequestRelease(milestone) : undefined}
+              onRaiseDispute={onRequestDispute ? () => onRequestDispute(milestone) : undefined}
             />
           ))}
         </div>

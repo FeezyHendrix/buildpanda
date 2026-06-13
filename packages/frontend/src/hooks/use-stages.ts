@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { stageKeys } from "./query-keys";
-import type { Stage, StageStatus } from "@/lib/project-mock-data";
+import type { Stage, StageStatus } from "@/lib/project-types";
 
 export function useStages(projectId: string | undefined) {
   return useQuery({

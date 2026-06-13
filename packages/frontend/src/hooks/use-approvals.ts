@@ -6,7 +6,7 @@ import type {
   ApprovalComment,
   ApprovalDetail,
   ApprovalStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useApprovals(projectId: string | undefined, status?: ApprovalStatus) {
   return useQuery({

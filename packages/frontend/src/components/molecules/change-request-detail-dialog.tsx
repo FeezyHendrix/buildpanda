@@ -8,7 +8,8 @@ import {
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
 import { cn } from "@/lib/utils";
-import type { ChangeStatus } from "@/lib/project-mock-data";
+import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
+import type { ChangeStatus } from "@/lib/project-types";
 
 export const CHANGE_STATUS_META: Record<
   ChangeStatus,
@@ -21,17 +22,11 @@ export const CHANGE_STATUS_META: Record<
 };
 
 function money(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return formatWholeCurrency(amount, currency);
 }
 
 function formatWhen(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || value;
 }
 
 interface Props {

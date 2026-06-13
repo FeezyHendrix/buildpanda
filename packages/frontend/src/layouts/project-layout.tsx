@@ -6,8 +6,10 @@ import {
 } from "react-router-dom";
 import type { ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { UserMenu } from "@/components/molecules/user-menu";
@@ -15,10 +17,11 @@ import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import type { Session } from "@/stores/auth";
-import type { Project } from "@/lib/project-mock-data";
+import type { Project, ProjectAccess } from "@/lib/project-types";
 
 interface ProjectOutletContext {
   project: Project;
+  access: ProjectAccess | undefined;
 }
 
 export function useProjectContext(): ProjectOutletContext {
@@ -61,10 +64,11 @@ export default function ProjectLayout() {
   return (
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
-        <ProjectSidebar project={project} relationship={access?.relationship} />
+        <ProjectSidebar project={project} access={access} />
         <main className="flex-1 overflow-y-auto no-scrollbar">
+          {access && <ReadOnlyBanner access={access} />}
           <ErrorBoundary>
-            <Outlet context={{ project } satisfies ProjectOutletContext} />
+            <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
       </div>
@@ -101,7 +105,7 @@ function AppShell({ session, onLogout, children }: AppShellProps) {
 function FullPageLoader() {
   return (
     <div className="flex h-dvh items-center justify-center">
-      <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+      <Spinner size="lg" />
     </div>
   );
 }

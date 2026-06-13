@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import type { RiskLevel } from "@/lib/project-mock-data";
+import type { RiskLevel } from "@/lib/project-types";
 
 export interface UpsertRiskValues {
   title: string;

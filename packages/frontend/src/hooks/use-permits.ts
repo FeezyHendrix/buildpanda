@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { permitKeys } from "./query-keys";
-import type { Permit, PermitStatus } from "@/lib/project-mock-data";
+import type { Permit, PermitStatus } from "@/lib/project-types";
 
 export function usePermits(projectId: string | undefined) {
   return useQuery({

@@ -147,6 +147,7 @@ export const notificationKeys = {
     filters
       ? ([...notificationKeys.all, "list", filters] as const)
       : ([...notificationKeys.all, "list"] as const),
+  preferences: ["notifications", "preferences"] as const,
 };
 
 export const searchKeys = {
@@ -200,4 +201,8 @@ export const proposalKeys = {
       ? ([...proposalKeys.all, "list", filters] as const)
       : ([...proposalKeys.all, "list"] as const),
   detail: (id: string) => [...proposalKeys.all, "detail", id] as const,
+  comments: (id: string) => [...proposalKeys.detail(id), "comments"] as const,
+  plans: (id: string) => [...proposalKeys.detail(id), "plans"] as const,
+  boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
+  publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
 };

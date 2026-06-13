@@ -3,7 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
 import { cn } from "@/lib/utils";
-import type { DocumentCategory } from "@/lib/project-mock-data";
+import type { DocumentCategory } from "@/lib/project-types";
 
 interface UploadDocumentDialogProps {
   open: boolean;

@@ -7,7 +7,7 @@ import type {
   MilestonePayment,
   ProjectFinances,
   SignOffStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useProjectFinances(projectId: string | undefined) {
   return useQuery({

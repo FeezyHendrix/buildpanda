@@ -1,10 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
-  assertCanAccessProject,
   assertCanActAsClient,
-  assertCanModifyProject,
 } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { queriesRepository } from "./repository.ts";
 import {
@@ -15,13 +14,6 @@ import {
 import type { QueryStatus } from "./types.ts";
 
 const STATUS = ["Open", "Answered", "Closed"] as const;
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
 
 const queryParams = {
   type: "object",
@@ -84,12 +76,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.list(project.id, request.query.status);
     },
   );
@@ -114,12 +101,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.get(project.id, request.params.queryId);
     },
   );
@@ -128,12 +110,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams, body: updateBody } },
     async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
       return service.update(project.id, request.params.queryId, request.body, user.id);
     },
   );
@@ -142,12 +120,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.queryId);
       return reply.status(204).send();
     },
@@ -157,12 +130,8 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId/comments",
     { schema: { params: queryParams, body: commentBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
       const comment = await service.addComment(project.id, request.params.queryId, request.body.body, {
         id: user.id,
         name: user.name,

@@ -21,7 +21,8 @@ import {
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { cn } from "@/lib/utils";
-import type { Approval, ApprovalStatus } from "@/lib/project-mock-data";
+import { formatDayMonth } from "@/lib/formatters";
+import type { Approval, ApprovalStatus } from "@/lib/project-types";
 
 const FILTERS: { value: ApprovalStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -32,14 +33,12 @@ const FILTERS: { value: ApprovalStatus | "all"; label: string }[] = [
 ];
 
 function formatDue(value: string | null): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return formatDayMonth(value) || null;
 }
 
 export default function ProjectApprovals() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ApprovalStatus | "all">("all");
   const { data: approvals = [], isLoading } = useApprovals(
     project.id,
@@ -76,12 +75,12 @@ export default function ProjectApprovals() {
       <PageHeader
         title="Approvals"
         description="Submit selections and specs for sign-off, and track what's awaiting a decision."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Submit for approval
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">

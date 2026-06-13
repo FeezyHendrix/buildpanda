@@ -6,7 +6,7 @@ import type {
   SiteQuery,
   SiteQueryComment,
   SiteQueryDetail,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useProjectQueries(projectId: string | undefined, status?: QueryStatus) {
   return useQuery({

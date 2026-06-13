@@ -6,7 +6,7 @@ import type {
   ChangeRequest,
   ChangeRequestDetail,
   ChangeStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 export function useChangeRequests(projectId: string | undefined, status?: ChangeStatus) {
   return useQuery({

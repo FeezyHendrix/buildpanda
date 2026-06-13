@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { insightKeys } from "./query-keys";
-import type { ProjectInsights, WhatsNext } from "@/lib/project-mock-data";
+import type { ProjectInsights, WhatsNext } from "@/lib/project-types";
 
 export function useProjectInsights(projectId: string | undefined) {
   return useQuery({

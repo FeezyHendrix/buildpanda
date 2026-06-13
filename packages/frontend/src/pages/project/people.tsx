@@ -15,16 +15,11 @@ import {
   useParticipants,
   useRemoveParticipant,
 } from "@/hooks/use-participants";
-import type { ParticipantStatus } from "@/lib/project-mock-data";
-
-const STATUS_TONE: Record<ParticipantStatus, "neutral" | "success" | "warning"> = {
-  invited: "warning",
-  active: "success",
-  revoked: "neutral",
-};
+import { PARTICIPANT_STATUS_TONE as STATUS_TONE } from "@/lib/project-meta";
 
 export default function ProjectPeople() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManageParticipants ?? false;
   const { data: participants = [], isLoading } = useParticipants(project.id);
   const invite = useInviteParticipant();
   const remove = useRemoveParticipant();
@@ -45,10 +40,12 @@ export default function ProjectPeople() {
         title="People"
         description="Homeowners and stakeholders with a portal on this build. Company staff are managed under Team."
         actions={
-          <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
-            <PlusIcon className="size-4" />
-            Invite to project
-          </Button>
+          canManage ? (
+            <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
+              <PlusIcon className="size-4" />
+              Invite to project
+            </Button>
+          ) : undefined
         }
       />
 
@@ -73,25 +70,29 @@ export default function ProjectPeople() {
                 </div>
                 <p className="mt-0.5 truncate text-xs text-gray-500">{p.email}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setRemoveId(p.id)}
-                className="text-xs font-medium text-red-500 hover:text-red-600"
-              >
-                Remove
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setRemoveId(p.id)}
+                  className="text-xs font-medium text-red-500 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              )}
             </Card>
           ))
         )}
       </div>
 
-      <InviteHomeownerDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        onSubmit={handleInvite}
-        isSubmitting={invite.isPending}
-        error={(invite.error as Error | undefined)?.message ?? null}
-      />
+      {canManage && (
+        <InviteHomeownerDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          onSubmit={handleInvite}
+          isSubmitting={invite.isPending}
+          error={(invite.error as Error | undefined)?.message ?? null}
+        />
+      )}
       <ConfirmDialog
         open={removeId !== null}
         onOpenChange={(o) => !o && setRemoveId(null)}

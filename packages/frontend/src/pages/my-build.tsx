@@ -3,15 +3,11 @@ import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
 import { useMyProjects } from "@/hooks/use-participants";
 import { authClient } from "@/lib/auth-client";
+import { formatWholeCurrency } from "@/lib/formatters";
 import logo from "@/assets/images/logo.svg";
 
 function money(amount: number | null, currency: string): string {
-  if (amount == null) return "—";
-  try {
-    return new Intl.NumberFormat("en-NG", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${currency} ${amount.toLocaleString()}`;
-  }
+  return amount == null ? "—" : formatWholeCurrency(amount, currency);
 }
 
 export default function MyBuild() {

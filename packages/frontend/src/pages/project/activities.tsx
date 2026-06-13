@@ -22,27 +22,15 @@ import {
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
 import { formatCurrency, formatTimeAgo } from "@/lib/formatters";
-import type { Activity, ActivityStatus } from "@/lib/project-mock-data";
-
-const STATUS_TONE: Record<
-  ActivityStatus,
-  "neutral" | "info" | "success" | "danger"
-> = {
-  Planned: "neutral",
-  InProgress: "info",
-  Completed: "success",
-  Cancelled: "danger",
-};
-
-const STATUS_LABEL: Record<ActivityStatus, string> = {
-  Planned: "Planned",
-  InProgress: "In progress",
-  Completed: "Completed",
-  Cancelled: "Cancelled",
-};
+import type { Activity } from "@/lib/project-types";
+import {
+  ACTIVITY_STATUS_LABEL as STATUS_LABEL,
+  ACTIVITY_STATUS_TONE as STATUS_TONE,
+} from "@/lib/project-meta";
 
 export default function ProjectActivities() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: activities = [], isPending } = useProjectActivities(project.id);
   const { data: reasons = [] } = useDelayReasons();
 
@@ -59,7 +47,7 @@ export default function ProjectActivities() {
       <PageHeader
         title="Site Activities"
         description="Track discrete work items with planned vs actual times and delay causes."
-        actions={
+        actions={canManage ? (
           <Button
             variant="primary"
             size="md"
@@ -68,7 +56,7 @@ export default function ProjectActivities() {
             <PlusIcon className="size-4" />
             New activity
           </Button>
-        }
+        ) : undefined}
       />
 
       <section className="mt-8 flex flex-col gap-4">
@@ -81,7 +69,7 @@ export default function ProjectActivities() {
             icon={<CalendarIcon className="size-8 text-gray-300" />}
             title="No activities yet"
             description="Track field work to capture planned vs actual progress and delay causes."
-            action={
+            action={canManage ? (
               <Button
                 variant="primary"
                 size="md"
@@ -90,7 +78,7 @@ export default function ProjectActivities() {
                 <PlusIcon className="size-4" />
                 Add the first one
               </Button>
-            }
+            ) : undefined}
           />
         ) : (
           activities.map((activity) => (

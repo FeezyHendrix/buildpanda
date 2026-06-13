@@ -1,8 +1,5 @@
 import type { Knex } from "knex";
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { assertCanAccessProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import type { FastifyPluginAsync } from "fastify";
 
 const projectIdParams = {
   type: "object",
@@ -32,24 +29,12 @@ function isoDateOffset(baseIso: string, days: number): string {
 
 const insightsRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
-  const projects = projectsRepository(db);
-
-  async function authorize(request: FastifyRequest, id: string) {
-    const user = request.requireAuth();
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    assertCanAccessProject(
-      { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-    );
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/insights",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await authorize(request, request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
       const id = project.id;
 
       const [
@@ -115,7 +100,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/whats-next",
     { schema: { params: projectIdParams, querystring: whatsNextQuery } },
     async (request) => {
-      const project = await authorize(request, request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
       const id = project.id;
       const days = request.query.days ?? 14;
       const nowIso = new Date().toISOString();

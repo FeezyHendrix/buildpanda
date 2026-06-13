@@ -55,7 +55,9 @@ export type NotificationType =
   | "inspection_scheduled"
   | "milestone_released"
   | "milestone_disputed"
-  | "document_uploaded";
+  | "document_uploaded"
+  | "action_item_due"
+  | "action_item_assigned";
 
 export interface ProjectPhase {
   id: string;
@@ -66,6 +68,7 @@ export interface ProjectPhase {
 
 export type ActionStatus = "Open" | "InProgress" | "Blocked" | "Resolved";
 export type ActionPriority = "Low" | "Medium" | "High" | "Urgent";
+export type RecurrenceUnit = "day" | "week" | "month";
 
 export interface ActionItem {
   id: string;
@@ -78,6 +81,10 @@ export interface ActionItem {
   assigneeName: string | null;
   dueDate: string | null;
   resolvedAt: string | null;
+  recurrenceUnit: RecurrenceUnit | null;
+  recurrenceInterval: number | null;
+  recurrenceUntil: string | null;
+  recurrenceParentId: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -647,6 +654,14 @@ export interface Notification {
 export interface NotificationListResult {
   notifications: Notification[];
   unreadCount: number;
+}
+
+export interface NotificationPreference {
+  type: NotificationType;
+  label: string;
+  group: string;
+  inAppEnabled: boolean;
+  emailEnabled: boolean;
 }
 
 export interface SearchProjectHit {

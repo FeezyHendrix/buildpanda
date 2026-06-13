@@ -18,6 +18,10 @@ export const statement = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view", "manage"],
+  teamMembers: ["view", "manage"],
+  orgProfile: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -33,6 +37,10 @@ const constructionFull = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view", "manage"],
+  teamMembers: ["view", "manage"],
+  orgProfile: ["view", "manage"],
 } as const;
 
 const constructionContributor = {
@@ -46,6 +54,10 @@ const constructionContributor = {
   dailyLog: ["view", "create"],
   updates: ["view", "post"],
   messages: ["view", "send"],
+  comments: ["view", "post"],
+  participants: ["view"],
+  teamMembers: ["view"],
+  orgProfile: ["view"],
 } as const;
 
 const constructionReadOnly = {
@@ -59,6 +71,10 @@ const constructionReadOnly = {
   dailyLog: ["view"],
   updates: ["view"],
   messages: ["view"],
+  comments: ["view"],
+  participants: ["view"],
+  teamMembers: ["view"],
+  orgProfile: ["view"],
 } as const;
 
 export const owner = ac.newRole({
@@ -114,4 +130,10 @@ export const PROJECT_RESOURCES = [
   "dailyLog",
   "updates",
   "messages",
+  "comments",
+  "participants",
+  "teamMembers",
+  "orgProfile",
 ] as const;
+
+export const SALES_RESOURCES = ["proposals", "leads"] as const;

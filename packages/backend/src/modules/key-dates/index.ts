@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 
 export type KeyDateStatus = "Upcoming" | "Met" | "Missed";
 
@@ -50,13 +49,6 @@ function toKeyDate(r: KeyDateRow): KeyDate {
 
 const STATUS = ["Upcoming", "Met", "Missed"] as const;
 
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
-
 const kdParams = {
   type: "object",
   required: ["id", "keyDateId"],
@@ -98,24 +90,12 @@ function toPatch(input: KeyDateInput): Record<string, unknown> {
 
 const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
-  const projects = projectsRepository(db);
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/key-dates",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       const rows = await db<KeyDateRow>("key_dates")
         .where({ project_id: project.id })
         .orderBy([{ column: "target_date", order: "asc" }, { column: "sort_order", order: "asc" }]);
@@ -127,12 +107,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const record = {
         id: generateId("kd"),
         project_id: project.id,
@@ -152,12 +127,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates/:keyDateId",
     { schema: { params: kdParams, body: updateBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       const existing = await db<KeyDateRow>("key_dates")
         .where({ id: request.params.keyDateId, project_id: project.id })
         .first();
@@ -174,12 +144,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates/:keyDateId",
     { schema: { params: kdParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await db("key_dates").where({ id: request.params.keyDateId, project_id: project.id }).del();
       return reply.status(204).send();
     },

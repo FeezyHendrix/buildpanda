@@ -23,9 +23,9 @@ import {
   useUpdateEquipmentRequest,
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { EquipmentBucket, EquipmentRequest, EquipmentRequestStatus, RequestPriority } from "@/lib/project-mock-data";
+import type { EquipmentBucket, EquipmentRequest, EquipmentRequestStatus, RequestPriority } from "@/lib/project-types";
 
 const BUCKETS: Array<{ bucket: EquipmentBucket; label: string; helper: string }> = [
   { bucket: "requests", label: "Requests", helper: "New rental needs" },
@@ -68,10 +68,7 @@ function nextStatus(status: EquipmentRequestStatus): EquipmentRequestStatus | nu
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return "Not set";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || "Not set";
 }
 
 function defaultFrom(): string {
@@ -83,7 +80,8 @@ function defaultUntil(): string {
 }
 
 export default function ProjectEquipmentRequests() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const params = useParams<{ bucket?: EquipmentBucket }>();
   const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket) ? params.bucket : "requests";
   const activeMeta = BUCKETS.find((item) => item.bucket === activeBucket) ?? DEFAULT_BUCKET_META;
@@ -123,10 +121,12 @@ export default function ProjectEquipmentRequests() {
               Materials
               <ChevronRightIcon className="size-4" />
             </Link>
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
-              New equipment request
-            </Button>
+            {canManage && (
+              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+                <PlusIcon className="size-4" />
+                New equipment request
+              </Button>
+            )}
           </div>
         }
       />

@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
 import { Pool } from "pg";
+import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
 import {
   organizationInviteEmail,
@@ -11,15 +12,16 @@ import { db } from "../db/connection.ts";
 import { generateId } from "./ids.ts";
 import { ac, roles } from "./permissions.ts";
 
-const pool = new Pool({
-  host: process.env["DB_HOST"] ?? "localhost",
-  port: Number(process.env["DB_PORT"] ?? 5432),
-  database: process.env["DB_NAME"] ?? "buildpanda",
-  user: process.env["DB_USER"] ?? "postgres",
-  password: process.env["DB_PASSWORD"] ?? "postgres",
-});
+const pool =
+  "connectionString" in config.db
+    ? new Pool({ connectionString: config.db.connectionString })
+    : new Pool(config.db);
 
-const APP_URL = process.env["CORS_ORIGIN"] ?? "http://localhost:5173";
+function appUrlFor(path: string, params: Record<string, string> = {}): string {
+  const url = new URL(path, config.mail.appUrl);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.toString();
+}
 
 function slugify(value: string): string {
   return (
@@ -86,11 +88,6 @@ async function ensureUserOrganization(
   return orgId;
 }
 
-const ADMIN_EMAILS = (process.env["ADMIN_EMAILS"] ?? "")
-  .split(",")
-  .map((value) => value.trim().toLowerCase())
-  .filter(Boolean);
-
 /**
  * Bootstraps platform admins: if a user's email is allowlisted in ADMIN_EMAILS,
  * promote them to the global `admin` role at sign-in. Runs on session creation
@@ -98,26 +95,21 @@ const ADMIN_EMAILS = (process.env["ADMIN_EMAILS"] ?? "")
  * UI gate reads the role from the session, before any /admin request is made).
  */
 async function promoteIfAdminEmail(userId: string): Promise<void> {
-  if (ADMIN_EMAILS.length === 0) return;
+  if (config.adminEmails.length === 0) return;
   const user = await db("user")
     .where({ id: userId })
     .first<{ email: string; role: string }>();
-  if (user && user.role !== "admin" && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+  if (user && user.role !== "admin" && config.adminEmails.includes(user.email.toLowerCase())) {
     await db("user").where({ id: userId }).update({ role: "admin" });
   }
 }
 
 export const auth = betterAuth({
   database: pool,
-  secret: process.env["BETTER_AUTH_SECRET"],
-  baseURL: process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
+  secret: config.auth.secret,
+  baseURL: config.auth.baseUrl,
   basePath: "/api/auth",
-  trustedOrigins: (
-    process.env["CORS_ORIGIN"] ?? "http://localhost:5173,http://localhost:5174"
-  )
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean),
+  trustedOrigins: config.http.corsOrigins,
 
   // Allow cookies on cross-site requests (e.g. localhost frontend hitting the
   // Railway-hosted API at api.buildpanda.io). When the frontend ever lives on
@@ -137,7 +129,13 @@ export const auth = betterAuth({
     autoSignIn: false,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
-      const { subject, html } = passwordResetEmail({ name: user.name, url });
+      // better-auth's `url` points at the API and 302s to a callbackURL that
+      // resolves against the API origin too — broken when the SPA lives on a
+      // different host. Rewrite to the app's own reset page (which calls the
+      // API directly via authClient.resetPassword).
+      const token = new URL(url).pathname.split("/").pop() ?? "";
+      const frontendUrl = appUrlFor("/auth/reset-password", { token });
+      const { subject, html } = passwordResetEmail({ name: user.name, url: frontendUrl });
       await sendEmail({ to: user.email, toName: user.name, subject, html });
     },
     resetPasswordTokenExpiresIn: 3600,
@@ -145,7 +143,10 @@ export const auth = betterAuth({
 
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
-      const { subject, html } = verificationEmail({ name: user.name, url });
+      // Same redirect problem as sendResetPassword: rewrite to the SPA route.
+      const token = new URL(url).searchParams.get("token") ?? "";
+      const frontendUrl = appUrlFor("/auth/verify-email", { token });
+      const { subject, html } = verificationEmail({ name: user.name, url: frontendUrl });
       await sendEmail({ to: user.email, toName: user.name, subject, html });
     },
     sendOnSignUp: true,
@@ -205,7 +206,7 @@ export const auth = betterAuth({
         const { subject, html } = organizationInviteEmail({
           inviterName: data.inviter.user.name,
           organizationName: data.organization.name,
-          url: `${APP_URL}/accept-invitation/${data.id}`,
+          url: appUrlFor(`/accept-invitation/${data.id}`),
         });
         await sendEmail({ to: data.email, subject, html });
       },

@@ -204,6 +204,21 @@ export const proposalsApi = {
   convert: (proposalId: string) =>
     api.post<{ projectId: string }>(`/proposals/${proposalId}/convert`).then((r) => r.data),
 
+  listPlans: (proposalId: string) =>
+    api.get<ProposalPlan[]>(`/proposals/${proposalId}/plans`).then((r) => r.data),
+
+  addPlan: (proposalId: string, body: { fileId: string; label?: string }) =>
+    api.post<ProposalPlan[]>(`/proposals/${proposalId}/plans`, body).then((r) => r.data),
+
+  deletePlan: (proposalId: string, planId: string) =>
+    api.delete(`/proposals/${proposalId}/plans/${planId}`),
+
+  listBoq: (proposalId: string) =>
+    api.get<ProposalBoqItem[]>(`/proposals/${proposalId}/boq`).then((r) => r.data),
+
+  replaceBoq: (proposalId: string, items: Omit<ProposalBoqItem, "id" | "proposalId">[]) =>
+    api.put<ProposalBoqItem[]>(`/proposals/${proposalId}/boq`, items).then((r) => r.data),
+
   // Public endpoints — no auth required
   getPublic: (token: string) =>
     api.get<PublicProposalView>(`/proposals/public/${token}`).then((r) => r.data),
@@ -213,3 +228,26 @@ export const proposalsApi = {
       .post<{ ok: boolean; action: string }>(`/proposals/public/${token}/respond`, { action, name })
       .then((r) => r.data),
 };
+
+export interface ProposalPlan {
+  id: string;
+  proposalId: string;
+  fileId: string;
+  fileName: string;
+  sizeBytes: number;
+  mimeType: string;
+  label: string | null;
+  uploadedBy: string | null;
+  uploadedAt: string;
+  sort: number;
+}
+
+export interface ProposalBoqItem {
+  id: string;
+  proposalId: string;
+  groupLabel: string;
+  description: string;
+  qty: number;
+  unit: string;
+  sort: number;
+}

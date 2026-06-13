@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { changeRequestsRepository } from "./repository.ts";
 import {
   changeRequestsService,
@@ -73,25 +70,13 @@ const commentBody = {
 } as const;
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = changeRequestsService(changeRequestsRepository(fastify.db));
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.list(project.id, request.query.status);
     },
   );
@@ -100,12 +85,8 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
     },
@@ -115,12 +96,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.get(project.id, request.params.changeId);
     },
   );
@@ -129,12 +105,8 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams, body: updateBody } },
     async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       return service.update(project.id, request.params.changeId, request.body, user.id);
     },
   );
@@ -143,12 +115,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.changeId);
       return reply.status(204).send();
     },
@@ -158,12 +125,8 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId/comments",
     { schema: { params: crParams, body: commentBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       const comment = await service.addComment(project.id, request.params.changeId, request.body.body, {
         id: user.id,
         name: user.name,

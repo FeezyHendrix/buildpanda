@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import type { DelayReason } from "@/lib/project-mock-data";
+import type { DelayReason } from "@/lib/project-types";
 
 export interface RaiseDelayValues {
   reasonCode: string;

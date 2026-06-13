@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { riskKeys } from "./query-keys";
-import type { RiskFactor, RiskLevel } from "@/lib/project-mock-data";
+import type { RiskFactor, RiskLevel } from "@/lib/project-types";
 
 export function useProjectRiskFactors(projectId: string | undefined) {
   return useQuery({

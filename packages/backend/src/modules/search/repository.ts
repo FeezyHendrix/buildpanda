@@ -2,6 +2,8 @@ import type { Knex } from "knex";
 
 export interface SearchScope {
   userId: string;
+  orgIds: string[];
+  participantProjectIds: string[];
   pattern: string;
   limit: number;
 }
@@ -35,45 +37,45 @@ export interface InspectionHitRow {
   category: string;
 }
 
-function visibleProjectIds(db: Knex, userId: string): Knex.QueryBuilder {
+function visibleProjectIds(db: Knex, { userId, orgIds, participantProjectIds }: SearchScope): Knex.QueryBuilder {
   return db("projects")
     .where(function () {
-      this.where("owner_id", userId).orWhereNull("owner_id");
+      this.where("owner_id", userId);
+      if (orgIds.length) this.orWhereIn("organization_id", orgIds);
+      if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
     })
     .select("id");
 }
 
 export function searchRepository(db: Knex) {
   return {
-    projects({ userId, pattern, limit }: SearchScope): Promise<ProjectHitRow[]> {
+    projects(scope: SearchScope): Promise<ProjectHitRow[]> {
       return db("projects")
-        .where(function () {
-          this.where("owner_id", userId).orWhereNull("owner_id");
-        })
+        .whereIn("id", visibleProjectIds(db, scope))
         .andWhere(function () {
-          this.where("name", "ILIKE", pattern).orWhere("address", "ILIKE", pattern);
+          this.where("name", "ILIKE", scope.pattern).orWhere("address", "ILIKE", scope.pattern);
         })
         .select("id", "name", "address")
         .orderBy("updated_at", "desc")
-        .limit(limit);
+        .limit(scope.limit);
     },
 
-    updates({ userId, pattern, limit }: SearchScope): Promise<UpdateHitRow[]> {
+    updates(scope: SearchScope): Promise<UpdateHitRow[]> {
       return db("project_updates")
-        .whereIn("project_id", visibleProjectIds(db, userId))
+        .whereIn("project_id", visibleProjectIds(db, scope))
         .andWhere(function () {
-          this.where("title", "ILIKE", pattern).orWhere("description", "ILIKE", pattern);
+          this.where("title", "ILIKE", scope.pattern).orWhere("description", "ILIKE", scope.pattern);
         })
         .select("id", "project_id", "title", "description", "category")
         .orderBy("created_at", "desc")
-        .limit(limit);
+        .limit(scope.limit);
     },
 
-    documents({ userId, pattern, limit }: SearchScope): Promise<DocumentHitRow[]> {
+    documents(scope: SearchScope): Promise<DocumentHitRow[]> {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")
-        .whereIn("d.project_id", visibleProjectIds(db, userId))
-        .andWhere("d.file_name", "ILIKE", pattern)
+        .whereIn("d.project_id", visibleProjectIds(db, scope))
+        .andWhere("d.file_name", "ILIKE", scope.pattern)
         .select(
           "d.id",
           "d.project_id",
@@ -81,18 +83,18 @@ export function searchRepository(db: Knex) {
           db.raw("c.name as category_name"),
         )
         .orderBy("d.created_at", "desc")
-        .limit(limit);
+        .limit(scope.limit);
     },
 
-    inspections({ userId, pattern, limit }: SearchScope): Promise<InspectionHitRow[]> {
+    inspections(scope: SearchScope): Promise<InspectionHitRow[]> {
       return db("inspections")
-        .whereIn("project_id", visibleProjectIds(db, userId))
+        .whereIn("project_id", visibleProjectIds(db, scope))
         .andWhere(function () {
-          this.where("title", "ILIKE", pattern).orWhere("description", "ILIKE", pattern);
+          this.where("title", "ILIKE", scope.pattern).orWhere("description", "ILIKE", scope.pattern);
         })
         .select("id", "project_id", "title", "description", "category")
         .orderBy("created_at", "desc")
-        .limit(limit);
+        .limit(scope.limit);
     },
   };
 }

@@ -1,7 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import type { FastifyPluginAsync } from "fastify";
 import { budgetRepository } from "./repository.ts";
 import {
   budgetService,
@@ -11,12 +8,7 @@ import {
   type UpdatePeriodInput,
 } from "./service.ts";
 
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 
 const categoryParams = {
   type: "object",
@@ -84,30 +76,14 @@ const updatePeriodBody = {
 } as const;
 
 const budgetRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = budgetService(budgetRepository(fastify.db));
-
-  async function requireModifiableProject(
-    request: FastifyRequest,
-  ) {
-    const user = request.requireAuth();
-    const project = await projects.findById(
-      (request.params as { id: string }).id,
-    );
-    if (!project) throw new NotFoundError("Project");
-    assertCanModifyProject(
-      { ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles },
-    );
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/budget",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.getByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.getByProject(project.id);
     },
   );
 
@@ -115,7 +91,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/categories",
     { schema: { params: projectIdParams, body: createCategoryBody } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       const category = await service.createCategory(project.id, request.body);
       return reply.status(201).send(category);
     },
@@ -128,7 +104,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/categories/:categoryId",
     { schema: { params: categoryParams, body: updateCategoryBody } },
     async (request) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       return service.updateCategory(
         project.id,
         request.params.categoryId,
@@ -141,7 +117,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/categories/:categoryId",
     { schema: { params: categoryParams } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       await service.removeCategory(project.id, request.params.categoryId);
       return reply.status(204).send();
     },
@@ -151,7 +127,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/periods",
     { schema: { params: projectIdParams, body: createPeriodBody } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       const period = await service.createPeriod(project.id, request.body);
       return reply.status(201).send(period);
     },
@@ -164,7 +140,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/periods/:periodId",
     { schema: { params: periodParams, body: updatePeriodBody } },
     async (request) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       return service.updatePeriod(
         project.id,
         request.params.periodId,
@@ -177,7 +153,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget/periods/:periodId",
     { schema: { params: periodParams } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       await service.removePeriod(project.id, request.params.periodId);
       return reply.status(204).send();
     },

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Container, ButtonLink, Badge, SectionHeading } from "@/components/ui";
+import { Container, ButtonLink, Badge, SectionHeading, FeatureCard } from "@/components/ui";
 import { ConsultationSection } from "@/components/consultation-section";
 import { site } from "@/lib/site";
 import {
@@ -11,12 +11,13 @@ import {
   GlobeIcon,
   CheckIcon,
   ArrowRightIcon,
+  WalletIcon,
 } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "Construction",
   description:
-    "BuildPanda manages your construction project on the ground in Nigeria, from inception to completion and handover. Vetted contractors, independent inspections and full transparency for builders at home and in the diaspora.",
+    "BuildPanda is the delivery side of the Construction OS: we run your build on the ground in Nigeria with verified milestone payments, independent inspections and real-time visibility, from groundbreaking to handover, on time and on budget.",
   alternates: { canonical: "https://buildpanda.io/construction" },
 };
 
@@ -27,7 +28,7 @@ const serviceJsonLd = {
   provider: { "@type": "Organization", name: site.name, url: site.url },
   areaServed: { "@type": "Country", name: "Nigeria" },
   description:
-    "End-to-end construction management from inception to completion and handover, including planning, vetted contractors, milestone payments, independent inspections and on-site monitoring.",
+    "Construction delivery managed on the ground with the BuildPanda Construction OS, from groundbreaking to handover, including planning, vetted contractors, verified milestone payments, independent inspections and real-time on-site monitoring.",
 };
 
 const phases = [
@@ -77,14 +78,15 @@ export default function ConstructionPage() {
 
       <section className="bg-white">
         <Container className="flex flex-col items-center gap-6 py-16 text-center sm:py-20 lg:py-24">
-          <Badge>Construction, managed for you</Badge>
+          <Badge>Construction, managed and verified</Badge>
           <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-            We manage your build on the ground, from inception to handover.
+            A true partner on the ground, from groundbreaking to handover.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            BuildPanda pairs proven construction management with software that
-            keeps you informed. You get a partner who runs the project in Nigeria
-            and a clear view of every milestone, cost and inspection.
+            BuildPanda runs your build in Nigeria and streams every milestone,
+            payment and inspection to your screen. A real partner on site, with
+            the Construction OS keeping the work on time, on budget and verified
+            at every stage.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/#consultation" size="lg">
@@ -101,9 +103,36 @@ export default function ConstructionPage() {
       <section className="border-t border-line py-20 sm:py-24">
         <Container className="flex flex-col gap-12">
           <SectionHeading
+            eyebrow="A true partner on the ground"
+            title="We run the build. You see everything."
+            description="BuildPanda pairs hands-on construction management with the Construction OS, so your project moves on time, on budget and in full view."
+          />
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <FeatureCard
+              icon={<WalletIcon className="h-6 w-6" />}
+              title="Payments tied to verified work"
+              description="Funds are released milestone by milestone, only after independent inspectors sign the work off. Every naira stays tied to progress you can see."
+            />
+            <FeatureCard
+              icon={<ChartIcon className="h-6 w-6" />}
+              title="Tech-enabled site management"
+              description="The Construction OS keeps every phase, contractor and milestone on track, with costs and schedule updated as the work actually happens."
+            />
+            <FeatureCard
+              icon={<GlobeIcon className="h-6 w-6" />}
+              title="Real-time visibility, anywhere"
+              description="Daily logs, photos and progress stream to your dashboard, so you always know what is happening on site without flying in."
+            />
+          </div>
+        </Container>
+      </section>
+
+      <section className="border-t border-line py-20 sm:py-24">
+        <Container className="flex flex-col gap-12">
+          <SectionHeading
             eyebrow="How we manage it"
             title="A clear, accountable process at every phase"
-            description="From the first conversation to the final handover, you always know where your project stands."
+            description="From a signed proposal to the final handover, every phase is managed, costed and inspected, so your build stays on time and on budget."
           />
           <div className="grid gap-6 lg:grid-cols-2">
             {phases.map((phase, index) => (

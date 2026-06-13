@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
-import type { KeyDateStatus } from "@/lib/project-mock-data";
+import type { KeyDateStatus } from "@/lib/project-types";
 
 export interface UpsertKeyDateValues {
   label: string;

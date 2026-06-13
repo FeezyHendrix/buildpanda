@@ -8,21 +8,30 @@ const CURRENCY_LOCALE: Record<string, string> = {
 
 export type TimeOfDay = "Morning" | "Afternoon" | "Evening";
 
+export function formatWholeCurrency(value: number, currency: string): string {
+  return formatCurrency(value, currency, { whole: true });
+}
+
 export function formatCurrency(
   value: number,
   currency: string,
-  opts: { compact?: boolean; signed?: boolean } = {},
+  opts: { compact?: boolean; signed?: boolean; whole?: boolean } = {},
 ): string {
-  const { compact = false, signed = false } = opts;
+  const { compact = false, signed = false, whole = false } = opts;
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    notation: compact ? "compact" : "standard",
-    minimumFractionDigits: compact ? 0 : 2,
-    maximumFractionDigits: compact ? 1 : 2,
-    signDisplay: signed ? "exceptZero" : "auto",
-  }).format(value);
+  const noDecimals = compact || whole;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      notation: compact ? "compact" : "standard",
+      minimumFractionDigits: noDecimals ? 0 : 2,
+      maximumFractionDigits: compact ? 1 : noDecimals ? 0 : 2,
+      signDisplay: signed ? "exceptZero" : "auto",
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toLocaleString()}`;
+  }
 }
 
 export function currencySymbol(currency: string): string {
@@ -78,6 +87,44 @@ export function formatDateTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+const DATE_LOCALE = "en-GB";
+
+type DateInput = Date | string | null | undefined;
+
+function toValidDate(value: DateInput): Date | null {
+  if (value == null || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function formatShortDate(value: DateInput): string {
+  const d = toValidDate(value);
+  return d ? d.toLocaleDateString(DATE_LOCALE, { day: "2-digit", month: "short", year: "numeric" }) : "";
+}
+
+export function formatLongDate(value: DateInput): string {
+  const d = toValidDate(value);
+  return d ? d.toLocaleDateString(DATE_LOCALE, { day: "numeric", month: "long", year: "numeric" }) : "";
+}
+
+export function formatDayMonth(value: DateInput): string {
+  const d = toValidDate(value);
+  return d ? d.toLocaleDateString(DATE_LOCALE, { day: "2-digit", month: "short" }) : "";
+}
+
+export function formatActivityTimestamp(value: DateInput): string {
+  const d = toValidDate(value);
+  return d
+    ? d.toLocaleDateString(DATE_LOCALE, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 }
 
 export function pct(value: number, total: number): number {

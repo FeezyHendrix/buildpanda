@@ -11,7 +11,8 @@ import {
 } from "@/components/molecules/upsert-key-date-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateKeyDate, useDeleteKeyDate, useKeyDates, useUpdateKeyDate } from "@/hooks/use-key-dates";
-import type { KeyDate, KeyDateStatus } from "@/lib/project-mock-data";
+import { formatShortDate } from "@/lib/formatters";
+import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
 
 const STATUS_META: Record<KeyDateStatus, { tone: "neutral" | "success" | "danger" }> = {
   Upcoming: { tone: "neutral" },
@@ -20,14 +21,12 @@ const STATUS_META: Record<KeyDateStatus, { tone: "neutral" | "success" | "danger
 };
 
 function fmt(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || "—";
 }
 
 export default function ProjectKeyDates() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: keyDates = [], isLoading } = useKeyDates(project.id);
   const createKd = useCreateKeyDate();
   const updateKd = useUpdateKeyDate();
@@ -50,12 +49,12 @@ export default function ProjectKeyDates() {
       <PageHeader
         title="Key Dates"
         description="The milestone dates that matter — target vs actual, so slippage is visible."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             Add key date
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-col gap-3">

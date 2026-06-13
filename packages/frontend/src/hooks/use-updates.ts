@@ -7,7 +7,7 @@ import type {
   UpdateCategory,
   UpdateComment,
   UpdateStatus,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 interface UpdateMediaInput {
   type: MediaType;

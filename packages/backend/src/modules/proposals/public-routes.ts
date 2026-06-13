@@ -34,6 +34,10 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { proposal, estimate } = result;
 
+      if (estimate.share_token_expires_at && new Date(estimate.share_token_expires_at) < new Date()) {
+        throw new NotFoundError("Proposal");
+      }
+
       // Log a "viewed" event if not already logged for this token
       const existing = await fastify.db("proposal_events")
         .where({ proposal_id: proposal.id, type: "client_viewed" })
@@ -69,6 +73,10 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
       if (!result) throw new NotFoundError("Proposal");
 
       const { proposal, estimate } = result;
+
+      if (estimate.share_token_expires_at && new Date(estimate.share_token_expires_at) < new Date()) {
+        throw new NotFoundError("Proposal");
+      }
 
       if (estimate.status !== "Sent") {
         throw new BadRequestError("This proposal is no longer open for responses.");

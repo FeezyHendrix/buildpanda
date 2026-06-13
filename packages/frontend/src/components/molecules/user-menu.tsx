@@ -79,6 +79,16 @@ function UserMenu({
               Dashboard
             </Menu.Item>
 
+            <Menu.Item
+              className={cn(
+                "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
+                "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+              )}
+              render={<Link to="/dashboard/settings/notifications" />}
+            >
+              Notifications
+            </Menu.Item>
+
             <Menu.Separator className="my-1 h-px bg-gray-100" />
 
             <Menu.Item

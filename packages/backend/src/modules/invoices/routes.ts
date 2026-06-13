@@ -1,7 +1,5 @@
-import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
+import type { FastifyPluginAsync } from "fastify";
+import { assertProjectPermission } from "../../lib/authorization.ts";
 import { invoicesRepository } from "./repository.ts";
 import {
   invoicesService,
@@ -9,13 +7,7 @@ import {
   type CreateInvoiceInput,
   type EditInvoiceInput,
 } from "./service.ts";
-
-const projectIdParams = {
-  type: "object",
-  properties: { id: { type: "string", minLength: 1 } },
-  required: ["id"],
-  additionalProperties: false,
-} as const;
+import { idParams as projectIdParams } from "../../lib/schemas.ts";
 
 const invoiceParams = {
   type: "object",
@@ -85,30 +77,14 @@ const addPaymentBody = {
 } as const;
 
 const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = invoicesService(invoicesRepository(fastify.db));
-
-  async function requireModifiableProject(
-    request: FastifyRequest,
-  ) {
-    const user = request.requireAuth();
-    const project = await projects.findById(
-      (request.params as { id: string }).id,
-    );
-    if (!project) throw new NotFoundError("Project");
-    assertCanModifyProject(
-      { ownerId: project.owner_id, organizationId: project.organization_id },
-      { userId: user.id, orgRoles: request.orgRoles },
-    );
-    return project;
-  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/invoices",
     { schema: { params: projectIdParams } },
     async (request) => {
-      request.requireAuth();
-      return service.listByProject(request.params.id);
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.listByProject(project.id);
     },
   );
 
@@ -116,7 +92,16 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices",
     { schema: { params: projectIdParams, body: createInvoiceBody } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
+      const status = request.body.status;
+      if (status === "Approved" || status === "Paid") {
+        assertProjectPermission(
+          { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+          { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+          "finances", "approve",
+        );
+      }
       const invoice = await service.create(project.id, request.body);
       return reply.status(201).send(invoice);
     },
@@ -126,7 +111,16 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId",
     { schema: { params: invoiceParams, body: editInvoiceBody } },
     async (request) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
+      const status = request.body.status;
+      if (status === "Approved" || status === "Paid") {
+        assertProjectPermission(
+          { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+          { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+          "finances", "approve",
+        );
+      }
       return service.edit(project.id, request.params.invoiceId, request.body);
     },
   );
@@ -135,7 +129,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId",
     { schema: { params: invoiceParams } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.invoiceId);
       return reply.status(204).send();
     },
@@ -148,7 +142,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId/payments",
     { schema: { params: invoiceParams, body: addPaymentBody } },
     async (request, reply) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
       const invoice = await service.addPayment(
         project.id,
         request.params.invoiceId,
@@ -162,7 +156,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId/payments/:paymentId",
     { schema: { params: paymentParams } },
     async (request) => {
-      const project = await requireModifiableProject(request);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
       return service.removePayment(
         project.id,
         request.params.invoiceId,

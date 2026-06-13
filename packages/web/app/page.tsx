@@ -14,34 +14,55 @@ import {
   GlobeIcon,
   CompassIcon,
   KeyIcon,
+  UsersIcon,
+  ClipboardIcon,
+  LayersIcon,
 } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "BuildPanda — Build your home with confidence, from anywhere",
+  title: "BuildPanda — the Construction OS for modern builders",
   description:
-    "BuildPanda manages your construction project from inception to completion and handover. Track milestones, release payments against verified progress, and get independent inspections, whether you build from Nigeria or the diaspora.",
+    "BuildPanda is the Construction OS that runs your whole build. Win work with proposals and estimates, then deliver with milestones, verified payments and independent inspections, from first enquiry to final handover.",
   alternates: { canonical: "https://buildpanda.io" },
 };
 
 const stages = [
   {
     icon: <CompassIcon className="h-6 w-6" />,
-    title: "Inception",
-    text: "Plan, budget and assemble the right team before a single block is laid.",
+    title: "Win the work",
+    text: "Capture leads, send branded proposals and price accurate estimates that turn enquiries into signed jobs.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
     title: "Build & monitor",
-    text: "Follow daily progress, costs and inspections in real time from any device.",
+    text: "Convert the signed proposal into a project, then follow daily progress, costs and inspections in real time.",
   },
   {
     icon: <KeyIcon className="h-6 w-6" />,
     title: "Completion & handover",
-    text: "Sign off on verified work, settle final payments and receive your keys.",
+    text: "Sign off on verified work, settle final payments and hand over the keys.",
   },
 ];
 
 const features = [
+  {
+    icon: <UsersIcon className="h-6 w-6" />,
+    title: "Leads & pipeline",
+    description:
+      "Capture every enquiry and track it from new to won, so no opportunity slips through the cracks.",
+  },
+  {
+    icon: <ClipboardIcon className="h-6 w-6" />,
+    title: "Proposals & estimates",
+    description:
+      "Build precise, line by line estimates and bills of quantities, then send a branded proposal your client can accept online.",
+  },
+  {
+    icon: <LayersIcon className="h-6 w-6" />,
+    title: "One-click handoff",
+    description:
+      "The moment a proposal is accepted, turn it into a live construction project with budget, phases and milestones ready to go.",
+  },
   {
     icon: <MilestoneIcon className="h-6 w-6" />,
     title: "Milestones & schedule",
@@ -86,15 +107,15 @@ export default function HomePage() {
       <section className="relative overflow-hidden bg-white">
         <Container className="grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
           <div className="flex flex-col items-start gap-6">
-            <Badge>Built for Nigeria and the diaspora</Badge>
+            <Badge>The Construction OS for builders</Badge>
             <h1 className="text-balance text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-              Build your home with confidence, from anywhere in the world.
+              The Construction OS, from first enquiry to final handover.
             </h1>
             <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted">
-              BuildPanda takes you from inception to completion and handover.
-              Manage milestones, payments, budgets and contractors, and get
-              independent inspections and on-site monitoring, all from one
-              dashboard.
+              BuildPanda runs the whole journey. Win the work with polished
+              proposals and accurate estimates, convert a signed deal into a live
+              project, then manage milestones, payments and independent
+              inspections, all from one dashboard.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <ButtonLink href={site.appUrl} size="lg">
@@ -113,12 +134,35 @@ export default function HomePage() {
         </Container>
       </section>
 
+      <section className="py-16 sm:py-20">
+        <Container className="flex flex-col items-center gap-10">
+          <SectionHeading
+            eyebrow="See it in action"
+            title="Your whole build, in under half a minute"
+            description="Watch BuildPanda go from first enquiry to a signed proposal and a live construction project."
+          />
+          <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-line bg-white shadow-xl">
+            <video
+              className="aspect-video w-full"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/demo-poster.jpg"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </Container>
+      </section>
+
       <section className="border-y border-line bg-surface-faint py-6">
         <Container>
           <div className="grid gap-6 text-center sm:grid-cols-3">
-            <Stat value="Inception to handover" label="One platform for the whole journey" />
+            <Stat value="Enquiry to handover" label="One OS for the entire build" />
+            <Stat value="Win more work" label="Proposals and estimates that close" />
             <Stat value="Verified progress" label="Payments tied to work that is signed off" />
-            <Stat value="Watch from anywhere" label="Built for builders at home and abroad" />
           </div>
         </Container>
       </section>
@@ -143,7 +187,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="How it works"
             title="One clear path from idea to keys in hand"
-            description="BuildPanda structures your project into three simple phases, with full visibility at every step."
+            description="BuildPanda runs every phase, from winning the work to handing over the keys, with full visibility at every step."
           />
           <div className="grid gap-6 md:grid-cols-3">
             {stages.map((stage, index) => (
@@ -167,7 +211,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="What BuildPanda does"
             title="Everything you need to run a build, in one place"
-            description="These are the tools your project runs on, designed for the realities of building in Nigeria."
+            description="From winning the work to handing over the keys, these are the tools your build runs on."
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (

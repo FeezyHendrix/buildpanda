@@ -116,8 +116,38 @@ function DocumentsMock() {
   );
 }
 
+function ProposalsMock() {
+  const lines = [
+    { label: "Substructure", value: "₦22,300,000" },
+    { label: "Superstructure", value: "₦47,158,750" },
+    { label: "Finishes", value: "₦31,000,000" },
+  ];
+  return (
+    <Frame>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-ink">Proposal · BP-0005</span>
+        <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success">Accepted</span>
+      </div>
+      <div className="mt-4 flex flex-col gap-2.5">
+        {lines.map((l) => (
+          <div key={l.label} className="flex items-center justify-between rounded-xl border border-line px-3 py-2.5">
+            <span className="text-sm text-ink">{l.label}</span>
+            <span className="text-sm font-medium text-ink">{l.value}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-brand-soft px-3 py-2.5">
+        <span className="text-sm font-semibold text-brand">Estimate total</span>
+        <span className="text-sm font-bold text-brand">₦100,458,750</span>
+      </div>
+    </Frame>
+  );
+}
+
 export function ProductMock({ id }: { id: string }) {
   switch (id) {
+    case "preconstruction":
+      return <ProposalsMock />;
     case "payments":
       return <PaymentsMock />;
     case "budget":

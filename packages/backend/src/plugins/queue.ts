@@ -4,6 +4,7 @@ import { QueueManager } from "../lib/queue/index.ts";
 import { config } from "../config/index.ts";
 import { registerPandaAiWorker } from "../modules/panda-ai/job.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
+import { registerActionItemReminderWorker } from "../modules/action-items/reminder-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -16,6 +17,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
 
   registerPandaAiWorker(fastify.db, manager);
   registerProposalExpiryWorker(fastify.db, manager);
+  registerActionItemReminderWorker(fastify.db, manager);
   manager.startWorkers();
 
   fastify.decorate("queue", manager);

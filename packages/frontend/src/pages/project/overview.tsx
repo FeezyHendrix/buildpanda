@@ -34,7 +34,7 @@ import type {
   ProjectPhase,
   ProjectUpdate,
   RiskFactor,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";

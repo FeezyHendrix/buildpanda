@@ -14,7 +14,7 @@ import {
   useProjectDailyLogs,
   useUpsertDailyLog,
 } from "@/hooks/use-daily-logs";
-import type { DailyLog, WeatherCondition } from "@/lib/project-mock-data";
+import type { DailyLog, WeatherCondition } from "@/lib/project-types";
 
 const WEATHER_TONE: Record<WeatherCondition, "info" | "warning" | "danger" | "neutral"> = {
   Sunny: "warning",
@@ -31,7 +31,8 @@ function todayIso(): string {
 }
 
 export default function ProjectDailyLog() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: logs = [], isPending } = useProjectDailyLogs(project.id);
   const [open, setOpen] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null);
@@ -61,12 +62,12 @@ export default function ProjectDailyLog() {
       <PageHeader
         title="Daily Log"
         description="One end-of-day record per day — weather, headcount, hours worked, what got done."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={openForToday}>
             <PlusIcon className="size-4" />
             {todayLog ? "Update today's log" : "Log today"}
           </Button>
-        }
+        ) : undefined}
       />
 
       <section className="mt-8 flex flex-col gap-3">
@@ -79,12 +80,12 @@ export default function ProjectDailyLog() {
             icon={<CalendarIcon className="size-8 text-gray-300" />}
             title="No daily logs yet"
             description="Capture today's end-of-day summary to start the project diary."
-            action={
+            action={canManage ? (
               <Button variant="primary" size="md" onClick={openForToday}>
                 <PlusIcon className="size-4" />
                 Log today
               </Button>
-            }
+            ) : undefined}
           />
         ) : (
           logs.map((log) => (

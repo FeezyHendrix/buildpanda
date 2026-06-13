@@ -22,7 +22,8 @@ import {
   useUpdateActionItem,
 } from "@/hooks/use-action-items";
 import { cn } from "@/lib/utils";
-import type { ActionItem, ActionStatus } from "@/lib/project-mock-data";
+import { formatDayMonth } from "@/lib/formatters";
+import type { ActionItem, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
 
 const FILTERS: { value: ActionStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -33,14 +34,18 @@ const FILTERS: { value: ActionStatus | "all"; label: string }[] = [
 ];
 
 function formatDue(value: string | null): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return formatDayMonth(value) || null;
+}
+
+function recurrenceLabel(unit: RecurrenceUnit, interval: number | null): string {
+  const count = interval ?? 1;
+  const noun = unit === "day" ? "day" : unit === "week" ? "week" : "month";
+  return count === 1 ? `every ${noun}` : `every ${count} ${noun}s`;
 }
 
 export default function ProjectActionItems() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ActionStatus | "all">("all");
   const { data: items = [], isLoading } = useActionItems(
     project.id,
@@ -77,12 +82,12 @@ export default function ProjectActionItems() {
       <PageHeader
         title="Action Items"
         description="Open issues and to-dos that need attention to keep the build moving."
-        actions={
+        actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             New item
           </Button>
-        }
+        ) : undefined}
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
@@ -128,6 +133,11 @@ export default function ProjectActionItems() {
                   <Badge tone={ACTION_PRIORITY_META[item.priority].tone} size="sm">
                     {item.priority}
                   </Badge>
+                  {item.recurrenceUnit && (
+                    <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
+                      Repeats {recurrenceLabel(item.recurrenceUnit, item.recurrenceInterval)}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                   {item.assigneeName && <span>{item.assigneeName}</span>}
@@ -177,6 +187,9 @@ export default function ProjectActionItems() {
                 status: editItem.status,
                 priority: editItem.priority,
                 dueDate: editItem.dueDate,
+                recurrenceUnit: editItem.recurrenceUnit,
+                recurrenceInterval: editItem.recurrenceInterval,
+                recurrenceUntil: editItem.recurrenceUntil,
               }
             : undefined
         }

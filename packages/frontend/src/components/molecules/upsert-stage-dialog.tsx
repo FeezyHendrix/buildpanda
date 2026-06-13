@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
-import type { StageStatus } from "@/lib/project-mock-data";
+import type { StageStatus } from "@/lib/project-types";
 
 export interface UpsertStageValues {
   name: string;

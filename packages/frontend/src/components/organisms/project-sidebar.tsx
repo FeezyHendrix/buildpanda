@@ -16,7 +16,7 @@ import {
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
-import type { Project } from "@/lib/project-mock-data";
+import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
@@ -142,12 +142,12 @@ const CLIENT_ENTRIES: readonly NavEntry[] = [
 interface ProjectSidebarProps {
   project: Project;
   className?: string;
-  relationship?: string;
+  access?: ProjectAccess;
 }
 
-function ProjectSidebar({ project, className, relationship }: ProjectSidebarProps) {
+function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const location = useLocation();
-  const isClient = relationship === "client";
+  const isClient = access?.relationship !== "company";
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({

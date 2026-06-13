@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import {
@@ -15,7 +16,7 @@ import {
   formatTimeAgo,
   timeOfDay,
 } from "@/lib/formatters";
-import type { Project } from "@/lib/project-mock-data";
+import type { Project } from "@/lib/project-types";
 import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg"
@@ -62,7 +63,7 @@ export default function Dashboard() {
 function LoadingSpinner() {
   return (
     <div className="flex flex-1 items-center justify-center pt-32">
-      <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-[#004DE7]" />
+      <Spinner size="lg" />
     </div>
   );
 }

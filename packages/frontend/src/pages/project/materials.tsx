@@ -23,9 +23,9 @@ import {
   useUpdateMaterialOrder,
   type MaterialOrderInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { MaterialOrder, MaterialOrderStatus, RequestPriority } from "@/lib/project-mock-data";
+import type { MaterialOrder, MaterialOrderStatus, RequestPriority } from "@/lib/project-types";
 
 const STATUS_META: Record<MaterialOrderStatus, { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }> = {
   Draft: { label: "Draft", tone: "neutral" },
@@ -57,10 +57,7 @@ function nextWeek(): string {
 }
 
 function formatDate(value: string | null): string {
-  if (!value) return "Not set";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatShortDate(value) || "Not set";
 }
 
 function nextStatus(status: MaterialOrderStatus): MaterialOrderStatus | null {
@@ -82,7 +79,8 @@ function nextStatus(status: MaterialOrderStatus): MaterialOrderStatus | null {
 }
 
 export default function ProjectMaterials() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<MaterialOrderStatus | "all">("all");
   const { data: orders = [], isLoading } = useMaterialOrders(
     project.id,
@@ -124,10 +122,12 @@ export default function ProjectMaterials() {
               Equipment requests
               <ChevronRightIcon className="size-4" />
             </Link>
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
-              New material order
-            </Button>
+            {canManage && (
+              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+                <PlusIcon className="size-4" />
+                New material order
+              </Button>
+            )}
           </div>
         }
       />

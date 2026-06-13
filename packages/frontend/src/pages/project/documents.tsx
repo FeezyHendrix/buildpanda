@@ -29,7 +29,7 @@ import type {
   CategoryGroup,
   DocumentCategory,
   ProjectDocument,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"]);
 
@@ -52,7 +52,8 @@ function getStatusIcon(status: string): string {
 }
 
 export default function ProjectDocuments() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
 
@@ -95,15 +96,17 @@ export default function ProjectDocuments() {
             : "Secure, centralized management for project compliance."
         }
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setUploadOpen(true)}
-            className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-          >
-            <ReactSVG src={icons.upload} />
-            {isPlans ? "Upload plan" : "Upload document"}
-          </Button>
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setUploadOpen(true)}
+              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+            >
+              <ReactSVG src={icons.upload} />
+              {isPlans ? "Upload plan" : "Upload document"}
+            </Button>
+          ) : undefined
         }
       />
 

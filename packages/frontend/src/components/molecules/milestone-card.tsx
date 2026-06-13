@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import type {
   MilestonePayment,
   ProjectFinances,
-} from "@/lib/project-mock-data";
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 

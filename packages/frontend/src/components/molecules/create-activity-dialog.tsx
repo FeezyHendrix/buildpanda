@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import type { Activity, ProjectPhase } from "@/lib/project-mock-data";
+import type { Activity, ProjectPhase } from "@/lib/project-types";
 
 export interface CreateActivityValues {
   name: string;
