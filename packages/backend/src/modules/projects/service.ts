@@ -24,7 +24,9 @@ const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">>
   { name: "Permitting & Approvals", date_range: "Weeks 3 – 8" },
   { name: "Foundation & Substructure", date_range: "Weeks 9 – 16" },
   { name: "Superstructure & MEP", date_range: "Weeks 17 – 32" },
-  { name: "Finishing & Handover", date_range: "Weeks 33 – 48" },
+  { name: "Finishing", date_range: "Weeks 33 – 42" },
+  { name: "External Works", date_range: "Weeks 43 – 46" },
+  { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
 ];
 
 function toIso(value: Date | string): string {
