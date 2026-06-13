@@ -1,7 +1,4 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanAccessProject, assertCanModifyProject } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { actionItemsRepository } from "./repository.ts";
 import {
   actionItemsService,
@@ -9,6 +6,8 @@ import {
   type UpdateActionItemInput,
 } from "./service.ts";
 import type { ActionStatus } from "./types.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 
 const STATUS = ["Open", "InProgress", "Blocked", "Resolved"] as const;
 const PRIORITY = ["Low", "Medium", "High", "Urgent"] as const;
@@ -47,6 +46,9 @@ const createBody = {
     priority: { type: "string", enum: PRIORITY },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    recurrenceUnit: { type: ["string", "null"], enum: ["day", "week", "month", null] },
+    recurrenceInterval: { type: ["integer", "null"], minimum: 1, maximum: 365 },
+    recurrenceUntil: { type: ["string", "null"], maxLength: 40 },
   },
 } as const;
 
@@ -61,6 +63,9 @@ const updateBody = {
     priority: { type: "string", enum: PRIORITY },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    recurrenceUnit: { type: ["string", "null"], enum: ["day", "week", "month", null] },
+    recurrenceInterval: { type: ["integer", "null"], minimum: 1, maximum: 365 },
+    recurrenceUntil: { type: ["string", "null"], maxLength: 40 },
   },
 } as const;
 
@@ -72,25 +77,15 @@ const commentBody = {
 } as const;
 
 const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
-  const service = actionItemsService(actionItemsRepository(fastify.db));
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
+  const service = actionItemsService(actionItemsRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db)),
+  });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ActionStatus } }>(
     "/projects/:id/action-items",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.list(project.id, request.query.status);
     },
   );
@@ -99,12 +94,8 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       const item = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(item);
     },
@@ -114,12 +105,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectAccess(request.params.id);
       return service.get(project.id, request.params.itemId);
     },
   );
@@ -128,12 +114,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams, body: updateBody } },
     async (request) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       return service.update(project.id, request.params.itemId, request.body);
     },
   );
@@ -142,12 +123,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanModifyProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
+      const project = await request.requireProjectWrite(request.params.id);
       await service.remove(project.id, request.params.itemId);
       return reply.status(204).send();
     },
@@ -157,12 +133,8 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId/comments",
     { schema: { params: itemParams, body: commentBody } },
     async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanAccessProject(
-        { ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles },
-      );
       const comment = await service.addComment(project.id, request.params.itemId, request.body.body, {
         id: user.id,
         name: user.name,
