@@ -143,10 +143,10 @@ export function dailyLogsRepository(db: Knex) {
       return db("activities").whereIn("id", activityIds).select("id", "name");
     },
 
-    findActivity(projectId: string, activityId: string): Promise<{ id: string } | undefined> {
+    findActivity(projectId: string, activityId: string): Promise<{ id: string; name: string } | undefined> {
       return db("activities")
         .where({ id: activityId, project_id: projectId })
-        .select<{ id: string }>("id")
+        .select<{ id: string; name: string }>("id", "name")
         .first();
     },
 
