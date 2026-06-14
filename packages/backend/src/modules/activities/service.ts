@@ -232,6 +232,15 @@ export function activitiesService(repository: ActivitiesRepository) {
 
       const updated = await repository.update(activityId, patch);
       if (!updated) throw new ConflictError("Activity update failed");
+
+      const affectsPhaseSpan =
+        input.plannedStartAt !== undefined ||
+        input.plannedEndAt !== undefined ||
+        input.phaseId !== undefined;
+      if (affectsPhaseSpan) {
+        await repository.recomputePhaseRanges(projectId);
+      }
+
       return buildOne(updated);
     },
 

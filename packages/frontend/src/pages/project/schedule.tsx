@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
@@ -157,12 +158,14 @@ function formatDate(date: Date | null): string {
 }
 
 export default function ProjectSchedule() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
   const { data: activities = [], isPending } = useProjectActivities(project.id);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
   const [importOpen, setImportOpen] = useState(false);
+  const canEdit = access?.capabilities?.canManage ?? false;
+  const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
   const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(() => {
     const phaseById = new Map(
@@ -372,6 +375,21 @@ export default function ProjectSchedule() {
         <div className="flex min-h-0 flex-1 flex-col bg-white">
           <ScheduleReportPanel report={report} currency={project.currency} />
           <div className="bp-gantt flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+            {canEdit && (
+              <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2">
+                <span className="text-xs text-gray-500">
+                  Drag bars to reschedule. Changes save automatically.
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button variant="secondary" size="sm" onClick={undo} disabled={!canUndo}>
+                    Undo
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={redo} disabled={!canRedo}>
+                    Redo
+                  </Button>
+                </div>
+              </div>
+            )}
             <Willow>
               <Gantt
                 tasks={tasks}
@@ -384,7 +402,8 @@ export default function ProjectSchedule() {
                 baselines={true}
                 zoom={GANTT_ZOOM}
                 markers={markers}
-                readonly
+                readonly={!canEdit}
+                init={canEdit ? attach : undefined}
               />
             </Willow>
           </div>
