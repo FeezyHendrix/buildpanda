@@ -88,12 +88,6 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
-  {
-    label: "Milestones",
-    slug: "milestones",
-    Icon: FinancesIcon,
-    helper: "Cost gates",
-  },
 ] as const;
 
 const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -107,6 +101,12 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow" },
+  {
+    label: "Milestones",
+    slug: "milestones",
+    Icon: FinancesIcon,
+    helper: "Cost gates",
+  },
   { label: "Budgeting", slug: "finances/budget", Icon: FinancesIcon, helper: "Cost codes" },
   {
     label: "Budget Allocation",

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Gantt, Willow } from "@svar-ui/react-gantt";
 import type { ILink } from "@svar-ui/react-gantt";
 import "@svar-ui/react-gantt/all.css";
@@ -8,6 +8,7 @@ import { Card } from "@/components/atoms/card";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
+import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
@@ -161,6 +162,7 @@ export default function ProjectSchedule() {
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
+  const [importOpen, setImportOpen] = useState(false);
 
   const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(() => {
     const phaseById = new Map(
@@ -322,6 +324,9 @@ export default function ProjectSchedule() {
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                Import programme
+              </Button>
               <Button variant="secondary" size="sm" onClick={downloadReport}>
                 Export report
               </Button>
@@ -354,7 +359,12 @@ export default function ProjectSchedule() {
             <EmptyState
               icon={<CalendarIcon className="size-8 text-gray-300" />}
               title="No scheduled activities"
-              description="Create milestone work items from Site Activity to populate the project Gantt chart."
+              description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
+              action={
+                <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
+                  Import programme of works
+                </Button>
+              }
             />
           </Card>
         </div>
@@ -380,6 +390,7 @@ export default function ProjectSchedule() {
           </div>
         </div>
       )}
+      <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
