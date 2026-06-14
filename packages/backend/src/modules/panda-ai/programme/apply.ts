@@ -38,6 +38,25 @@ function toDate(iso: string): string {
   return iso.slice(0, 10);
 }
 
+function formatShort(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function phaseDateSpan(
+  activities: StructuredActivity[],
+): { start: string | null; end: string | null; range: string } {
+  let start: string | null = null;
+  let end: string | null = null;
+  for (const a of activities) {
+    if (a.startAt && (!start || a.startAt < start)) start = a.startAt;
+    if (a.endAt && (!end || a.endAt > end)) end = a.endAt;
+  }
+  const range = start && end ? `${formatShort(start)} – ${formatShort(end)}` : "";
+  return { start, end, range };
+}
+
 export async function applyProgramme(
   db: Knex,
   programme: StructuredProgramme,
@@ -106,14 +125,21 @@ export async function applyProgramme(
 
     if (programme.phases.length > 0) {
       await trx("project_phases").insert(
-        programme.phases.map((phase) => ({
-          id: phaseIdByKey.get(phase.key)!,
-          project_id: projectId,
-          name: phase.name,
-          status: "Pending",
-          date_range: "",
-          sort_order: phase.sort,
-        })),
+        programme.phases.map((phase) => {
+          const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
+          const span = phaseDateSpan(phaseActivities);
+          const allDone =
+            phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
+          const anyStarted = phaseActivities.some((a) => a.percentComplete > 0);
+          return {
+            id: phaseIdByKey.get(phase.key)!,
+            project_id: projectId,
+            name: phase.name,
+            status: allDone ? "Done" : anyStarted ? "InProgress" : "Pending",
+            date_range: span.range,
+            sort_order: phase.sort,
+          };
+        }),
       );
     }
 
@@ -147,19 +173,46 @@ export async function applyProgramme(
     }
 
     const milestones = programme.activities.filter((a) => a.isMilestone);
+    const keyDateRows: Array<{
+      id: string;
+      project_id: string;
+      label: string;
+      target_date: string | null;
+      actual_date: null;
+      status: string;
+      notes: null;
+      sort_order: number;
+    }> = [];
+    let kdSort = 0;
+    const pushKeyDate = (label: string, endIso: string | null, percentComplete: number): void => {
+      if (!endIso) return;
+      keyDateRows.push({
+        id: generateId("kd"),
+        project_id: projectId,
+        label,
+        target_date: toDate(endIso),
+        actual_date: null,
+        status: percentComplete >= 100 ? "Met" : "Upcoming",
+        notes: null,
+        sort_order: kdSort++,
+      });
+    };
+
     if (milestones.length > 0) {
-      await trx("key_dates").insert(
-        milestones.map((milestone, idx) => ({
-          id: generateId("kd"),
-          project_id: projectId,
-          label: milestone.name,
-          target_date: toDate(milestone.endAt),
-          actual_date: null,
-          status: milestone.percentComplete >= 100 ? "Met" : "Upcoming",
-          notes: null,
-          sort_order: idx,
-        })),
-      );
+      for (const m of milestones) pushKeyDate(m.name, m.endAt, m.percentComplete);
+    } else {
+      if (programme.startAt) pushKeyDate("Project start", programme.startAt, 100);
+      for (const phase of programme.phases) {
+        const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
+        const span = phaseDateSpan(phaseActivities);
+        const done = phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
+        pushKeyDate(`${phase.name} complete`, span.end, done ? 100 : 0);
+      }
+      if (programme.endAt) pushKeyDate("Project completion", programme.endAt, progressPercent);
+    }
+
+    if (keyDateRows.length > 0) {
+      await trx("key_dates").insert(keyDateRows);
     }
   });
 

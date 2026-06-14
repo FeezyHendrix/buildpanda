@@ -57,19 +57,23 @@ function SquareIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function SparkleIcon(props: React.SVGProps<SVGSVGElement>) {
+function PandaMarkIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 29 36"
+      fill="currentColor"
       {...props}
     >
-      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+      <path d="M20.2064 26.3587L25.734 29.5945H15.2162L9.68862 26.3587H20.2064Z" />
+      <path d="M20.2064 26.3587V29.5945H25.734L20.2064 26.3587Z" />
+      <path d="M4.87246 26.3899L13.8241 31.6253H28.9379V35.7076H13.8036L4.85199 30.4722L4.87246 26.3899Z" />
+      <path d="M17.3453 14.0701L23.6714 14.9115L13.952 18.9991L7.62601 18.1576L17.3453 14.0701Z" />
+      <path d="M17.3453 14.0701L18.5635 17.0566L23.6714 14.9115L17.3453 14.0701Z" />
+      <path d="M3.19371 20.0534L13.4402 21.4142L27.4025 15.5451L28.9379 19.3159L14.9552 25.1953L4.70868 23.8345L3.19371 20.0534Z" />
+      <path d="M10.8197 2.53979L16.982 0.862177L9.54531 8.40882L3.38308 10.0864L10.8197 2.53979Z" />
+      <path d="M10.8197 2.53979L13.0717 4.82507L16.982 0.862177L10.8197 2.53979Z" />
+      <path d="M0 13.5663L9.98035 10.8447L20.667 0L23.5127 2.88777L12.8056 13.7481L2.82521 16.4696L0 13.5663Z" />
     </svg>
   );
 }
@@ -95,6 +99,97 @@ const SUGGESTIONS = [
   "What are the top risks?",
   "Take me to the Gantt chart",
 ];
+
+function renderInline(text: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-gray-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={i} className="rounded bg-gray-100 px-1 py-0.5 text-[0.85em] text-gray-800">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function FormattedMessage({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+
+  const flushList = () => {
+    if (!list) return;
+    const items = list.items;
+    blocks.push(
+      list.ordered ? (
+        <ol key={blocks.length} className="my-1 list-decimal space-y-1 pl-5">
+          {items.map((it, i) => (
+            <li key={i}>{renderInline(it)}</li>
+          ))}
+        </ol>
+      ) : (
+        <ul key={blocks.length} className="my-1 space-y-1 pl-1">
+          {items.map((it, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="mt-2 size-1 shrink-0 rounded-full bg-gray-400" />
+              <span>{renderInline(it)}</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+    list = null;
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const heading = line.match(/^#{1,4}\s+(.*)$/);
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+    const numbered = line.match(/^\d+\.\s+(.*)$/);
+
+    if (heading) {
+      flushList();
+      blocks.push(
+        <p key={blocks.length} className="mt-2 font-semibold text-gray-900">
+          {renderInline(heading[1]!)}
+        </p>,
+      );
+    } else if (bullet) {
+      if (!list || list.ordered) {
+        flushList();
+        list = { ordered: false, items: [] };
+      }
+      list.items.push(bullet[1]!);
+    } else if (numbered) {
+      if (!list || !list.ordered) {
+        flushList();
+        list = { ordered: true, items: [] };
+      }
+      list.items.push(numbered[1]!);
+    } else if (line.trim() === "") {
+      flushList();
+    } else {
+      flushList();
+      blocks.push(
+        <p key={blocks.length} className="leading-relaxed">
+          {renderInline(line)}
+        </p>,
+      );
+    }
+  }
+  flushList();
+
+  return <div className="space-y-2 text-sm leading-relaxed">{blocks}</div>;
+}
 
 export function PandaAiPane({ projectId }: { projectId: string }) {
   const [open, setOpen] = useState(false);
@@ -141,9 +236,14 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
         <button
           onClick={() => setOpen(true)}
           data-testid="panda-ai-fab"
-          className="fixed bottom-6 right-6 z-50 flex size-14 items-center justify-center rounded-full bg-[#004DE7] text-white shadow-lg transition-transform hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7] focus-visible:ring-offset-2"
+          title="Ask Panda AI about this project"
+          aria-label="Open Panda AI assistant"
+          className="group fixed bottom-6 right-6 z-50 flex size-14 cursor-pointer items-center justify-center rounded-full bg-[#004DE7] text-white shadow-lg transition-transform hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7] focus-visible:ring-offset-2"
         >
-          <SparkleIcon className="size-6" />
+          <PandaMarkIcon className="h-7 w-auto" />
+          <span className="pointer-events-none absolute bottom-full right-0 mb-3 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+            Ask Panda AI
+          </span>
         </button>
       )}
 
@@ -151,7 +251,7 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
         data-testid="panda-ai-pane"
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-[#FCFCFD] shadow-2xl transition-all duration-300",
-          "lg:static lg:z-auto lg:shrink-0 lg:overflow-hidden lg:shadow-none lg:transition-[width]",
+          "lg:static lg:z-auto lg:h-full lg:shrink-0 lg:overflow-hidden lg:shadow-none lg:transition-[width]",
           open
             ? "translate-x-0 lg:w-[440px] lg:border-l lg:border-[#EDEDED]"
             : "translate-x-full lg:w-0 lg:translate-x-0 lg:border-none",
@@ -161,7 +261,7 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
           <div className="flex shrink-0 items-center justify-between border-b border-[#EDEDED] bg-white px-4 py-3">
             <div className="flex items-center gap-3">
               <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-[#004DE7]">
-                <SparkleIcon className="size-5" />
+                <PandaMarkIcon className="h-5 w-auto" />
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900">Panda AI</h2>
@@ -218,14 +318,11 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
                       )}
                     >
                       {msg.role === "assistant" ? (
-                        <div className="whitespace-pre-wrap leading-relaxed">
-                          {msg.content ||
-                            (idx === messages.length - 1 && streaming && !activeTool ? (
-                              <Spinner size="sm" />
-                            ) : (
-                              ""
-                            ))}
-                        </div>
+                        msg.content ? (
+                          <FormattedMessage content={msg.content} />
+                        ) : idx === messages.length - 1 && streaming && !activeTool ? (
+                          <Spinner size="sm" />
+                        ) : null
                       ) : (
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                       )}

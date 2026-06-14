@@ -233,6 +233,12 @@ input {
   html {
     zoom: 0.9;
   }
+  .h-dvh {
+    height: calc(100dvh / 0.9);
+  }
+  .min-h-dvh {
+    min-height: calc(100dvh / 0.9);
+  }
 }
 
 @keyframes authBgFade {
