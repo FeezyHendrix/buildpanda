@@ -101,6 +101,8 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     participants: ["view"],
     teamMembers: ["view"],
     schedule: ["view"],
+    rfis: ["view", "create"],
+    bim: ["view"],
   },
   architect: {
     project: ["view"],
@@ -122,6 +124,8 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     participants: ["view"],
     teamMembers: ["view"],
     schedule: ["view"],
+    rfis: ["view", "create", "respond"],
+    bim: ["view"],
   },
   inspector: {
     project: ["view"],
@@ -140,6 +144,8 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     dailyLog: ["view"],
     participants: ["view"],
     schedule: ["view"],
+    rfis: ["view"],
+    bim: ["view"],
   },
   guest: {
     project: ["view"],
@@ -188,4 +194,21 @@ export function assertProjectPermission(
   if (!orgAllowed && !participantAllowed) {
     throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
   }
+}
+
+export function canProjectPermission(
+  project: ProjectScope & { id: string },
+  ctx: EnrichedAccessContext,
+  resource: string,
+  action: string,
+): boolean {
+  if (project.ownerId === ctx.userId) return true;
+
+  const orgId = project.organizationId;
+  const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
+  if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
+
+  const pRole = participantRole(project, ctx);
+  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+  return pPerms ? (pPerms[resource] ?? []).includes(action) : false;
 }
