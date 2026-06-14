@@ -5,6 +5,8 @@ import {
 import { NotFoundError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { projectsRepository } from "../projects/repository.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { queriesRepository } from "./repository.ts";
 import {
   queriesService,
@@ -39,6 +41,7 @@ const createBody = {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 4000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -52,6 +55,7 @@ const updateBody = {
     status: { type: "string", enum: STATUS },
     answer: { type: ["string", "null"], maxLength: 4000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -64,7 +68,9 @@ const commentBody = {
 
 const queryRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
-  const service = queriesService(queriesRepository(fastify.db));
+  const service = queriesService(queriesRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db)),
+  });
 
   async function loadProject(id: string) {
     const project = await projects.findById(id);

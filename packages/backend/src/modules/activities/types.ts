@@ -41,6 +41,8 @@ export interface Activity {
   actualStartAt: string | null;
   actualEndAt: string | null;
   workerCountPlanned: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
   notes: string | null;
   wbsCode: string | null;
   outlineLevel: number | null;
@@ -70,6 +72,8 @@ export interface ActivityRow {
   actual_start_at: Date | string | null;
   actual_end_at: Date | string | null;
   worker_count_planned: number;
+  assignee_id: string | null;
+  assignee_name?: string | null;
   notes: string | null;
   wbs_code: string | null;
   outline_level: number | null;
@@ -115,6 +119,7 @@ export interface CreateActivityInput {
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string;
   wbsCode?: string | null;
   outlineLevel?: number | null;
@@ -139,6 +144,7 @@ export interface UpdateActivityInput {
   actualStartAt?: string | null;
   actualEndAt?: string | null;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string | null;
   predecessors?: ActivityDependency[];
   percentComplete?: number;

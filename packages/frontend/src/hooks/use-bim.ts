@@ -133,16 +133,18 @@ export function useCreateBimIssue() {
       title,
       description,
       elementGuid,
+      assigneeId,
     }: {
       projectId: string;
       modelId: string;
       title: string;
       description?: string | null;
       elementGuid?: string | null;
+      assigneeId?: string | null;
     }) => {
       const { data } = await api.post<BimCoordinationIssue>(
         `/projects/${projectId}/bim/models/${modelId}/issues`,
-        { title, description, elementGuid },
+        { title, description, elementGuid, assigneeId },
       );
       return data;
     },

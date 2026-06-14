@@ -14,8 +14,9 @@ import {
   CHANGE_STATUS_META,
 } from "@/components/molecules/change-request-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { CHANGE_COLUMNS, textMeta } from "@/components/molecules/kanban-configs";
+import { CHANGE_COLUMNS, textMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useChangeRequests,
   useCreateChangeRequest,
@@ -48,6 +49,11 @@ export default function ProjectChangeRequests() {
   const updateCr = useUpdateChangeRequest();
   const deleteCr = useDeleteChangeRequest();
 
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editItem, setEditItem] = useState<ChangeRequest | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -58,6 +64,10 @@ export default function ProjectChangeRequests() {
   function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
     if (cr.status === status) return;
     updateCr.mutate({ projectId: project.id, changeId: cr.id, status });
+  }
+
+  function handleAssign(cr: ChangeRequest, assigneeId: string | null): void {
+    updateCr.mutate({ projectId: project.id, changeId: cr.id, assigneeId });
   }
 
   function handleCreate(values: UpsertChangeValues): void {
@@ -130,8 +140,12 @@ export default function ProjectChangeRequests() {
               getStatus={(cr) => cr.status}
               getTitle={(cr) => cr.title}
               renderMeta={(cr) => textMeta(cr.costImpact ? money(cr.costImpact, cr.currency) : null)}
+              renderFooter={(cr) => assigneeFooter(cr.assigneeName, null)}
               onMove={handleMove}
               onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(cr) => cr.assigneeId}
+              onAssign={handleAssign}
             />
           )}
         </div>
@@ -174,6 +188,7 @@ export default function ProjectChangeRequests() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
         isSubmitting={createCr.isPending}
         error={(createCr.error as Error | undefined)?.message ?? null}
@@ -182,6 +197,7 @@ export default function ProjectChangeRequests() {
         open={editItem !== null}
         onOpenChange={(o) => !o && setEditItem(null)}
         mode="edit"
+        assigneeOptions={assigneeOptions}
         initial={
           editItem
             ? {
@@ -192,6 +208,7 @@ export default function ProjectChangeRequests() {
                 costImpact: editItem.costImpact,
                 timeImpactDays: editItem.timeImpactDays,
                 currency: editItem.currency,
+                assigneeId: editItem.assigneeId,
               }
             : undefined
         }

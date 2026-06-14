@@ -17,6 +17,7 @@ export interface NewChangeRequestRecord {
   time_impact_days: number;
   currency: Currency;
   submitted_by_id: string | null;
+  assignee_id?: string | null;
 }
 
 export interface ChangeRequestUpdatePatch {
@@ -29,6 +30,7 @@ export interface ChangeRequestUpdatePatch {
   currency?: Currency;
   decided_by_id?: string | null;
   decided_at?: string | null;
+  assignee_id?: string | null;
   updated_at?: string;
 }
 
@@ -46,13 +48,17 @@ const SELECT = [
   "c.decided_by_id",
   "u.name as decided_by_name",
   "c.decided_at",
+  "c.assignee_id",
+  "asg.name as assignee_name",
   "c.created_at",
   "c.updated_at",
 ] as const;
 
 export function changeRequestsRepository(db: Knex) {
   function base() {
-    return db("change_requests as c").leftJoin("user as u", "u.id", "c.decided_by_id");
+    return db("change_requests as c")
+      .leftJoin("user as u", "u.id", "c.decided_by_id")
+      .leftJoin("user as asg", "asg.id", "c.assignee_id");
   }
 
   return {

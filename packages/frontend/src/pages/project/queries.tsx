@@ -14,8 +14,9 @@ import {
   QUERY_STATUS_META,
 } from "@/components/molecules/query-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { QUERY_COLUMNS, dueMeta } from "@/components/molecules/kanban-configs";
+import { QUERY_COLUMNS, dueMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateQuery,
   useDeleteQuery,
@@ -50,9 +51,18 @@ export default function ProjectQueries() {
   const updateQuery = useUpdateQuery();
   const deleteQuery = useDeleteQuery();
 
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
   function handleMove(query: SiteQuery, status: QueryStatus): void {
     if (query.status === status) return;
     updateQuery.mutate({ projectId: project.id, queryId: query.id, status });
+  }
+
+  function handleAssign(query: SiteQuery, assigneeId: string | null): void {
+    updateQuery.mutate({ projectId: project.id, queryId: query.id, assigneeId });
   }
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -64,7 +74,13 @@ export default function ProjectQueries() {
 
   function handleCreate(values: UpsertQueryValues): void {
     createQuery.mutate(
-      { projectId: project.id, subject: values.subject, question: values.question, dueDate: values.dueDate },
+      { 
+        projectId: project.id, 
+        subject: values.subject, 
+        question: values.question, 
+        dueDate: values.dueDate,
+        assigneeId: values.assigneeId,
+      },
       { onSuccess: () => setCreateOpen(false) },
     );
   }
@@ -139,8 +155,12 @@ export default function ProjectQueries() {
               getStatus={(q) => q.status}
               getTitle={(q) => q.subject}
               renderMeta={(q) => dueMeta(q.dueDate)}
+              renderFooter={(q) => assigneeFooter(q.assigneeName, q.dueDate)}
               onMove={handleMove}
               onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(q) => q.assigneeId}
+              onAssign={handleAssign}
             />
           )}
         </div>
@@ -186,6 +206,7 @@ export default function ProjectQueries() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
         isSubmitting={createQuery.isPending}
         error={(createQuery.error as Error | undefined)?.message ?? null}
@@ -195,6 +216,7 @@ export default function ProjectQueries() {
         open={editQuery !== null}
         onOpenChange={(o) => !o && setEditQuery(null)}
         mode="edit"
+        assigneeOptions={assigneeOptions}
         initial={
           editQuery
             ? {
@@ -202,6 +224,7 @@ export default function ProjectQueries() {
                 question: editQuery.question,
                 status: editQuery.status,
                 dueDate: editQuery.dueDate,
+                assigneeId: editQuery.assigneeId,
               }
             : undefined
         }

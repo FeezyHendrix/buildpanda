@@ -8,6 +8,12 @@ export interface UpsertQueryValues {
   question: string;
   status: QueryStatus;
   dueDate: string | null;
+  assigneeId: string | null;
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -15,6 +21,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initial?: Partial<UpsertQueryValues>;
+  assigneeOptions?: AssigneeOption[];
   onSubmit: (values: UpsertQueryValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -34,6 +41,7 @@ function UpsertQueryDialog({
   onOpenChange,
   mode,
   initial,
+  assigneeOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
@@ -42,6 +50,7 @@ function UpsertQueryDialog({
   const [question, setQuestion] = useState("");
   const [status, setStatus] = useState<QueryStatus>("Open");
   const [dueDate, setDueDate] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -49,6 +58,7 @@ function UpsertQueryDialog({
       setQuestion(initial?.question ?? "");
       setStatus(initial?.status ?? "Open");
       setDueDate(initial?.dueDate ?? "");
+      setAssigneeId(initial?.assigneeId ?? "");
     }
   }, [open, initial]);
 
@@ -59,6 +69,7 @@ function UpsertQueryDialog({
       question: question.trim(),
       status,
       dueDate: dueDate || null,
+      assigneeId: assigneeId || null,
     });
   }
 
@@ -114,6 +125,18 @@ function UpsertQueryDialog({
           <Label htmlFor="q-due">Needed by</Label>
           <input id="q-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="q-assignee">Assignee</Label>
+        <select id="q-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={field}>
+          <option value="">Unassigned</option>
+          {assigneeOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
       </div>
     </FormDrawer>
   );

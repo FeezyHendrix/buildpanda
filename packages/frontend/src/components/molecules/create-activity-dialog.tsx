@@ -12,6 +12,12 @@ export interface CreateActivityValues {
   plannedEndAt: string;
   workerCountPlanned: number;
   notes: string;
+  assigneeId: string | null;
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string;
 }
 
 export interface ActivityPrefill {
@@ -25,6 +31,7 @@ interface CreateActivityDialogProps {
   phases: ProjectPhase[];
   initial?: Activity | null;
   prefill?: ActivityPrefill | null;
+  assigneeOptions?: AssigneeOption[];
   onSubmit: (values: CreateActivityValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -43,6 +50,7 @@ function CreateActivityDialog({
   phases,
   initial,
   prefill,
+  assigneeOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
@@ -57,6 +65,7 @@ function CreateActivityDialog({
   const [plannedEndAt, setPlannedEndAt] = useState(toLocalInput(nextWeek));
   const [workerCountPlanned, setWorkerCountPlanned] = useState("8");
   const [notes, setNotes] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +83,8 @@ function CreateActivityDialog({
     );
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
     setNotes(initial?.notes ?? "");
-  }, [initial, open]);
+    setAssigneeId(initial?.assigneeId ?? "");
+  }, [open, initial, prefill]);
 
   const isValid =
     name.trim().length > 0 &&
@@ -94,6 +104,7 @@ function CreateActivityDialog({
       plannedEndAt: new Date(plannedEndAt).toISOString(),
       workerCountPlanned: Math.max(0, Number(workerCountPlanned) || 0),
       notes: notes.trim(),
+      assigneeId: assigneeId || null,
     });
   }
 
@@ -147,6 +158,23 @@ function CreateActivityDialog({
           ))}
         </select>
       </div>
+    </div>
+
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="activity-assignee">Assignee</Label>
+      <select
+        id="activity-assignee"
+        value={assigneeId}
+        onChange={(e) => setAssigneeId(e.target.value)}
+        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+      >
+        <option value="">Unassigned</option>
+        {assigneeOptions.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.name}
+          </option>
+        ))}
+      </select>
     </div>
     
     <div className="flex flex-col gap-1.5">

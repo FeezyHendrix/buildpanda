@@ -118,6 +118,8 @@ export interface SiteQuery {
   askedById: string | null;
   answeredById: string | null;
   answeredByName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   answeredAt: string | null;
   commentCount: number;
   createdAt: string;
@@ -285,6 +287,8 @@ export interface ChangeRequest {
   submittedById: string | null;
   decidedById: string | null;
   decidedByName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   decidedAt: string | null;
   commentCount: number;
   createdAt: string;
@@ -343,6 +347,23 @@ export interface ProjectInsights {
   scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number; blockedItems: number };
 }
 
+export interface GlobalWhatsNextItem {
+  id: string;
+  project_id: string;
+  projectName: string;
+}
+
+export interface GlobalWhatsNext {
+  windowDays: number;
+  from: string;
+  to: string;
+  dueActionItems: (GlobalWhatsNextItem & { title: string; priority: string; due_date: string; status: string })[];
+  dueQueries: (GlobalWhatsNextItem & { subject: string; due_date: string })[];
+  dueApprovals: (GlobalWhatsNextItem & { title: string; due_date: string; status: string })[];
+  upcomingKeyDates: (GlobalWhatsNextItem & { label: string; target_date: string })[];
+  expiringPermits: (GlobalWhatsNextItem & { title: string; expiry_date: string })[];
+}
+
 export interface WhatsNext {
   windowDays: number;
   from: string;
@@ -367,7 +388,7 @@ export interface ProjectParticipant {
   userId: string | null;
   name: string | null;
   email: string;
-  role: ParticipantRole;
+  role: ParticipantRole | "owner";
   status: ParticipantStatus;
   createdAt: string;
 }
@@ -715,6 +736,8 @@ export interface Activity {
   actualStartAt: string | null;
   actualEndAt: string | null;
   workerCountPlanned: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
   notes: string | null;
   wbsCode: string | null;
   outlineLevel: number | null;

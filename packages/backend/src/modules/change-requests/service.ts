@@ -1,5 +1,6 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { ChangeRequestsRepository, ChangeRequestUpdatePatch } from "./repository.ts";
 import type {
   ChangeComment,
@@ -18,6 +19,7 @@ export interface CreateChangeRequestInput {
   costImpact?: number;
   timeImpactDays?: number;
   currency?: Currency;
+  assigneeId?: string | null;
 }
 
 export interface UpdateChangeRequestInput {
@@ -28,9 +30,31 @@ export interface UpdateChangeRequestInput {
   costImpact?: number;
   timeImpactDays?: number;
   currency?: Currency;
+  assigneeId?: string | null;
+}
+
+export interface ChangeRequestsDeps {
+  notifications?: NotificationsService;
 }
 
 const DECISIONS: ChangeStatus[] = ["Approved", "Rejected"];
+
+function notifyChangeAssignee(
+  deps: ChangeRequestsDeps,
+  assigneeId: string | null | undefined,
+  projectId: string,
+  title: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
+  void deps.notifications
+    .notify(assigneeId, "change_request_assigned", {
+      title: "A change request was assigned to you",
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
 
 function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
   return {
@@ -47,6 +71,8 @@ function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
     decidedById: row.decided_by_id,
     decidedByName: row.decided_by_name,
     decidedAt: row.decided_at,
+    assigneeId: row.assignee_id,
+    assigneeName: row.assignee_name,
     commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -64,7 +90,10 @@ function toComment(row: ChangeCommentRow): ChangeComment {
   };
 }
 
-export function changeRequestsService(repository: ChangeRequestsRepository) {
+export function changeRequestsService(
+  repository: ChangeRequestsRepository,
+  deps: ChangeRequestsDeps = {},
+) {
   return {
     async list(projectId: string, status?: ChangeStatus): Promise<ChangeRequest[]> {
       const rows = await repository.listByProject(projectId, status);
@@ -91,7 +120,9 @@ export function changeRequestsService(repository: ChangeRequestsRepository) {
         time_impact_days: input.timeImpactDays ?? 0,
         currency: input.currency ?? "NGN",
         submitted_by_id: userId,
+        assignee_id: input.assigneeId ?? null,
       });
+      notifyChangeAssignee(deps, row.assignee_id, projectId, row.title, userId);
       return toChange(row, 0);
     },
 
@@ -122,8 +153,15 @@ export function changeRequestsService(repository: ChangeRequestsRepository) {
         }
       }
 
+      const reassigned =
+        input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id;
+      if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
+
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
+      if (reassigned) {
+        notifyChangeAssignee(deps, updated.assignee_id, projectId, updated.title, userId);
+      }
       const counts = await repository.commentCounts([id]);
       return toChange(updated, counts.get(id) ?? 0);
     },

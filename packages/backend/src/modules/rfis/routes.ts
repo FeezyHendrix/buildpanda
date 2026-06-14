@@ -8,6 +8,8 @@ import { rfiDistributionEmail } from "../../lib/email-templates.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { changeRequestsRepository } from "../change-requests/repository.ts";
 import { changeRequestsService } from "../change-requests/service.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { rfisRepository } from "./repository.ts";
 import {
   rfisService,
@@ -142,6 +144,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
   const service = rfisService(rfisRepository(fastify.db), {
     changeRequests: changeRequestsService(changeRequestsRepository(fastify.db)),
+    notifications: notificationsService(notificationsRepository(fastify.db)),
   });
 
   async function loadProject(id: string) {

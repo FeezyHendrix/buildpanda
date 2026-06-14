@@ -8,6 +8,7 @@ import { UpsertRfiDialog, type UpsertRfiValues } from "@/components/molecules/up
 import { RfiDetailDialog, RFI_STATUS_META } from "@/components/molecules/rfi-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateRfi, useProjectRfis } from "@/hooks/use-rfis";
+import { useParticipants } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import type { Rfi, RfiStatus } from "@/lib/project-types";
@@ -66,6 +67,11 @@ export default function ProjectRfis() {
     filter === "all" ? undefined : filter,
   );
   const createRfi = useCreateRfi();
+
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -145,6 +151,7 @@ export default function ProjectRfis() {
         onSubmit={handleCreate}
         isSubmitting={createRfi.isPending}
         error={createRfi.error instanceof Error ? createRfi.error.message : null}
+        assigneeOptions={assigneeOptions}
       />
 
       <RfiDetailDialog

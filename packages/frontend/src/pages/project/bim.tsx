@@ -12,6 +12,7 @@ import {
   useBimModels,
   useCreateBimIssue,
 } from "@/hooks/use-bim";
+import { useParticipants } from "@/hooks/use-participants";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
@@ -69,12 +70,17 @@ export default function ProjectBim() {
   const { data: models = [], isLoading } = useBimModels(project.id);
   const fileUrl = useBimModelFileUrl();
   const createIssue = useCreateBimIssue();
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [active, setActive] = useState<BimModel | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const [issueTitle, setIssueTitle] = useState("");
+  const [issueAssignee, setIssueAssignee] = useState("");
 
   function openViewer(model: BimModel): void {
     setActive(model);
@@ -99,8 +105,14 @@ export default function ProjectBim() {
         modelId: active.id,
         title: issueTitle,
         elementGuid: selected?.guid ?? null,
+        assigneeId: issueAssignee || null,
       },
-      { onSuccess: () => setIssueTitle("") },
+      {
+        onSuccess: () => {
+          setIssueTitle("");
+          setIssueAssignee("");
+        },
+      },
     );
   }
 
@@ -156,6 +168,18 @@ export default function ProjectBim() {
               placeholder="e.g. Beam clashes with duct"
               className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
             />
+            <select
+              value={issueAssignee}
+              onChange={(e) => setIssueAssignee(e.target.value)}
+              className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            >
+              <option value="">Unassigned</option>
+              {assigneeOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
             <Button
               variant="primary"
               size="sm"

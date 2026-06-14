@@ -1,5 +1,6 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import {
   abortMultipartUpload,
   completeMultipartUpload,
@@ -111,8 +112,24 @@ export interface RfiCreator {
 export function bimService(
   repository: BimRepository,
   enqueueProcessing: (versionId: string) => Promise<void>,
-  deps: { rfis?: RfiCreator } = {},
+  deps: { rfis?: RfiCreator; notifications?: NotificationsService } = {},
 ) {
+  function notifyIssueAssignee(
+    assigneeId: string | null | undefined,
+    projectId: string,
+    title: string,
+    actorId: string,
+  ): void {
+    if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
+    void deps.notifications
+      .notify(assigneeId, "bim_issue_assigned", {
+        title: "A coordination issue was assigned to you",
+        body: title,
+        projectId,
+      })
+      .catch(() => undefined);
+  }
+
   async function loadModel(projectId: string, modelId: string): Promise<BimModelRow> {
     const row = await repository.findModelById(modelId);
     if (!row || row.project_id !== projectId) throw new NotFoundError("BIM model");
@@ -239,6 +256,7 @@ export function bimService(
         assignee_id: input.assigneeId ?? null,
         created_by_id: userId,
       });
+      notifyIssueAssignee(row.assignee_id, projectId, row.title, userId);
       return toIssue(row);
     },
 
@@ -252,6 +270,7 @@ export function bimService(
       modelId: string,
       issueId: string,
       patch: { title?: string; description?: string | null; status?: "Open" | "Closed"; assigneeId?: string | null },
+      actorId?: string,
     ): Promise<BimCoordinationIssue> {
       await loadModel(projectId, modelId);
       const existing = await repository.findIssueById(issueId);
@@ -264,6 +283,9 @@ export function bimService(
         updated_at: new Date().toISOString(),
       });
       if (!row) throw new NotFoundError("Coordination issue");
+      if (patch.assigneeId !== undefined && patch.assigneeId !== existing.assignee_id) {
+        notifyIssueAssignee(row.assignee_id, projectId, row.title, actorId ?? "");
+      }
       return toIssue(row);
     },
 

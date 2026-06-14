@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { changeRequestsRepository } from "./repository.ts";
 import {
   changeRequestsService,
@@ -44,6 +46,7 @@ const createBody = {
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
     currency: { type: "string", enum: CURRENCY },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -59,6 +62,7 @@ const updateBody = {
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
     currency: { type: "string", enum: CURRENCY },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -70,7 +74,9 @@ const commentBody = {
 } as const;
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = changeRequestsService(changeRequestsRepository(fastify.db));
+  const service = changeRequestsService(changeRequestsRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db)),
+  });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
     "/projects/:id/change-requests",

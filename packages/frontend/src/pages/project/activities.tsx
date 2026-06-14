@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
   useDeleteActivity,
@@ -47,6 +48,11 @@ export default function ProjectActivities() {
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
+
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
   function startNewActivity(): void {
     setEditingTarget(null);
@@ -135,6 +141,7 @@ export default function ProjectActivities() {
         phases={project.timeline}
         initial={editingTarget}
         prefill={prefill}
+        assigneeOptions={assigneeOptions}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
         error={
           createActivity.error || updateActivity.error

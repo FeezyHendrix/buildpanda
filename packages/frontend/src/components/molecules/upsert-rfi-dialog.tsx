@@ -10,6 +10,12 @@ export interface UpsertRfiValues {
   dueDate: string | null;
   costImpact: boolean;
   scheduleImpact: boolean;
+  ballInCourtId: string | null;
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -18,6 +24,7 @@ interface Props {
   onSubmit: (values: UpsertRfiValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  assigneeOptions?: AssigneeOption[];
 }
 
 const PRIORITIES: { value: RfiPriority; label: string }[] = [
@@ -36,9 +43,10 @@ const EMPTY: UpsertRfiValues = {
   dueDate: null,
   costImpact: false,
   scheduleImpact: false,
+  ballInCourtId: null,
 };
 
-export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, error }: Props) {
+export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, error, assigneeOptions = [] }: Props) {
   const [values, setValues] = useState<UpsertRfiValues>(EMPTY);
 
   useEffect(() => {
@@ -113,6 +121,23 @@ export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, er
             onChange={(e) => update("dueDate", e.target.value || null)}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="rfi-bic">Ball in court</Label>
+        <select
+          id="rfi-bic"
+          className={field}
+          value={values.ballInCourtId ?? ""}
+          onChange={(e) => update("ballInCourtId", e.target.value || null)}
+        >
+          <option value="">Unassigned (you)</option>
+          {assigneeOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">
