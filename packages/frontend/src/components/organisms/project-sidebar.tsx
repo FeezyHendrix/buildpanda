@@ -125,9 +125,7 @@ const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
-  { label: "Messages", slug: "messages", Icon: MessagesIcon, helper: "Conversations" },
   { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon, helper: "Assistant" },
-  { label: "Settings", slug: "settings", Icon: SettingsIcon, helper: "Project setup" },
 ] as const;
 
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
@@ -304,10 +302,26 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
             }}
           />
           <SidebarNavGroup
-            label="Team & Admin"
+            label="Teams"
             Icon={ContractorsIcon}
             items={teamAdminItems}
             active={isTeamAdminActive}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Messages",
+              slug: "messages",
+              Icon: MessagesIcon,
+              to: `/project/${project.id}/messages`,
+            }}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Settings",
+              slug: "settings",
+              Icon: SettingsIcon,
+              to: `/project/${project.id}/settings`,
+            }}
           />
         </nav>
       )}
