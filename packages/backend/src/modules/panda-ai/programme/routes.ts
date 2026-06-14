@@ -21,8 +21,8 @@ const jobIdParams = {
 
 const applyBody = {
   type: "object",
-  required: ["city", "state", "budgetTotal"],
   properties: {
+    projectId: { type: "string", minLength: 1, maxLength: 100 },
     projectName: { type: "string", minLength: 1, maxLength: 200 },
     city: { type: "string", minLength: 1, maxLength: 120 },
     state: { type: "string", minLength: 1, maxLength: 120 },
@@ -33,10 +33,11 @@ const applyBody = {
 } as const;
 
 interface ApplyRequestBody {
+  projectId?: string;
   projectName?: string;
-  city: string;
-  state: string;
-  budgetTotal: number;
+  city?: string;
+  state?: string;
+  budgetTotal?: number;
   currency?: string;
 }
 
@@ -121,9 +122,6 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
       const activeOrg = request.activeOrganizationId;
       const organizationId =
         activeOrg !== null && request.orgRoles.has(activeOrg) ? activeOrg : null;
-      if (organizationId !== null) {
-        request.requireOrgPermission("project", "create");
-      }
 
       const job = await jobs.findByIdForUser(request.params.jobId, user.id);
       if (!job) throw new BadRequestError("Programme import job not found");
@@ -140,6 +138,22 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const body = request.body;
+
+      if (body.projectId) {
+        await request.requireProjectWrite(body.projectId);
+      } else {
+        if (organizationId !== null) {
+          request.requireOrgPermission("project", "create");
+        }
+        if (
+          body.city === undefined ||
+          body.state === undefined ||
+          body.budgetTotal === undefined
+        ) {
+          throw new BadRequestError("city, state and budgetTotal are required for a new project");
+        }
+      }
+
       const orgDefault = organizationId
         ? await getOrgDefaultCurrency(fastify.db, organizationId)
         : null;
@@ -149,10 +163,11 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
         organizationId,
         ownerId: user.id,
         currency: resolvedCurrency,
-        city: body.city,
-        state: body.state,
-        budgetTotal: body.budgetTotal,
+        city: body.city ?? "",
+        state: body.state ?? "",
+        budgetTotal: body.budgetTotal ?? 0,
         projectName: body.projectName,
+        existingProjectId: body.projectId,
       });
 
       await jobs.markApplied(job.id, result.projectId);
