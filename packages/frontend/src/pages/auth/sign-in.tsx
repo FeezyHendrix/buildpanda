@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { authClient } from "@/lib/auth-client";
@@ -11,6 +11,8 @@ export default function SignInForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,16 +31,18 @@ export default function SignInForm() {
       return;
     }
 
-    // Homeowners land in their own "My Build" portal; company staff in the dashboard.
+    if (redirectTo) {
+      navigate(redirectTo, { replace: true });
+      return;
+    }
     const accountType = (data?.user as { accountType?: string } | undefined)?.accountType;
     navigate(homePathFor(accountType));
   }
 
   async function handleGoogleSignIn() {
-    // Land on "/" so HomeRedirect routes by accountType (owners → /my-build).
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      callbackURL: redirectTo ?? "/",
     });
   }
 
