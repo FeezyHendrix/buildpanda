@@ -71,6 +71,16 @@ export function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/privacy/" className="text-sm text-white/70 hover:text-white">
+                Privacy
+              </Link>
+            </li>
+            <li>
+              <Link href="/data-policy/" className="text-sm text-white/70 hover:text-white">
+                Data Policy
+              </Link>
+            </li>
           </ul>
         </div>
       </Container>
