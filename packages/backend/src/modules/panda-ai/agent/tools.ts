@@ -196,25 +196,37 @@ export function buildTools(): AgentTool[] {
       }
     }),
 
-    tool(fn("analyze_drawing", "Look at and describe an architectural or engineering drawing (floor plan, elevation, section, structural, MEP). Use for drawings/plans where the visual layout matters, not just text. Pass the documentId from list_documents.", { documentId: { type: "string", description: "The document id from list_documents" } }, ["documentId"]), async (ctx, args) => {
+    tool(fn("analyze_drawing", "Look at and describe an architectural/engineering drawing or a site photo (floor plan, elevation, section, structural, MEP, or an image). Use for drawings, plans, and photos where the visual content matters. Pass the documentId from list_documents.", { documentId: { type: "string", description: "The document id from list_documents" } }, ["documentId"]), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const doc = await repo.documentFile(ctx.projectId, String(args.documentId));
       if (!doc) return { output: { error: "Document not found in this project." } };
       if (!doc.storage_path) return { output: { error: "This document has no file attached." } };
-      if (!doc.file_name.toLowerCase().endsWith(".pdf")) {
-        return { output: { error: "Drawing analysis currently supports PDF drawings only. Ask the user to export the drawing to PDF." } };
+      const lower = doc.file_name.toLowerCase();
+      const isImage = /\.(png|jpe?g|webp|gif)$/.test(lower);
+      const isPdf = lower.endsWith(".pdf");
+      if (!isPdf && !isImage) {
+        return { output: { error: "Visual analysis supports PDF drawings and image files (.png, .jpg). Ask the user to export the drawing to PDF." } };
       }
       try {
         const buffer = await streamToBuffer(await openStoredFile(doc.storage_path));
-        const pngs = await renderPdfPagesToPng(buffer, { maxPages: 2, dpi: 150 });
-        if (pngs.length === 0) return { output: { error: "Could not render this drawing." } };
-        const images = pngs.map((p) => pngToDataUrl(p));
+        let images: string[];
+        let pagesAnalyzed: number;
+        if (isPdf) {
+          const pngs = await renderPdfPagesToPng(buffer, { maxPages: 2, dpi: 150 });
+          if (pngs.length === 0) return { output: { error: "Could not render this drawing." } };
+          images = pngs.map((p) => pngToDataUrl(p));
+          pagesAnalyzed = pngs.length;
+        } else {
+          const mime = doc.mime_type ?? "image/png";
+          images = [`data:${mime};base64,${buffer.toString("base64")}`];
+          pagesAnalyzed = 1;
+        }
         const description = await chatVision(
-          `This is an architectural or engineering drawing titled "${doc.file_name}". Describe what it shows: discipline, sheet title if visible, the spaces/rooms or systems depicted, major elements and callouts, and any revision or scale info you can read. Be specific, but note you cannot read fine dimensions reliably.`,
+          `This is "${doc.file_name}" from a construction project. If it is a drawing, describe the discipline, sheet title if visible, the spaces/rooms or systems depicted, major elements and callouts, and any revision or scale info you can read (note you cannot read fine dimensions reliably). If it is a photo, describe what is happening on site.`,
           images,
           { detail: "low" },
         );
-        return { output: { fileName: doc.file_name, pagesAnalyzed: pngs.length, description: description ?? "No description produced." } };
+        return { output: { fileName: doc.file_name, pagesAnalyzed, description: description ?? "No description produced." } };
       } catch (error) {
         return { output: { error: error instanceof Error ? error.message : "Could not analyze this drawing." } };
       }

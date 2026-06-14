@@ -83,6 +83,7 @@ const ProjectPeople = lazy(() => import("@/pages/project/people"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
+const SharePage = lazy(() => import("@/pages/public/share-page"));
 
 const router = createBrowserRouter([
   {
@@ -132,6 +133,10 @@ const router = createBrowserRouter([
   {
     path: "/p/:token",
     element: <PublicProposalPage />,
+  },
+  {
+    path: "/share/:token",
+    element: <SharePage />,
   },
   {
     path: "/accept-invitation/:invitationId",
