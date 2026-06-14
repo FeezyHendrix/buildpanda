@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
 import { openStoredFile, streamToBuffer } from "../../lib/file-storage.ts";
+import { attachImportedDocument } from "../../lib/project-documents.ts";
 import { extractMaterialsFromBoq } from "./boq-import.ts";
 import { boqJobsRepository } from "./boq-jobs-repository.ts";
 
@@ -20,6 +21,14 @@ export async function runBoqImport(db: Knex, data: BoqImportJobData): Promise<vo
     const buffer = await streamToBuffer(stream);
     const result = await extractMaterialsFromBoq(buffer, job.file_name, "");
     await repo.markComplete(job.id, result.materials, result.usedAi);
+    await attachImportedDocument(db, {
+      projectId: job.project_id,
+      ownerId: job.requested_by,
+      fileName: job.file_name,
+      storagePath: job.storage_path,
+      sizeBytes: buffer.length,
+      categoryName: "Other",
+    }).catch(() => undefined);
   } catch (error) {
     const message = error instanceof Error ? error.message : "BoQ extraction failed";
     await repo.markFailed(job.id, message);

@@ -6,6 +6,7 @@ import { generateId } from "../../../lib/ids.ts";
 import { saveStream } from "../../../lib/file-storage.ts";
 import { currencyCodeSchema, resolveCurrency } from "../../../lib/currencies.ts";
 import { getOrgDefaultCurrency } from "../../../lib/org-currency-cache.ts";
+import { attachImportedDocument } from "../../../lib/project-documents.ts";
 import { programmeJobsRepository, type ProgrammeJobRow } from "./jobs-repository.ts";
 import { PROGRAMME_IMPORT_QUEUE, type ProgrammeImportJobData } from "./job.ts";
 import { applyProgramme } from "./apply.ts";
@@ -155,6 +156,14 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       await jobs.markApplied(job.id, result.projectId);
+
+      await attachImportedDocument(fastify.db, {
+        projectId: result.projectId,
+        ownerId: user.id,
+        fileName: job.file_name,
+        storagePath: job.storage_path,
+        categoryName: "Schedules & Programmes",
+      }).catch(() => undefined);
 
       return reply.status(201).send(result);
     },
