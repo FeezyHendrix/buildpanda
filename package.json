@@ -18,7 +18,10 @@
     "db:rollback": "pnpm --filter @buildpanda/backend db:rollback",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
-    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build"
+    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build",
+    "version:patch": "node scripts/version.mjs patch",
+    "version:minor": "node scripts/version.mjs minor",
+    "version:major": "node scripts/version.mjs major"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
