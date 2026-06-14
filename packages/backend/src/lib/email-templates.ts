@@ -378,3 +378,32 @@ export function projectInviteEmail(options: {
     }),
   };
 }
+
+export function rfiDistributionEmail(options: {
+  recipientName: string;
+  projectName: string;
+  rfiNumber: number;
+  rfiSubject: string;
+  question: string;
+  replyUrl: string;
+}): { subject: string; html: string } {
+  const recipient = escapeHtml(options.recipientName);
+  const project = escapeHtml(options.projectName);
+  const subjectText = escapeHtml(options.rfiSubject);
+  const question = escapeHtml(options.question);
+  return {
+    subject: `RFI-${options.rfiNumber}: ${options.rfiSubject} (${options.projectName})`,
+    html: renderEmail({
+      preview: `You've been asked to respond to RFI-${options.rfiNumber} on ${options.projectName}.`,
+      heading: `RFI-${options.rfiNumber}: ${subjectText}`,
+      bodyHtml: `<p style="margin:0;">Hi ${recipient},</p>
+                 <p style="margin:12px 0 0 0;">You've been asked to respond to a Request for Information on <strong style="color:${BRAND.heading};">${project}</strong>.</p>
+                 <p style="margin:12px 0 0 0;color:${BRAND.heading};"><strong>Question</strong></p>
+                 <p style="margin:4px 0 0 0;">${question}</p>
+                 <p style="margin:12px 0 0 0;">Click below to submit your response. No account or login is required.</p>`,
+      cta: { label: "Respond to this RFI", url: options.replyUrl },
+      footnote:
+        "This response link is single-use and expires in 14 days. If you weren't expecting this, you can safely ignore this email.",
+    }),
+  };
+}
