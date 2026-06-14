@@ -11,11 +11,12 @@ const connectionConfig: Knex.Config =
     ? {
         client: "pg",
         connection: config.db.connectionString,
-        pool: { min: 2, max: 10 },
+        pool: { min: 2, max: config.dbPoolMax },
       }
     : {
         client: "pg",
         connection: config.db,
+        pool: { min: 2, max: config.dbPoolMax },
       };
 
 export const db: Knex = knex(connectionConfig);

@@ -9,6 +9,7 @@ import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
 import { registerBimProcessingWorker } from "../modules/bim/job.ts";
 import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.ts";
 import { registerProgrammeImportWorker } from "../modules/panda-ai/programme/job.ts";
+import { registerProgressRecomputeWorker } from "../modules/activities/progress-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -19,14 +20,20 @@ declare module "fastify" {
 const queuePlugin: FastifyPluginAsync = async (fastify) => {
   const manager = new QueueManager(config.redis.url || null, fastify.log);
 
-  registerPandaAiWorker(fastify.db, manager);
-  registerProposalExpiryWorker(fastify.db, manager);
-  registerActionItemReminderWorker(fastify.db, manager);
-  registerRfiReminderWorker(fastify.db, manager);
-  registerBimProcessingWorker(fastify.db, manager);
-  registerBoqImportWorker(fastify.db, manager);
-  registerProgrammeImportWorker(fastify.db, manager);
-  manager.startWorkers();
+  const inlineModeRequiresLocalWorkers = manager.mode === "inline";
+  const runWorkers = inlineModeRequiresLocalWorkers || config.worker.runWorkers;
+
+  if (runWorkers) {
+    registerPandaAiWorker(fastify.db, manager);
+    registerProposalExpiryWorker(fastify.db, manager);
+    registerActionItemReminderWorker(fastify.db, manager);
+    registerRfiReminderWorker(fastify.db, manager);
+    registerBimProcessingWorker(fastify.db, manager);
+    registerBoqImportWorker(fastify.db, manager);
+    registerProgrammeImportWorker(fastify.db, manager);
+    registerProgressRecomputeWorker(fastify.db, manager);
+    manager.startWorkers();
+  }
 
   fastify.decorate("queue", manager);
 
@@ -34,7 +41,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     await manager.close();
   });
 
-  fastify.log.info({ mode: manager.mode }, "Queue manager ready");
+  fastify.log.info({ mode: manager.mode, runWorkers }, "Queue manager ready");
 };
 
 export default fp(queuePlugin, { name: "queue", dependencies: ["database"] });

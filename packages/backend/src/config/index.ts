@@ -20,6 +20,12 @@ function optionalNumber(name: string, fallback: number): number {
   return parsed;
 }
 
+function optionalBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  return raw === "1" || raw.toLowerCase() === "true";
+}
+
 const env = optional("NODE_ENV", "development");
 
 export const config = {
@@ -42,6 +48,16 @@ export const config = {
       .filter(Boolean),
     logLevel: optional("LOG_LEVEL", "info"),
   },
+
+  cluster: {
+    workers: optionalNumber("CLUSTER_WORKERS", optionalNumber("WEB_CONCURRENCY", 1)),
+  },
+
+  worker: {
+    runWorkers: optionalBool("RUN_WORKERS", true),
+  },
+
+  dbPoolMax: optionalNumber("DB_POOL_MAX", 10),
 
   // Emails auto-promoted to the global `admin` role on login (bootstraps the
   // first platform admin without manual DB edits). Comma-separated.
