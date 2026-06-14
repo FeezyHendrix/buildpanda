@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync } from "fastify";
+import { projectsRepository } from "../projects/repository.ts";
 
 const projectIdParams = {
   type: "object",
@@ -129,6 +130,88 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
         dueApprovals,
         upcomingKeyDates,
         expiringPermits,
+      };
+    },
+  );
+
+  fastify.get<{ Querystring: { days?: number } }>(
+    "/whats-next",
+    { schema: { querystring: whatsNextQuery } },
+    async (request) => {
+      const user = request.requireAuth();
+      const projects = await projectsRepository(db).listForOwner(user.id, [
+        ...request.orgRoles.keys(),
+      ]);
+      const days = request.query.days ?? 14;
+      const nowIso = new Date().toISOString();
+      const today = nowIso.slice(0, 10);
+      const cutoff = isoDateOffset(nowIso, days);
+
+      const empty = {
+        windowDays: days,
+        from: today,
+        to: cutoff,
+        dueActionItems: [],
+        dueQueries: [],
+        dueApprovals: [],
+        upcomingKeyDates: [],
+        expiringPermits: [],
+      };
+      if (projects.length === 0) return empty;
+
+      const projectIds = projects.map((p) => p.id);
+      const nameById = new Map(projects.map((p) => [p.id, p.name]));
+      const tag = <T extends { project_id: string }>(rows: T[]) =>
+        rows.map((r) => ({ ...r, projectName: nameById.get(r.project_id) ?? "" }));
+
+      const [dueActionItems, dueQueries, dueApprovals, upcomingKeyDates, expiringPermits] =
+        await Promise.all([
+          db("action_items")
+            .whereIn("project_id", projectIds)
+            .whereNot("status", "Resolved")
+            .whereNotNull("due_date")
+            .where("due_date", "<=", cutoff)
+            .select("id", "project_id", "title", "priority", "due_date", "status")
+            .orderBy("due_date", "asc"),
+          db("queries")
+            .whereIn("project_id", projectIds)
+            .where("status", "Open")
+            .whereNotNull("due_date")
+            .where("due_date", "<=", cutoff)
+            .select("id", "project_id", "subject", "due_date")
+            .orderBy("due_date", "asc"),
+          db("approvals")
+            .whereIn("project_id", projectIds)
+            .whereIn("status", ["Pending", "Resubmit"])
+            .whereNotNull("due_date")
+            .where("due_date", "<=", cutoff)
+            .select("id", "project_id", "title", "due_date", "status")
+            .orderBy("due_date", "asc"),
+          db("key_dates")
+            .whereIn("project_id", projectIds)
+            .where("status", "Upcoming")
+            .whereNotNull("target_date")
+            .where("target_date", "<=", cutoff)
+            .select("id", "project_id", "label", "target_date")
+            .orderBy("target_date", "asc"),
+          db("permits")
+            .whereIn("project_id", projectIds)
+            .where("status", "Approved")
+            .whereNotNull("expiry_date")
+            .where("expiry_date", "<=", cutoff)
+            .select("id", "project_id", "title", "expiry_date")
+            .orderBy("expiry_date", "asc"),
+        ]);
+
+      return {
+        windowDays: days,
+        from: today,
+        to: cutoff,
+        dueActionItems: tag(dueActionItems),
+        dueQueries: tag(dueQueries),
+        dueApprovals: tag(dueApprovals),
+        upcomingKeyDates: tag(upcomingKeyDates),
+        expiringPermits: tag(expiringPermits),
       };
     },
   );
