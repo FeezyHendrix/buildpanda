@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config/index.ts";
+import { isSupportedCurrency } from "./lib/currencies.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
@@ -36,6 +37,7 @@ import insightsRoutes from "./modules/insights/index.ts";
 import participantRoutes from "./modules/participants/index.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
+import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import proposalRoutes from "./modules/proposals/routes.ts";
 import publicProposalRoutes from "./modules/proposals/public-routes.ts";
@@ -44,6 +46,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: { level: config.http.logLevel },
     disableRequestLogging: false,
+    ajv: {
+      plugins: [
+        (ajv) => {
+          ajv.addFormat("currency", { type: "string", validate: isSupportedCurrency });
+          return ajv;
+        },
+      ],
+    },
   });
 
   await app.register(cors, {
@@ -88,6 +98,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(participantRoutes);
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
+  await app.register(programmeImportRoutes);
   await app.register(orgProfileRoutes);
   await app.register(proposalRoutes);
   await app.register(publicProposalRoutes);

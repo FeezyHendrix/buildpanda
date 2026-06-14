@@ -130,6 +130,15 @@ export async function deleteStoredFile(storagePath: string): Promise<void> {
   );
 }
 
+export async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    if (typeof chunk === "string") chunks.push(Buffer.from(chunk));
+    else chunks.push(Buffer.from(chunk as Uint8Array));
+  }
+  return Buffer.concat(chunks);
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;

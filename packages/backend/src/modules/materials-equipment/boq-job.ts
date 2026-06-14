@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
-import { openStoredFile } from "../../lib/file-storage.ts";
+import { openStoredFile, streamToBuffer } from "../../lib/file-storage.ts";
 import { extractMaterialsFromBoq } from "./boq-import.ts";
 import { boqJobsRepository } from "./boq-jobs-repository.ts";
 
@@ -8,15 +8,6 @@ export const BOQ_IMPORT_QUEUE = "boq-import-extraction";
 
 export interface BoqImportJobData {
   jobId: string;
-}
-
-async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    if (typeof chunk === "string") chunks.push(Buffer.from(chunk));
-    else chunks.push(Buffer.from(chunk as Uint8Array));
-  }
-  return Buffer.concat(chunks);
 }
 
 export async function runBoqImport(db: Knex, data: BoqImportJobData): Promise<void> {

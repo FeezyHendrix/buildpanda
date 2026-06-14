@@ -1,9 +1,11 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import type {
   Activity,
   ActivityDelay,
   ActivityDelayRow,
+  ActivityDependency,
   ActivityRow,
   CreateActivityInput,
   DelayReasonRow,
@@ -16,14 +18,6 @@ import type { ActivitiesRepository } from "./repository.ts";
 interface Actor {
   id: string;
   name: string;
-}
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
-}
-
-function toIsoOrNull(value: Date | string | null): string | null {
-  return value ? toIso(value) : null;
 }
 
 function buildDelay(
@@ -69,6 +63,19 @@ function buildActivity(
     actualEndAt: toIsoOrNull(row.actual_end_at),
     workerCountPlanned: row.worker_count_planned,
     notes: row.notes,
+    wbsCode: row.wbs_code,
+    outlineLevel: row.outline_level,
+    parentActivityId: row.parent_activity_id,
+    predecessors:
+      typeof row.predecessors === "string"
+        ? (JSON.parse(row.predecessors) as ActivityDependency[])
+        : (row.predecessors ?? []),
+    percentComplete: Number(row.percent_complete ?? 0),
+    durationDays: row.duration_days === null || row.duration_days === undefined ? null : Number(row.duration_days),
+    baselineStartAt: toIsoOrNull(row.baseline_start_at),
+    baselineEndAt: toIsoOrNull(row.baseline_end_at),
+    isMilestone: Boolean(row.is_milestone),
+    source: row.source,
     delays,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -166,11 +173,21 @@ export function activitiesService(repository: ActivitiesRepository) {
         name: input.name,
         activity_type: input.activityType,
         location: input.location ?? null,
-        status: "Planned",
+        status: input.status ?? "Planned",
         planned_start_at: input.plannedStartAt,
         planned_end_at: input.plannedEndAt,
         worker_count_planned: input.workerCountPlanned ?? 0,
         notes: input.notes ?? null,
+        wbs_code: input.wbsCode ?? null,
+        outline_level: input.outlineLevel ?? null,
+        parent_activity_id: input.parentActivityId ?? null,
+        predecessors: JSON.stringify(input.predecessors ?? []),
+        percent_complete: input.percentComplete ?? 0,
+        duration_days: input.durationDays ?? null,
+        baseline_start_at: input.baselineStartAt ?? null,
+        baseline_end_at: input.baselineEndAt ?? null,
+        is_milestone: input.isMilestone ?? false,
+        source: input.source ?? "manual",
         created_by_id: actor.id,
       });
       return buildOne(row);
@@ -209,6 +226,9 @@ export function activitiesService(repository: ActivitiesRepository) {
       if (input.workerCountPlanned !== undefined)
         patch.worker_count_planned = input.workerCountPlanned;
       if (input.notes !== undefined) patch.notes = input.notes;
+      if (input.predecessors !== undefined) patch.predecessors = JSON.stringify(input.predecessors);
+      if (input.percentComplete !== undefined) patch.percent_complete = input.percentComplete;
+      if (input.isMilestone !== undefined) patch.is_milestone = input.isMilestone;
 
       const updated = await repository.update(activityId, patch);
       if (!updated) throw new ConflictError("Activity update failed");

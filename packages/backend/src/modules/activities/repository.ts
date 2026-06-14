@@ -19,6 +19,16 @@ export interface NewActivityRecord {
   planned_end_at: string;
   worker_count_planned: number;
   notes: string | null;
+  wbs_code?: string | null;
+  outline_level?: number | null;
+  parent_activity_id?: string | null;
+  predecessors?: string;
+  percent_complete?: number;
+  duration_days?: number | null;
+  baseline_start_at?: string | null;
+  baseline_end_at?: string | null;
+  is_milestone?: boolean;
+  source?: string;
   created_by_id: string | null;
 }
 
@@ -34,6 +44,9 @@ export interface ActivityUpdatePatch {
   actual_end_at?: string | null;
   worker_count_planned?: number;
   notes?: string | null;
+  predecessors?: string;
+  percent_complete?: number;
+  is_milestone?: boolean;
 }
 
 export interface NewDelayRecord {

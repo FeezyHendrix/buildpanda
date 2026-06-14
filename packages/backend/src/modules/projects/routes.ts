@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from "../../lib/currencies.ts";
+import { currencyCodeSchema, type CurrencyCode } from "../../lib/currencies.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
@@ -9,7 +9,7 @@ const updateCurrencyBody = {
   required: ["currency"],
   additionalProperties: false,
   properties: {
-    currency: { type: "string", enum: SUPPORTED_CURRENCIES },
+    currency: currencyCodeSchema,
   },
 } as const;
 
@@ -50,7 +50,7 @@ const createProjectBody = {
       additionalProperties: false,
       properties: {
         buildingType: { type: "string", minLength: 1, maxLength: 100 },
-        currency: { type: "string", enum: ["NGN", "USD"] },
+        currency: currencyCodeSchema,
         budgetMin: { type: "number", minimum: 0 },
         budgetMax: { type: "number", minimum: 0 },
         timeline: { type: "string", minLength: 1, maxLength: 100 },
@@ -80,7 +80,7 @@ const updateBudgetBody = {
   properties: {
     budgetMin: { type: "number", minimum: 0 },
     budgetMax: { type: "number", minimum: 0 },
-    currency: { type: "string", enum: ["NGN", "USD"] },
+    currency: currencyCodeSchema,
   },
 } as const;
 

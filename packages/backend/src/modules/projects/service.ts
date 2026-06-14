@@ -1,5 +1,6 @@
 import { generateId } from "../../lib/ids.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
+import { toIso } from "../../lib/dates.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import {
   assertCanAccessProject,
@@ -29,10 +30,6 @@ const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">>
   { name: "External Works", date_range: "Weeks 43 – 46" },
   { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
 ];
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
-}
 
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
   return {

@@ -1,6 +1,7 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import { generateId } from "../../lib/ids.ts";
+import { toIso } from "../../lib/dates.ts";
 import type { MaterialsEquipmentRepository } from "./repository.ts";
 import type {
   EquipmentBucket,
@@ -99,10 +100,6 @@ function optionalText(value: string | null | undefined): string | null | undefin
 
 function requiredText(value: string): string {
   return value.trim();
-}
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
 }
 
 function equipmentBucket(status: EquipmentRequestStatus): EquipmentBucket {

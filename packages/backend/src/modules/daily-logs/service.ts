@@ -1,4 +1,5 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { toIso } from "../../lib/dates.ts";
 import type { DailyLogsRepository } from "./repository.ts";
 import type {
   DailyLog,
@@ -15,10 +16,6 @@ function assertDate(value: string, field: string): void {
   if (!DATE_RE.test(value)) {
     throw new BadRequestError(`${field} must be ISO date YYYY-MM-DD`);
   }
-}
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
 }
 
 function numOrNull(value: string | null): number | null {
