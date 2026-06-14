@@ -22,7 +22,10 @@ export default function OrganizationDetailPage() {
       </Link>
 
       <Card className="flex flex-col gap-2 p-6">
-        <h1 className="text-xl font-bold text-ink">{org.name}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-ink">{org.name}</h1>
+          <Badge tone="neutral">{org.default_currency ?? "NGN"}</Badge>
+        </div>
         <p className="text-sm text-muted">
           {org.slug} · Created {formatDate(org.createdAt)}
         </p>
