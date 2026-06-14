@@ -10,6 +10,10 @@ export const NOTIFICATION_TYPES = [
   { type: "rfi_assigned", label: "RFI assigned to you (ball in court)", group: "RFIs" },
   { type: "rfi_answered", label: "RFI answered", group: "RFIs" },
   { type: "rfi_due", label: "RFI due or overdue", group: "RFIs" },
+  { type: "query_assigned", label: "A query was assigned to you", group: "Tasks" },
+  { type: "change_request_assigned", label: "A change request was assigned to you", group: "Tasks" },
+  { type: "activity_assigned", label: "A site activity was assigned to you", group: "Tasks" },
+  { type: "bim_issue_assigned", label: "A coordination issue was assigned to you", group: "Tasks" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];
