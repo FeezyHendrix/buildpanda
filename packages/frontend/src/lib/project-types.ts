@@ -137,6 +137,106 @@ export interface SiteQueryDetail extends SiteQuery {
   comments: SiteQueryComment[];
 }
 
+export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";
+export type RfiPriority = "Low" | "Normal" | "High";
+
+export interface Rfi {
+  id: string;
+  projectId: string;
+  number: number;
+  subject: string;
+  question: string;
+  status: RfiStatus;
+  priority: RfiPriority;
+  visibility: "internal" | "shared";
+  ballInCourtId: string | null;
+  ballInCourtName: string | null;
+  assigneeRole: string | null;
+  dueDate: string | null;
+  officialResponse: string | null;
+  officialRespondedById: string | null;
+  officialRespondedByName: string | null;
+  officialRespondedAt: string | null;
+  costImpact: boolean;
+  scheduleImpact: boolean;
+  changeRequestId: string | null;
+  reopenedCount: number;
+  createdById: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RfiComment {
+  id: string;
+  rfiId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  contentHtml: string | null;
+  attachments: { fileId: string; url: string; name: string }[];
+  references: { type: "action_item" | "activity"; id: string; label: string }[];
+  isProposedResponse: boolean;
+  createdAt: string;
+}
+
+export interface RfiEvent {
+  id: string;
+  rfiId: string;
+  type: string;
+  actorId: string | null;
+  actorLabel: string | null;
+  detail: unknown;
+  createdAt: string;
+}
+
+export interface RfiDetail extends Rfi {
+  comments: RfiComment[];
+  events: RfiEvent[];
+}
+
+export type BimVersionStatus = "Processing" | "Ready" | "Failed";
+
+export interface BimModel {
+  id: string;
+  projectId: string;
+  name: string;
+  discipline: string | null;
+  currentVersionId: string | null;
+  status: BimVersionStatus | null;
+  elementCount: number | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BimIssueStatus = "Open" | "Closed";
+
+export interface BimCoordinationIssue {
+  id: string;
+  bimModelId: string;
+  elementGuid: string | null;
+  position: unknown;
+  title: string;
+  description: string | null;
+  status: BimIssueStatus;
+  rfiId: string | null;
+  assigneeId: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BimUploadTicket =
+  | { mode: "single"; storagePath: string; url: string }
+  | {
+      mode: "multipart";
+      storagePath: string;
+      uploadId: string;
+      partSize: number;
+      parts: { partNumber: number; url: string }[];
+    };
+
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Resubmit";
 
 export interface Approval {
