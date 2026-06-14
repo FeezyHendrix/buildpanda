@@ -82,7 +82,17 @@ export async function parseMppBuffer(buffer: Buffer, tmpDir: string): Promise<Pa
   const mppPath = join(tmpDir, "in.mpp");
   const xmlPath = join(tmpDir, "out.xml");
   writeFileSync(mppPath, buffer);
-  await convert(mppPath, xmlPath, { timeoutMs: 90_000 });
+  try {
+    await convert(mppPath, xmlPath, { timeoutMs: 90_000 });
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "ENOENT" || code === "ENOEXEC") {
+      throw new Error(
+        "Microsoft Project (.mpp) parsing is unavailable on this server. Please export your programme to Excel (.xls or .xlsx) and upload that instead.",
+      );
+    }
+    throw error;
+  }
   const xml = readFileSync(xmlPath, "utf8");
   const project = DProject.parse(xml) as { name?: string; title?: string; tasks?: DProjectTask[] };
   const rawTasks = project.tasks ?? [];
