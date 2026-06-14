@@ -384,7 +384,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
         onSubmit({
           title: title.trim(),
           materialName: materialName.trim(),
-          quantity: Number(quantity),
+          quantity: parseFloat(quantity),
           unit: unit.trim(),
           supplier: supplier.trim() || null,
           priority,
@@ -399,7 +399,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
       <Field label="Title" id="mat-title" value={title} onChange={setTitle} placeholder="e.g. Cement for first-floor blockwork" />
       <Field label="Material" id="mat-name" value={materialName} onChange={setMaterialName} placeholder="Dangote cement 42.5" />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" />
+        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="0.01" />
         <Field label="Unit" id="mat-unit" value={unit} onChange={setUnit} />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -422,11 +422,11 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
   );
 }
 
-function Field({ label, id, value, onChange, placeholder, type = "text" }: { label: string; id: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) {
+function Field({ label, id, value, onChange, placeholder, type = "text", step="any" }: { label: string; id: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string, step?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} type={type} className={FIELD} />
+      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} type={type} step={step} className={FIELD} />
     </div>
   );
 }
