@@ -93,3 +93,10 @@ export const LeadsIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
   </svg>
 );
+
+export const JobsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M3 9h18M8 14l2 2 4-4" />
+  </svg>
+);

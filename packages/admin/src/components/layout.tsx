@@ -9,6 +9,7 @@ import {
   ProjectIcon,
   LogoutIcon,
   LeadsIcon,
+  JobsIcon,
 } from "@/components/icons";
 
 const nav = [
@@ -17,6 +18,7 @@ const nav = [
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
   { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
+  { to: "/jobs", label: "Import jobs", icon: JobsIcon, end: false },
 ];
 
 export function Layout() {
