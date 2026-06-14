@@ -409,7 +409,7 @@ export default function ProjectSchedule() {
           </div>
         </div>
       )}
-      <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} projectId={project.id} />
     </div>
   );
 }

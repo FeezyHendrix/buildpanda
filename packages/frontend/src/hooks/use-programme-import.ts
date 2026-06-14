@@ -54,10 +54,11 @@ export interface ProgrammeImportJob {
 }
 
 export interface ApplyProgrammeInput {
+  projectId?: string;
   projectName?: string;
-  city: string;
-  state: string;
-  budgetTotal: number;
+  city?: string;
+  state?: string;
+  budgetTotal?: number;
   currency?: string;
 }
 

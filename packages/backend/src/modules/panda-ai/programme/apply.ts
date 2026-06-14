@@ -12,6 +12,7 @@ export interface ApplyProgrammeOptions {
   state: string;
   budgetTotal: number;
   projectName?: string;
+  existingProjectId?: string;
 }
 
 export interface ApplyProgrammeResult {
@@ -62,7 +63,8 @@ export async function applyProgramme(
   programme: StructuredProgramme,
   options: ApplyProgrammeOptions,
 ): Promise<ApplyProgrammeResult> {
-  const projectId = generateId("prj");
+  const projectId = options.existingProjectId ?? generateId("prj");
+  const isNewProject = !options.existingProjectId;
   const name = (options.projectName ?? programme.projectName ?? "Imported Project").trim();
   const address = `${options.city}, ${options.state}`;
   const totalCost = programme.activities.reduce((sum, a) => sum + (a.cost || 0), 0);
@@ -89,58 +91,81 @@ export async function applyProgramme(
   }
 
   await db.transaction(async (trx) => {
-    await trx("projects").insert({
-      id: projectId,
-      owner_id: options.ownerId,
-      organization_id: options.organizationId,
-      name,
-      address,
-      status: "On Track",
-      health_score: 0,
-      risk: "Low",
-      progress_percent: progressPercent,
-      budget_total: options.budgetTotal,
-      budget_used: 0,
-      currency: options.currency,
-      pending_approvals: 0,
-      folder_tone: "orange",
-      budget_min: options.budgetTotal,
-      budget_max: options.budgetTotal,
-      setup: {
-        source: "programme-import",
-        importedActivities: programme.activities.length,
-        usedAi: programme.usedAi,
-      },
-    });
+    if (isNewProject) {
+      await trx("projects").insert({
+        id: projectId,
+        owner_id: options.ownerId,
+        organization_id: options.organizationId,
+        name,
+        address,
+        status: "On Track",
+        health_score: 0,
+        risk: "Low",
+        progress_percent: progressPercent,
+        budget_total: options.budgetTotal,
+        budget_used: 0,
+        currency: options.currency,
+        pending_approvals: 0,
+        folder_tone: "orange",
+        budget_min: options.budgetTotal,
+        budget_max: options.budgetTotal,
+        setup: {
+          source: "programme-import",
+          importedActivities: programme.activities.length,
+          usedAi: programme.usedAi,
+        },
+      });
 
-    await trx("project_finances").insert({
-      project_id: projectId,
-      currency: options.currency,
-      total_budget: options.budgetTotal,
-      funds_deposited: 0,
-      funds_released: 0,
-      locked_in_escrow: 0,
-      remaining_balance: options.budgetTotal,
-    });
+      await trx("project_finances").insert({
+        project_id: projectId,
+        currency: options.currency,
+        total_budget: options.budgetTotal,
+        funds_deposited: 0,
+        funds_released: 0,
+        locked_in_escrow: 0,
+        remaining_balance: options.budgetTotal,
+      });
+    } else {
+      await trx("activities").where({ project_id: projectId, source: "programme-import" }).del();
+      await trx("key_dates").where({ project_id: projectId }).del();
+    }
 
     if (programme.phases.length > 0) {
-      await trx("project_phases").insert(
-        programme.phases.map((phase) => {
-          const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
-          const span = phaseDateSpan(phaseActivities);
-          const allDone =
-            phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
-          const anyStarted = phaseActivities.some((a) => a.percentComplete > 0);
-          return {
-            id: phaseIdByKey.get(phase.key)!,
-            project_id: projectId,
-            name: phase.name,
-            status: allDone ? "Done" : anyStarted ? "InProgress" : "Pending",
-            date_range: span.range,
-            sort_order: phase.sort,
-          };
-        }),
-      );
+      const reusedKeys = new Set<string>();
+      if (!isNewProject) {
+        const existingPhases = await trx("project_phases")
+          .where({ project_id: projectId })
+          .select<{ id: string; name: string }[]>("id", "name");
+        const existingByName = new Map(existingPhases.map((p) => [p.name, p.id]));
+        for (const phase of programme.phases) {
+          const matched = existingByName.get(phase.name);
+          if (matched) {
+            phaseIdByKey.set(phase.key, matched);
+            reusedKeys.add(phase.key);
+          }
+        }
+      }
+
+      const newPhases = programme.phases.filter((phase) => !reusedKeys.has(phase.key));
+      if (newPhases.length > 0) {
+        await trx("project_phases").insert(
+          newPhases.map((phase) => {
+            const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
+            const span = phaseDateSpan(phaseActivities);
+            const allDone =
+              phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
+            const anyStarted = phaseActivities.some((a) => a.percentComplete > 0);
+            return {
+              id: phaseIdByKey.get(phase.key)!,
+              project_id: projectId,
+              name: phase.name,
+              status: allDone ? "Done" : anyStarted ? "InProgress" : "Pending",
+              date_range: span.range,
+              sort_order: phase.sort,
+            };
+          }),
+        );
+      }
     }
 
     if (programme.activities.length > 0) {
@@ -184,13 +209,18 @@ export async function applyProgramme(
       sort_order: number;
     }> = [];
     let kdSort = 0;
+    const seen = new Set<string>();
     const pushKeyDate = (label: string, endIso: string | null, percentComplete: number): void => {
       if (!endIso) return;
+      const target = toDate(endIso);
+      const dedupeKey = `${label}|${target}`;
+      if (seen.has(dedupeKey)) return;
+      seen.add(dedupeKey);
       keyDateRows.push({
         id: generateId("kd"),
         project_id: projectId,
         label,
-        target_date: toDate(endIso),
+        target_date: target,
         actual_date: null,
         status: percentComplete >= 100 ? "Met" : "Upcoming",
         notes: null,
@@ -198,18 +228,15 @@ export async function applyProgramme(
       });
     };
 
-    if (milestones.length > 0) {
-      for (const m of milestones) pushKeyDate(m.name, m.endAt, m.percentComplete);
-    } else {
-      if (programme.startAt) pushKeyDate("Project start", programme.startAt, 100);
-      for (const phase of programme.phases) {
-        const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
-        const span = phaseDateSpan(phaseActivities);
-        const done = phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
-        pushKeyDate(`${phase.name} complete`, span.end, done ? 100 : 0);
-      }
-      if (programme.endAt) pushKeyDate("Project completion", programme.endAt, progressPercent);
+    if (programme.startAt) pushKeyDate("Project start", programme.startAt, 100);
+    for (const m of milestones) pushKeyDate(m.name, m.endAt, m.percentComplete);
+    for (const phase of programme.phases) {
+      const phaseActivities = programme.activities.filter((a) => a.phaseKey === phase.key);
+      const span = phaseDateSpan(phaseActivities);
+      const done = phaseActivities.length > 0 && phaseActivities.every((a) => a.percentComplete >= 100);
+      pushKeyDate(`${phase.name} complete`, span.end, done ? 100 : 0);
     }
+    if (programme.endAt) pushKeyDate("Project completion", programme.endAt, progressPercent);
 
     if (keyDateRows.length > 0) {
       await trx("key_dates").insert(keyDateRows);

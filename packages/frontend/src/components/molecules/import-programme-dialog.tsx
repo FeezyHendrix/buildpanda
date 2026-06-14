@@ -22,6 +22,7 @@ import {
 interface ImportProgrammeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId?: string;
 }
 
 const ACCEPT =
@@ -29,7 +30,7 @@ const ACCEPT =
 
 const CURRENCY_CHOICES = CURRENCY_CODES.slice(0, 5);
 
-function ImportProgrammeDialog({ open, onOpenChange }: ImportProgrammeDialogProps) {
+function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgrammeDialogProps) {
   const navigate = useNavigate();
   const [jobId, setJobId] = useState<string | null>(null);
 
@@ -119,11 +120,12 @@ function ImportProgrammeDialog({ open, onOpenChange }: ImportProgrammeDialogProp
             {status === "completed" && job?.result && (
               <PreviewState
                 result={job.result}
+                projectId={projectId}
                 isApplying={applyMutation.isPending}
                 applyError={applyMutation.error ? getApiErrorMessage(applyMutation.error) : null}
                 onApply={(input) =>
                   applyMutation.mutate(
-                    { jobId: job.id, input },
+                    { jobId: job.id, input: { ...input, projectId } },
                     { onSuccess: (res) => navigate(`/project/${res.projectId}/project-chart`) },
                   )
                 }
@@ -241,11 +243,13 @@ function UploadState({
 
 function PreviewState({
   result,
+  projectId,
   isApplying,
   applyError,
   onApply,
 }: {
   result: StructuredProgramme;
+  projectId?: string;
   isApplying: boolean;
   applyError: string | null;
   onApply: (data: {
@@ -262,8 +266,9 @@ function PreviewState({
   const [budgetTotal, setBudgetTotal] = useState("");
   const [currency, setCurrency] = useState("NGN");
 
+  const intoExisting = Boolean(projectId);
   const milestoneCount = result.activities.filter((a) => a.isMilestone).length;
-  const canSubmit = projectName.trim() && city.trim() && locationState.trim();
+  const canSubmit = intoExisting || (projectName.trim() && city.trim() && locationState.trim());
 
   function submit(event: React.FormEvent): void {
     event.preventDefault();
@@ -281,9 +286,9 @@ function PreviewState({
 
   return (
     <form onSubmit={submit} className="space-y-6">
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Project details</h3>
+      {intoExisting ? (
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-gray-900">Import schedule</h3>
           <Badge tone="neutral" size="md">
             {result.phases.length} phases · {result.activities.length} activities
             {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
@@ -294,50 +299,65 @@ function PreviewState({
             </Badge>
           ) : null}
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-600">Project name</span>
-            <input
-              className={inputClass}
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="e.g. Lekki Phase 1 Residential"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-600">Currency</span>
-            <CurrencyPicker currencies={CURRENCY_CHOICES} value={currency} onChange={setCurrency} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-600">City</span>
-            <input
-              className={inputClass}
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. Lagos"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-600">State / Region</span>
-            <input
-              className={inputClass}
-              value={locationState}
-              onChange={(e) => setLocationState(e.target.value)}
-              placeholder="e.g. Lagos State"
-            />
-          </label>
-          <label className="block sm:col-span-2">
-            <span className="mb-1 block text-xs font-medium text-gray-600">Total budget</span>
-            <input
-              className={inputClass}
-              value={budgetTotal}
-              onChange={(e) => setBudgetTotal(e.target.value)}
-              inputMode="numeric"
-              placeholder="0"
-            />
-          </label>
+      ) : (
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">Project details</h3>
+            <Badge tone="neutral" size="md">
+              {result.phases.length} phases · {result.activities.length} activities
+              {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
+            </Badge>
+            {result.usedAi ? (
+              <Badge tone="info" size="md">
+                Panda AI
+              </Badge>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">Project name</span>
+              <input
+                className={inputClass}
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="e.g. Lekki Phase 1 Residential"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">Currency</span>
+              <CurrencyPicker currencies={CURRENCY_CHOICES} value={currency} onChange={setCurrency} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">City</span>
+              <input
+                className={inputClass}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Lagos"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-gray-600">State / Region</span>
+              <input
+                className={inputClass}
+                value={locationState}
+                onChange={(e) => setLocationState(e.target.value)}
+                placeholder="e.g. Lagos State"
+              />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1 block text-xs font-medium text-gray-600">Total budget</span>
+              <input
+                className={inputClass}
+                value={budgetTotal}
+                onChange={(e) => setBudgetTotal(e.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+              />
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-gray-900">Parsed schedule preview</h3>
@@ -354,7 +374,13 @@ function PreviewState({
 
       <div className="flex items-center justify-end">
         <Button type="submit" disabled={!canSubmit || isApplying}>
-          {isApplying ? "Building project…" : "Build project"}
+          {isApplying
+            ? intoExisting
+              ? "Importing…"
+              : "Building project…"
+            : intoExisting
+              ? "Import into project"
+              : "Build project"}
         </Button>
       </div>
     </form>
