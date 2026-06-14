@@ -69,6 +69,20 @@ const updateActivityBody = {
     actualEndAt: { type: ["string", "null"], minLength: 1, maxLength: 40 },
     workerCountPlanned: { type: "integer", minimum: 0, maximum: 5000 },
     notes: { type: ["string", "null"], maxLength: 2000 },
+    predecessors: {
+      type: "array",
+      maxItems: 100,
+      items: {
+        type: "object",
+        required: ["activityId", "type", "lagDays"],
+        additionalProperties: false,
+        properties: {
+          activityId: { type: "string", minLength: 1, maxLength: 100 },
+          type: { type: "string", enum: ["FS", "SS", "FF", "SF"] },
+          lagDays: { type: "integer", minimum: -365, maximum: 365 },
+        },
+      },
+    },
   },
 } as const;
 

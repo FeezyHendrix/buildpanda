@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { recomputePhaseDateRanges } from "../../lib/schedule-cascade.ts";
 import type {
   ActivityDelayRow,
   ActivityRow,
@@ -150,6 +151,10 @@ export function activitiesRepository(db: Knex) {
         .update(patch)
         .returning<ActivityDelayRow[]>("*");
       return row;
+    },
+
+    recomputePhaseRanges(projectId: string): Promise<void> {
+      return recomputePhaseDateRanges(db, projectId);
     },
   };
 }
