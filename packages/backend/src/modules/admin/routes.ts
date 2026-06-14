@@ -164,6 +164,34 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Querystring: ListQuery }>(
+    "/admin/jobs",
+    { schema: { querystring: listQuery } },
+    async (request) => repo.listImportJobs(toListParams(request.query)),
+  );
+
+  fastify.get<{ Params: { kind: string; id: string } }>(
+    "/admin/jobs/:kind/:id",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["kind", "id"],
+          additionalProperties: false,
+          properties: {
+            kind: { type: "string", enum: ["programme", "boq"] },
+            id: { type: "string", minLength: 1 },
+          },
+        } as const,
+      },
+    },
+    async (request) => {
+      const job = await repo.getImportJob(request.params.kind, request.params.id);
+      if (!job) throw new NotFoundError("Import job");
+      return job;
+    },
+  );
+
   // Read-only drill-down collections for a project.
   fastify.get<{ Params: { id: string } }>(
     "/admin/projects/:id/finances",

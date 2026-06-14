@@ -21,6 +21,8 @@ export default function DashboardPage() {
     { label: "Documents", value: data.counts.documents },
     { label: "Open disputes", value: data.counts.openDisputes },
     { label: "Unassigned leads", value: data.counts.unassignedLeads, to: "/leads" },
+    { label: "Import jobs", value: data.counts.importJobs, to: "/jobs" },
+    { label: "Failed imports", value: data.counts.failedImportJobs, to: "/jobs" },
   ];
 
   return (
