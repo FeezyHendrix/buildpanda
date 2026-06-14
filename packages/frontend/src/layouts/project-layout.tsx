@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
+import { PandaAiPane } from "@/components/organisms/panda-ai-pane";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
@@ -71,6 +72,7 @@ export default function ProjectLayout() {
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
+        <PandaAiPane projectId={project.id} />
       </div>
     </AppShell>
   );
