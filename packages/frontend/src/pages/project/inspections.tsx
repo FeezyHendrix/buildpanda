@@ -141,18 +141,16 @@ export default function ProjectInspections() {
           />
         </div>
       ) : (
-        <section className="mt-6 flex gap-4 justify-center">
-          <div className="flex flex-col gap-4">
-            {visible.length === 0 ? (
-              <Card padding="lg" className="text-center text-sm text-gray-500">
-                No inspections match this filter.
-              </Card>
-            ) : (
-              visible.map((report) => (
-                <InspectionCard key={report.id} projectId={project.id} report={report} />
-              ))
-            )}
-          </div>
+        <section className="mt-6 flex flex-col gap-4">
+          {visible.length === 0 ? (
+            <Card padding="lg" className="text-center text-sm text-gray-500">
+              No inspections match this filter.
+            </Card>
+          ) : (
+            visible.map((report) => (
+              <InspectionCard key={report.id} projectId={project.id} report={report} />
+            ))
+          )}
         </section>
       )}
     </div>
