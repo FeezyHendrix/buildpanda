@@ -9,6 +9,9 @@ interface UserMenuProps {
   avatarUrl?: string | null;
   onLogout: () => void;
   className?: string;
+  /** "compact" = avatar + chevron (navbar). "full" = avatar + name row that
+   * opens upward, for a sidebar footer. */
+  variant?: "compact" | "full";
 }
 
 function ChevronDownIcon() {
@@ -35,27 +38,54 @@ function UserMenu({
   avatarUrl,
   onLogout,
   className,
+  variant = "compact",
 }: UserMenuProps) {
+  const isFull = variant === "full";
   return (
     <Menu.Root>
-      <Menu.Trigger
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full text-gray-500 outline-none",
-          "hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          className,
-        )}
-        aria-label="Open user menu"
-      >
-        <Avatar name={name} src={avatarUrl} size="sm" />
-        <ChevronDownIcon />
-      </Menu.Trigger>
+      {isFull ? (
+        <Menu.Trigger
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none",
+            "hover:bg-[#EFEFEF] focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            className,
+          )}
+          aria-label="Open user menu"
+        >
+          <Avatar name={name} src={avatarUrl} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-gray-900">{name}</p>
+            {email ? (
+              <p className="truncate text-xs text-gray-500">{email}</p>
+            ) : null}
+          </div>
+          <ChevronDownIcon />
+        </Menu.Trigger>
+      ) : (
+        <Menu.Trigger
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full text-gray-500 outline-none",
+            "hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            className,
+          )}
+          aria-label="Open user menu"
+        >
+          <Avatar name={name} src={avatarUrl} size="sm" />
+          <ChevronDownIcon />
+        </Menu.Trigger>
+      )}
 
       <Menu.Portal>
-        <Menu.Positioner align="end" sideOffset={8}>
+        <Menu.Positioner
+          side={isFull ? "top" : "bottom"}
+          align={isFull ? "start" : "end"}
+          sideOffset={8}
+        >
           <Menu.Popup
             className={cn(
               "z-50 min-w-[220px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5",
-              "origin-top-right outline-none",
+              isFull ? "origin-bottom-left" : "origin-top-right",
+              "outline-none",
             )}
           >
             <div className="px-3 py-2">

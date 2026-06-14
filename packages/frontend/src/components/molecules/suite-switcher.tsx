@@ -27,7 +27,7 @@ const SUITES = [
 ] as const;
 
 interface SuiteSwitcherProps {
-  variant?: "sidebar" | "navbar";
+  variant?: "sidebar" | "navbar" | "segmented";
   className?: string;
 }
 
@@ -45,6 +45,36 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
     if (open) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
+
+  // Both workspaces always visible as a segmented toggle — no dropdown needed
+  // for a two-way switch. Used in the full-height sidebar.
+  if (variant === "segmented") {
+    return (
+      <div className={cn("flex flex-col gap-0.5 rounded-xl bg-[#ECECEC] p-1", className)}>
+        {SUITES.map((suite) => {
+          const isActive = suite.id === active.id;
+          return (
+            <Link
+              key={suite.id}
+              to={suite.href}
+              onClick={() => localStorage.setItem(LAST_SUITE_KEY, suite.id)}
+              aria-current={isActive ? "true" : undefined}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                isActive
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800",
+              )}
+            >
+              <span className="text-base leading-none">{suite.icon}</span>
+              <span>{suite.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
 
   const trigger =
     variant === "sidebar" ? (
