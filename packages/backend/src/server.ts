@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config/index.ts";
 import { isSupportedCurrency } from "./lib/currencies.ts";
+import { setLogger } from "./lib/logger.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
@@ -58,6 +59,8 @@ export async function buildApp(): Promise<FastifyInstance> {
       ],
     },
   });
+
+  setLogger(app.log);
 
   await app.register(cors, {
     origin: config.http.corsOrigins,
