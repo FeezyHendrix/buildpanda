@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { currencyCodeSchema, type CurrencyCode } from "../../lib/currencies.ts";
+import { config } from "../../config/index.ts";
+import { generateId } from "../../lib/ids.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
@@ -104,6 +106,26 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       if (organizationId !== null) {
         request.requireOrgPermission("project", "create");
       }
+
+      if (organizationId === null && config.consulting.orgId) {
+        const owner = await fastify.db("user")
+          .where({ id: user.id })
+          .first<{ accountType: string | null }>();
+        if (owner?.accountType === "project_owner") {
+          const project = await service.create(request.body, null, config.consulting.orgId);
+          await fastify.db("project_participants").insert({
+            id: generateId("pp"),
+            project_id: project.id,
+            user_id: user.id,
+            email: user.email.toLowerCase(),
+            role: "client",
+            status: "active",
+            invited_by_id: user.id,
+          });
+          return reply.status(201).send(project);
+        }
+      }
+
       const project = await service.create(request.body, user.id, organizationId);
       return reply.status(201).send(project);
     },
