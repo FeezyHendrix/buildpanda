@@ -69,7 +69,7 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
 
 function buildCreate(
   input: CreateProjectInput,
-  ownerId: string,
+  ownerId: string | null,
   organizationId: string | null,
 ): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: CurrencyCode } {
   const projectId = generateId("prj");
@@ -150,7 +150,7 @@ export function projectsService(repository: ProjectsRepository) {
 
     async create(
       input: CreateProjectInput,
-      ownerId: string,
+      ownerId: string | null,
       organizationId: string | null,
     ): Promise<Project> {
       const { project, phases, financesCurrency } = buildCreate(input, ownerId, organizationId);

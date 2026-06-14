@@ -69,6 +69,7 @@ export default function CreateProject() {
   const [city, setCity] = useState("");
   const [ownsLand, setOwnsLand] = useState<SwitcherValue>("no");
   const [landFiles, setLandFiles] = useState<FileList | null>(null);
+  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
 
   const { data: orgProfile } = useOrgProfile();
   const [buildingType, setBuildingType] = useState<string | null>(null);
@@ -134,6 +135,35 @@ export default function CreateProject() {
     }
   }
 
+  async function seedBimModel(projectId: string, files: FileList): Promise<void> {
+    try {
+      const file = files[0];
+      if (!file || !/\.ifc$/i.test(file.name)) return;
+      const { data: ticket } = await api.post<{
+        mode: string;
+        storagePath: string;
+        url?: string;
+      }>(`/projects/${projectId}/bim/upload-url`, {
+        fileName: file.name,
+        sizeBytes: file.size,
+      });
+      if (ticket.mode !== "single" || !ticket.url) return;
+      await fetch(ticket.url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+      });
+      await api.post(`/projects/${projectId}/bim/models`, {
+        name: file.name.replace(/\.ifc$/i, ""),
+        fileName: file.name,
+        storagePath: ticket.storagePath,
+        sizeBytes: file.size,
+      });
+    } catch {
+      void 0;
+    }
+  }
+
   async function handleFinish(): Promise<void> {
     if (
       !projectType ||
@@ -170,6 +200,9 @@ export default function CreateProject() {
       });
       if (landFiles && landFiles.length > 0) {
         await uploadLandDocuments(project.id, landFiles);
+      }
+      if (bimFiles && bimFiles.length > 0) {
+        await seedBimModel(project.id, bimFiles);
       }
       navigate(`/project/${project.id}/overview`);
     } catch (err) {
@@ -226,6 +259,7 @@ export default function CreateProject() {
           onCityChange={setCity}
           onOwnsLandChange={setOwnsLand}
           onFilesChange={setLandFiles}
+          onBimFileChange={setBimFiles}
         />
       )}
       {!isReview && step === 3 && (

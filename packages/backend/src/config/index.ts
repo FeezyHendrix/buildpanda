@@ -66,6 +66,10 @@ export const config = {
     baseUrl: optional("BETTER_AUTH_URL", "http://localhost:3000"),
   },
 
+  consulting: {
+    orgId: optional("BUILDPANDA_CONSULTING_ORG_ID", ""),
+  },
+
   mail: {
     token: optional("ZEPTOMAIL_TOKEN", ""),
     fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
