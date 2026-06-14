@@ -42,6 +42,7 @@ export interface ChangeRequestInput {
   costImpact?: number;
   timeImpactDays?: number;
   currency?: "NGN" | "USD";
+  assigneeId?: string | null;
 }
 
 export function useCreateChangeRequest() {

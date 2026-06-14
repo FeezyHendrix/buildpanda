@@ -8,6 +8,11 @@ export interface KanbanColumn<S extends string> {
   accent: string;
 }
 
+export interface KanbanAssigneeOption {
+  id: string;
+  name: string;
+}
+
 export interface KanbanBoardProps<T, S extends string> {
   items: T[];
   columns: KanbanColumn<S>[];
@@ -19,6 +24,65 @@ export interface KanbanBoardProps<T, S extends string> {
   renderFooter?: (item: T) => ReactNode;
   onMove: (item: T, status: S) => void;
   onOpen: (id: string) => void;
+  assigneeOptions?: KanbanAssigneeOption[];
+  getAssigneeId?: (item: T) => string | null;
+  onAssign?: (item: T, assigneeId: string | null) => void;
+}
+
+function AssignMenu({
+  currentId: _currentId,
+  options,
+  onAssign,
+}: {
+  currentId: string | null;
+  options: KanbanAssigneeOption[];
+  onAssign: (assigneeId: string | null) => void;
+}) {
+  return (
+    <Menu.Root>
+      <Menu.Trigger
+        className={cn(
+          "rounded-md px-2 py-1 text-xs font-medium text-gray-500 outline-none",
+          "hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+        )}
+        aria-label="Assign"
+        onClick={(e) => e.stopPropagation()}
+      >
+        Assign
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end" sideOffset={6}>
+          <Menu.Popup
+            className={cn(
+              "z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none",
+            )}
+          >
+            <Menu.Item
+              className={cn(
+                "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
+                "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+              )}
+              onClick={() => onAssign(null)}
+            >
+              Unassigned
+            </Menu.Item>
+            {options.map((option) => (
+              <Menu.Item
+                key={option.id}
+                className={cn(
+                  "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
+                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                )}
+                onClick={() => onAssign(option.id)}
+              >
+                {option.name}
+              </Menu.Item>
+            ))}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
+  );
 }
 
 function MoveMenu<S extends string>({
@@ -81,6 +145,9 @@ function KanbanBoard<T, S extends string>({
   renderFooter,
   onMove,
   onOpen,
+  assigneeOptions,
+  getAssigneeId,
+  onAssign,
 }: KanbanBoardProps<T, S>) {
   return (
     <div
@@ -126,11 +193,20 @@ function KanbanBoard<T, S extends string>({
                           {renderFooter ? renderFooter(item) : <span />}
                         </div>
                         {canManage && (
-                          <MoveMenu
-                            current={column.status}
-                            columns={columns}
-                            onMove={(s) => onMove(item, s)}
-                          />
+                          <div className="flex items-center gap-1">
+                            {onAssign && getAssigneeId && (
+                              <AssignMenu
+                                currentId={getAssigneeId(item)}
+                                options={assigneeOptions ?? []}
+                                onAssign={(aid) => onAssign(item, aid)}
+                              />
+                            )}
+                            <MoveMenu
+                              current={column.status}
+                              columns={columns}
+                              onMove={(s) => onMove(item, s)}
+                            />
+                          </div>
                         )}
                       </div>
                     </div>

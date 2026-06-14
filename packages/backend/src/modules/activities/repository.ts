@@ -1,5 +1,4 @@
 import type { Knex } from "knex";
-import { recomputePhaseDateRanges } from "../../lib/schedule-cascade.ts";
 import type {
   ActivityDelayRow,
   ActivityRow,
@@ -19,6 +18,7 @@ export interface NewActivityRecord {
   planned_start_at: string;
   planned_end_at: string;
   worker_count_planned: number;
+  assignee_id?: string | null;
   notes: string | null;
   wbs_code?: string | null;
   outline_level?: number | null;
@@ -44,6 +44,7 @@ export interface ActivityUpdatePatch {
   actual_start_at?: string | null;
   actual_end_at?: string | null;
   worker_count_planned?: number;
+  assignee_id?: string | null;
   notes?: string | null;
   predecessors?: string;
   percent_complete?: number;
@@ -71,12 +72,18 @@ export function activitiesRepository(db: Knex) {
   return {
     listByProject(projectId: string): Promise<ActivityRow[]> {
       return db<ActivityRow>("activities")
-        .where({ project_id: projectId })
-        .orderBy("planned_start_at", "asc");
+        .leftJoin("user as asg", "asg.id", "activities.assignee_id")
+        .where({ "activities.project_id": projectId })
+        .orderBy("planned_start_at", "asc")
+        .select("activities.*", "asg.name as assignee_name");
     },
 
     findById(id: string): Promise<ActivityRow | undefined> {
-      return db<ActivityRow>("activities").where({ id }).first();
+      return db<ActivityRow>("activities")
+        .leftJoin("user as asg", "asg.id", "activities.assignee_id")
+        .where({ "activities.id": id })
+        .select("activities.*", "asg.name as assignee_name")
+        .first();
     },
 
     delaysForActivities(activityIds: string[]): Promise<ActivityDelayRow[]> {
@@ -151,10 +158,6 @@ export function activitiesRepository(db: Knex) {
         .update(patch)
         .returning<ActivityDelayRow[]>("*");
       return row;
-    },
-
-    recomputePhaseRanges(projectId: string): Promise<void> {
-      return recomputePhaseDateRanges(db, projectId);
     },
   };
 }

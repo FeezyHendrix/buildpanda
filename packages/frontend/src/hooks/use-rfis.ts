@@ -34,6 +34,29 @@ export interface RfiCreateInput {
   dueDate?: string | null;
   costImpact?: boolean;
   scheduleImpact?: boolean;
+  ballInCourtId?: string | null;
+}
+
+export interface RfiUpdateInput {
+  subject?: string;
+  question?: string;
+  priority?: RfiPriority;
+  dueDate?: string | null;
+  costImpact?: boolean;
+  scheduleImpact?: boolean;
+  ballInCourtId?: string | null;
+  assigneeRole?: string | null;
+}
+
+export function useUpdateRfi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, rfiId, ...body }: RfiUpdateInput & { projectId: string; rfiId: string }) => {
+      const { data } = await api.patch<Rfi>(`/projects/${projectId}/rfis/${rfiId}`, body);
+      return data;
+    },
+    onSuccess: (_d, { projectId }) => qc.invalidateQueries({ queryKey: rfiKeys.all(projectId) }),
+  });
 }
 
 export function useCreateRfi() {

@@ -9,9 +9,11 @@ import {
   useProjectRfi,
   useRespondRfi,
   useTransitionRfi,
+  useUpdateRfi,
 } from "@/hooks/use-rfis";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { useActionItems } from "@/hooks/use-action-items";
+import { useParticipants } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import type { RfiStatus } from "@/lib/project-types";
 
@@ -119,6 +121,12 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
   const respond = useRespondRfi();
   const transition = useTransitionRfi();
   const convert = useConvertRfiToChange();
+  const updateRfi = useUpdateRfi();
+  const { data: participants = [] } = useParticipants(projectId);
+
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
   const [html, setHtml] = useState("");
   const [text, setText] = useState("");
@@ -177,8 +185,30 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       {RFI_STATUS_META[rfi.status].label}
                     </Badge>
                     {rfi.priority === "High" && <Badge tone="danger" size="sm">High priority</Badge>}
-                    {rfi.ballInCourtName && (
-                      <span className="text-xs text-gray-500">Ball in court: {rfi.ballInCourtName}</span>
+                    {canManage ? (
+                      <select
+                        className="rounded-md border border-[#E5E5E5] bg-white px-2 py-1 text-xs text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                        value={rfi.ballInCourtId ?? ""}
+                        disabled={updateRfi.isPending}
+                        onChange={(e) =>
+                          updateRfi.mutate({
+                            projectId,
+                            rfiId: rfi.id,
+                            ballInCourtId: e.target.value || null,
+                          })
+                        }
+                      >
+                        <option value="">Unassigned</option>
+                        {assigneeOptions.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      rfi.ballInCourtName && (
+                        <span className="text-xs text-gray-500">Ball in court: {rfi.ballInCourtName}</span>
+                      )
                     )}
                     {rfi.dueDate && (
                       <span className="text-xs text-gray-500">Due {formatWhen(rfi.dueDate)}</span>

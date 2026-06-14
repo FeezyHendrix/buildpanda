@@ -38,6 +38,7 @@ export interface QueryCreateInput {
   subject: string;
   question: string;
   dueDate?: string | null;
+  assigneeId?: string | null;
 }
 
 export interface QueryUpdateInput {
@@ -46,6 +47,7 @@ export interface QueryUpdateInput {
   status?: QueryStatus;
   answer?: string | null;
   dueDate?: string | null;
+  assigneeId?: string | null;
 }
 
 export function useCreateQuery() {

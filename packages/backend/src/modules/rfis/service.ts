@@ -1,6 +1,7 @@
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { randomBytes, createHash } from "node:crypto";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { RfisRepository, RfiUpdatePatch } from "./repository.ts";
 import type {
   Rfi,
@@ -168,8 +169,24 @@ const REOPENABLE: ReadonlySet<RfiStatus> = new Set(["Answered", "Closed"]);
 
 export function rfisService(
   repository: RfisRepository,
-  deps: { changeRequests?: ChangeRequestCreator } = {},
+  deps: { changeRequests?: ChangeRequestCreator; notifications?: NotificationsService } = {},
 ) {
+  function notifyRfiAssignee(
+    assigneeId: string | null | undefined,
+    projectId: string,
+    subject: string,
+    actorId: string,
+  ): void {
+    if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
+    void deps.notifications
+      .notify(assigneeId, "rfi_assigned", {
+        title: "An RFI was assigned to you",
+        body: subject,
+        projectId,
+      })
+      .catch(() => undefined);
+  }
+
   async function logEvent(
     rfiId: string,
     type: string,
@@ -242,6 +259,7 @@ export function rfisService(
       await logEvent(row.id, "created", actor, { number: row.number });
       if (hasAssignee) {
         await logEvent(row.id, "opened", actor, { ballInCourtId: input.ballInCourtId });
+        notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id);
       }
       return toRfi(row, 0);
     },
@@ -273,6 +291,7 @@ export function rfisService(
         await logEvent(rfiId, "ball_in_court_changed", actor, {
           ballInCourtId: patch.ball_in_court_id,
         });
+        notifyRfiAssignee(patch.ball_in_court_id, projectId, row.subject, actor.id);
       }
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
@@ -318,6 +337,15 @@ export function rfisService(
           updated_at: now,
         });
         await logEvent(rfiId, "answered", actor);
+        if (deps.notifications && current.created_by_id && current.created_by_id !== actor.id) {
+          void deps.notifications
+            .notify(current.created_by_id, "rfi_answered", {
+              title: "Your RFI was answered",
+              body: current.subject,
+              projectId,
+            })
+            .catch(() => undefined);
+        }
       } else {
         await logEvent(rfiId, "response_proposed", actor);
       }

@@ -73,6 +73,10 @@ export default function ProjectActionItems() {
     updateItem.mutate({ projectId: project.id, itemId: item.id, status });
   }
 
+  function handleAssign(item: ActionItem, assigneeId: string | null): void {
+    updateItem.mutate({ projectId: project.id, itemId: item.id, assigneeId });
+  }
+
   const [createOpen, setCreateOpen] = useState(false);
   const [editItem, setEditItem] = useState<ActionItem | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -160,6 +164,9 @@ export default function ProjectActionItems() {
               renderFooter={(i) => assigneeFooter(i.assigneeName, i.dueDate)}
               onMove={handleMove}
               onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(i) => i.assigneeId}
+              onAssign={handleAssign}
             />
           )}
         </div>

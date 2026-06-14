@@ -16,6 +16,8 @@ export interface ChangeRequest {
   decidedById: string | null;
   decidedByName: string | null;
   decidedAt: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -48,6 +50,8 @@ export interface ChangeRequestRow {
   decided_by_id: string | null;
   decided_by_name: string | null;
   decided_at: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
   created_at: string;
   updated_at: string;
 }

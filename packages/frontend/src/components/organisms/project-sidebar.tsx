@@ -13,6 +13,7 @@ import {
   MaterialsIcon,
   MessagesIcon,
   OverviewIcon,
+  SparkleIcon,
   TrendingUpIcon,
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
@@ -53,12 +54,6 @@ const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 ] as const;
 
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  {
-    label: "What's Next",
-    slug: "whats-next",
-    Icon: TrendingUpIcon,
-    helper: "Next 2 weeks",
-  },
   {
     label: "Build Stages",
     slug: "stages",
@@ -128,7 +123,6 @@ const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
-  { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon, helper: "Assistant" },
 ] as const;
 
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
@@ -311,6 +305,14 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
             Icon={ContractorsIcon}
             items={teamAdminItems}
             active={isTeamAdminActive}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Panda AI",
+              slug: "panda-ai",
+              Icon: SparkleIcon,
+              to: `/project/${project.id}/panda-ai`,
+            }}
           />
           <ProjectNavLink
             item={{

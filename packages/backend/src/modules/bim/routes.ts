@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { rfisRepository } from "../rfis/repository.ts";
 import { rfisService } from "../rfis/service.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { bimRepository } from "./repository.ts";
 import { bimService } from "./service.ts";
 import { BIM_PROCESS_QUEUE } from "./job.ts";
@@ -135,7 +137,10 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
   const service = bimService(
     bimRepository(fastify.db),
     (versionId) => fastify.queue.enqueue(BIM_PROCESS_QUEUE, "extract", { versionId }),
-    { rfis: rfisService(rfisRepository(fastify.db)) },
+    {
+      rfis: rfisService(rfisRepository(fastify.db)),
+      notifications: notificationsService(notificationsRepository(fastify.db)),
+    },
   );
 
   fastify.get<{ Params: { id: string } }>(
@@ -254,7 +259,8 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: issueParams, body: updateIssueBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "bim", "manage");
-      return service.updateIssue(project.id, request.params.modelId, request.params.issueId, request.body);
+      const user = request.requireAuth();
+      return service.updateIssue(project.id, request.params.modelId, request.params.issueId, request.body, user.id);
     },
   );
 
