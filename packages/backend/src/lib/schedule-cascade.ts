@@ -44,3 +44,41 @@ export async function recomputePhaseDateRanges(db: Knex, projectId: string): Pro
     }
   }
 }
+
+interface ActivityProgressRow {
+  phase_id: string | null;
+  status: string;
+}
+
+function percentDone(rows: { status: string }[]): number {
+  if (rows.length === 0) return 0;
+  const done = rows.filter((r) => r.status === "Completed").length;
+  return Math.round((done / rows.length) * 100);
+}
+
+export async function recomputeProgress(db: Knex, projectId: string): Promise<void> {
+  const activities = await db<ActivityProgressRow>("activities")
+    .where({ project_id: projectId })
+    .whereNot("status", "Cancelled")
+    .select("phase_id", "status");
+
+  await db("projects")
+    .where({ id: projectId })
+    .update({ progress_percent: percentDone(activities), updated_at: new Date().toISOString() });
+
+  const byPhase = new Map<string, { status: string }[]>();
+  for (const a of activities) {
+    if (!a.phase_id) continue;
+    const list = byPhase.get(a.phase_id) ?? [];
+    list.push({ status: a.status });
+    byPhase.set(a.phase_id, list);
+  }
+
+  for (const [phaseId, rows] of byPhase) {
+    const pct = percentDone(rows);
+    const status = pct >= 100 ? "Done" : pct > 0 ? "InProgress" : "Pending";
+    await db("project_phases")
+      .where({ id: phaseId, project_id: projectId })
+      .update({ progress_percent: pct, status });
+  }
+}

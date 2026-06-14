@@ -25,6 +25,7 @@ export interface NewUpdateRecord {
   author_name: string;
   author_role: string;
   author_initials_tone: Tone;
+  activity_id?: string | null;
   category: UpdateCategory;
   title: string;
   description: string;
