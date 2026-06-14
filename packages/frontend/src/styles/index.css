@@ -77,6 +77,17 @@
   --color-warning-900: #546B00;
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* ─── shadcn semantic vars ────────────────────────────────────────────────── */
 /* Written outside @layer so @tailwindcss/vite emits them in both dev + build. */
 :root {
