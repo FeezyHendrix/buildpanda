@@ -17,6 +17,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import {
   documentVersionViewUrl,
   useCreateDocument,
+  useCreateShare,
   useDeleteDocument,
   useEditDocument,
   useProjectDocumentCategories,
@@ -299,8 +300,29 @@ function DocumentRow({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const editDocument = useEditDocument();
   const deleteDocument = useDeleteDocument();
+  const createShare = useCreateShare();
+
+  function handleShare(): void {
+    createShare.mutate(
+      { projectId, documentId: doc.id },
+      {
+        onSuccess: async (share) => {
+          try {
+            await navigator.clipboard.writeText(share.url);
+            setShareCopied(true);
+            setTimeout(() => setShareCopied(false), 2000);
+            toast("Share link copied to clipboard", "success");
+          } catch {
+            toast(`Share link: ${share.url}`, "success");
+          }
+        },
+        onError: () => toast("Could not create share link", "error"),
+      },
+    );
+  }
 
   const categoryId = doc.categoryId ?? categories.find((c) => c.name === doc.category)?.id ?? "";
 
@@ -365,6 +387,16 @@ function DocumentRow({
                 className="text-xs font-medium text-[#004DE7] hover:text-[#0041c4]"
               >
                 View
+              </button>
+            )}
+            {doc.currentVersionId && (
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={createShare.isPending}
+                className="text-xs font-medium text-gray-500 hover:text-gray-900 disabled:opacity-50"
+              >
+                {shareCopied ? "Copied!" : "Share"}
               </button>
             )}
             <button
