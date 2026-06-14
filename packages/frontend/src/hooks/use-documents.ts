@@ -120,6 +120,25 @@ export function useDeleteDocument() {
   });
 }
 
+export interface FileShareResult {
+  id: string;
+  token: string;
+  url: string;
+  expiresAt: string | null;
+}
+
+export function useCreateShare() {
+  return useMutation({
+    mutationFn: async ({ projectId, documentId }: { projectId: string; documentId: string }) => {
+      const { data } = await api.post<FileShareResult>(
+        `/projects/${projectId}/documents/${documentId}/share`,
+        {},
+      );
+      return data;
+    },
+  });
+}
+
 export function useDocumentVersions(
   projectId: string | undefined,
   documentId: string | undefined,
