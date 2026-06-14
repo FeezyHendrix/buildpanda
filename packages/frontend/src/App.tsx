@@ -84,6 +84,8 @@ const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
 const SharePage = lazy(() => import("@/pages/public/share-page"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
+const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 
 const router = createBrowserRouter([
   {
@@ -137,6 +139,14 @@ const router = createBrowserRouter([
   {
     path: "/share/:token",
     element: <SharePage />,
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyPolicyPage />,
+  },
+  {
+    path: "/data-policy",
+    element: <DataPolicyPage />,
   },
   {
     path: "/accept-invitation/:invitationId",
