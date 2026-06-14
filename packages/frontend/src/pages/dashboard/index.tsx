@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
+import { Badge } from "@/components/atoms/badge";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import {
   ExternalLinkIcon,
@@ -12,13 +13,15 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useSession } from "@/stores/auth";
 import { useProjects } from "@/hooks/use-projects";
+import { useGlobalWhatsNext } from "@/hooks/use-insights";
 import {
   firstName,
   formatCurrency,
   formatTimeAgo,
   timeOfDay,
+  formatDayMonth as fmt,
 } from "@/lib/formatters";
-import type { Project } from "@/lib/project-types";
+import type { Project, GlobalWhatsNext } from "@/lib/project-types";
 import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg"
@@ -27,6 +30,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { data: session } = useSession();
   const { data: projects, isPending } = useProjects();
+  const { data: whatsNext } = useGlobalWhatsNext(14);
 
   if (isPending) {
     return <LoadingSpinner />;
@@ -59,6 +63,8 @@ export default function Dashboard() {
           <ImportProgrammeCard />
         </div>
       </section>
+
+      <GlobalWhatsNextSection data={whatsNext} />
     </div>
   );
 }
@@ -237,5 +243,75 @@ function ImportProgrammeCard() {
       </button>
       <ImportProgrammeDialog open={open} onOpenChange={setOpen} />
     </>
+  );
+}
+
+function WhatsNextListSection({ title, count, children }: { title: string; count: number; children: ReactNode }) {
+  if (count === 0) return null;
+  return (
+    <Card padding="md" className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        <Badge tone="info" size="sm">{count}</Badge>
+      </div>
+      <ul className="flex flex-col divide-y divide-[#F0F0F0]">{children}</ul>
+    </Card>
+  );
+}
+
+function WhatsNextRow({ label, meta }: { label: string; meta?: string }) {
+  return (
+    <li className="flex items-center justify-between gap-3 py-2.5">
+      <span className="min-w-0 truncate text-sm text-gray-900">{label}</span>
+      {meta && <span className="shrink-0 text-xs text-gray-500">{meta}</span>}
+    </li>
+  );
+}
+
+function GlobalWhatsNextSection({ data }: { data?: GlobalWhatsNext }) {
+  if (!data) return null;
+
+  const total =
+    data.dueActionItems.length +
+    data.dueQueries.length +
+    data.dueApprovals.length +
+    data.upcomingKeyDates.length +
+    data.expiringPermits.length;
+
+  if (total === 0) return null;
+
+  return (
+    <section className="flex flex-col gap-4 mt-10">
+      <div className="flex items-center gap-1 ml-14">
+        <h2 className="text-[13px] font-medium text-black-300">What's Next</h2>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <WhatsNextListSection title="Action items due" count={data.dueActionItems.length}>
+          {data.dueActionItems.map((s) => (
+            <WhatsNextRow key={s.id} label={s.title} meta={`${s.projectName} · ${fmt(s.due_date)}`} />
+          ))}
+        </WhatsNextListSection>
+        <WhatsNextListSection title="Queries due" count={data.dueQueries.length}>
+          {data.dueQueries.map((s) => (
+            <WhatsNextRow key={s.id} label={s.subject} meta={`${s.projectName} · ${fmt(s.due_date)}`} />
+          ))}
+        </WhatsNextListSection>
+        <WhatsNextListSection title="Approvals" count={data.dueApprovals.length}>
+          {data.dueApprovals.map((s) => (
+            <WhatsNextRow key={s.id} label={s.title} meta={`${s.projectName} · ${fmt(s.due_date)}`} />
+          ))}
+        </WhatsNextListSection>
+        <WhatsNextListSection title="Key dates" count={data.upcomingKeyDates.length}>
+          {data.upcomingKeyDates.map((s) => (
+            <WhatsNextRow key={s.id} label={s.label} meta={`${s.projectName} · ${fmt(s.target_date)}`} />
+          ))}
+        </WhatsNextListSection>
+        <WhatsNextListSection title="Permits expiring" count={data.expiringPermits.length}>
+          {data.expiringPermits.map((s) => (
+            <WhatsNextRow key={s.id} label={s.title} meta={`${s.projectName} · ${fmt(s.expiry_date)}`} />
+          ))}
+        </WhatsNextListSection>
+      </div>
+    </section>
   );
 }
