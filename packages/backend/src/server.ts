@@ -121,7 +121,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   return app;
 }
 
-async function start(): Promise<void> {
+export async function start(): Promise<void> {
   const app = await buildApp();
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
