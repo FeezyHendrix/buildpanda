@@ -86,6 +86,7 @@ export interface AdminOrgDetail {
   slug: string;
   logo: string | null;
   metadata: string | null;
+  default_currency: string | null;
   createdAt: string;
   updatedAt: string;
   members: Array<{ userId: string; name: string; email: string; role: string; createdAt: string }>;

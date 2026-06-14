@@ -255,7 +255,7 @@ export function adminRepository(db: Knex) {
 
   async function getOrganization(id: string) {
     const org = await db("organization")
-      .select("id", "name", "slug", "logo", "metadata", "createdAt", "updatedAt")
+      .select("id", "name", "slug", "logo", "metadata", "default_currency", "createdAt", "updatedAt")
       .where({ id })
       .first();
     if (!org) return null;

@@ -9,6 +9,28 @@ import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 type Row = Record<string, unknown>;
 
+function isProgrammeImported(project: Row): boolean {
+  const setup = project.setup;
+  if (setup && typeof setup === "object" && !Array.isArray(setup)) {
+    return (setup as Record<string, unknown>).source === "programme-import";
+  }
+  return false;
+}
+
+function dependencyCount(row: Row): number {
+  const preds = row.predecessors;
+  if (Array.isArray(preds)) return preds.length;
+  if (typeof preds === "string") {
+    try {
+      const parsed = JSON.parse(preds);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
 const TABS = [
   "Overview",
   "Finances",
@@ -57,6 +79,7 @@ export default function ProjectDetailPage() {
               <h1 className="text-xl font-bold text-ink">{project.name as string}</h1>
               <StatusBadge value={project.status as string} />
               {project.risk ? <Badge tone="neutral">Risk: {project.risk as string}</Badge> : null}
+              {isProgrammeImported(project) ? <Badge tone="brand">Programme imported</Badge> : null}
             </div>
             <p className="mt-1 text-sm text-muted">
               {(project.address as string) ?? "—"}
@@ -175,10 +198,41 @@ const COLLECTION_COLUMNS: Record<string, Column<Row>[]> = {
     { key: "uploaded", header: "Uploaded", render: (r) => formatDate((r.uploaded_at as string) ?? (r.created_at as string)) },
   ],
   Activities: [
-    { key: "name", header: "Activity", render: (r) => (r.name as string) ?? "—" },
-    { key: "type", header: "Type", render: (r) => (r.activity_type as string) ?? "—" },
+    {
+      key: "name",
+      header: "Activity",
+      render: (r) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-ink">{(r.name as string) ?? "—"}</p>
+          {r.wbs_code ? <p className="truncate text-xs text-muted">WBS {r.wbs_code as string}</p> : null}
+        </div>
+      ),
+    },
     { key: "status", header: "Status", render: (r) => <StatusBadge value={r.status as string} /> },
+    {
+      key: "progress",
+      header: "% complete",
+      render: (r) => `${Math.round(Number(r.percent_complete ?? 0))}%`,
+    },
+    {
+      key: "flags",
+      header: "Schedule",
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {r.is_milestone ? <Badge tone="warning">Milestone</Badge> : null}
+          {dependencyCount(r) > 0 ? (
+            <span className="text-xs text-muted">{dependencyCount(r)} deps</span>
+          ) : null}
+        </div>
+      ),
+    },
     { key: "start", header: "Planned start", render: (r) => formatDate(r.planned_start_at as string) },
+    {
+      key: "source",
+      header: "Source",
+      render: (r) =>
+        r.source === "programme-import" ? <Badge tone="brand">Imported</Badge> : <span className="text-muted">Manual</span>,
+    },
   ],
   Updates: [
     { key: "title", header: "Title", render: (r) => (r.title as string) ?? "—" },
