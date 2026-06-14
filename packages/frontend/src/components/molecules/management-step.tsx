@@ -67,7 +67,6 @@ const RISK_OPTIONS_CONFIG: RiskOptionConfig[] = [
     icon: (
       <img src={droneMonitoringIcon} alt="" aria-hidden="true" className="size-[50px]" />
     ),
-    comingSoon: true,
   },
   {
     id: "quality-inspection",
