@@ -54,6 +54,7 @@ export default function Dashboard() {
             <ProjectCard key={project.id} project={project} />
           ))}
           <NewProjectCard />
+          <ImportProgrammeCard />
         </div>
       </section>
     </div>
@@ -215,6 +216,19 @@ function NewProjectCard() {
       <p className="text-xs text-gray-500">
         Spin up a new construction project from scratch.
       </p> */}
+    </Link>
+  );
+}
+
+function ImportProgrammeCard() {
+  return (
+    <Link
+      to="/project/import"
+      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
+    >
+      <ReactSVG src={icons.upload} />
+      <p className='text-primary text-[16px] font-semibold'>Import programme</p>
+      <p className="text-[11px] text-black-300 text-center">Upload an .mpp or Excel schedule and let Panda AI build the whole project.</p>
     </Link>
   );
 }

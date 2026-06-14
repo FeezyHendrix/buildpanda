@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { NotFoundError } from "../../lib/errors.ts";
-
-const CURRENCIES = ["NGN", "USD", "GBP", "EUR", "GHS", "KES", "ZAR"] as const;
+import { currencyCodeSchema } from "../../lib/currencies.ts";
+import { invalidateOrgDefaultCurrency } from "../../lib/org-currency-cache.ts";
 
 const patchBody = {
   type: "object",
@@ -12,7 +12,7 @@ const patchBody = {
     address: { type: "string", maxLength: 500 },
     contactEmail: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", maxLength: 320 },
     website: { type: "string", maxLength: 200 },
-    defaultCurrency: { type: "string", enum: CURRENCIES },
+    defaultCurrency: currencyCodeSchema,
     defaultTaxLabel: { type: "string", maxLength: 50 },
     defaultTaxPct: { type: "number", minimum: 0, maximum: 100 },
   },
@@ -79,6 +79,8 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
       if (defaultTaxPct !== undefined) patch["default_tax_pct"] = defaultTaxPct;
 
       await fastify.db("organization").where({ id: orgId }).update(patch);
+
+      if (defaultCurrency !== undefined) invalidateOrgDefaultCurrency(orgId);
 
       const org = await fastify.db("organization")
         .where({ id: orgId })

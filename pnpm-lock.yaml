@@ -72,6 +72,9 @@ importers:
       '@aws-sdk/lib-storage':
         specifier: ^3.1057.0
         version: 3.1057.0(@aws-sdk/client-s3@3.1057.0)
+      '@byteink/mppjs':
+        specifier: ^0.1.5
+        version: 0.1.5
       '@fastify/cors':
         specifier: ^11.0.0
         version: 11.2.0
@@ -87,6 +90,9 @@ importers:
       bullmq:
         specifier: ^5.77.6
         version: 5.77.6
+      dproject:
+        specifier: ^1.0.6
+        version: 1.0.6
       fastify:
         specifier: ^5.2.0
         version: 5.8.4
@@ -544,6 +550,31 @@ packages:
 
   '@better-fetch/fetch@1.1.21':
     resolution: {integrity: sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A==}
+
+  '@byteink/mppjs-darwin-arm64@0.1.5':
+    resolution: {integrity: sha512-L0Ow5bbwca1epUMVz8HRQA5Uz1DrY/hMQLAIp5ELJwtGBR4uGDWlntlVuF/pG2AbQYLxnVacFDjFe4+H7vnf8Q==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@byteink/mppjs-linux-arm64@0.1.5':
+    resolution: {integrity: sha512-pMQm+123PsyWON5y1QoqlAK1G5pDlfXeoB1d2zyoILiI5N0Cx9CY/SBtc9ukqYEFroSa/xP3y5IR9DjJDQPkBA==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@byteink/mppjs-linux-x64@0.1.5':
+    resolution: {integrity: sha512-rnxwcv/rv9dezs4YX2cjr/FbkGH9JnhOeWk266PCE7wFbg7NkCc+KlwKzlaEwKskeOeso1Dnx1bTcMnUJbsYsA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@byteink/mppjs-win32-x64@0.1.5':
+    resolution: {integrity: sha512-TmtElxcmsxPAKygNSFAFi2fSPJSvshsszQ3SS//CHkF2Eewn/5laXDiHyKJcTbXhdYWMgnTZUbJHFt4m1cP/IA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@byteink/mppjs@0.1.5':
+    resolution: {integrity: sha512-C9POOth20p9PDThzfd7YXQAi+eUwRaunDlZNS2LzJR9XDqsDkGerLqXSVZK18/TxiGhphiSQ9nCVw+HKsjEXzg==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@emnapi/runtime@1.10.0':
     resolution: {integrity: sha512-ewvYlk86xUoGI0zQRNq/mC+16R1QeDlKQy21Ki3oSYXNgLb45GV1P6A0M+/s6nyCuNDqe5VpaY84BzXGwVbwFA==}
@@ -2146,6 +2177,10 @@ packages:
     resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
     engines: {node: '>=12'}
 
+  dproject@1.0.6:
+    resolution: {integrity: sha512-yzloQmRafd++T/aHsTVSoWDX/8NeA4U7a4FHm/swQ8RG1r6rjDkSItK88BUPXrjKc30+mWQFnGWvs9t2mCDJzQ==}
+    engines: {node: '>=14'}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -3701,6 +3736,25 @@ snapshots:
 
   '@better-fetch/fetch@1.1.21': {}
 
+  '@byteink/mppjs-darwin-arm64@0.1.5':
+    optional: true
+
+  '@byteink/mppjs-linux-arm64@0.1.5':
+    optional: true
+
+  '@byteink/mppjs-linux-x64@0.1.5':
+    optional: true
+
+  '@byteink/mppjs-win32-x64@0.1.5':
+    optional: true
+
+  '@byteink/mppjs@0.1.5':
+    optionalDependencies:
+      '@byteink/mppjs-darwin-arm64': 0.1.5
+      '@byteink/mppjs-linux-arm64': 0.1.5
+      '@byteink/mppjs-linux-x64': 0.1.5
+      '@byteink/mppjs-win32-x64': 0.1.5
+
   '@emnapi/runtime@1.10.0':
     dependencies:
       tslib: 2.8.1
@@ -4949,6 +5003,8 @@ snapshots:
   dotenv-expand@10.0.0: {}
 
   dotenv@17.3.1: {}
+
+  dproject@1.0.6: {}
 
   dunder-proto@1.0.1:
     dependencies:

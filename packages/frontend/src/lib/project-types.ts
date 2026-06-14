@@ -592,6 +592,14 @@ export interface ActivityDelay {
   createdAt: string;
 }
 
+export type ActivityDependencyType = "FS" | "SS" | "FF" | "SF";
+
+export interface ActivityDependency {
+  activityId: string;
+  type: ActivityDependencyType;
+  lagDays: number;
+}
+
 export interface Activity {
   id: string;
   projectId: string;
@@ -608,6 +616,16 @@ export interface Activity {
   actualEndAt: string | null;
   workerCountPlanned: number;
   notes: string | null;
+  wbsCode: string | null;
+  outlineLevel: number | null;
+  parentActivityId: string | null;
+  predecessors: ActivityDependency[];
+  percentComplete: number;
+  durationDays: number | null;
+  baselineStartAt: string | null;
+  baselineEndAt: string | null;
+  isMilestone: boolean;
+  source: string;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;

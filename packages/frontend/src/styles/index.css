@@ -237,3 +237,28 @@ input {
     opacity: 0;
   }
 }
+
+.bp-gantt .wx-willow-theme {
+  --wx-gantt-task-color: var(--color-primary-500);
+  --wx-gantt-task-border-color: var(--color-primary-600);
+  --wx-gantt-task-fill-color: var(--color-primary-200);
+  --wx-gantt-task-font-color: #ffffff;
+
+  --wx-gantt-summary-color: var(--color-primary-800);
+  --wx-gantt-summary-fill-color: var(--color-primary-700);
+  --wx-gantt-summary-border-color: var(--color-primary-900);
+  --wx-gantt-summary-font-color: #ffffff;
+
+  --wx-gantt-milestone-color: #F59E0B;
+
+  --wx-gantt-link-color: var(--color-primary-400);
+  --wx-gantt-link-color-hovered: var(--color-primary-600);
+
+  --wx-gantt-marker-color: var(--color-primary-500);
+  --wx-gantt-marker-font-color: var(--color-primary-700);
+
+  --wx-gantt-progress-border-color: var(--color-primary-300);
+  --wx-gantt-bar-border-radius: 6px;
+  --wx-gantt-milestone-border-radius: 3px;
+}
+

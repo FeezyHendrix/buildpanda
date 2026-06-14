@@ -2,6 +2,14 @@ export type ActivityStatus = "Planned" | "InProgress" | "Completed" | "Cancelled
 import type { CurrencyCode } from "../../lib/currencies.ts";
 export type Currency = CurrencyCode;
 
+export type DependencyType = "FS" | "SS" | "FF" | "SF";
+
+export interface ActivityDependency {
+  activityId: string;
+  type: DependencyType;
+  lagDays: number;
+}
+
 export interface ActivityDelay {
   id: string;
   activityId: string;
@@ -34,6 +42,16 @@ export interface Activity {
   actualEndAt: string | null;
   workerCountPlanned: number;
   notes: string | null;
+  wbsCode: string | null;
+  outlineLevel: number | null;
+  parentActivityId: string | null;
+  predecessors: ActivityDependency[];
+  percentComplete: number;
+  durationDays: number | null;
+  baselineStartAt: string | null;
+  baselineEndAt: string | null;
+  isMilestone: boolean;
+  source: string;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;
@@ -53,6 +71,16 @@ export interface ActivityRow {
   actual_end_at: Date | string | null;
   worker_count_planned: number;
   notes: string | null;
+  wbs_code: string | null;
+  outline_level: number | null;
+  parent_activity_id: string | null;
+  predecessors: ActivityDependency[] | string;
+  percent_complete: string | number;
+  duration_days: string | number | null;
+  baseline_start_at: Date | string | null;
+  baseline_end_at: Date | string | null;
+  is_milestone: boolean;
+  source: string;
   created_by_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -83,10 +111,21 @@ export interface CreateActivityInput {
   activityType: string;
   phaseId?: string | null;
   location?: string;
+  status?: ActivityStatus;
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned?: number;
   notes?: string;
+  wbsCode?: string | null;
+  outlineLevel?: number | null;
+  parentActivityId?: string | null;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  durationDays?: number | null;
+  baselineStartAt?: string | null;
+  baselineEndAt?: string | null;
+  isMilestone?: boolean;
+  source?: string;
 }
 
 export interface UpdateActivityInput {
@@ -101,6 +140,9 @@ export interface UpdateActivityInput {
   actualEndAt?: string | null;
   workerCountPlanned?: number;
   notes?: string | null;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  isMilestone?: boolean;
 }
 
 export interface RaiseDelayInput {
