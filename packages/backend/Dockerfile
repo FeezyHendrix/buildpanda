@@ -2,7 +2,9 @@ FROM node:22-bookworm-slim AS base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates libstdc++6 zlib1g \
+      libfreetype6 fontconfig libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
+ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
 
 FROM base AS dev
 COPY package.json ./

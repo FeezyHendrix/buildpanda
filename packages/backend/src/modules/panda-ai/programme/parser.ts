@@ -75,7 +75,6 @@ interface DProjectTask {
 
 export async function parseMppBuffer(buffer: Buffer, tmpDir: string): Promise<ParsedProgramme> {
   const { convert } = await import("@byteink/mppjs");
-  const DProject = (await import("dproject")).default;
   const { writeFileSync, readFileSync } = await import("node:fs");
   const { join } = await import("node:path");
 
@@ -87,13 +86,28 @@ export async function parseMppBuffer(buffer: Buffer, tmpDir: string): Promise<Pa
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === "ENOENT" || code === "ENOEXEC") {
-      throw new Error(
-        "Microsoft Project (.mpp) parsing is unavailable on this server. Please export your programme to Excel (.xls or .xlsx) and upload that instead.",
-      );
+      throw new Error(MPP_UNAVAILABLE_MESSAGE);
     }
-    throw error;
+    throw new Error(MPP_UNAVAILABLE_MESSAGE);
   }
   const xml = readFileSync(xmlPath, "utf8");
+  return parseMspdiXml(xml);
+}
+
+export async function parseXmlBuffer(buffer: Buffer): Promise<ParsedProgramme> {
+  return parseMspdiXml(buffer.toString("utf8"));
+}
+
+export const MPP_UNAVAILABLE_MESSAGE =
+  "We couldn't read this .mpp file on the server. In Microsoft Project open File > Save As, choose \"XML (*.xml)\" and upload that file instead. Excel (.xls, .xlsx) schedules also work.";
+
+async function parseMspdiXml(xml: string): Promise<ParsedProgramme> {
+  const DProject = (await import("dproject")).default;
+  if (!/schemas\.microsoft\.com\/project/i.test(xml) && !/<Project[\s>]/i.test(xml)) {
+    throw new Error(
+      "This XML is not a Microsoft Project (MSPDI) file. In Microsoft Project use File > Save As > XML (*.xml) to produce the right format.",
+    );
+  }
   const project = DProject.parse(xml) as { name?: string; title?: string; tasks?: DProjectTask[] };
   const rawTasks = project.tasks ?? [];
 

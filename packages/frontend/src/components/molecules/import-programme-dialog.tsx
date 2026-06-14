@@ -25,7 +25,7 @@ interface ImportProgrammeDialogProps {
 }
 
 const ACCEPT =
-  ".mpp,.xls,.xlsx,application/vnd.ms-project,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  ".mpp,.xml,.xls,.xlsx,application/vnd.ms-project,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 const CURRENCY_CHOICES = CURRENCY_CODES.slice(0, 5);
 
@@ -72,7 +72,7 @@ function ImportProgrammeDialog({ open, onOpenChange }: ImportProgrammeDialogProp
                 Import programme
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-gray-500">
-                Upload an .mpp or Excel schedule to auto-generate your project.
+                Upload a Microsoft Project (.xml) or Excel schedule to auto-generate your project.
               </Dialog.Description>
             </div>
             <Dialog.Close
@@ -138,7 +138,7 @@ function ImportProgrammeDialog({ open, onOpenChange }: ImportProgrammeDialogProp
                 <h3 className="mb-2 text-xl font-semibold text-gray-900">Import failed</h3>
                 <p className="mb-8 max-w-md text-sm text-gray-500">
                   {job?.error ??
-                    "We couldn't parse this file. Make sure it's a valid Microsoft Project (.mpp) or Excel (.xls, .xlsx) schedule."}
+                    "We couldn't parse this file. In Microsoft Project use File → Save As → XML (*.xml) and upload that, or upload an Excel (.xls, .xlsx) schedule."}
                 </p>
                 <Button onClick={reset}>Try another file</Button>
               </div>
@@ -197,10 +197,28 @@ function UploadState({
           {isPending ? "Uploading…" : "Upload schedule file"}
         </span>
         <span className="max-w-sm text-sm text-gray-500">
-          Drag and drop your Microsoft Project (.mpp) or Excel (.xls, .xlsx) file here, or click to
-          browse.
+          Drag and drop your file here, or click to browse.
+        </span>
+        <span className="mt-3 text-xs font-medium text-gray-400">
+          Accepts .mpp · .xml · .xls · .xlsx
         </span>
       </button>
+
+      <div className="mt-4 rounded-xl border border-[#EDEDED] bg-[#FAFBFF] p-4">
+        <p className="mb-2 text-sm font-semibold text-gray-900">Using Microsoft Project?</p>
+        <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-600">
+          <li>Open your schedule in Microsoft Project.</li>
+          <li>
+            Go to <span className="font-medium text-gray-800">File → Save As</span> and choose{" "}
+            <span className="font-medium text-gray-800">XML (*.xml)</span> as the file type.
+          </li>
+          <li>Upload the saved <span className="font-medium text-gray-800">.xml</span> file here.</li>
+        </ol>
+        <p className="mt-2 text-xs text-gray-400">
+          Exporting to XML preserves your tasks, dependencies, % complete and milestones. Excel
+          (.xls/.xlsx) schedules work too.
+        </p>
+      </div>
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>

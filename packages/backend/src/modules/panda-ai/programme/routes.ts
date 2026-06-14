@@ -80,8 +80,8 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
 
       const part = await request.file();
       if (!part) throw new BadRequestError("Missing programme file upload");
-      if (!/\.(mpp|xls|xlsx)$/i.test(part.filename)) {
-        throw new BadRequestError("Programme file must be .mpp, .xls or .xlsx");
+      if (!/\.(mpp|xml|xls|xlsx)$/i.test(part.filename)) {
+        throw new BadRequestError("Programme file must be .mpp, .xml, .xls or .xlsx");
       }
 
       const stored = await saveStream(user.id, part.file);
