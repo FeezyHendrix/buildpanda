@@ -244,6 +244,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         (method === "POST" && /^\/proposals\/public\/[^/?]+\/respond/.test(url)) ||
         (method === "GET" && /^\/project-invites\/[^/?]+$/.test(url)) ||
         (method === "GET" && /^\/share\/[^/?]+(\/file)?$/.test(url)) ||
+        (method === "POST" && /^\/rfi-reply\/[^/?]+$/.test(url)) ||
         (method === "POST" && url === "/leads/consultation");
       if (!isPublic) throw new UnauthorizedError();
     }

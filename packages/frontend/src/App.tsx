@@ -74,6 +74,8 @@ const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
+const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
+const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
@@ -216,6 +218,8 @@ const router = createBrowserRouter([
       { path: "stages", element: <ProjectStages /> },
       { path: "action-items", element: <ProjectActionItems /> },
       { path: "queries", element: <ProjectQueries /> },
+      { path: "rfis", element: <ProjectRfis /> },
+      { path: "bim", element: <ProjectBim /> },
       { path: "approvals", element: <ProjectApprovals /> },
       { path: "change-requests", element: <ProjectChangeRequests /> },
       { path: "permits", element: <ProjectPermits /> },

@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
+  AlertIcon,
   CalendarIcon,
   ChevronRightIcon,
   ContractorsIcon,
@@ -94,6 +95,8 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Inspections", slug: "inspections", Icon: InspectionsIcon, helper: "Quality checks" },
   { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
   { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information" },
+  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
   { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
   { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
@@ -135,6 +138,8 @@ const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Build Stages", slug: "stages", Icon: OverviewIcon },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
   { label: "Queries", slug: "queries", Icon: MessagesIcon },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon },
+  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
 ];
 
 interface ProjectSidebarProps {

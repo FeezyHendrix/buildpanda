@@ -100,6 +100,23 @@ export const siteQueryKeys = {
     [...siteQueryKeys.all(projectId), "detail", queryId] as const,
 };
 
+export const rfiKeys = {
+  all: (projectId: string) => ["projects", projectId, "rfis"] as const,
+  list: (projectId: string, status?: string) =>
+    [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, rfiId: string) =>
+    [...rfiKeys.all(projectId), "detail", rfiId] as const,
+};
+
+export const bimKeys = {
+  all: (projectId: string) => ["projects", projectId, "bim"] as const,
+  models: (projectId: string) => [...bimKeys.all(projectId), "models"] as const,
+  model: (projectId: string, modelId: string) =>
+    [...bimKeys.all(projectId), "model", modelId] as const,
+  issues: (projectId: string, modelId: string) =>
+    [...bimKeys.all(projectId), "issues", modelId] as const,
+};
+
 export const approvalKeys = {
   all: (projectId: string) => ["projects", projectId, "approvals"] as const,
   list: (projectId: string, status?: string) =>
