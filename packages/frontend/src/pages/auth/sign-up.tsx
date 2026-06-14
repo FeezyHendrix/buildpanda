@@ -93,7 +93,7 @@ export default function SignUpForm() {
       return;
     }
 
-    navigate("/auth/verify-email");
+    navigate("/auth/verify-email", { state: { email } });
   }
 
   return (

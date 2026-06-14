@@ -54,8 +54,8 @@ export default function AuthLayout() {
           </p>
         </header>
 
-        <main className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md">
+        <main className="flex-1 overflow-y-auto py-8">
+          <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center">
             <Outlet />
           </div>
         </main>
