@@ -22,6 +22,24 @@ import type {
   CreateBoqItemInput,
 } from "./types.ts";
 
+interface CommentRow {
+  id: string;
+  proposal_id: string;
+  author_id: string | null;
+  author_name: string;
+  body: string;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  proposalId: string;
+  authorId: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 function toProposal(row: ProposalRow): Proposal {
   return {
     id: row.id,
@@ -485,24 +503,6 @@ export function proposalsRepository(db: Knex) {
   }
 
   // --- Comments ---
-
-  interface CommentRow {
-    id: string;
-    proposal_id: string;
-    author_id: string | null;
-    author_name: string;
-    body: string;
-    created_at: string;
-  }
-
-  interface Comment {
-    id: string;
-    proposalId: string;
-    authorId: string | null;
-    authorName: string;
-    body: string;
-    createdAt: string;
-  }
 
   function toComment(row: CommentRow): Comment {
     return {
