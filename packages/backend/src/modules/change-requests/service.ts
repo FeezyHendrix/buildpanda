@@ -1,8 +1,9 @@
-import { NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { ChangeRequestsRepository, ChangeRequestUpdatePatch } from "./repository.ts";
 import type {
+  ChangeBudgetLink,
   ChangeComment,
   ChangeCommentRow,
   ChangeRequest,
@@ -208,6 +209,44 @@ export function changeRequestsService(
         created_at: new Date().toISOString(),
       });
       return toComment(row);
+    },
+
+    async getBudgetLinks(projectId: string, id: string): Promise<ChangeBudgetLink[]> {
+      const existing = await repository.findById(id);
+      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Change request");
+      const rows = await repository.listBudgetLinks(id);
+      return rows.map((r) => ({
+        budgetCategoryId: r.budget_category_id,
+        amount: Number(r.amount),
+        committed: r.committed,
+      }));
+    },
+
+    async setBudgetLinks(
+      projectId: string,
+      id: string,
+      links: ChangeBudgetLink[],
+    ): Promise<ChangeBudgetLink[]> {
+      const existing = await repository.findById(id);
+      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Change request");
+      const total = links.reduce((sum, l) => sum + l.amount, 0);
+      const costImpact = Number(existing.cost_impact);
+      if (total > costImpact + 0.01) {
+        throw new BadRequestError(
+          "Allocated amount exceeds the change request cost impact",
+        );
+      }
+      await repository.replaceBudgetLinks(
+        id,
+        links.map((l) => ({
+          id: generateId("crbl"),
+          change_request_id: id,
+          budget_category_id: l.budgetCategoryId,
+          amount: String(l.amount),
+          committed: l.committed,
+        })),
+      );
+      return this.getBudgetLinks(projectId, id);
     },
   };
 }

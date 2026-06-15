@@ -94,6 +94,7 @@ export function reportingService(db: Knex) {
       project,
       categories,
       periods,
+      budgetDeltas,
       invoiceList,
       milestoneAgg,
       escrowRow,
@@ -121,6 +122,7 @@ export function reportingService(db: Knex) {
         .first(),
       budgetRepo.listCategories(projectId),
       budgetRepo.listPeriods(projectId),
+      budgetRepo.allocationDeltas(projectId),
       invoices.listByProject(projectId),
       db("milestone_payments")
         .where({ project_id: projectId })
@@ -211,10 +213,18 @@ export function reportingService(db: Knex) {
       throw new Error(`Project ${projectId} not found`);
     }
 
+    const deltaByCategory = new Map(
+      budgetDeltas.map((d) => [d.budget_category_id, d]),
+    );
     const categoryPoints: BudgetCategoryPoint[] = categories.map((c) => {
-      const planned = toNumber(c.planned);
-      const committed = toNumber(c.committed);
-      const actual = toNumber(c.actual);
+      const delta = deltaByCategory.get(c.id);
+      const planned = round2(
+        toNumber(c.planned) + (delta?.approved_change ?? 0),
+      );
+      const committed = round2(
+        toNumber(c.committed) + (delta?.committed_change ?? 0),
+      );
+      const actual = round2(toNumber(c.actual) + (delta?.paid_invoice ?? 0));
       return {
         id: c.id,
         name: c.name,

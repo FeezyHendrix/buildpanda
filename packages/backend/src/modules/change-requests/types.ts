@@ -23,6 +23,12 @@ export interface ChangeRequest {
   updatedAt: string;
 }
 
+export interface ChangeBudgetLink {
+  budgetCategoryId: string;
+  amount: number;
+  committed: boolean;
+}
+
 export interface ChangeComment {
   id: string;
   changeRequestId: string;
