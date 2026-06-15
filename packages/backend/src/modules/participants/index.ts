@@ -6,6 +6,8 @@ import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
+import { messagingRepository } from "../messaging/repository.ts";
+import { messagingService } from "../messaging/service.ts";
 
 type ParticipantRole = "client" | "architect" | "inspector" | "guest";
 type ParticipantStatus = "invited" | "active" | "revoked";
@@ -148,6 +150,7 @@ function computeAccess(
 
 const participantRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
+  const messaging = messagingService(messagingRepository(fastify.db));
 
   async function resolveProjectOwner(
     ownerId: string | null,
@@ -281,9 +284,15 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: participantParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
+      const participant = await db<ParticipantRow>("project_participants")
+        .where({ id: request.params.participantId, project_id: project.id })
+        .first();
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update({ status: "revoked", updated_at: new Date().toISOString() });
+      if (participant?.user_id) {
+        await messaging.removeFromProjectChannels(project.id, participant.user_id);
+      }
       return reply.status(204).send();
     },
   );

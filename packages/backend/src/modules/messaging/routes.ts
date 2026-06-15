@@ -212,6 +212,29 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.patch<{ Params: { id: string }; Body: { name?: string; topic?: string | null; archived?: boolean } }>(
+    "/channels/:id",
+    {
+      schema: {
+        params: channelIdParams,
+        body: {
+          type: "object",
+          additionalProperties: false,
+          minProperties: 1,
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 80 },
+            topic: { type: ["string", "null"], maxLength: 500 },
+            archived: { type: "boolean" },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.updateChannel(request.params.id, request.body, user.id);
+    },
+  );
+
   fastify.post<{ Params: { id: string }; Body: { memberIds: string[] } }>(
     "/channels/:id/members",
     { schema: { params: channelIdParams, body: addMembersBody } },
