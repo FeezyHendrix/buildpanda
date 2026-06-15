@@ -68,7 +68,6 @@ const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-re
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
-const ProjectMessages = lazy(() => import("@/pages/project/messages"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
 const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
@@ -212,7 +211,7 @@ const router = createBrowserRouter([
       { path: "documents", element: <ProjectDocuments /> },
       { path: "team", element: <ProjectTeam /> },
       { path: "inspections", element: <ProjectInspections /> },
-      { path: "messages", element: <ProjectMessages /> },
+      { path: "messages", element: <ProjectChat /> },
       { path: "settings", element: <ProjectSettings /> },
       { path: "activities", element: <ProjectActivities /> },
       { path: "activities/:activityId", element: <ProjectActivities /> },
