@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectChannels,
@@ -19,6 +20,7 @@ import {
   useAllChannels,
   useUpdateMembership,
   useMessageSearch,
+  useForwardToActionItem,
 } from "@/hooks/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { Avatar } from "@/components/atoms/avatar";
@@ -172,6 +174,7 @@ function MessageItem({
   onUnpin,
   onReply,
   onReaction,
+  onForward,
 }: {
   message: ChatMessage;
   isOwn: boolean;
@@ -182,6 +185,7 @@ function MessageItem({
   onUnpin: (m: ChatMessage) => void;
   onReply: (m: ChatMessage) => void;
   onReaction: (m: ChatMessage, emoji: string) => void;
+  onForward?: (m: ChatMessage) => void;
 }) {
   const [showEmoji, setShowEmoji] = useState(false);
 
@@ -273,6 +277,14 @@ function MessageItem({
           Reply
         </button>
 
+        <button
+          type="button"
+          onClick={() => onForward?.(message)}
+          className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+        >
+          → Task
+        </button>
+
         {isPinned ? (
           <button
             type="button"
@@ -324,6 +336,7 @@ function MessageGroup({
   onUnpin,
   onReply,
   onReaction,
+  onForward,
 }: {
   messages: ChatMessage[];
   currentUserId: string;
@@ -334,6 +347,7 @@ function MessageGroup({
   onUnpin: (m: ChatMessage) => void;
   onReply: (m: ChatMessage) => void;
   onReaction: (m: ChatMessage, emoji: string) => void;
+  onForward?: (m: ChatMessage) => void;
 }) {
   const first = messages[0];
   if (!first) return null;
@@ -365,6 +379,7 @@ function MessageGroup({
               onUnpin={onUnpin}
               onReply={onReply}
               onReaction={onReaction}
+              onForward={onForward}
             />
           ))}
         </div>
@@ -823,6 +838,14 @@ export default function ProjectChat() {
     toggleReaction.mutate({ messageId: m.id, emoji });
   };
 
+  const forwardToTask = useForwardToActionItem();
+  const handleForward = (m: ChatMessage) => {
+    forwardToTask.mutate(m.id, {
+      onSuccess: () => toast("Action item created from message", "success"),
+      onError: () => toast("Could not create action item"),
+    });
+  };
+
   const activeChannel = projectChannels.find((c) => c.id === activeChannelId) || dmChannels.find((c: Channel) => c.id === activeChannelId);
 
   const groups: ChatMessage[][] = [];
@@ -964,6 +987,7 @@ export default function ProjectChat() {
                 onUnpin={(m) => unpinMsg.mutate(m.id)}
                 onReply={setThreadRootMsg}
                 onReaction={handleReaction}
+                onForward={handleForward}
               />
             ))}
             <div ref={bottomRef} className="h-4" />

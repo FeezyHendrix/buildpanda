@@ -7,6 +7,8 @@ import { notificationsService } from "../notifications/service.ts";
 import { messagingRepository } from "./repository.ts";
 import { messagingService } from "./service.ts";
 import { referenceResolver, referenceableTypes } from "./references.ts";
+import { actionItemsRepository } from "../action-items/repository.ts";
+import { actionItemsService } from "../action-items/service.ts";
 import type { ReferenceContext } from "./references.ts";
 import type { MessageAttachment, MessageMention, MessageReference } from "./types.ts";
 
@@ -139,6 +141,11 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     notifications: notificationsService(notificationsRepository(fastify.db)),
     realtime: fastify.realtime,
     references: referenceResolver(fastify.db),
+    createActionItem: async (projectId, input, userId) => {
+      const actionItems = actionItemsService(actionItemsRepository(fastify.db));
+      const created = await actionItems.create(projectId, { title: input.title, description: input.description }, userId);
+      return { id: created.id };
+    },
   });
 
   function refCtx(request: FastifyRequest): ReferenceContext {
@@ -376,6 +383,16 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       await service.pin(request.params.id, user.id);
       return reply.status(204).send();
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/messages/:id/forward-to-action-item",
+    { schema: { params: messageIdParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const result = await service.forwardToActionItem(request.params.id, user.id);
+      return reply.status(201).send(result);
     },
   );
 
