@@ -893,6 +893,8 @@ export interface ChatMessage {
   }[];
   mentions: { kind: "user" | "here" | "channel"; userId?: string }[];
   attachments: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
+  reactions?: { emoji: string; count: number; mine: boolean }[];
+  replyCount?: number;
   editedAt: string | null;
   deletedAt: string | null;
   createdAt: string;

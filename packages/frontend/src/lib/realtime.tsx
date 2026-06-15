@@ -133,6 +133,11 @@ function handleEvent(
 ): void {
   if (payload.event === "message.created" && payload.channelId) {
     const message = payload.data as ChatMessage;
+    if (message.parentMessageId) {
+      void queryClient.invalidateQueries({ queryKey: ["messages", message.parentMessageId, "thread"] });
+      void queryClient.invalidateQueries({ queryKey: messageKeys.list(payload.channelId) });
+      return;
+    }
     queryClient.setQueryData<{ pages: ChatMessage[][]; pageParams: unknown[] } | undefined>(
       messageKeys.list(payload.channelId),
       (prev) => {
