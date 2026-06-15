@@ -14,6 +14,7 @@ import { Avatar } from "@/components/atoms/avatar";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { useChannelRealtime } from "@/lib/realtime";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
 
 
@@ -276,6 +277,7 @@ export default function ProjectChat() {
 
   const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage } = useChannelMessages(activeChannelId);
   const messages = messagesData?.pages.flat() || [];
+  useChannelRealtime(activeChannelId ?? undefined);
   const markRead = useMarkChannelRead(project.id, activeChannelId!);
 
   useEffect(() => {
