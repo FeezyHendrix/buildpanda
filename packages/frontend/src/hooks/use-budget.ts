@@ -9,6 +9,10 @@ export interface BudgetCategory {
   planned: number;
   committed: number;
   actual: number;
+  effectivePlanned: number;
+  projectedPlanned: number;
+  effectiveCommitted: number;
+  effectiveActual: number;
   notes: string | null;
   variance: number;
   variancePercentage: number;
@@ -200,6 +204,31 @@ export function useDeleteBudgetPeriod() {
       await api.delete(`/projects/${projectId}/budget/periods/${periodId}`);
     },
     onSuccess: (_variables, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
+    },
+  });
+}
+
+export interface SeedBudgetInput {
+  items: Array<{ groupLabel: string; total: number; costCode?: string }>;
+  mode?: "skip" | "replace";
+}
+
+export function useSeedBudgetFromEstimate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      ...body
+    }: SeedBudgetInput & { projectId: string }) => {
+      const { data } = await api.post<{ created: number; skipped: number }>(
+        `/projects/${projectId}/budget/seed-from-estimate`,
+        body,
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
     },
   });
