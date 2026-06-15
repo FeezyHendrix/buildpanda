@@ -882,6 +882,15 @@ export interface ChatMessage {
   contentHtml: string | null;
   parentMessageId: string | null;
   references: { type: string; id: string; label: string }[];
+  resolvedReferences?: {
+    type: string;
+    id: string;
+    restricted: boolean;
+    title?: string;
+    status?: string | null;
+    projectId?: string | null;
+    url?: string;
+  }[];
   mentions: { kind: "user" | "here" | "channel"; userId?: string }[];
   attachments: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
   editedAt: string | null;
