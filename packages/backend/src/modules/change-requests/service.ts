@@ -56,6 +56,24 @@ function notifyChangeAssignee(
     .catch(() => undefined);
 }
 
+function notifyChangeDecided(
+  deps: ChangeRequestsDeps,
+  submitterId: string | null | undefined,
+  projectId: string,
+  title: string,
+  status: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !submitterId || submitterId === actorId) return;
+  void deps.notifications
+    .notify(submitterId, "change_request_decided", {
+      title: `Change request ${status.toLowerCase()}`,
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
 function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
   return {
     id: row.id,
@@ -147,6 +165,7 @@ export function changeRequestsService(
         if (DECISIONS.includes(input.status) && !DECISIONS.includes(existing.status)) {
           patch.decided_at = new Date().toISOString();
           patch.decided_by_id = userId;
+          notifyChangeDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId);
         } else if (!DECISIONS.includes(input.status)) {
           patch.decided_at = null;
           patch.decided_by_id = null;

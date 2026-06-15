@@ -80,6 +80,23 @@ function notifyQueryAssignee(
     .catch(() => undefined);
 }
 
+function notifyQueryAnswered(
+  deps: QueriesDeps,
+  askerId: string | null | undefined,
+  projectId: string,
+  subject: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !askerId || askerId === actorId) return;
+  void deps.notifications
+    .notify(askerId, "query_answered", {
+      title: "Your query was answered",
+      body: subject,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
 export function queriesService(repository: QueriesRepository, deps: QueriesDeps = {}) {
   return {
     async list(projectId: string, status?: QueryStatus): Promise<Query[]> {
@@ -134,11 +151,18 @@ export function queriesService(repository: QueriesRepository, deps: QueriesDeps 
       const becomingAnswered =
         (input.status === "Answered" && existing.status !== "Answered") ||
         (input.answer !== undefined && input.answer !== null && input.answer.trim() !== "" && !existing.answered_at);
+      const answeredOrClosed =
+        input.status !== undefined &&
+        ["Answered", "Closed"].includes(input.status) &&
+        !["Answered", "Closed"].includes(existing.status);
       if (input.status !== undefined) patch.status = input.status;
       if (becomingAnswered) {
         patch.answered_at = new Date().toISOString();
         patch.answered_by_id = userId;
         if (input.status === undefined && existing.status === "Open") patch.status = "Answered";
+      }
+      if (answeredOrClosed || becomingAnswered) {
+        notifyQueryAnswered(deps, existing.asked_by_id, projectId, existing.subject, userId);
       }
 
       const updated = await repository.update(queryId, patch);

@@ -16,6 +16,23 @@ export const NOTIFICATION_TYPES = [
   { type: "bim_issue_assigned", label: "A coordination issue was assigned to you", group: "Tasks" },
   { type: "chat_mention", label: "You were mentioned in chat", group: "Messages" },
   { type: "chat_dm", label: "New direct message", group: "Messages" },
+  { type: "action_item_blocked", label: "An action item you own is blocked", group: "Tasks" },
+  { type: "action_item_resolved", label: "An action item you raised was resolved", group: "Tasks" },
+  { type: "query_answered", label: "A query you raised was answered", group: "Tasks" },
+  { type: "change_request_decided", label: "A change request was approved or rejected", group: "Tasks" },
+  { type: "approval_requested", label: "An approval needs your decision", group: "Approvals" },
+  { type: "approval_decided", label: "An approval you submitted was decided", group: "Approvals" },
+  { type: "inspection_failed", label: "An inspection requires action", group: "Project" },
+  { type: "invoice_submitted", label: "A vendor invoice was submitted", group: "Payments" },
+  { type: "invoice_overdue", label: "An invoice is overdue", group: "Payments" },
+  { type: "permit_expiring", label: "A permit is expiring soon", group: "Project" },
+  { type: "permit_expired", label: "A permit has expired", group: "Project" },
+  { type: "key_date_approaching", label: "A key date is approaching", group: "Project" },
+  { type: "key_date_missed", label: "A key date was missed", group: "Project" },
+  { type: "risk_high_added", label: "A high-severity risk was added", group: "Project" },
+  { type: "budget_overrun", label: "A budget category is over plan", group: "Payments" },
+  { type: "team_member_added", label: "You were added to a project", group: "Project" },
+  { type: "ai_health_drop", label: "Project health score dropped", group: "Project" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];

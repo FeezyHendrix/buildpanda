@@ -126,7 +126,37 @@ function notifyAssignee(
       body: title,
       projectId: row.project_id,
     })
-    .catch(() => {});
+    .catch(() => undefined);
+}
+
+function notifyActionItemBlocked(
+  deps: ActionItemsDeps,
+  row: ActionItemRow,
+  actorId: string,
+): void {
+  if (!deps.notifications || !row.created_by_id || row.created_by_id === actorId) return;
+  void deps.notifications
+    .notify(row.created_by_id, "action_item_blocked", {
+      title: "An action item is blocked",
+      body: row.title,
+      projectId: row.project_id,
+    })
+    .catch(() => undefined);
+}
+
+function notifyActionItemResolved(
+  deps: ActionItemsDeps,
+  row: ActionItemRow,
+  actorId: string,
+): void {
+  if (!deps.notifications || !row.created_by_id || row.created_by_id === actorId) return;
+  void deps.notifications
+    .notify(row.created_by_id, "action_item_resolved", {
+      title: "An action item was resolved",
+      body: row.title,
+      projectId: row.project_id,
+    })
+    .catch(() => undefined);
 }
 
 export function actionItemsService(repository: ActionItemsRepository, deps: ActionItemsDeps = {}) {
@@ -183,6 +213,7 @@ export function actionItemsService(repository: ActionItemsRepository, deps: Acti
       projectId: string,
       itemId: string,
       input: UpdateActionItemInput,
+      userId: string,
     ): Promise<ActionItem> {
       const existing = await repository.findById(itemId);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Action item");
@@ -215,6 +246,9 @@ export function actionItemsService(repository: ActionItemsRepository, deps: Acti
         if (input.status === "Resolved" && existing.status !== "Resolved") {
           patch.resolved_at = new Date().toISOString();
           spawn = Boolean(existing.recur_unit);
+          notifyActionItemResolved(deps, existing, userId);
+        } else if (input.status === "Blocked" && existing.status !== "Blocked") {
+          notifyActionItemBlocked(deps, existing, userId);
         } else if (input.status !== "Resolved" && existing.status === "Resolved") {
           patch.resolved_at = null;
         }

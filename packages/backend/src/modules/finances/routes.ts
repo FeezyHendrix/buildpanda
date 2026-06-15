@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { financesRepository } from "./repository.ts";
 import {
   financesService,
@@ -66,7 +68,9 @@ const milestonePatchBody = {
 } as const;
 
 const financeRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = financesService(financesRepository(fastify.db));
+  const service = financesService(financesRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/finances",
@@ -128,9 +132,11 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: milestoneParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
+      const user = request.requireAuth();
       const milestone = await service.releaseMilestone(
         project.id,
         request.params.milestoneId,
+        user.id,
       );
       return reply.status(200).send(milestone);
     },

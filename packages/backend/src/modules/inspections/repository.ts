@@ -46,6 +46,14 @@ export function inspectionsRepository(db: Knex) {
       return db<InspectionRow>("inspections").where({ id }).first();
     },
 
+    async projectOwnerId(projectId: string): Promise<string | null> {
+      const row = await db<{ owner_id: string | null }>("projects")
+        .where({ id: projectId })
+        .select("owner_id")
+        .first();
+      return row?.owner_id ?? null;
+    },
+
     mediaForInspections(inspectionIds: string[]): Promise<InspectionMediaRow[]> {
       if (inspectionIds.length === 0) return Promise.resolve([]);
       return db<InspectionMediaRow>("inspection_media")
