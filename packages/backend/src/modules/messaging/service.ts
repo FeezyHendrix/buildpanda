@@ -102,6 +102,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
   function notifyMentions(
     mentions: MessageMention[],
     memberIds: Set<string>,
+    mutedUsers: Set<string>,
     projectId: string | null,
     channelName: string,
     actorId: string,
@@ -115,6 +116,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       }
     }
     for (const userId of targets) {
+      if (mutedUsers.has(userId)) continue;
       if (deps.realtime?.isOnline(userId)) continue;
       void deps.notifications
         .notify(userId, "chat_mention", {
@@ -244,6 +246,24 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
           message.resolvedReferences = await deps.references.resolveMany(message.references, ctx);
         }
       }
+      const reactionRows = await repository.reactionsForMessages(messages.map((m) => m.id));
+      if (reactionRows.length > 0) {
+        const byMessage = new Map<string, Map<string, { count: number; mine: boolean }>>();
+        for (const r of reactionRows) {
+          const perMsg = byMessage.get(r.message_id) ?? new Map();
+          const entry = perMsg.get(r.emoji) ?? { count: 0, mine: false };
+          entry.count += 1;
+          if (r.user_id === userId) entry.mine = true;
+          perMsg.set(r.emoji, entry);
+          byMessage.set(r.message_id, perMsg);
+        }
+        for (const message of messages) {
+          const perMsg = byMessage.get(message.id);
+          if (perMsg) {
+            message.reactions = [...perMsg.entries()].map(([emoji, v]) => ({ emoji, count: v.count, mine: v.mine }));
+          }
+        }
+      }
       return messages;
     },
 
@@ -287,6 +307,9 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
 
       const members = await repository.listMembers(channelId);
       const memberIds = members.map((m) => m.user_id);
+      const mutedUsers = new Set(
+        members.filter((m) => m.muted || m.notify_level === "none").map((m) => m.user_id),
+      );
       const channelName = channelRow.name ? `#${channelRow.name}` : "a conversation";
       const withAuthor = await repository.findMessageById(row.id);
       const message = toMessage(withAuthor ?? row);
@@ -302,6 +325,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       notifyMentions(
         input.mentions ?? [],
         new Set(memberIds),
+        mutedUsers,
         channelRow.project_id,
         channelName,
         actor.id,
@@ -395,6 +419,75 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         throw new ForbiddenError("Only channel admins can remove members");
       }
       await repository.removeMember(channelId, targetUserId);
+    },
+
+    async toggleReaction(messageId: string, emoji: string, userId: string): Promise<void> {
+      const message = await repository.findMessageById(messageId);
+      if (!message) throw new NotFoundError("Message");
+      await requireMembership(message.channel_id, userId);
+      await repository.toggleReaction(messageId, userId, emoji);
+      if (deps.realtime) {
+        deps.realtime.publish({ event: "reaction.changed", channelId: message.channel_id, data: { messageId } });
+      }
+    },
+
+    async listThread(rootId: string, userId: string): Promise<Message[]> {
+      const root = await repository.findMessageById(rootId);
+      if (!root) throw new NotFoundError("Message");
+      await requireMembership(root.channel_id, userId);
+      const rows = await repository.listThread(rootId);
+      return rows.map(toMessage);
+    },
+
+    async pin(messageId: string, userId: string): Promise<void> {
+      const message = await repository.findMessageById(messageId);
+      if (!message) throw new NotFoundError("Message");
+      await requireMembership(message.channel_id, userId);
+      await repository.pinMessage(message.channel_id, messageId, userId);
+      if (deps.realtime) {
+        deps.realtime.publish({ event: "channel.updated", channelId: message.channel_id, data: { pinned: messageId } });
+      }
+    },
+
+    async unpin(channelId: string, messageId: string, userId: string): Promise<void> {
+      await requireMembership(channelId, userId);
+      await repository.unpinMessage(channelId, messageId);
+    },
+
+    async listPinned(channelId: string, userId: string): Promise<Message[]> {
+      await requireMembership(channelId, userId);
+      const rows = await repository.listPinned(channelId);
+      return rows.map(toMessage);
+    },
+
+    async openOrCreateDm(otherUserId: string, actorId: string): Promise<Channel> {
+      if (otherUserId === actorId) throw new ForbiddenError("Cannot DM yourself");
+      const existing = await repository.findDmChannel([actorId, otherUserId]);
+      if (existing) {
+        const withMembership = await repository.findChannelForUser(existing.id, actorId);
+        return toChannel(withMembership!);
+      }
+      const channel = await repository.createChannel({
+        id: generateId("chan"),
+        type: "dm",
+        name: null,
+        topic: null,
+        project_id: null,
+        organization_id: null,
+        is_private: true,
+        created_by_id: actorId,
+      });
+      for (const userId of [actorId, otherUserId]) {
+        await repository.addMember({
+          id: generateId("cm"),
+          channel_id: channel.id,
+          user_id: userId,
+          role: "member",
+          added_by_id: actorId,
+        });
+      }
+      const withMembership = await repository.findChannelForUser(channel.id, actorId);
+      return toChannel(withMembership!);
     },
   };
 }

@@ -317,6 +317,92 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.post<{ Params: { id: string }; Body: { emoji: string } }>(
+    "/messages/:id/reactions",
+    {
+      schema: {
+        params: messageIdParams,
+        body: {
+          type: "object",
+          required: ["emoji"],
+          additionalProperties: false,
+          properties: { emoji: { type: "string", minLength: 1, maxLength: 32 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      await service.toggleReaction(request.params.id, request.body.emoji, user.id);
+      return reply.status(204).send();
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/messages/:id/thread",
+    { schema: { params: messageIdParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.listThread(request.params.id, user.id);
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/messages/:id/pin",
+    { schema: { params: messageIdParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      await service.pin(request.params.id, user.id);
+      return reply.status(204).send();
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/channels/:id/pins",
+    { schema: { params: channelIdParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.listPinned(request.params.id, user.id);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; messageId: string } }>(
+    "/channels/:id/pins/:messageId",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["id", "messageId"],
+          additionalProperties: false,
+          properties: { id: { type: "string", minLength: 1 }, messageId: { type: "string", minLength: 1 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      await service.unpin(request.params.id, request.params.messageId, user.id);
+      return reply.status(204).send();
+    },
+  );
+
+  fastify.post<{ Body: { userId: string } }>(
+    "/channels/dm",
+    {
+      schema: {
+        body: {
+          type: "object",
+          required: ["userId"],
+          additionalProperties: false,
+          properties: { userId: { type: "string", minLength: 1, maxLength: 100 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const channel = await service.openOrCreateDm(request.body.userId, user.id);
+      return reply.status(201).send(channel);
+    },
+  );
+
   fastify.get<{ Querystring: { q?: string; types?: string } }>(
     "/references/search",
     {
