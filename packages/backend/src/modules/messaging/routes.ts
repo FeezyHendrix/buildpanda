@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import type { Knex } from "knex";
 import { BadRequestError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
@@ -6,6 +6,8 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { messagingRepository } from "./repository.ts";
 import { messagingService } from "./service.ts";
+import { referenceResolver, referenceableTypes } from "./references.ts";
+import type { ReferenceContext } from "./references.ts";
 import type { MessageAttachment, MessageMention, MessageReference } from "./types.ts";
 
 const channelIdParams = {
@@ -136,7 +138,16 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
   const service = messagingService(messagingRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db)),
     realtime: fastify.realtime,
+    references: referenceResolver(fastify.db),
   });
+
+  function refCtx(request: FastifyRequest): ReferenceContext {
+    return {
+      userId: request.user?.id ?? "",
+      orgRoles: request.orgRoles,
+      projectRoles: request.projectRoles,
+    };
+  }
 
   fastify.get("/channels", async (request) => {
     const user = request.requireAuth();
@@ -253,7 +264,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: channelIdParams, querystring: listMessagesQuery } },
     async (request) => {
       const user = request.requireAuth();
-      return service.listMessages(request.params.id, user.id, {
+      return service.listMessages(request.params.id, user.id, refCtx(request), {
         before: request.query.before,
         limit: request.query.limit,
       });
@@ -303,6 +314,40 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       return service.deleteMessage(request.params.id, user.id);
+    },
+  );
+
+  fastify.get<{ Querystring: { q?: string; types?: string } }>(
+    "/references/search",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            q: { type: "string", minLength: 1, maxLength: 200 },
+            types: { type: "string", maxLength: 300 },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const user = request.requireAuth();
+      if (!request.query.q) return [];
+      const orgIds = [...request.orgRoles.keys()];
+      const participantProjectIds = [...request.projectRoles.keys()];
+      const rows = await fastify.db("projects")
+        .where(function () {
+          this.where("owner_id", user.id);
+          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
+          if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
+        })
+        .pluck<string[]>("id");
+      const requestedTypes = request.query.types
+        ? request.query.types.split(",").map((t) => t.trim()).filter(Boolean)
+        : undefined;
+      const valid = requestedTypes?.filter((t) => referenceableTypes().includes(t));
+      return service.searchReferences(refCtx(request), rows, request.query.q, valid);
     },
   );
 };

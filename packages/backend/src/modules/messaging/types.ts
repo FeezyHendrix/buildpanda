@@ -50,6 +50,15 @@ export interface Message {
   contentHtml: string | null;
   parentMessageId: string | null;
   references: MessageReference[];
+  resolvedReferences?: {
+    type: string;
+    id: string;
+    restricted: boolean;
+    title?: string;
+    status?: string | null;
+    projectId?: string | null;
+    url?: string;
+  }[];
   mentions: MessageMention[];
   attachments: MessageAttachment[];
   editedAt: string | null;
