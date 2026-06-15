@@ -97,17 +97,60 @@ export function useAddChangeComment() {
     }: {
       projectId: string;
       changeId: string;
-      body: string;
+      body: { content: string; internalOnly?: boolean };
     }) => {
       const { data } = await api.post<ChangeComment>(
         `/projects/${projectId}/change-requests/${changeId}/comments`,
-        { body },
+        body,
       );
       return data;
     },
+    onSuccess: (_d, { projectId, changeId }) =>
+      qc.invalidateQueries({ queryKey: changeRequestKeys.detail(projectId, changeId) }),
+  });
+}
+
+export interface ChangeRequestBudgetLink {
+  budgetCategoryId: string;
+  amount: number;
+  committed?: boolean;
+}
+
+export function useChangeRequestBudgetLinks(projectId: string | undefined, changeId: string | undefined) {
+  return useQuery({
+    queryKey: [...changeRequestKeys.detail(projectId ?? "__none__", changeId ?? "__none__"), "budget-links"],
+    queryFn: async () => {
+      const { data } = await api.get<{ links: ChangeRequestBudgetLink[] }>(
+        `/projects/${projectId!}/change-requests/${changeId!}/budget-links`,
+      );
+      return data.links;
+    },
+    enabled: Boolean(projectId && changeId),
+  });
+}
+
+export function useSetChangeRequestBudgetLinks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      changeId,
+      links,
+    }: {
+      projectId: string;
+      changeId: string;
+      links: ChangeRequestBudgetLink[];
+    }) => {
+      const { data } = await api.put<{ links: ChangeRequestBudgetLink[] }>(
+        `/projects/${projectId}/change-requests/${changeId}/budget-links`,
+        { links },
+      );
+      return data.links;
+    },
     onSuccess: (_d, { projectId, changeId }) => {
       qc.invalidateQueries({ queryKey: changeRequestKeys.detail(projectId, changeId) });
-      qc.invalidateQueries({ queryKey: changeRequestKeys.all(projectId) });
+      qc.invalidateQueries({ queryKey: ["projects", projectId, "budget"] });
     },
   });
 }
+

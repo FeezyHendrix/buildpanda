@@ -117,6 +117,10 @@ export default function ProjectBudget() {
 
   const { categories = [], periods = [], summary } = budget ?? {};
 
+  const effectiveTotalPlanned = categories.reduce((sum, cat) => sum + cat.effectivePlanned, 0);
+  const effectiveTotalCommitted = categories.reduce((sum, cat) => sum + cat.effectiveCommitted, 0);
+  const effectiveTotalActual = categories.reduce((sum, cat) => sum + cat.effectiveActual, 0);
+
   const sortedPeriods = [...periods].sort((a, b) =>
     a.period.localeCompare(b.period),
   );
@@ -160,23 +164,23 @@ export default function ProjectBudget() {
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
           <KpiCard label="Total Planned">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalPlanned, currency)}
+              {formatCurrency(effectiveTotalPlanned, currency)}
             </p>
           </KpiCard>
           <KpiCard label="Committed">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalCommitted, currency)}
+              {formatCurrency(effectiveTotalCommitted, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {summary.percentCommitted}% of planned
+              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalCommitted / effectiveTotalPlanned) * 100) : 0}% of planned
             </p>
           </KpiCard>
           <KpiCard label="Actual Spent">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalActual, currency)}
+              {formatCurrency(effectiveTotalActual, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {summary.percentSpent}% of planned
+              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalActual / effectiveTotalPlanned) * 100) : 0}% of planned
             </p>
           </KpiCard>
           <KpiCard label="Variance">
@@ -362,15 +366,18 @@ function CategoryCard({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Metric
           label="Planned"
-          value={formatCurrency(category.planned, currency)}
+          value={formatCurrency(category.effectivePlanned, currency)}
+          secondaryValue={category.effectivePlanned !== category.planned ? formatCurrency(category.planned, currency) : undefined}
+          projectedValue={category.projectedPlanned !== category.effectivePlanned ? formatCurrency(category.projectedPlanned, currency) : undefined}
         />
         <Metric
           label="Committed"
-          value={formatCurrency(category.committed, currency)}
+          value={formatCurrency(category.effectiveCommitted, currency)}
         />
         <Metric
           label="Actual"
-          value={formatCurrency(category.actual, currency)}
+          value={formatCurrency(category.effectiveActual, currency)}
+          secondaryValue={category.effectiveActual !== category.actual ? formatCurrency(category.actual, currency) : undefined}
         />
         <Metric
           label="Variance"
@@ -527,18 +534,24 @@ function PeriodCard({
 function Metric({
   label,
   value,
+  secondaryValue,
+  projectedValue,
   valueClassName,
 }: {
   label: string;
   value: string;
+  secondaryValue?: string;
+  projectedValue?: string;
   valueClassName?: string;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium text-gray-500">{label}</span>
-      <span className={cn("text-sm font-semibold text-gray-900", valueClassName)}>
+      <span className={cn("text-sm font-semibold text-gray-900 tabular-nums", valueClassName)}>
         {value}
       </span>
+      {secondaryValue && <span className="text-xs text-gray-400 tabular-nums">Manual: {secondaryValue}</span>}
+      {projectedValue && <span className="text-xs text-gray-400 tabular-nums">Projected: {projectedValue}</span>}
     </div>
   );
 }
