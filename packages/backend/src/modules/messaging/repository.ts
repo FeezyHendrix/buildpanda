@@ -166,6 +166,7 @@ export function messagingRepository(db: Knex) {
       let q = db<MessageRow>("messages as m")
         .leftJoin("user as u", "u.id", "m.author_id")
         .where("m.channel_id", channelId)
+        .whereNull("m.parent_message_id")
         .select<MessageRow[]>("m.*", "u.name as author_name")
         .orderBy("m.created_at", "desc")
         .orderBy("m.id", "desc")
@@ -224,6 +225,17 @@ export function messagingRepository(db: Knex) {
       return db("message_reactions")
         .whereIn("message_id", messageIds)
         .select<{ message_id: string; emoji: string; user_id: string }[]>("message_id", "emoji", "user_id");
+    },
+
+    async replyCountsForMessages(messageIds: string[]): Promise<Map<string, number>> {
+      if (messageIds.length === 0) return new Map();
+      const rows = await db("messages")
+        .whereIn("parent_message_id", messageIds)
+        .whereNull("deleted_at")
+        .groupBy("parent_message_id")
+        .select<{ parent_message_id: string; c: string }[]>("parent_message_id")
+        .count<{ parent_message_id: string; c: string }[]>("id as c");
+      return new Map(rows.map((r) => [r.parent_message_id, Number(r.c)]));
     },
 
     listThread(rootId: string): Promise<MessageRow[]> {

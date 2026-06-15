@@ -264,6 +264,11 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
           }
         }
       }
+      const replyCounts = await repository.replyCountsForMessages(messages.map((m) => m.id));
+      for (const message of messages) {
+        const count = replyCounts.get(message.id);
+        if (count) message.replyCount = count;
+      }
       return messages;
     },
 
