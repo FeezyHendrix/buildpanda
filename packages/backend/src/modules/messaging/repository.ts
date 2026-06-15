@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { generateId } from "../../lib/ids.ts";
 import type {
   ChannelRow,
   ChannelMemberRow,
@@ -199,6 +200,77 @@ export function messagingRepository(db: Knex) {
 
     async touchChannel(channelId: string): Promise<void> {
       await db("channels").where({ id: channelId }).update({ updated_at: new Date().toISOString() });
+    },
+
+    async toggleReaction(messageId: string, userId: string, emoji: string): Promise<"added" | "removed"> {
+      const existing = await db("message_reactions")
+        .where({ message_id: messageId, user_id: userId, emoji })
+        .first();
+      if (existing) {
+        await db("message_reactions").where({ id: existing.id }).del();
+        return "removed";
+      }
+      await db("message_reactions").insert({
+        id: generateId("rxn"),
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+      });
+      return "added";
+    },
+
+    reactionsForMessages(messageIds: string[]): Promise<{ message_id: string; emoji: string; user_id: string }[]> {
+      if (messageIds.length === 0) return Promise.resolve([]);
+      return db("message_reactions")
+        .whereIn("message_id", messageIds)
+        .select<{ message_id: string; emoji: string; user_id: string }[]>("message_id", "emoji", "user_id");
+    },
+
+    listThread(rootId: string): Promise<MessageRow[]> {
+      return db<MessageRow>("messages as m")
+        .leftJoin("user as u", "u.id", "m.author_id")
+        .where("m.parent_message_id", rootId)
+        .select<MessageRow[]>("m.*", "u.name as author_name")
+        .orderBy("m.created_at", "asc");
+    },
+
+    async pinMessage(channelId: string, messageId: string, userId: string): Promise<void> {
+      await db("pinned_messages")
+        .insert({ id: generateId("pin"), channel_id: channelId, message_id: messageId, pinned_by_id: userId })
+        .onConflict(["channel_id", "message_id"])
+        .ignore();
+    },
+
+    async unpinMessage(channelId: string, messageId: string): Promise<void> {
+      await db("pinned_messages").where({ channel_id: channelId, message_id: messageId }).del();
+    },
+
+    listPinned(channelId: string): Promise<MessageRow[]> {
+      return db<MessageRow>("pinned_messages as p")
+        .join("messages as m", "m.id", "p.message_id")
+        .leftJoin("user as u", "u.id", "m.author_id")
+        .where("p.channel_id", channelId)
+        .select<MessageRow[]>("m.*", "u.name as author_name")
+        .orderBy("p.created_at", "desc");
+    },
+
+    findDmChannel(userIds: string[]): Promise<ChannelRow | undefined> {
+      return db<ChannelRow>("channels as c")
+        .where("c.type", "dm")
+        .whereExists(function () {
+          this.select("*")
+            .from("channel_members as m1")
+            .whereRaw("m1.channel_id = c.id")
+            .where("m1.user_id", userIds[0]!);
+        })
+        .whereExists(function () {
+          this.select("*")
+            .from("channel_members as m2")
+            .whereRaw("m2.channel_id = c.id")
+            .where("m2.user_id", userIds[1]!);
+        })
+        .whereRaw("(SELECT COUNT(*) FROM channel_members WHERE channel_id = c.id) = 2")
+        .first();
     },
   };
 }
