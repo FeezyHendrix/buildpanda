@@ -42,6 +42,8 @@ import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";
 
+import { WhatsNextCard } from "@/components/organisms/whats-next-card";
+
 const RECENT_UPDATE_LIMIT = 2;
 
 export default function ProjectOverview() {
@@ -117,6 +119,10 @@ export default function ProjectOverview() {
           className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />
       </section>
+
+      <div className="mt-6">
+        <WhatsNextCard projectId={project.id} />
+      </div>
 
       <Card data-tour="construction-timeline" className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0 mt-6">
         <div className="flex items-center justify-between py-3 px-5">

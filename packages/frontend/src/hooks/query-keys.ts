@@ -198,6 +198,12 @@ export const pandaAiKeys = {
     [...pandaAiKeys.all(projectId), "latest"] as const,
 };
 
+export const reportingKeys = {
+  all: (projectId: string) => ["projects", projectId, "reporting"] as const,
+  snapshot: (projectId: string) =>
+    [...reportingKeys.all(projectId), "snapshot"] as const,
+};
+
 export const leadKeys = {
   all: ["leads"] as const,
   list: (filters?: { status?: string }) =>

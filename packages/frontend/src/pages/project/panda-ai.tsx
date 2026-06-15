@@ -14,6 +14,9 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { HealthTrendChart } from "@/components/organisms/charts/health-trend-chart";
+
 function HealthScoreCard({ score }: { score: number | null }) {
   const healthColor =
     score === null
@@ -167,6 +170,7 @@ function MetricsOverview({
 export default function ProjectPandaAi() {
   const { project } = useProjectContext();
   const { data: insight, isPending } = useLatestInsight(project.id);
+  const { data: reportingData } = useReportingSnapshot(project.id);
   const analyze = useAnalyzeProject();
 
   function handleAnalyze() {
@@ -229,8 +233,16 @@ export default function ProjectPandaAi() {
       ) : (
         <div className="mt-8 grid gap-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <HealthScoreCard score={insight.healthScore} />
-            <Card className="col-span-1 flex flex-col md:col-span-2">
+            <div className="flex flex-col gap-6">
+              <HealthScoreCard score={insight.healthScore} />
+              {reportingData && reportingData.health.trendOldestFirst.length >= 2 && (
+                <Card className="flex flex-col p-6">
+                  <h2 className="text-sm font-medium text-gray-500 mb-4 text-center">Health Trend</h2>
+                  <HealthTrendChart points={reportingData.health.trendOldestFirst} />
+                </Card>
+              )}
+            </div>
+            <Card className="col-span-1 flex flex-col md:col-span-2 p-6">
               <h2 className="font-semibold text-gray-900">AI Summary</h2>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
                 {insight.summary || "No summary provided."}

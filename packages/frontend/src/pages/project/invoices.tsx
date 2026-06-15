@@ -1,3 +1,6 @@
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
+
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
@@ -68,6 +71,7 @@ export default function ProjectInvoices() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
   const [createOpen, setCreateOpen] = useState(false);
   const createInvoice = useCreateInvoice();
 
@@ -142,6 +146,18 @@ export default function ProjectInvoices() {
           accent
         />
       </section>
+
+      {snapshot && (
+        <section className="mt-6">
+          <div className="lg:w-1/2">
+            <InvoiceAgingBar 
+              aging={snapshot.finance.invoices.aging} 
+              currency={snapshot.currency} 
+              isLoading={isSnapshotLoading} 
+            />
+          </div>
+        </section>
+      )}
 
       <section className="mt-6">
         {isPending ? (
