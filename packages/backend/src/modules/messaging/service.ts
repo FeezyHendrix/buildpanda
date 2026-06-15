@@ -494,6 +494,24 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const withMembership = await repository.findChannelForUser(channel.id, actorId);
       return toChannel(withMembership!);
     },
+
+    async search(
+      userId: string,
+      query: string,
+      channelId: string | undefined,
+      limit = 30,
+    ): Promise<Message[]> {
+      if (!query.trim()) return [];
+      const rows = await repository.searchMessages(userId, query.trim(), channelId, Math.min(limit, 50));
+      return rows.map(toMessage);
+    },
+
+    async getMessage(messageId: string, userId: string): Promise<Message> {
+      const row = await repository.findMessageById(messageId);
+      if (!row) throw new NotFoundError("Message");
+      await requireMembership(row.channel_id, userId);
+      return toMessage(row);
+    },
   };
 }
 
