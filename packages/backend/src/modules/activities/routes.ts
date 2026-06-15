@@ -119,7 +119,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
   const service = activitiesService(
     activitiesRepository(fastify.db),
     (projectId) => fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
-    { notifications: notificationsService(notificationsRepository(fastify.db)) },
+    { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
   );
 
   fastify.get<{ Params: { id: string } }>(

@@ -144,7 +144,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
   const service = rfisService(rfisRepository(fastify.db), {
     changeRequests: changeRequestsService(changeRequestsRepository(fastify.db)),
-    notifications: notificationsService(notificationsRepository(fastify.db)),
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
   async function loadProject(id: string) {
