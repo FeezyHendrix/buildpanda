@@ -10,6 +10,10 @@ export interface BudgetCategory {
   variancePercentage: number;
   remaining: number;
   percentSpent: number;
+  effectivePlanned: number;
+  projectedPlanned: number;
+  effectiveCommitted: number;
+  effectiveActual: number;
 }
 
 export interface BudgetPeriod {
