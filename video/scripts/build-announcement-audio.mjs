@@ -128,6 +128,29 @@ ff([...inputs, "-filter_complex", filterComplex, "-map", "[out]", "-ar", "48000"
 const finalAudio = path.join(PUB, "announcement-vo.wav");
 ff(["-i", trackWav, "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-ar", "48000", "-ac", "2", finalAudio]);
 
+const musicRaw = path.join(PUB, "music-raw.mp3");
+if (existsSync(musicRaw)) {
+  const totalSec = totalFrames / FPS;
+  const musicBed = path.join(TMP, "music_bed.wav");
+  ff([
+    "-stream_loop", "-1", "-i", musicRaw,
+    "-t", String(totalSec),
+    "-af",
+    `afade=t=in:st=0:d=2,afade=t=out:st=${(totalSec - 3).toFixed(2)}:d=3,volume=0.16,lowpass=f=9000`,
+    "-ar", "48000", "-ac", "2", musicBed,
+  ]);
+  const mixed = path.join(PUB, "announcement-mix.wav");
+  ff([
+    "-i", finalAudio, "-i", musicBed,
+    "-filter_complex",
+    "[1:a][0:a]sidechaincompress=threshold=0.05:ratio=8:attack=20:release=400[duck];[0:a][duck]amix=inputs=2:normalize=0:duration=first[out]",
+    "-map", "[out]", "-ar", "48000", "-ac", "2", mixed,
+  ]);
+  console.log("Mixed VO + ducked music -> public/audio/announcement-mix.wav");
+} else {
+  console.log("No music-raw.mp3 found; VO only.");
+}
+
 const tsLines = [
   "export const ANNOUNCEMENT_FPS = 30;",
   `export const ANNOUNCEMENT_TOTAL_FRAMES = ${totalFrames};`,
