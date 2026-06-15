@@ -308,6 +308,14 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
           />
           <ProjectNavLink
             item={{
+              label: "Chat",
+              slug: "chat",
+              Icon: MessagesIcon,
+              to: `/project/${project.id}/chat`,
+            }}
+          />
+          <ProjectNavLink
+            item={{
               label: "Panda AI",
               slug: "panda-ai",
               Icon: SparkleIcon,
