@@ -30,6 +30,26 @@ const paymentParams = {
   },
 } as const;
 
+const allocationsBody = {
+  type: "object",
+  required: ["allocations"],
+  additionalProperties: false,
+  properties: {
+    allocations: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["budgetCategoryId", "amount"],
+        additionalProperties: false,
+        properties: {
+          budgetCategoryId: { type: "string", minLength: 1 },
+          amount: { type: "number", minimum: 0 },
+        },
+      },
+    },
+  },
+} as const;
+
 const statusSchema = {
   type: "string",
   enum: ["Draft", "Submitted", "Approved", "Paid"],
@@ -161,6 +181,31 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
         project.id,
         request.params.invoiceId,
         request.params.paymentId,
+      );
+    },
+  );
+
+  fastify.get<{ Params: { id: string; invoiceId: string } }>(
+    "/projects/:id/invoices/:invoiceId/allocations",
+    { schema: { params: invoiceParams } },
+    async (request) => {
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.getAllocations(project.id, request.params.invoiceId);
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string; invoiceId: string };
+    Body: { allocations: { budgetCategoryId: string; amount: number }[] };
+  }>(
+    "/projects/:id/invoices/:invoiceId/allocations",
+    { schema: { params: invoiceParams, body: allocationsBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
+      return service.setAllocations(
+        project.id,
+        request.params.invoiceId,
+        request.body.allocations,
       );
     },
   );

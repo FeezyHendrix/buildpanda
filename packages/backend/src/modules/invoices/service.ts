@@ -3,6 +3,7 @@ import { generateId } from "../../lib/ids.ts";
 import type { InvoicesRepository } from "./repository.ts";
 import type {
   Invoice,
+  InvoiceBudgetAllocation,
   InvoicePayment,
   InvoicePaymentRow,
   InvoiceRow,
@@ -220,6 +221,42 @@ export function invoicesService(repository: InvoicesRepository) {
       }
       await repository.deletePayment(paymentId);
       return buildInvoice(row);
+    },
+
+    async getAllocations(
+      projectId: string,
+      invoiceId: string,
+    ): Promise<InvoiceBudgetAllocation[]> {
+      await getOwnedInvoice(projectId, invoiceId);
+      const rows = await repository.listAllocations(invoiceId);
+      return rows.map((r) => ({
+        budgetCategoryId: r.budget_category_id,
+        amount: Number(r.amount),
+      }));
+    },
+
+    async setAllocations(
+      projectId: string,
+      invoiceId: string,
+      allocations: InvoiceBudgetAllocation[],
+    ): Promise<InvoiceBudgetAllocation[]> {
+      const row = await getOwnedInvoice(projectId, invoiceId);
+      const total = allocations.reduce((sum, a) => sum + a.amount, 0);
+      if (total > Number(row.amount) + 0.01) {
+        throw new BadRequestError(
+          "Allocated amount exceeds the invoice amount",
+        );
+      }
+      await repository.replaceAllocations(
+        invoiceId,
+        allocations.map((a) => ({
+          id: generateId("inva"),
+          invoice_id: invoiceId,
+          budget_category_id: a.budgetCategoryId,
+          amount: String(a.amount),
+        })),
+      );
+      return this.getAllocations(projectId, invoiceId);
     },
   };
 }

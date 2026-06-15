@@ -29,6 +29,30 @@ interface StoredDependency {
   lagDays: number;
 }
 
+function phaseCostByMonth(
+  activities: StructuredActivity[],
+): Map<string, number> {
+  const byMonth = new Map<string, number>();
+  for (const a of activities) {
+    if (!a.cost || a.cost <= 0 || !a.startAt || !a.endAt) continue;
+    const start = new Date(a.startAt);
+    const end = new Date(a.endAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+      continue;
+    }
+    const totalDays =
+      Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+    const perDay = a.cost / totalDays;
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const period = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`;
+      byMonth.set(period, (byMonth.get(period) ?? 0) + perDay);
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  }
+  return byMonth;
+}
+
 function activityStatus(percent: number): "Planned" | "InProgress" | "Completed" {
   if (percent >= 100) return "Completed";
   if (percent > 0) return "InProgress";
@@ -240,6 +264,22 @@ export async function applyProgramme(
 
     if (keyDateRows.length > 0) {
       await trx("key_dates").insert(keyDateRows);
+    }
+
+    const costByMonth = phaseCostByMonth(programme.activities);
+    if (costByMonth.size > 0) {
+      const versionRow = await trx("programme_cost_phasing")
+        .where({ project_id: projectId })
+        .max<{ max: number | null }>("programme_version as max")
+        .first();
+      const nextVersion = (versionRow?.max ?? 0) + 1;
+      const phasingRows = [...costByMonth.entries()].map(([period, cost]) => ({
+        project_id: projectId,
+        period,
+        planned_cost: String(Math.round((cost + Number.EPSILON) * 100) / 100),
+        programme_version: nextVersion,
+      }));
+      await trx("programme_cost_phasing").insert(phasingRows);
     }
   });
 
