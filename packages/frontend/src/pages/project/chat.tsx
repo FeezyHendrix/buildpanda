@@ -18,6 +18,7 @@ import {
   useOpenDm,
   useAllChannels,
   useUpdateMembership,
+  useMessageSearch,
 } from "@/hooks/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { Avatar } from "@/components/atoms/avatar";
@@ -669,6 +670,94 @@ function NewDmModal({
   );
 }
 
+function MessageSearch({ onSelect }: { onSelect: (channelId: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const { data: results, isFetching } = useMessageSearch(debouncedQuery);
+
+  if (!isOpen) {
+    return (
+      <button type="button" onClick={() => setIsOpen(true)} className="flex items-center text-gray-500 hover:text-gray-900 transition-colors">
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative z-10 flex items-center">
+      <div className="flex items-center rounded-md border border-[#EDEDED] bg-[#F6F6F6] px-2">
+        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          autoFocus
+          className="w-48 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-gray-400"
+          placeholder="Search messages..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(false);
+            setQuery("");
+            setDebouncedQuery("");
+          }}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {debouncedQuery.length >= 2 && (
+        <div className="absolute right-0 top-full mt-2 w-96 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+          {isFetching ? (
+            <div className="p-4 text-center text-sm text-gray-500">Searching...</div>
+          ) : results && results.length > 0 ? (
+            <div className="space-y-1">
+              {results.map((msg) => (
+                <button
+                  key={msg.id}
+                  type="button"
+                  onClick={() => {
+                    onSelect(msg.channelId);
+                    setIsOpen(false);
+                    setQuery("");
+                    setDebouncedQuery("");
+                  }}
+                  className="flex w-full flex-col items-start gap-1 rounded-md p-2 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex w-full items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Avatar name={msg.authorName ?? "?"} size="sm" />
+                      <span className="text-xs font-medium text-gray-900">{msg.authorName}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500">{formatTimeAgo(msg.createdAt)}</span>
+                  </div>
+                  <p className="line-clamp-2 w-full text-xs text-gray-600">{msg.body}</p>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-sm text-gray-500">No messages found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectChat() {
   const { project } = useProjectContext();
   const { data: session } = authClient.useSession();
@@ -817,6 +906,7 @@ export default function ProjectChat() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <MessageSearch onSelect={(cid) => { setActiveChannelId(cid); setThreadRootMsg(null); }} />
               {pins.length > 0 && (
                 <div className="relative">
                   <button onClick={() => setShowPins(!showPins)} className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900">
