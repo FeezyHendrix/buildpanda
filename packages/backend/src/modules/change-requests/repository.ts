@@ -109,7 +109,43 @@ export function changeRequestsRepository(db: Knex) {
       if (!row) throw new Error("Failed to insert comment");
       return row as ChangeCommentRow;
     },
+
+    listBudgetLinks(changeRequestId: string): Promise<BudgetLinkRow[]> {
+      return db<BudgetLinkRow>("change_request_budget_links")
+        .where({ change_request_id: changeRequestId })
+        .select("id", "change_request_id", "budget_category_id", "amount", "committed");
+    },
+
+    async replaceBudgetLinks(
+      changeRequestId: string,
+      links: NewBudgetLinkRecord[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("change_request_budget_links")
+          .where({ change_request_id: changeRequestId })
+          .delete();
+        if (links.length > 0) {
+          await trx("change_request_budget_links").insert(links);
+        }
+      });
+    },
   };
+}
+
+export interface BudgetLinkRow {
+  id: string;
+  change_request_id: string;
+  budget_category_id: string;
+  amount: string;
+  committed: boolean;
+}
+
+export interface NewBudgetLinkRecord {
+  id: string;
+  change_request_id: string;
+  budget_category_id: string;
+  amount: string;
+  committed: boolean;
 }
 
 export type ChangeRequestsRepository = ReturnType<typeof changeRequestsRepository>;
