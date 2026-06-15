@@ -183,6 +183,54 @@ export function budgetService(repository: BudgetRepository) {
       };
     },
 
+    async seedFromEstimateItems(
+      projectId: string,
+      items: { groupLabel: string; total: number; costCode?: string | null }[],
+      mode: "skip" | "replace" = "skip",
+    ): Promise<{ created: number; skipped: number }> {
+      const existing = await repository.listCategories(projectId);
+      const existingByName = new Map(
+        existing.map((c) => [c.name.toLowerCase(), c]),
+      );
+
+      const grouped = new Map<string, { total: number; costCode: string | null }>();
+      for (const item of items) {
+        const key = item.groupLabel.trim() || "General";
+        const g = grouped.get(key) ?? { total: 0, costCode: item.costCode ?? null };
+        g.total = round2(g.total + item.total);
+        grouped.set(key, g);
+      }
+
+      let created = 0;
+      let skipped = 0;
+      let maxSort = (await repository.maxCategorySortOrder(projectId)) ?? -1;
+      for (const [name, g] of grouped) {
+        const match = existingByName.get(name.toLowerCase());
+        if (match) {
+          if (mode === "skip") {
+            skipped += 1;
+            continue;
+          }
+          await repository.updateCategory(match.id, { planned: String(g.total) });
+          continue;
+        }
+        maxSort += 1;
+        await repository.createCategory({
+          id: generateId("budgetcat"),
+          project_id: projectId,
+          name,
+          cost_code: g.costCode,
+          planned: String(g.total),
+          committed: "0",
+          actual: "0",
+          notes: null,
+          sort_order: maxSort,
+        });
+        created += 1;
+      }
+      return { created, skipped };
+    },
+
     async createCategory(
       projectId: string,
       input: CreateCategoryInput,

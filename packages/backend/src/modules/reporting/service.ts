@@ -95,6 +95,7 @@ export function reportingService(db: Knex) {
       categories,
       periods,
       budgetDeltas,
+      programmePhasing,
       invoiceList,
       milestoneAgg,
       escrowRow,
@@ -123,6 +124,19 @@ export function reportingService(db: Knex) {
       budgetRepo.listCategories(projectId),
       budgetRepo.listPeriods(projectId),
       budgetRepo.allocationDeltas(projectId),
+      db("programme_cost_phasing")
+        .where({ project_id: projectId })
+        .where(
+          "programme_version",
+          db("programme_cost_phasing")
+            .where({ project_id: projectId })
+            .max("programme_version"),
+        )
+        .orderBy("period", "asc")
+        .select<{ period: string; planned_cost: string }[]>(
+          "period",
+          "planned_cost",
+        ),
       invoices.listByProject(projectId),
       db("milestone_payments")
         .where({ project_id: projectId })
@@ -364,7 +378,16 @@ export function reportingService(db: Knex) {
         progressPercent: toNumber(project.progress_percent),
         phasesInProgress,
         phasesUpcoming,
-        programmeCostCurve: null,
+        programmeCostCurve:
+          programmePhasing.length > 0
+            ? toCashFlowCurve(
+                programmePhasing.map((p) => ({
+                  period: p.period,
+                  planned: p.planned_cost,
+                  actual: "0",
+                })),
+              )
+            : null,
       },
       operations: {
         dueActionItems: toNumber(dueActionItems?.count),
