@@ -3,6 +3,7 @@ import fp from "fastify-plugin";
 import { QueueManager } from "../lib/queue/index.ts";
 import { config } from "../config/index.ts";
 import { registerPandaAiWorker } from "../modules/panda-ai/job.ts";
+import { registerPandaAiPeriodicScheduler } from "../modules/panda-ai/periodic-scheduler.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
 import { registerActionItemReminderWorker } from "../modules/action-items/reminder-job.ts";
 import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
@@ -32,6 +33,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerBoqImportWorker(fastify.db, manager);
     registerProgrammeImportWorker(fastify.db, manager);
     registerProgressRecomputeWorker(fastify.db, manager);
+    registerPandaAiPeriodicScheduler(fastify.db, manager, fastify.log);
     manager.startWorkers();
   }
 

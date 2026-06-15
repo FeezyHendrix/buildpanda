@@ -1,3 +1,7 @@
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { CashFlowSCurve } from "@/components/organisms/charts/cash-flow-s-curve";
+import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actual-bar";
+
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -81,6 +85,7 @@ export default function ProjectBudget() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
 
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
@@ -152,7 +157,7 @@ export default function ProjectBudget() {
       />
 
       {summary && (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
           <KpiCard label="Total Planned">
             <p className="text-base font-bold tabular-nums text-gray-900">
               {formatCurrency(summary.totalPlanned, currency)}
@@ -185,8 +190,33 @@ export default function ProjectBudget() {
               {formatCurrency(summary.totalVariance, currency)}
             </p>
           </KpiCard>
+          {snapshot?.finance?.budget && (
+            <KpiCard label="Variance Status">
+              <p className="text-base font-bold text-[#E5484D]">
+                {snapshot.finance.budget.overBudgetCount} of {snapshot.finance.budget.categoryCount} over budget
+              </p>
+            </KpiCard>
+          )}
         </div>
       )}
+
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {snapshot && (
+          <>
+            <CashFlowSCurve
+              points={snapshot.finance.cashFlow.points}
+              programmeCurve={snapshot.schedule.programmeCostCurve}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+            <BudgetVsActualBar
+              categories={snapshot.finance.budget.categories}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+          </>
+        )}
+      </div>
 
       <section className="mt-12">
         <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">
