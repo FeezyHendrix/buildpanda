@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { currencySymbol } from "@/lib/formatters";
@@ -129,47 +130,35 @@ function UpsertBudgetCategoryDialog({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="category-planned">Planned ({symbol})</Label>
-          <input
+          <MoneyInput
             id="category-planned"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
             value={values.planned}
-            onChange={(e) => update("planned", e.target.value)}
+            onChange={(v) => update("planned", v)}
+            currencySymbol={symbol}
             placeholder="0.00"
-            className={inputClass}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="category-committed">Committed ({symbol})</Label>
-          <input
+          <MoneyInput
             id="category-committed"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
             value={values.committed}
-            onChange={(e) => update("committed", e.target.value)}
+            onChange={(v) => update("committed", v)}
+            currencySymbol={symbol}
             placeholder="0.00"
-            className={inputClass}
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="category-actual">Actual ({symbol})</Label>
-        <input
+        <MoneyInput
           id="category-actual"
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step="0.01"
           value={values.actual}
-          onChange={(e) => update("actual", e.target.value)}
+          onChange={(v) => update("actual", v)}
+          currencySymbol={symbol}
           placeholder="0.00"
-          className={inputClass}
         />
       </div>
 

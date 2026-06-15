@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import { formatCurrency } from "@/lib/formatters";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { formatCurrency, currencySymbol } from "@/lib/formatters";
 
 interface FundProjectDialogProps {
   open: boolean;
@@ -9,6 +10,7 @@ interface FundProjectDialogProps {
   onSubmit: (input: { amount: number; description?: string }) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  currency?: string;
 }
 
 function FundProjectDialog({
@@ -17,9 +19,11 @@ function FundProjectDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  currency = "USD",
 }: FundProjectDialogProps) {
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const symbol = currencySymbol(currency);
 
   useEffect(() => {
     if (!open) {
@@ -28,9 +32,9 @@ function FundProjectDialog({
     }
   }, [open]);
 
-  const parsed = Number(amount.replace(/[\s,]/g, ""));
+  const parsed = Number(amount);
   const isValid = Number.isFinite(parsed) && parsed > 0;
-  const preview = isValid ? formatCurrency(parsed, "NGN") : null;
+  const preview = isValid ? formatCurrency(parsed, currency) : null;
 
   function handleSubmit(): void {
     if (!isValid) return;
@@ -49,17 +53,15 @@ function FundProjectDialog({
     submitDisabled={!isValid}
     submitting={isSubmitting}
     error={error ?? null}
-    onSubmit={handleSubmit}><div className="flex flex-col gap-1.5">
-      <Label htmlFor="fund-amount">Amount (NGN)</Label>
-      <input
+    onSubmit={handleSubmit}>    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="fund-amount">Amount ({symbol})</Label>
+      <MoneyInput
         id="fund-amount"
-        type="text"
-        inputMode="decimal"
         value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="5,000,000"
+        onChange={setAmount}
+        currencySymbol={symbol}
+        placeholder="5000000"
         autoFocus
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
       />
       {preview && (
         <p className="text-xs tabular-nums text-gray-500">{preview}</p>
