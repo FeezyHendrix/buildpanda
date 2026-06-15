@@ -139,7 +139,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     (versionId) => fastify.queue.enqueue(BIM_PROCESS_QUEUE, "extract", { versionId }),
     {
       rfis: rfisService(rfisRepository(fastify.db)),
-      notifications: notificationsService(notificationsRepository(fastify.db)),
+      notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
     },
   );
 

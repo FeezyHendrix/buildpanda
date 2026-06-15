@@ -1,6 +1,11 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { QueueManager } from "../../lib/queue/index.ts";
 import type { ListFilters, NotificationsRepository } from "./repository.ts";
+import {
+  NOTIFICATION_EMAIL_QUEUE,
+  type NotificationEmailJobData,
+} from "./email-job.ts";
 import {
   NOTIFICATION_TYPES,
   type Notification,
@@ -18,6 +23,7 @@ export interface NotifyInput {
   title: string;
   body: string;
   projectId?: string | null;
+  ctaUrl?: string | null;
 }
 
 export interface PreferencePatch {
@@ -37,7 +43,10 @@ function toNotification(row: NotificationRow): Notification {
   };
 }
 
-export function notificationsService(repository: NotificationsRepository) {
+export function notificationsService(
+  repository: NotificationsRepository,
+  queue?: QueueManager,
+) {
   return {
     async list(userId: string, filters: ListFilters): Promise<NotificationListResult> {
       const [rows, unread] = await Promise.all([
@@ -68,15 +77,33 @@ export function notificationsService(repository: NotificationsRepository) {
 
     async notify(userId: string, type: NotificationType, input: NotifyInput): Promise<void> {
       const pref = await repository.findPreference(userId, type);
-      if (pref && !pref.in_app_enabled) return;
-      await repository.create({
-        id: generateId("ntf"),
-        user_id: userId,
-        type,
-        title: input.title,
-        body: input.body,
-        project_id: input.projectId ?? null,
-      });
+      const inAppOn = !pref || pref.in_app_enabled;
+      const emailOn = !pref || pref.email_enabled;
+
+      if (inAppOn) {
+        await repository.create({
+          id: generateId("ntf"),
+          user_id: userId,
+          type,
+          title: input.title,
+          body: input.body,
+          project_id: input.projectId ?? null,
+        });
+      }
+
+      if (emailOn && queue) {
+        const jobData: NotificationEmailJobData = {
+          userId,
+          type,
+          title: input.title,
+          body: input.body,
+          projectId: input.projectId ?? null,
+          ctaUrl: input.ctaUrl ?? null,
+        };
+        await queue
+          .enqueue(NOTIFICATION_EMAIL_QUEUE, "send", jobData)
+          .catch(() => undefined);
+      }
     },
 
     async getPreferences(userId: string): Promise<NotificationPreference[]> {

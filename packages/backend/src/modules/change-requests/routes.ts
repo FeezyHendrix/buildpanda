@@ -75,7 +75,7 @@ const commentBody = {
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
   const service = changeRequestsService(changeRequestsRepository(fastify.db), {
-    notifications: notificationsService(notificationsRepository(fastify.db)),
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(

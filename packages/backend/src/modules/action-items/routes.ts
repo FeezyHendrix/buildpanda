@@ -78,7 +78,7 @@ const commentBody = {
 
 const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
   const service = actionItemsService(actionItemsRepository(fastify.db), {
-    notifications: notificationsService(notificationsRepository(fastify.db)),
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ActionStatus } }>(

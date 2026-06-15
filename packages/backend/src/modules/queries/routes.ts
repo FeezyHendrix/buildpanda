@@ -69,7 +69,7 @@ const commentBody = {
 const queryRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
   const service = queriesService(queriesRepository(fastify.db), {
-    notifications: notificationsService(notificationsRepository(fastify.db)),
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
   async function loadProject(id: string) {

@@ -12,9 +12,9 @@ export interface ReminderJobData {
   _tick: number;
 }
 
-export async function runReminderSweep(db: Knex): Promise<void> {
+export async function runReminderSweep(db: Knex, queue?: QueueManager): Promise<void> {
   const repo = actionItemsRepository(db);
-  const notifications = notificationsService(notificationsRepository(db));
+  const notifications = notificationsService(notificationsRepository(db), queue);
   const today = new Date().toISOString().slice(0, 10);
 
   const due = await repo.listDueForReminder(today);
@@ -35,7 +35,7 @@ export function registerActionItemReminderWorker(db: Knex, manager: QueueManager
   manager.startRepeating<ReminderJobData>(
     ACTION_ITEM_REMINDER_QUEUE,
     INTERVAL_MS,
-    () => runReminderSweep(db),
+    () => runReminderSweep(db, manager),
     { _tick: 0 },
   );
 }

@@ -13,9 +13,9 @@ export interface RfiReminderJobData {
   _tick: number;
 }
 
-export async function runRfiReminderSweep(db: Knex): Promise<void> {
+export async function runRfiReminderSweep(db: Knex, queue?: QueueManager): Promise<void> {
   const service = rfisService(rfisRepository(db));
-  const notifications = notificationsService(notificationsRepository(db));
+  const notifications = notificationsService(notificationsRepository(db), queue);
   const today = new Date().toISOString().slice(0, 10);
 
   const due = await service.dueForReminder(today);
@@ -35,7 +35,7 @@ export function registerRfiReminderWorker(db: Knex, manager: QueueManager): void
   manager.startRepeating<RfiReminderJobData>(
     RFI_REMINDER_QUEUE,
     INTERVAL_MS,
-    () => runRfiReminderSweep(db),
+    () => runRfiReminderSweep(db, manager),
     { _tick: 0 },
   );
 }
