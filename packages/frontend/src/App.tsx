@@ -49,6 +49,8 @@ const AcceptInvitation = lazy(
 );
 const CreateProject = lazy(() => import("@/pages/project/create"));
 
+const ProjectChat = lazy(() => import("@/pages/project/chat"));
+
 const ProjectOverview = lazy(() => import("@/pages/project/overview"));
 const ProjectUpdates = lazy(() => import("@/pages/project/updates"));
 const ProjectFinances = lazy(() => import("@/pages/project/finances"));
@@ -187,6 +189,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="overview" replace /> },
       { path: "overview", element: <ProjectOverview /> },
+      { path: "chat", element: <ProjectChat /> },
+
       { path: "updates", element: <ProjectUpdates /> },
       { path: "finances", element: <ProjectFinances /> },
       {

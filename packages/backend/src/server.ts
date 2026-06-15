@@ -39,6 +39,7 @@ import permitRoutes from "./modules/permits/index.ts";
 import keyDateRoutes from "./modules/key-dates/index.ts";
 import insightsRoutes from "./modules/insights/index.ts";
 import participantRoutes from "./modules/participants/index.ts";
+import messagingRoutes from "./modules/messaging/routes.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
@@ -108,6 +109,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(keyDateRoutes);
   await app.register(insightsRoutes);
   await app.register(participantRoutes);
+  await app.register(messagingRoutes);
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
   await app.register(pandaAiAgentRoutes);

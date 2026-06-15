@@ -223,3 +223,16 @@ export const proposalKeys = {
   boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
   publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
 };
+
+export const channelKeys = {
+  all: ["channels"] as const,
+  list: () => [...channelKeys.all, "list"] as const,
+  project: (projectId: string) => ["projects", projectId, "channels"] as const,
+  detail: (channelId: string) => [...channelKeys.all, "detail", channelId] as const,
+  members: (channelId: string) => [...channelKeys.all, channelId, "members"] as const,
+};
+
+export const messageKeys = {
+  all: (channelId: string) => ["channels", channelId, "messages"] as const,
+  list: (channelId: string) => [...messageKeys.all(channelId), "list"] as const,
+};

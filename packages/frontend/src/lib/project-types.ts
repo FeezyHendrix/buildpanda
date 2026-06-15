@@ -852,3 +852,46 @@ export interface UploadedFile {
   sizeBytes: number;
   createdAt: string;
 }
+
+export type ChannelType = "project" | "org" | "dm" | "group_dm";
+export type NotifyLevel = "all" | "mentions" | "none";
+
+export interface Channel {
+  id: string;
+  type: ChannelType;
+  name: string | null;
+  topic: string | null;
+  projectId: string | null;
+  organizationId: string | null;
+  isPrivate: boolean;
+  archivedAt: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  unreadCount: number;
+  muted: boolean;
+  notifyLevel: NotifyLevel;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  authorId: string | null;
+  authorName: string | null;
+  body: string;
+  contentHtml: string | null;
+  parentMessageId: string | null;
+  references: { type: string; id: string; label: string }[];
+  mentions: { kind: "user" | "here" | "channel"; userId?: string }[];
+  attachments: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
+  editedAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+}
+
+export interface ChannelMemberLite {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "admin" | "member";
+}

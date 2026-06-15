@@ -14,6 +14,8 @@ export const NOTIFICATION_TYPES = [
   { type: "change_request_assigned", label: "A change request was assigned to you", group: "Tasks" },
   { type: "activity_assigned", label: "A site activity was assigned to you", group: "Tasks" },
   { type: "bim_issue_assigned", label: "A coordination issue was assigned to you", group: "Tasks" },
+  { type: "chat_mention", label: "You were mentioned in chat", group: "Messages" },
+  { type: "chat_dm", label: "New direct message", group: "Messages" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];
