@@ -58,6 +58,13 @@ export function useReferenceSearch(query: string) {
   });
 }
 
+export function useForwardToActionItem() {
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      api.post<{ id: string }>(`/messages/${messageId}/forward-to-action-item`).then((r) => r.data),
+  });
+}
+
 export function useMessageSearch(query: string, channelId?: string) {
   return useQuery({
     queryKey: ["messages", "search", query, channelId ?? "all"],

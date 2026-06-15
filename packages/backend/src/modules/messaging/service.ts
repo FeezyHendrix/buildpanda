@@ -22,6 +22,11 @@ export interface MessagingDeps {
   notifications?: NotificationsService;
   realtime?: RealtimeHub;
   references?: ReferenceResolver;
+  createActionItem?: (
+    projectId: string,
+    input: { title: string; description?: string | null },
+    userId: string,
+  ) => Promise<{ id: string }>;
 }
 
 export interface CreateChannelInput {
@@ -531,6 +536,19 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       if (!row) throw new NotFoundError("Message");
       await requireMembership(row.channel_id, userId);
       return toMessage(row);
+    },
+
+    async forwardToActionItem(messageId: string, userId: string): Promise<{ id: string }> {
+      if (!deps.createActionItem) throw new ForbiddenError("Action items are unavailable");
+      const row = await repository.findMessageById(messageId);
+      if (!row || row.deleted_at) throw new NotFoundError("Message");
+      await requireMembership(row.channel_id, userId);
+      const channel = await repository.findChannelById(row.channel_id);
+      if (!channel?.project_id) throw new ForbiddenError("Can only forward project channel messages");
+      const text = (row.body ?? "").trim();
+      const title = text.length > 0 ? text.slice(0, 120) : "Message from chat";
+      const description = `Forwarded from chat${row.author_name ? ` (${row.author_name})` : ""}: ${text}`;
+      return deps.createActionItem(channel.project_id, { title, description }, userId);
     },
   };
 }
