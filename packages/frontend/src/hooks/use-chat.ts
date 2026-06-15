@@ -58,6 +58,18 @@ export function useReferenceSearch(query: string) {
   });
 }
 
+export function useMessageSearch(query: string, channelId?: string) {
+  return useQuery({
+    queryKey: ["messages", "search", query, channelId ?? "all"],
+    queryFn: () =>
+      api
+        .get<ChatMessage[]>("/search/messages", { params: { q: query, channelId } })
+        .then((r) => r.data),
+    enabled: query.trim().length >= 2,
+    staleTime: 1000 * 30,
+  });
+}
+
 export function useEditMessage(channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
