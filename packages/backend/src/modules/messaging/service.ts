@@ -3,6 +3,7 @@ import { generateId } from "../../lib/ids.ts";
 import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { RealtimeHub } from "../../lib/realtime/index.ts";
+import type { ReferenceContext, ReferenceResolver } from "./references.ts";
 import type {
   MessagingRepository,
   NewMemberRecord,
@@ -20,6 +21,7 @@ import type {
 export interface MessagingDeps {
   notifications?: NotificationsService;
   realtime?: RealtimeHub;
+  references?: ReferenceResolver;
 }
 
 export interface CreateChannelInput {
@@ -229,12 +231,31 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     async listMessages(
       channelId: string,
       userId: string,
+      ctx: ReferenceContext,
       opts: { before?: string; limit?: number },
     ): Promise<Message[]> {
       await requireMembership(channelId, userId);
       const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
       const rows = await repository.listMessages(channelId, { before: opts.before, limit });
-      return rows.reverse().map(toMessage);
+      const messages = rows.reverse().map(toMessage);
+      if (deps.references) {
+        for (const message of messages) {
+          if (message.deletedAt || message.references.length === 0) continue;
+          message.resolvedReferences = await deps.references.resolveMany(message.references, ctx);
+        }
+      }
+      return messages;
+    },
+
+    async searchReferences(
+      _ctx: ReferenceContext,
+      projectIds: string[],
+      query: string,
+      types: string[] | undefined,
+      limit = 15,
+    ): Promise<{ type: string; id: string; label: string; projectId: string }[]> {
+      if (!deps.references) return [];
+      return deps.references.search(query, projectIds, types, limit);
     },
 
     async sendMessage(
