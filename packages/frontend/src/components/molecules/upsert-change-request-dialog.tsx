@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { currencySymbol } from "@/lib/formatters";
 import { FormDrawer } from "./form-drawer";
 import type { ChangeStatus } from "@/lib/project-types";
 
@@ -49,6 +51,8 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
   const [days, setDays] = useState("0");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
   const [assigneeId, setAssigneeId] = useState("");
+
+  const symbol = currencySymbol(currency);
 
   useEffect(() => {
     if (open) {
@@ -111,7 +115,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cr-cost">Cost impact</Label>
-          <input id="cr-cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} className={field} />
+          <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cr-days">Time (days)</Label>

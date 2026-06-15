@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { IconBox } from "@/components/atoms/icon-box";
 import { Label } from "@/components/atoms/label";
@@ -25,7 +26,7 @@ import {
   useUpdateMaterialOrder,
   type MaterialOrderInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import { currencySymbol, formatCurrency, formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialOrder, MaterialOrderStatus, RequestPriority } from "@/lib/project-types";
 
@@ -221,7 +222,8 @@ export default function ProjectMaterials() {
         initial={editTarget}
         onSubmit={upsert}
         isSubmitting={createOrder.isPending || updateOrder.isPending}
-        error={((createOrder.error ?? updateOrder.error) as Error | null)?.message ?? null}
+        error={editTarget ? (updateOrder.error as Error | null)?.message ?? null : (createOrder.error as Error | null)?.message ?? null}
+        currency={project.currency}
       />
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -341,10 +343,12 @@ interface MaterialOrderDialogProps {
   onSubmit: (values: MaterialOrderInput) => void;
   isSubmitting: boolean;
   error: string | null;
+  currency?: string;
 }
 
-function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error }: MaterialOrderDialogProps) {
+function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error, currency = "USD" }: MaterialOrderDialogProps) {
   const [title, setTitle] = useState("");
+  const symbol = currencySymbol(currency);
   const [materialName, setMaterialName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("bags");
@@ -412,7 +416,10 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
         <Field label="Needed by" id="mat-needed" value={neededBy || today()} onChange={setNeededBy} type="date" />
       </div>
       <Field label="Supplier" id="mat-supplier" value={supplier} onChange={setSupplier} placeholder="Optional" />
-      <Field label="Estimated cost" id="mat-cost" value={estimatedCost} onChange={setEstimatedCost} type="number" />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="mat-cost">Estimated cost</Label>
+        <MoneyInput id="mat-cost" value={estimatedCost} onChange={setEstimatedCost} currencySymbol={symbol} placeholder="0.00" />
+      </div>
       <Field label="Delivery location" id="mat-location" value={deliveryLocation} onChange={setDeliveryLocation} placeholder="Site store, gate, yard…" />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-notes">Lifecycle notes</Label>

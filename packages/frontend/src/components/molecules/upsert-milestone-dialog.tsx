@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { currencySymbol } from "@/lib/formatters";
 import type {
   MilestonePayment,
   MilestoneStatus,
@@ -25,6 +27,7 @@ interface UpsertMilestoneDialogProps {
   onSubmit: (values: UpsertMilestoneValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  currency?: string;
 }
 
 function UpsertMilestoneDialog({
@@ -35,8 +38,10 @@ function UpsertMilestoneDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  currency = "USD",
 }: UpsertMilestoneDialogProps) {
   const fallbackPhase = phases[0]?.name ?? "";
+  const symbol = currencySymbol(currency);
   const [name, setName] = useState("");
   const [phase, setPhase] = useState(fallbackPhase);
   const [amount, setAmount] = useState("0");
@@ -116,14 +121,13 @@ function UpsertMilestoneDialog({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="milestone-amount">Cost</Label>
-          <input
+          <Label htmlFor="milestone-amount">Amount</Label>
+          <MoneyInput
             id="milestone-amount"
-            type="number"
-            min="0"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            onChange={setAmount}
+            currencySymbol={symbol}
+            placeholder="0.00"
           />
         </div>
         <div className="flex flex-col gap-1.5">

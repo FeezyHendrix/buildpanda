@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { currencySymbol } from "@/lib/formatters";
 import type { InvoiceStatus } from "@/hooks/use-invoices";
 
 export interface UpsertInvoiceValues {
@@ -23,6 +25,7 @@ interface UpsertInvoiceDialogProps {
   onSubmit: (values: UpsertInvoiceValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  currency?: string;
 }
 
 const STATUSES: InvoiceStatus[] = ["Draft", "Submitted", "Approved", "Paid"];
@@ -50,8 +53,10 @@ function UpsertInvoiceDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  currency = "USD",
 }: UpsertInvoiceDialogProps) {
   const [values, setValues] = useState<UpsertInvoiceValues>(EMPTY);
+  const symbol = currencySymbol(currency);
 
   useEffect(() => {
     if (open) {
@@ -149,16 +154,12 @@ function UpsertInvoiceDialog({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="invoice-amount">Amount</Label>
-          <input
+          <MoneyInput
             id="invoice-amount"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
             value={values.amount}
-            onChange={(e) => update("amount", e.target.value)}
+            onChange={(v) => update("amount", v)}
+            currencySymbol={symbol}
             placeholder="0.00"
-            className={inputClass}
           />
         </div>
 
