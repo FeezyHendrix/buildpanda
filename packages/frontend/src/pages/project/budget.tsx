@@ -122,7 +122,7 @@ export default function ProjectBudget() {
   );
 
   return (
-    <div className="w-full px-6 pb-24">
+    <div className="w-full px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },

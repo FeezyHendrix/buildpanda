@@ -399,7 +399,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
       <Field label="Title" id="mat-title" value={title} onChange={setTitle} placeholder="e.g. Cement for first-floor blockwork" />
       <Field label="Material" id="mat-name" value={materialName} onChange={setMaterialName} placeholder="Dangote cement 42.5" />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="0.01" />
+        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="any" />
         <Field label="Unit" id="mat-unit" value={unit} onChange={setUnit} />
       </div>
       <div className="grid grid-cols-2 gap-3">
