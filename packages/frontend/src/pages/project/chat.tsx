@@ -10,6 +10,14 @@ import {
   useDeleteMessage,
   useMarkChannelRead,
   useReferenceSearch,
+  useToggleReaction,
+  usePins,
+  usePinMessage,
+  useUnpinMessage,
+  useThread,
+  useOpenDm,
+  useAllChannels,
+  useUpdateMembership,
 } from "@/hooks/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { Avatar } from "@/components/atoms/avatar";
@@ -151,17 +159,31 @@ function ReferencePicker({
 }
 
 
+
+
 function MessageItem({
   message,
   isOwn,
+  isPinned,
   onEdit,
   onDelete,
+  onPin,
+  onUnpin,
+  onReply,
+  onReaction,
 }: {
   message: ChatMessage;
   isOwn: boolean;
+  isPinned: boolean;
   onEdit: (m: ChatMessage) => void;
   onDelete: (m: ChatMessage) => void;
+  onPin: (m: ChatMessage) => void;
+  onUnpin: (m: ChatMessage) => void;
+  onReply: (m: ChatMessage) => void;
+  onReaction: (m: ChatMessage, emoji: string) => void;
 }) {
+  const [showEmoji, setShowEmoji] = useState(false);
+
   if (message.deletedAt) {
     return (
       <div className="py-1 pl-12 text-sm italic text-gray-400">
@@ -187,24 +209,106 @@ function MessageItem({
         </div>
       )}
 
-      {isOwn && (
-        <div className="absolute right-4 -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex">
-          <button
-            type="button"
-            onClick={() => onEdit(message)}
-            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+      {message.reactions && message.reactions.length > 0 && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {message.reactions.map((r) => (
+            <button
+              key={r.emoji}
+              onClick={() => onReaction(message, r.emoji)}
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs",
+                r.mine ? "border-primary-200 bg-primary-50 text-primary-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              <span>{r.emoji}</span>
+              <span className="font-medium">{r.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(message.replyCount ?? 0) > 0 && (
+        <div className="mt-1">
+          <button 
+            onClick={() => onReply(message)} 
+            className="text-xs font-medium text-primary-600 hover:underline"
           >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(message)}
-            className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-          >
-            Delete
+            {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
           </button>
         </div>
       )}
+
+      <div className="absolute right-4 -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex z-10">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowEmoji(!showEmoji)}
+            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            title="React"
+          >
+            😀
+          </button>
+          {showEmoji && (
+            <div className="absolute right-0 bottom-full mb-1 flex gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-md">
+              {["👍", "❤️", "😄", "🎉", "👀", "✅"].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => { onReaction(message, emoji); setShowEmoji(false); }}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-sm hover:bg-gray-100"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <button
+          type="button"
+          onClick={() => onReply(message)}
+          className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+        >
+          Reply
+        </button>
+
+        {isPinned ? (
+          <button
+            type="button"
+            onClick={() => onUnpin(message)}
+            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Unpin
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onPin(message)}
+            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Pin
+          </button>
+        )}
+
+        {isOwn && (
+          <>
+            <button
+              type="button"
+              onClick={() => onEdit(message)}
+              className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(message)}
+              className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -212,18 +316,26 @@ function MessageItem({
 function MessageGroup({
   messages,
   currentUserId,
+  pinnedIds,
   onEdit,
   onDelete,
+  onPin,
+  onUnpin,
+  onReply,
+  onReaction,
 }: {
   messages: ChatMessage[];
   currentUserId: string;
+  pinnedIds: Set<string>;
   onEdit: (m: ChatMessage) => void;
   onDelete: (m: ChatMessage) => void;
+  onPin: (m: ChatMessage) => void;
+  onUnpin: (m: ChatMessage) => void;
+  onReply: (m: ChatMessage) => void;
+  onReaction: (m: ChatMessage, emoji: string) => void;
 }) {
   const first = messages[0];
   if (!first) return null;
-
-  const isOwn = first.authorId === currentUserId;
 
   return (
     <div className="mt-4 flex gap-3 px-4">
@@ -244,9 +356,14 @@ function MessageGroup({
             <MessageItem
               key={m.id}
               message={m}
-              isOwn={isOwn}
+              isOwn={m.authorId === currentUserId}
+              isPinned={pinnedIds.has(m.id)}
               onEdit={onEdit}
               onDelete={onDelete}
+              onPin={onPin}
+              onUnpin={onUnpin}
+              onReply={onReply}
+              onReaction={onReaction}
             />
           ))}
         </div>
@@ -254,7 +371,6 @@ function MessageGroup({
     </div>
   );
 }
-
 
 function MentionDropdown({
   members,
@@ -292,9 +408,11 @@ function MentionDropdown({
 function Composer({
   channelId,
   projectId,
+  parentMessageId,
 }: {
   channelId: string;
   projectId: string;
+  parentMessageId?: string;
 }) {
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<{ kind: "user" | "here" | "channel"; userId?: string }[]>([]);
@@ -321,7 +439,7 @@ function Composer({
       );
 
       send.mutate(
-        { body: text.trim(), mentions: validMentions, references },
+        { body: text.trim(), mentions: validMentions, references, parentMessageId },
         {
           onSuccess: () => {
             setText("");
@@ -413,17 +531,160 @@ function Composer({
 }
 
 
+
+function ThreadPanel({
+  rootMessage,
+  projectId,
+  currentUserId,
+  onClose,
+  onEdit,
+  onDelete,
+  onPin,
+  onUnpin,
+  onReaction,
+  pinnedIds,
+}: {
+  rootMessage: ChatMessage;
+  projectId: string;
+  currentUserId: string;
+  onClose: () => void;
+  onEdit: (m: ChatMessage) => void;
+  onDelete: (m: ChatMessage) => void;
+  onPin: (m: ChatMessage) => void;
+  onUnpin: (m: ChatMessage) => void;
+  onReaction: (m: ChatMessage, emoji: string) => void;
+  pinnedIds: Set<string>;
+}) {
+  const { data: thread = [] } = useThread(rootMessage.id);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [thread]);
+
+  return (
+    <div className="flex w-96 flex-col border-l border-gray-200 bg-white shadow-sm z-10 relative">
+      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 bg-gray-50/80">
+        <h3 className="font-semibold text-gray-900">Thread</h3>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <MessageGroup
+          messages={[rootMessage]}
+          currentUserId={currentUserId}
+          pinnedIds={pinnedIds}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onPin={onPin}
+          onUnpin={onUnpin}
+          onReply={() => {}}
+          onReaction={onReaction}
+        />
+        
+        <div className="flex items-center gap-4 py-2">
+          <hr className="flex-1 border-gray-200" />
+          <span className="text-xs font-medium text-gray-400">{thread.length} replies</span>
+          <hr className="flex-1 border-gray-200" />
+        </div>
+
+        {thread.map((m: ChatMessage) => (
+          <MessageGroup
+            key={m.id}
+            messages={[m]}
+            currentUserId={currentUserId}
+            pinnedIds={pinnedIds}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPin={onPin}
+            onUnpin={onUnpin}
+            onReply={() => {}}
+            onReaction={onReaction}
+          />
+        ))}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-gray-200">
+        <Composer channelId={rootMessage.channelId} projectId={projectId} parentMessageId={rootMessage.id} />
+      </div>
+    </div>
+  );
+}
+
+function NewDmModal({
+  members,
+  currentUserId,
+  onClose,
+  onSelect,
+}: {
+  members: ChannelMemberLite[];
+  currentUserId: string;
+  onClose: () => void;
+  onSelect: (userId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = members.filter(m => 
+    m.id !== currentUserId && 
+    (m.name || "").toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <h3 className="font-semibold text-gray-900">New Direct Message</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <div className="p-4">
+          <input
+            autoFocus
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search members..."
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 mb-4"
+          />
+          <div className="max-h-64 overflow-y-auto space-y-1">
+            {filtered.map(m => (
+              <button
+                key={m.id}
+                onClick={() => onSelect(m.id)}
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-gray-50"
+              >
+                <Avatar name={m.name ?? "?"} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium text-gray-900">{m.name}</div>
+                  <div className="truncate text-xs text-gray-500">{m.email}</div>
+                </div>
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="py-4 text-center text-sm text-gray-500">No members found</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectChat() {
   const { project } = useProjectContext();
   const { data: session } = authClient.useSession();
-  const { data: channels = [] } = useProjectChannels(project.id);
+  const currentUserId = session?.user?.id ?? "";
+
+  const { data: projectChannels = [] } = useProjectChannels(project.id);
+  const { data: allChannels = [] } = useAllChannels();
+  const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
+
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (channels.length > 0 && !activeChannelId) {
-      setActiveChannelId(channels[0]!.id);
+    if (projectChannels.length > 0 && !activeChannelId) {
+      setActiveChannelId(projectChannels[0]!.id);
     }
-  }, [channels, activeChannelId]);
+  }, [projectChannels, activeChannelId]);
 
   const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage } = useChannelMessages(activeChannelId);
   const messages = messagesData?.pages.flat() || [];
@@ -444,11 +705,36 @@ export default function ProjectChat() {
 
   const editMsg = useEditMessage(activeChannelId!);
   const deleteMsg = useDeleteMessage(activeChannelId!);
+  const pinMsg = usePinMessage(activeChannelId!);
+  const unpinMsg = useUnpinMessage(activeChannelId!);
+  const toggleReaction = useToggleReaction(activeChannelId!);
+  const updateMembership = useUpdateMembership(activeChannelId!);
+  const openDm = useOpenDm();
+
+  const { data: pins = [] } = usePins(activeChannelId);
+  const pinnedIds = new Set(pins.map((p: ChatMessage) => p.id));
+
   
+  const defaultProjectChannel = projectChannels[0];
+  const { data: channelMembers = [] } = useChannelMembers(
+    activeChannelId && projectChannels.find(c => c.id === activeChannelId) 
+      ? activeChannelId 
+      : defaultProjectChannel?.id
+  );
+
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [editBody, setEditBody] = useState("");
-  
   const [deletingMsg, setDeletingMsg] = useState<ChatMessage | null>(null);
+  
+  const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
+  const [showPins, setShowPins] = useState(false);
+  const [showNewDm, setShowNewDm] = useState(false);
+
+  const handleReaction = (m: ChatMessage, emoji: string) => {
+    toggleReaction.mutate({ messageId: m.id, emoji });
+  };
+
+  const activeChannel = projectChannels.find((c) => c.id === activeChannelId) || dmChannels.find((c: Channel) => c.id === activeChannelId);
 
   const groups: ChatMessage[][] = [];
   let currentGroup: ChatMessage[] = [];
@@ -469,7 +755,7 @@ export default function ProjectChat() {
   });
   if (currentGroup.length) groups.push(currentGroup);
 
-  if (channels.length === 0) {
+  if (projectChannels.length === 0 && dmChannels.length === 0) {
     return (
       <div className="flex h-[calc(100dvh-4rem)] w-full items-center justify-center p-6">
         <div className="text-center text-gray-500">Start the conversation...</div>
@@ -477,127 +763,254 @@ export default function ProjectChat() {
     );
   }
 
-  const activeChannel = channels.find((c) => c.id === activeChannelId);
-
+  
   return (
     <div className="flex h-[calc(100dvh-4rem)] w-full overflow-hidden bg-white">
       <div className="flex w-64 flex-col border-r border-gray-200 bg-gray-50/50">
         <div className="flex h-14 items-center border-b border-gray-200 px-4">
           <h2 className="font-semibold text-gray-900">Channels</h2>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {channels.map((c) => (
-            <ChannelRow
-              key={c.id}
-              channel={c}
-              isActive={c.id === activeChannelId}
-              onClick={() => setActiveChannelId(c.id)}
-            />
-          ))}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          <div>
+            <div className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Project</div>
+            <div className="space-y-1">
+              {projectChannels.map((c) => (
+                <ChannelRow
+                  key={c.id}
+                  channel={{...c, name: c.name || "general"}}
+                  isActive={c.id === activeChannelId}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <span>Direct Messages</span>
+              <button onClick={() => setShowNewDm(true)} className="hover:text-gray-900">+</button>
+            </div>
+            <div className="space-y-1">
+              {dmChannels.map((c: Channel) => (
+                <DmChannelRow
+                  key={c.id}
+                  channel={c}
+                  currentUserId={currentUserId}
+                  isActive={c.id === activeChannelId}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {activeChannelId ? (
+      {activeChannelId && activeChannel ? (
         <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex h-14 items-center border-b border-gray-200 px-6">
-            <h3 className="font-semibold text-gray-900">
-              # {activeChannel?.name || "general"}
-            </h3>
-            {activeChannel?.topic && (
-              <span className="ml-3 border-l border-gray-300 pl-3 text-sm text-gray-500">
-                {activeChannel.topic}
-              </span>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto pb-4">
-            {messages.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                No messages yet.
-              </div>
-            ) : (
-              <div className="flex flex-col pt-4">
-                {hasPreviousPage && (
-                  <button
-                    type="button"
-                    disabled={isFetchingPreviousPage}
-                    className="mx-auto mb-4 rounded-full bg-gray-100 px-4 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-50"
-                    onClick={() => fetchPreviousPage()}
-                  >
-                    {isFetchingPreviousPage ? "Loading..." : "Load older messages"}
-                  </button>
-                )}
-                {groups.map((group, i) => (
-                  <MessageGroup
-                    key={i}
-                    messages={group}
-                    currentUserId={session?.user?.id || ""}
-                    onEdit={(m) => {
-                      setEditingMsg(m);
-                      setEditBody(m.body);
-                    }}
-                    onDelete={setDeletingMsg}
-                  />
-                ))}
-                <div ref={bottomRef} />
-              </div>
-            )}
-          </div>
-
-          {editingMsg ? (
-            <div className="border-t border-gray-200 bg-gray-50 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Edit Message</span>
-                <button
-                  type="button"
-                  onClick={() => setEditingMsg(null)}
-                  className="text-xs text-gray-500 hover:text-gray-900"
-                >
-                  Cancel
-                </button>
-              </div>
-              <textarea
-                value={editBody}
-                onChange={(e) => setEditBody(e.target.value)}
-                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                rows={2}
-              />
-              <div className="mt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (editBody.trim() && editBody !== editingMsg.body) {
-                      editMsg.mutate({ messageId: editingMsg.id, body: editBody.trim() });
-                    }
-                    setEditingMsg(null);
-                  }}
-                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-                >
-                  Save Changes
-                </button>
-              </div>
+          <div className="flex h-14 items-center justify-between border-b border-gray-200 px-6">
+            <div className="flex items-center gap-3">
+              <h3 className="font-semibold text-gray-900">
+                {activeChannel.type === "dm" ? "Direct Message" : `# ${activeChannel.name || "general"}`}
+              </h3>
+              {activeChannel.topic && (
+                <span className="text-sm text-gray-500">| {activeChannel.topic}</span>
+              )}
             </div>
-          ) : (
-            <Composer channelId={activeChannelId} projectId={project.id} />
-          )}
+            <div className="flex items-center gap-4">
+              {pins.length > 0 && (
+                <div className="relative">
+                  <button onClick={() => setShowPins(!showPins)} className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900">
+                    <span className="text-base">📌</span> {pins.length} Pinned
+                  </button>
+                  {showPins && (
+                    <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg z-20">
+                      {pins.map((p: ChatMessage) => (
+                        <div key={p.id} className="mb-2 p-2 hover:bg-gray-50 rounded group border-b border-gray-100 last:border-0">
+                          <div className="text-xs font-medium text-gray-900">{p.authorName}</div>
+                          <div className="text-xs text-gray-600 truncate">{p.body}</div>
+                          <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-gray-400 hover:text-red-500">Unpin</button>
+                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-primary-600">Reply</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button 
+                onClick={() => updateMembership.mutate({ muted: !activeChannel.muted })}
+                className="text-gray-400 hover:text-gray-600"
+                title={activeChannel.muted ? "Unmute channel" : "Mute channel"}
+              >
+                {activeChannel.muted ? "🔕" : "🔔"}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {hasPreviousPage && (
+              <div className="flex justify-center py-4">
+                <button
+                  type="button"
+                  disabled={isFetchingPreviousPage}
+                  onClick={() => fetchPreviousPage()}
+                  className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {isFetchingPreviousPage ? "Loading..." : "Load older messages"}
+                </button>
+              </div>
+            )}
+            
+            {groups.map((group, i) => (
+              <MessageGroup
+                key={group[0]!.id + i}
+                messages={group}
+                currentUserId={currentUserId}
+                pinnedIds={pinnedIds}
+                onEdit={setEditingMsg}
+                onDelete={setDeletingMsg}
+                onPin={(m) => pinMsg.mutate(m.id)}
+                onUnpin={(m) => unpinMsg.mutate(m.id)}
+                onReply={setThreadRootMsg}
+                onReaction={handleReaction}
+              />
+            ))}
+            <div ref={bottomRef} className="h-4" />
+          </div>
+
+          <Composer channelId={activeChannelId} projectId={project.id} />
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center bg-gray-50">
-          <span className="text-sm text-gray-500">Select a channel to start chatting</span>
+        <div className="flex flex-1 items-center justify-center text-gray-500">
+          Select a channel
         </div>
+      )}
+
+      {threadRootMsg && (
+        <ThreadPanel
+          rootMessage={threadRootMsg}
+          projectId={project.id}
+          currentUserId={currentUserId}
+          pinnedIds={pinnedIds}
+          onClose={() => setThreadRootMsg(null)}
+          onEdit={setEditingMsg}
+          onDelete={setDeletingMsg}
+          onPin={(m) => pinMsg.mutate(m.id)}
+          onUnpin={(m) => unpinMsg.mutate(m.id)}
+          onReaction={handleReaction}
+        />
+      )}
+
+      {showNewDm && (
+        <NewDmModal
+          members={channelMembers}
+          currentUserId={currentUserId}
+          onClose={() => setShowNewDm(false)}
+          onSelect={(userId) => {
+            openDm.mutate({ userId }, {
+              onSuccess: (newChannel: Channel) => {
+                setActiveChannelId(newChannel.id);
+                setShowNewDm(false);
+              }
+            });
+          }}
+        />
       )}
 
       <ConfirmDialog
         open={!!deletingMsg}
-        onOpenChange={(o) => !o && setDeletingMsg(null)}
-        title="Delete message"
+        onOpenChange={(open) => { if (!open) setDeletingMsg(null); }}
+        title="Delete Message"
         description="Are you sure you want to delete this message? This cannot be undone."
         confirmLabel="Delete"
-        variant="danger"
         onConfirm={() => {
           if (deletingMsg) deleteMsg.mutate(deletingMsg.id);
         }}
+        variant="danger"
       />
+
+      {editingMsg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Edit message
+            </h3>
+            <textarea
+              autoFocus
+              value={editBody || editingMsg.body}
+              onChange={(e) => setEditBody(e.target.value)}
+              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingMsg(null);
+                  setEditBody("");
+                }}
+                className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  editMsg.mutate({
+                    messageId: editingMsg.id,
+                    body: editBody || editingMsg.body,
+                  });
+                  setEditingMsg(null);
+                  setEditBody("");
+                }}
+                className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function DmChannelRow({
+  channel,
+  currentUserId,
+  isActive,
+  onClick,
+}: {
+  channel: Channel;
+  currentUserId: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const { data: members = [] } = useChannelMembers(channel.id);
+  const otherMember = members.find(m => m.id !== currentUserId);
+  const displayName = otherMember?.name || channel.name || "Unknown User";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
+        isActive
+          ? "bg-primary-50 text-primary-700"
+          : "text-gray-700 hover:bg-gray-100",
+        channel.muted && !isActive && "text-gray-400"
+      )}
+    >
+      <div className="shrink-0 relative">
+        <Avatar name={displayName} size="sm" />
+      </div>
+      <span className="flex-1 truncate">{displayName}</span>
+      {channel.unreadCount > 0 && (
+        <span className="flex h-5 items-center justify-center rounded-full bg-primary-600 px-2 text-[10px] font-bold text-white">
+          {channel.unreadCount}
+        </span>
+      )}
+    </button>
   );
 }

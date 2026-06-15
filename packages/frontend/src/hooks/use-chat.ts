@@ -39,7 +39,7 @@ export function useChannelMembers(channelId: string | undefined | null) {
 export function useSendMessage(projectId: string, channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[] }) =>
+    mutationFn: (data: { body: string; parentMessageId?: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[] }) =>
       api.post<ChatMessage>(`/channels/${channelId}/messages`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messageKeys.all(channelId) });
@@ -87,6 +87,86 @@ export function useMarkChannelRead(projectId: string, channelId: string) {
       api.patch(`/channels/${channelId}/members/me`, { lastReadMessageId }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: channelKeys.project(projectId) });
+    },
+  });
+}
+
+export function useToggleReaction(channelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      api.post(`/messages/${messageId}/reactions`, { emoji }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: messageKeys.all(channelId) });
+    },
+  });
+}
+
+export function usePins(channelId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["channels", channelId, "pins"],
+    queryFn: () =>
+      api.get<ChatMessage[]>(`/channels/${channelId}/pins`).then((r) => r.data),
+    enabled: Boolean(channelId),
+  });
+}
+
+export function usePinMessage(channelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      api.post(`/messages/${messageId}/pin`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels", channelId, "pins"] });
+    },
+  });
+}
+
+export function useUnpinMessage(channelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      api.delete(`/channels/${channelId}/pins/${messageId}`).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["channels", channelId, "pins"] });
+    },
+  });
+}
+
+export function useThread(rootId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["messages", rootId, "thread"],
+    queryFn: () =>
+      api.get<ChatMessage[]>(`/messages/${rootId}/thread`).then((r) => r.data),
+    enabled: Boolean(rootId),
+  });
+}
+
+export function useOpenDm() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId }: { userId: string }) =>
+      api.post<Channel>('/channels/dm', { userId }).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    },
+  });
+}
+
+export function useAllChannels() {
+  return useQuery({
+    queryKey: channelKeys.list(),
+    queryFn: () => api.get<Channel[]>('/channels').then((r) => r.data),
+  });
+}
+
+export function useUpdateMembership(channelId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { muted?: boolean; notifyLevel?: "all" | "mentions" | "none" }) =>
+      api.patch(`/channels/${channelId}/members/me`, data).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: channelKeys.all });
     },
   });
 }
