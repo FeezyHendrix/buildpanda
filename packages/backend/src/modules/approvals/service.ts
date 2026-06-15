@@ -1,5 +1,6 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { ApprovalsRepository, ApprovalUpdatePatch } from "./repository.ts";
 import type {
   Approval,
@@ -27,6 +28,28 @@ export interface UpdateApprovalInput {
 }
 
 const DECISIONS: ApprovalStatus[] = ["Approved", "Rejected", "Resubmit"];
+
+export interface ApprovalsDeps {
+  notifications?: NotificationsService;
+}
+
+function notifyApprovalDecided(
+  deps: ApprovalsDeps,
+  submitterId: string | null | undefined,
+  projectId: string,
+  title: string,
+  status: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !submitterId || submitterId === actorId) return;
+  void deps.notifications
+    .notify(submitterId, "approval_decided", {
+      title: `Approval ${status.toLowerCase()}`,
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
 
 function toApproval(row: ApprovalRow, commentCount: number): Approval {
   return {
@@ -59,7 +82,7 @@ function toComment(row: ApprovalCommentRow): ApprovalComment {
   };
 }
 
-export function approvalsService(repository: ApprovalsRepository) {
+export function approvalsService(repository: ApprovalsRepository, deps: ApprovalsDeps = {}) {
   return {
     async list(projectId: string, status?: ApprovalStatus): Promise<Approval[]> {
       const rows = await repository.listByProject(projectId, status);
@@ -110,6 +133,7 @@ export function approvalsService(repository: ApprovalsRepository) {
         if (DECISIONS.includes(input.status) && !DECISIONS.includes(existing.status)) {
           patch.reviewed_at = new Date().toISOString();
           patch.reviewed_by_id = userId;
+          notifyApprovalDecided(deps, existing.submitted_by_id, projectId, existing.title, input.status, userId);
         } else if (input.status === "Pending") {
           patch.reviewed_at = null;
           patch.reviewed_by_id = null;

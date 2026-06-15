@@ -38,6 +38,23 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   bim_issue_assigned: { eyebrow: "Coordination issue assigned", accent: "brand", ctaLabel: "View Issue" },
   chat_mention: { eyebrow: "You were mentioned", accent: "brand", ctaLabel: "Open Chat" },
   chat_dm: { eyebrow: "New message", accent: "brand", ctaLabel: "Open Chat" },
+  action_item_blocked: { eyebrow: "Action item blocked", accent: "danger", ctaLabel: "View Action Item" },
+  action_item_resolved: { eyebrow: "Action item resolved", accent: "success", ctaLabel: "View Action Item" },
+  query_answered: { eyebrow: "Query answered", accent: "success", ctaLabel: "View Query" },
+  change_request_decided: { eyebrow: "Change request decided", accent: "brand", ctaLabel: "View Change Request" },
+  approval_requested: { eyebrow: "Approval needed", accent: "warning", ctaLabel: "Review & Approve" },
+  approval_decided: { eyebrow: "Approval decided", accent: "brand", ctaLabel: "View Approval" },
+  inspection_failed: { eyebrow: "Inspection — action required", accent: "danger", ctaLabel: "View Inspection" },
+  invoice_submitted: { eyebrow: "Invoice submitted", accent: "brand", ctaLabel: "View Invoice" },
+  invoice_overdue: { eyebrow: "Invoice overdue", accent: "danger", ctaLabel: "View Invoice" },
+  permit_expiring: { eyebrow: "Permit expiring soon", accent: "warning", ctaLabel: "View Permit" },
+  permit_expired: { eyebrow: "Permit expired", accent: "danger", ctaLabel: "View Permit" },
+  key_date_approaching: { eyebrow: "Key date approaching", accent: "warning", ctaLabel: "View Key Date" },
+  key_date_missed: { eyebrow: "Key date missed", accent: "danger", ctaLabel: "View Key Date" },
+  risk_high_added: { eyebrow: "High-severity risk", accent: "danger", ctaLabel: "View Risk" },
+  budget_overrun: { eyebrow: "Budget over plan", accent: "warning", ctaLabel: "View Budget" },
+  team_member_added: { eyebrow: "Added to project", accent: "brand", ctaLabel: "Open Project" },
+  ai_health_drop: { eyebrow: "Project health dropped", accent: "warning", ctaLabel: "View Insights" },
 };
 
 const GENERIC: TypePresentation = {

@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertCanActAsClient } from "../../lib/authorization.ts";
 import { NotFoundError } from "../../lib/errors.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { approvalsRepository } from "./repository.ts";
 import {
@@ -70,7 +72,9 @@ const commentBody = {
 
 const approvalRoutes: FastifyPluginAsync = async (fastify) => {
   const projects = projectsRepository(fastify.db);
-  const service = approvalsService(approvalsRepository(fastify.db));
+  const service = approvalsService(approvalsRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   async function loadProject(id: string) {
     const project = await projects.findById(id);

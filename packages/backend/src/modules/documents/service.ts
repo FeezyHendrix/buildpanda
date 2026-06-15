@@ -2,6 +2,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors
 import { formatBytes } from "../../lib/file-storage.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { FilesRepository } from "../files/repository.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { DocumentsRepository, VersionWithFile } from "./repository.ts";
 import type {
   CategoryAggregateRow,
@@ -33,6 +34,27 @@ export interface AddVersionInput {
   fileId: string;
   revisionLabel?: string;
   notes?: string;
+}
+
+export interface DocumentsDeps {
+  notifications?: NotificationsService;
+}
+
+function notifyDocumentUploaded(
+  deps: DocumentsDeps,
+  recipientId: string | null | undefined,
+  projectId: string,
+  fileName: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !recipientId || recipientId === actorId) return;
+  void deps.notifications
+    .notify(recipientId, "document_uploaded", {
+      title: "A document was uploaded",
+      body: fileName,
+      projectId,
+    })
+    .catch(() => undefined);
 }
 
 function toDocument(
@@ -92,6 +114,7 @@ function deriveDisplaySize(aggregate: string | null): string {
 export function documentsService(
   repository: DocumentsRepository,
   files: FilesRepository,
+  deps: DocumentsDeps = {},
 ) {
   return {
     async listByProject(projectId: string): Promise<ProjectDocument[]> {
@@ -173,6 +196,11 @@ export function documentsService(
         await repository.update(row.id, { current_version_id: version.id });
         row.current_version_id = version.id;
         versionCount = 1;
+      }
+
+      const recipientIds = await repository.projectRecipientIds(projectId);
+      for (const recipientId of recipientIds) {
+        notifyDocumentUploaded(deps, recipientId, projectId, row.file_name, ownerId);
       }
 
       return toDocument(row, category, versionCount);

@@ -5,6 +5,9 @@ import { config } from "../config/index.ts";
 import { registerPandaAiWorker } from "../modules/panda-ai/job.ts";
 import { registerPandaAiPeriodicScheduler } from "../modules/panda-ai/periodic-scheduler.ts";
 import { registerNotificationEmailWorker } from "../modules/notifications/email-job.ts";
+import { registerInvoiceOverdueWorker } from "../modules/invoices/overdue-job.ts";
+import { registerPermitExpiryWorker } from "../modules/permits/expiry-job.ts";
+import { registerKeyDateReminderWorker } from "../modules/key-dates/reminder-job.ts";
 import { registerProposalExpiryWorker } from "../modules/proposals/expiry-job.ts";
 import { registerActionItemReminderWorker } from "../modules/action-items/reminder-job.ts";
 import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
@@ -36,6 +39,9 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerProgressRecomputeWorker(fastify.db, manager);
     registerPandaAiPeriodicScheduler(fastify.db, manager, fastify.log);
     registerNotificationEmailWorker(fastify.db, manager);
+    registerInvoiceOverdueWorker(fastify.db, manager);
+    registerPermitExpiryWorker(fastify.db, manager);
+    registerKeyDateReminderWorker(fastify.db, manager);
     manager.startWorkers();
   }
 

@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import { openStoredFile } from "../../lib/file-storage.ts";
 import { filesRepository } from "../files/repository.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { documentsRepository } from "./repository.ts";
 import {
   documentsService,
@@ -77,6 +79,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
   const service = documentsService(
     documentsRepository(fastify.db),
     filesRepository(fastify.db),
+    { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
   );
 
   fastify.get<{ Params: { id: string } }>(
