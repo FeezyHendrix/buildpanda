@@ -39,7 +39,7 @@ export function useChannelMembers(channelId: string | undefined | null) {
 export function useSendMessage(projectId: string, channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; parentMessageId?: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[] }) =>
+    mutationFn: (data: { body: string; parentMessageId?: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[]; attachments?: { fileId: string; url: string; name: string; mime?: string; size?: number }[] }) =>
       api.post<ChatMessage>(`/channels/${channelId}/messages`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messageKeys.all(channelId) });

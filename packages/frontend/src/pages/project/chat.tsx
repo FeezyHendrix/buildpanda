@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "@/lib/toast";
+import { uploadFileRequest } from "@/hooks/use-files";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectChannels,
@@ -31,6 +32,10 @@ import { cn } from "@/lib/utils";
 import { useChannelRealtime } from "@/lib/realtime";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
 
+function chatFileUrl(fileId: string): string {
+  const base = import.meta.env.VITE_API_BASE_URL || "/api";
+  return `${base}/files/${fileId}/download`;
+}
 
 function ChannelRow({
   channel,
@@ -48,7 +53,7 @@ function ChannelRow({
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
-          ? "bg-primary-50 text-primary-700"
+          ? "bg-[#EEF2FF] text-[#004DE7]"
           : "text-gray-700 hover:bg-gray-100",
         channel.muted && !isActive && "text-gray-400"
       )}
@@ -56,7 +61,7 @@ function ChannelRow({
       <span className="text-gray-400">#</span>
       <span className="flex-1 truncate">{channel.name || "general"}</span>
       {channel.unreadCount > 0 && (
-        <span className="flex h-5 items-center justify-center rounded-full bg-primary-600 px-2 text-[10px] font-bold text-white">
+        <span className="flex h-5 items-center justify-center rounded-full bg-[#004DE7] px-2 text-[10px] font-bold text-white">
           {channel.unreadCount}
         </span>
       )}
@@ -97,6 +102,34 @@ function ReferenceChip({ refItem }: { refItem: NonNullable<ChatMessage["resolved
   );
 }
 
+function AttachmentChip({ attachment }: { attachment: NonNullable<ChatMessage["attachments"]>[0] }) {
+  const isImage = (attachment.mime ?? "").startsWith("image/");
+  if (isImage) {
+    return (
+      <a href={attachment.url} target="_blank" rel="noreferrer" className="block">
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="max-h-48 max-w-xs rounded-lg border border-gray-200 object-cover"
+        />
+      </a>
+    );
+  }
+  return (
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-2 rounded-lg border border-[#EDEDED] bg-white px-3 py-2 text-xs text-gray-700 transition-shadow hover:shadow-sm"
+    >
+      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+      </svg>
+      <span className="max-w-[200px] truncate font-medium">{attachment.name}</span>
+    </a>
+  );
+}
+
 function ReferencePicker({
   onSelect,
   onClose,
@@ -130,7 +163,7 @@ function ReferencePicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search entities..."
-          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30"
         />
       </div>
       <div className="max-h-48 overflow-y-auto p-1">
@@ -214,6 +247,14 @@ function MessageItem({
         </div>
       )}
 
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {message.attachments.map((a) => (
+            <AttachmentChip key={a.fileId} attachment={a} />
+          ))}
+        </div>
+      )}
+
       {message.reactions && message.reactions.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-1">
           {message.reactions.map((r) => (
@@ -222,7 +263,7 @@ function MessageItem({
               onClick={() => onReaction(message, r.emoji)}
               className={cn(
                 "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs",
-                r.mine ? "border-primary-200 bg-primary-50 text-primary-700" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                r.mine ? "border-[#C7D7FF] bg-[#EEF2FF] text-[#004DE7]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
               <span>{r.emoji}</span>
@@ -236,7 +277,7 @@ function MessageItem({
         <div className="mt-1">
           <button 
             onClick={() => onReply(message)} 
-            className="text-xs font-medium text-primary-600 hover:underline"
+            className="text-xs font-medium text-[#004DE7] hover:underline"
           >
             {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
           </button>
@@ -433,9 +474,31 @@ function Composer({
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<{ kind: "user" | "here" | "channel"; userId?: string }[]>([]);
   const [references, setReferences] = useState<{ type: string; id: string; label: string }[]>([]);
+  const [attachments, setAttachments] = useState<{ fileId: string; url: string; name: string; mime?: string; size?: number }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { data: members = [] } = useChannelMembers(channelId);
   const send = useSendMessage(projectId, channelId);
+
+  const handleFiles = async (files: FileList | null): Promise<void> => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadFileRequest(file);
+        setAttachments((prev) => [
+          ...prev,
+          { fileId: uploaded.id, url: chatFileUrl(uploaded.id), name: uploaded.fileName, mime: file.type, size: file.size },
+        ]);
+      }
+    } catch {
+      toast("Could not upload file");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const atIndex = text.lastIndexOf("@");
   const showMentions = atIndex !== -1 && !text.slice(atIndex).includes(" ");
@@ -444,7 +507,7 @@ function Composer({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if ((!text.trim() && references.length === 0) || send.isPending) return;
+      if ((!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending) return;
 
       const validMentions = mentions.filter(
         (m) =>
@@ -455,12 +518,13 @@ function Composer({
       );
 
       send.mutate(
-        { body: text.trim(), mentions: validMentions, references, parentMessageId },
+        { body: text.trim(), mentions: validMentions, references, attachments, parentMessageId },
         {
           onSuccess: () => {
             setText("");
             setMentions([]);
             setReferences([]);
+            setAttachments([]);
           },
         }
       );
@@ -475,7 +539,7 @@ function Composer({
   };
 
   return (
-    <div className="relative border-t border-gray-200 bg-white p-4">
+    <div className="relative border-t border-gray-200 bg-[#FAFAFA] p-4">
       {showMentions && (
         <MentionDropdown
           members={members}
@@ -512,7 +576,45 @@ function Composer({
         </div>
       )}
 
+      {attachments.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {attachments.map((a) => (
+            <div key={a.fileId} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700">
+              <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              <span className="max-w-[160px] truncate">{a.name}</span>
+              <button
+                type="button"
+                onClick={() => setAttachments((prev) => prev.filter((x) => x.fileId !== a.fileId))}
+                className="ml-0.5 text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-end gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => void handleFiles(e.target.files)}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          title="Attach files"
+          className="mb-1 flex shrink-0 items-center justify-center rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+        </button>
         <button
           type="button"
           onClick={() => setPickerOpen(!pickerOpen)}
@@ -528,14 +630,14 @@ function Composer({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Message... (Enter to send, Shift+Enter for newline)"
-          className="min-h-[44px] max-h-48 flex-1 resize-none rounded-xl border border-gray-300 bg-[#F6F6F6] px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-          rows={1}
+          className="min-h-[60px] max-h-56 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm outline-none placeholder:text-gray-400 focus:border-[#004DE7] focus:ring-2 focus:ring-[#004DE7]/20"
+          rows={2}
         />
         <button
           type="button"
           onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement>)}
-          disabled={(!text.trim() && references.length === 0) || send.isPending}
-          className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+          disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
+          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#004DE7] text-white transition-colors hover:bg-[#0041c4] disabled:opacity-50"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -659,7 +761,7 @@ function NewDmModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search members..."
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 mb-4"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30 mb-4"
           />
           <div className="max-h-64 overflow-y-auto space-y-1">
             {filtered.map(m => (
@@ -869,7 +971,7 @@ export default function ProjectChat() {
 
   if (projectChannels.length === 0 && dmChannels.length === 0) {
     return (
-      <div className="flex h-[calc(100dvh-4rem)] w-full items-center justify-center p-6">
+      <div className="flex h-full min-h-0 w-full items-center justify-center p-6">
         <div className="text-center text-gray-500">Start the conversation...</div>
       </div>
     );
@@ -877,7 +979,7 @@ export default function ProjectChat() {
 
   
   return (
-    <div className="flex h-[calc(100dvh-4rem)] w-full overflow-hidden bg-white">
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-white">
       <div className="flex w-64 flex-col border-r border-gray-200 bg-gray-50/50">
         <div className="flex h-14 items-center border-b border-gray-200 px-4">
           <h2 className="font-semibold text-gray-900">Channels</h2>
@@ -943,7 +1045,7 @@ export default function ProjectChat() {
                           <div className="text-xs text-gray-600 truncate">{p.body}</div>
                           <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-gray-400 hover:text-red-500">Unpin</button>
-                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-primary-600">Reply</button>
+                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-[#004DE7]">Reply</button>
                           </div>
                         </div>
                       ))}
@@ -1054,7 +1156,7 @@ export default function ProjectChat() {
               autoFocus
               value={editBody || editingMsg.body}
               onChange={(e) => setEditBody(e.target.value)}
-              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30"
             />
             <div className="mt-4 flex justify-end gap-3">
               <button
@@ -1077,7 +1179,7 @@ export default function ProjectChat() {
                   setEditingMsg(null);
                   setEditBody("");
                 }}
-                className="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                className="rounded-md bg-[#004DE7] px-4 py-2 text-sm font-medium text-white hover:bg-[#0041c4]"
               >
                 Save Changes
               </button>
@@ -1111,7 +1213,7 @@ function DmChannelRow({
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
-          ? "bg-primary-50 text-primary-700"
+          ? "bg-[#EEF2FF] text-[#004DE7]"
           : "text-gray-700 hover:bg-gray-100",
         channel.muted && !isActive && "text-gray-400"
       )}
@@ -1121,7 +1223,7 @@ function DmChannelRow({
       </div>
       <span className="flex-1 truncate">{displayName}</span>
       {channel.unreadCount > 0 && (
-        <span className="flex h-5 items-center justify-center rounded-full bg-primary-600 px-2 text-[10px] font-bold text-white">
+        <span className="flex h-5 items-center justify-center rounded-full bg-[#004DE7] px-2 text-[10px] font-bold text-white">
           {channel.unreadCount}
         </span>
       )}
