@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
+import { useProjectChannels } from "@/hooks/use-chat";
 
 type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
@@ -32,6 +33,7 @@ interface NavEntry {
 
 interface ProjectNavItem extends NavEntry {
   to: string;
+  badge?: number;
 }
 
 interface GroupNavItem extends ProjectNavItem {
@@ -145,6 +147,8 @@ interface ProjectSidebarProps {
 function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const location = useLocation();
   const isClient = access?.relationship !== "company";
+  const { data: channels = [] } = useProjectChannels(project.id);
+  const totalUnread = channels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -312,6 +316,7 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               slug: "chat",
               Icon: MessagesIcon,
               to: `/project/${project.id}/chat`,
+              badge: totalUnread > 0 ? totalUnread : undefined,
             }}
           />
           <ProjectNavLink
@@ -408,7 +413,7 @@ function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
 }
 
 function ProjectNavLink({ item }: { item: ProjectNavItem }) {
-  const { Icon, label, to } = item;
+  const { Icon, label, to, badge } = item;
   return (
     <NavLink
       to={to}
@@ -422,7 +427,12 @@ function ProjectNavLink({ item }: { item: ProjectNavItem }) {
       }
     >
       <Icon />
-      <span className="truncate">{label}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {badge !== undefined && (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#004DE7] px-1.5 text-[10px] font-bold leading-none text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </NavLink>
   );
 }
