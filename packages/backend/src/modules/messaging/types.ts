@@ -62,6 +62,7 @@ export interface Message {
   mentions: MessageMention[];
   attachments: MessageAttachment[];
   reactions?: { emoji: string; count: number; mine: boolean }[];
+  replyCount?: number;
   editedAt: string | null;
   deletedAt: string | null;
   createdAt: string;
