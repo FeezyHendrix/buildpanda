@@ -39,12 +39,22 @@ export function useChannelMembers(channelId: string | undefined | null) {
 export function useSendMessage(projectId: string, channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[] }) =>
+    mutationFn: (data: { body: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[] }) =>
       api.post<ChatMessage>(`/channels/${channelId}/messages`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messageKeys.all(channelId) });
       queryClient.invalidateQueries({ queryKey: channelKeys.project(projectId) });
     },
+  });
+}
+
+export function useReferenceSearch(query: string) {
+  return useQuery({
+    queryKey: ["references", "search", query],
+    queryFn: () =>
+      api.get<{ type: string; id: string; label: string; projectId: string }[]>('/references/search', { params: { q: query } }).then((r) => r.data),
+    enabled: query.trim().length >= 2,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

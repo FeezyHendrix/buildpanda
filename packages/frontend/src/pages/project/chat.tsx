@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectChannels,
@@ -8,9 +9,11 @@ import {
   useEditMessage,
   useDeleteMessage,
   useMarkChannelRead,
+  useReferenceSearch,
 } from "@/hooks/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { Avatar } from "@/components/atoms/avatar";
+import { Badge } from "@/components/atoms/badge";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -50,6 +53,103 @@ function ChannelRow({
   );
 }
 
+function ReferenceChip({ refItem }: { refItem: NonNullable<ChatMessage["resolvedReferences"]>[0] }) {
+  if (refItem.restricted) {
+    return (
+      <div className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-[#F6F6F6] px-2 py-1 text-xs text-gray-400">
+        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        Restricted item
+      </div>
+    );
+  }
+
+  const typeLabels: Record<string, string> = {
+    rfi: "RFI",
+    action_item: "Action item",
+    query: "Query",
+    change_request: "Change request",
+    activity: "Activity",
+  };
+
+  const label = typeLabels[refItem.type] || refItem.type;
+
+  return (
+    <Link to={refItem.url!} className="inline-flex items-center gap-2 rounded border border-[#EDEDED] bg-white px-2.5 py-1.5 text-xs transition-shadow hover:shadow-sm">
+      <span className="font-medium text-gray-500">{label}</span>
+      <span className="font-semibold text-gray-900">{refItem.title}</span>
+      {refItem.status && (
+        <Badge variant="outline" className="text-[10px] leading-none py-0.5 px-1.5">{refItem.status}</Badge>
+      )}
+    </Link>
+  );
+}
+
+function ReferencePicker({
+  onSelect,
+  onClose,
+}: {
+  onSelect: (ref: { type: string; id: string; label: string }) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const { data: results, isLoading } = useReferenceSearch(debouncedQuery);
+
+  const typeLabels: Record<string, string> = {
+    rfi: "RFI",
+    action_item: "Action item",
+    query: "Query",
+    change_request: "Change request",
+    activity: "Activity",
+  };
+
+  return (
+    <div className="absolute bottom-full left-0 mb-2 w-72 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden flex flex-col z-10">
+      <div className="p-2 border-b border-gray-100">
+        <input
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search entities..."
+          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+        />
+      </div>
+      <div className="max-h-48 overflow-y-auto p-1">
+        {debouncedQuery.length < 2 ? (
+          <div className="p-2 text-center text-xs text-gray-500">Type 2+ chars to search</div>
+        ) : isLoading ? (
+          <div className="p-2 text-center text-xs text-gray-500">Loading...</div>
+        ) : !results?.length ? (
+          <div className="p-2 text-center text-xs text-gray-500">No results found</div>
+        ) : (
+          results.map((r) => (
+            <button
+              key={`${r.type}-${r.id}`}
+              type="button"
+              onClick={() => {
+                onSelect({ type: r.type, id: r.id, label: r.label });
+                onClose();
+              }}
+              className="w-full flex items-center justify-between rounded-md px-3 py-2 text-left hover:bg-gray-50"
+            >
+              <span className="truncate text-sm font-medium text-gray-900">{r.label}</span>
+              <span className="ml-2 shrink-0 text-[10px] uppercase tracking-wider text-gray-500">{typeLabels[r.type] || r.type}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function MessageItem({
   message,
@@ -78,6 +178,14 @@ function MessageItem({
           <span className="ml-2 text-[10px] text-gray-400">(edited)</span>
         )}
       </div>
+
+      {message.resolvedReferences && message.resolvedReferences.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {message.resolvedReferences.map((ref) => (
+            <ReferenceChip key={`${ref.type}-${ref.id}`} refItem={ref} />
+          ))}
+        </div>
+      )}
 
       {isOwn && (
         <div className="absolute right-4 -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex">
@@ -190,6 +298,8 @@ function Composer({
 }) {
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<{ kind: "user" | "here" | "channel"; userId?: string }[]>([]);
+  const [references, setReferences] = useState<{ type: string; id: string; label: string }[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { data: members = [] } = useChannelMembers(channelId);
   const send = useSendMessage(projectId, channelId);
 
@@ -200,7 +310,7 @@ function Composer({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!text.trim() || send.isPending) return;
+      if ((!text.trim() && references.length === 0) || send.isPending) return;
 
       const validMentions = mentions.filter(
         (m) =>
@@ -211,11 +321,12 @@ function Composer({
       );
 
       send.mutate(
-        { body: text.trim(), mentions: validMentions },
+        { body: text.trim(), mentions: validMentions, references },
         {
           onSuccess: () => {
             setText("");
             setMentions([]);
+            setReferences([]);
           },
         }
       );
@@ -238,7 +349,46 @@ function Composer({
           onSelect={handleMentionSelect}
         />
       )}
-      <div className="flex gap-2">
+      {pickerOpen && (
+        <ReferencePicker
+          onSelect={(ref) => {
+            if (!references.find(r => r.type === ref.type && r.id === ref.id)) {
+              setReferences(prev => [...prev, ref]);
+            }
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+      
+      {references.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {references.map((r) => (
+            <div key={`${r.type}-${r.id}`} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700">
+              <span className="text-gray-400">{r.type}</span>
+              {r.label}
+              <button
+                type="button"
+                onClick={() => setReferences(prev => prev.filter(x => !(x.type === r.type && x.id === r.id)))}
+                className="ml-0.5 text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-end gap-2">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(!pickerOpen)}
+          className="mb-1 flex shrink-0 items-center justify-center rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </button>
+
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -249,9 +399,9 @@ function Composer({
         />
         <button
           type="button"
-          onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {} } as any)}
-          disabled={!text.trim() || send.isPending}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
+          onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement>)}
+          disabled={(!text.trim() && references.length === 0) || send.isPending}
+          className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white transition-colors hover:bg-primary-700 disabled:opacity-50"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
