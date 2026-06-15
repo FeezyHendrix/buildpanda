@@ -2,6 +2,7 @@ import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import type { NotificationsService } from "../notifications/service.ts";
+import type { RealtimeHub } from "../../lib/realtime/index.ts";
 import type {
   MessagingRepository,
   NewMemberRecord,
@@ -18,6 +19,7 @@ import type {
 
 export interface MessagingDeps {
   notifications?: NotificationsService;
+  realtime?: RealtimeHub;
 }
 
 export interface CreateChannelInput {
@@ -111,6 +113,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       }
     }
     for (const userId of targets) {
+      if (deps.realtime?.isOnline(userId)) continue;
       void deps.notifications
         .notify(userId, "chat_mention", {
           title: `${actorName} mentioned you in ${channelName}`,
@@ -264,6 +267,17 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const members = await repository.listMembers(channelId);
       const memberIds = members.map((m) => m.user_id);
       const channelName = channelRow.name ? `#${channelRow.name}` : "a conversation";
+      const withAuthor = await repository.findMessageById(row.id);
+      const message = toMessage(withAuthor ?? row);
+
+      if (deps.realtime) {
+        deps.realtime.publish({ event: "message.created", channelId, data: message });
+        for (const userId of memberIds) {
+          if (userId === actor.id) continue;
+          deps.realtime.publish({ event: "unread.changed", userId, data: { channelId } });
+        }
+      }
+
       notifyMentions(
         input.mentions ?? [],
         new Set(memberIds),
@@ -276,8 +290,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         notifyDm(memberIds, actor.id, actor.name);
       }
 
-      const withAuthor = await repository.findMessageById(row.id);
-      return toMessage(withAuthor ?? row);
+      return message;
     },
 
     async editMessage(messageId: string, body: string, contentHtml: string | null, userId: string): Promise<Message> {
@@ -289,7 +302,11 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         content_html: contentHtml,
         edited_at: new Date().toISOString(),
       });
-      return toMessage(updated!);
+      const message = toMessage(updated!);
+      if (deps.realtime) {
+        deps.realtime.publish({ event: "message.updated", channelId: existing.channel_id, data: message });
+      }
+      return message;
     },
 
     async deleteMessage(messageId: string, userId: string): Promise<Message> {
@@ -303,7 +320,11 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const updated = await repository.updateMessage(messageId, {
         deleted_at: new Date().toISOString(),
       });
-      return toMessage(updated!);
+      const message = toMessage(updated!);
+      if (deps.realtime) {
+        deps.realtime.publish({ event: "message.deleted", channelId: existing.channel_id, data: message });
+      }
+      return message;
     },
 
     async markRead(channelId: string, userId: string, messageId: string): Promise<void> {
