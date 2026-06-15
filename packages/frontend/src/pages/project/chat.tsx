@@ -979,7 +979,7 @@ export default function ProjectChat() {
 
   
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden bg-white">
+    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
       <div className="flex w-64 flex-col border-r border-gray-200 bg-gray-50/50">
         <div className="flex h-14 items-center border-b border-gray-200 px-4">
           <h2 className="font-semibold text-gray-900">Channels</h2>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
@@ -196,6 +196,10 @@ export function PandaAiPane({ projectId }: { projectId: string }) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isOnChat = location.pathname.endsWith("/chat");
+
+  if (isOnChat) return null;
 
   const {
     messages,
