@@ -135,6 +135,7 @@ async function projectMemberIds(db: Knex, projectId: string): Promise<string[]> 
 const messagingRoutes: FastifyPluginAsync = async (fastify) => {
   const service = messagingService(messagingRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db)),
+    realtime: fastify.realtime,
   });
 
   fastify.get("/channels", async (request) => {
