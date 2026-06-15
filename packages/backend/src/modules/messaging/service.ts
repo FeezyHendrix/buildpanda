@@ -162,6 +162,26 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       return toChannel(row);
     },
 
+    async updateChannel(
+      channelId: string,
+      patch: { name?: string; topic?: string | null; archived?: boolean },
+      userId: string,
+    ): Promise<Channel> {
+      const membership = await requireMembership(channelId, userId);
+      if (membership.role !== "admin") throw new ForbiddenError("Only channel admins can update the channel");
+      const dbPatch: { name?: string; topic?: string | null; archived_at?: string | null } = {};
+      if (patch.name !== undefined) dbPatch.name = patch.name;
+      if (patch.topic !== undefined) dbPatch.topic = patch.topic;
+      if (patch.archived !== undefined) dbPatch.archived_at = patch.archived ? new Date().toISOString() : null;
+      await repository.updateChannel(channelId, dbPatch);
+      const row = await repository.findChannelForUser(channelId, userId);
+      return toChannel(row!);
+    },
+
+    async removeFromProjectChannels(projectId: string, userId: string): Promise<void> {
+      await repository.removeMembersForProject(projectId, userId);
+    },
+
     async ensureProjectGeneral(
       projectId: string,
       memberIds: string[],

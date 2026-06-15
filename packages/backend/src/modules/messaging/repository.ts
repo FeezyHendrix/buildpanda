@@ -203,6 +203,27 @@ export function messagingRepository(db: Knex) {
       await db("channels").where({ id: channelId }).update({ updated_at: new Date().toISOString() });
     },
 
+    async updateChannel(
+      channelId: string,
+      patch: { name?: string; topic?: string | null; archived_at?: string | null },
+    ): Promise<ChannelRow | undefined> {
+      const [row] = await db("channels")
+        .where({ id: channelId })
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .returning<ChannelRow[]>("*");
+      return row;
+    },
+
+    removeMembersForProject(projectId: string, userId: string): Promise<number> {
+      return db("channel_members")
+        .whereIn(
+          "channel_id",
+          db("channels").select("id").where({ project_id: projectId }),
+        )
+        .where({ user_id: userId })
+        .del();
+    },
+
     async toggleReaction(messageId: string, userId: string, emoji: string): Promise<"added" | "removed"> {
       const existing = await db("message_reactions")
         .where({ message_id: messageId, user_id: userId, emoji })
