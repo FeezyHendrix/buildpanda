@@ -266,6 +266,26 @@ export function messagingRepository(db: Knex) {
         .orderBy("p.created_at", "desc");
     },
 
+    searchMessages(
+      userId: string,
+      query: string,
+      channelId: string | undefined,
+      limit: number,
+    ): Promise<MessageRow[]> {
+      let q = db<MessageRow>("messages as m")
+        .join("channel_members as cm", function () {
+          this.on("cm.channel_id", "m.channel_id").andOnVal("cm.user_id", userId);
+        })
+        .leftJoin("user as u", "u.id", "m.author_id")
+        .whereNull("m.deleted_at")
+        .whereRaw("m.search_vector @@ plainto_tsquery('simple', ?)", [query])
+        .select<MessageRow[]>("m.*", "u.name as author_name")
+        .orderBy("m.created_at", "desc")
+        .limit(limit);
+      if (channelId) q = q.where("m.channel_id", channelId);
+      return q;
+    },
+
     findDmChannel(userIds: string[]): Promise<ChannelRow | undefined> {
       return db<ChannelRow>("channels as c")
         .where("c.type", "dm")

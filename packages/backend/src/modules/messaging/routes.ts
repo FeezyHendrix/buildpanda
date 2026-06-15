@@ -403,6 +403,36 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Querystring: { q?: string; channelId?: string } }>(
+    "/search/messages",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            q: { type: "string", minLength: 1, maxLength: 200 },
+            channelId: { type: "string", minLength: 1, maxLength: 100 },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const user = request.requireAuth();
+      if (!request.query.q) return [];
+      return service.search(user.id, request.query.q, request.query.channelId);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/messages/:id",
+    { schema: { params: messageIdParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.getMessage(request.params.id, user.id);
+    },
+  );
+
   fastify.get<{ Querystring: { q?: string; types?: string } }>(
     "/references/search",
     {
