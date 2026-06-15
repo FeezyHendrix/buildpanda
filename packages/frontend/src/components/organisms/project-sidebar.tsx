@@ -389,7 +389,7 @@ function SidebarNavGroup({
 }
 
 function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
-  const { Icon, label, slug, to } = item;
+  const { label, slug, to } = item;
   const location = useLocation();
   const isActive =
     slug === "finances"
@@ -406,7 +406,6 @@ function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
         isActive && "bg-[#EDEDED] text-gray-900",
       )}
     >
-      <Icon className="size-4 shrink-0" />
       <span className="truncate">{label}</span>
     </Link>
   );
