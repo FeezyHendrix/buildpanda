@@ -196,6 +196,8 @@ export const pandaAiKeys = {
   all: (projectId: string) => ["projects", projectId, "ai-insights"] as const,
   latest: (projectId: string) =>
     [...pandaAiKeys.all(projectId), "latest"] as const,
+  detectedPhases: (projectId: string) =>
+    [...pandaAiKeys.all(projectId), "detected-phases"] as const,
 };
 
 export const reportingKeys = {

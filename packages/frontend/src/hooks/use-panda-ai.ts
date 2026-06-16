@@ -100,3 +100,30 @@ export function useAnalyzeProject() {
     },
   });
 }
+
+export interface DetectedPhase {
+  name: string;
+  durationWeeks: number;
+}
+
+export interface PhaseDetectionResult {
+  phases: DetectedPhase[];
+  usedAi: boolean;
+}
+
+export function useDetectPhases(projectId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: pandaAiKeys.detectedPhases(projectId ?? "__none__"),
+    queryFn: async () => {
+      const { data } = await api.post<PhaseDetectionResult>(
+        `/projects/${projectId!}/ai/detect-phases`,
+      );
+      return data;
+    },
+    enabled: Boolean(projectId) && enabled,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
