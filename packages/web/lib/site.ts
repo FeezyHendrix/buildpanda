@@ -7,7 +7,7 @@ export const site = {
     "BuildPanda is the Construction OS that runs your entire build. Win the work with proposals and accurate estimates, convert a signed proposal into a live project, then deliver it with milestones, verified payments, documents and independent inspections, from first enquiry to final handover.",
   // Configure these for the live site.
   email: "hello@buildpanda.io",
-  phoneDisplay: "+234 800 000 0000",
+  phoneDisplay: "08109918957",
   appUrl: "https://app.buildpanda.io",
 } as const;
 
