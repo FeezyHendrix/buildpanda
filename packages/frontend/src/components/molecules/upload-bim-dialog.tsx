@@ -65,7 +65,7 @@ export function UploadBimDialog({ open, onOpenChange, projectId }: Props) {
       open={open}
       onOpenChange={onOpenChange}
       title="Import a 3D model"
-      description="Bring in your Revit, ArchiCAD, Navisworks or other BIM model by exporting it to IFC — the open format every major tool supports."
+      description="Bring in your Revit, ArchiCAD, Navisworks or other BIM model by exporting it to IFC, the open format every major tool supports."
       submitLabel="Upload model"
       onSubmit={submit}
       submitting={upload.isPending}
@@ -88,7 +88,7 @@ export function UploadBimDialog({ open, onOpenChange, projectId }: Props) {
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
             <p className="text-xs font-medium text-amber-800">
               {nativeTool
-                ? `That looks like a ${nativeTool.label} file — we can't read it directly.`
+                ? `That looks like a ${nativeTool.label} file, we can't read it directly.`
                 : "Only .ifc files are supported."}
             </p>
             <p className="mt-1 text-xs text-amber-700">

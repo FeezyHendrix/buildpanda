@@ -20,7 +20,7 @@ import {
 } from "@/components/icons";
 
 export const metadata: Metadata = {
-  title: "BuildPanda — the Construction OS for modern builders",
+  title: "BuildPanda: the Construction OS for modern builders",
   description:
     "BuildPanda is the Construction OS that runs your whole build. Win work with proposals and estimates, then deliver with milestones, verified payments and independent inspections, from first enquiry to final handover.",
   alternates: { canonical: "https://buildpanda.io" },

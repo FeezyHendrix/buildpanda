@@ -466,7 +466,7 @@ function VarianceRow({
         {formatCurrency(phase.planned, currency)}
       </td>
       <td className="px-6 py-3 tabular-nums text-gray-700">
-        {hasActual ? formatCurrency(phase.actual, currency) : "—"}
+        {hasActual ? formatCurrency(phase.actual, currency) : "-"}
       </td>
       <td
         className={cn(
@@ -475,7 +475,7 @@ function VarianceRow({
         )}
       >
         {!hasActual
-          ? "—"
+          ? "-"
           : `${isOver ? "+" : "−"}${formatCurrency(Math.abs(variance), currency)}`}
       </td>
       <td className="px-6 py-3">

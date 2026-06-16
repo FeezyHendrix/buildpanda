@@ -95,7 +95,7 @@ function InspectionsMock() {
 }
 
 function DocumentsMock() {
-  const docs = ["Architectural drawings.pdf", "Building permit.pdf", "Main contract.pdf", "Receipts — Q2.zip"];
+  const docs = ["Architectural drawings.pdf", "Building permit.pdf", "Main contract.pdf", "Receipts - Q2.zip"];
   return (
     <Frame>
       <div className="flex items-center justify-between">

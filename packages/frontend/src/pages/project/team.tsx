@@ -109,7 +109,7 @@ export default function ProjectTeam() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
             <p className="text-sm text-gray-500">
-              People delivering this build (for reference — does not grant access).
+              People delivering this build (for reference, does not grant access).
             </p>
           </div>
           <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)}>
