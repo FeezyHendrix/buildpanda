@@ -15,7 +15,7 @@ import { ToggleRow } from "@/components/atoms/toggle-row";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
-const ACCEPT = ".csv,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv";
+const ACCEPT = ".csv,.xls,.xlsx,.pdf,.docx,.txt,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,text/csv,text/plain";
 
 interface ProjectFileStepProps {
   sessionId: string;
@@ -106,8 +106,8 @@ export function ProjectFileStep({
           Import Project File
         </h2>
         <p className="text-gray-500">
-          Upload an Excel handover doc or workbook. We will extract project
-          details, timeline, budget, and materials.
+          Upload any project document: an Excel workbook, PDF, Word doc or
+          brief. We will extract project details, timeline, budget, and materials.
         </p>
       </div>
 
@@ -144,7 +144,7 @@ export function ProjectFileStep({
               Click or drag file to this area to upload
             </h3>
             <p className="text-gray-500 text-sm mt-1">
-              Supports .xls, .xlsx, .csv
+              Supports Excel, PDF, Word, CSV
             </p>
 
             <input
@@ -192,20 +192,20 @@ export function ProjectFileStep({
               <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700 mt-2">
                 <div>
                   <span className="text-gray-500">Location:</span>{" "}
-                  {job.extraction.metadata.location || "—"}
+                  {job.extraction.metadata.location || "Not specified"}
                 </div>
                 <div>
                   <span className="text-gray-500">Client:</span>{" "}
-                  {job.extraction.metadata.client || "—"}
+                  {job.extraction.metadata.client || "Not specified"}
                 </div>
                 <div>
                   <span className="text-gray-500">Contractor:</span>{" "}
-                  {job.extraction.metadata.contractor || "—"}
+                  {job.extraction.metadata.contractor || "Not specified"}
                 </div>
                 <div>
                   <span className="text-gray-500">Dates:</span>{" "}
-                  {job.extraction.metadata.startDate || "—"} to{" "}
-                  {job.extraction.metadata.endDate || "—"}
+                  {job.extraction.metadata.startDate || "Not specified"} to{" "}
+                  {job.extraction.metadata.endDate || "Not specified"}
                 </div>
               </div>
               {job.extraction.metadata.description && (
@@ -219,7 +219,7 @@ export function ProjectFileStep({
             <ToggleRow
               title="Project details"
               description={
-                job.extraction.metadata.projectName ? "Found project info" : "—"
+                job.extraction.metadata.projectName ? "Found project info" : "Not found"
               }
               checked={metadataOn}
               onChange={setMetadataOn}
