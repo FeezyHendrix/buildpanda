@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -9,7 +9,6 @@ import {
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useSession } from "@/stores/auth";
 import { useProjects } from "@/hooks/use-projects";
 import {
@@ -223,20 +222,17 @@ function NewProjectCard() {
 }
 
 function ImportProgrammeCard() {
-  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
-      >
-        <ReactSVG src={icons.upload} />
-        <p className='text-primary text-[16px] font-semibold'>Import programme</p>
-        <p className="text-[11px] text-black-300 text-center">Upload an .mpp or Excel schedule and let Panda AI build the whole project.</p>
-      </button>
-      <ImportProgrammeDialog open={open} onOpenChange={setOpen} />
-    </>
+    <button
+      type="button"
+      onClick={() => navigate("/import")}
+      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
+    >
+      <ReactSVG src={icons.upload} />
+      <p className='text-primary text-[16px] font-semibold'>Set up a project</p>
+      <p className="text-[11px] text-black-300 text-center">Import a programme, BoQ, drawings or BIM models and we'll build the project for you.</p>
+    </button>
   );
 }
 

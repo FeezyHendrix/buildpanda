@@ -151,7 +151,10 @@ export function useBulkCreateMaterials() {
       projectId: string;
       materials: ParsedBoqMaterial[];
     }) => {
-      const { data } = await api.post<{ created: number }>(
+      const { data } = await api.post<{
+        created: number;
+        budgetCategories?: { created: number; skipped: number };
+      }>(
         `/projects/${projectId}/materials/bulk`,
         { materials },
       );

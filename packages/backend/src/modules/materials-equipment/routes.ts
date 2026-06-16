@@ -7,6 +7,8 @@ import { saveStream } from "../../lib/file-storage.ts";
 import { boqJobsRepository, type BoqJobRow } from "./boq-jobs-repository.ts";
 import { BOQ_IMPORT_QUEUE, type BoqImportJobData } from "./boq-job.ts";
 import { materialsEquipmentRepository } from "./repository.ts";
+import { budgetRepository } from "../budget/repository.ts";
+import { budgetService } from "../budget/service.ts";
 import {
   materialsEquipmentService,
   type CreateEquipmentRequestInput,
@@ -149,6 +151,7 @@ const bulkImportBody = {
           estimatedCost: { type: "number", minimum: 0 },
           supplier: { type: ["string", "null"], maxLength: 200 },
           neededBy: { type: "string", maxLength: 40 },
+          section: { type: ["string", "null"], maxLength: 200 },
         },
       },
     },
@@ -162,6 +165,7 @@ interface ImportedMaterial {
   estimatedCost?: number;
   supplier?: string | null;
   neededBy?: string;
+  section?: string | null;
 }
 
 const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
@@ -171,6 +175,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
 
   const service = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
   const boqJobs = boqJobsRepository(fastify.db);
+  const budget = budgetService(budgetRepository(fastify.db));
 
   function toJobDto(job: BoqJobRow) {
     const materials =
@@ -285,7 +290,19 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
         }),
         user.id,
       );
-      return reply.status(201).send({ created });
+
+      const estimateItems = request.body.materials
+        .map((m) => ({
+          groupLabel: m.section?.trim() || "General",
+          total: (m.estimatedCost ?? 0) * (m.quantity || 0),
+        }))
+        .filter((item) => item.total > 0);
+      const budgetSeed =
+        estimateItems.length > 0
+          ? await budget.seedFromEstimateItems(request.params.id, estimateItems, "skip")
+          : { created: 0, skipped: 0 };
+
+      return reply.status(201).send({ created, budgetCategories: budgetSeed });
     },
   );
 
