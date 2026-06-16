@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
 import { pandaAiRepository } from "./repository.ts";
 import { pandaAiService } from "./service.ts";
+import { detectPhases } from "./phase-detection.ts";
+import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
+import { materialsEquipmentService } from "../materials-equipment/service.ts";
 
 const projectIdParams = {
   type: "object",
@@ -11,6 +14,7 @@ const projectIdParams = {
 
 const pandaAiRoutes: FastifyPluginAsync = async (fastify) => {
   const service = pandaAiService(pandaAiRepository(fastify.db), fastify.queue);
+  const materials = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/ai/insights",
@@ -29,6 +33,17 @@ const pandaAiRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const insight = await service.trigger(project.id, user.id);
       return reply.status(202).send({ insight });
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/projects/:id/ai/detect-phases",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectAccess(request.params.id);
+      const orders = await materials.listMaterialOrders(request.params.id);
+      const materialNames = orders.map((order) => order.materialName).filter(Boolean);
+      return detectPhases(project.name, materialNames);
     },
   );
 };

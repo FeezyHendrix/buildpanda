@@ -4,6 +4,7 @@ import { WizardLayout } from "@/components/organisms/wizard-modal";
 import { StartStep } from "@/components/molecules/import-wizard/start-step";
 import { ProgrammeStep } from "@/components/molecules/import-wizard/programme-step";
 import { DetailsStep } from "@/components/molecules/import-wizard/details-step";
+import { TimelineStep } from "@/components/molecules/import-wizard/timeline-step";
 import { BoqStep } from "@/components/molecules/import-wizard/boq-step";
 import { ModelsStep } from "@/components/molecules/import-wizard/models-step";
 import { DrawingsStep } from "@/components/molecules/import-wizard/drawings-step";
@@ -19,6 +20,7 @@ const ALL_STEPS = [
   { id: "boq", path: "both" },
   { id: "models", path: "both" },
   { id: "drawings", path: "both" },
+  { id: "timeline", path: "shell" },
   { id: "review", path: "both" },
 ] as const;
 
@@ -83,7 +85,7 @@ export default function ImportWizardPage() {
   } else if (currentStepDef.id === "review") {
     continueLabel = "Go to project";
     continueDisabled = !projectId;
-  } else if (["boq", "models", "drawings"].includes(currentStepDef.id)) {
+  } else if (["timeline", "boq", "models", "drawings"].includes(currentStepDef.id)) {
     continueLabel = "Skip";
   } else if (currentStepDef.id === "programme" || currentStepDef.id === "details") {
     continueDisabled = !projectId; 
@@ -115,6 +117,9 @@ export default function ImportWizardPage() {
           onProjectCreated={setProjectId} 
           onNext={handleNext}
         />
+      )}
+      {currentStepDef.id === "timeline" && projectId && (
+        <TimelineStep projectId={projectId} onNext={handleNext} />
       )}
       {currentStepDef.id === "boq" && sessionId && projectId && (
         <BoqStep sessionId={sessionId} projectId={projectId} onNext={handleNext} />
