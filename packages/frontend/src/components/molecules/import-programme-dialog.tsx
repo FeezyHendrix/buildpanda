@@ -253,11 +253,11 @@ function PreviewState({
   isApplying: boolean;
   applyError: string | null;
   onApply: (data: {
-    projectName: string;
-    city: string;
-    state: string;
-    budgetTotal: number;
-    currency: string;
+    projectName?: string;
+    city?: string;
+    state?: string;
+    budgetTotal?: number;
+    currency?: string;
   }) => void;
 }) {
   const [projectName, setProjectName] = useState(result.projectName || "");
@@ -272,6 +272,10 @@ function PreviewState({
 
   function submit(event: React.FormEvent): void {
     event.preventDefault();
+    if (intoExisting) {
+      onApply({});
+      return;
+    }
     onApply({
       projectName: projectName.trim(),
       city: city.trim(),
