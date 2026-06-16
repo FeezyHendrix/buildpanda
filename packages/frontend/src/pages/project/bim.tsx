@@ -198,12 +198,12 @@ export default function ProjectBim() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="BIM models"
-        description="Upload IFC models and view them in 3D. Anchor coordination issues to elements and promote them to RFIs."
+        description="Import your Revit, ArchiCAD or Navisworks model (via IFC) and view it in 3D. Anchor coordination issues to elements and promote them to RFIs."
         actions={
           canUpload ? (
             <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
               <PlusIcon className="size-4" />
-              Upload IFC
+              Import model
             </Button>
           ) : undefined
         }
@@ -215,6 +215,9 @@ export default function ProjectBim() {
         ) : models.length === 0 ? (
           <Card className="p-10 text-center">
             <p className="text-sm text-gray-500">No BIM models yet.</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Import from Revit, ArchiCAD, Navisworks and more.
+            </p>
             {canUpload && (
               <Button
                 variant="secondary"
@@ -222,7 +225,7 @@ export default function ProjectBim() {
                 className="mt-3"
                 onClick={() => setUploadOpen(true)}
               >
-                Upload your first IFC
+                Import your first model
               </Button>
             )}
           </Card>

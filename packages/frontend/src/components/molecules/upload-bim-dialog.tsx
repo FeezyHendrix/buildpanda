@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
+import { IfcExportGuide, type AuthoringTool } from "./ifc-export-guide";
 import { useUploadBimModel } from "@/hooks/use-bim";
 
 interface Props {
@@ -11,6 +12,18 @@ interface Props {
 
 const field =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+
+const NATIVE_EXT_TOOL: { pattern: RegExp; tool: AuthoringTool; label: string }[] = [
+  { pattern: /\.rvt$/i, tool: "revit", label: "Revit" },
+  { pattern: /\.(pln|pla)$/i, tool: "archicad", label: "ArchiCAD" },
+  { pattern: /\.(nwd|nwc)$/i, tool: "navisworks", label: "Navisworks" },
+  { pattern: /\.skp$/i, tool: "sketchup", label: "SketchUp" },
+];
+
+function detectNativeTool(fileName: string): { tool: AuthoringTool; label: string } | null {
+  const match = NATIVE_EXT_TOOL.find((n) => n.pattern.test(fileName));
+  return match ? { tool: match.tool, label: match.label } : null;
+}
 
 export function UploadBimDialog({ open, onOpenChange, projectId }: Props) {
   const upload = useUploadBimModel();
@@ -44,32 +57,46 @@ export function UploadBimDialog({ open, onOpenChange, projectId }: Props) {
   }
 
   const isIfc = file ? /\.ifc$/i.test(file.name) : true;
+  const nativeTool = file && !isIfc ? detectNativeTool(file.name) : null;
   const canSubmit = Boolean(file) && isIfc && name.trim() !== "";
 
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Upload an IFC model"
-      description="Export your Revit or Navisworks model to IFC, then upload it here. Large files upload in parallel."
+      title="Import a 3D model"
+      description="Bring in your Revit, ArchiCAD, Navisworks or other BIM model by exporting it to IFC — the open format every major tool supports."
       submitLabel="Upload model"
       onSubmit={submit}
       submitting={upload.isPending}
       submitDisabled={!canSubmit}
       error={upload.error instanceof Error ? upload.error.message : null}
     >
+      <IfcExportGuide defaultTool={nativeTool?.tool} />
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="bim-file">IFC file</Label>
         <input
           id="bim-file"
           ref={fileRef}
           type="file"
-          accept=".ifc"
+          accept=".ifc,.rvt,.pln,.pla,.nwd,.nwc,.skp"
           onChange={onPick}
           className="text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-[#EDEDED] file:px-3 file:py-2 file:text-sm"
         />
         {file && !isIfc && (
-          <p className="text-xs text-red-600">Only .ifc files are supported. Export to IFC first.</p>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-xs font-medium text-amber-800">
+              {nativeTool
+                ? `That looks like a ${nativeTool.label} file — we can't read it directly.`
+                : "Only .ifc files are supported."}
+            </p>
+            <p className="mt-1 text-xs text-amber-700">
+              {nativeTool
+                ? `Export it to IFC from ${nativeTool.label} first (see the steps above), then upload the .ifc file.`
+                : "Export your model to IFC first, then upload the .ifc file."}
+            </p>
+          </div>
         )}
       </div>
 
