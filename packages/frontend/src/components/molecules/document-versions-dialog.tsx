@@ -49,26 +49,29 @@ function DocumentVersionsDialog({
 
   function handlePick(file: File | null): void {
     if (!file) return;
-    uploadFile.mutate(file, {
-      onSuccess: (uploaded) => {
-        addVersion.mutate(
-          {
-            projectId,
-            documentId: document.id,
-            fileId: uploaded.id,
-            revisionLabel: revisionLabel.trim() || undefined,
-            notes: notes.trim() || undefined,
-          },
-          {
-            onSuccess: () => {
-              setRevisionLabel("");
-              setNotes("");
-              if (fileInputRef.current) fileInputRef.current.value = "";
+    uploadFile.mutate(
+      { file },
+      {
+        onSuccess: (uploaded) => {
+          addVersion.mutate(
+            {
+              projectId,
+              documentId: document.id,
+              fileId: uploaded.id,
+              revisionLabel: revisionLabel.trim() || undefined,
+              notes: notes.trim() || undefined,
             },
-          },
-        );
+            {
+              onSuccess: () => {
+                setRevisionLabel("");
+                setNotes("");
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              },
+            },
+          );
+        },
       },
-    });
+    );
   }
 
   return (
