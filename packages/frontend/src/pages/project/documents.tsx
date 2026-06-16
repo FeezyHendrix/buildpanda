@@ -62,6 +62,7 @@ export default function ProjectDocuments() {
 
   const [tab, setTab] = useState<CategoryGroup>("document");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const uploadFile = useUploadFile();
   const createDocument = useCreateDocument();
 
@@ -83,26 +84,43 @@ export default function ProjectDocuments() {
     toast(getApiErrorMessage(err), "error");
   }
 
+  function handleUploadOpenChange(next: boolean): void {
+    if (!next && isUploading) return;
+    if (!next) setUploadProgress(null);
+    setUploadOpen(next);
+  }
+
   function handleUpload(input: { categoryId: string; file: File }): void {
-    uploadFile.mutate(input.file, {
-      onSuccess: (uploaded) => {
-        createDocument.mutate(
-          {
-            projectId: project.id,
-            categoryId: input.categoryId,
-            fileId: uploaded.id,
-          },
-          {
-            onSuccess: () => {
-              setUploadOpen(false);
-              toast("Document uploaded", "success");
+    setUploadProgress(0);
+    uploadFile.mutate(
+      { file: input.file, onProgress: setUploadProgress },
+      {
+        onSuccess: (uploaded) => {
+          createDocument.mutate(
+            {
+              projectId: project.id,
+              categoryId: input.categoryId,
+              fileId: uploaded.id,
             },
-            onError: notifyUploadError,
-          },
-        );
+            {
+              onSuccess: () => {
+                setUploadOpen(false);
+                setUploadProgress(null);
+                toast("Document uploaded", "success");
+              },
+              onError: (err) => {
+                setUploadProgress(null);
+                notifyUploadError(err);
+              },
+            },
+          );
+        },
+        onError: (err) => {
+          setUploadProgress(null);
+          notifyUploadError(err);
+        },
       },
-      onError: notifyUploadError,
-    });
+    );
   }
 
   return (
@@ -149,9 +167,10 @@ export default function ProjectDocuments() {
 
       <UploadDocumentDialog
         open={uploadOpen}
-        onOpenChange={setUploadOpen}
+        onOpenChange={handleUploadOpenChange}
         categories={visibleCategories}
         isSubmitting={isUploading}
+        progress={uploadProgress}
         error={uploadError}
         onSubmit={handleUpload}
       />
