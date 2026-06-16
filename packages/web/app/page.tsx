@@ -48,56 +48,32 @@ const features = [
   {
     icon: <UsersIcon className="h-6 w-6" />,
     title: "Leads & pipeline",
-    description:
-      "Capture every enquiry and track it from new to won, so no opportunity slips through the cracks.",
+    description: "Capture every enquiry and track it from new to won so no opportunity is lost.",
   },
   {
     icon: <ClipboardIcon className="h-6 w-6" />,
     title: "Proposals & estimates",
-    description:
-      "Build precise, line by line estimates and bills of quantities, then send a branded proposal your client can accept online.",
-  },
-  {
-    icon: <LayersIcon className="h-6 w-6" />,
-    title: "One-click handoff",
-    description:
-      "The moment a proposal is accepted, turn it into a live construction project with budget, phases and milestones ready to go.",
+    description: "Build precise estimates and send branded proposals your clients can accept online.",
   },
   {
     icon: <MilestoneIcon className="h-6 w-6" />,
     title: "Milestones & schedule",
-    description:
-      "Break your build into clear milestones with a live schedule, so you always know what is happening and what comes next.",
+    description: "Break your build into clear milestones with a live schedule of what comes next.",
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
     title: "Milestone payments",
-    description:
-      "Money is released against verified progress, not promises. Your funds stay tied to work that has actually been done.",
+    description: "Money is released against verified progress, tying funds directly to completed work.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
     title: "Budget & finances",
-    description:
-      "Allocate your budget, track every expense and watch your spend against plan with no hidden surprises.",
-  },
-  {
-    icon: <DocumentIcon className="h-6 w-6" />,
-    title: "Documents in one place",
-    description:
-      "Drawings, permits, contracts and receipts stored securely and accessible whenever you need them.",
-  },
-  {
-    icon: <ShieldCheckIcon className="h-6 w-6" />,
-    title: "Independent inspections",
-    description:
-      "Third-party quality checks at each stage give you an honest, professional view of the work on the ground.",
+    description: "Allocate budget, track expenses, and watch your spend against the plan.",
   },
   {
     icon: <DroneIcon className="h-6 w-6" />,
     title: "On-site & drone monitoring",
-    description:
-      "Photos, daily logs and drone monitoring bring the site to your screen, wherever in the world you are.",
+    description: "Photos, daily logs, and drone footage bring the site directly to your screen.",
   },
 ];
 
@@ -162,7 +138,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="Drone monitoring"
             title="See your site from the sky, every week"
-            description="Real aerial footage from BuildPanda projects. High-resolution drone surveys give you an honest, time-stamped view of progress on the ground, wherever you are in the world."
+            description="High-resolution drone surveys give you an honest, time-stamped view of progress on the ground."
           />
           <div className="grid w-full max-w-5xl gap-6 md:grid-cols-2">
             {[
@@ -199,7 +175,7 @@ export default function HomePage() {
         </Container>
       </section>
 
-      <section className="border-y border-line bg-surface-faint py-6">
+      <section className="border-y border-line bg-white py-6">
         <Container>
           <div className="grid gap-6 text-center sm:grid-cols-3">
             <Stat value="Enquiry to handover" label="One OS for the entire build" />
@@ -213,12 +189,12 @@ export default function HomePage() {
         <Container className="flex flex-col gap-12">
           <SectionHeading
             eyebrow="The problem"
-            title="Building a house in Nigeria should not mean flying blind."
-            description="Whether you live in Lagos or in London, the story is the same. You send money and wait. Updates are slow, costs creep, and it is hard to know whether the work matches what you are paying for. BuildPanda replaces guesswork with a single source of truth."
+            title="Building should not mean flying blind."
+            description="Stop sending money and waiting in the dark. BuildPanda replaces guesswork with verified progress and a single source of truth."
           />
           <div className="grid gap-6 md:grid-cols-3">
             <Pain title="No more guessing" text="See real progress, real costs and real inspection results instead of relying on word of mouth." />
-            <Pain title="No more wasted funds" text="Payments are linked to verified milestones, so money follows the work, not the other way around." />
+            <Pain title="No more wasted funds" text="Payments are linked to verified milestones, so money follows the work." />
             <Pain title="No more wrong contacts" text="Work with vetted professionals and an advisor who manages the build on your behalf." />
           </div>
         </Container>
@@ -261,8 +237,8 @@ export default function HomePage() {
             ))}
           </div>
           <div className="flex justify-center">
-            <ButtonLink href="/product/" variant="outline" size="md">
-              Explore the full product
+            <ButtonLink href="/for-contractors/" variant="outline" size="md">
+              See what you can do
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
           </div>
@@ -281,10 +257,7 @@ export default function HomePage() {
                 Thousands of kilometres away, fully in control.
               </h2>
               <p className="text-pretty text-base leading-relaxed text-white/70 sm:text-lg">
-                If you are building from abroad and do not know who to contact,
-                BuildPanda is your trusted partner on the ground. We manage the
-                people, the process and the paperwork, and give you a live window
-                into your project so you never feel left in the dark.
+                Building from abroad? We manage the people, process, and paperwork, giving you a live window into your project so you never feel left in the dark.
               </p>
               <div>
                 <ButtonLink href="/construction/" variant="white" size="md">

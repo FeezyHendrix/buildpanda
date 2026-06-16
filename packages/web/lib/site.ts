@@ -11,13 +11,32 @@ export const site = {
   appUrl: "https://app.buildpanda.io",
 } as const;
 
-export const nav = [
-  { label: "Home", href: "/" },
-  { label: "Product", href: "/product/" },
+export type NavItem = {
+  label: string;
+  href?: string;
+  children?: ReadonlyArray<{ label: string; href: string; description?: string }>;
+};
+
+export const nav: ReadonlyArray<NavItem> = [
+  {
+    label: "Product",
+    children: [
+      {
+        label: "For contractors",
+        href: "/for-contractors/",
+        description: "Win more work and deliver it without the chaos.",
+      },
+      {
+        label: "For owners",
+        href: "/for-owners/",
+        description: "Build with total visibility and control, even from afar.",
+      },
+    ],
+  },
   { label: "Construction", href: "/construction/" },
   { label: "About Us", href: "/about/" },
   { label: "Talk to us", href: "/#consultation" },
-] as const;
+];
 
 export const projectTypes = [
   "Build a new home",

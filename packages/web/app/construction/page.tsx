@@ -93,7 +93,7 @@ export default function ConstructionPage() {
               Book a consultation
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
-            <ButtonLink href="/product/" variant="outline" size="lg">
+            <ButtonLink href="/for-owners/" variant="outline" size="lg">
               See the software
             </ButtonLink>
           </div>
