@@ -35,7 +35,7 @@ function CommentPanel({
       {isLoading ? (
         <p className="text-xs text-gray-400">Loading comments…</p>
       ) : comments.length === 0 ? (
-        <p className="text-xs text-gray-400">No comments yet — be the first.</p>
+        <p className="text-xs text-gray-400">No comments yet, be the first.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {comments.map((comment) => (

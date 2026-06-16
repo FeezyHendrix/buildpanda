@@ -82,7 +82,7 @@ export default function ProjectChangeRequests() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Change Requests"
-        description="Proposed changes to scope, cost or schedule — with their budget and time impact."
+        description="Proposed changes to scope, cost or schedule, with their budget and time impact."
         actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />

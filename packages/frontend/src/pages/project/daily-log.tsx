@@ -61,7 +61,7 @@ export default function ProjectDailyLog() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Daily Log"
-        description="One end-of-day record per day — weather, headcount, hours worked, what got done."
+        description="One end-of-day record per day: weather, headcount, hours worked, what got done."
         actions={canManage ? (
           <Button variant="primary" size="md" onClick={openForToday}>
             <PlusIcon className="size-4" />

@@ -25,7 +25,7 @@ export const CONSTRUCTION_TOUR_STEPS: TourStep[] = [
   {
     target: "construction-timeline",
     title: "Follow the project timeline",
-    body: "Each phase — from foundation to handover — is laid out here so you always know what comes next.",
+    body: "Each phase, from foundation to handover, is laid out here so you always know what comes next.",
     placement: "top",
   },
   {
@@ -40,7 +40,7 @@ export const SALES_TOUR_STEPS: TourStep[] = [
   {
     target: "sales-metrics",
     title: "Your pipeline at a glance",
-    body: "Pipeline value, win rate and what's awaiting a client reply — your sales health in one row.",
+    body: "Pipeline value, win rate and what's awaiting a client reply, all your sales health in one row.",
     placement: "bottom",
   },
   {

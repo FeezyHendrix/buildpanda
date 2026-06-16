@@ -37,8 +37,8 @@ function resolveLabel<T extends { id: string; title: string }>(
   list: readonly T[],
   id: string | null,
 ): string {
-  if (!id) return "—";
-  return list.find((item) => item.id === id)?.title ?? "—";
+  if (!id) return "-";
+  return list.find((item) => item.id === id)?.title ?? "-";
 }
 
 function formatBudget(currency: string, range: [number, number]): string {
@@ -90,7 +90,7 @@ function BlueprintPage({
   pageIndex: number;
 }) {
   const timelineLabel =
-    TIMELINES.find((t) => t.id === data.timeline)?.label ?? "—";
+    TIMELINES.find((t) => t.id === data.timeline)?.label ?? "-";
   const locationText = [data.city, data.locationState]
     .filter(Boolean)
     .join(", ");
@@ -181,7 +181,7 @@ function BlueprintPage({
       <div className="flex items-center justify-between border-b border-gray-200 pb-4">
         <img src={logo} alt="BuildPanda" className="h-6" />
         <span className="text-xs text-gray-400">
-          {data.projectTitle} — continued
+          {data.projectTitle} (continued)
         </span>
       </div>
 
@@ -194,10 +194,10 @@ function BlueprintPage({
             label="Project Type"
             value={
               PROJECT_TYPE_OPTIONS.find((o) => o.type === data.projectType)
-                ?.title ?? "—"
+                ?.title ?? "-"
             }
           />
-          <SummaryLine label="Location" value={locationText || "—"} />
+          <SummaryLine label="Location" value={locationText || "-"} />
           <SummaryLine
             label="Owns Land"
             value={data.ownsLand === "yes" ? "Yes" : "No"}

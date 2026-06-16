@@ -123,7 +123,7 @@ function CreateActivityDialog({
         id="activity-name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="e.g. Slab pour — Floor 2"
+        placeholder="e.g. Slab pour, Floor 2"
         maxLength={200}
         autoFocus
         className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
@@ -150,7 +150,7 @@ function CreateActivityDialog({
           onChange={(e) => setPhaseId(e.target.value)}
           className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
         >
-          <option value="">— Unassigned milestone —</option>
+          <option value="">Unassigned milestone</option>
           {phases.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

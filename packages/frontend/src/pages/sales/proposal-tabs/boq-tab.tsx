@@ -93,7 +93,7 @@ export function BoqTab({ proposalId, estimateId }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
-        Use this tab for the architect's bill of quantities — what needs to be built and
+        Use this tab for the architect's bill of quantities: what needs to be built and
         how much of it, without prices. When you're ready, click <strong>Price into estimate</strong>{" "}
         to seed the Estimate tab with these line items and set the rates.
       </div>

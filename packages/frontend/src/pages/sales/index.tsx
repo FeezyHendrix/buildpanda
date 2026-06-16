@@ -70,19 +70,19 @@ function buildAttention(proposals: ProposalListItem[], leads: Lead[]): Attention
     if (p.status === "Sent") {
       const d = daysUntil(p.validUntil);
       if (d !== null && d < 0) {
-        items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "danger", text: `${p.numberLabel} ${p.title} — validity expired` });
+        items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "danger", text: `${p.numberLabel} ${p.title}: validity expired` });
       } else if (d !== null && d <= EXPIRING_WINDOW_DAYS) {
-        items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "warning", text: `${p.numberLabel} ${p.title} — expires in ${d} day${d === 1 ? "" : "s"}` });
+        items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "warning", text: `${p.numberLabel} ${p.title}: expires in ${d} day${d === 1 ? "" : "s"}` });
       }
     }
     if (p.status === "Accepted") {
-      items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "info", text: `${p.numberLabel} ${p.title} — accepted, ready to convert` });
+      items.push({ id: p.id, to: `/sales/proposals/${p.id}`, tone: "info", text: `${p.numberLabel} ${p.title}: accepted, ready to convert` });
     }
   }
 
   for (const l of leads) {
     if (l.status === "New" && daysSince(l.createdAt) >= STALE_LEAD_DAYS) {
-      items.push({ id: l.id, to: "/sales/leads", tone: "warning", text: `Lead "${l.name}" — no contact in ${daysSince(l.createdAt)} days` });
+      items.push({ id: l.id, to: "/sales/leads", tone: "warning", text: `Lead "${l.name}": no contact in ${daysSince(l.createdAt)} days` });
     }
   }
 
@@ -205,7 +205,7 @@ function Header({ onNew }: { onNew: () => void }) {
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Pre-Construction</h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Your sales pipeline — from first enquiry to a signed build.
+          Your sales pipeline, from first enquiry to a signed build.
         </p>
       </div>
       <Button data-tour="sales-new" onClick={onNew}>New proposal</Button>
@@ -267,7 +267,7 @@ function FunnelPanel({ rows }: { rows: { status: ProposalStatus; count: number; 
               />
             </div>
             <span className="w-28 shrink-0 text-right text-xs font-medium text-gray-500">
-              {row.value > 0 ? formatWholeCurrency(row.value, CURRENCY) : "—"}
+              {row.value > 0 ? formatWholeCurrency(row.value, CURRENCY) : "-"}
             </span>
           </div>
         ))}
@@ -287,7 +287,7 @@ function AttentionPanel({ items }: { items: AttentionItem[] }) {
     <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
       <h2 className="text-sm font-semibold text-gray-900">Needs attention</h2>
       {items.length === 0 ? (
-        <p className="py-6 text-center text-xs text-gray-400">Nothing needs attention — you're all caught up.</p>
+        <p className="py-6 text-center text-xs text-gray-400">Nothing needs attention. You're all caught up.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
@@ -366,7 +366,7 @@ function RecentProposals({ rows }: { rows: ProposalListItem[] }) {
                 </Badge>
               </td>
               <td className="px-5 py-3 text-right text-sm text-gray-700">
-                {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "—"}
+                {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "-"}
               </td>
             </tr>
           ))}

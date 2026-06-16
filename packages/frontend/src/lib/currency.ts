@@ -133,7 +133,7 @@ export const SUPPORTED_CURRENCIES: CurrencyOption[] = [
   { code: "SGD", symbol: "$", label: "Singapore Dollar" },
   { code: "SHP", symbol: "£", label: "St. Helena Pound" },
   { code: "SLE", symbol: "SLE", label: "Sierra Leonean Leone" },
-  { code: "SLL", symbol: "SLL", label: "Sierra Leonean Leone (1964—2022)" },
+  { code: "SLL", symbol: "SLL", label: "Sierra Leonean Leone (1964-2022)" },
   { code: "SOS", symbol: "SOS", label: "Somali Shilling" },
   { code: "SRD", symbol: "$", label: "Surinamese Dollar" },
   { code: "SSP", symbol: "£", label: "South Sudanese Pound" },
@@ -181,5 +181,5 @@ export function currencySymbol(code: string): string {
 
 export function currencyLabel(code: string): string {
   const found = CURRENCY_BY_CODE.get(code);
-  return found ? found.code + " — " + found.label : code;
+  return found ? found.code + " - " + found.label : code;
 }

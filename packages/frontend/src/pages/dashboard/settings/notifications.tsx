@@ -21,8 +21,8 @@ function groupPreferences(
 
 function statusDescription(pref: NotificationPreference): string {
   return pref.inAppEnabled
-    ? "On — appears in your notification bell"
-    : "Off — you will not be notified";
+    ? "On, appears in your notification bell"
+    : "Off, you will not be notified";
 }
 
 export default function NotificationSettings() {

@@ -7,7 +7,7 @@ import { formatWholeCurrency } from "@/lib/formatters";
 import logo from "@/assets/images/logo.svg";
 
 function money(amount: number | null, currency: string): string {
-  return amount == null ? "—" : formatWholeCurrency(amount, currency);
+  return amount == null ? "-" : formatWholeCurrency(amount, currency);
 }
 
 export default function MyBuild() {
