@@ -14,6 +14,7 @@ import { registerRfiReminderWorker } from "../modules/rfis/reminder-job.ts";
 import { registerBimProcessingWorker } from "../modules/bim/job.ts";
 import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.ts";
 import { registerProgrammeImportWorker } from "../modules/panda-ai/programme/job.ts";
+import { registerProjectFileImportWorker } from "../modules/panda-ai/project-file-job.ts";
 import { registerProgressRecomputeWorker } from "../modules/activities/progress-job.ts";
 
 declare module "fastify" {
@@ -36,6 +37,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerBimProcessingWorker(fastify.db, manager);
     registerBoqImportWorker(fastify.db, manager);
     registerProgrammeImportWorker(fastify.db, manager);
+    registerProjectFileImportWorker(fastify.db, manager);
     registerProgressRecomputeWorker(fastify.db, manager);
     registerPandaAiPeriodicScheduler(fastify.db, manager, fastify.log);
     registerNotificationEmailWorker(fastify.db, manager);
