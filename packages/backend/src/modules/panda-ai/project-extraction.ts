@@ -1,4 +1,6 @@
 import * as XLSX from "xlsx";
+import { extractDocumentText } from "../../lib/document-text.ts";
+import { pandaAiJson } from "./engine.ts";
 
 export interface ExtractedMetadata {
   projectName: string | null;
@@ -333,4 +335,119 @@ export async function extractProjectFromWorkbook(buffer: Buffer): Promise<Projec
     materials: dedupeMaterials(materials),
     sheets,
   };
+}
+
+const LLM_SYSTEM_PROMPT = `You are a construction project analyst. You receive the raw text of a single project document (e.g. a contract, scope of works, project brief, handover summary, or schedule). Extract structured project data ONLY from what is explicitly present in the text. Never invent values. If a field is not stated, use null (for strings/dates) or omit the item. Dates must be ISO YYYY-MM-DD. Costs must be plain numbers (no currency symbols or commas). Respond ONLY with JSON of this exact shape:
+{
+  "metadata": { "projectName": string|null, "location": string|null, "client": string|null, "contractor": string|null, "startDate": string|null, "endDate": string|null, "description": string|null },
+  "phases": [ { "name": string, "startDate": string|null, "endDate": string|null } ],
+  "budgetCategories": [ { "name": string, "total": number } ],
+  "materials": [ { "materialName": string, "quantity": number, "unit": string, "estimatedCost": number, "section": string|null } ]
+}`;
+
+function str(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.replace(/\s*[—–]\s*/g, ", ").trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
+
+function isoDate(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return looksLikeDate(value);
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+function num(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function normalizeLlmExtraction(value: unknown): ProjectExtraction {
+  const obj = (value ?? {}) as Record<string, unknown>;
+  const m = (obj.metadata ?? {}) as Record<string, unknown>;
+  const metadata: ExtractedMetadata = {
+    projectName: str(m.projectName, 160),
+    location: str(m.location, 300),
+    client: str(m.client, 160),
+    contractor: str(m.contractor, 160),
+    startDate: isoDate(m.startDate),
+    endDate: isoDate(m.endDate),
+    description: str(m.description, 2000),
+  };
+
+  const phases: ExtractedPhase[] = Array.isArray(obj.phases)
+    ? obj.phases
+        .map((p) => {
+          const row = (p ?? {}) as Record<string, unknown>;
+          const name = str(row.name, 160);
+          return name ? { name, startDate: isoDate(row.startDate), endDate: isoDate(row.endDate) } : null;
+        })
+        .filter((p): p is ExtractedPhase => p !== null)
+        .slice(0, 30)
+    : [];
+
+  const budgetCategories: ExtractedBudgetCategory[] = Array.isArray(obj.budgetCategories)
+    ? obj.budgetCategories
+        .map((c) => {
+          const row = (c ?? {}) as Record<string, unknown>;
+          const name = str(row.name, 160);
+          const total = num(row.total);
+          return name && total > 0 ? { name, total } : null;
+        })
+        .filter((c): c is ExtractedBudgetCategory => c !== null)
+        .slice(0, 100)
+    : [];
+
+  const materials: ExtractedMaterial[] = Array.isArray(obj.materials)
+    ? obj.materials
+        .map((mat) => {
+          const row = (mat ?? {}) as Record<string, unknown>;
+          const name = str(row.materialName, 200);
+          if (!name) return null;
+          const quantity = num(row.quantity);
+          return {
+            materialName: name,
+            quantity: quantity > 0 ? quantity : 1,
+            unit: str(row.unit, 40) ?? "item",
+            estimatedCost: num(row.estimatedCost),
+            section: str(row.section, 160),
+          };
+        })
+        .filter((mat): mat is ExtractedMaterial => mat !== null)
+        .slice(0, 500)
+    : [];
+
+  return { metadata, phases, budgetCategories, materials: dedupeMaterials(materials), sheets: [] };
+}
+
+export async function extractProjectFromText(
+  text: string,
+  fileName: string,
+): Promise<ProjectExtraction> {
+  const trimmed = text.slice(0, 24000);
+  const parsed = await pandaAiJson(LLM_SYSTEM_PROMPT, `Document: ${fileName}\n\n${trimmed}`);
+  return normalizeLlmExtraction(parsed);
+}
+
+function detectFileKind(fileName: string): "workbook" | "text" {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls") || lower.endsWith(".csv")) {
+    return "workbook";
+  }
+  return "text";
+}
+
+export async function extractProjectFromFile(
+  buffer: Buffer,
+  fileName: string,
+): Promise<ProjectExtraction> {
+  if (detectFileKind(fileName) === "workbook") {
+    return extractProjectFromWorkbook(buffer);
+  }
+  const extracted = await extractDocumentText(buffer, fileName);
+  if (!extracted.text) {
+    throw new Error("No readable text found in this document.");
+  }
+  return extractProjectFromText(extracted.text, fileName);
 }

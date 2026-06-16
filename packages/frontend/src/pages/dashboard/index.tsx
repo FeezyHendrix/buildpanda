@@ -85,7 +85,7 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
       <EmptyState
         icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"
-        description="Build and manage your construction projects in Nigeria with complete transparency and control — no matter where you live."
+        description="Build and manage your construction projects in Nigeria with complete transparency and control, no matter where you live."
         action={
           <Button
             variant="ghost"

@@ -1,7 +1,7 @@
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
 import { openStoredFile, streamToBuffer } from "../../lib/file-storage.ts";
-import { extractProjectFromWorkbook } from "./project-extraction.ts";
+import { extractProjectFromFile } from "./project-extraction.ts";
 import { projectFileJobsRepository } from "./project-file-jobs-repository.ts";
 
 export const PROJECT_FILE_IMPORT_QUEUE = "project-file-extraction";
@@ -21,7 +21,7 @@ export async function runProjectFileImport(
   try {
     const stream = await openStoredFile(job.storage_path);
     const buffer = await streamToBuffer(stream);
-    const extraction = await extractProjectFromWorkbook(buffer);
+    const extraction = await extractProjectFromFile(buffer, job.file_name);
     await repo.markComplete(job.id, extraction);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Project file extraction failed";

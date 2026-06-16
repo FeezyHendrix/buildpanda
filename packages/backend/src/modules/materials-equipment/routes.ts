@@ -284,7 +284,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
             neededBy: m.neededBy ?? defaultNeededBy,
             notes:
               m.materialName.length > 200
-                ? `Imported from BoQ — full: ${m.materialName.trim()}`
+                ? `Imported from BoQ, full: ${m.materialName.trim()}`
                 : "Imported from BoQ",
           };
         }),
