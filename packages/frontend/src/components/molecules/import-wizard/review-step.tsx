@@ -48,7 +48,7 @@ export function ReviewStep({ sessionId }: ReviewStepProps) {
 
       {session.documents.length === 0 ? (
         <div className="p-8 text-center bg-gray-50 rounded-xl border border-gray-200 text-gray-500">
-          No files were uploaded during this session.
+          {session.projectId ? "Your project is ready." : "No files were uploaded during this session."}
         </div>
       ) : (
         <div className="flex flex-col gap-4">

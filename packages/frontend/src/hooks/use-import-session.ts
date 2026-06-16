@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
-export type SessionDocumentKind = "programme" | "boq" | "drawing" | "ifc";
+export type SessionDocumentKind = "programme" | "boq" | "drawing" | "ifc" | "project_file";
 export type SessionDocumentStatus = "pending" | "processing" | "ready" | "applied" | "skipped" | "failed";
 export type ImportSessionStatus = "active" | "completed";
 
