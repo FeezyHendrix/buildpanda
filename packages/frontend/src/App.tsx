@@ -48,6 +48,7 @@ const AcceptInvitation = lazy(
   () => import("@/pages/accept-invitation"),
 );
 const CreateProject = lazy(() => import("@/pages/project/create"));
+const ImportWizard = lazy(() => import("@/pages/import"));
 
 const ProjectChat = lazy(() => import("@/pages/project/chat"));
 
@@ -172,6 +173,14 @@ const router = createBrowserRouter([
     element: (
       <RequireCompany>
         <CreateProject />
+      </RequireCompany>
+    ),
+  },
+  {
+    path: "/import",
+    element: (
+      <RequireCompany>
+        <ImportWizard />
       </RequireCompany>
     ),
   },
