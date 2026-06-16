@@ -70,6 +70,7 @@ const organizationJsonLd = {
       "@type": "ContactPoint",
       contactType: "sales",
       email: site.email,
+      telephone: site.phones[0],
       areaServed: "NG",
       availableLanguage: ["English"],
     },

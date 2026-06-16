@@ -49,13 +49,16 @@ export function Footer() {
               <MailIcon className="h-4 w-4" />
               {site.email}
             </a>
-            <a
-              href={`tel:${site.phoneDisplay.replace(/\s+/g, "")}`}
-              className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
-            >
-              <PhoneIcon className="h-4 w-4" />
-              {site.phoneDisplay}
-            </a>
+            {site.phones.map((phone) => (
+              <a
+                key={phone}
+                href={`tel:${phone.replace(/\s+/g, "")}`}
+                className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                {phone}
+              </a>
+            ))}
           </div>
         </div>
 
