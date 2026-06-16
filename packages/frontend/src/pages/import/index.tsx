@@ -9,12 +9,14 @@ import { BoqStep } from "@/components/molecules/import-wizard/boq-step";
 import { ModelsStep } from "@/components/molecules/import-wizard/models-step";
 import { DrawingsStep } from "@/components/molecules/import-wizard/drawings-step";
 import { ReviewStep } from "@/components/molecules/import-wizard/review-step";
+import { ProjectFileStep } from "@/components/molecules/import-wizard/project-file-step";
 import { useCreateImportSession } from "@/hooks/use-import-session";
 
-export type ImportMode = "programme" | "shell" | null;
+export type ImportMode = "programme" | "shell" | "file" | null;
 
 const ALL_STEPS = [
   { id: "start", path: "both" },
+  { id: "projectfile", path: "file" },
   { id: "programme", path: "programme" },
   { id: "details", path: "shell" },
   { id: "boq", path: "both" },
@@ -49,7 +51,7 @@ export default function ImportWizardPage() {
 
   const createSession = useCreateImportSession();
 
-  const handleStart = async (selectedMode: "programme" | "shell") => {
+  const handleStart = async (selectedMode: "programme" | "shell" | "file") => {
     setMode(selectedMode);
     if (!sessionId) {
       const session = await createSession.mutateAsync();
@@ -85,7 +87,7 @@ export default function ImportWizardPage() {
   } else if (currentStepDef.id === "review") {
     continueLabel = "Go to project";
     continueDisabled = !projectId;
-  } else if (["timeline", "boq", "models", "drawings"].includes(currentStepDef.id)) {
+  } else if (["timeline", "boq", "models", "drawings", "projectfile"].includes(currentStepDef.id)) {
     continueLabel = "Skip";
   } else if (currentStepDef.id === "programme" || currentStepDef.id === "details") {
     continueDisabled = !projectId; 
@@ -103,6 +105,13 @@ export default function ImportWizardPage() {
     >
       {currentStepDef.id === "start" && (
         <StartStep onSelect={handleStart} isCreating={createSession.isPending} />
+      )}
+      {currentStepDef.id === "projectfile" && sessionId && (
+        <ProjectFileStep
+          sessionId={sessionId}
+          onProjectCreated={setProjectId}
+          onNext={handleNext}
+        />
       )}
       {currentStepDef.id === "programme" && sessionId && (
         <ProgrammeStep 

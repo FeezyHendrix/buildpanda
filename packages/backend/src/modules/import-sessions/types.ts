@@ -1,6 +1,6 @@
 export type ImportSessionStatus = "active" | "completed";
 
-export type ImportDocKind = "programme" | "boq" | "drawing" | "ifc";
+export type ImportDocKind = "programme" | "boq" | "drawing" | "ifc" | "project_file";
 
 export type ImportDocStatus =
   | "pending"

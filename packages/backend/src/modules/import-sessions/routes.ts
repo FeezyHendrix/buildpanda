@@ -6,7 +6,7 @@ import {
 } from "./service.ts";
 import type { ImportDocStatus } from "./types.ts";
 
-const DOC_KIND = ["programme", "boq", "drawing", "ifc"] as const;
+const DOC_KIND = ["programme", "boq", "drawing", "ifc", "project_file"] as const;
 const DOC_STATUS = [
   "pending",
   "processing",
