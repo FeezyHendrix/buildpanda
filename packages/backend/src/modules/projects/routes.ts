@@ -166,6 +166,19 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       });
     },
   );
+
+  fastify.delete<{ Params: { id: string } }>(
+    "/projects/:id",
+    { schema: { params: projectIdParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      await service.deleteForUser(request.params.id, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
+      return reply.status(204).send();
+    },
+  );
 };
 
 export default projectRoutes;

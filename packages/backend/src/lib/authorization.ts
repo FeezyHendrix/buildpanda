@@ -55,6 +55,19 @@ export function assertCanModifyProject(project: ProjectScope, ctx: AccessContext
   throw new ForbiddenError("You do not have access to modify this resource");
 }
 
+// Deletion is more privileged than modification: a plain "member" may edit but
+// not delete. Only the project owner or an org owner/admin may delete.
+const DELETE_ROLES: ReadonlySet<string> = new Set(["owner", "admin"]);
+
+export function assertCanDeleteProject(project: ProjectScope, ctx: AccessContext): void {
+  if (project.ownerId === ctx.userId) return;
+  if (project.organizationId !== null) {
+    const role = ctx.orgRoles.get(project.organizationId);
+    if (role !== undefined && DELETE_ROLES.has(role)) return;
+  }
+  throw new ForbiddenError("You do not have permission to delete this project");
+}
+
 function canModify(project: ProjectScope, ctx: AccessContext): boolean {
   try {
     assertCanModifyProject(project, ctx);

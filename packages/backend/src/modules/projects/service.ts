@@ -4,6 +4,7 @@ import { toIso } from "../../lib/dates.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import {
   assertCanAccessProject,
+  assertCanDeleteProject,
   assertCanModifyProject,
   type AccessContext,
 } from "../../lib/authorization.ts";
@@ -199,6 +200,16 @@ export function projectsService(repository: ProjectsRepository) {
       );
       await repository.updateCurrency(id, currency);
       return this.getById(id);
+    },
+
+    async deleteForUser(id: string, ctx: AccessContext): Promise<void> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanDeleteProject(
+        { id: row.id, ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      await repository.delete(id);
     },
   };
 }
