@@ -34,6 +34,8 @@ export const NOTIFICATION_TYPES = [
   { type: "budget_overrun", label: "A budget category is over plan", group: "Payments" },
   { type: "team_member_added", label: "You were added to a project", group: "Project" },
   { type: "ai_health_drop", label: "Project health score dropped", group: "Project" },
+  { type: "material_negative_stock", label: "Material stock went negative", group: "Materials" },
+  { type: "material_low_stock", label: "Material is running low", group: "Materials" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];

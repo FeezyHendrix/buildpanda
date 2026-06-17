@@ -56,6 +56,8 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   budget_overrun: { eyebrow: "Budget over plan", accent: "warning", ctaLabel: "View Budget" },
   team_member_added: { eyebrow: "Added to project", accent: "brand", ctaLabel: "Open Project" },
   ai_health_drop: { eyebrow: "Project health dropped", accent: "warning", ctaLabel: "View Insights" },
+  material_negative_stock: { eyebrow: "Negative stock", accent: "warning", ctaLabel: "View Materials" },
+  material_low_stock: { eyebrow: "Low stock", accent: "warning", ctaLabel: "View Materials" },
 };
 
 const GENERIC: TypePresentation = {
