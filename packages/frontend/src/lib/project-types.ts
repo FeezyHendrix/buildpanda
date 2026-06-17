@@ -906,3 +906,64 @@ export interface ChannelMemberLite {
   email: string;
   role: "admin" | "member";
 }
+
+export type TaskStatus = "Todo" | "Doing" | "Done";
+
+export interface TaskColumn {
+  id: string;
+  boardId: string;
+  name: string;
+  status: string | null;
+  position: number;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description: string | null;
+  assigneeId: string | null;
+  assigneeTeamMemberId: string | null;
+  assigneeName: string | null;
+  dueDate: string | null;
+  position: number;
+  sourceType: string | null;
+  sourceId: string | null;
+  subtaskTotal: number;
+  subtaskDone: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
+
+export interface Subtask {
+  id: string;
+  taskId: string;
+  title: string;
+  done: boolean;
+  position: number;
+}
+
+export interface TaskLink {
+  id: string;
+  linkType: TaskLinkType;
+  targetTaskId: string;
+  targetTaskTitle: string;
+}
+
+export interface TaskDetail extends Task {
+  subtasks: Subtask[];
+  links: TaskLink[];
+}
+
+export interface TaskBoard {
+  id: string;
+  projectId: string;
+  name: string;
+  isDefault: boolean;
+  columns: TaskColumn[];
+  tasks: Task[];
+}

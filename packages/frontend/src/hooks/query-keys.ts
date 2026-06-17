@@ -244,3 +244,9 @@ export const messageKeys = {
   all: (channelId: string) => ["channels", channelId, "messages"] as const,
   list: (channelId: string) => [...messageKeys.all(channelId), "list"] as const,
 };
+
+export const taskKeys = {
+  all: (projectId: string) => ["projects", projectId, "tasks"] as const,
+  board: (projectId: string) => [...taskKeys.all(projectId), "board"] as const,
+  detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
+};

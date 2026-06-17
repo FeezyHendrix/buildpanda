@@ -75,6 +75,7 @@ const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
+const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
@@ -229,6 +230,7 @@ const router = createBrowserRouter([
       { path: "schedule", element: <ProjectSchedule /> },
       { path: "stages", element: <ProjectStages /> },
       { path: "action-items", element: <ProjectActionItems /> },
+      { path: "tasks", element: <ProjectTasks /> },
       { path: "queries", element: <ProjectQueries /> },
       { path: "rfis", element: <ProjectRfis /> },
       { path: "bim", element: <ProjectBim /> },

@@ -271,6 +271,14 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
           {items.slice(0, 2).map((item) => (
             <ProjectNavLink key={item.slug} item={item} />
           ))}
+          <ProjectNavLink
+            item={{
+              label: "Tasks",
+              slug: "tasks",
+              Icon: TrendingUpIcon,
+              to: `/project/${project.id}/tasks`,
+            }}
+          />
           <SidebarNavGroup
             label="Schedules"
             Icon={CalendarIcon}
