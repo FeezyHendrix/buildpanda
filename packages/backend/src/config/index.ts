@@ -141,6 +141,18 @@ export const config = {
     forcePathStyle: optional("S3_FORCE_PATH_STYLE", "auto"),
     ensureBucketOnStartup: optional("S3_ENSURE_BUCKET", env === "production" ? "false" : "true") === "true",
   },
+
+  // Sentry error monitoring. Only runs in production (i.e. on Railway, which
+  // sets NODE_ENV=production) AND when a DSN is configured — never in local or
+  // dev, even if a DSN leaks into the environment. tracesSampleRate defaults
+  // low in production.
+  sentry: {
+    dsn: optional("SENTRY_DSN", ""),
+    enabled: env === "production" && Boolean(optional("SENTRY_DSN", "")),
+    environment: optional("SENTRY_ENVIRONMENT", env),
+    release: optional("SENTRY_RELEASE", ""),
+    tracesSampleRate: optionalNumber("SENTRY_TRACES_SAMPLE_RATE", env === "production" ? 0.1 : 1.0),
+  },
 } as const;
 
 export type Config = typeof config;
