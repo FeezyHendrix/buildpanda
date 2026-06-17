@@ -124,10 +124,6 @@ const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
-const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
-] as const;
-
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
 const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
@@ -190,14 +186,6 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       })),
     [project.id],
   );
-  const teamAdminItems = useMemo<GroupNavItem[]>(
-    () =>
-      TEAM_ADMIN_ENTRIES.map((entry) => ({
-        ...entry,
-        to: `/project/${project.id}/${entry.slug}`,
-      })),
-    [project.id],
-  );
 
   const isScheduleActive = scheduleItems.some(
     (item) =>
@@ -212,10 +200,6 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
   const isFinanceActive = financeItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
-  );
-  const isTeamAdminActive = teamAdminItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
@@ -313,11 +297,13 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               to: `/project/${project.id}/documents`,
             }}
           />
-          <SidebarNavGroup
-            label="Teams"
-            Icon={ContractorsIcon}
-            items={teamAdminItems}
-            active={isTeamAdminActive}
+          <ProjectNavLink
+            item={{
+              label: "Team",
+              slug: "team",
+              Icon: ContractorsIcon,
+              to: `/project/${project.id}/team`,
+            }}
           />
           <ProjectNavLink
             item={{
