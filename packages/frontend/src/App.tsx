@@ -65,6 +65,7 @@ const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
+const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
@@ -214,6 +215,7 @@ const router = createBrowserRouter([
       { path: "finances/budget", element: <ProjectBudget /> },
       { path: "panda-ai", element: <ProjectPandaAi /> },
       { path: "materials", element: <ProjectMaterials /> },
+      { path: "material-log", element: <ProjectMaterialLog /> },
       { path: "materials/orders", element: <ProjectMaterials /> },
       { path: "materials/requests", element: <ProjectMaterials /> },
       { path: "equipment-requests", element: <ProjectEquipmentRequests /> },
