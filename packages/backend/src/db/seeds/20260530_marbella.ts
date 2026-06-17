@@ -20,7 +20,7 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("projects").insert({
     id: PROJECT_ID,
     owner_id: null,
-    name: "Project Marbella",
+    name: "Sample Project",
     address: "30, John great court, Lekki, Lagos state",
     status: "On Track",
     health_score: 92,
