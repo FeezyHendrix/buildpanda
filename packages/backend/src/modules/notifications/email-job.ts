@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { logger } from "../../lib/logger.ts";
+import { captureBug } from "../../lib/sentry.ts";
 import { buildNotificationEmail } from "./email-content.ts";
 import type { NotificationType } from "./types.ts";
 
@@ -60,6 +61,10 @@ export async function runNotificationEmail(
       { err: error, userId: data.userId, type: data.type },
       "[notif-email] send failed",
     );
+    captureBug(error, {
+      tags: { area: "notifications", channel: "email", notificationType: data.type },
+      extra: { userId: data.userId },
+    });
   }
 }
 

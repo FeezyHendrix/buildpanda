@@ -1,3 +1,5 @@
+import "./instrument.ts";
+import * as Sentry from "@sentry/node";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import { config } from "./config/index.ts";
@@ -52,6 +54,7 @@ import proposalRoutes from "./modules/proposals/routes.ts";
 import publicProposalRoutes from "./modules/proposals/public-routes.ts";
 import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
+import taskRoutes from "./modules/tasks/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -68,6 +71,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   setLogger(app.log);
+
+  if (config.sentry.enabled) {
+    Sentry.setupFastifyErrorHandler(app);
+  }
 
   await app.register(cors, {
     origin: config.http.corsOrigins,
@@ -125,6 +132,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicProposalRoutes);
   await app.register(fileSharesRoutes);
   await app.register(publicFileShareRoutes);
+  await app.register(taskRoutes);
 
   return app;
 }
@@ -148,12 +156,14 @@ export async function start(): Promise<void> {
 
   process.on("uncaughtException", (error) => {
     app.log.fatal({ err: error }, "Uncaught exception");
-    process.exit(1);
+    Sentry.captureException(error, { level: "fatal", tags: { lifecycle: "uncaughtException" } });
+    void Sentry.flush(2000).finally(() => process.exit(1));
   });
 
   process.on("unhandledRejection", (reason) => {
     app.log.fatal({ err: reason }, "Unhandled rejection");
-    process.exit(1);
+    Sentry.captureException(reason, { level: "fatal", tags: { lifecycle: "unhandledRejection" } });
+    void Sentry.flush(2000).finally(() => process.exit(1));
   });
 
   try {

@@ -1,6 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis, { type Redis } from "ioredis";
 import type { FastifyBaseLogger } from "fastify";
+import { captureBug } from "../sentry.ts";
 
 export type JobProcessor<TData = unknown> = (data: TData) => Promise<void>;
 
@@ -84,6 +85,10 @@ export class QueueManager {
           { err, jobId: job?.id, queue: queueName },
           "Background job failed",
         );
+        captureBug(err, {
+          tags: { area: "background_job", queue: queueName },
+          extra: { jobId: job?.id, attemptsMade: job?.attemptsMade },
+        });
       });
       worker.on("completed", (job) => {
         this.logger.info(
@@ -132,6 +137,7 @@ export class QueueManager {
           { err, queue: queueName },
           "Inline background job failed",
         );
+        captureBug(err, { tags: { area: "background_job", queue: queueName, mode: "inline" } });
       });
     });
   }
@@ -159,6 +165,10 @@ export class QueueManager {
       );
       worker.on("failed", (job, err) => {
         this.logger.error({ err, jobId: job?.id, queue: queueName }, "Repeating job failed");
+        captureBug(err, {
+          tags: { area: "background_job", queue: queueName, kind: "repeating" },
+          extra: { jobId: job?.id },
+        });
       });
       this.workers.set(queueName, worker);
 
@@ -173,6 +183,7 @@ export class QueueManager {
       setInterval(() => {
         void (processor(data) as Promise<void>).catch((err) => {
           this.logger.error({ err, queue: queueName }, "Inline repeating job failed");
+          captureBug(err, { tags: { area: "background_job", queue: queueName, kind: "repeating", mode: "inline" } });
         });
       }, intervalMs);
     }

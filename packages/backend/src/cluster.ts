@@ -1,3 +1,4 @@
+import "./instrument.ts";
 import cluster from "node:cluster";
 import os from "node:os";
 import { config } from "./config/index.ts";
