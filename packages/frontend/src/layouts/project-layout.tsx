@@ -1,5 +1,6 @@
 import {
   Outlet,
+  useLocation,
   useNavigate,
   useOutletContext,
   useParams,
@@ -35,6 +36,7 @@ export default function ProjectLayout() {
   const { data: project, isPending: projectPending } = useProject(projectId);
   const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (sessionPending || projectPending) {
     return <FullPageLoader />;
@@ -72,7 +74,9 @@ export default function ProjectLayout() {
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
-        <PandaAiPane projectId={project.id} />
+        {!location.pathname.endsWith("/chat") && (
+          <PandaAiPane projectId={project.id} />
+        )}
       </div>
     </AppShell>
   );
