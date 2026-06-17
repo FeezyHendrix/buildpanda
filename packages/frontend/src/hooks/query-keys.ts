@@ -250,3 +250,11 @@ export const taskKeys = {
   board: (projectId: string) => [...taskKeys.all(projectId), "board"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
+
+export const materialLedgerKeys = {
+  all: (projectId: string) => ["projects", projectId, "material-ledger"] as const,
+  stock: (projectId: string) => [...materialLedgerKeys.all(projectId), "stock"] as const,
+  ledger: (projectId: string, materialId?: string, entryType?: string) =>
+    [...materialLedgerKeys.all(projectId), "ledger", materialId ?? "all", entryType ?? "all"] as const,
+  catalog: (projectId: string) => [...materialLedgerKeys.all(projectId), "catalog"] as const,
+};

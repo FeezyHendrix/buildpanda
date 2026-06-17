@@ -47,6 +47,7 @@ const NAV_ENTRIES: readonly NavEntry[] = [
 
 const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Materials", slug: "materials", Icon: MaterialsIcon, helper: "Orders & requests" },
+  { label: "Material Log", slug: "material-log", Icon: MaterialsIcon, helper: "Stock & audit trail" },
   {
     label: "Equipment Requests",
     slug: "equipment-requests",

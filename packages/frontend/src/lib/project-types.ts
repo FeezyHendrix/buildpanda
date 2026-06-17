@@ -967,3 +967,56 @@ export interface TaskBoard {
   columns: TaskColumn[];
   tasks: Task[];
 }
+
+export type LedgerEntryType = "IN" | "USED" | "VOID";
+export type LedgerEntryStatus = "Posted" | "Voided";
+
+export interface MaterialCatalogItem {
+  id: string;
+  projectId: string;
+  name: string;
+  unit: string;
+  lowStockThreshold: number | null;
+  active: boolean;
+}
+
+export interface LedgerEntryFile {
+  fileId: string;
+  url: string;
+  name: string;
+}
+
+export interface LedgerEntry {
+  id: string;
+  projectId: string;
+  entryType: LedgerEntryType;
+  status: LedgerEntryStatus;
+  materialId: string;
+  materialName: string;
+  unit: string;
+  locationKey: string;
+  quantity: number;
+  stockDelta: number;
+  occurredAt: string;
+  timestampSuspect: boolean;
+  negativeStock: boolean;
+  loggedById: string | null;
+  loggedByName: string | null;
+  materialOrderId: string | null;
+  taskId: string | null;
+  activityId: string | null;
+  reversalForEntryId: string | null;
+  reason: string | null;
+  files: LedgerEntryFile[];
+  createdAt: string;
+}
+
+export interface StockLevel {
+  materialId: string;
+  materialName: string;
+  unit: string;
+  locationKey: string;
+  onHandQty: number;
+  lowStockThreshold: number | null;
+  lowStock: boolean;
+}
