@@ -55,6 +55,7 @@ import publicProposalRoutes from "./modules/proposals/public-routes.ts";
 import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
+import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -133,6 +134,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(fileSharesRoutes);
   await app.register(publicFileShareRoutes);
   await app.register(taskRoutes);
+  await app.register(materialsLedgerRoutes);
 
   return app;
 }
