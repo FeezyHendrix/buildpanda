@@ -1,16 +1,19 @@
 
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ProgressBar } from "@/components/atoms/progress-bar";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   ExternalLinkIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useSession } from "@/stores/auth";
-import { useProjects } from "@/hooks/use-projects";
+import { useProjects, useDeleteProject } from "@/hooks/use-projects";
+import { toast } from "@/lib/toast";
 import {
   firstName,
   formatCurrency,
@@ -102,14 +105,52 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
   );
 }
 
+function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 function ProjectCard({ project }: { project: Project }) {
   const progress = project.progressPercent;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const deleteProject = useDeleteProject();
+
+  const handleDelete = () => {
+    deleteProject.mutate(project.id, {
+      onSuccess: () => toast(`"${project.name}" was deleted`, "success"),
+      onError: () => toast("Could not delete project. Please try again."),
+    });
+  };
 
   return (
     <Card
       padding="md"
       className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 w-[334.82px]"
     >
+      <button
+        type="button"
+        aria-label={`Delete ${project.name}`}
+        onClick={() => setConfirmOpen(true)}
+        className="absolute right-3 top-3 z-20 inline-flex size-8 items-center justify-center rounded-lg text-gray-400 outline-none transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-red-500/30"
+      >
+        <TrashIcon className="size-4" />
+      </button>
+
       <div className="flex gap-8">
         {/* <IconBox
           tone={project.folderTone}
@@ -194,6 +235,16 @@ function ProjectCard({ project }: { project: Project }) {
           <ExternalLinkIcon className="size-3.5" />
         </Link>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleDelete}
+        title="Delete project"
+        description={`This permanently deletes "${project.name}" and all of its data. This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </Card>
   );
 }

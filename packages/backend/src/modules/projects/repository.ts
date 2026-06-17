@@ -76,6 +76,10 @@ export function projectsRepository(db: Knex) {
         .update({ ...patch, updated_at: db.fn.now() });
     },
 
+    async delete(id: string): Promise<void> {
+      await db("projects").where({ id }).delete();
+    },
+
     async updateCurrency(id: string, currency: CurrencyCode): Promise<void> {
       await db.transaction(async (trx) => {
         await trx("projects").where({ id }).update({ currency, updated_at: db.fn.now() });
