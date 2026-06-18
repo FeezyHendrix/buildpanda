@@ -94,7 +94,7 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
   { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
   { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information" },
-  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
+  // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
   { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
   { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
@@ -132,7 +132,7 @@ const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
   { label: "Queries", slug: "queries", Icon: MessagesIcon },
   { label: "RFIs", slug: "rfis", Icon: AlertIcon },
-  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
+  // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
 ];
 
 interface ProjectSidebarProps {
