@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
@@ -233,6 +233,10 @@ function LogMaterialDrawer({
     setFileId(null);
     setFileName(null);
   }
+
+  useEffect(() => {
+    if (open) reset();
+  }, [open]);
 
   async function handleFile(file: File | undefined): Promise<void> {
     if (!file) return;
