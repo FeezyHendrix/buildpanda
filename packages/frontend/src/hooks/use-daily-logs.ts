@@ -114,19 +114,27 @@ export function useLinkDailyLogActivity() {
   });
 }
 
-export interface DeleteDailyLogInput {
+export interface VoidDailyLogInput {
   projectId: string;
   logDate: string;
+  reason: string;
 }
 
-export function useDeleteDailyLog() {
+export function useVoidDailyLog() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, logDate }: DeleteDailyLogInput) => {
-      await api.delete(`/projects/${projectId}/daily-logs/${logDate}`);
+    mutationFn: async ({ projectId, logDate, reason }: VoidDailyLogInput) => {
+      const { data } = await api.post<DailyLog>(
+        `/projects/${projectId}/daily-logs/${logDate}/void`,
+        { reason },
+      );
+      return data;
     },
-    onSuccess: (_data, { projectId }) => {
+    onSuccess: (_data, { projectId, logDate }) => {
+      queryClient.invalidateQueries({
+        queryKey: dailyLogKeys.detail(projectId, logDate),
+      });
       queryClient.invalidateQueries({ queryKey: dailyLogKeys.all(projectId) });
     },
   });
