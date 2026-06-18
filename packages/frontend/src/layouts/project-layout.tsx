@@ -1,4 +1,5 @@
 import {
+  Navigate,
   Outlet,
   useLocation,
   useNavigate,
@@ -37,6 +38,15 @@ export default function ProjectLayout() {
   const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
   const location = useLocation();
+
+  if (projectId === "marbella") {
+    return (
+      <Navigate
+        to={location.pathname.replace("/project/marbella", "/project/sample-project")}
+        replace
+      />
+    );
+  }
 
   if (sessionPending || projectPending) {
     return <FullPageLoader />;
