@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-const PROJECT_ID = "marbella";
+const PROJECT_ID = "sample-project";
 
 const MEDIA_URLS = [
   "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=640&q=70",
