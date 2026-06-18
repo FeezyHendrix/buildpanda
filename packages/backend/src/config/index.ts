@@ -95,6 +95,7 @@ export const config = {
       .split(",")[0]!
       .trim(),
     logoUrl: optional("EMAIL_LOGO_URL", "https://buildpanda.io/logo.png"),
+    walkthroughVideoUrl: optional("WALKTHROUGH_VIDEO_URL", "https://buildpanda.io"),
     // Inboxes that receive "Book a consultation" leads from the marketing
     // site. Comma-separated.
     leadsNotifyAddresses: optional(
