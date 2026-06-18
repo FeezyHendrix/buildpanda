@@ -780,6 +780,10 @@ export interface DailyLog {
   totalHours: number;
   summary: string | null;
   activities: DailyLogActivityLink[];
+  voidedAt: string | null;
+  voidedById: string | null;
+  voidedByName: string | null;
+  voidReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
