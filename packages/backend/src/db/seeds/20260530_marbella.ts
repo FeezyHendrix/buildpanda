@@ -475,6 +475,24 @@ export async function seed(knex: Knex): Promise<void> {
     { id: "ba6", project_id: PROJECT_ID, name: "Contingency", planned: 4_775_500, actual: 0, sort_order: 5 },
   ]);
 
+  await knex("project_budget_categories").insert([
+    { id: "bc1", project_id: PROJECT_ID, name: "Substructure", cost_code: "01-100", planned: 4_445_000, committed: 4_445_000, actual: 4_402_300, sort_order: 0 },
+    { id: "bc2", project_id: PROJECT_ID, name: "Concrete Frame", cost_code: "03-200", planned: 8_880_000, committed: 8_880_000, actual: 8_888_500, sort_order: 1 },
+    { id: "bc3", project_id: PROJECT_ID, name: "Roofing & Waterproofing", cost_code: "07-400", planned: 6_500_000, committed: 3_250_000, actual: 1_120_000, sort_order: 2 },
+    { id: "bc4", project_id: PROJECT_ID, name: "Mechanical & Electrical", cost_code: "15-500", planned: 7_200_000, committed: 2_400_000, actual: 0, sort_order: 3 },
+    { id: "bc5", project_id: PROJECT_ID, name: "Finishes & Joinery", cost_code: "09-600", planned: 9_500_000, committed: 0, actual: 0, sort_order: 4 },
+    { id: "bc6", project_id: PROJECT_ID, name: "Preliminaries & Contingency", cost_code: "00-001", planned: 4_775_500, committed: 1_000_000, actual: 420_000, sort_order: 5 },
+  ]);
+
+  await knex("project_budget_periods").insert([
+    { id: "bp1", project_id: PROJECT_ID, period: "2026-01", planned: 3_500_000, actual: 3_402_300 },
+    { id: "bp2", project_id: PROJECT_ID, period: "2026-02", planned: 5_000_000, actual: 5_120_000 },
+    { id: "bp3", project_id: PROJECT_ID, period: "2026-03", planned: 6_500_000, actual: 6_308_500 },
+    { id: "bp4", project_id: PROJECT_ID, period: "2026-04", planned: 7_000_000, actual: 0 },
+    { id: "bp5", project_id: PROJECT_ID, period: "2026-05", planned: 8_500_000, actual: 0 },
+    { id: "bp6", project_id: PROJECT_ID, period: "2026-06", planned: 9_000_000, actual: 0 },
+  ]);
+
   await knex("material_procurements").insert([
     { id: "mp1", project_id: PROJECT_ID, material_order_id: null, name: "16mm Reinforcement Steel", purchased_at: "11-04-2026, 11:12 AM", receipt: "reciept_INV-4029.jpeg", amount: 8_880_000, thumbnail_tone: "brand", sort_order: 0 },
     { id: "mp2", project_id: PROJECT_ID, material_order_id: null, name: "Dangote Grade 42.5 Cement", purchased_at: "10-04-2026, 11:12 AM", receipt: "reciept_INV-4028.jpeg", amount: 4_880_000, thumbnail_tone: "amber", sort_order: 1 },
