@@ -20,6 +20,7 @@ import type {
   BimLinkType,
   BimModel,
   BimModelRow,
+  BimXktStatus,
 } from "./types.ts";
 
 const IFC_CONTENT_TYPE = "application/octet-stream";
@@ -42,6 +43,7 @@ function toModel(row: BimModelRow): BimModel {
     currentVersionId: row.current_version_id,
     status: row.status,
     elementCount: row.element_count,
+    xktStatus: row.xkt_status,
     createdById: row.created_by_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -226,6 +228,21 @@ export function bimService(
       if (!version) throw new NotFoundError("BIM model version");
       const url = await getDownloadUrl(version.source_storage_path);
       return { url, fileName: version.source_file_name };
+    },
+
+    async modelXktUrl(
+      projectId: string,
+      modelId: string,
+    ): Promise<{ url: string | null; status: BimXktStatus }> {
+      const model = await loadModel(projectId, modelId);
+      if (!model.current_version_id) throw new NotFoundError("BIM model version");
+      const version = await repository.findVersionById(model.current_version_id);
+      if (!version) throw new NotFoundError("BIM model version");
+      if (version.xkt_status !== "Ready" || !version.xkt_storage_path) {
+        return { url: null, status: version.xkt_status };
+      }
+      const url = await getDownloadUrl(version.xkt_storage_path);
+      return { url, status: version.xkt_status };
     },
 
     async listIssues(projectId: string, modelId: string): Promise<BimCoordinationIssue[]> {

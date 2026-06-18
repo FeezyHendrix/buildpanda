@@ -1,6 +1,9 @@
 export const BIM_VERSION_STATUSES = ["Processing", "Ready", "Failed"] as const;
 export type BimVersionStatus = (typeof BIM_VERSION_STATUSES)[number];
 
+export const BIM_XKT_STATUSES = ["Pending", "Ready", "Failed", "Skipped"] as const;
+export type BimXktStatus = (typeof BIM_XKT_STATUSES)[number];
+
 export const BIM_ISSUE_STATUSES = ["Open", "Closed"] as const;
 export type BimIssueStatus = (typeof BIM_ISSUE_STATUSES)[number];
 
@@ -15,6 +18,7 @@ export interface BimModel {
   currentVersionId: string | null;
   status: BimVersionStatus | null;
   elementCount: number | null;
+  xktStatus: BimXktStatus | null;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +33,7 @@ export interface BimModelVersion {
   failureReason: string | null;
   sizeBytes: number | null;
   elementCount: number | null;
+  xktStatus: BimXktStatus;
   createdAt: string;
 }
 
@@ -65,6 +70,7 @@ export interface BimModelRow {
   current_version_id: string | null;
   status: BimVersionStatus | null;
   element_count: number | null;
+  xkt_status: BimXktStatus | null;
   created_by_id: string | null;
   created_at: string;
   updated_at: string;
@@ -80,6 +86,8 @@ export interface BimModelVersionRow {
   failure_reason: string | null;
   size_bytes: number | null;
   element_count: number | null;
+  xkt_storage_path: string | null;
+  xkt_status: BimXktStatus;
   created_by_id: string | null;
   created_at: string;
 }
