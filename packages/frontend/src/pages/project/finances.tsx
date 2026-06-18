@@ -295,26 +295,34 @@ function BudgetAllocationCard({
       </div>
 
       <div className="bg-white rounded-[12px] h-full m-1 p-6">
-        <ChartLegend />
+        {chartData.length === 0 ? (
+          <div className="flex h-[200px] items-center justify-center text-center">
+            <p className="text-sm text-gray-500">
+              No budget allocation yet. Add budget categories to see planned vs actual by phase.
+            </p>
+          </div>
+        ) : (
+          <>
+            <ChartLegend />
 
-        <div className="mt-4">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart
-              data={chartData}
-              barSize={32}
-              barGap={-32}
-              barCategoryGap="30%"
-              margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
-            >
-              <XAxis
-                dataKey="name"
-                tickLine={false}
-                axisLine={false}
-                tick={{
-                  fontSize: 9,
-                  fill: "#606060",
-                  fontWeight: 600,
-                  letterSpacing: 1,
+            <div className="mt-4">
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={chartData}
+                  barSize={32}
+                  barGap={-32}
+                  barCategoryGap="30%"
+                  margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
+                >
+                  <XAxis
+                    dataKey="name"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fontSize: 9,
+                      fill: "#606060",
+                      fontWeight: 600,
+                      letterSpacing: 1,
                 }}
                 tickFormatter={(v: string) => v.toUpperCase()}
               />
@@ -338,7 +346,9 @@ function BudgetAllocationCard({
           </ResponsiveContainer>
         </div>
 
-        <VarianceTable phases={variancePhases} currency={currency} />
+            <VarianceTable phases={variancePhases} currency={currency} />
+          </>
+        )}
       </div>
     </Card>
   );
