@@ -124,6 +124,17 @@ export function useBimModelFileUrl() {
   });
 }
 
+export function useBimModelXktUrl() {
+  return useMutation({
+    mutationFn: async ({ projectId, modelId }: { projectId: string; modelId: string }) => {
+      const { data } = await api.get<{ url: string | null; status: string }>(
+        `/projects/${projectId}/bim/models/${modelId}/xkt-url`,
+      );
+      return data;
+    },
+  });
+}
+
 export function useCreateBimIssue() {
   const qc = useQueryClient();
   return useMutation({
