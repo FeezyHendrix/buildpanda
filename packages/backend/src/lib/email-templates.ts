@@ -91,7 +91,7 @@ export function calloutBox(html: string, accent: EmailAccent = "brand"): string 
   </table>`;
 }
 
-interface EmailContent {
+export interface EmailContent {
   preview: string;
   heading: string;
   bodyHtml: string;
@@ -101,7 +101,7 @@ interface EmailContent {
   eyebrow?: string;
 }
 
-function renderEmail(content: EmailContent): string {
+export function renderEmail(content: EmailContent): string {
   const year = new Date().getFullYear();
   const ctaUrl = escapeHtml(content.cta.url);
   const accent = content.accent ?? "brand";
