@@ -44,7 +44,6 @@ export function welcomeEmail({ firstName, companyName }: Recipient): RenderedEma
     subject: "Welcome to BuildPanda",
     html: renderEmail({
       preview: "A personal welcome from Michael, plus a quick walkthrough.",
-      eyebrow: "Welcome",
       heading: "Welcome to BuildPanda",
       bodyHtml: body([
         `Hi ${fn},`,
