@@ -21,7 +21,7 @@ export async function seed(knex: Knex): Promise<void> {
     id: PROJECT_ID,
     owner_id: null,
     name: "Sample Project",
-    address: "30, John great court, Lekki, Lagos state",
+    address: "123 Example Street, Sample City",
     status: "On Track",
     health_score: 92,
     risk: "Low",
