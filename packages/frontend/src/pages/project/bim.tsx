@@ -9,6 +9,7 @@ import type { SelectedElement } from "@/components/molecules/bim-viewer";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useBimModelFileUrl,
+  useBimModelXktUrl,
   useBimModels,
   useCreateBimIssue,
 } from "@/hooks/use-bim";
@@ -16,6 +17,7 @@ import { useParticipants } from "@/hooks/use-participants";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
+const XeokitViewer = lazy(() => import("@/components/molecules/xeokit-viewer"));
 
 const STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" }> = {
   Processing: { label: "Processing", tone: "info" },
@@ -69,6 +71,7 @@ export default function ProjectBim() {
 
   const { data: models = [], isLoading } = useBimModels(project.id);
   const fileUrl = useBimModelFileUrl();
+  const xktUrl = useBimModelXktUrl();
   const createIssue = useCreateBimIssue();
   const { data: participants = [] } = useParticipants(project.id);
   const assigneeOptions = participants
@@ -78,6 +81,7 @@ export default function ProjectBim() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [active, setActive] = useState<BimModel | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [xktModelUrl, setXktModelUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const [issueTitle, setIssueTitle] = useState("");
   const [issueAssignee, setIssueAssignee] = useState("");
@@ -85,15 +89,35 @@ export default function ProjectBim() {
   function openViewer(model: BimModel): void {
     setActive(model);
     setSelected(null);
-    fileUrl.mutate(
+    setModelUrl(null);
+    setXktModelUrl(null);
+    xktUrl.mutate(
       { projectId: project.id, modelId: model.id },
-      { onSuccess: (data) => setModelUrl(data.url) },
+      {
+        onSuccess: (data) => {
+          if (data.url) {
+            setXktModelUrl(data.url);
+          } else {
+            fileUrl.mutate(
+              { projectId: project.id, modelId: model.id },
+              { onSuccess: (ifc) => setModelUrl(ifc.url) },
+            );
+          }
+        },
+        onError: () => {
+          fileUrl.mutate(
+            { projectId: project.id, modelId: model.id },
+            { onSuccess: (ifc) => setModelUrl(ifc.url) },
+          );
+        },
+      },
     );
   }
 
   function closeViewer(): void {
     setActive(null);
     setModelUrl(null);
+    setXktModelUrl(null);
     setSelected(null);
   }
 
@@ -130,7 +154,19 @@ export default function ProjectBim() {
         </div>
         <div className="flex min-h-0 flex-1">
           <div className="relative min-w-0 flex-1">
-            {modelUrl ? (
+            {xktModelUrl ? (
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
+                    Loading viewer…
+                  </div>
+                }
+              >
+                <div className="h-full w-full [&>div]:rounded-none">
+                  <XeokitViewer xktUrl={xktModelUrl} onSelect={setSelected} />
+                </div>
+              </Suspense>
+            ) : modelUrl ? (
               <Suspense
                 fallback={
                   <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
