@@ -150,14 +150,8 @@ export default function CreateProject() {
       onCancel={handleBack}
       onContinue={handleContinue}
       continueDisabled={!canContinue() || createProject.isPending}
-      continueLabel={
-        isReview
-          ? createProject.isPending
-            ? "Creating…"
-            : "Finish"
-          : "Continue"
-      }
       hideStepper={isReview}
+      hideContinue={isReview}
     >
       {!isReview && step === 1 && (
         <ProjectTypeStep selected={projectType} onSelect={setProjectType} />
@@ -219,6 +213,8 @@ export default function CreateProject() {
             riskOptions,
           }}
           onEdit={(s) => setStep(s)}
+          onStart={handleContinue}
+          isStarting={createProject.isPending}
         />
       )}
     </WizardLayout>

@@ -144,7 +144,7 @@ export default function ProjectFinances() {
           projectId={project.id}
           materials={finances.materialsProcured}
           currency={finances.currency}
-          className="w-[40%]rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+          className="w-[40%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
 

@@ -16,7 +16,7 @@ export const nav = [
   { label: "Product", href: "/product/" },
   { label: "Construction", href: "/construction/" },
   { label: "About Us", href: "/about/" },
-  { label: "Talk to us", href: "/#consultation" },
+  { label: "Talk to us", href: "/talk-to-us/" },
 ] as const;
 
 export const projectTypes = [

@@ -77,6 +77,7 @@ const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
+const ProjectSchedulesOverview = lazy(() => import("@/pages/project/schedules-overview"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
 const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
 const ProjectPeople = lazy(() => import("@/pages/project/people"));
@@ -193,6 +194,16 @@ const router = createBrowserRouter([
       { path: "inspections", element: <ProjectInspections /> },
       { path: "messages", element: <ProjectMessages /> },
       { path: "settings", element: <ProjectSettings /> },
+      { path: "schedules", element: <ProjectSchedulesOverview /> },
+      { path: "schedules/activities", element: <ProjectActivities /> },
+      { path: "schedules/activities/:activityId", element: <ProjectActivities /> },
+      { path: "schedules/milestones", element: <ProjectMilestonePayments /> },
+      { path: "schedules/project-chart", element: <ProjectSchedule /> },
+      { path: "schedules/stages", element: <ProjectStages /> },
+      { path: "schedules/key-dates", element: <ProjectKeyDates /> },
+      { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
+      { path: "schedules/daily-log", element: <ProjectDailyLog /> },
+      // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: <ProjectActivities /> },
       { path: "activities/:activityId", element: <ProjectActivities /> },
       { path: "milestones", element: <ProjectMilestonePayments /> },

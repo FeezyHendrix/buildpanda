@@ -5,6 +5,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -284,8 +285,15 @@ export default function ProjectSchedule() {
   const hasSchedule = tasks.some((task) => task.type === "task");
 
   return (
-    <div className="flex h-full w-full flex-col bg-[#FCFCFD]">
-      <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col bg-[#FCFCFD] px-6 py-8 sm:px-10">
+      <div className="shrink-0 border-b border-[#EDEDED] bg-white py-4">
+        <Breadcrumbs
+          items={[
+            { label: "Schedules", to: `/project/${project.id}/schedules` },
+            { label: "Project Chart" },
+          ]}
+          className="mb-4"
+        />
         <PageHeader
           title="Project Chart"
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."

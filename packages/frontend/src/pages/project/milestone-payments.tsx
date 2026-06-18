@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
@@ -28,6 +29,8 @@ import { icons } from "@/assets/icons/icons";
 
 export default function ProjectMilestonePayments() {
   const { project, access } = useProjectContext();
+  const location = useLocation();
+  const isUnderSchedules = location.pathname.includes("/schedules");
   const canManage = access?.capabilities?.canManage ?? false;
   const canDispute = canManage || access?.relationship === "client";
   const { data: finances, isPending } = useProjectFinances(project.id);
@@ -54,7 +57,9 @@ export default function ProjectMilestonePayments() {
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
+          isUnderSchedules
+            ? { label: "Schedules", to: `/project/${project.id}/schedules` }
+            : { label: "Finances", to: `/project/${project.id}/finances` },
           { label: "Milestones" },
         ]}
         className="mb-4"

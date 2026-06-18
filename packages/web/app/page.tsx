@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container, ButtonLink, Badge, SectionHeading, FeatureCard } from "@/components/ui";
 import { site } from "@/lib/site";
 import { HeroVisual } from "@/components/hero-visual";
-import { ConsultationSection } from "@/components/consultation-section";
+// import { ConsultationSection } from "@/components/consultation-section";
 import {
   MilestoneIcon,
   WalletIcon,
@@ -122,7 +122,7 @@ export default function HomePage() {
                 Get started
                 <ArrowRightIcon className="h-5 w-5" />
               </ButtonLink>
-              <ButtonLink href="/#consultation" variant="outline" size="lg">
+              <ButtonLink href="/talk-to-us/" variant="outline" size="lg">
                 Talk to us
               </ButtonLink>
             </div>
@@ -261,7 +261,7 @@ export default function HomePage() {
         </Container>
       </section>
 
-      <ConsultationSection />
+      {/* <ConsultationSection /> */}
     </>
   );
 }

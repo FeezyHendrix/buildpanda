@@ -607,6 +607,7 @@ export interface Activity {
   workerCountPlanned: number;
   notes: string | null;
   delays: ActivityDelay[];
+  percentComplete: number;
   createdAt: string;
   updatedAt: string;
 }

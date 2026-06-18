@@ -53,44 +53,50 @@ const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
+    label: "Overview",
+    slug: "schedules",
+    Icon: OverviewIcon,
+    helper: "Programme timeline",
+  },
+  {
     label: "What's Next",
-    slug: "whats-next",
+    slug: "schedules/whats-next",
     Icon: TrendingUpIcon,
     helper: "Next 2 weeks",
   },
   {
     label: "Build Stages",
-    slug: "stages",
+    slug: "schedules/stages",
     Icon: OverviewIcon,
     helper: "Phases & progress",
   },
   {
     label: "Key Dates",
-    slug: "key-dates",
+    slug: "schedules/key-dates",
     Icon: CalendarIcon,
     helper: "Milestone dates",
   },
   {
     label: "Site Activity",
-    slug: "activities",
+    slug: "schedules/activities",
     Icon: TrendingUpIcon,
     helper: "Work items",
   },
   {
     label: "Daily Log",
-    slug: "daily-log",
+    slug: "schedules/daily-log",
     Icon: CalendarIcon,
     helper: "Field reports",
   },
   {
     label: "Project Chart",
-    slug: "project-chart",
+    slug: "schedules/project-chart",
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
   {
     label: "Milestones",
-    slug: "milestones",
+    slug: "schedules/milestones",
     Icon: FinancesIcon,
     helper: "Cost gates",
   },
@@ -147,7 +153,7 @@ interface ProjectSidebarProps {
 
 function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const location = useLocation();
-  const isClient = access?.relationship !== "company";
+  const isClient = access?.relationship !== "none";
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -197,10 +203,12 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
     [project.id],
   );
 
-  const isScheduleActive = scheduleItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
-  );
+  const isScheduleActive =
+    location.pathname === `/project/${project.id}/schedules` ||
+    scheduleItems.some(
+      (item) =>
+        location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    );
   const isMaterialsActive = materialsItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
@@ -366,7 +374,7 @@ function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
   const { Icon, label, slug, to } = item;
   const location = useLocation();
   const isActive =
-    slug === "finances"
+    slug === "finances" || slug === "schedules"
       ? location.pathname === to
       : location.pathname === to || location.pathname.startsWith(`${to}/`);
   return (

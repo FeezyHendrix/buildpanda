@@ -4,6 +4,7 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertStageDialog,
@@ -63,7 +64,14 @@ export default function ProjectStages() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedules", to: `/project/${project.id}/schedules` },
+          { label: "Build Stages" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Build Stages"
         description="Break the build into stages and track progress all the way to handover."

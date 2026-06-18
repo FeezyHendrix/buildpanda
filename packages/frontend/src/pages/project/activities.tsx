@@ -8,6 +8,7 @@ import {
   CalendarIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { CreateActivityDialog } from "@/components/molecules/create-activity-dialog";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -44,6 +45,13 @@ export default function ProjectActivities() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedules", to: `/project/${project.id}/schedules` },
+          { label: "Site Activity" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Site Activities"
         description="Track discrete work items with planned vs actual times and delay causes."

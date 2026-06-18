@@ -1,5 +1,6 @@
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useWhatsNext } from "@/hooks/use-insights";
@@ -51,7 +52,14 @@ export default function ProjectWhatsNext() {
     data.expiringPermits.length;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-8 sm:px-10">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedules", to: `/project/${project.id}/schedules` },
+          { label: "What's Next" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="What's Next"
         description={`Coming up between ${fmt(data.from)} and ${fmt(data.to)} — so you always know what's happening, wherever you are.`}
