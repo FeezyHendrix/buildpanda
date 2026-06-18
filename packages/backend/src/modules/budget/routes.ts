@@ -75,6 +75,28 @@ const updatePeriodBody = {
   properties: createPeriodBody.properties,
 } as const;
 
+const seedBody = {
+  type: "object",
+  required: ["items"],
+  additionalProperties: false,
+  properties: {
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["groupLabel", "total"],
+        additionalProperties: false,
+        properties: {
+          groupLabel: { type: "string", minLength: 1, maxLength: 160 },
+          total: { type: "number", minimum: 0 },
+          costCode: { type: ["string", "null"], maxLength: 60 },
+        },
+      },
+    },
+    mode: { type: "string", enum: ["skip", "replace"] },
+  },
+} as const;
+
 const budgetRoutes: FastifyPluginAsync = async (fastify) => {
   const service = budgetService(budgetRepository(fastify.db));
 
@@ -94,6 +116,25 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectWrite(request.params.id);
       const category = await service.createCategory(project.id, request.body);
       return reply.status(201).send(category);
+    },
+  );
+
+  fastify.post<{
+    Params: { id: string };
+    Body: {
+      items: { groupLabel: string; total: number; costCode?: string | null }[];
+      mode?: "skip" | "replace";
+    };
+  }>(
+    "/projects/:id/budget/seed-from-estimate",
+    { schema: { params: projectIdParams, body: seedBody } },
+    async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      return service.seedFromEstimateItems(
+        project.id,
+        request.body.items,
+        request.body.mode ?? "skip",
+      );
     },
   );
 

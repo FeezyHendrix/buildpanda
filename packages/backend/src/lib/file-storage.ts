@@ -1,13 +1,19 @@
 import { Readable } from "node:stream";
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
   CreateBucketCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
+  PutObjectCommand,
   S3Client,
   type S3ClientConfig,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config/index.ts";
 import { generateId } from "./ids.ts";
 
@@ -130,6 +136,15 @@ export async function deleteStoredFile(storagePath: string): Promise<void> {
   );
 }
 
+export async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    if (typeof chunk === "string") chunks.push(Buffer.from(chunk));
+    else chunks.push(Buffer.from(chunk as Uint8Array));
+  }
+  return Buffer.concat(chunks);
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
@@ -138,4 +153,131 @@ export function formatBytes(bytes: number): string {
   if (mb < 1024) return `${mb.toFixed(1)} MB`;
   const gb = mb / 1024;
   return `${gb.toFixed(2)} GB`;
+}
+
+export function makeStorageKey(ownerId: string, prefix = "file"): string {
+  return `${ownerId}/${generateId(prefix)}`;
+}
+
+type PresignableCommand = Parameters<typeof getSignedUrl>[1];
+
+function presign(
+  client: S3Client,
+  command: PutObjectCommand | GetObjectCommand | UploadPartCommand,
+  expiresIn: number,
+): Promise<string> {
+  return getSignedUrl(
+    client as unknown as Parameters<typeof getSignedUrl>[0],
+    command as unknown as PresignableCommand,
+    { expiresIn },
+  );
+}
+
+export async function getUploadUrl(
+  storagePath: string,
+  contentType: string,
+  expiresInSeconds = 900,
+): Promise<string> {
+  const client = await getClient();
+  return presign(
+    client,
+    new PutObjectCommand({
+      Bucket: config.storage.bucket,
+      Key: storagePath,
+      ContentType: contentType,
+    }),
+    expiresInSeconds,
+  );
+}
+
+export async function getDownloadUrl(
+  storagePath: string,
+  expiresInSeconds = 900,
+): Promise<string> {
+  const client = await getClient();
+  return presign(
+    client,
+    new GetObjectCommand({ Bucket: config.storage.bucket, Key: storagePath }),
+    expiresInSeconds,
+  );
+}
+
+export interface MultipartPartUrl {
+  partNumber: number;
+  url: string;
+}
+
+export async function createMultipartUpload(
+  storagePath: string,
+  contentType: string,
+): Promise<string> {
+  const client = await getClient();
+  const result = await client.send(
+    new CreateMultipartUploadCommand({
+      Bucket: config.storage.bucket,
+      Key: storagePath,
+      ContentType: contentType,
+    }),
+  );
+  if (!result.UploadId) throw new Error("S3 did not return an UploadId");
+  return result.UploadId;
+}
+
+export async function getPartUploadUrls(
+  storagePath: string,
+  uploadId: string,
+  partCount: number,
+  expiresInSeconds = 3600,
+): Promise<MultipartPartUrl[]> {
+  const client = await getClient();
+  const urls: MultipartPartUrl[] = [];
+  for (let partNumber = 1; partNumber <= partCount; partNumber++) {
+    const url = await presign(
+      client,
+      new UploadPartCommand({
+        Bucket: config.storage.bucket,
+        Key: storagePath,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+      }),
+      expiresInSeconds,
+    );
+    urls.push({ partNumber, url });
+  }
+  return urls;
+}
+
+export async function completeMultipartUpload(
+  storagePath: string,
+  uploadId: string,
+  parts: { partNumber: number; etag: string }[],
+): Promise<void> {
+  const client = await getClient();
+  await client.send(
+    new CompleteMultipartUploadCommand({
+      Bucket: config.storage.bucket,
+      Key: storagePath,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: parts
+          .slice()
+          .sort((a, b) => a.partNumber - b.partNumber)
+          .map((p) => ({ PartNumber: p.partNumber, ETag: p.etag })),
+      },
+    }),
+  );
+}
+
+export async function abortMultipartUpload(
+  storagePath: string,
+  uploadId: string,
+): Promise<void> {
+  const client = await getClient();
+  await client.send(
+    new AbortMultipartUploadCommand({
+      Bucket: config.storage.bucket,
+      Key: storagePath,
+      UploadId: uploadId,
+    }),
+  );
 }

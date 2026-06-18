@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Gantt, Willow } from "@svar-ui/react-gantt";
+import type { ILink } from "@svar-ui/react-gantt";
 import "@svar-ui/react-gantt/all.css";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -8,29 +9,26 @@ import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
+import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
-import type { Activity, ActivityDelay, ActivityStatus } from "@/lib/project-types";
-
-const PROGRESS_BY_STATUS: Record<ActivityStatus, number> = {
-  Planned: 0,
-  InProgress: 50,
-  Completed: 100,
-  Cancelled: 0,
-};
+import type { Activity, ActivityDelay } from "@/lib/project-types";
 
 interface GanttTask {
-  id: string;
+  id: string | number;
   text: string;
-  type: "summary" | "task";
+  type: "summary" | "task" | "milestone";
   parent: string | number;
   open?: boolean;
   start?: Date;
   end?: Date;
   progress?: number;
+  base_start?: Date;
+  base_end?: Date;
 }
 
 interface DelaySummary {
@@ -77,6 +75,8 @@ const SCALES: GanttScale[] = [
 
 const ROOT_PARENT = 0;
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const GANTT_ZOOM = { minCellWidth: 30, maxCellWidth: 240 } as const;
 
 function parseDate(value: string): Date | null {
   const date = new Date(value);
@@ -159,21 +159,25 @@ function formatDate(date: Date | null): string {
 }
 
 export default function ProjectSchedule() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
   const { data: activities = [], isPending } = useProjectActivities(project.id);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
+  const [importOpen, setImportOpen] = useState(false);
+  const canEdit = access?.capabilities?.canManage ?? false;
+  const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
-  const { tasks, rangeStart, rangeEnd, delays } = useMemo(() => {
+  const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(() => {
     const phaseById = new Map(
       project.timeline.map((phase) => [phase.id, phase]),
     );
 
-    // Only build summary rows for phases that actually contain activities,
-    // so SVAR can derive a valid span for each summary from its children.
     const usedPhaseIds = new Set<string>();
+    const validTaskIds = new Set<string>();
+
     for (const activity of activities) {
+      validTaskIds.add(activity.id);
       if (activity.phaseId && phaseById.has(activity.phaseId)) {
         usedPhaseIds.add(activity.phaseId);
       }
@@ -198,30 +202,36 @@ export default function ProjectSchedule() {
     for (const activity of activities) {
       const start = parseDate(activity.plannedStartAt);
       const end = parseDate(activity.plannedEndAt);
-      if (!start || !end) continue;
+      if (!start) continue;
+      if (!activity.isMilestone && !end) continue;
 
       const parent =
         activity.phaseId && usedPhaseIds.has(activity.phaseId)
           ? activity.phaseId
           : ROOT_PARENT;
 
+      const base_start = activity.baselineStartAt ? parseDate(activity.baselineStartAt) ?? undefined : undefined;
+      const base_end = activity.baselineEndAt ? parseDate(activity.baselineEndAt) ?? undefined : undefined;
+
       taskRows.push({
         id: activity.id,
         text: activity.isDelayed ? `${activity.name} · delayed` : activity.name,
-        type: "task",
+        type: activity.isMilestone ? "milestone" : "task",
         parent,
         start,
-        end,
-        progress: PROGRESS_BY_STATUS[activity.status],
+        end: activity.isMilestone ? start : end!,
+        progress: Math.round(activity.percentComplete),
+        base_start,
+        base_end,
       });
 
       min = Math.min(min, start.getTime());
-      max = Math.max(max, end.getTime());
+      if (end) max = Math.max(max, end.getTime());
 
       for (const delay of activity.delays) {
         const delayStart = parseDate(delay.startedAt);
         if (!delayStart) continue;
-        const extendedEnd = delayEnd(delay, end);
+        const extendedEnd = delayEnd(delay, end ?? start);
         taskRows.push({
           id: `${activity.id}-${delay.id}`,
           text: `Delay: ${delay.reasonName}`,
@@ -236,15 +246,41 @@ export default function ProjectSchedule() {
       }
     }
 
+    const links: ILink[] = [];
+    let linkIdCounter = 1;
+    const linkTypeMap: Record<string, "e2s" | "s2s" | "e2e" | "s2e"> = {
+      FS: "e2s",
+      SS: "s2s",
+      FF: "e2e",
+      SF: "s2e",
+    };
+
+    for (const activity of activities) {
+      for (const pred of activity.predecessors) {
+        if (validTaskIds.has(pred.activityId)) {
+          links.push({
+            id: String(linkIdCounter++),
+            source: pred.activityId,
+            target: activity.id,
+            type: linkTypeMap[pred.type] ?? "e2s",
+            lag: pred.lagDays,
+          });
+        }
+      }
+    }
+
     const hasRange = Number.isFinite(min) && Number.isFinite(max);
 
     return {
       tasks: [...summaryRows, ...taskRows],
+      links,
       rangeStart: hasRange ? new Date(min - 7 * DAY_MS) : undefined,
       rangeEnd: hasRange ? new Date(max + 7 * DAY_MS) : undefined,
       delays: delaySummary(activities),
     };
   }, [activities, project.timeline]);
+
+  const markers = useMemo(() => [{ start: new Date(), text: "Today" }], []);
 
   const report = useMemo(
     () =>
@@ -285,22 +321,20 @@ export default function ProjectSchedule() {
   const hasSchedule = tasks.some((task) => task.type === "task");
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-7xl flex-col bg-[#FCFCFD] px-6 py-8 sm:px-10">
-      <div className="shrink-0 border-b border-[#EDEDED] bg-white py-4">
-        <Breadcrumbs
-          items={[
-            { label: "Schedules", to: `/project/${project.id}/schedules` },
-            { label: "Project Chart" },
-          ]}
-          className="mb-4"
-        />
+    <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
+      <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
         <PageHeader
           title="Project Chart"
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
-            <Button variant="secondary" size="sm" onClick={downloadReport}>
-              Export report
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                Import programme
+              </Button>
+              <Button variant="secondary" size="sm" onClick={downloadReport}>
+                Export report
+              </Button>
+            </div>
           }
           badges={
             delays.total > 0 ? (
@@ -329,28 +363,54 @@ export default function ProjectSchedule() {
             <EmptyState
               icon={<CalendarIcon className="size-8 text-gray-300" />}
               title="No scheduled activities"
-              description="Create milestone work items from Site Activity to populate the project Gantt chart."
+              description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
+              action={
+                <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
+                  Import programme of works
+                </Button>
+              }
             />
           </Card>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col bg-white">
           <ScheduleReportPanel report={report} currency={project.currency} />
-          <div className="min-h-0 w-full flex-1 overflow-hidden [&>.wx-willow-theme]:h-full">
+          <div className="bp-gantt flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+            {canEdit && (
+              <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2">
+                <span className="text-xs text-gray-500">
+                  Drag bars to reschedule. Changes save automatically.
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button variant="secondary" size="sm" onClick={undo} disabled={!canUndo}>
+                    Undo
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={redo} disabled={!canRedo}>
+                    Redo
+                  </Button>
+                </div>
+              </div>
+            )}
             <Willow>
               <Gantt
                 tasks={tasks}
+                links={links}
                 scales={SCALES}
                 start={rangeStart}
                 end={rangeEnd}
                 cellWidth={100}
                 cellHeight={38}
-                readonly
+                baselines={true}
+                zoom={GANTT_ZOOM}
+                markers={markers}
+                readonly={!canEdit}
+                init={canEdit ? attach : undefined}
               />
             </Willow>
           </div>
         </div>
       )}
+      <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} projectId={project.id} />
     </div>
   );
 }

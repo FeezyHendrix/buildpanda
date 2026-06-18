@@ -10,6 +10,13 @@ import type {
   ProjectBudget,
 } from "./types.ts";
 
+interface CategoryAllocationDelta {
+  approvedChange: number;
+  submittedChange: number;
+  committedChange: number;
+  paidInvoice: number;
+}
+
 export interface CreateCategoryInput {
   name: string;
   costCode?: string;
@@ -55,10 +62,18 @@ function pct(part: number, whole: number): number {
   return round2((part / whole) * 100);
 }
 
-function toCategory(row: BudgetCategoryRow): BudgetCategory {
+function toCategory(
+  row: BudgetCategoryRow,
+  delta?: CategoryAllocationDelta,
+): BudgetCategory {
   const planned = num(row.planned);
   const committed = num(row.committed);
   const actual = num(row.actual);
+  const approvedChange = delta?.approvedChange ?? 0;
+  const submittedChange = delta?.submittedChange ?? 0;
+  const committedChange = delta?.committedChange ?? 0;
+  const paidInvoice = delta?.paidInvoice ?? 0;
+  const effectivePlanned = round2(planned + approvedChange);
   return {
     id: row.id,
     name: row.name,
@@ -71,6 +86,10 @@ function toCategory(row: BudgetCategoryRow): BudgetCategory {
     variancePercentage: pct(planned - committed, planned),
     remaining: round2(planned - actual),
     percentSpent: pct(actual, planned),
+    effectivePlanned,
+    projectedPlanned: round2(effectivePlanned + submittedChange),
+    effectiveCommitted: round2(committed + committedChange),
+    effectiveActual: round2(actual + paidInvoice),
   };
 }
 
@@ -136,11 +155,25 @@ function assertPeriod(period: string): void {
 export function budgetService(repository: BudgetRepository) {
   return {
     async getByProject(projectId: string): Promise<ProjectBudget> {
-      const [categoryRows, periodRows] = await Promise.all([
+      const [categoryRows, periodRows, deltaRows] = await Promise.all([
         repository.listCategories(projectId),
         repository.listPeriods(projectId),
+        repository.allocationDeltas(projectId),
       ]);
-      const categories = categoryRows.map(toCategory);
+      const deltaByCategory = new Map<string, CategoryAllocationDelta>(
+        deltaRows.map((d) => [
+          d.budget_category_id,
+          {
+            approvedChange: d.approved_change,
+            submittedChange: d.submitted_change,
+            committedChange: d.committed_change,
+            paidInvoice: d.paid_invoice,
+          },
+        ]),
+      );
+      const categories = categoryRows.map((row) =>
+        toCategory(row, deltaByCategory.get(row.id)),
+      );
       const periods = periodRows.map(toPeriod);
       return {
         projectId,
@@ -148,6 +181,54 @@ export function budgetService(repository: BudgetRepository) {
         periods,
         summary: summarize(categories, periods),
       };
+    },
+
+    async seedFromEstimateItems(
+      projectId: string,
+      items: { groupLabel: string; total: number; costCode?: string | null }[],
+      mode: "skip" | "replace" = "skip",
+    ): Promise<{ created: number; skipped: number }> {
+      const existing = await repository.listCategories(projectId);
+      const existingByName = new Map(
+        existing.map((c) => [c.name.toLowerCase(), c]),
+      );
+
+      const grouped = new Map<string, { total: number; costCode: string | null }>();
+      for (const item of items) {
+        const key = item.groupLabel.trim() || "General";
+        const g = grouped.get(key) ?? { total: 0, costCode: item.costCode ?? null };
+        g.total = round2(g.total + item.total);
+        grouped.set(key, g);
+      }
+
+      let created = 0;
+      let skipped = 0;
+      let maxSort = (await repository.maxCategorySortOrder(projectId)) ?? -1;
+      for (const [name, g] of grouped) {
+        const match = existingByName.get(name.toLowerCase());
+        if (match) {
+          if (mode === "skip") {
+            skipped += 1;
+            continue;
+          }
+          await repository.updateCategory(match.id, { planned: String(g.total) });
+          continue;
+        }
+        maxSort += 1;
+        await repository.createCategory({
+          id: generateId("budgetcat"),
+          project_id: projectId,
+          name,
+          cost_code: g.costCode,
+          planned: String(g.total),
+          committed: "0",
+          actual: "0",
+          notes: null,
+          sort_order: maxSort,
+        });
+        created += 1;
+      }
+      return { created, skipped };
     },
 
     async createCategory(

@@ -12,6 +12,8 @@ export interface Query {
   answeredById: string | null;
   answeredByName: string | null;
   answeredAt: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +44,8 @@ export interface QueryRow {
   answered_by_id: string | null;
   answered_by_name: string | null;
   answered_at: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -100,6 +100,25 @@ export function documentsRepository(db: Knex) {
       return db<DocumentRow>("project_documents").where({ id }).first();
     },
 
+    async projectRecipientIds(projectId: string): Promise<string[]> {
+      const [project, participants] = await Promise.all([
+        db<{ owner_id: string | null }>("projects")
+          .where({ id: projectId })
+          .select("owner_id")
+          .first(),
+        db<{ user_id: string | null }>("project_participants")
+          .where({ project_id: projectId, status: "active" })
+          .whereNotNull("user_id")
+          .select("user_id"),
+      ]);
+      const ids = new Set<string>();
+      if (project?.owner_id) ids.add(project.owner_id);
+      for (const participant of participants) {
+        if (participant.user_id) ids.add(participant.user_id);
+      }
+      return [...ids];
+    },
+
     async create(record: NewDocumentRecord): Promise<DocumentRow> {
       const [row] = await db<DocumentRow>("project_documents")
         .insert(record)

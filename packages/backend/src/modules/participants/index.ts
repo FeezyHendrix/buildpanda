@@ -6,6 +6,8 @@ import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
+import { messagingRepository } from "../messaging/repository.ts";
+import { messagingService } from "../messaging/service.ts";
 
 type ParticipantRole = "client" | "architect" | "inspector" | "guest";
 type ParticipantStatus = "invited" | "active" | "revoked";
@@ -25,7 +27,18 @@ interface ParticipantRow {
   updated_at: string;
 }
 
-function toParticipant(r: ParticipantRow) {
+interface TeamEntry {
+  id: string;
+  projectId: string;
+  userId: string | null;
+  name: string | null;
+  email: string;
+  role: ParticipantRole | "owner";
+  status: ParticipantStatus;
+  createdAt: string;
+}
+
+function toParticipant(r: ParticipantRow): TeamEntry {
   return {
     id: r.id,
     projectId: r.project_id,
@@ -137,6 +150,31 @@ function computeAccess(
 
 const participantRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
+  const messaging = messagingService(messagingRepository(fastify.db));
+
+  async function resolveProjectOwner(
+    ownerId: string | null,
+    organizationId: string | null,
+  ): Promise<{ id: string; name: string | null; email: string } | null> {
+    if (ownerId) {
+      const owner = await db("user")
+        .where({ id: ownerId })
+        .first<{ id: string; name: string | null; email: string }>("id", "name", "email");
+      if (owner) return owner;
+    }
+    if (organizationId) {
+      const orgOwner = await db("member as m")
+        .join("user as u", "u.id", "m.userId")
+        .where({ "m.organizationId": organizationId, "m.role": "owner" })
+        .first<{ id: string; name: string | null; email: string }>(
+          "u.id as id",
+          "u.name as name",
+          "u.email as email",
+        );
+      if (orgOwner) return orgOwner;
+    }
+    return null;
+  }
 
   // --- Company-side participant management ---
   fastify.get<{ Params: { id: string } }>(
@@ -150,7 +188,22 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         .whereNot("p.status", "revoked")
         .select("p.*", "u.name as name")
         .orderBy("p.created_at", "asc");
-      return rows.map(toParticipant);
+
+      const participants: TeamEntry[] = rows.map(toParticipant);
+      const owner = await resolveProjectOwner(project.owner_id, project.organization_id);
+      if (owner && !participants.some((p) => p.userId === owner.id)) {
+        participants.unshift({
+          id: `owner-${owner.id}`,
+          projectId: project.id,
+          userId: owner.id,
+          name: owner.name,
+          email: owner.email,
+          role: "owner",
+          status: "active",
+          createdAt: String(project.created_at),
+        });
+      }
+      return participants;
     },
   );
 
@@ -231,9 +284,15 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: participantParams } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
+      const participant = await db<ParticipantRow>("project_participants")
+        .where({ id: request.params.participantId, project_id: project.id })
+        .first();
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update({ status: "revoked", updated_at: new Date().toISOString() });
+      if (participant?.user_id) {
+        await messaging.removeFromProjectChannels(project.id, participant.user_id);
+      }
       return reply.status(204).send();
     },
   );

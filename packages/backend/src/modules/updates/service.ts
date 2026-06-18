@@ -47,6 +47,7 @@ export interface CreateUpdateInput {
   title: string;
   description: string;
   media?: MediaInput[];
+  activityId?: string | null;
 }
 
 export interface EditUpdateInput {
@@ -218,6 +219,7 @@ export function updatesService(repository: UpdatesRepository) {
           author_name: actor.name,
           author_role: "Project Manager",
           author_initials_tone: "brand",
+          activity_id: input.activityId ?? null,
           category: input.category,
           title: input.title,
           description: input.description,

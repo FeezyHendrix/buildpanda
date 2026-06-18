@@ -1,5 +1,6 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { FinancesRepository } from "./repository.ts";
 import type {
   BudgetPhase,
@@ -42,6 +43,45 @@ export interface UpdateMilestoneInput {
   percentComplete?: number;
   status?: "Completed" | "InProgress" | "Pending";
   inspectorSignOff?: "Verified" | "Scheduled" | "Pending";
+}
+
+export interface FinancesDeps {
+  notifications?: NotificationsService;
+}
+
+function notifyMilestoneReleased(
+  deps: FinancesDeps,
+  recipientId: string | null | undefined,
+  projectId: string,
+  name: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !recipientId || recipientId === actorId) return;
+  void deps.notifications
+    .notify(recipientId, "milestone_released", {
+      title: "Milestone payment released",
+      body: name,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
+function notifyMilestoneDisputed(
+  deps: FinancesDeps,
+  recipientId: string | null | undefined,
+  projectId: string,
+  name: string,
+  reason: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !recipientId || recipientId === actorId) return;
+  void deps.notifications
+    .notify(recipientId, "milestone_disputed", {
+      title: "Milestone payment disputed",
+      body: `${name}: ${reason}`,
+      projectId,
+    })
+    .catch(() => undefined);
 }
 
 function toDispute(row: MilestoneDisputeRow): MilestoneDispute {
@@ -127,7 +167,7 @@ function toFinances(
   };
 }
 
-export function financesService(repository: FinancesRepository) {
+export function financesService(repository: FinancesRepository, deps: FinancesDeps = {}) {
   return {
     async getByProject(projectId: string): Promise<ProjectFinances> {
       const [summary, budgetPhases, materials, milestones, ledger] = await Promise.all([
@@ -209,6 +249,7 @@ export function financesService(repository: FinancesRepository) {
     async releaseMilestone(
       projectId: string,
       milestoneId: string,
+      userId: string,
     ): Promise<MilestonePayment> {
       const milestone = await repository.findMilestone(milestoneId);
       if (!milestone) throw new NotFoundError("Milestone");
@@ -222,6 +263,8 @@ export function financesService(repository: FinancesRepository) {
         description: `Release · ${milestone.name}`,
         ledgerId: generateId("ledger"),
       });
+      const projectOwnerId = await repository.projectOwnerId(projectId);
+      notifyMilestoneReleased(deps, projectOwnerId, projectId, updated.name, userId);
       return toMilestone(updated);
     },
 
@@ -254,6 +297,8 @@ export function financesService(repository: FinancesRepository) {
         raised_by_name: actor.name,
         reason: input.reason,
       });
+      const projectOwnerId = await repository.projectOwnerId(projectId);
+      notifyMilestoneDisputed(deps, projectOwnerId, projectId, milestone.name, input.reason, actor.id);
       return toDispute(row);
     },
   };

@@ -14,6 +14,12 @@ import {
   ACTION_PRIORITY_META,
   ACTION_STATUS_META,
 } from "@/components/molecules/action-item-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import {
+  ACTION_ITEM_COLUMNS,
+  actionItemMeta,
+  assigneeFooter,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useActionItems,
@@ -21,6 +27,7 @@ import {
   useDeleteActionItem,
   useUpdateActionItem,
 } from "@/hooks/use-action-items";
+import { useParticipants } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import type { ActionItem, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
@@ -47,13 +54,28 @@ export default function ProjectActionItems() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ActionStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useActionItems(
     project.id,
     filter === "all" ? undefined : filter,
   );
+  const { data: participants = [] } = useParticipants(project.id);
   const createItem = useCreateActionItem();
   const updateItem = useUpdateActionItem();
   const deleteItem = useDeleteActionItem();
+
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
+  function handleMove(item: ActionItem, status: ActionStatus): void {
+    if (item.status === status) return;
+    updateItem.mutate({ projectId: project.id, itemId: item.id, status });
+  }
+
+  function handleAssign(item: ActionItem, assigneeId: string | null): void {
+    updateItem.mutate({ projectId: project.id, itemId: item.id, assigneeId });
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editItem, setEditItem] = useState<ActionItem | null>(null);
@@ -78,7 +100,7 @@ export default function ProjectActionItems() {
   const openCount = items.filter((i) => i.status !== "Resolved").length;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Action Items"
         description="Open issues and to-dos that need attention to keep the build moving."
@@ -106,10 +128,50 @@ export default function ProjectActionItems() {
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-500">{openCount} open</p>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">{openCount} open</p>
+        </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3">
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={items}
+              columns={ACTION_ITEM_COLUMNS}
+              canManage={canManage}
+              getId={(i) => i.id}
+              getStatus={(i) => i.status}
+              getTitle={(i) => i.title}
+              renderMeta={actionItemMeta}
+              renderFooter={(i) => assigneeFooter(i.assigneeName, i.dueDate)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(i) => i.assigneeId}
+              onAssign={handleAssign}
+            />
+          )}
+        </div>
+      ) : (
+        <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
         ) : items.length === 0 ? (
@@ -164,12 +226,14 @@ export default function ProjectActionItems() {
             </Card>
           ))
         )}
-      </div>
+        </div>
+      )}
 
       <UpsertActionItemDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
         isSubmitting={createItem.isPending}
         error={(createItem.error as Error | undefined)?.message ?? null}
@@ -179,6 +243,7 @@ export default function ProjectActionItems() {
         open={editItem !== null}
         onOpenChange={(o) => !o && setEditItem(null)}
         mode="edit"
+        assigneeOptions={assigneeOptions}
         initial={
           editItem
             ? {
@@ -186,6 +251,7 @@ export default function ProjectActionItems() {
                 description: editItem.description,
                 status: editItem.status,
                 priority: editItem.priority,
+                assigneeId: editItem.assigneeId,
                 dueDate: editItem.dueDate,
                 recurrenceUnit: editItem.recurrenceUnit,
                 recurrenceInterval: editItem.recurrenceInterval,

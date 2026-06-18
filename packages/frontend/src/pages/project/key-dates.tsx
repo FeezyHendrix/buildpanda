@@ -4,7 +4,6 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertKeyDateDialog,
@@ -46,14 +45,7 @@ export default function ProjectKeyDates() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedules", to: `/project/${project.id}/schedules` },
-          { label: "Key Dates" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Key Dates"
         description="The milestone dates that matter — target vs actual, so slippage is visible."

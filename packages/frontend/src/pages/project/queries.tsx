@@ -13,7 +13,10 @@ import {
   QueryDetailDialog,
   QUERY_STATUS_META,
 } from "@/components/molecules/query-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { QUERY_COLUMNS, dueMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateQuery,
   useDeleteQuery,
@@ -39,6 +42,7 @@ export default function ProjectQueries() {
   const { project, access } = useProjectContext();
   const canRaiseQueries = access?.capabilities?.canRaiseQueries ?? false;
   const [filter, setFilter] = useState<QueryStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: queries = [], isLoading } = useProjectQueries(
     project.id,
     filter === "all" ? undefined : filter,
@@ -46,6 +50,20 @@ export default function ProjectQueries() {
   const createQuery = useCreateQuery();
   const updateQuery = useUpdateQuery();
   const deleteQuery = useDeleteQuery();
+
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
+  function handleMove(query: SiteQuery, status: QueryStatus): void {
+    if (query.status === status) return;
+    updateQuery.mutate({ projectId: project.id, queryId: query.id, status });
+  }
+
+  function handleAssign(query: SiteQuery, assigneeId: string | null): void {
+    updateQuery.mutate({ projectId: project.id, queryId: query.id, assigneeId });
+  }
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editQuery, setEditQuery] = useState<SiteQuery | null>(null);
@@ -56,7 +74,13 @@ export default function ProjectQueries() {
 
   function handleCreate(values: UpsertQueryValues): void {
     createQuery.mutate(
-      { projectId: project.id, subject: values.subject, question: values.question, dueDate: values.dueDate },
+      { 
+        projectId: project.id, 
+        subject: values.subject, 
+        question: values.question, 
+        dueDate: values.dueDate,
+        assigneeId: values.assigneeId,
+      },
       { onSuccess: () => setCreateOpen(false) },
     );
   }
@@ -70,7 +94,7 @@ export default function ProjectQueries() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Queries"
         description="Site questions and clarifications between you, the builder and the design team."
@@ -98,9 +122,49 @@ export default function ProjectQueries() {
             </button>
           ))}
         </div>
-        <p className="text-xs text-gray-500">{openCount} open</p>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">{openCount} open</p>
+        </div>
       </div>
 
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={queries}
+              columns={QUERY_COLUMNS}
+              canManage={canRaiseQueries}
+              getId={(q) => q.id}
+              getStatus={(q) => q.status}
+              getTitle={(q) => q.subject}
+              renderMeta={(q) => dueMeta(q.dueDate)}
+              renderFooter={(q) => assigneeFooter(q.assigneeName, q.dueDate)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(q) => q.assigneeId}
+              onAssign={handleAssign}
+            />
+          )}
+        </div>
+      ) : (
       <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
@@ -136,11 +200,13 @@ export default function ProjectQueries() {
           ))
         )}
       </div>
+      )}
 
       <UpsertQueryDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
         isSubmitting={createQuery.isPending}
         error={(createQuery.error as Error | undefined)?.message ?? null}
@@ -150,6 +216,7 @@ export default function ProjectQueries() {
         open={editQuery !== null}
         onOpenChange={(o) => !o && setEditQuery(null)}
         mode="edit"
+        assigneeOptions={assigneeOptions}
         initial={
           editQuery
             ? {
@@ -157,6 +224,7 @@ export default function ProjectQueries() {
                 question: editQuery.question,
                 status: editQuery.status,
                 dueDate: editQuery.dueDate,
+                assigneeId: editQuery.assigneeId,
               }
             : undefined
         }

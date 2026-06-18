@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { projectKeys } from "./query-keys";
-import type { Project } from "@/lib/project-types";
+import type { Currency, Project } from "@/lib/project-types";
 
 export interface CreateProjectInput {
   title: string;
@@ -14,7 +13,7 @@ export interface CreateProjectInput {
   };
   details: {
     buildingType: string;
-    currency: "NGN" | "USD";
+    currency: Currency;
     budgetMin: number;
     budgetMax: number;
     timeline: string;
@@ -29,7 +28,7 @@ export interface CreateProjectInput {
 export interface UpdateProjectBudgetInput {
   budgetMin: number;
   budgetMax: number;
-  currency?: "NGN" | "USD";
+  currency?: Currency;
 }
 
 export function useProjects() {
@@ -55,17 +54,17 @@ export function useProject(id: string | undefined) {
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: async (input: CreateProjectInput) => {
       const { data } = await api.post<Project>("/projects", input);
       return data;
     },
+    // Caller owns navigation so it can finish post-create work (e.g. uploading
+    // land documents) before leaving the page.
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.setQueryData(projectKeys.detail(project.id), project);
-      navigate(`/project/${project.id}/overview`);
     },
   });
 }
@@ -78,6 +77,24 @@ export function useUpdateProjectBudget(projectId: string) {
       const { data } = await api.patch<Project>(
         `/projects/${projectId}/budget`,
         input,
+      );
+      return data;
+    },
+    onSuccess: (project) => {
+      queryClient.setQueryData(projectKeys.detail(project.id), project);
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+export function useUpdateProjectCurrency(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (currency: string) => {
+      const { data } = await api.patch<Project>(
+        `/projects/${projectId}/currency`,
+        { currency },
       );
       return data;
     },

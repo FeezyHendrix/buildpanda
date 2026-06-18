@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
@@ -11,10 +11,9 @@ import {
   LAST_SUITE_KEY,
   SUITE_SALES,
 } from "@/components/molecules/suite-switcher";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { LogOutIcon } from "@/components/atoms/logout-icon";
 import { authClient } from "@/lib/auth-client";
 import { AbilityProvider } from "@/contexts/ability-context";
+import logo from "@/assets/images/logo.svg";
 
 export { LAST_SUITE_KEY, SUITE_SALES };
 export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
@@ -68,7 +67,7 @@ const salesNav = [
   },
 ];
 
-function SalesNavLink({ item }: { item: typeof salesNav[0] }) {
+function SalesNavLink({ item }: { item: (typeof salesNav)[0] }) {
   return (
     <NavLink
       to={item.to}
@@ -87,49 +86,47 @@ function SalesNavLink({ item }: { item: typeof salesNav[0] }) {
   );
 }
 
-function SalesSidebar() {
-  const [logoutOpen, setLogoutOpen] = useState(false);
-  const navigate = useNavigate();
+interface SidebarUser {
+  name: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+}
 
+function SalesSidebar({
+  user,
+  onLogout,
+}: {
+  user: SidebarUser;
+  onLogout: () => void;
+}) {
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col bg-[#F8F8F8] pb-6">
-      <div className="px-3 py-5">
-        <SuiteSwitcher variant="sidebar" />
+    <aside className="flex w-[240px] shrink-0 flex-col border-r border-[#EFEFEF] bg-[#F8F8F8]">
+      <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
+        <Link to="/sales" className="px-1" aria-label="BuildPanda home">
+          <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
+        </Link>
+        <OrgSwitcher />
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-4">
+      <div className="px-3 pb-1">
+        <SuiteSwitcher variant="segmented" />
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
         {salesNav.map((item) => (
           <SalesNavLink key={item.to} item={item} />
         ))}
       </nav>
 
-      <div className="flex flex-col gap-1 px-4">
-        <button
-          type="button"
-          onClick={() => setLogoutOpen(true)}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500",
-            "outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          )}
-        >
-          <LogOutIcon />
-          Log Out
-        </button>
+      <div className="border-t border-[#EFEFEF] px-3 py-3">
+        <UserMenu
+          variant="full"
+          name={user.name}
+          email={user.email}
+          avatarUrl={user.avatarUrl}
+          onLogout={onLogout}
+        />
       </div>
-
-      <ConfirmDialog
-        open={logoutOpen}
-        onOpenChange={setLogoutOpen}
-        onConfirm={async () => {
-          await authClient.signOut();
-          navigate("/auth/sign-in");
-        }}
-        title="Log out?"
-        description="Are you sure you want to log out of your account?"
-        confirmLabel="Log Out"
-        cancelLabel="Cancel"
-        variant="danger"
-      />
     </aside>
   );
 }
@@ -143,6 +140,7 @@ function FullPageLoader() {
 }
 
 export default function SalesLayout() {
+  const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
 
   // Stamp the last suite so HomeRedirect returns here for company users
@@ -153,25 +151,23 @@ export default function SalesLayout() {
   if (isPending) return <FullPageLoader />;
   if (!session?.user) return null;
 
+  async function handleLogout() {
+    await authClient.signOut();
+    navigate("/auth/sign-in");
+  }
+
   return (
-    <div className="flex h-dvh flex-col">
-      <Navbar
-        showLogo={false}
-        sticky
-        leadingSlot={<OrgSwitcher />}
-        userSlot={
-          <UserMenu
-            name={session.user.name}
-            email={session.user.email}
-            avatarUrl={session.user.image}
-            onLogout={async () => {
-              await authClient.signOut();
-            }}
-          />
-        }
+    <div className="flex h-dvh">
+      <SalesSidebar
+        user={{
+          name: session.user.name,
+          email: session.user.email,
+          avatarUrl: session.user.image,
+        }}
+        onLogout={handleLogout}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <SalesSidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Navbar showLogo={false} sticky />
         <main className="flex-1 overflow-y-auto bg-white no-scrollbar">
           <ErrorBoundary>
             <AbilityProvider>

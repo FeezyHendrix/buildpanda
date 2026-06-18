@@ -49,13 +49,16 @@ export function Footer() {
               <MailIcon className="h-4 w-4" />
               {site.email}
             </a>
-            <a
-              href={`tel:${site.phoneDisplay.replace(/\s+/g, "")}`}
-              className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
-            >
-              <PhoneIcon className="h-4 w-4" />
-              {site.phoneDisplay}
-            </a>
+            {site.phones.map((phone) => (
+              <a
+                key={phone}
+                href={`tel:${phone.replace(/\s+/g, "")}`}
+                className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+              >
+                <PhoneIcon className="h-4 w-4" />
+                {phone}
+              </a>
+            ))}
           </div>
         </div>
 
@@ -71,6 +74,16 @@ export function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/privacy/" className="text-sm text-white/70 hover:text-white">
+                Privacy
+              </Link>
+            </li>
+            <li>
+              <Link href="/data-policy/" className="text-sm text-white/70 hover:text-white">
+                Data Policy
+              </Link>
+            </li>
           </ul>
         </div>
       </Container>

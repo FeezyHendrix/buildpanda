@@ -1,5 +1,6 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { TeamMembersRepository } from "./repository.ts";
 import type { TeamMember, TeamMemberRow, TeamMemberStatus } from "./types.ts";
 
@@ -23,6 +24,27 @@ export interface EditTeamMemberInput {
   status?: TeamMemberStatus;
 }
 
+export interface TeamMembersDeps {
+  notifications?: NotificationsService;
+}
+
+function notifyTeamMemberAdded(
+  deps: TeamMembersDeps,
+  recipientId: string | null | undefined,
+  projectId: string,
+  projectName: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !recipientId || recipientId === actorId) return;
+  void deps.notifications
+    .notify(recipientId, "team_member_added", {
+      title: "You were added to a project",
+      body: projectName,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
 function toTeamMember(row: TeamMemberRow): TeamMember {
   return {
     id: row.id,
@@ -42,7 +64,7 @@ function optional(value: string | undefined): string | null | undefined {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function teamMembersService(repository: TeamMembersRepository) {
+export function teamMembersService(repository: TeamMembersRepository, deps: TeamMembersDeps = {}) {
   return {
     async listByProject(projectId: string): Promise<TeamMember[]> {
       const rows = await repository.listByProject(projectId);
@@ -52,6 +74,7 @@ export function teamMembersService(repository: TeamMembersRepository) {
     async create(
       projectId: string,
       input: CreateTeamMemberInput,
+      userId: string,
     ): Promise<TeamMember> {
       const row = await repository.create({
         id: generateId("team"),
@@ -64,6 +87,13 @@ export function teamMembersService(repository: TeamMembersRepository) {
         responsibilities: optional(input.responsibilities) ?? null,
         status: input.status ?? "Active",
       });
+      if (row.email) {
+        const [recipientId, projectName] = await Promise.all([
+          repository.findUserIdByEmail(row.email),
+          repository.projectName(projectId),
+        ]);
+        notifyTeamMemberAdded(deps, recipientId, projectId, projectName ?? "a project", userId);
+      }
       return toTeamMember(row);
     },
 

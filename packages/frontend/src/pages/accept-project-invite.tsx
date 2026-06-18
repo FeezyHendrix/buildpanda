@@ -1,20 +1,36 @@
+import { useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
 import { Button } from "@/components/atoms/button";
 import { useAcceptProjectInvite, useProjectInvite } from "@/hooks/use-participants";
+import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
 import { authClient } from "@/lib/auth-client";
 import logo from "@/assets/images/logo.svg";
 
 export default function AcceptProjectInvite() {
   const { token = "" } = useParams();
   const navigate = useNavigate();
-  const { data: session } = authClient.useSession();
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   const { data: invite, isLoading, isError } = useProjectInvite(token);
   const accept = useAcceptProjectInvite();
 
+  const signedIn = Boolean(session?.user);
+
+  useEffect(() => {
+    if (sessionPending || !token) return;
+    if (signedIn) {
+      localStorage.removeItem(PENDING_PROJECT_INVITE_KEY);
+    } else {
+      localStorage.setItem(PENDING_PROJECT_INVITE_KEY, token);
+    }
+  }, [sessionPending, signedIn, token]);
+
   function handleAccept(): void {
     accept.mutate(token, {
-      onSuccess: (res) => navigate(`/project/${res.projectId}/overview`, { replace: true }),
+      onSuccess: (res) => {
+        localStorage.removeItem(PENDING_PROJECT_INVITE_KEY);
+        navigate(`/project/${res.projectId}/overview`, { replace: true });
+      },
     });
   }
 
@@ -37,7 +53,7 @@ export default function AcceptProjectInvite() {
                 as the {invite.role}.
               </p>
             </div>
-            {session?.user ? (
+            {signedIn ? (
               <>
                 <Button variant="primary" size="lg" disabled={accept.isPending} onClick={handleAccept}>
                   {accept.isPending ? "Opening…" : "Open my portal"}

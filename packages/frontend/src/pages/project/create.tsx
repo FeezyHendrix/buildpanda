@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useOrgProfile } from "@/hooks/use-org-profile";
+import type { Currency } from "@/lib/project-types";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import {
   ProjectTypeStep,
@@ -17,6 +19,11 @@ import { ProjectTitleStep } from "@/components/molecules/project-title-step";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
 import type { SwitcherValue } from "@/components/atoms";
 import { useCreateProject } from "@/hooks/use-projects";
+import { uploadFileRequest } from "@/hooks/use-files";
+import { api } from "@/api/client";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+import type { DocumentCategory } from "@/lib/project-types";
 
 const TOTAL_STEPS = 5;
 
@@ -54,16 +61,25 @@ export default function CreateProject() {
   const navigate = useNavigate();
   const [step, isReview, setStep] = useWizardStep();
   const createProject = useCreateProject();
+  const [submitting, setSubmitting] = useState(false);
 
   const [projectType, setProjectType] = useState<ProjectType | null>(null);
 
   const [locationState, setLocationState] = useState<string | null>(null);
   const [city, setCity] = useState("");
   const [ownsLand, setOwnsLand] = useState<SwitcherValue>("no");
-  const [_files, setFiles] = useState<FileList | null>(null);
+  const [landFiles, setLandFiles] = useState<FileList | null>(null);
+  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
 
+  const { data: orgProfile } = useOrgProfile();
   const [buildingType, setBuildingType] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<string>("NGN");
+  const [currency, setCurrency] = useState<Currency>("NGN");
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  useEffect(() => {
+    if (!currencyTouched && orgProfile?.defaultCurrency) {
+      setCurrency(orgProfile.defaultCurrency as Currency);
+    }
+  }, [orgProfile?.defaultCurrency, currencyTouched]);
   const [budget, setBudget] = useState<[number, number]>([10_000_000, 50_000_000]);
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
@@ -93,19 +109,75 @@ export default function CreateProject() {
     return false;
   };
 
-  const handleContinue = () => {
-    if (isReview) {
-      if (
-        !projectType ||
-        !locationState ||
-        !buildingType ||
-        !timeline ||
-        !fundingMethod ||
-        !involvementLevel
-      ) {
-        return;
+  // Best-effort: attach the land documents the user uploaded in step 2 to the
+  // new project's "Land Documents" category. The project already exists, so a
+  // failure here must not block navigation — the user can re-upload from the
+  // Documents page.
+  async function uploadLandDocuments(
+    projectId: string,
+    files: FileList,
+  ): Promise<void> {
+    try {
+      const { data: categories } = await api.get<DocumentCategory[]>(
+        `/projects/${projectId}/documents/categories`,
+      );
+      const landCategory = categories.find((c) => c.name === "Land Documents");
+      if (!landCategory) return;
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadFileRequest(file);
+        await api.post(`/projects/${projectId}/documents`, {
+          categoryId: landCategory.id,
+          fileId: uploaded.id,
+        });
       }
-      createProject.mutate({
+    } catch {
+      // swallow — see note above
+    }
+  }
+
+  async function seedBimModel(projectId: string, files: FileList): Promise<void> {
+    try {
+      const file = files[0];
+      if (!file || !/\.ifc$/i.test(file.name)) return;
+      const { data: ticket } = await api.post<{
+        mode: string;
+        storagePath: string;
+        url?: string;
+      }>(`/projects/${projectId}/bim/upload-url`, {
+        fileName: file.name,
+        sizeBytes: file.size,
+      });
+      if (ticket.mode !== "single" || !ticket.url) return;
+      await fetch(ticket.url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: file,
+      });
+      await api.post(`/projects/${projectId}/bim/models`, {
+        name: file.name.replace(/\.ifc$/i, ""),
+        fileName: file.name,
+        storagePath: ticket.storagePath,
+        sizeBytes: file.size,
+      });
+    } catch {
+      void 0;
+    }
+  }
+
+  async function handleFinish(): Promise<void> {
+    if (
+      !projectType ||
+      !locationState ||
+      !buildingType ||
+      !timeline ||
+      !fundingMethod ||
+      !involvementLevel
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const project = await createProject.mutateAsync({
         title: projectTitle.trim(),
         projectType,
         location: {
@@ -115,7 +187,7 @@ export default function CreateProject() {
         },
         details: {
           buildingType,
-          currency: "NGN",
+          currency,
           budgetMin: budget[0],
           budgetMax: budget[1],
           timeline,
@@ -126,6 +198,25 @@ export default function CreateProject() {
           riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
         },
       });
+      if (landFiles && landFiles.length > 0) {
+        await uploadLandDocuments(project.id, landFiles);
+      }
+      if (bimFiles && bimFiles.length > 0) {
+        await seedBimModel(project.id, bimFiles);
+      }
+      navigate(`/project/${project.id}/overview`);
+    } catch (err) {
+      toast(
+        getApiErrorMessage(err, "Could not create the project. Please try again."),
+        "error",
+      );
+      setSubmitting(false);
+    }
+  }
+
+  const handleContinue = () => {
+    if (isReview) {
+      void handleFinish();
     } else if (step === TOTAL_STEPS) {
       setStep("review");
     } else {
@@ -134,6 +225,7 @@ export default function CreateProject() {
   };
 
   const handleBack = () => {
+    if (submitting) return;
     if (isReview) {
       setStep(TOTAL_STEPS);
     } else if (step === 1) {
@@ -149,7 +241,10 @@ export default function CreateProject() {
       totalSteps={TOTAL_STEPS}
       onCancel={handleBack}
       onContinue={handleContinue}
-      continueDisabled={!canContinue() || createProject.isPending}
+      continueDisabled={!canContinue() || submitting}
+      continueLabel={
+        isReview ? (submitting ? "Creating…" : "Finish") : "Continue"
+      }
       hideStepper={isReview}
       hideContinue={isReview}
     >
@@ -164,7 +259,8 @@ export default function CreateProject() {
           onStateChange={setLocationState}
           onCityChange={setCity}
           onOwnsLandChange={setOwnsLand}
-          onFilesChange={setFiles}
+          onFilesChange={setLandFiles}
+          onBimFileChange={setBimFiles}
         />
       )}
       {!isReview && step === 3 && (
@@ -175,7 +271,10 @@ export default function CreateProject() {
           timeline={timeline}
           fundingMethod={fundingMethod}
           onBuildingTypeChange={setBuildingType}
-          onCurrencyChange={setCurrency}
+          onCurrencyChange={(c) => {
+            setCurrencyTouched(true);
+            setCurrency(c as Currency);
+          }}
           onBudgetChange={setBudget}
           onTimelineChange={setTimeline}
           onFundingMethodChange={setFundingMethod}
@@ -205,7 +304,7 @@ export default function CreateProject() {
             city,
             ownsLand,
             buildingType,
-            currency,
+          currency,
             budget,
             timeline,
             fundingMethod,

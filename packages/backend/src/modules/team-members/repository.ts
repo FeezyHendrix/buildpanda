@@ -35,6 +35,22 @@ export function teamMembersRepository(db: Knex) {
       return db<TeamMemberRow>("team_members").where({ id }).first();
     },
 
+    async findUserIdByEmail(email: string): Promise<string | null> {
+      const row = await db<{ id: string }>("user")
+        .whereRaw("lower(email) = ?", [email.trim().toLowerCase()])
+        .select("id")
+        .first();
+      return row?.id ?? null;
+    },
+
+    async projectName(projectId: string): Promise<string | null> {
+      const row = await db<{ name: string }>("projects")
+        .where({ id: projectId })
+        .select("name")
+        .first();
+      return row?.name ?? null;
+    },
+
     async create(record: NewTeamMemberRecord): Promise<TeamMemberRow> {
       const [row] = await db<TeamMemberRow>("team_members")
         .insert(record)

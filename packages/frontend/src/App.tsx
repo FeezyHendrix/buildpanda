@@ -48,6 +48,9 @@ const AcceptInvitation = lazy(
   () => import("@/pages/accept-invitation"),
 );
 const CreateProject = lazy(() => import("@/pages/project/create"));
+const ImportWizard = lazy(() => import("@/pages/import"));
+
+const ProjectChat = lazy(() => import("@/pages/project/chat"));
 
 const ProjectOverview = lazy(() => import("@/pages/project/overview"));
 const ProjectUpdates = lazy(() => import("@/pages/project/updates"));
@@ -66,7 +69,6 @@ const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-re
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
-const ProjectMessages = lazy(() => import("@/pages/project/messages"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
 const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
@@ -74,6 +76,8 @@ const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
+const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
+const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
@@ -84,6 +88,9 @@ const ProjectPeople = lazy(() => import("@/pages/project/people"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
 const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
+const SharePage = lazy(() => import("@/pages/public/share-page"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
+const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 
 const router = createBrowserRouter([
   {
@@ -135,6 +142,18 @@ const router = createBrowserRouter([
     element: <PublicProposalPage />,
   },
   {
+    path: "/share/:token",
+    element: <SharePage />,
+  },
+  {
+    path: "/privacy",
+    element: <PrivacyPolicyPage />,
+  },
+  {
+    path: "/data-policy",
+    element: <DataPolicyPage />,
+  },
+  {
     path: "/accept-invitation/:invitationId",
     element: <AcceptInvitation />,
   },
@@ -159,6 +178,14 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/import",
+    element: (
+      <RequireCompany>
+        <ImportWizard />
+      </RequireCompany>
+    ),
+  },
+  {
     // Both account types may open a project: company staff manage it, owners
     // and other participants get the scoped portal view. The backend's
     // org/participant checks are the real authorization.
@@ -171,6 +198,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="overview" replace /> },
       { path: "overview", element: <ProjectOverview /> },
+      { path: "chat", element: <ProjectChat /> },
+
       { path: "updates", element: <ProjectUpdates /> },
       { path: "finances", element: <ProjectFinances /> },
       {
@@ -192,7 +221,7 @@ const router = createBrowserRouter([
       { path: "documents", element: <ProjectDocuments /> },
       { path: "team", element: <ProjectTeam /> },
       { path: "inspections", element: <ProjectInspections /> },
-      { path: "messages", element: <ProjectMessages /> },
+      { path: "messages", element: <ProjectChat /> },
       { path: "settings", element: <ProjectSettings /> },
       { path: "schedules", element: <ProjectSchedulesOverview /> },
       { path: "schedules/activities", element: <ProjectActivities /> },
@@ -212,6 +241,8 @@ const router = createBrowserRouter([
       { path: "stages", element: <ProjectStages /> },
       { path: "action-items", element: <ProjectActionItems /> },
       { path: "queries", element: <ProjectQueries /> },
+      { path: "rfis", element: <ProjectRfis /> },
+      { path: "bim", element: <ProjectBim /> },
       { path: "approvals", element: <ProjectApprovals /> },
       { path: "change-requests", element: <ProjectChangeRequests /> },
       { path: "permits", element: <ProjectPermits /> },

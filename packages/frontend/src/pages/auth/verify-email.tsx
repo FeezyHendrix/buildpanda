@@ -1,14 +1,63 @@
-import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms";
+import { authClient } from "@/lib/auth-client";
+
+const RESEND_COOLDOWN_S = 30;
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const location = useLocation();
+  const email = (location.state as { email?: string } | null)?.email ?? null;
 
   const [loading, setLoading] = useState(!!token);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
+
+  async function handleResend() {
+    if (!email || resending || cooldown > 0) return;
+
+    setResending(true);
+    setResent(false);
+    setResendError(null);
+
+    const { error: sendError } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: "/",
+    });
+
+    setResending(false);
+
+    if (sendError) {
+      setResendError(sendError.message ?? "Couldn't resend the email. Please try again.");
+      return;
+    }
+
+    setResent(true);
+    setCooldown(RESEND_COOLDOWN_S);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -54,15 +103,46 @@ export default function VerifyEmailPage() {
             Check your email
           </h1>
           <p className="text-sm text-gray-500 text-pretty">
-            We sent you a verification link. Check your inbox and click the link
-            to verify your account.
+            We sent a verification link
+            {email ? (
+              <>
+                {" "}to <span className="font-semibold text-gray-700">{email}</span>
+              </>
+            ) : null}
+            . Check your inbox and click the link to verify your account.
           </p>
         </div>
 
         <div className="flex flex-col gap-3">
-          <Button type="button" className="w-full" disabled>
-            Resend verification email
+          {resent ? (
+            <p className="text-sm text-green-600 text-pretty" role="status">
+              Verification email sent. Check your inbox.
+            </p>
+          ) : null}
+          {resendError ? (
+            <p className="text-sm text-red-600 text-pretty" role="alert">
+              {resendError}
+            </p>
+          ) : null}
+
+          <Button
+            type="button"
+            className="w-full"
+            onClick={handleResend}
+            disabled={!email || resending || cooldown > 0}
+          >
+            {resending
+              ? "Sending..."
+              : cooldown > 0
+                ? `Resend in ${cooldown}s`
+                : "Resend verification email"}
           </Button>
+
+          {!email ? (
+            <p className="text-xs text-gray-400 text-pretty text-center">
+              Sign in to resend your verification email.
+            </p>
+          ) : null}
 
           <Link to="/auth/sign-in">
             <Button type="button" variant="secondary" className="w-full">

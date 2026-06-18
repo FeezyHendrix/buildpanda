@@ -9,6 +9,7 @@ export interface NewQueryRecord {
   status: QueryStatus;
   due_date: string | null;
   asked_by_id: string | null;
+  assignee_id?: string | null;
 }
 
 export interface QueryUpdatePatch {
@@ -19,6 +20,7 @@ export interface QueryUpdatePatch {
   due_date?: string | null;
   answered_by_id?: string | null;
   answered_at?: string | null;
+  assignee_id?: string | null;
   updated_at?: string;
 }
 
@@ -34,13 +36,17 @@ const SELECT = [
   "q.answered_by_id",
   "u.name as answered_by_name",
   "q.answered_at",
+  "q.assignee_id",
+  "asg.name as assignee_name",
   "q.created_at",
   "q.updated_at",
 ] as const;
 
 export function queriesRepository(db: Knex) {
   function base() {
-    return db("queries as q").leftJoin("user as u", "u.id", "q.answered_by_id");
+    return db("queries as q")
+      .leftJoin("user as u", "u.id", "q.answered_by_id")
+      .leftJoin("user as asg", "asg.id", "q.assignee_id");
   }
 
   return {

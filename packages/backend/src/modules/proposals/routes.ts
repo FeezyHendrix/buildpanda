@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
@@ -20,7 +21,9 @@ const DEFAULT_PHASES = [
   { name: "Permitting & Approvals", date_range: "Weeks 3 – 8" },
   { name: "Foundation & Substructure", date_range: "Weeks 9 – 16" },
   { name: "Superstructure & MEP", date_range: "Weeks 17 – 32" },
-  { name: "Finishing & Handover", date_range: "Weeks 33 – 48" },
+  { name: "Finishing", date_range: "Weeks 33 – 42" },
+  { name: "External Works", date_range: "Weeks 43 – 46" },
+  { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
 ] as const;
 
 const proposalEstimateParams = {
@@ -562,7 +565,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       const schedule = estimate ? await repo.getSchedule(estimate.id) : [];
 
       // projects.currency only accepts NGN | USD
-      const currency: "NGN" | "USD" =
+      const currency: CurrencyCode =
         proposalRow.currency === "USD" ? "USD" : "NGN";
 
       const projectId = generateId("prj");

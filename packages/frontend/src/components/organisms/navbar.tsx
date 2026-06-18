@@ -11,18 +11,18 @@ interface NavbarUser {
   avatarUrl?: string | null;
 }
 
-type NavbarUserSlot =
-  | { userSlot: ReactNode; user?: NavbarUser }
-  | { userSlot?: undefined; user: NavbarUser };
-
 type NavbarProps = {
   notificationCount?: number;
   showLogo?: boolean;
   sticky?: boolean;
   searchPlaceholder?: string;
   leadingSlot?: ReactNode;
+  // Either is optional: a slim topbar (e.g. when the user lives in a sidebar)
+  // can render with neither, leaving just search + notifications.
+  userSlot?: ReactNode;
+  user?: NavbarUser;
   className?: string;
-} & NavbarUserSlot;
+};
 
 function Navbar({
   user,
@@ -55,7 +55,9 @@ function Navbar({
       <div className="ml-auto flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
         <NotificationBell count={notificationCount} />
         {userSlot ??
-          (user && <Avatar name={user.name} src={user.avatarUrl} size="sm" />)}
+          (user ? (
+            <Avatar name={user.name} src={user.avatarUrl} size="sm" />
+          ) : null)}
       </div>
     </nav>
   );

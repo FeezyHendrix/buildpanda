@@ -1,5 +1,6 @@
 import { SendMailClient } from "zeptomail";
 import { config } from "../config/index.ts";
+import { logger } from "./logger.ts";
 
 /**
  * ZeptoMail transactional email client.
@@ -23,22 +24,53 @@ export interface SendEmailOptions {
   toName?: string;
   subject: string;
   html: string;
+  text?: string;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<head[\s\S]*?<\/head>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, label) => {
+      const text = label.replace(/<[^>]+>/g, "").trim();
+      return text && href && text !== href ? `${text} (${href})` : href || text;
+    })
+    .replace(/<\/(p|div|tr|h[1-6]|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&copy;/g, "(c)")
+    .replace(/&zwnj;/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
   const recipients = Array.isArray(options.to) ? options.to : [options.to];
+  const text = options.text ?? htmlToText(options.html);
 
   if (!client) {
     const links = options.html.match(/href="([^"]+)"/g) ?? [];
-    console.warn(
-      `[mail] ZEPTOMAIL_TOKEN not set — skipping send. to=${recipients.join(",")} subject="${options.subject}" links=${links.join(" ")}`,
+    logger.warn(
+      { to: recipients, subject: options.subject, links },
+      "[mail] ZEPTOMAIL_TOKEN not set — skipping send",
     );
     return;
   }
 
   try {
-    await client.sendMail({
+    const response = await client.sendMail({
       from: { address: config.mail.fromAddress, name: config.mail.fromName },
+      reply_to: [
+        { address: config.mail.replyToAddress, name: config.mail.fromName },
+      ],
       to: recipients.map((address, index) => ({
         email_address: {
           address,
@@ -47,14 +79,22 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       })),
       subject: options.subject,
       htmlbody: options.html,
+      textbody: text,
     });
+    const requestId =
+      (response as { request_id?: string } | undefined)?.request_id ?? "unknown";
+    logger.info(
+      { to: recipients, subject: options.subject, requestId },
+      "[mail] Sent",
+    );
   } catch (error) {
     // ZeptoMail rejections arrive as objects with an `error.details` payload;
     // surface them as real Errors so callers/loggers get a useful message.
     const detail =
       error instanceof Error ? error.message : JSON.stringify(error);
-    console.error(
-      `[mail] Failed to send "${options.subject}" to ${options.to}: ${detail}`,
+    logger.error(
+      { to: options.to, subject: options.subject, detail },
+      "[mail] Failed to send",
     );
     throw new Error(`Failed to send email: ${detail}`);
   }

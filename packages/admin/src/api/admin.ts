@@ -14,6 +14,8 @@ export interface AdminOverview {
     documents: number;
     openDisputes: number;
     unassignedLeads: number;
+    importJobs: number;
+    failedImportJobs: number;
   };
   finance: { totalBudget: number; fundsReleased: number };
   recentUsers: Array<{
@@ -84,6 +86,7 @@ export interface AdminOrgDetail {
   slug: string;
   logo: string | null;
   metadata: string | null;
+  default_currency: string | null;
   createdAt: string;
   updatedAt: string;
   members: Array<{ userId: string; name: string; email: string; role: string; createdAt: string }>;
@@ -150,6 +153,23 @@ export interface AdminLeadRow {
   organizationName: string | null;
 }
 
+export interface AdminImportJobRow {
+  id: string;
+  kind: "programme" | "boq";
+  status: string;
+  fileName: string;
+  usedAi: boolean;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  requestedByName: string | null;
+  requestedByEmail: string | null;
+  organizationName: string | null;
+  item_count: number;
+}
+
+export type AdminImportJobDetail = Record<string, unknown>;
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -177,4 +197,9 @@ export const adminApi = {
     api.get<Paginated<AdminLeadRow>>("/admin/leads", { params: params(args) }).then((r) => r.data),
   assignLead: (id: string, organizationId: string) =>
     api.post<AdminLeadRow>(`/admin/leads/${id}/assign`, { organizationId }).then((r) => r.data),
+
+  listJobs: (args?: ListArgs) =>
+    api.get<Paginated<AdminImportJobRow>>("/admin/jobs", { params: params(args) }).then((r) => r.data),
+  getJob: (kind: string, id: string) =>
+    api.get<AdminImportJobDetail>(`/admin/jobs/${kind}/${id}`).then((r) => r.data),
 };

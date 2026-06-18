@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import authBgOne from "@/assets/images/auth-bg-one.svg";
-import authBgTwo from "@/assets/images/auth-bg-two.svg";
+import authBg from "@/assets/images/auth-bg.mp4";
+import authBgPoster from "@/assets/images/auth-bg-poster.jpg";
 import logo from "@/assets/images/logo.svg";
 
 const headerMap: Record<string, { text: string; linkText: string; to: string }> = {
@@ -11,30 +11,24 @@ const headerMap: Record<string, { text: string; linkText: string; to: string }> 
   "/auth/verify-email": { text: "Already verified?", linkText: "Sign In", to: "/auth/sign-in" },
 };
 
-const AUTH_BG_IMAGES = [authBgOne, authBgTwo] as const;
-
-const CYCLE_DURATION_S = 24;
-
 export default function AuthLayout() {
   const { pathname } = useLocation();
   const header = headerMap[pathname] ?? headerMap["/auth/sign-up"]!;
 
   return (
     <div className="flex h-dvh p-4">
-      <div className="relative hidden w-[40%] shrink-0 overflow-hidden lg:block">
-        {AUTH_BG_IMAGES.map((src, i) => (
-          <img
-            key={i}
-            src={src}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            style={{
-              animation: `authBgFade ${CYCLE_DURATION_S}s ease-in-out infinite`,
-              animationDelay: `${(CYCLE_DURATION_S / AUTH_BG_IMAGES.length) * i}s`,
-              opacity: 0,
-            }}
-          />
-        ))}
+      <div className="relative hidden w-[40%] shrink-0 overflow-hidden rounded-2xl bg-white lg:block">
+        <video
+          className="absolute inset-0 size-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster={authBgPoster}
+        >
+          <source src={authBg} type="video/mp4" />
+        </video>
       </div>
 
       <div className="flex flex-1 flex-col px-6 py-8 sm:px-12 lg:px-20">
@@ -54,8 +48,8 @@ export default function AuthLayout() {
           </p>
         </header>
 
-        <main className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md">
+        <main className="flex-1 overflow-y-auto py-8">
+          <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center">
             <Outlet />
           </div>
         </main>

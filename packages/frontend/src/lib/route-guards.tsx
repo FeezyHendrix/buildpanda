@@ -22,6 +22,8 @@ function useGuardSession() {
 }
 
 const LAST_SUITE_KEY = "buildpanda:last-suite";
+export const PENDING_PROJECT_INVITE_KEY = "buildpanda:pending-project-invite";
+export const PENDING_ORG_INVITE_KEY = "buildpanda:pending-org-invite";
 
 export function homePathFor(accountType: string | null | undefined): string {
   if (accountType === "project_owner") return "/my-build";
@@ -62,5 +64,13 @@ export function HomeRedirect() {
   const { isPending, signedIn, accountType } = useGuardSession();
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
+  if (pendingProjectInvite) {
+    return <Navigate to={`/accept-project-invite/${pendingProjectInvite}`} replace />;
+  }
+  const pendingOrgInvite = localStorage.getItem(PENDING_ORG_INVITE_KEY);
+  if (pendingOrgInvite) {
+    return <Navigate to={`/accept-invitation/${pendingOrgInvite}`} replace />;
+  }
   return <Navigate to={homePathFor(accountType)} replace />;
 }

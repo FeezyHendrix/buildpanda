@@ -1,3 +1,5 @@
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+
 import { useMemo, useState } from "react";
 import {
   BarChart,
@@ -47,6 +49,7 @@ export default function ProjectFinances() {
   const canManage = access?.capabilities?.canManage ?? false;
   const canDispute = canManage || access?.relationship === "client";
   const { data: finances, isPending } = useProjectFinances(project.id);
+  const { data: snapshot } = useReportingSnapshot(project.id);
 
   const [fundOpen, setFundOpen] = useState(false);
   const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(null);
@@ -66,7 +69,7 @@ export default function ProjectFinances() {
 
   if (!finances) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+      <div className="w-full px-6 py-8 sm:px-10">
         <PageHeader
           title="Finances"
           description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -79,7 +82,7 @@ export default function ProjectFinances() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -102,7 +105,7 @@ export default function ProjectFinances() {
 
       <section
         aria-label="Finance summary"
-        className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5"
+        className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
       >
         <KpiCard
           title="Total Budget"
@@ -129,9 +132,37 @@ export default function ProjectFinances() {
           title="Remaining Balance"
           icon={icons.wallet}
           value={formatCurrency(finances.remainingBalance, finances.currency)}
-          className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />
+        {snapshot?.finance?.invoices ? (
+          <KpiCard
+            title="Retention Held"
+            icon={icons.safeSquare}
+            value={formatCurrency(snapshot.finance.invoices.retentionHeld, finances.currency)}
+            className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
+          />
+        ) : (
+          <div className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]" />
+        )}
       </section>
+
+      {snapshot?.finance && (
+        <div className="mt-3 flex items-center justify-center gap-4 rounded-xl border border-[#EDEDED] bg-white p-4 text-sm font-medium text-gray-700 shadow-sm">
+          <span className="flex items-center gap-2">
+            Committed
+            <span className="text-gray-900">{formatCurrency(snapshot.finance.budget.totalCommitted, finances.currency)}</span>
+          </span>
+          <span className="text-gray-300">›</span>
+          <span className="flex items-center gap-2">
+            Invoiced
+            <span className="text-gray-900">{formatCurrency(snapshot.finance.invoices.invoicedTotal, finances.currency)}</span>
+          </span>
+          <span className="text-gray-300">›</span>
+          <span className="flex items-center gap-2">
+            Paid
+            <span className="text-gray-900">{formatCurrency(snapshot.finance.invoices.paidTotal, finances.currency)}</span>
+          </span>
+        </div>
+      )}
 
       <div className="mt-6 flex gap-6">
         <BudgetAllocationCard

@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
+  AlertIcon,
   CalendarIcon,
   ChevronRightIcon,
   ContractorsIcon,
@@ -12,6 +13,7 @@ import {
   MaterialsIcon,
   MessagesIcon,
   OverviewIcon,
+  SparkleIcon,
   TrendingUpIcon,
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
@@ -19,6 +21,7 @@ import { cn } from "@/lib/utils";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
+import { useProjectChannels } from "@/hooks/use-chat";
 
 type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
@@ -30,6 +33,7 @@ interface NavEntry {
 
 interface ProjectNavItem extends NavEntry {
   to: string;
+  badge?: number;
 }
 
 interface GroupNavItem extends ProjectNavItem {
@@ -52,18 +56,6 @@ const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 ] as const;
 
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  {
-    label: "Overview",
-    slug: "schedules",
-    Icon: OverviewIcon,
-    helper: "Programme timeline",
-  },
-  {
-    label: "What's Next",
-    slug: "schedules/whats-next",
-    Icon: TrendingUpIcon,
-    helper: "Next 2 weeks",
-  },
   {
     label: "Build Stages",
     slug: "schedules/stages",
@@ -94,18 +86,14 @@ const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
-  {
-    label: "Milestones",
-    slug: "schedules/milestones",
-    Icon: FinancesIcon,
-    helper: "Cost gates",
-  },
 ] as const;
 
 const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Inspections", slug: "inspections", Icon: InspectionsIcon, helper: "Quality checks" },
   { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
   { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information" },
+  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
   { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
   { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
@@ -113,6 +101,12 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow" },
+  {
+    label: "Milestones",
+    slug: "milestones",
+    Icon: FinancesIcon,
+    helper: "Cost gates",
+  },
   { label: "Budgeting", slug: "finances/budget", Icon: FinancesIcon, helper: "Cost codes" },
   {
     label: "Budget Allocation",
@@ -131,9 +125,6 @@ const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
-  { label: "Messages", slug: "messages", Icon: MessagesIcon, helper: "Conversations" },
-  { label: "Panda AI", slug: "panda-ai", Icon: TrendingUpIcon, helper: "Assistant" },
-  { label: "Settings", slug: "settings", Icon: SettingsIcon, helper: "Project setup" },
 ] as const;
 
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
@@ -143,6 +134,8 @@ const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Build Stages", slug: "stages", Icon: OverviewIcon },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
   { label: "Queries", slug: "queries", Icon: MessagesIcon },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon },
+  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
 ];
 
 interface ProjectSidebarProps {
@@ -153,7 +146,9 @@ interface ProjectSidebarProps {
 
 function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const location = useLocation();
-  const isClient = access?.relationship !== "none";
+  const isClient = access?.relationship !== "company";
+  const { data: channels = [] } = useProjectChannels(project.id);
+  const totalUnread = channels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
   const items = useMemo<ProjectNavItem[]>(
     () =>
       NAV_ENTRIES.map((entry) => ({
@@ -259,7 +254,7 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       </div>
 
       {isClient ? (
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+        <nav data-tour="project-nav" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
@@ -312,10 +307,35 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
             }}
           />
           <SidebarNavGroup
-            label="Team & Admin"
+            label="Teams"
             Icon={ContractorsIcon}
             items={teamAdminItems}
             active={isTeamAdminActive}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Messages",
+              slug: "chat",
+              Icon: MessagesIcon,
+              to: `/project/${project.id}/chat`,
+              badge: totalUnread > 0 ? totalUnread : undefined,
+            }}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Panda AI",
+              slug: "panda-ai",
+              Icon: SparkleIcon,
+              to: `/project/${project.id}/panda-ai`,
+            }}
+          />
+          <ProjectNavLink
+            item={{
+              label: "Settings",
+              slug: "settings",
+              Icon: SettingsIcon,
+              to: `/project/${project.id}/settings`,
+            }}
           />
         </nav>
       )}
@@ -371,7 +391,7 @@ function SidebarNavGroup({
 }
 
 function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
-  const { Icon, label, slug, to } = item;
+  const { label, slug, to } = item;
   const location = useLocation();
   const isActive =
     slug === "finances" || slug === "schedules"
@@ -388,14 +408,13 @@ function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
         isActive && "bg-[#EDEDED] text-gray-900",
       )}
     >
-      <Icon className="size-4 shrink-0" />
       <span className="truncate">{label}</span>
     </Link>
   );
 }
 
 function ProjectNavLink({ item }: { item: ProjectNavItem }) {
-  const { Icon, label, to } = item;
+  const { Icon, label, to, badge } = item;
   return (
     <NavLink
       to={to}
@@ -409,7 +428,12 @@ function ProjectNavLink({ item }: { item: ProjectNavItem }) {
       }
     >
       <Icon />
-      <span className="truncate">{label}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {badge !== undefined && (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#004DE7] px-1.5 text-[10px] font-bold leading-none text-white">
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </NavLink>
   );
 }

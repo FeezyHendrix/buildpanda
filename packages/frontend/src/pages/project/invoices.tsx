@@ -1,4 +1,7 @@
-import { useMemo, useState } from "react";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
+
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
@@ -28,12 +31,16 @@ import {
   useDeleteInvoice,
   useAddInvoicePayment,
   useDeleteInvoicePayment,
+  useInvoiceAllocations,
+  useSetInvoiceAllocations,
   type Invoice,
   type InvoiceInput,
 } from "@/hooks/use-invoices";
-import { formatCurrency } from "@/lib/formatters";
+import { useProjectBudget } from "@/hooks/use-budget";
+import { formatCurrency, currencySymbol } from "@/lib/formatters";
 import { INVOICE_STATUS_TONE as STATUS_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
+import { MoneyInput } from "@/components/atoms/money-input";
 
 function toInput(values: UpsertInvoiceValues): InvoiceInput {
   return {
@@ -68,6 +75,7 @@ export default function ProjectInvoices() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
   const [createOpen, setCreateOpen] = useState(false);
   const createInvoice = useCreateInvoice();
 
@@ -92,7 +100,7 @@ export default function ProjectInvoices() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -143,6 +151,18 @@ export default function ProjectInvoices() {
         />
       </section>
 
+      {snapshot && (
+        <section className="mt-6">
+          <div className="lg:w-1/2">
+            <InvoiceAgingBar 
+              aging={snapshot.finance.invoices.aging} 
+              currency={snapshot.currency} 
+              isLoading={isSnapshotLoading} 
+            />
+          </div>
+        </section>
+      )}
+
       <section className="mt-6">
         {isPending ? (
           <div className="flex flex-1 items-center justify-center py-20">
@@ -179,6 +199,107 @@ export default function ProjectInvoices() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function InvoiceBudgetAllocations({ projectId, invoice, currency }: { projectId: string; invoice: Invoice; currency: string }) {
+  const { data: budget } = useProjectBudget(projectId);
+  const { data: allocationsData = [], isPending } = useInvoiceAllocations(projectId, invoice.id);
+  const setAllocations = useSetInvoiceAllocations();
+
+  const [allocations, setAllocationsState] = useState<Array<{categoryId: string; amount: string}>>([]);
+
+  useEffect(() => {
+    if (!isPending) {
+      if (allocationsData.length > 0) {
+        setAllocationsState(allocationsData.map(a => ({ categoryId: a.budgetCategoryId, amount: String(a.amount) })));
+      } else {
+        const first = budget?.categories?.[0];
+        if (first) {
+          setAllocationsState([{ categoryId: first.id, amount: String(invoice.amount) }]);
+        }
+      }
+    }
+  }, [allocationsData, isPending, budget?.categories, invoice.amount]);
+
+  if (isPending || !budget) return null;
+
+  const totalAllocated = allocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+  const isOver = totalAllocated > invoice.amount;
+
+  function handleSave() {
+    setAllocations.mutate({
+      projectId,
+      invoiceId: invoice.id,
+      allocations: allocations
+        .filter(a => a.categoryId && Number(a.amount) > 0)
+        .map(a => ({ budgetCategoryId: a.categoryId, amount: Number(a.amount) }))
+    });
+  }
+
+  function addRow() {
+    const first = budget?.categories?.[0];
+    if (first) {
+      setAllocationsState([...allocations, { categoryId: first.id, amount: "" }]);
+    }
+  }
+
+  function updateRow(idx: number, field: "categoryId" | "amount", val: string) {
+    setAllocationsState(
+      allocations.map((row, i) => (i === idx ? { ...row, [field]: val } : row)),
+    );
+  }
+
+  function removeRow(idx: number) {
+    setAllocationsState(allocations.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-[#F0F0F0] pt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+        Charge to budget category
+      </p>
+      <div className="flex flex-col gap-2">
+        {allocations.map((a, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <select
+              value={a.categoryId}
+              onChange={e => updateRow(i, "categoryId", e.target.value)}
+              className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+            >
+              {budget.categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <MoneyInput
+              currencySymbol={currencySymbol(currency)}
+              value={a.amount}
+              onChange={val => updateRow(i, "amount", val)}
+              className="w-32 h-9 rounded-lg border border-gray-200 px-3 text-sm"
+            />
+            <Button variant="ghost" size="sm" className="h-9 text-red-500" onClick={() => removeRow(i)}>
+              ✕
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <Button variant="secondary" size="sm" onClick={addRow}>+ Add category</Button>
+        <div className="flex items-center gap-4">
+          <span className={cn("text-sm font-medium", isOver ? "text-red-600" : "text-gray-700")}>
+            Total: {formatCurrency(totalAllocated, currency)} / {formatCurrency(invoice.amount, currency)}
+          </span>
+          <Button 
+            variant="primary" 
+            size="sm" 
+            disabled={setAllocations.isPending || isOver} 
+            onClick={handleSave}
+          >
+            Save allocations
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -282,6 +403,8 @@ function InvoiceCard({
       {invoice.notes && (
         <p className="text-sm text-gray-600 text-pretty">{invoice.notes}</p>
       )}
+
+      <InvoiceBudgetAllocations projectId={projectId} invoice={invoice} currency={currency} />
 
       {invoice.payments.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-[#F0F0F0] pt-3">

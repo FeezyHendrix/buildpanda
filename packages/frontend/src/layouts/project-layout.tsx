@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
+import { PandaAiPane } from "@/components/organisms/panda-ai-pane";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
@@ -65,12 +66,13 @@ export default function ProjectLayout() {
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
         <ProjectSidebar project={project} access={access} />
-        <main className="flex-1 overflow-y-auto no-scrollbar">
+        <main className="relative flex-1 overflow-y-auto no-scrollbar">
           {access && <ReadOnlyBanner access={access} />}
           <ErrorBoundary>
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
+        <PandaAiPane projectId={project.id} />
       </div>
     </AppShell>
   );

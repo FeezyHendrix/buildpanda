@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { risksRepository } from "./repository.ts";
 import { risksService, type CreateRiskInput, type EditRiskInput } from "./service.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 
 const riskParams = {
   type: "object",
@@ -38,7 +40,10 @@ const editRiskBody = {
 } as const;
 
 const riskRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = risksService(risksRepository(fastify.db));
+  const service = risksService(risksRepository(fastify.db), {
+    db: fastify.db,
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/risk-factors",

@@ -24,6 +24,9 @@ export const FPS = 30;
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
 
+export const UHD_WIDTH = 3840;
+export const UHD_HEIGHT = 2160;
+
 export const SHOT_W = 1500;
 export const SHOT_H = 940;
 export const SHOT_RATIO = SHOT_W / SHOT_H;

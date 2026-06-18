@@ -100,6 +100,23 @@ export const siteQueryKeys = {
     [...siteQueryKeys.all(projectId), "detail", queryId] as const,
 };
 
+export const rfiKeys = {
+  all: (projectId: string) => ["projects", projectId, "rfis"] as const,
+  list: (projectId: string, status?: string) =>
+    [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, rfiId: string) =>
+    [...rfiKeys.all(projectId), "detail", rfiId] as const,
+};
+
+export const bimKeys = {
+  all: (projectId: string) => ["projects", projectId, "bim"] as const,
+  models: (projectId: string) => [...bimKeys.all(projectId), "models"] as const,
+  model: (projectId: string, modelId: string) =>
+    [...bimKeys.all(projectId), "model", modelId] as const,
+  issues: (projectId: string, modelId: string) =>
+    [...bimKeys.all(projectId), "issues", modelId] as const,
+};
+
 export const approvalKeys = {
   all: (projectId: string) => ["projects", projectId, "approvals"] as const,
   list: (projectId: string, status?: string) =>
@@ -179,6 +196,14 @@ export const pandaAiKeys = {
   all: (projectId: string) => ["projects", projectId, "ai-insights"] as const,
   latest: (projectId: string) =>
     [...pandaAiKeys.all(projectId), "latest"] as const,
+  detectedPhases: (projectId: string) =>
+    [...pandaAiKeys.all(projectId), "detected-phases"] as const,
+};
+
+export const reportingKeys = {
+  all: (projectId: string) => ["projects", projectId, "reporting"] as const,
+  snapshot: (projectId: string) =>
+    [...reportingKeys.all(projectId), "snapshot"] as const,
 };
 
 export const leadKeys = {
@@ -205,4 +230,17 @@ export const proposalKeys = {
   plans: (id: string) => [...proposalKeys.detail(id), "plans"] as const,
   boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
   publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
+};
+
+export const channelKeys = {
+  all: ["channels"] as const,
+  list: () => [...channelKeys.all, "list"] as const,
+  project: (projectId: string) => ["projects", projectId, "channels"] as const,
+  detail: (channelId: string) => [...channelKeys.all, "detail", channelId] as const,
+  members: (channelId: string) => [...channelKeys.all, channelId, "members"] as const,
+};
+
+export const messageKeys = {
+  all: (channelId: string) => ["channels", channelId, "messages"] as const,
+  list: (channelId: string) => [...messageKeys.all(channelId), "list"] as const,
 };

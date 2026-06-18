@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, currencySymbol } from "@/lib/formatters";
+import { MoneyInput } from "@/components/atoms/money-input";
 import type { PaymentMethod } from "@/hooks/use-invoices";
 
 export interface RecordPaymentValues {
@@ -51,6 +52,7 @@ function RecordPaymentDialog({
   error,
 }: RecordPaymentDialogProps) {
   const [values, setValues] = useState<RecordPaymentValues>(EMPTY);
+  const symbol = currencySymbol(currency);
 
   useEffect(() => {
     if (open) {
@@ -102,17 +104,13 @@ function RecordPaymentDialog({
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="payment-amount">Amount</Label>
-        <input
+        <MoneyInput
           id="payment-amount"
-          type="number"
-          inputMode="decimal"
-          min={0}
-          step="0.01"
           value={values.amount}
-          onChange={(e) => update("amount", e.target.value)}
+          onChange={(v) => update("amount", v)}
+          currencySymbol={symbol}
           placeholder="0.00"
           autoFocus
-          className={inputClass}
         />
       </div>
 

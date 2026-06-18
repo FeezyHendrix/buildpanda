@@ -54,7 +54,7 @@ export default function ProjectMilestonePayments() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           isUnderSchedules

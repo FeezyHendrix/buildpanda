@@ -20,6 +20,12 @@ function optionalNumber(name: string, fallback: number): number {
   return parsed;
 }
 
+function optionalBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  return raw === "1" || raw.toLowerCase() === "true";
+}
+
 const env = optional("NODE_ENV", "development");
 
 export const config = {
@@ -42,6 +48,16 @@ export const config = {
       .filter(Boolean),
     logLevel: optional("LOG_LEVEL", "info"),
   },
+
+  cluster: {
+    workers: optionalNumber("CLUSTER_WORKERS", optionalNumber("WEB_CONCURRENCY", 1)),
+  },
+
+  worker: {
+    runWorkers: optionalBool("RUN_WORKERS", true),
+  },
+
+  dbPoolMax: optionalNumber("DB_POOL_MAX", 10),
 
   // Emails auto-promoted to the global `admin` role on login (bootstraps the
   // first platform admin without manual DB edits). Comma-separated.
@@ -66,20 +82,19 @@ export const config = {
     baseUrl: optional("BETTER_AUTH_URL", "http://localhost:3000"),
   },
 
+  consulting: {
+    orgId: optional("BUILDPANDA_CONSULTING_ORG_ID", ""),
+  },
+
   mail: {
     token: optional("ZEPTOMAIL_TOKEN", ""),
     fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
     fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
-    // Link target for the logo in email headers (the app sign-in origin).
+    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.io"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),
-    // Where the email header logo is hosted. Defaults to the API's own
-    // /static/email-logo.png route so it works wherever the backend deploys.
-    logoUrl: optional(
-      "EMAIL_LOGO_URL",
-      `${optional("BETTER_AUTH_URL", "http://localhost:3000")}/static/email-logo.png`,
-    ),
+    logoUrl: optional("EMAIL_LOGO_URL", "https://buildpanda.io/logo.png"),
     // Inboxes that receive "Book a consultation" leads from the marketing
     // site. Comma-separated.
     leadsNotifyAddresses: optional(
@@ -108,6 +123,13 @@ export const config = {
     baseUrl: optional("KIMI_BASE_URL", "https://api.moonshot.ai/v1"),
     model: optional("KIMI_MODEL", "kimi-k2-0905-preview"),
     timeoutMs: optionalNumber("KIMI_TIMEOUT_MS", 45_000),
+  },
+
+  openai: {
+    apiKey: optional("OPENAI_API_KEY", ""),
+    baseUrl: optional("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+    model: optional("OPENAI_MODEL", "gpt-4o-mini"),
+    timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
   },
 
   storage: {

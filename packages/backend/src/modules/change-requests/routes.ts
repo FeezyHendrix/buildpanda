@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { changeRequestsRepository } from "./repository.ts";
 import {
   changeRequestsService,
@@ -44,6 +46,28 @@ const createBody = {
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
     currency: { type: "string", enum: CURRENCY },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
+  },
+} as const;
+
+const budgetLinksBody = {
+  type: "object",
+  required: ["links"],
+  additionalProperties: false,
+  properties: {
+    links: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["budgetCategoryId", "amount"],
+        additionalProperties: false,
+        properties: {
+          budgetCategoryId: { type: "string", minLength: 1 },
+          amount: { type: "number", minimum: 0 },
+          committed: { type: "boolean" },
+        },
+      },
+    },
   },
 } as const;
 
@@ -59,6 +83,7 @@ const updateBody = {
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
     currency: { type: "string", enum: CURRENCY },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -70,7 +95,9 @@ const commentBody = {
 } as const;
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = changeRequestsService(changeRequestsRepository(fastify.db));
+  const service = changeRequestsService(changeRequestsRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
     "/projects/:id/change-requests",
@@ -132,6 +159,35 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
         name: user.name,
       });
       return reply.status(201).send(comment);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; changeId: string } }>(
+    "/projects/:id/change-requests/:changeId/budget-links",
+    { schema: { params: crParams } },
+    async (request) => {
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.getBudgetLinks(project.id, request.params.changeId);
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string; changeId: string };
+    Body: { links: { budgetCategoryId: string; amount: number; committed?: boolean }[] };
+  }>(
+    "/projects/:id/change-requests/:changeId/budget-links",
+    { schema: { params: crParams, body: budgetLinksBody } },
+    async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      return service.setBudgetLinks(
+        project.id,
+        request.params.changeId,
+        request.body.links.map((l) => ({
+          budgetCategoryId: l.budgetCategoryId,
+          amount: l.amount,
+          committed: l.committed ?? false,
+        })),
+      );
     },
   );
 };

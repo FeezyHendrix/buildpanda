@@ -153,12 +153,14 @@ export default function AboutPage() {
                   </span>
                   {site.email}
                 </a>
-                <a href={`tel:${site.phoneDisplay.replace(/\s+/g, "")}`} className="inline-flex items-center gap-3 text-sm font-medium text-ink hover:text-brand">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand">
-                    <PhoneIcon className="h-5 w-5" />
-                  </span>
-                  {site.phoneDisplay}
-                </a>
+                {site.phones.map((phone) => (
+                  <a key={phone} href={`tel:${phone.replace(/\s+/g, "")}`} className="inline-flex items-center gap-3 text-sm font-medium text-ink hover:text-brand">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                      <PhoneIcon className="h-5 w-5" />
+                    </span>
+                    {phone}
+                  </a>
+                ))}
               </div>
               <div>
                 <ButtonLink href="/product/" variant="outline" size="md">

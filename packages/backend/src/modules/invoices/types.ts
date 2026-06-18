@@ -9,6 +9,11 @@ export interface InvoicePayment {
   note: string | null;
 }
 
+export interface InvoiceBudgetAllocation {
+  budgetCategoryId: string;
+  amount: number;
+}
+
 export interface Invoice {
   id: string;
   vendorName: string;

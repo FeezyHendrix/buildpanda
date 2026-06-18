@@ -17,6 +17,7 @@ interface LocationStepProps {
   onCityChange: (value: string) => void;
   onOwnsLandChange: (value: SwitcherValue) => void;
   onFilesChange?: (files: FileList | null) => void;
+  onBimFileChange?: (files: FileList | null) => void;
 }
 
 function LocationStep({
@@ -27,6 +28,7 @@ function LocationStep({
   onCityChange,
   onOwnsLandChange,
   onFilesChange,
+  onBimFileChange,
 }: LocationStepProps) {
   return (
     <div>
@@ -78,6 +80,22 @@ function LocationStep({
           height={300}
           onChange={onFilesChange}
         />
+
+        <div>
+          <p className="text-sm font-semibold text-gray-900">
+            Do you have a 3D model (BIM)?
+          </p>
+          <p className="mt-1 text-xs text-[#929292] text-pretty">
+            If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
+          </p>
+          <FileUpload
+            label="Upload IFC model"
+            optional
+            accept=".ifc"
+            height={200}
+            onChange={onBimFileChange}
+          />
+        </div>
       </div>
     </div>
   );
