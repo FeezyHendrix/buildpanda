@@ -1,4 +1,5 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { toIso } from "../../lib/dates.ts";
 import type { DailyLogsRepository } from "./repository.ts";
 import type {
   DailyLog,
@@ -15,10 +16,6 @@ function assertDate(value: string, field: string): void {
   if (!DATE_RE.test(value)) {
     throw new BadRequestError(`${field} must be ISO date YYYY-MM-DD`);
   }
-}
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
 }
 
 function numOrNull(value: string | null): number | null {
@@ -48,7 +45,19 @@ function buildLog(row: DailyLogRow, activities: DailyLogActivityLink[]): DailyLo
   };
 }
 
-export function dailyLogsService(repository: DailyLogsRepository) {
+export interface DailyLogActivityHooks {
+  createUpdate?: (
+    projectId: string,
+    input: { category: "Progress"; title: string; description: string; activityId: string },
+    actor: { id: string; name: string },
+  ) => Promise<unknown>;
+  markActivityInProgress?: (projectId: string, activityId: string) => Promise<void>;
+}
+
+export function dailyLogsService(
+  repository: DailyLogsRepository,
+  hooks: DailyLogActivityHooks = {},
+) {
   async function attachActivities(rows: DailyLogRow[]): Promise<DailyLog[]> {
     if (rows.length === 0) return [];
     const keys = rows.map((r) => ({
@@ -113,6 +122,7 @@ export function dailyLogsService(repository: DailyLogsRepository) {
       projectId: string,
       logDate: string,
       input: LinkActivityInput,
+      actor?: { id: string; name: string },
     ): Promise<DailyLogActivityRow> {
       assertDate(logDate, "logDate");
       const activity = await repository.findActivity(projectId, input.activityId);
@@ -121,11 +131,32 @@ export function dailyLogsService(repository: DailyLogsRepository) {
       const existing = await repository.findOne({ projectId, logDate });
       if (!existing) throw new NotFoundError("Daily log");
 
-      return repository.upsertActivityLink(
+      const link = await repository.upsertActivityLink(
         { projectId, logDate },
         input.activityId,
         input.hoursLogged,
       );
+
+      if (hooks.markActivityInProgress) {
+        await hooks.markActivityInProgress(projectId, input.activityId).catch(() => undefined);
+      }
+      if (hooks.createUpdate && actor) {
+        const activityName = activity.name ?? "an activity";
+        await hooks
+          .createUpdate(
+            projectId,
+            {
+              category: "Progress",
+              title: `Site work logged on ${activityName}`,
+              description: `${input.hoursLogged} hour(s) logged against ${activityName} on ${logDate}.`,
+              activityId: input.activityId,
+            },
+            actor,
+          )
+          .catch(() => undefined);
+      }
+
+      return link;
     },
 
     async remove(projectId: string, logDate: string): Promise<void> {

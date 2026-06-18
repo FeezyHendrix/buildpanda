@@ -39,6 +39,8 @@ export function adminRepository(db: Knex) {
       openDisputes,
       finance,
       unassignedLeads,
+      importJobs,
+      failedImportJobs,
     ] = await Promise.all([
       db("user").count<{ count: string }[]>("id as count").first(),
       db("organization").count<{ count: string }[]>("id as count").first(),
@@ -56,6 +58,34 @@ export function adminRepository(db: Knex) {
         })
         .first(),
       db("leads").whereNull("org_id").count<{ count: string }[]>("id as count").first(),
+      db
+        .from(
+          db
+            .unionAll(
+              [
+                db("programme_import_jobs").select("id"),
+                db("boq_import_jobs").select("id"),
+              ],
+              true,
+            )
+            .as("all_jobs"),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db
+        .from(
+          db
+            .unionAll(
+              [
+                db("programme_import_jobs").where({ status: "failed" }).select("id"),
+                db("boq_import_jobs").where({ status: "failed" }).select("id"),
+              ],
+              true,
+            )
+            .as("failed_jobs"),
+        )
+        .count<{ count: string }[]>("id as count")
+        .first(),
     ]);
 
     const recentUsers = await db("user")
@@ -88,6 +118,8 @@ export function adminRepository(db: Knex) {
         documents: num(documents),
         openDisputes: num(openDisputes),
         unassignedLeads: num(unassignedLeads),
+        importJobs: num(importJobs),
+        failedImportJobs: num(failedImportJobs),
       },
       finance: {
         totalBudget: Number(finance?.budget ?? 0),
@@ -223,7 +255,7 @@ export function adminRepository(db: Knex) {
 
   async function getOrganization(id: string) {
     const org = await db("organization")
-      .select("id", "name", "slug", "logo", "metadata", "createdAt", "updatedAt")
+      .select("id", "name", "slug", "logo", "metadata", "default_currency", "createdAt", "updatedAt")
       .where({ id })
       .first();
     if (!org) return null;
@@ -371,6 +403,73 @@ export function adminRepository(db: Knex) {
     return lead ?? null;
   }
 
+  async function listImportJobs(params: ListParams) {
+    const programme = db("programme_import_jobs as j")
+      .leftJoin("user as u", "u.id", "j.requested_by")
+      .leftJoin("organization as o", "o.id", "j.organization_id")
+      .select(
+        "j.id",
+        db.raw("'programme' as kind"),
+        "j.status",
+        "j.file_name as fileName",
+        "j.used_ai as usedAi",
+        "j.error",
+        "j.created_at as createdAt",
+        "j.updated_at as updatedAt",
+        "u.name as requestedByName",
+        "u.email as requestedByEmail",
+        "o.name as organizationName",
+        db.raw("j.activity_count as item_count"),
+      );
+    const boq = db("boq_import_jobs as j")
+      .leftJoin("projects as p", "p.id", "j.project_id")
+      .leftJoin("user as u", "u.id", "j.requested_by")
+      .select(
+        "j.id",
+        db.raw("'boq' as kind"),
+        "j.status",
+        "j.file_name as fileName",
+        "j.used_ai as usedAi",
+        "j.error",
+        "j.created_at as createdAt",
+        "j.updated_at as updatedAt",
+        "u.name as requestedByName",
+        "u.email as requestedByEmail",
+        "p.name as organizationName",
+        db.raw("j.material_count as item_count"),
+      );
+
+    if (params.status) {
+      programme.where("j.status", params.status);
+      boq.where("j.status", params.status);
+    }
+    if (params.search) {
+      const like = `%${params.search}%`;
+      programme.whereILike("j.file_name", like);
+      boq.whereILike("j.file_name", like);
+    }
+
+    const union = db
+      .unionAll([programme, boq], true)
+      .as("jobs");
+    const base = db.from(union);
+
+    const totalRow = await base.clone().count<{ count: string }[]>("id as count").first();
+    const rows = await base
+      .clone()
+      .select("*")
+      .orderBy("createdAt", "desc")
+      .limit(params.limit)
+      .offset(params.offset);
+    return { total: Number(totalRow?.count ?? 0), rows };
+  }
+
+  async function getImportJob(kind: string, id: string) {
+    const table = kind === "boq" ? "boq_import_jobs" : "programme_import_jobs";
+    const job = await db(table).where({ id }).first();
+    return job ?? null;
+  }
+
   return {
     overview,
     listUsers,
@@ -384,6 +483,8 @@ export function adminRepository(db: Knex) {
     projectCollection,
     listLeads,
     assignLead,
+    listImportJobs,
+    getImportJob,
   };
 }
 

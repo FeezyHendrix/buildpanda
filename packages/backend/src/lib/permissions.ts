@@ -23,12 +23,16 @@ export const statement = {
   participants: ["view", "manage"],
   teamMembers: ["view", "manage"],
   orgProfile: ["view", "manage"],
+  rfis: ["view", "create", "respond", "manage"],
+  bim: ["view", "upload", "manage"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
 } as const;
 
 export const ac = createAccessControl(statement);
+
+type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
@@ -45,7 +49,9 @@ const constructionFull = {
   participants: ["view", "manage"],
   teamMembers: ["view", "manage"],
   orgProfile: ["view", "manage"],
-} as const;
+  rfis: ["view", "create", "respond", "manage"],
+  bim: ["view", "upload", "manage"],
+} as const satisfies PresetShape;
 
 const constructionContributor = {
   project: ["view"],
@@ -62,7 +68,9 @@ const constructionContributor = {
   participants: ["view"],
   teamMembers: ["view", "manage"],
   orgProfile: ["view"],
-} as const;
+  rfis: ["view", "create", "respond"],
+  bim: ["view", "upload"],
+} as const satisfies PresetShape;
 
 const constructionReadOnly = {
   project: ["view"],
@@ -79,7 +87,9 @@ const constructionReadOnly = {
   participants: ["view"],
   teamMembers: ["view"],
   orgProfile: ["view"],
-} as const;
+  rfis: ["view", "create"],
+  bim: ["view"],
+} as const satisfies PresetShape;
 
 export const owner = ac.newRole({
   ...ownerAc.statements,

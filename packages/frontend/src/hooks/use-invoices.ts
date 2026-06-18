@@ -185,3 +185,48 @@ export function useDeleteInvoicePayment() {
     },
   });
 }
+
+export interface InvoiceAllocation {
+  budgetCategoryId: string;
+  amount: number;
+}
+
+export function useInvoiceAllocations(projectId: string | undefined, invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: [...invoiceKeys.list(projectId ?? "__none__"), invoiceId, "allocations"],
+    queryFn: async () => {
+      const { data } = await api.get<{ allocations: InvoiceAllocation[] }>(
+        `/projects/${projectId!}/invoices/${invoiceId!}/allocations`,
+      );
+      return data.allocations;
+    },
+    enabled: Boolean(projectId && invoiceId),
+  });
+}
+
+export function useSetInvoiceAllocations() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      invoiceId,
+      allocations,
+    }: {
+      projectId: string;
+      invoiceId: string;
+      allocations: InvoiceAllocation[];
+    }) => {
+      const { data } = await api.put<{ allocations: InvoiceAllocation[] }>(
+        `/projects/${projectId}/invoices/${invoiceId}/allocations`,
+        { allocations },
+      );
+      return data.allocations;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId, "budget"] });
+    },
+  });
+}
+

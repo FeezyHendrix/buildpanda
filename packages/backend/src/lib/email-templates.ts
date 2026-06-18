@@ -11,12 +11,21 @@ import { config } from "../config/index.ts";
 const BRAND = {
   primary: "#004DE7",
   primaryDark: "#0037A4",
-  heading: "#111827",
-  body: "#4b5563",
-  muted: "#9ca3af",
+  primaryTint: "#E6EDFD",
+  heading: "#111111",
+  body: "#414141",
+  muted: "#888888",
+  faint: "#ADADAD",
   background: "#F4F6FB",
   card: "#ffffff",
   border: "#E6EDFD",
+  hairline: "#EDEDED",
+  success: "#13A368",
+  successTint: "#E8FCF4",
+  danger: "#D42C19",
+  dangerTint: "#FDEAE8",
+  warning: "#B45309",
+  warningTint: "#FEF3E2",
 } as const;
 
 const FONT_STACK =
@@ -31,26 +40,80 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function logoSrc(): string {
+  const base = config.mail.appUrl.replace(/\/+$/, "");
+  return `${base}/static/email-logo.png`;
+}
+
+export type EmailAccent = "brand" | "success" | "danger" | "warning";
+
+const ACCENT_COLOR: Record<EmailAccent, string> = {
+  brand: BRAND.primary,
+  success: BRAND.success,
+  danger: BRAND.danger,
+  warning: BRAND.warning,
+};
+
+export function infoRow(label: string, value: string): string {
+  return `<tr>
+    <td style="padding:10px 0;font-family:${FONT_STACK};font-size:13px;line-height:1.5;color:${BRAND.muted};white-space:nowrap;vertical-align:top;width:120px;">${escapeHtml(label)}</td>
+    <td style="padding:10px 0;font-family:${FONT_STACK};font-size:14px;line-height:1.5;font-weight:600;color:${BRAND.heading};vertical-align:top;">${escapeHtml(value)}</td>
+  </tr>`;
+}
+
+export function metaTable(rows: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 4px 0;border-top:1px solid ${BRAND.hairline};border-bottom:1px solid ${BRAND.hairline};">
+    ${rows}
+  </table>`;
+}
+
+export function statusBadge(label: string, accent: EmailAccent = "brand"): string {
+  const tint: Record<EmailAccent, string> = {
+    brand: BRAND.primaryTint,
+    success: BRAND.successTint,
+    danger: BRAND.dangerTint,
+    warning: BRAND.warningTint,
+  };
+  return `<span style="display:inline-block;padding:5px 12px;border-radius:999px;background-color:${tint[accent]};font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:${ACCENT_COLOR[accent]};">${escapeHtml(label)}</span>`;
+}
+
+export function calloutBox(html: string, accent: EmailAccent = "brand"): string {
+  const tint: Record<EmailAccent, string> = {
+    brand: BRAND.primaryTint,
+    success: BRAND.successTint,
+    danger: BRAND.dangerTint,
+    warning: BRAND.warningTint,
+  };
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+    <tr>
+      <td style="background-color:${tint[accent]};border-left:3px solid ${ACCENT_COLOR[accent]};border-radius:8px;padding:14px 16px;font-family:${FONT_STACK};font-size:14px;line-height:1.6;color:${BRAND.body};">${html}</td>
+    </tr>
+  </table>`;
+}
+
 interface EmailContent {
-  /** Preheader shown next to the subject in inbox previews. Plain text. */
   preview: string;
   heading: string;
-  /** Already-escaped/trusted HTML for the body paragraphs. */
   bodyHtml: string;
   cta: { label: string; url: string };
-  /** Small print under the CTA, e.g. expiry / "ignore this" note. Plain text. */
   footnote: string;
+  accent?: EmailAccent;
+  eyebrow?: string;
 }
 
 function renderEmail(content: EmailContent): string {
   const year = new Date().getFullYear();
   const ctaUrl = escapeHtml(content.cta.url);
-  // The plain-link fallback only makes sense for web links (not mailto: etc).
+  const accent = content.accent ?? "brand";
+  const accentColor = ACCENT_COLOR[accent];
+  const eyebrowHtml = content.eyebrow
+    ? `<p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${accentColor};">${escapeHtml(content.eyebrow)}</p>`
+    : "";
   const linkFallback = content.cta.url.startsWith("http")
-    ? `<p style="margin:0 0 8px 0;font-family:${FONT_STACK};font-size:13px;line-height:1.6;color:${BRAND.muted};">
-                Or copy and paste this link into your browser:
+    ? `<p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:${BRAND.faint};">
+                Button not working? Copy this link into your browser:
               </p>
-              <p style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:13px;line-height:1.6;word-break:break-all;">
+              <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;word-break:break-all;">
                 <a href="${ctaUrl}" target="_blank" style="color:${BRAND.primary};text-decoration:underline;">${ctaUrl}</a>
               </p>`
     : "";
@@ -60,59 +123,74 @@ function renderEmail(content: EmailContent): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
   <title>${escapeHtml(content.heading)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
-<body style="margin:0;padding:0;background-color:${BRAND.background};">
-  <!-- Preheader: hidden inbox preview text -->
+<body style="margin:0;padding:0;background-color:${BRAND.background};-webkit-font-smoothing:antialiased;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${escapeHtml(content.preview)}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.background};">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-          <!-- Logo -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
           <tr>
-            <td align="center" style="padding:0 0 28px 0;">
-              <a href="${escapeHtml(config.mail.appUrl)}" target="_blank" style="text-decoration:none;">
-                <img src="${escapeHtml(config.mail.logoUrl)}" width="132" height="48" alt="BuildPanda"
-                  style="display:block;border:0;outline:none;width:132px;height:48px;font-family:${FONT_STACK};font-size:22px;font-weight:700;color:${BRAND.primary};" />
-              </a>
-            </td>
-          </tr>
-          <!-- Card -->
-          <tr>
-            <td style="background-color:${BRAND.card};border:1px solid ${BRAND.border};border-radius:16px;padding:40px;">
-              <h1 style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:22px;line-height:1.3;font-weight:700;color:${BRAND.heading};">
-                ${escapeHtml(content.heading)}
-              </h1>
-              <div style="font-family:${FONT_STACK};font-size:15px;line-height:1.65;color:${BRAND.body};">
-                ${content.bodyHtml}
-              </div>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+            <td style="background-color:${BRAND.card};border:1px solid ${BRAND.border};border-radius:18px;overflow:hidden;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center" style="background-color:${BRAND.primary};border-radius:10px;">
-                    <a href="${ctaUrl}" target="_blank"
-                      style="display:inline-block;padding:14px 32px;font-family:${FONT_STACK};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">
-                      ${escapeHtml(content.cta.label)}
+                  <td style="height:4px;background-color:${accentColor};line-height:4px;font-size:4px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="background-color:#FAFBFE;border-bottom:1px solid ${BRAND.hairline};padding:24px 40px;">
+                    <a href="${escapeHtml(config.mail.appUrl)}" target="_blank" style="text-decoration:none;">
+                      <img src="${escapeHtml(logoSrc())}" width="116" height="42" alt="BuildPanda"
+                        style="display:block;border:0;outline:none;height:42px;width:116px;" />
                     </a>
                   </td>
                 </tr>
+                <tr>
+                  <td style="padding:36px 40px 40px 40px;">
+                    ${eyebrowHtml}
+                    <h1 style="margin:0 0 18px 0;font-family:${FONT_STACK};font-size:23px;line-height:1.3;font-weight:800;letter-spacing:-0.01em;color:${BRAND.heading};">
+                      ${escapeHtml(content.heading)}
+                    </h1>
+                    <div style="font-family:${FONT_STACK};font-size:15px;line-height:1.7;color:${BRAND.body};">
+                      ${content.bodyHtml}
+                    </div>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:28px 0 4px 0;">
+                      <tr>
+                        <td align="center" style="background-color:${accentColor};border-radius:10px;">
+                          <a href="${ctaUrl}" target="_blank"
+                            style="display:inline-block;padding:14px 34px;font-family:${FONT_STACK};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">
+                            ${escapeHtml(content.cta.label)}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 32px 40px;">
+                    ${linkFallback}
+                    <hr style="border:none;border-top:1px solid ${BRAND.hairline};margin:18px 0 16px 0;" />
+                    <p style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:1.6;color:${BRAND.faint};">
+                      ${escapeHtml(content.footnote)}
+                    </p>
+                  </td>
+                </tr>
               </table>
-              ${linkFallback}
-              <hr style="border:none;border-top:1px solid ${BRAND.border};margin:0 0 20px 0;" />
-              <p style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:1.6;color:${BRAND.muted};">
-                ${escapeHtml(content.footnote)}
-              </p>
             </td>
           </tr>
-          <!-- Footer -->
           <tr>
-            <td align="center" style="padding:28px 16px 0 16px;">
-              <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:${BRAND.muted};">
-                &copy; ${year} BuildPanda. All rights reserved.
+            <td align="center" style="padding:28px 24px 0 24px;">
+              <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:13px;line-height:1.6;font-weight:700;color:${BRAND.muted};">
+                BuildPanda
               </p>
-              <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:${BRAND.muted};">
+              <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:${BRAND.faint};">
                 Manage every build with confidence.
+              </p>
+              <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:${BRAND.faint};">
+                &copy; ${year} BuildPanda. All rights reserved.
               </p>
             </td>
           </tr>
@@ -375,6 +453,78 @@ export function projectInviteEmail(options: {
       cta: { label: "Open My Portal", url: options.url },
       footnote:
         "If you weren't expecting this invitation, you can safely ignore this email.",
+    }),
+  };
+}
+
+export function rfiDistributionEmail(options: {
+  recipientName: string;
+  projectName: string;
+  rfiNumber: number;
+  rfiSubject: string;
+  question: string;
+  replyUrl: string;
+}): { subject: string; html: string } {
+  const recipient = escapeHtml(options.recipientName);
+  const project = escapeHtml(options.projectName);
+  const subjectText = escapeHtml(options.rfiSubject);
+  const question = escapeHtml(options.question);
+  return {
+    subject: `RFI-${options.rfiNumber}: ${options.rfiSubject} (${options.projectName})`,
+    html: renderEmail({
+      preview: `You've been asked to respond to RFI-${options.rfiNumber} on ${options.projectName}.`,
+      heading: `RFI-${options.rfiNumber}: ${subjectText}`,
+      bodyHtml: `<p style="margin:0;">Hi ${recipient},</p>
+                 <p style="margin:12px 0 0 0;">You've been asked to respond to a Request for Information on <strong style="color:${BRAND.heading};">${project}</strong>.</p>
+                 <p style="margin:12px 0 0 0;color:${BRAND.heading};"><strong>Question</strong></p>
+                 <p style="margin:4px 0 0 0;">${question}</p>
+                 <p style="margin:12px 0 0 0;">Click below to submit your response. No account or login is required.</p>`,
+      cta: { label: "Respond to this RFI", url: options.replyUrl },
+      footnote:
+        "This response link is single-use and expires in 14 days. If you weren't expecting this, you can safely ignore this email.",
+    }),
+  };
+}
+
+export interface NotificationEmailOptions {
+  recipientName: string;
+  eyebrow: string;
+  heading: string;
+  message: string;
+  accent?: EmailAccent;
+  badge?: { label: string; accent?: EmailAccent };
+  meta?: { label: string; value: string }[];
+  cta: { label: string; url: string };
+  projectName?: string;
+}
+
+export function notificationEmail(
+  options: NotificationEmailOptions,
+): { subject: string; html: string } {
+  const greeting = options.recipientName
+    ? `<p style="margin:0 0 16px 0;">Hi ${escapeHtml(options.recipientName)},</p>`
+    : "";
+  const badgeHtml = options.badge
+    ? `<p style="margin:0 0 16px 0;">${statusBadge(options.badge.label, options.badge.accent ?? options.accent ?? "brand")}</p>`
+    : "";
+  const messageHtml = `<p style="margin:0 0 8px 0;">${escapeHtml(options.message)}</p>`;
+  const metaHtml = options.meta && options.meta.length
+    ? metaTable(options.meta.map((m) => infoRow(m.label, m.value)).join(""))
+    : "";
+  const projectLine = options.projectName
+    ? `\u00b7 ${options.projectName}`
+    : "";
+  return {
+    subject: `${options.heading}${projectLine ? ` ${projectLine}` : ""}`,
+    html: renderEmail({
+      preview: options.message,
+      eyebrow: options.eyebrow,
+      heading: options.heading,
+      accent: options.accent ?? "brand",
+      bodyHtml: `${greeting}${badgeHtml}${messageHtml}${metaHtml}`,
+      cta: options.cta,
+      footnote:
+        "You're receiving this because of your notification settings. Manage your email preferences in BuildPanda under Settings → Notifications.",
     }),
   };
 }

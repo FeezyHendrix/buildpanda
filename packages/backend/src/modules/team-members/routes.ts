@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { teamMembersRepository } from "./repository.ts";
 import {
   teamMembersService,
@@ -56,7 +58,9 @@ const editMemberBody = {
 } as const;
 
 const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = teamMembersService(teamMembersRepository(fastify.db));
+  const service = teamMembersService(teamMembersRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/team-members",
@@ -72,7 +76,8 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createMemberBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
-      const member = await service.create(project.id, request.body);
+      const user = request.requireAuth();
+      const member = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(member);
     },
   );

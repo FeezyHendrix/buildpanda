@@ -1,4 +1,6 @@
 import { generateId } from "../../lib/ids.ts";
+import type { CurrencyCode } from "../../lib/currencies.ts";
+import { toIso } from "../../lib/dates.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import {
   assertCanAccessProject,
@@ -24,12 +26,10 @@ const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">>
   { name: "Permitting & Approvals", date_range: "Weeks 3 – 8" },
   { name: "Foundation & Substructure", date_range: "Weeks 9 – 16" },
   { name: "Superstructure & MEP", date_range: "Weeks 17 – 32" },
-  { name: "Finishing & Handover", date_range: "Weeks 33 – 48" },
+  { name: "Finishing", date_range: "Weeks 33 – 42" },
+  { name: "External Works", date_range: "Weeks 43 – 46" },
+  { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
 ];
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
-}
 
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
   return {
@@ -69,9 +69,9 @@ function toProject(row: ProjectRow, phases: ProjectPhaseRow[]): Project {
 
 function buildCreate(
   input: CreateProjectInput,
-  ownerId: string,
+  ownerId: string | null,
   organizationId: string | null,
-): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: "NGN" | "USD" } {
+): { project: NewProjectRecord; phases: NewPhaseRecord[]; financesCurrency: CurrencyCode } {
   const projectId = generateId("prj");
   const address = `${input.location.city}, ${input.location.state}`;
 
@@ -150,7 +150,7 @@ export function projectsService(repository: ProjectsRepository) {
 
     async create(
       input: CreateProjectInput,
-      ownerId: string,
+      ownerId: string | null,
       organizationId: string | null,
     ): Promise<Project> {
       const { project, phases, financesCurrency } = buildCreate(input, ownerId, organizationId);
@@ -183,6 +183,21 @@ export function projectsService(repository: ProjectsRepository) {
         budget_total: input.budgetMax,
         ...(input.currency ? { currency: input.currency } : {}),
       });
+      return this.getById(id);
+    },
+
+    async updateCurrencyForUser(
+      id: string,
+      currency: CurrencyCode,
+      ctx: AccessContext,
+    ): Promise<Project> {
+      const row = await repository.findById(id);
+      if (!row) throw new NotFoundError("Project");
+      assertCanModifyProject(
+        { ownerId: row.owner_id, organizationId: row.organization_id },
+        ctx,
+      );
+      await repository.updateCurrency(id, currency);
       return this.getById(id);
     },
   };

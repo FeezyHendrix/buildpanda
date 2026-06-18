@@ -86,6 +86,14 @@ export function financesRepository(db: Knex) {
       return db<MilestonePaymentRow>("milestone_payments").where({ id: milestoneId }).first();
     },
 
+    async projectOwnerId(projectId: string): Promise<string | null> {
+      const row = await db<{ owner_id: string | null }>("projects")
+        .where({ id: projectId })
+        .select("owner_id")
+        .first();
+      return row?.owner_id ?? null;
+    },
+
     async createMilestone(record: Omit<NewMilestoneRecord, "sort_order">): Promise<MilestonePaymentRow> {
       const nextSortOrder =
         Number(

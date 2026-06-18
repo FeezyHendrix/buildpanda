@@ -1,0 +1,210 @@
+export interface LegalSection {
+  heading: string;
+  body: string[];
+  bullets?: string[];
+}
+
+export interface LegalDocument {
+  title: string;
+  intro: string[];
+  effectiveDate: string;
+  sections: LegalSection[];
+}
+
+const COMPANY = "BuildPanda";
+const SUPPORT_EMAIL = "hello@buildpanda.io";
+const EFFECTIVE_DATE = "14 June 2026";
+
+export const privacyPolicy: LegalDocument = {
+  title: "Privacy Policy",
+  effectiveDate: EFFECTIVE_DATE,
+  intro: [
+    `${COMPANY} ("${COMPANY}", "we", "us" or "our") provides a construction management platform that helps owners, contractors and project teams plan, build and hand over construction projects. This Privacy Policy explains what personal information we collect, how we use and share it, and the choices and rights you have.`,
+    `This policy applies to our websites, web and mobile applications, and related services (together, the "Services"). By using the Services you agree to the practices described here. If you do not agree, please do not use the Services.`,
+  ],
+  sections: [
+    {
+      heading: "1. Who we are and how to contact us",
+      body: [
+        `${COMPANY} is the controller of the personal information processed about you when you use the Services, except where we process information on behalf of our business customers (see "How we handle customer project data" below), in which case we act as a processor for that customer.`,
+        `If you have any questions about this policy or how we handle your information, contact us at ${SUPPORT_EMAIL}.`,
+      ],
+    },
+    {
+      heading: "2. Information we collect",
+      body: ["We collect the following categories of personal information:"],
+      bullets: [
+        "Account information: your name, email address, phone number, password, company or organisation, role, and profile details you provide when you register or are invited to a project.",
+        "Project information: data you and your team enter into the platform, such as project details, schedules and activities, budgets and finances, milestone payments, documents and drawings, daily logs, inspections, risks, materials and messages.",
+        "Uploaded content: files, documents, photos and drawings you upload, and any information contained within them.",
+        "Usage information: how you interact with the Services, including pages viewed, features used, actions taken, and timestamps.",
+        "Device and technical information: IP address, browser type, device identifiers, operating system, and similar diagnostic data collected automatically.",
+        "Communications: messages, support requests and feedback you send to us.",
+        "Lead and enquiry information: details you submit through our website forms, such as when you request a consultation or a demo.",
+      ],
+    },
+    {
+      heading: "3. How we use your information",
+      body: ["We use personal information to:"],
+      bullets: [
+        "Provide, operate and maintain the Services and your account.",
+        "Process and display your project data, documents and communications to authorised members of your project.",
+        "Power platform features such as scheduling, finances, milestone payments, document management and inspections.",
+        "Provide AI-assisted features (Panda AI) that analyse your project's own data and documents to answer your questions and surface insights, on your request.",
+        "Communicate with you about your account, security, updates, and support.",
+        "Send service and, where permitted, marketing communications, which you can opt out of.",
+        "Monitor, secure, troubleshoot and improve the Services, and develop new features.",
+        "Detect, prevent and respond to fraud, abuse, security incidents and unlawful activity.",
+        "Comply with legal obligations and enforce our terms.",
+      ],
+    },
+    {
+      heading: "4. How we handle customer project data",
+      body: [
+        `When an organisation uses ${COMPANY} to run its projects, that organisation controls the project data it and its members put into the platform. For that data we act as a service provider (processor) and process it on the organisation's instructions to provide the Services.`,
+        `If you are a member, client or participant of a project, the organisation that owns the project is responsible for how that project's data is used and shared within the project. Please direct requests about that data to the organisation. We will assist our customers in responding to such requests as required by law.`,
+      ],
+    },
+    {
+      heading: "5. AI features and your data",
+      body: [
+        `Some features use artificial intelligence to help you work, including extracting information from documents you upload, structuring imported schedules, and answering questions about your project. These features operate only on the data within your own project and only when you use them.`,
+        `We may use third-party AI providers to process the content you submit to these features. We do not permit those providers to use your content to train their models, and we send only the data needed to perform the requested task. AI output can contain mistakes; you should verify important information.`,
+      ],
+    },
+    {
+      heading: "6. How we share information",
+      body: ["We do not sell your personal information. We share information only as follows:"],
+      bullets: [
+        "Within your project: with other authorised members, clients and participants of the projects you belong to, according to their roles and permissions.",
+        "Service providers: with vendors who help us run the Services (for example cloud hosting, file storage, email delivery, and AI processing), under contracts that require them to protect your information and use it only for us.",
+        "Shared links: when you create a shareable link to a file, anyone with the link can view that file until it expires or you revoke it.",
+        "Legal and safety: when required by law, regulation, legal process, or to protect the rights, property or safety of BuildPanda, our users or others.",
+        "Business transfers: in connection with a merger, acquisition, financing or sale of assets, subject to this policy.",
+        "With your consent: for any other purpose disclosed to you at the time.",
+      ],
+    },
+    {
+      heading: "7. International transfers",
+      body: [
+        `We and our service providers may process and store information in countries other than where you live. Where we transfer personal information across borders, we take steps to ensure it remains protected and that transfers comply with applicable data protection laws.`,
+      ],
+    },
+    {
+      heading: "8. Data retention",
+      body: [
+        `We keep personal information for as long as your account is active or as needed to provide the Services, and afterwards as required to comply with legal obligations, resolve disputes, and enforce our agreements. Project data is retained according to the controlling organisation's settings and instructions. When information is no longer needed, we delete or anonymise it.`,
+      ],
+    },
+    {
+      heading: "9. Security",
+      body: [
+        `We use technical and organisational measures designed to protect personal information, including encryption in transit, access controls, and secure infrastructure. Files are stored securely and shared links use unguessable tokens. No method of transmission or storage is completely secure, so we cannot guarantee absolute security, and you are responsible for keeping your account credentials safe.`,
+      ],
+    },
+    {
+      heading: "10. Your rights and choices",
+      body: [
+        "Depending on where you live, you may have rights to access, correct, update, delete, restrict, or object to the processing of your personal information, to data portability, and to withdraw consent. You may also opt out of marketing communications at any time.",
+        `To exercise your rights, contact us at ${SUPPORT_EMAIL}. Where the data relates to a project controlled by an organisation, we may direct your request to that organisation. We will respond in accordance with applicable law and may need to verify your identity first.`,
+      ],
+    },
+    {
+      heading: "11. Cookies and similar technologies",
+      body: [
+        "We use cookies and similar technologies to keep you signed in, remember your preferences, secure the Services, and understand how the Services are used. You can control cookies through your browser settings, but disabling them may affect how the Services work.",
+      ],
+    },
+    {
+      heading: "12. Children's privacy",
+      body: [
+        "The Services are intended for business use and are not directed to children. We do not knowingly collect personal information from children. If you believe a child has provided us personal information, contact us and we will take appropriate steps to delete it.",
+      ],
+    },
+    {
+      heading: "13. Changes to this policy",
+      body: [
+        "We may update this Privacy Policy from time to time. When we make material changes, we will update the effective date above and, where appropriate, provide additional notice. Your continued use of the Services after changes take effect means you accept the updated policy.",
+      ],
+    },
+    {
+      heading: "14. Contact us",
+      body: [
+        `If you have questions, concerns or requests regarding this Privacy Policy or your personal information, please contact us at ${SUPPORT_EMAIL}.`,
+      ],
+    },
+  ],
+};
+
+export const dataPolicy: LegalDocument = {
+  title: "Data Policy",
+  effectiveDate: EFFECTIVE_DATE,
+  intro: [
+    `This Data Policy explains how ${COMPANY} handles the data you and your organisation put into the platform to run construction projects. It complements our Privacy Policy, which covers personal information more broadly.`,
+    `Our goal is simple: your project data belongs to you, we keep it secure, and we use it to deliver the Services you asked for.`,
+  ],
+  sections: [
+    {
+      heading: "1. Ownership of your data",
+      body: [
+        `You and your organisation own the project data you create and upload, including project records, schedules, finances, documents, drawings, daily logs, inspections and messages. ${COMPANY} does not claim ownership of your content.`,
+        `We process this data on your behalf to operate the Services. We do not use your project content for advertising, and we do not sell it.`,
+      ],
+    },
+    {
+      heading: "2. What data the platform stores",
+      body: ["To run your projects, the platform stores data such as:"],
+      bullets: [
+        "Project setup, phases, activities and the schedule, including dependencies, % complete and milestones.",
+        "Finances, budgets, invoices and milestone payments.",
+        "Documents, drawings and uploaded files, and their versions.",
+        "Daily site logs, inspections, risks and materials.",
+        "Team members, roles, permissions and project participants.",
+        "Activity history needed to keep an accurate record of the project.",
+      ],
+    },
+    {
+      heading: "3. Who can see your data",
+      body: [
+        "Access to project data is controlled by roles and permissions you manage. Only authorised members, clients and participants of a project can see that project's data, and only to the extent their role allows.",
+        "When you generate a shareable link to a file, anyone with that link can view the file until the link expires or you revoke it. You control whether and when to create or revoke share links.",
+      ],
+    },
+    {
+      heading: "4. How we use third parties",
+      body: [
+        "We rely on trusted infrastructure providers to host the application, store files, deliver email and, for AI features, process the specific content you submit. These providers act under contract on our instructions and are required to protect your data. We share only what is necessary to deliver the Services.",
+      ],
+    },
+    {
+      heading: "5. Data security",
+      body: [
+        "We protect your data with encryption in transit, access controls, secure cloud storage, and unguessable tokens for shared files. We continually work to safeguard the platform, though no system can be completely secure.",
+      ],
+    },
+    {
+      heading: "6. Backups and availability",
+      body: [
+        "We maintain backups and operational safeguards designed to keep your data available and to help recover from incidents. We aim to provide a reliable service but do not guarantee uninterrupted availability.",
+      ],
+    },
+    {
+      heading: "7. Exporting and deleting your data",
+      body: [
+        "You can access and export key project information from within the Services. If your organisation closes its account, we will delete or return project data in accordance with our agreement and applicable law, subject to any records we must retain for legal reasons.",
+      ],
+    },
+    {
+      heading: "8. Retention",
+      body: [
+        "We retain project data for as long as your account is active and as needed to provide the Services, then delete or anonymise it according to your instructions and our legal obligations.",
+      ],
+    },
+    {
+      heading: "9. Contact us",
+      body: [
+        `For questions about how your data is handled, or to make a data request, contact us at ${SUPPORT_EMAIL}.`,
+      ],
+    },
+  ],
+};

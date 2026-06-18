@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { inspectionsRepository } from "./repository.ts";
 import { inspectionsService, type RequestInspectionInput, type EditInspectionInput } from "./service.ts";
 
@@ -67,7 +69,9 @@ const editInspectionBody = {
 } as const;
 
 const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = inspectionsService(inspectionsRepository(fastify.db));
+  const service = inspectionsService(inspectionsRepository(fastify.db), {
+    notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/inspections",
@@ -96,7 +100,8 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: inspectionParams, body: editInspectionBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
-      return service.edit(project.id, request.params.inspectionId, request.body);
+      const user = request.requireAuth();
+      return service.edit(project.id, request.params.inspectionId, request.body, user.id);
     },
   );
 

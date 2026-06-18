@@ -12,12 +12,15 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { TourGuide } from "@/components/molecules/tour-guide";
 import {
   UpsertRiskDialog,
   type UpsertRiskValues,
 } from "@/components/molecules/upsert-risk-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectUpdates } from "@/hooks/use-updates";
+import { useTour } from "@/hooks/use-tour";
+import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import {
   useCreateRiskFactor,
   useDeleteRiskFactor,
@@ -39,6 +42,8 @@ import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";
 
+import { WhatsNextCard } from "@/components/organisms/whats-next-card";
+
 const RECENT_UPDATE_LIMIT = 2;
 
 export default function ProjectOverview() {
@@ -48,8 +53,14 @@ export default function ProjectOverview() {
 
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
 
+  const tour = useTour({
+    tourKey: CONSTRUCTION_TOUR_KEY,
+    steps: CONSTRUCTION_TOUR_STEPS,
+    enabled: true,
+  });
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Overview"
         description="Stay in control with real-time updates on progress, payments, and site activity."
@@ -76,24 +87,30 @@ export default function ProjectOverview() {
       </div> */}
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          title="Construction Progress"
-          icon={icons.constructionProgress}
-          progress={project.progressPercent}
-          className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px]"
-        />
-        <KpiCard 
-          title="Budget Used"
-          value={formatCurrency(project.budgetUsed, project.currency)}
-          subValue={`of ${formatCurrency(project.budgetTotal, project.currency)}`}
-          icon={icons.card}
-        />
-        <KpiCard
-          title="Pending Approvals"
-          value={project.pendingApprovals}
-          required={true}
-          icon={icons.penSquare}
-        />
+        <div data-tour="construction-progress">
+          <KpiCard
+            title="Construction Progress"
+            icon={icons.constructionProgress}
+            progress={project.progressPercent}
+            className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px]"
+          />
+        </div>
+        <div data-tour="construction-budget">
+          <KpiCard
+            title="Budget Used"
+            value={formatCurrency(project.budgetUsed, project.currency)}
+            subValue={`of ${formatCurrency(project.budgetTotal, project.currency)}`}
+            icon={icons.card}
+          />
+        </div>
+        <div data-tour="construction-approvals">
+          <KpiCard
+            title="Pending Approvals"
+            value={project.pendingApprovals}
+            required={true}
+            icon={icons.penSquare}
+          />
+        </div>
         <KpiCard
           title="Next Inspection"
           value={project.nextInspection.date}
@@ -103,7 +120,11 @@ export default function ProjectOverview() {
         />
       </section>
 
-      <Card className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0 mt-6">
+      <div className="mt-6">
+        <WhatsNextCard projectId={project.id} />
+      </div>
+
+      <Card data-tour="construction-timeline" className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0 mt-6">
         <div className="flex items-center justify-between py-3 px-5">
           <div className="flex gap-2 items-center">
             <ReactSVG src={icons.hourglass} />
@@ -131,6 +152,16 @@ export default function ProjectOverview() {
         />
         <RiskFactorsPanel projectId={project.id} risks={risks} className="rounded-[16px] bg-[#F8F8F8] flex flex-col h-full py-0 px-0 border-none" />
       </div>
+
+      <TourGuide
+        active={tour.active}
+        step={tour.step}
+        index={tour.index}
+        total={tour.total}
+        onNext={tour.next}
+        onBack={tour.back}
+        onSkip={tour.skip}
+      />
     </div>
   );
 }

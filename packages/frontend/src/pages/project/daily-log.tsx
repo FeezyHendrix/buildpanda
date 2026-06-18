@@ -4,7 +4,6 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-dialog";
@@ -59,14 +58,7 @@ export default function ProjectDailyLog() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedules", to: `/project/${project.id}/schedules` },
-          { label: "Daily Log" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Daily Log"
         description="One end-of-day record per day — weather, headcount, hours worked, what got done."

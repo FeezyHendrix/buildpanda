@@ -1,7 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
+import { currencyCodeSchema, type CurrencyCode } from "../../lib/currencies.ts";
+import { config } from "../../config/index.ts";
+import { generateId } from "../../lib/ids.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
+
+const updateCurrencyBody = {
+  type: "object",
+  required: ["currency"],
+  additionalProperties: false,
+  properties: {
+    currency: currencyCodeSchema,
+  },
+} as const;
 
 const projectIdParams = {
   type: "object",
@@ -40,7 +52,7 @@ const createProjectBody = {
       additionalProperties: false,
       properties: {
         buildingType: { type: "string", minLength: 1, maxLength: 100 },
-        currency: { type: "string", enum: ["NGN", "USD"] },
+        currency: currencyCodeSchema,
         budgetMin: { type: "number", minimum: 0 },
         budgetMax: { type: "number", minimum: 0 },
         timeline: { type: "string", minLength: 1, maxLength: 100 },
@@ -70,7 +82,7 @@ const updateBudgetBody = {
   properties: {
     budgetMin: { type: "number", minimum: 0 },
     budgetMax: { type: "number", minimum: 0 },
-    currency: { type: "string", enum: ["NGN", "USD"] },
+    currency: currencyCodeSchema,
   },
 } as const;
 
@@ -94,6 +106,26 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       if (organizationId !== null) {
         request.requireOrgPermission("project", "create");
       }
+
+      if (organizationId === null && config.consulting.orgId) {
+        const owner = await fastify.db("user")
+          .where({ id: user.id })
+          .first<{ accountType: string | null }>();
+        if (owner?.accountType === "project_owner") {
+          const project = await service.create(request.body, null, config.consulting.orgId);
+          await fastify.db("project_participants").insert({
+            id: generateId("pp"),
+            project_id: project.id,
+            user_id: user.id,
+            email: user.email.toLowerCase(),
+            role: "client",
+            status: "active",
+            invited_by_id: user.id,
+          });
+          return reply.status(201).send(project);
+        }
+      }
+
       const project = await service.create(request.body, user.id, organizationId);
       return reply.status(201).send(project);
     },
@@ -117,6 +149,18 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       return service.updateBudgetForUser(request.params.id, request.body, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
+    },
+  );
+
+  fastify.patch<{ Params: { id: string }; Body: { currency: CurrencyCode } }>(
+    "/projects/:id/currency",
+    { schema: { params: projectIdParams, body: updateCurrencyBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      return service.updateCurrencyForUser(request.params.id, request.body.currency, {
         userId: user.id,
         orgRoles: request.orgRoles,
       });

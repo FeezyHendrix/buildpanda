@@ -1,8 +1,10 @@
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import type { Knex } from "knex";
 import type { RisksRepository } from "./repository.ts";
 import type { RiskFactor, RiskFactorRow } from "./types.ts";
 import type { RiskLevel } from "../projects/types.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 
 export interface CreateRiskInput {
   title: string;
@@ -16,6 +18,11 @@ export interface EditRiskInput {
   severity?: RiskLevel;
 }
 
+export interface RisksDeps {
+  db?: Knex;
+  notifications?: NotificationsService;
+}
+
 function toRiskFactor(row: RiskFactorRow): RiskFactor {
   return {
     id: row.id,
@@ -25,7 +32,27 @@ function toRiskFactor(row: RiskFactorRow): RiskFactor {
   };
 }
 
-export function risksService(repository: RisksRepository) {
+async function notifyHighRisk(
+  deps: RisksDeps,
+  projectId: string,
+  title: string,
+): Promise<void> {
+  if (!deps.notifications || !deps.db) return;
+  const project = await deps.db("projects")
+    .select("owner_id")
+    .where({ id: projectId })
+    .first<{ owner_id: string | null }>();
+  if (!project?.owner_id) return;
+  void deps.notifications
+    .notify(project.owner_id, "risk_high_added", {
+      title: "A high-severity risk was added",
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
+export function risksService(repository: RisksRepository, deps: RisksDeps = {}) {
   return {
     async listByProject(projectId: string): Promise<RiskFactor[]> {
       const rows = await repository.listByProject(projectId);
@@ -40,6 +67,9 @@ export function risksService(repository: RisksRepository) {
         description: input.description,
         severity: input.severity,
       });
+      if (input.severity === "High") {
+        await notifyHighRisk(deps, projectId, input.title);
+      }
       return toRiskFactor(row);
     },
 
@@ -60,6 +90,9 @@ export function risksService(repository: RisksRepository) {
 
       const updated = await repository.update(riskId, patch);
       if (!updated) throw new NotFoundError("Risk factor");
+      if (input.severity === "High" && existing.severity !== "High") {
+        await notifyHighRisk(deps, projectId, updated.title);
+      }
       return toRiskFactor(updated);
     },
 

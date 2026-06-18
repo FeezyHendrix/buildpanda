@@ -18,6 +18,8 @@ interface DocumentVersionsDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   document: ProjectDocument;
+  /** Whether the viewer may upload new versions. Read-only when false. */
+  canManage?: boolean;
 }
 
 function formatWhen(value: string): string {
@@ -29,6 +31,7 @@ function DocumentVersionsDialog({
   onOpenChange,
   projectId,
   document,
+  canManage = false,
 }: DocumentVersionsDialogProps) {
   const { data: versions = [], isLoading } = useDocumentVersions(projectId, document.id);
   const uploadFile = useUploadFile();
@@ -89,6 +92,7 @@ function DocumentVersionsDialog({
             </header>
 
             {/* Upload a new revision */}
+            {canManage && (
             <div className="mx-6 mt-4 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-4">
               <p className="text-sm font-medium text-gray-900">Upload new version</p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -125,6 +129,7 @@ function DocumentVersionsDialog({
                 <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
               )}
             </div>
+            )}
 
             {/* History */}
             <div className="mt-4 flex-1 overflow-y-auto px-6 pb-2">

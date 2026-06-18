@@ -1,3 +1,7 @@
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { CashFlowSCurve } from "@/components/organisms/charts/cash-flow-s-curve";
+import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actual-bar";
+
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -81,6 +85,7 @@ export default function ProjectBudget() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
 
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
@@ -112,12 +117,16 @@ export default function ProjectBudget() {
 
   const { categories = [], periods = [], summary } = budget ?? {};
 
+  const effectiveTotalPlanned = categories.reduce((sum, cat) => sum + cat.effectivePlanned, 0);
+  const effectiveTotalCommitted = categories.reduce((sum, cat) => sum + cat.effectiveCommitted, 0);
+  const effectiveTotalActual = categories.reduce((sum, cat) => sum + cat.effectiveActual, 0);
+
   const sortedPeriods = [...periods].sort((a, b) =>
     a.period.localeCompare(b.period),
   );
 
   return (
-    <div className="mx-auto max-w-6xl pb-24">
+    <div className="w-full px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -152,26 +161,26 @@ export default function ProjectBudget() {
       />
 
       {summary && (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
           <KpiCard label="Total Planned">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalPlanned, currency)}
+              {formatCurrency(effectiveTotalPlanned, currency)}
             </p>
           </KpiCard>
           <KpiCard label="Committed">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalCommitted, currency)}
+              {formatCurrency(effectiveTotalCommitted, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {summary.percentCommitted}% of planned
+              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalCommitted / effectiveTotalPlanned) * 100) : 0}% of planned
             </p>
           </KpiCard>
           <KpiCard label="Actual Spent">
             <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(summary.totalActual, currency)}
+              {formatCurrency(effectiveTotalActual, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {summary.percentSpent}% of planned
+              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalActual / effectiveTotalPlanned) * 100) : 0}% of planned
             </p>
           </KpiCard>
           <KpiCard label="Variance">
@@ -185,8 +194,33 @@ export default function ProjectBudget() {
               {formatCurrency(summary.totalVariance, currency)}
             </p>
           </KpiCard>
+          {snapshot?.finance?.budget && (
+            <KpiCard label="Variance Status">
+              <p className="text-base font-bold text-[#E5484D]">
+                {snapshot.finance.budget.overBudgetCount} of {snapshot.finance.budget.categoryCount} over budget
+              </p>
+            </KpiCard>
+          )}
         </div>
       )}
+
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {snapshot && (
+          <>
+            <CashFlowSCurve
+              points={snapshot.finance.cashFlow.points}
+              programmeCurve={snapshot.schedule.programmeCostCurve}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+            <BudgetVsActualBar
+              categories={snapshot.finance.budget.categories}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+          </>
+        )}
+      </div>
 
       <section className="mt-12">
         <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">
@@ -332,15 +366,18 @@ function CategoryCard({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Metric
           label="Planned"
-          value={formatCurrency(category.planned, currency)}
+          value={formatCurrency(category.effectivePlanned, currency)}
+          secondaryValue={category.effectivePlanned !== category.planned ? formatCurrency(category.planned, currency) : undefined}
+          projectedValue={category.projectedPlanned !== category.effectivePlanned ? formatCurrency(category.projectedPlanned, currency) : undefined}
         />
         <Metric
           label="Committed"
-          value={formatCurrency(category.committed, currency)}
+          value={formatCurrency(category.effectiveCommitted, currency)}
         />
         <Metric
           label="Actual"
-          value={formatCurrency(category.actual, currency)}
+          value={formatCurrency(category.effectiveActual, currency)}
+          secondaryValue={category.effectiveActual !== category.actual ? formatCurrency(category.actual, currency) : undefined}
         />
         <Metric
           label="Variance"
@@ -497,18 +534,24 @@ function PeriodCard({
 function Metric({
   label,
   value,
+  secondaryValue,
+  projectedValue,
   valueClassName,
 }: {
   label: string;
   value: string;
+  secondaryValue?: string;
+  projectedValue?: string;
   valueClassName?: string;
 }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium text-gray-500">{label}</span>
-      <span className={cn("text-sm font-semibold text-gray-900", valueClassName)}>
+      <span className={cn("text-sm font-semibold text-gray-900 tabular-nums", valueClassName)}>
         {value}
       </span>
+      {secondaryValue && <span className="text-xs text-gray-400 tabular-nums">Manual: {secondaryValue}</span>}
+      {projectedValue && <span className="text-xs text-gray-400 tabular-nums">Projected: {projectedValue}</span>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import { generateId } from "../../lib/ids.ts";
+import { toIso } from "../../lib/dates.ts";
 import type { MaterialsEquipmentRepository } from "./repository.ts";
 import type {
   EquipmentBucket,
@@ -29,7 +31,7 @@ export interface CreateMaterialOrderInput {
   deliveredAt?: string | null;
   estimatedCost?: number;
   actualCost?: number;
-  currency?: "NGN" | "USD";
+  currency?: CurrencyCode;
   deliveryLocation?: string | null;
   notes?: string | null;
 }
@@ -53,7 +55,7 @@ export interface CreateEquipmentRequestInput {
   returnedAt?: string | null;
   estimatedCost?: number;
   actualCost?: number;
-  currency?: "NGN" | "USD";
+  currency?: CurrencyCode;
   deliveryLocation?: string | null;
   operatorRequired?: boolean;
   notes?: string | null;
@@ -98,10 +100,6 @@ function optionalText(value: string | null | undefined): string | null | undefin
 
 function requiredText(value: string): string {
   return value.trim();
-}
-
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
 }
 
 function equipmentBucket(status: EquipmentRequestStatus): EquipmentBucket {
@@ -254,6 +252,19 @@ export function materialsEquipmentService(repository: MaterialsEquipmentReposito
       });
       if (status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return toMaterialOrder(row);
+    },
+
+    async bulkCreateMaterialOrders(
+      projectId: string,
+      inputs: CreateMaterialOrderInput[],
+      userId: string,
+    ): Promise<number> {
+      let created = 0;
+      for (const input of inputs) {
+        await this.createMaterialOrder(projectId, input, userId);
+        created += 1;
+      }
+      return created;
     },
 
     async updateMaterialOrder(projectId: string, orderId: string, input: UpdateMaterialOrderInput): Promise<MaterialOrder> {

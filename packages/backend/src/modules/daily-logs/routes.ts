@@ -1,6 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { dailyLogsRepository } from "./repository.ts";
 import { dailyLogsService } from "./service.ts";
+import { updatesRepository } from "../updates/repository.ts";
+import { updatesService } from "../updates/service.ts";
+import { activitiesRepository } from "../activities/repository.ts";
+import { activitiesService } from "../activities/service.ts";
+import { PROGRESS_RECOMPUTE_QUEUE } from "../activities/progress-job.ts";
 import type { LinkActivityInput, UpsertDailyLogInput } from "./types.ts";
 
 const projectIdParams = {
@@ -58,7 +63,22 @@ const linkActivityBody = {
 } as const;
 
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = dailyLogsService(dailyLogsRepository(fastify.db));
+  const updates = updatesService(updatesRepository(fastify.db));
+  const activitiesRepo = activitiesRepository(fastify.db);
+  const activities = activitiesService(activitiesRepo, (projectId) =>
+    fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
+  );
+  const service = dailyLogsService(dailyLogsRepository(fastify.db), {
+    createUpdate: (projectId, input, actor) => updates.create(projectId, input, actor),
+    markActivityInProgress: async (projectId, activityId) => {
+      const current = await activitiesRepo.findById(activityId).catch(() => undefined);
+      if (current && current.status === "Planned") {
+        await activities
+          .update(projectId, activityId, { status: "InProgress" })
+          .catch(() => undefined);
+      }
+    },
+  });
 
   fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string } }>(
     "/projects/:id/daily-logs",
@@ -100,10 +120,12 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: dateParams, body: linkActivityBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       const link = await service.linkActivity(
         project.id,
         request.params.date,
         request.body,
+        { id: user.id, name: user.name },
       );
       return reply.status(201).send({
         projectId: link.project_id,

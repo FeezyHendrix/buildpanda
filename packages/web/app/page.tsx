@@ -157,6 +157,48 @@ export default function HomePage() {
         </Container>
       </section>
 
+      <section className="bg-surface-faint py-16 sm:py-20">
+        <Container className="flex flex-col items-center gap-10">
+          <SectionHeading
+            eyebrow="Drone monitoring"
+            title="See your site from the sky, every week"
+            description="Real aerial footage from BuildPanda projects. High-resolution drone surveys give you an honest, time-stamped view of progress on the ground, wherever you are in the world."
+          />
+          <div className="grid w-full max-w-5xl gap-6 md:grid-cols-2">
+            {[
+              {
+                src: "/drone-survey-1.mp4",
+                label: "Structure rising, block by block",
+              },
+              {
+                src: "/drone-survey-2.mp4",
+                label: "Inspections and progress, verified on site",
+              },
+            ].map((clip) => (
+              <figure
+                key={clip.src}
+                className="overflow-hidden rounded-2xl border border-line bg-white shadow-xl"
+              >
+                <video
+                  className="aspect-video w-full"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  poster="/drone-survey-poster.jpg"
+                >
+                  <source src={clip.src} type="video/mp4" />
+                </video>
+                <figcaption className="px-5 py-4 text-sm text-muted">
+                  {clip.label}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </Container>
+      </section>
+
       <section className="border-y border-line bg-surface-faint py-6">
         <Container>
           <div className="grid gap-6 text-center sm:grid-cols-3">

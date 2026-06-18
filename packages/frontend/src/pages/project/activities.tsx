@@ -8,12 +8,16 @@ import {
   CalendarIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { CreateActivityDialog } from "@/components/molecules/create-activity-dialog";
+import {
+  CreateActivityDialog,
+  type ActivityPrefill,
+} from "@/components/molecules/create-activity-dialog";
+import { ActivityTemplateDialog } from "@/components/molecules/activity-template-dialog";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
   useDeleteActivity,
@@ -36,6 +40,8 @@ export default function ProjectActivities() {
   const { data: reasons = [] } = useDelayReasons();
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [prefill, setPrefill] = useState<ActivityPrefill | null>(null);
   const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
 
@@ -43,15 +49,19 @@ export default function ProjectActivities() {
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
 
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
+  function startNewActivity(): void {
+    setEditingTarget(null);
+    setPrefill(null);
+    setTemplateOpen(true);
+  }
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedules", to: `/project/${project.id}/schedules` },
-          { label: "Site Activity" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Site Activities"
         description="Track discrete work items with planned vs actual times and delay causes."
@@ -59,7 +69,7 @@ export default function ProjectActivities() {
           <Button
             variant="primary"
             size="md"
-            onClick={() => setCreateOpen(true)}
+            onClick={startNewActivity}
           >
             <PlusIcon className="size-4" />
             New activity
@@ -81,7 +91,7 @@ export default function ProjectActivities() {
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => setCreateOpen(true)}
+                onClick={startNewActivity}
               >
                 <PlusIcon className="size-4" />
                 Add the first one
@@ -104,14 +114,34 @@ export default function ProjectActivities() {
         )}
       </section>
 
+      <ActivityTemplateDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        onPick={(item) => {
+          setPrefill({ name: item.name, activityType: item.type });
+          setTemplateOpen(false);
+          setCreateOpen(true);
+        }}
+        onBlank={() => {
+          setPrefill(null);
+          setTemplateOpen(false);
+          setCreateOpen(true);
+        }}
+      />
+
       <CreateActivityDialog
         open={createOpen}
         onOpenChange={(next) => {
           setCreateOpen(next);
-          if (!next) setEditingTarget(null);
+          if (!next) {
+            setEditingTarget(null);
+            setPrefill(null);
+          }
         }}
         phases={project.timeline}
         initial={editingTarget}
+        prefill={prefill}
+        assigneeOptions={assigneeOptions}
         isSubmitting={createActivity.isPending || updateActivity.isPending}
         error={
           createActivity.error || updateActivity.error

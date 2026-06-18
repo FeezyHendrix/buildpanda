@@ -51,6 +51,7 @@ export interface CreateActivityInput {
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string;
 }
 
@@ -84,6 +85,7 @@ export interface UpdateActivityInput {
   actualStartAt?: string | null;
   actualEndAt?: string | null;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string | null;
 }
 

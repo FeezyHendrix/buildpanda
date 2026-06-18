@@ -3,11 +3,7 @@ import { cn } from "@/lib/utils";
 import Navbar from "@/components/organisms/navbar";
 import { StepperBar } from "@/components/atoms/stepper-bar";
 import { WizardFooter } from "@/components/molecules/wizard-footer";
-
-const MOCK_USER = {
-  name: "John Doe",
-  avatarUrl: null,
-};
+import { authClient } from "@/lib/auth-client";
 
 interface WizardLayoutProps {
   currentStep: number;
@@ -34,9 +30,16 @@ function WizardLayout({
   children,
   className,
 }: WizardLayoutProps) {
+  const { data: session } = authClient.useSession();
+  
+  const user = {
+    name: session?.user?.name ?? "",
+    avatarUrl: session?.user?.image ?? null,
+  };
+
   return (
     <div className="flex h-dvh flex-col">
-      <Navbar user={MOCK_USER} showLogo sticky />
+      <Navbar user={user} showLogo sticky />
 
       <main
         className={cn(

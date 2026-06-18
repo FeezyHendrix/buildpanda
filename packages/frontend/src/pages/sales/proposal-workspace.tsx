@@ -117,7 +117,7 @@ export default function ProposalWorkspace() {
         {tab === "plans" && <PlansTab proposalId={id} />}
         {tab === "boq" && <BoqTab proposalId={id} estimateId={estimate?.id ?? null} />}
         {tab === "estimate" && (
-          <EstimateTab proposalId={id} estimate={estimate} currency={proposal.currency} />
+          <EstimateTab proposalId={id} estimate={estimate} currency={proposal.currency} projectId={proposal.projectId} />
         )}
         {tab === "messages" && <MessagesTab proposalId={id} />}
         {tab === "activity" && <ActivityTab proposalId={id} />}

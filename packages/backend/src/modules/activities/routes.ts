@@ -1,6 +1,9 @@
 import type { FastifyPluginAsync } from "fastify";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 import { activitiesRepository } from "./repository.ts";
 import { activitiesService } from "./service.ts";
+import { PROGRESS_RECOMPUTE_QUEUE } from "./progress-job.ts";
 import type {
   CreateActivityInput,
   RaiseDelayInput,
@@ -50,6 +53,7 @@ const createActivityBody = {
     plannedStartAt: isoString,
     plannedEndAt: isoString,
     workerCountPlanned: { type: "integer", minimum: 0, maximum: 5000 },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
     notes: { type: "string", maxLength: 2000 },
   },
 } as const;
@@ -69,6 +73,21 @@ const updateActivityBody = {
     actualEndAt: { type: ["string", "null"], minLength: 1, maxLength: 40 },
     workerCountPlanned: { type: "integer", minimum: 0, maximum: 5000 },
     notes: { type: ["string", "null"], maxLength: 2000 },
+    assigneeId: { type: ["string", "null"], maxLength: 100 },
+    predecessors: {
+      type: "array",
+      maxItems: 100,
+      items: {
+        type: "object",
+        required: ["activityId", "type", "lagDays"],
+        additionalProperties: false,
+        properties: {
+          activityId: { type: "string", minLength: 1, maxLength: 100 },
+          type: { type: "string", enum: ["FS", "SS", "FF", "SF"] },
+          lagDays: { type: "integer", minimum: -365, maximum: 365 },
+        },
+      },
+    },
   },
 } as const;
 
@@ -97,7 +116,11 @@ const resolveDelayBody = {
 } as const;
 
 const activityRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = activitiesService(activitiesRepository(fastify.db));
+  const service = activitiesService(
+    activitiesRepository(fastify.db),
+    (projectId) => fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
+    { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
+  );
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/activities",
@@ -139,7 +162,8 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: activityParams, body: updateActivityBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
-      return service.update(project.id, request.params.activityId, request.body);
+      const user = request.requireAuth();
+      return service.update(project.id, request.params.activityId, request.body, user.id);
     },
   );
 

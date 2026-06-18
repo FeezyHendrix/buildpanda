@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { currencySymbol } from "@/lib/formatters";
 import { FormDrawer } from "./form-drawer";
 import type { ChangeStatus } from "@/lib/project-types";
 
@@ -11,6 +13,12 @@ export interface UpsertChangeValues {
   costImpact: number;
   timeImpactDays: number;
   currency: "NGN" | "USD";
+  assigneeId: string | null;
+}
+
+export interface AssigneeOption {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -18,6 +26,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initial?: Partial<UpsertChangeValues>;
+  assigneeOptions?: AssigneeOption[];
   onSubmit: (values: UpsertChangeValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -33,7 +42,7 @@ const STATUS: { value: ChangeStatus; label: string }[] = [
 const field =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
-function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit, isSubmitting = false, error }: Props) {
+function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");
@@ -41,6 +50,9 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
   const [cost, setCost] = useState("0");
   const [days, setDays] = useState("0");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
+  const [assigneeId, setAssigneeId] = useState("");
+
+  const symbol = currencySymbol(currency);
 
   useEffect(() => {
     if (open) {
@@ -51,6 +63,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
       setCost(String(initial?.costImpact ?? 0));
       setDays(String(initial?.timeImpactDays ?? 0));
       setCurrency(initial?.currency ?? "NGN");
+      setAssigneeId(initial?.assigneeId ?? "");
     }
   }, [open, initial]);
 
@@ -64,6 +77,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
       costImpact: Number(cost) || 0,
       timeImpactDays: Math.round(Number(days) || 0),
       currency,
+      assigneeId: assigneeId || null,
     });
   }
 
@@ -101,7 +115,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cr-cost">Cost impact</Label>
-          <input id="cr-cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} className={field} />
+          <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cr-days">Time (days)</Label>
@@ -120,6 +134,18 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, onSubmit
           </select>
         </div>
       )}
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="cr-assignee">Assignee</Label>
+        <select id="cr-assignee" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={field}>
+          <option value="">Unassigned</option>
+          {assigneeOptions.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </div>
     </FormDrawer>
   );
 }

@@ -13,7 +13,10 @@ import {
   ChangeRequestDetailDialog,
   CHANGE_STATUS_META,
 } from "@/components/molecules/change-request-detail-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { CHANGE_COLUMNS, textMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useParticipants } from "@/hooks/use-participants";
 import {
   useChangeRequests,
   useCreateChangeRequest,
@@ -40,10 +43,16 @@ export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
+  const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useChangeRequests(project.id, filter === "all" ? undefined : filter);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
   const deleteCr = useDeleteChangeRequest();
+
+  const { data: participants = [] } = useParticipants(project.id);
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editItem, setEditItem] = useState<ChangeRequest | null>(null);
@@ -51,6 +60,15 @@ export default function ProjectChangeRequests() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const approvedCost = items.filter((i) => i.status === "Approved").reduce((s, i) => s + i.costImpact, 0);
+
+  function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
+    if (cr.status === status) return;
+    updateCr.mutate({ projectId: project.id, changeId: cr.id, status });
+  }
+
+  function handleAssign(cr: ChangeRequest, assigneeId: string | null): void {
+    updateCr.mutate({ projectId: project.id, changeId: cr.id, assigneeId });
+  }
 
   function handleCreate(values: UpsertChangeValues): void {
     createCr.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
@@ -61,7 +79,7 @@ export default function ProjectChangeRequests() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Change Requests"
         description="Proposed changes to scope, cost or schedule — with their budget and time impact."
@@ -89,9 +107,49 @@ export default function ProjectChangeRequests() {
             </button>
           ))}
         </div>
-        {approvedCost > 0 && <p className="text-xs text-gray-500">Approved impact: {money(approvedCost, "NGN")}</p>}
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+            {(["list", "board"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                )}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {approvedCost > 0 && <p className="text-xs text-gray-500">Approved impact: {money(approvedCost, "NGN")}</p>}
+        </div>
       </div>
 
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={items}
+              columns={CHANGE_COLUMNS}
+              canManage={canManage}
+              getId={(cr) => cr.id}
+              getStatus={(cr) => cr.status}
+              getTitle={(cr) => cr.title}
+              renderMeta={(cr) => textMeta(cr.costImpact ? money(cr.costImpact, cr.currency) : null)}
+              renderFooter={(cr) => assigneeFooter(cr.assigneeName, null)}
+              onMove={handleMove}
+              onOpen={setDetailId}
+              assigneeOptions={assigneeOptions}
+              getAssigneeId={(cr) => cr.assigneeId}
+              onAssign={handleAssign}
+            />
+          )}
+        </div>
+      ) : (
       <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
@@ -124,11 +182,13 @@ export default function ProjectChangeRequests() {
           ))
         )}
       </div>
+      )}
 
       <UpsertChangeRequestDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
         isSubmitting={createCr.isPending}
         error={(createCr.error as Error | undefined)?.message ?? null}
@@ -137,6 +197,7 @@ export default function ProjectChangeRequests() {
         open={editItem !== null}
         onOpenChange={(o) => !o && setEditItem(null)}
         mode="edit"
+        assigneeOptions={assigneeOptions}
         initial={
           editItem
             ? {
@@ -147,6 +208,7 @@ export default function ProjectChangeRequests() {
                 costImpact: editItem.costImpact,
                 timeImpactDays: editItem.timeImpactDays,
                 currency: editItem.currency,
+                assigneeId: editItem.assigneeId,
               }
             : undefined
         }

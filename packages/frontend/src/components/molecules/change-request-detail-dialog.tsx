@@ -1,15 +1,19 @@
 import { Dialog } from "@base-ui-components/react/dialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { MoneyInput } from "@/components/atoms/money-input";
 import {
   useAddChangeComment,
   useChangeRequest,
   useUpdateChangeRequest,
+  useChangeRequestBudgetLinks,
+  useSetChangeRequestBudgetLinks,
 } from "@/hooks/use-change-requests";
+import { useProjectBudget } from "@/hooks/use-budget";
 import { cn } from "@/lib/utils";
-import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
-import type { ChangeStatus } from "@/lib/project-types";
+import { currencySymbol, formatCurrency, formatShortDate, formatWholeCurrency } from "@/lib/formatters";
+import type { ChangeStatus, ChangeRequestDetail } from "@/lib/project-types";
 
 export const CHANGE_STATUS_META: Record<
   ChangeStatus,
@@ -27,6 +31,113 @@ function money(amount: number, currency: string): string {
 
 function formatWhen(value: string): string {
   return formatShortDate(value) || value;
+}
+
+function CRBudgetAllocations({ projectId, cr }: { projectId: string; cr: ChangeRequestDetail }) {
+  const { data: budget } = useProjectBudget(projectId);
+  const { data: links = [], isPending } = useChangeRequestBudgetLinks(projectId, cr.id);
+  const setLinks = useSetChangeRequestBudgetLinks();
+  
+  const [allocations, setAllocations] = useState<Array<{categoryId: string; amount: string}>>([]);
+
+  useEffect(() => {
+    if (!isPending) {
+      if (links.length > 0) {
+        setAllocations(links.map(l => ({ categoryId: l.budgetCategoryId, amount: String(l.amount) })));
+      } else {
+        const first = budget?.categories?.[0];
+        if (first) {
+          setAllocations([{ categoryId: first.id, amount: "" }]);
+        }
+      }
+    }
+  }, [links, isPending, budget?.categories]);
+
+  if (isPending || !budget) return null;
+
+  const totalAllocated = allocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+  const isOver = totalAllocated > cr.costImpact;
+
+  function handleSave() {
+    setLinks.mutate({
+      projectId,
+      changeId: cr.id,
+      links: allocations
+        .filter(a => a.categoryId && Number(a.amount) > 0)
+        .map(a => ({ budgetCategoryId: a.categoryId, amount: Number(a.amount) }))
+    });
+  }
+
+  function addRow() {
+    const first = budget?.categories?.[0];
+    if (first) {
+      setAllocations([...allocations, { categoryId: first.id, amount: "" }]);
+    }
+  }
+
+  function updateRow(idx: number, field: "categoryId" | "amount", val: string) {
+    const copy = [...allocations];
+    const item = copy[idx];
+    if (item) {
+      if (field === "categoryId") item.categoryId = val;
+      if (field === "amount") item.amount = val;
+      setAllocations(copy);
+    }
+  }
+
+  function removeRow(idx: number) {
+    setAllocations(allocations.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="mt-6 border-t border-[#F0F0F0] pt-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+        Allocate to budget categories
+      </p>
+      
+      <div className="flex flex-col gap-2">
+        {allocations.map((a, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <select
+              value={a.categoryId}
+              onChange={e => updateRow(i, "categoryId", e.target.value)}
+              className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+            >
+              {budget.categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <MoneyInput
+              currencySymbol={currencySymbol(cr.currency)}
+              value={a.amount}
+              onChange={val => updateRow(i, "amount", val)}
+              className="w-32 h-9 rounded-lg border border-gray-200 px-3 text-sm"
+            />
+            <Button variant="ghost" size="sm" className="h-9 text-red-500" onClick={() => removeRow(i)}>
+              ✕
+            </Button>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mt-3 flex items-center justify-between">
+        <Button variant="secondary" size="sm" onClick={addRow}>+ Add category</Button>
+        <div className="flex items-center gap-4">
+          <span className={cn("text-sm font-medium", isOver ? "text-red-600" : "text-gray-700")}>
+            Total: {formatCurrency(totalAllocated, cr.currency)} / {formatCurrency(cr.costImpact, cr.currency)}
+          </span>
+          <Button 
+            variant="primary" 
+            size="sm" 
+            disabled={setLinks.isPending || isOver} 
+            onClick={handleSave}
+          >
+            Save allocations
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface Props {
@@ -49,7 +160,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
 
   function submitComment(): void {
     if (!changeId || !comment.trim()) return;
-    addComment.mutate({ projectId, changeId, body: comment.trim() }, { onSuccess: () => setComment("") });
+    addComment.mutate({ projectId, changeId, body: { content: comment.trim() } }, { onSuccess: () => setComment("") });
   }
 
   return (
@@ -103,6 +214,8 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                     </Button>
                   )}
                 </div>
+
+                {cr.costImpact > 0 && <CRBudgetAllocations projectId={projectId} cr={cr} />}
 
                 <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Discussion ({cr.comments.length})

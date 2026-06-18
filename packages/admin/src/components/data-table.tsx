@@ -15,11 +15,13 @@ export function DataTable<T extends { id?: string }>({
   columns,
   rows,
   rowHref,
+  onRowClick,
   emptyLabel = "No records found.",
 }: {
   columns: Column<T>[];
   rows: T[];
   rowHref?: (row: T) => string | undefined;
+  onRowClick?: (row: T) => void;
   emptyLabel?: string;
 }) {
   const navigate = useNavigate();
@@ -50,13 +52,16 @@ export function DataTable<T extends { id?: string }>({
             ) : (
               rows.map((row, i) => {
                 const href = rowHref?.(row);
+                const clickable = href !== undefined || onRowClick !== undefined;
                 return (
                   <tr
                     key={row.id ?? i}
-                    onClick={href ? () => navigate(href) : undefined}
+                    onClick={
+                      href ? () => navigate(href) : onRowClick ? () => onRowClick(row) : undefined
+                    }
                     className={cn(
                       "border-b border-line last:border-0",
-                      href && "cursor-pointer hover:bg-surface-faint",
+                      clickable && "cursor-pointer hover:bg-surface-faint",
                     )}
                   >
                     {columns.map((col) => (

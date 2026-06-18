@@ -77,6 +77,17 @@
   --color-warning-900: #546B00;
 }
 
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* ─── shadcn semantic vars ────────────────────────────────────────────────── */
 /* Written outside @layer so @tailwindcss/vite emits them in both dev + build. */
 :root {
@@ -218,16 +229,39 @@ input {
   display: none;
 }
 
-@keyframes authBgFade {
-  0% {
-    opacity: 0;
+@media (min-width: 768px) and (pointer: fine) {
+  html {
+    zoom: 0.9;
   }
-  8%,
-  42% {
-    opacity: 1;
+  .h-dvh {
+    height: calc(100dvh / 0.9);
   }
-  50%,
-  100% {
-    opacity: 0;
+  .min-h-dvh {
+    min-height: calc(100dvh / 0.9);
   }
 }
+
+.bp-gantt .wx-willow-theme {
+  --wx-gantt-task-color: var(--color-primary-500);
+  --wx-gantt-task-border-color: var(--color-primary-600);
+  --wx-gantt-task-fill-color: var(--color-primary-200);
+  --wx-gantt-task-font-color: #ffffff;
+
+  --wx-gantt-summary-color: var(--color-primary-800);
+  --wx-gantt-summary-fill-color: var(--color-primary-700);
+  --wx-gantt-summary-border-color: var(--color-primary-900);
+  --wx-gantt-summary-font-color: #ffffff;
+
+  --wx-gantt-milestone-color: #F59E0B;
+
+  --wx-gantt-link-color: var(--color-primary-400);
+  --wx-gantt-link-color-hovered: var(--color-primary-600);
+
+  --wx-gantt-marker-color: var(--color-primary-500);
+  --wx-gantt-marker-font-color: var(--color-primary-700);
+
+  --wx-gantt-progress-border-color: var(--color-primary-300);
+  --wx-gantt-bar-border-radius: 6px;
+  --wx-gantt-milestone-border-radius: 3px;
+}
+

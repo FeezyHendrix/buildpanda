@@ -1,4 +1,5 @@
 import { generateId } from "../../lib/ids.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 import type { InspectionsRepository } from "./repository.ts";
 import type {
   InspectionCategory,
@@ -37,6 +38,27 @@ export interface EditInspectionInput {
   };
 }
 
+export interface InspectionsDeps {
+  notifications?: NotificationsService;
+}
+
+function notifyInspectionFailed(
+  deps: InspectionsDeps,
+  recipientId: string | null | undefined,
+  projectId: string,
+  title: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !recipientId || recipientId === actorId) return;
+  void deps.notifications
+    .notify(recipientId, "inspection_failed", {
+      title: "Inspection requires action",
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
 function toMedia(row: InspectionMediaRow): MediaItem {
   return { id: row.id, type: row.type, url: row.url };
 }
@@ -64,7 +86,10 @@ function toReport(row: InspectionRow, media: InspectionMediaRow[]): InspectionRe
   return report;
 }
 
-export function inspectionsService(repository: InspectionsRepository) {
+export function inspectionsService(
+  repository: InspectionsRepository,
+  deps: InspectionsDeps = {},
+) {
   async function loadProjectInspection(
     projectId: string,
     inspectionId: string,
@@ -115,8 +140,9 @@ export function inspectionsService(repository: InspectionsRepository) {
       projectId: string,
       inspectionId: string,
       input: EditInspectionInput,
+      userId: string,
     ): Promise<InspectionReport> {
-      await loadProjectInspection(projectId, inspectionId);
+      const existing = await loadProjectInspection(projectId, inspectionId);
 
       const patch: Parameters<typeof repository.update>[1] = {};
       if (input.title !== undefined) patch.title = input.title;
@@ -133,6 +159,10 @@ export function inspectionsService(repository: InspectionsRepository) {
 
       const updated = await repository.update(inspectionId, patch);
       if (!updated) throw new ConflictError("Inspection update failed");
+      if (input.status === "Action Required" && existing.status !== "Action Required") {
+        const projectOwnerId = await repository.projectOwnerId(projectId);
+        notifyInspectionFailed(deps, projectOwnerId, projectId, updated.title, userId);
+      }
       const media = await repository.mediaForInspections([inspectionId]);
       return toReport(updated, media);
     },

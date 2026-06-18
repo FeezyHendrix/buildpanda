@@ -31,7 +31,7 @@ pnpm --filter @buildpanda/web start    # next start on http://localhost:3001
 - `NEXT_PUBLIC_LEADS_ENDPOINT` — where the consultation form POSTs leads (JSON).
   Copy `.env.example` to `.env.local` and set it. When unset, submissions are
   logged to the console so nothing breaks in development.
-- Update contact details (`email`, `phoneDisplay`, `appUrl`) in `lib/site.ts`.
+- Update contact details (`email`, `phones`, `appUrl`) in `lib/site.ts`.
 
 ## SEO
 

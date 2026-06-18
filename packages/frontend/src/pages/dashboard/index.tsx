@@ -1,3 +1,4 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -38,7 +39,7 @@ export default function Dashboard() {
 
   return (
     // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-6xl mx-auto w-full">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-7xl mx-auto w-full">
       <Greeting name={session?.user.name ?? ""} />
 
       <section className="flex flex-col gap-4 mt-10">
@@ -54,6 +55,7 @@ export default function Dashboard() {
             <ProjectCard key={project.id} project={project} />
           ))}
           <NewProjectCard />
+          <ImportProgrammeCard />
         </div>
       </section>
     </div>
@@ -83,7 +85,7 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
       <EmptyState
         icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"
-        description="Build and manage your construction projects in Nigeria with complete transparency and control — no matter where you live."
+        description="Build and manage your construction projects in Nigeria with complete transparency and control, no matter where you live."
         action={
           <Button
             variant="ghost"
@@ -218,3 +220,19 @@ function NewProjectCard() {
     </Link>
   );
 }
+
+function ImportProgrammeCard() {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate("/import")}
+      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
+    >
+      <ReactSVG src={icons.upload} />
+      <p className='text-primary text-[16px] font-semibold'>Set up a project</p>
+      <p className="text-[11px] text-black-300 text-center">Import a programme, BoQ, drawings or BIM models and we'll build the project for you.</p>
+    </button>
+  );
+}
+

@@ -9,9 +9,12 @@ import {
   UpsertPermitDialog,
   type UpsertPermitValues,
 } from "@/components/molecules/upsert-permit-dialog";
+import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { PERMIT_COLUMNS, textMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreatePermit, useDeletePermit, usePermits, useUpdatePermit } from "@/hooks/use-permits";
 import { formatShortDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type { Permit, PermitStatus } from "@/lib/project-types";
 
 const STATUS_META: Record<PermitStatus, { label: string; tone: "neutral" | "info" | "success" | "danger" | "warning" }> = {
@@ -37,6 +40,12 @@ export default function ProjectPermits() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editPermit, setEditPermit] = useState<Permit | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [view, setView] = useState<"list" | "board">("list");
+
+  function handleMove(permit: Permit, status: PermitStatus): void {
+    if (permit.status === status) return;
+    updatePermit.mutate({ projectId: project.id, permitId: permit.id, status });
+  }
 
   function handleCreate(values: UpsertPermitValues): void {
     createPermit.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
@@ -47,7 +56,7 @@ export default function ProjectPermits() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Permits & Approvals"
         description="Regulatory permits and government approvals — track status, references and expiry."
@@ -59,7 +68,54 @@ export default function ProjectPermits() {
         ) : undefined}
       />
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-6 flex justify-end">
+        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+          {(["list", "board"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+              )}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === "board" ? (
+        <div className="mt-5">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : (
+            <KanbanBoard
+              items={permits}
+              columns={PERMIT_COLUMNS}
+              canManage={canManage}
+              getId={(p) => p.id}
+              getStatus={(p) => p.status}
+              getTitle={(p) => p.title}
+              renderMeta={(p) => textMeta(p.authority)}
+              renderFooter={(p) =>
+                p.expiryDate ? (
+                  <span className="text-xs text-gray-500">Expires {formatShortDate(p.expiryDate)}</span>
+                ) : (
+                  <span className="text-xs text-gray-400">No expiry</span>
+                )
+              }
+              onMove={handleMove}
+              onOpen={(id) => {
+                const permit = permits.find((p) => p.id === id);
+                if (permit) setEditPermit(permit);
+              }}
+            />
+          )}
+        </div>
+      ) : (
+      <div className="mt-5 flex flex-col gap-3">
         {isLoading ? (
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
         ) : permits.length === 0 ? (
@@ -89,6 +145,7 @@ export default function ProjectPermits() {
           ))
         )}
       </div>
+      )}
 
       <UpsertPermitDialog
         open={createOpen}

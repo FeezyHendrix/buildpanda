@@ -96,7 +96,41 @@ export function invoicesRepository(db: Knex) {
     async deletePayment(paymentId: string): Promise<number> {
       return db("invoice_payments").where({ id: paymentId }).delete();
     },
+
+    listAllocations(invoiceId: string): Promise<InvoiceAllocationRow[]> {
+      return db<InvoiceAllocationRow>("invoice_budget_allocations")
+        .where({ invoice_id: invoiceId })
+        .select("id", "invoice_id", "budget_category_id", "amount");
+    },
+
+    async replaceAllocations(
+      invoiceId: string,
+      allocations: NewInvoiceAllocationRecord[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("invoice_budget_allocations")
+          .where({ invoice_id: invoiceId })
+          .delete();
+        if (allocations.length > 0) {
+          await trx("invoice_budget_allocations").insert(allocations);
+        }
+      });
+    },
   };
+}
+
+export interface InvoiceAllocationRow {
+  id: string;
+  invoice_id: string;
+  budget_category_id: string;
+  amount: string;
+}
+
+export interface NewInvoiceAllocationRecord {
+  id: string;
+  invoice_id: string;
+  budget_category_id: string;
+  amount: string;
 }
 
 export type InvoicesRepository = ReturnType<typeof invoicesRepository>;

@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   ProjectPhaseRow,
   ProjectRow,
@@ -7,7 +8,7 @@ import type {
 
 export interface NewProjectRecord {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
   organization_id: string | null;
   name: string;
   address: string;
@@ -17,7 +18,7 @@ export interface NewProjectRecord {
   progress_percent: number;
   budget_total: number;
   budget_used: number;
-  currency: "NGN" | "USD";
+  currency: CurrencyCode;
   pending_approvals: number;
   folder_tone: "orange" | "brand" | "green" | "purple";
   budget_min: number;
@@ -29,7 +30,7 @@ export interface ProjectUpdatePatch {
   budget_total?: number;
   budget_min?: number;
   budget_max?: number;
-  currency?: "NGN" | "USD";
+  currency?: CurrencyCode;
 }
 
 export interface NewPhaseRecord {
@@ -43,7 +44,7 @@ export interface NewPhaseRecord {
 
 export interface NewFinancesRecord {
   project_id: string;
-  currency: "NGN" | "USD";
+  currency: CurrencyCode;
   total_budget: number;
   funds_deposited: number;
   funds_released: number;
@@ -73,6 +74,13 @@ export function projectsRepository(db: Knex) {
       await db("projects")
         .where({ id })
         .update({ ...patch, updated_at: db.fn.now() });
+    },
+
+    async updateCurrency(id: string, currency: CurrencyCode): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("projects").where({ id }).update({ currency, updated_at: db.fn.now() });
+        await trx("project_finances").where({ project_id: id }).update({ currency });
+      });
     },
 
     findPhasesByProject(projectId: string): Promise<ProjectPhaseRow[]> {

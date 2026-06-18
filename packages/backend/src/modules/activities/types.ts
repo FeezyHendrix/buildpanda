@@ -1,5 +1,14 @@
 export type ActivityStatus = "Planned" | "InProgress" | "Completed" | "Cancelled";
-export type Currency = "NGN" | "USD";
+import type { CurrencyCode } from "../../lib/currencies.ts";
+export type Currency = CurrencyCode;
+
+export type DependencyType = "FS" | "SS" | "FF" | "SF";
+
+export interface ActivityDependency {
+  activityId: string;
+  type: DependencyType;
+  lagDays: number;
+}
 
 export interface ActivityDelay {
   id: string;
@@ -32,7 +41,19 @@ export interface Activity {
   actualStartAt: string | null;
   actualEndAt: string | null;
   workerCountPlanned: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
   notes: string | null;
+  wbsCode: string | null;
+  outlineLevel: number | null;
+  parentActivityId: string | null;
+  predecessors: ActivityDependency[];
+  percentComplete: number;
+  durationDays: number | null;
+  baselineStartAt: string | null;
+  baselineEndAt: string | null;
+  isMilestone: boolean;
+  source: string;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;
@@ -51,7 +72,19 @@ export interface ActivityRow {
   actual_start_at: Date | string | null;
   actual_end_at: Date | string | null;
   worker_count_planned: number;
+  assignee_id: string | null;
+  assignee_name?: string | null;
   notes: string | null;
+  wbs_code: string | null;
+  outline_level: number | null;
+  parent_activity_id: string | null;
+  predecessors: ActivityDependency[] | string;
+  percent_complete: string | number;
+  duration_days: string | number | null;
+  baseline_start_at: Date | string | null;
+  baseline_end_at: Date | string | null;
+  is_milestone: boolean;
+  source: string;
   created_by_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -82,10 +115,22 @@ export interface CreateActivityInput {
   activityType: string;
   phaseId?: string | null;
   location?: string;
+  status?: ActivityStatus;
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string;
+  wbsCode?: string | null;
+  outlineLevel?: number | null;
+  parentActivityId?: string | null;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  durationDays?: number | null;
+  baselineStartAt?: string | null;
+  baselineEndAt?: string | null;
+  isMilestone?: boolean;
+  source?: string;
 }
 
 export interface UpdateActivityInput {
@@ -99,7 +144,11 @@ export interface UpdateActivityInput {
   actualStartAt?: string | null;
   actualEndAt?: string | null;
   workerCountPlanned?: number;
+  assigneeId?: string | null;
   notes?: string | null;
+  predecessors?: ActivityDependency[];
+  percentComplete?: number;
+  isMilestone?: boolean;
 }
 
 export interface RaiseDelayInput {

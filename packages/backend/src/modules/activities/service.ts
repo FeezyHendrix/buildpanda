@@ -1,9 +1,11 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import type {
   Activity,
   ActivityDelay,
   ActivityDelayRow,
+  ActivityDependency,
   ActivityRow,
   CreateActivityInput,
   DelayReasonRow,
@@ -12,18 +14,15 @@ import type {
   UpdateActivityInput,
 } from "./types.ts";
 import type { ActivitiesRepository } from "./repository.ts";
+import type { NotificationsService } from "../notifications/service.ts";
 
 interface Actor {
   id: string;
   name: string;
 }
 
-function toIso(value: Date | string): string {
-  return new Date(value).toISOString();
-}
-
-function toIsoOrNull(value: Date | string | null): string | null {
-  return value ? toIso(value) : null;
+export interface ActivitiesDeps {
+  notifications?: NotificationsService;
 }
 
 function buildDelay(
@@ -68,7 +67,22 @@ function buildActivity(
     actualStartAt: toIsoOrNull(row.actual_start_at),
     actualEndAt: toIsoOrNull(row.actual_end_at),
     workerCountPlanned: row.worker_count_planned,
+    assigneeId: row.assignee_id,
+    assigneeName: row.assignee_name ?? null,
     notes: row.notes,
+    wbsCode: row.wbs_code,
+    outlineLevel: row.outline_level,
+    parentActivityId: row.parent_activity_id,
+    predecessors:
+      typeof row.predecessors === "string"
+        ? (JSON.parse(row.predecessors) as ActivityDependency[])
+        : (row.predecessors ?? []),
+    percentComplete: Number(row.percent_complete ?? 0),
+    durationDays: row.duration_days === null || row.duration_days === undefined ? null : Number(row.duration_days),
+    baselineStartAt: toIsoOrNull(row.baseline_start_at),
+    baselineEndAt: toIsoOrNull(row.baseline_end_at),
+    isMilestone: Boolean(row.is_milestone),
+    source: row.source,
     delays,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -81,7 +95,27 @@ function assertChronology(start: string, end: string, label: string): void {
   }
 }
 
-export function activitiesService(repository: ActivitiesRepository) {
+export function activitiesService(
+  repository: ActivitiesRepository,
+  enqueueRecompute: (projectId: string) => Promise<void> = async () => {},
+  deps: ActivitiesDeps = {},
+) {
+  function notifyAssignee(
+    assigneeId: string | null | undefined,
+    projectId: string,
+    label: string,
+    actorId: string,
+  ): void {
+    if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
+    void deps.notifications
+      .notify(assigneeId, "activity_assigned", {
+        title: "An activity was assigned to you",
+        body: label,
+        projectId,
+      })
+      .catch(() => undefined);
+  }
+
   async function loadPhaseMap(projectId: string): Promise<Map<string, string>> {
     const phases = await repository.phaseNamesForProject(projectId);
     return new Map(phases.map((p) => [p.id, p.name]));
@@ -166,22 +200,36 @@ export function activitiesService(repository: ActivitiesRepository) {
         name: input.name,
         activity_type: input.activityType,
         location: input.location ?? null,
-        status: "Planned",
+        status: input.status ?? "Planned",
         planned_start_at: input.plannedStartAt,
         planned_end_at: input.plannedEndAt,
         worker_count_planned: input.workerCountPlanned ?? 0,
+        assignee_id: input.assigneeId ?? null,
         notes: input.notes ?? null,
+        wbs_code: input.wbsCode ?? null,
+        outline_level: input.outlineLevel ?? null,
+        parent_activity_id: input.parentActivityId ?? null,
+        predecessors: JSON.stringify(input.predecessors ?? []),
+        percent_complete: input.percentComplete ?? 0,
+        duration_days: input.durationDays ?? null,
+        baseline_start_at: input.baselineStartAt ?? null,
+        baseline_end_at: input.baselineEndAt ?? null,
+        is_milestone: input.isMilestone ?? false,
+        source: input.source ?? "manual",
         created_by_id: actor.id,
       });
-      return buildOne(row);
+      await enqueueRecompute(projectId);
+      notifyAssignee(row.assignee_id, projectId, row.name, actor.id);
+      return buildOne(await loadProjectActivity(projectId, row.id));
     },
 
     async update(
       projectId: string,
       activityId: string,
       input: UpdateActivityInput,
+      actorId?: string,
     ): Promise<Activity> {
-      await loadProjectActivity(projectId, activityId);
+      const existing = await loadProjectActivity(projectId, activityId);
 
       if (input.plannedStartAt && input.plannedEndAt) {
         assertChronology(input.plannedStartAt, input.plannedEndAt, "Planned");
@@ -209,15 +257,35 @@ export function activitiesService(repository: ActivitiesRepository) {
       if (input.workerCountPlanned !== undefined)
         patch.worker_count_planned = input.workerCountPlanned;
       if (input.notes !== undefined) patch.notes = input.notes;
+      if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
+      if (input.predecessors !== undefined) patch.predecessors = JSON.stringify(input.predecessors);
+      if (input.percentComplete !== undefined) patch.percent_complete = input.percentComplete;
+      if (input.isMilestone !== undefined) patch.is_milestone = input.isMilestone;
 
       const updated = await repository.update(activityId, patch);
       if (!updated) throw new ConflictError("Activity update failed");
-      return buildOne(updated);
+
+      if (input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id) {
+        notifyAssignee(updated.assignee_id, projectId, updated.name, actorId ?? "");
+      }
+
+      const affectsSchedule =
+        input.plannedStartAt !== undefined ||
+        input.plannedEndAt !== undefined ||
+        input.phaseId !== undefined ||
+        input.status !== undefined ||
+        input.percentComplete !== undefined;
+      if (affectsSchedule) {
+        await enqueueRecompute(projectId);
+      }
+
+      return buildOne(await loadProjectActivity(projectId, updated.id));
     },
 
     async remove(projectId: string, activityId: string): Promise<void> {
       await loadProjectActivity(projectId, activityId);
       await repository.deleteActivity(activityId);
+      await enqueueRecompute(projectId);
     },
 
     async raiseDelay(

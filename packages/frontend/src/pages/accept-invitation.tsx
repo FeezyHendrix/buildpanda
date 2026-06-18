@@ -1,7 +1,8 @@
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
 import { authClient } from "@/lib/auth-client";
+import { PENDING_ORG_INVITE_KEY } from "@/lib/route-guards";
 import {
   useAcceptInvitation,
   useInvitation,
@@ -17,7 +18,45 @@ export default function AcceptInvitation() {
   const acceptInvitation = useAcceptInvitation();
   const rejectInvitation = useRejectInvitation();
 
-  if (sessionPending || invitationQuery.isPending) {
+  const signedIn = Boolean(session?.user);
+
+  useEffect(() => {
+    if (sessionPending || !invitationId) return;
+    if (signedIn) {
+      localStorage.removeItem(PENDING_ORG_INVITE_KEY);
+    } else {
+      localStorage.setItem(PENDING_ORG_INVITE_KEY, invitationId);
+    }
+  }, [sessionPending, signedIn, invitationId]);
+
+  if (sessionPending) {
+    return <InvitationShell>Loading invitation…</InvitationShell>;
+  }
+
+  if (!session?.user) {
+    const redirectTo = encodeURIComponent(`/accept-invitation/${invitationId}`);
+    return (
+      <InvitationShell title="Accept your invitation">
+        <p className="text-sm text-gray-500">
+          Sign in or create your account to accept this invitation.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Link to={`/auth/sign-in?redirect=${redirectTo}`}>
+            <Button size="sm" className="w-full">
+              Sign in to accept
+            </Button>
+          </Link>
+          <Link to={`/auth/sign-up?redirect=${redirectTo}`}>
+            <Button variant="secondary" size="sm" className="w-full">
+              Create an account
+            </Button>
+          </Link>
+        </div>
+      </InvitationShell>
+    );
+  }
+
+  if (invitationQuery.isPending) {
     return <InvitationShell>Loading invitation…</InvitationShell>;
   }
 
@@ -55,32 +94,6 @@ export default function AcceptInvitation() {
     );
   }
 
-  if (!session) {
-    const redirectTo = encodeURIComponent(
-      `/accept-invitation/${invitationId}`,
-    );
-    return (
-      <InvitationShell title={`Join ${invitation.organizationName}`}>
-        <p className="text-sm text-gray-500">
-          You were invited as <strong>{invitation.email}</strong>. Sign in or
-          create your account to accept.
-        </p>
-        <div className="mt-6 flex flex-col gap-2">
-          <Link to={`/auth/sign-in?redirect=${redirectTo}`}>
-            <Button size="sm" className="w-full">
-              Sign in to accept
-            </Button>
-          </Link>
-          <Link to={`/auth/sign-up?redirect=${redirectTo}`}>
-            <Button variant="secondary" size="sm" className="w-full">
-              Create an account
-            </Button>
-          </Link>
-        </div>
-      </InvitationShell>
-    );
-  }
-
   const emailMismatch =
     session.user.email.toLowerCase() !== invitation.email.toLowerCase();
 
@@ -99,14 +112,20 @@ export default function AcceptInvitation() {
   function handleAccept(): void {
     if (!invitationId) return;
     acceptInvitation.mutate(invitationId, {
-      onSuccess: () => navigate("/dashboard"),
+      onSuccess: () => {
+        localStorage.removeItem(PENDING_ORG_INVITE_KEY);
+        navigate("/dashboard");
+      },
     });
   }
 
   function handleReject(): void {
     if (!invitationId) return;
     rejectInvitation.mutate(invitationId, {
-      onSuccess: () => navigate("/dashboard"),
+      onSuccess: () => {
+        localStorage.removeItem(PENDING_ORG_INVITE_KEY);
+        navigate("/dashboard");
+      },
     });
   }
 

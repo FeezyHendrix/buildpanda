@@ -1,7 +1,9 @@
+import type { CurrencyCode } from "./currency";
+
 export type RiskLevel = "Low" | "Medium" | "High";
 export type ProjectStatus = "On Track" | "At Risk" | "Delayed";
 export type PhaseStatus = "Done" | "InProgress" | "Pending";
-export type Currency = "NGN" | "USD";
+export type Currency = CurrencyCode;
 export type Tone =
   | "brand"
   | "orange"
@@ -116,6 +118,8 @@ export interface SiteQuery {
   askedById: string | null;
   answeredById: string | null;
   answeredByName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   answeredAt: string | null;
   commentCount: number;
   createdAt: string;
@@ -134,6 +138,106 @@ export interface SiteQueryComment {
 export interface SiteQueryDetail extends SiteQuery {
   comments: SiteQueryComment[];
 }
+
+export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";
+export type RfiPriority = "Low" | "Normal" | "High";
+
+export interface Rfi {
+  id: string;
+  projectId: string;
+  number: number;
+  subject: string;
+  question: string;
+  status: RfiStatus;
+  priority: RfiPriority;
+  visibility: "internal" | "shared";
+  ballInCourtId: string | null;
+  ballInCourtName: string | null;
+  assigneeRole: string | null;
+  dueDate: string | null;
+  officialResponse: string | null;
+  officialRespondedById: string | null;
+  officialRespondedByName: string | null;
+  officialRespondedAt: string | null;
+  costImpact: boolean;
+  scheduleImpact: boolean;
+  changeRequestId: string | null;
+  reopenedCount: number;
+  createdById: string | null;
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RfiComment {
+  id: string;
+  rfiId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  contentHtml: string | null;
+  attachments: { fileId: string; url: string; name: string }[];
+  references: { type: "action_item" | "activity"; id: string; label: string }[];
+  isProposedResponse: boolean;
+  createdAt: string;
+}
+
+export interface RfiEvent {
+  id: string;
+  rfiId: string;
+  type: string;
+  actorId: string | null;
+  actorLabel: string | null;
+  detail: unknown;
+  createdAt: string;
+}
+
+export interface RfiDetail extends Rfi {
+  comments: RfiComment[];
+  events: RfiEvent[];
+}
+
+export type BimVersionStatus = "Processing" | "Ready" | "Failed";
+
+export interface BimModel {
+  id: string;
+  projectId: string;
+  name: string;
+  discipline: string | null;
+  currentVersionId: string | null;
+  status: BimVersionStatus | null;
+  elementCount: number | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BimIssueStatus = "Open" | "Closed";
+
+export interface BimCoordinationIssue {
+  id: string;
+  bimModelId: string;
+  elementGuid: string | null;
+  position: unknown;
+  title: string;
+  description: string | null;
+  status: BimIssueStatus;
+  rfiId: string | null;
+  assigneeId: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BimUploadTicket =
+  | { mode: "single"; storagePath: string; url: string }
+  | {
+      mode: "multipart";
+      storagePath: string;
+      uploadId: string;
+      partSize: number;
+      parts: { partNumber: number; url: string }[];
+    };
 
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Resubmit";
 
@@ -183,6 +287,8 @@ export interface ChangeRequest {
   submittedById: string | null;
   decidedById: string | null;
   decidedByName: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
   decidedAt: string | null;
   commentCount: number;
   createdAt: string;
@@ -241,6 +347,23 @@ export interface ProjectInsights {
   scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number; blockedItems: number };
 }
 
+export interface GlobalWhatsNextItem {
+  id: string;
+  project_id: string;
+  projectName: string;
+}
+
+export interface GlobalWhatsNext {
+  windowDays: number;
+  from: string;
+  to: string;
+  dueActionItems: (GlobalWhatsNextItem & { title: string; priority: string; due_date: string; status: string })[];
+  dueQueries: (GlobalWhatsNextItem & { subject: string; due_date: string })[];
+  dueApprovals: (GlobalWhatsNextItem & { title: string; due_date: string; status: string })[];
+  upcomingKeyDates: (GlobalWhatsNextItem & { label: string; target_date: string })[];
+  expiringPermits: (GlobalWhatsNextItem & { title: string; expiry_date: string })[];
+}
+
 export interface WhatsNext {
   windowDays: number;
   from: string;
@@ -265,7 +388,7 @@ export interface ProjectParticipant {
   userId: string | null;
   name: string | null;
   email: string;
-  role: ParticipantRole;
+  role: ParticipantRole | "owner";
   status: ParticipantStatus;
   createdAt: string;
 }
@@ -590,6 +713,14 @@ export interface ActivityDelay {
   createdAt: string;
 }
 
+export type ActivityDependencyType = "FS" | "SS" | "FF" | "SF";
+
+export interface ActivityDependency {
+  activityId: string;
+  type: ActivityDependencyType;
+  lagDays: number;
+}
+
 export interface Activity {
   id: string;
   projectId: string;
@@ -605,7 +736,19 @@ export interface Activity {
   actualStartAt: string | null;
   actualEndAt: string | null;
   workerCountPlanned: number;
+  assigneeId: string | null;
+  assigneeName: string | null;
   notes: string | null;
+  wbsCode: string | null;
+  outlineLevel: number | null;
+  parentActivityId: string | null;
+  predecessors: ActivityDependency[];
+  percentComplete: number;
+  durationDays: number | null;
+  baselineStartAt: string | null;
+  baselineEndAt: string | null;
+  isMilestone: boolean;
+  source: string;
   delays: ActivityDelay[];
   percentComplete: number;
   createdAt: string;
@@ -709,4 +852,58 @@ export interface UploadedFile {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+}
+
+export type ChannelType = "project" | "org" | "dm" | "group_dm";
+export type NotifyLevel = "all" | "mentions" | "none";
+
+export interface Channel {
+  id: string;
+  type: ChannelType;
+  name: string | null;
+  topic: string | null;
+  projectId: string | null;
+  organizationId: string | null;
+  isPrivate: boolean;
+  archivedAt: string | null;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  unreadCount: number;
+  muted: boolean;
+  notifyLevel: NotifyLevel;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  authorId: string | null;
+  authorName: string | null;
+  body: string;
+  contentHtml: string | null;
+  parentMessageId: string | null;
+  references: { type: string; id: string; label: string }[];
+  resolvedReferences?: {
+    type: string;
+    id: string;
+    restricted: boolean;
+    title?: string;
+    status?: string | null;
+    projectId?: string | null;
+    url?: string;
+  }[];
+  mentions: { kind: "user" | "here" | "channel"; userId?: string }[];
+  attachments: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
+  reactions?: { emoji: string; count: number; mine: boolean }[];
+  replyCount?: number;
+  editedAt: string | null;
+  deletedAt: string | null;
+  createdAt: string;
+}
+
+export interface ChannelMemberLite {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "admin" | "member";
 }

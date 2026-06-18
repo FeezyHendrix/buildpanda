@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { Label } from "@/components/atoms/label";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -13,7 +14,7 @@ import {
 import { useAbility } from "@/contexts/ability-context";
 import type { Estimate } from "@/api/proposals";
 import { proposalsApi } from "@/api/proposals";
-import { formatWholeCurrency as fmt } from "@/lib/formatters";
+import { formatWholeCurrency as fmt, currencySymbol } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
 interface ItemDraft {
@@ -37,13 +38,17 @@ function itemsToApi(items: ItemDraft[]) {
   }));
 }
 
+import { useSeedBudgetFromEstimate } from "@/hooks/use-budget";
+import { toast } from "@/lib/toast";
+
 interface Props {
   proposalId: string;
   estimate: Estimate | null;
   currency: string;
+  projectId?: string | null;
 }
 
-export function EstimateTab({ proposalId, estimate, currency }: Props) {
+export function EstimateTab({ proposalId, estimate, currency, projectId }: Props) {
   const ability = useAbility();
   const canCreate = ability.can("create", "proposals");
   const canUpdate = ability.can("update", "proposals");
@@ -52,6 +57,9 @@ export function EstimateTab({ proposalId, estimate, currency }: Props) {
   const createEstimate = useCreateEstimate(proposalId);
   const patchEstimate = usePatchEstimate(proposalId);
   const sendEstimate = useSendEstimate(proposalId);
+  const seedBudget = useSeedBudgetFromEstimate();
+
+  const symbol = currencySymbol(currency);
 
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
@@ -186,6 +194,31 @@ export function EstimateTab({ proposalId, estimate, currency }: Props) {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
+          {projectId && (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={seedBudget.isPending}
+              onClick={async () => {
+                try {
+                  const items = estimate.items.map((i) => ({
+                    groupLabel: i.groupLabel,
+                    total: i.qty * i.unitRate,
+                  }));
+                  const res = await seedBudget.mutateAsync({
+                    projectId,
+                    items,
+                    mode: "skip",
+                  });
+                  toast(`${res.created} categories created, ${res.skipped} skipped`, "success");
+                } catch (e: any) {
+                  toast(e.message || "Failed to seed budget", "error");
+                }
+              }}
+            >
+              {seedBudget.isPending ? "Seeding…" : "Seed budget"}
+            </Button>
+          )}
           {estimate.status === "Draft" && canSend && (
             <Button
               variant="primary"
@@ -281,13 +314,12 @@ export function EstimateTab({ proposalId, estimate, currency }: Props) {
                   placeholder="m², item…"
                   disabled={!isDraft}
                 />
-                <Input
+                <MoneyInput
                   className="h-9 text-xs"
-                  type="number"
-                  min="0"
                   value={item.unitRate}
-                  onChange={(e) => updateItem(i, "unitRate", e.target.value)}
+                  onChange={(v) => updateItem(i, "unitRate", v)}
                   disabled={!isDraft}
+                  currencySymbol={symbol}
                 />
                 {isDraft ? (
                   <button

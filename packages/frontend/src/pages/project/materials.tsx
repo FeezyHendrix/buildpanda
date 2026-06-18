@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { IconBox } from "@/components/atoms/icon-box";
 import { Label } from "@/components/atoms/label";
@@ -14,7 +15,9 @@ import {
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
+import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateMaterialOrder,
@@ -23,7 +26,7 @@ import {
   useUpdateMaterialOrder,
   type MaterialOrderInput,
 } from "@/hooks/use-materials-equipment";
-import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import { currencySymbol, formatCurrency, formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialOrder, MaterialOrderStatus, RequestPriority } from "@/lib/project-types";
 
@@ -87,6 +90,7 @@ export default function ProjectMaterials() {
     filter === "all" ? undefined : filter,
   );
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MaterialOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<MaterialOrder | null>(null);
   const createOrder = useCreateMaterialOrder();
@@ -109,7 +113,7 @@ export default function ProjectMaterials() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Materials & equipment"
         description="Request materials, track deliveries, and connect every order to phases, site activities, receipts, and project cost control."
@@ -123,12 +127,27 @@ export default function ProjectMaterials() {
               <ChevronRightIcon className="size-4" />
             </Link>
             {canManage && (
+              <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
+                Import from BoQ
+              </Button>
+            )}
+            {canManage && (
               <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
                 <PlusIcon className="size-4" />
                 New material order
               </Button>
             )}
           </div>
+        }
+      />
+
+      <ImportBoqDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        projectId={project.id}
+        currency={project.currency}
+        onImported={(count) =>
+          toast(`Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`, "success")
         }
       />
 
@@ -203,7 +222,8 @@ export default function ProjectMaterials() {
         initial={editTarget}
         onSubmit={upsert}
         isSubmitting={createOrder.isPending || updateOrder.isPending}
-        error={((createOrder.error ?? updateOrder.error) as Error | null)?.message ?? null}
+        error={editTarget ? (updateOrder.error as Error | null)?.message ?? null : (createOrder.error as Error | null)?.message ?? null}
+        currency={project.currency}
       />
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -323,10 +343,12 @@ interface MaterialOrderDialogProps {
   onSubmit: (values: MaterialOrderInput) => void;
   isSubmitting: boolean;
   error: string | null;
+  currency?: string;
 }
 
-function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error }: MaterialOrderDialogProps) {
+function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error, currency = "USD" }: MaterialOrderDialogProps) {
   const [title, setTitle] = useState("");
+  const symbol = currencySymbol(currency);
   const [materialName, setMaterialName] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [unit, setUnit] = useState("bags");
@@ -366,7 +388,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
         onSubmit({
           title: title.trim(),
           materialName: materialName.trim(),
-          quantity: Number(quantity),
+          quantity: parseFloat(quantity),
           unit: unit.trim(),
           supplier: supplier.trim() || null,
           priority,
@@ -381,7 +403,7 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
       <Field label="Title" id="mat-title" value={title} onChange={setTitle} placeholder="e.g. Cement for first-floor blockwork" />
       <Field label="Material" id="mat-name" value={materialName} onChange={setMaterialName} placeholder="Dangote cement 42.5" />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" />
+        <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="any" />
         <Field label="Unit" id="mat-unit" value={unit} onChange={setUnit} />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -394,7 +416,10 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
         <Field label="Needed by" id="mat-needed" value={neededBy || today()} onChange={setNeededBy} type="date" />
       </div>
       <Field label="Supplier" id="mat-supplier" value={supplier} onChange={setSupplier} placeholder="Optional" />
-      <Field label="Estimated cost" id="mat-cost" value={estimatedCost} onChange={setEstimatedCost} type="number" />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="mat-cost">Estimated cost</Label>
+        <MoneyInput id="mat-cost" value={estimatedCost} onChange={setEstimatedCost} currencySymbol={symbol} placeholder="0.00" />
+      </div>
       <Field label="Delivery location" id="mat-location" value={deliveryLocation} onChange={setDeliveryLocation} placeholder="Site store, gate, yard…" />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-notes">Lifecycle notes</Label>
@@ -404,11 +429,11 @@ function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitti
   );
 }
 
-function Field({ label, id, value, onChange, placeholder, type = "text" }: { label: string; id: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string }) {
+function Field({ label, id, value, onChange, placeholder, type = "text", step="any" }: { label: string; id: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: string, step?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} type={type} className={FIELD} />
+      <input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} type={type} step={step} className={FIELD} />
     </div>
   );
 }

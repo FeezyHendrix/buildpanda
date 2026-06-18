@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -7,6 +8,7 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   ContractorsIcon,
   PlusIcon,
+  BackArrowIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -14,6 +16,10 @@ import {
   UpsertTeamMemberDialog,
   type UpsertTeamMemberValues,
 } from "@/components/molecules/upsert-team-member-dialog";
+import {
+  InviteHomeownerDialog,
+  type InviteHomeownerValues,
+} from "@/components/molecules/invite-homeowner-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectTeam,
@@ -22,9 +28,27 @@ import {
   useDeleteTeamMember,
   type TeamMember,
 } from "@/hooks/use-team";
+import {
+  useParticipants,
+  useInviteParticipant,
+  useRemoveParticipant,
+} from "@/hooks/use-participants";
+import type { ProjectParticipant } from "@/lib/project-types";
 
 export default function ProjectTeam() {
   const { project } = useProjectContext();
+  
+  const { data: participants = [] } = useParticipants(project.id);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const inviteParticipant = useInviteParticipant();
+
+  function handleInvite(values: InviteHomeownerValues): void {
+    inviteParticipant.mutate(
+      { projectId: project.id, ...values },
+      { onSuccess: () => setInviteOpen(false) }
+    );
+  }
+
   const { data: members = [] } = useProjectTeam(project.id);
   const [createOpen, setCreateOpen] = useState(false);
   const createMember = useCreateTeamMember();
@@ -32,38 +56,82 @@ export default function ProjectTeam() {
   function handleCreate(values: UpsertTeamMemberValues): void {
     createMember.mutate(
       { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) },
+      { onSuccess: () => setCreateOpen(false) }
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
+    <div className="w-full px-6 py-8 sm:px-10">
+      <div className="mb-4">
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
+        >
+          <BackArrowIcon className="size-4" />
+          Back to projects
+        </Link>
+      </div>
+
       <PageHeader
         title="Project Team"
-        description="The people delivering this build, their roles, and how to reach them."
-        actions={
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            Add Team Member
-          </Button>
-        }
-      />
-
-      <UpsertTeamMemberDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        mode="create"
-        onSubmit={handleCreate}
-        isSubmitting={createMember.isPending}
-        error={(createMember.error as Error | undefined)?.message ?? null}
+        description="Manage who has access to this project and list the people delivering this build."
       />
 
       <section className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Project access</h2>
+            <p className="text-sm text-gray-500">People with access to view or manage this project.</p>
+          </div>
+          <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
+            <PlusIcon className="size-4" />
+            Invite to project
+          </Button>
+        </div>
+
+        <InviteHomeownerDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          onSubmit={handleInvite}
+          isSubmitting={inviteParticipant.isPending}
+          error={(inviteParticipant.error as Error | undefined)?.message ?? null}
+        />
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {participants.map((p) => (
+            <ParticipantCard key={p.id} projectId={project.id} participant={p} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12 border-t border-gray-200 pt-10">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
+            <p className="text-sm text-gray-500">
+              People delivering this build (for reference — does not grant access).
+            </p>
+          </div>
+          <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="size-4" />
+            Add Contact
+          </Button>
+        </div>
+
+        <UpsertTeamMemberDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          mode="create"
+          onSubmit={handleCreate}
+          isSubmitting={createMember.isPending}
+          error={(createMember.error as Error | undefined)?.message ?? null}
+        />
+
         {members.length === 0 ? (
           <Card padding="lg">
             <EmptyState
               icon={<ContractorsIcon className="size-6" />}
-              title="No team members yet"
+              title="No contacts yet"
               description="Add the engineers, contractors, and managers working on this project to keep everyone aligned."
               action={
                 <Button
@@ -72,7 +140,7 @@ export default function ProjectTeam() {
                   onClick={() => setCreateOpen(true)}
                 >
                   <PlusIcon className="size-4" />
-                  Add Team Member
+                  Add Contact
                 </Button>
               }
             />
@@ -90,6 +158,85 @@ export default function ProjectTeam() {
         )}
       </section>
     </div>
+  );
+}
+
+const ROLE_LABEL = {
+  owner: "Owner",
+  client: "Client",
+  architect: "Architect",
+  inspector: "Inspector",
+  guest: "Guest",
+} as const;
+
+function ParticipantCard({
+  projectId,
+  participant,
+}: {
+  projectId: string;
+  participant: ProjectParticipant;
+}) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const removeParticipant = useRemoveParticipant();
+
+  function handleDelete(): void {
+    removeParticipant.mutate(
+      { projectId, participantId: participant.id },
+      { onSuccess: () => setDeleteOpen(false) }
+    );
+  }
+
+  const isOwner = participant.role === "owner";
+  
+  return (
+    <Card padding="lg" className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Avatar name={participant.name ?? participant.email} size="md" />
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-900">
+            {participant.name ?? participant.email}
+          </span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-gray-500">{participant.email}</span>
+            <span className="text-xs text-gray-300">•</span>
+            <span className="text-xs text-gray-500">
+              {ROLE_LABEL[participant.role]}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-3">
+        {isOwner ? (
+          <Badge tone="info">Owner</Badge>
+        ) : participant.status === "invited" ? (
+          <Badge tone="neutral">Invited</Badge>
+        ) : participant.status === "active" ? (
+          <Badge tone="success">Active</Badge>
+        ) : null}
+
+        {!isOwner && (
+          <>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="ml-2 text-xs font-medium text-red-500 hover:text-red-600"
+            >
+              Remove
+            </button>
+            <ConfirmDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              onConfirm={handleDelete}
+              title="Remove access"
+              description={`Are you sure you want to remove ${participant.name ?? participant.email}'s access to this project?`}
+              confirmLabel="Remove"
+              variant="danger"
+            />
+          </>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -141,7 +288,7 @@ function TeamMemberCard({
       </div>
 
       {member.responsibilities && (
-        <p className="text-sm text-gray-600 text-pretty">
+        <p className="text-sm text-pretty text-gray-600">
           {member.responsibilities}
         </p>
       )}
