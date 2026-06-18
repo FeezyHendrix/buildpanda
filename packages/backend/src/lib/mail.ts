@@ -25,6 +25,8 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  from?: { address: string; name: string };
+  replyTo?: { address: string; name: string };
 }
 
 function htmlToText(html: string): string {
@@ -67,9 +69,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 
   try {
     const response = await client.sendMail({
-      from: { address: config.mail.fromAddress, name: config.mail.fromName },
+      from: options.from ?? { address: config.mail.fromAddress, name: config.mail.fromName },
       reply_to: [
-        { address: config.mail.replyToAddress, name: config.mail.fromName },
+        options.replyTo ?? { address: config.mail.replyToAddress, name: config.mail.fromName },
       ],
       to: recipients.map((address, index) => ({
         email_address: {
