@@ -48,6 +48,8 @@ export interface AdminUserRow {
   phone: string | null;
   profession: string | null;
   image: string | null;
+  signupIp: string | null;
+  signupCountry: string | null;
   createdAt: string;
   updatedAt: string;
   projectCount: number;
