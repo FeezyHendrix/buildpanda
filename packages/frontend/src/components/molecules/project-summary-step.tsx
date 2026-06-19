@@ -31,6 +31,8 @@ interface ProjectSummaryData {
 interface ProjectSummaryStepProps {
   data: ProjectSummaryData;
   onEdit: (step: number) => void;
+  onStart: () => void;
+  isStarting?: boolean;
 }
 
 function resolveLabel<T extends { id: string; title: string }>(
@@ -269,7 +271,7 @@ function DownloadIcon() {
   );
 }
 
-function ProjectSummaryStep({ data, onEdit }: ProjectSummaryStepProps) {
+function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false }: ProjectSummaryStepProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [activePage, setActivePage] = useState(0);
@@ -316,7 +318,7 @@ function ProjectSummaryStep({ data, onEdit }: ProjectSummaryStepProps) {
 
         <button
           type="button"
-          className="mb-8 flex w-full items-center justify-center gap-2 text-sm font-medium text-[#004DE7] hover:opacity-80"
+          className="mb-8 flex w-full items-center justify-end gap-2 text-sm font-medium text-[#004DE7] hover:opacity-80"
           onClick={() => window.print()}
         >
           <DownloadIcon />
@@ -337,7 +339,9 @@ function ProjectSummaryStep({ data, onEdit }: ProjectSummaryStepProps) {
           </div>
 
           <div className="space-y-3">
-            <Button className="w-full">Start Your Project</Button>
+            <Button className="w-full" onClick={onStart} disabled={isStarting}>
+              {isStarting ? "Creating…" : "Start Your Project"}
+            </Button>
             <Button
               variant="ghost"
               className="w-full border border-[#004DE7] text-[#004DE7] hover:bg-[#004DE7]/5"

@@ -59,31 +59,31 @@ const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
     label: "Build Stages",
-    slug: "stages",
+    slug: "schedules/stages",
     Icon: OverviewIcon,
     helper: "Phases & progress",
   },
   {
     label: "Key Dates",
-    slug: "key-dates",
+    slug: "schedules/key-dates",
     Icon: CalendarIcon,
     helper: "Milestone dates",
   },
   {
     label: "Site Activity",
-    slug: "activities",
+    slug: "schedules/activities",
     Icon: TrendingUpIcon,
     helper: "Work items",
   },
   {
     label: "Daily Log",
-    slug: "daily-log",
+    slug: "schedules/daily-log",
     Icon: CalendarIcon,
     helper: "Field reports",
   },
   {
     label: "Project Chart",
-    slug: "project-chart",
+    slug: "schedules/project-chart",
     Icon: CalendarIcon,
     helper: "Gantt chart",
   },
@@ -187,10 +187,11 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
     [project.id],
   );
 
-  const isScheduleActive = scheduleItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
-  );
+  const isScheduleActive =
+    scheduleItems.some(
+      (item) =>
+        location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    );
   const isMaterialsActive = materialsItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
@@ -387,7 +388,7 @@ function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
   const { label, slug, to } = item;
   const location = useLocation();
   const isActive =
-    slug === "finances"
+    slug === "finances" || slug === "schedules"
       ? location.pathname === to
       : location.pathname === to || location.pathname.startsWith(`${to}/`);
   return (

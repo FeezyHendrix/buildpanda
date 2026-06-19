@@ -246,6 +246,7 @@ export default function CreateProject() {
         isReview ? (submitting ? "Creating…" : "Finish") : "Continue"
       }
       hideStepper={isReview}
+      hideContinue={isReview}
     >
       {!isReview && step === 1 && (
         <ProjectTypeStep selected={projectType} onSelect={setProjectType} />
@@ -311,6 +312,8 @@ export default function CreateProject() {
             riskOptions,
           }}
           onEdit={(s) => setStep(s)}
+          onStart={handleContinue}
+          isStarting={createProject.isPending}
         />
       )}
     </WizardLayout>

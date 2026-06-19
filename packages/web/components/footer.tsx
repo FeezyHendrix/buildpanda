@@ -12,7 +12,7 @@ const productLinks = [
 const companyLinks = [
   { label: "Construction service", href: "/construction/" },
   { label: "About us", href: "/about/" },
-  { label: "Book a consultation", href: "/#consultation" },
+  { label: "Book a consultation", href: "/talk-to-us/" },
 ];
 
 export function Footer() {
@@ -69,26 +69,46 @@ export function Footer() {
               item.children
                 ? item.children.map((child) => (
                     <li key={child.href}>
-                      <Link href={child.href} className="text-sm text-white/70 hover:text-white">
+                      <Link
+                        href={child.href}
+                        className="text-sm text-white/70 hover:text-white"
+                      >
                         {child.label}
                       </Link>
                     </li>
                   ))
                 : [
                     <li key={item.href}>
-                      <Link href={item.href ?? "/"} className="text-sm text-white/70 hover:text-white">
+                      <Link
+                        href={item.href ?? "/"}
+                        className="text-sm text-white/70 hover:text-white"
+                      >
                         {item.label}
                       </Link>
                     </li>,
                   ],
             )}
             <li>
-              <Link href="/privacy/" className="text-sm text-white/70 hover:text-white">
+              <Link
+                href="/terms-of-service/"
+                className="text-sm text-white/70 hover:text-white"
+              >
+                Terms
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/privacy/"
+                className="text-sm text-white/70 hover:text-white"
+              >
                 Privacy
               </Link>
             </li>
             <li>
-              <Link href="/data-policy/" className="text-sm text-white/70 hover:text-white">
+              <Link
+                href="/data-policy/"
+                className="text-sm text-white/70 hover:text-white"
+              >
                 Data Policy
               </Link>
             </li>
@@ -112,7 +132,10 @@ function FooterColumn({
       <ul className="flex flex-col gap-3">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="text-sm text-white/70 hover:text-white">
+            <Link
+              href={link.href}
+              className="text-sm text-white/70 hover:text-white"
+            >
               {link.label}
             </Link>
           </li>
