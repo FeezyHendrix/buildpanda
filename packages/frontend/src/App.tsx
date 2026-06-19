@@ -83,7 +83,6 @@ const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
-const ProjectSchedulesOverview = lazy(() => import("@/pages/project/schedules-overview"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
 const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
 const ProjectPeople = lazy(() => import("@/pages/project/people"));
@@ -226,7 +225,6 @@ const router = createBrowserRouter([
       { path: "inspections", element: <ProjectInspections /> },
       { path: "messages", element: <ProjectChat /> },
       { path: "settings", element: <ProjectSettings /> },
-      { path: "schedules", element: <ProjectSchedulesOverview /> },
       { path: "schedules/activities", element: <ProjectActivities /> },
       { path: "schedules/activities/:activityId", element: <ProjectActivities /> },
       { path: "schedules/milestones", element: <ProjectMilestonePayments /> },
