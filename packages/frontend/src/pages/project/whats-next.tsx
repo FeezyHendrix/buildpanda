@@ -1,5 +1,6 @@
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useWhatsNext } from "@/hooks/use-insights";

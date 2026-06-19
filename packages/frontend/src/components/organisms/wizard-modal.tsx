@@ -13,6 +13,7 @@ interface WizardLayoutProps {
   continueDisabled?: boolean;
   continueLabel?: string;
   hideStepper?: boolean;
+  hideContinue?: boolean;
   children: ReactNode;
   className?: string;
 }
@@ -25,6 +26,7 @@ function WizardLayout({
   continueDisabled = false,
   continueLabel = "Continue",
   hideStepper = false,
+  hideContinue = false,
   children,
   className,
 }: WizardLayoutProps) {
@@ -55,13 +57,15 @@ function WizardLayout({
 
         <div className="mt-8 flex-1">{children}</div>
 
-        <WizardFooter
-          onCancel={onCancel}
-          onContinue={onContinue}
-          continueDisabled={continueDisabled}
-          continueLabel={continueLabel}
-          className="mt-8"
-        />
+        {!hideContinue && (
+          <WizardFooter
+            onCancel={onCancel}
+            onContinue={onContinue}
+            continueDisabled={continueDisabled}
+            continueLabel={continueLabel}
+            className="mt-8"
+          />
+        )}
       </main>
     </div>
   );

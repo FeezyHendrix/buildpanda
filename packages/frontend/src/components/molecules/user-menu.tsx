@@ -80,10 +80,11 @@ function UserMenu({
           side={isFull ? "top" : "bottom"}
           align={isFull ? "start" : "end"}
           sideOffset={8}
+          collisionPadding={10}
         >
           <Menu.Popup
             className={cn(
-              "z-50 min-w-[220px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5",
+              "z-50 min-w-[220px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 border border-muted",
               isFull ? "origin-bottom-left" : "origin-top-right",
               "outline-none",
             )}

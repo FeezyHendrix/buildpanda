@@ -23,7 +23,10 @@ import {
 import type { Project } from "@/lib/project-types";
 import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
-import { ReactSVG } from "react-svg"
+import { ReactSVG } from "react-svg";
+import { SuiteSwitcher } from "@/components/molecules/suite-switcher";
+import { OrgSwitcher } from "@/components/molecules/org-switcher";
+// import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -43,22 +46,38 @@ export default function Dashboard() {
   return (
     // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
     <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-7xl mx-auto w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex justify-center flex-1">
+          <SuiteSwitcher variant="tabs" />
+        </div>
+      </div>
       <Greeting name={session?.user.name ?? ""} />
 
       <section className="flex flex-col gap-4 mt-10">
-        <div className="flex items-center gap-1 ml-14">
-          <ReactSVG src={icons.folder} />
-          {/* <FolderIcon className="size-5 text-gray-500" /> */}
-          <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
-        </div>
+        <div className="mx-auto w-fit">
+          <div className="flex w-full items-center justify-between mb-4">
+            <div className="flex items-center gap-1">
+              <ReactSVG src={icons.folder} />
+              <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <OrgSwitcher />
+              <Link
+                to="/dashboard/settings/team"
+                className="text-[13px] font-medium text-primary hover:text-primary transition-colors"
+              >
+                Manage Team & Roles
+              </Link>
+            </div>
+          </div>
 
-        {/* <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"> */}
-        <div className="flex flex-wrap justify-center gap-6">
-          {list.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-          <NewProjectCard />
-          <ImportProgrammeCard />
+          <div className="grid grid-cols-3 gap-6">
+            {list.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+            <NewProjectCard />
+            <ImportProgrammeCard />
+          </div>
         </div>
       </section>
     </div>

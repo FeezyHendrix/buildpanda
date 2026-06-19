@@ -64,22 +64,22 @@ function OrgSwitcher() {
     <Menu.Root>
       <Menu.Trigger
         className={cn(
-          "inline-flex max-w-[200px] items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700",
+          "inline-flex max-w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700",
           "outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
         )}
         aria-label="Switch company"
       >
-        <span className="truncate">
+        <span className="truncate text-primary">
           {activeOrg?.name ?? "Select company"}
         </span>
         <ChevronDownIcon />
       </Menu.Trigger>
 
       <Menu.Portal>
-        <Menu.Positioner align="start" sideOffset={8}>
+        <Menu.Positioner side="bottom" align="start" alignOffset={50} sideOffset={30} className="z-50 border border-muted rounded-xl">
           <Menu.Popup
             className={cn(
-              "z-50 min-w-[240px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5",
+              "min-w-[240px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 border border-muted",
               "origin-top-left outline-none",
             )}
           >
@@ -105,17 +105,6 @@ function OrgSwitcher() {
               </Menu.Item>
             ))}
 
-            <Menu.Separator className="my-1 h-px bg-gray-100" />
-
-            <Menu.Item
-              className={cn(
-                "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
-                "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
-              )}
-              render={<Link to="/dashboard/settings/team" />}
-            >
-              Manage team & roles
-            </Menu.Item>
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

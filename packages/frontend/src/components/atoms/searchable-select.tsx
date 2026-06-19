@@ -96,7 +96,7 @@ function SearchableSelect({
               />
             </div>
 
-            <Combobox.Empty className="px-4 py-3 text-sm text-gray-400">
+            <Combobox.Empty className="px-4 text-sm text-gray-400">
               {emptyText}
             </Combobox.Empty>
 

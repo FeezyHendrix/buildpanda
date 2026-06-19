@@ -89,7 +89,7 @@ export default function ConstructionPage() {
             at every stage.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/#consultation" size="lg">
+            <ButtonLink href="/talk-to-us/" size="lg">
               Book a consultation
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
