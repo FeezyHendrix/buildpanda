@@ -5,16 +5,14 @@ import { Container } from "@/components/ui";
 import { MailIcon, PhoneIcon } from "@/components/icons";
 
 const productLinks = [
-  { label: "Milestone payments", href: "/product/#payments" },
-  { label: "Budget & finances", href: "/product/#budget" },
-  { label: "Documents", href: "/product/#documents" },
-  { label: "Inspections & monitoring", href: "/product/#inspections" },
+  { label: "For contractors", href: "/for-contractors/" },
+  { label: "For owners", href: "/for-owners/" },
 ];
 
 const companyLinks = [
   { label: "Construction service", href: "/construction/" },
   { label: "About us", href: "/about/" },
-  { label: "Book a consultation", href: "/#consultation" },
+  { label: "Book a consultation", href: "/talk-to-us/" },
 ];
 
 export function Footer() {
@@ -67,20 +65,50 @@ export function Footer() {
             &copy; {new Date().getFullYear()} {site.name}. All rights reserved.
           </p>
           <ul className="flex flex-wrap items-center gap-5">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href} className="text-sm text-white/70 hover:text-white">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {nav.flatMap((item) =>
+              item.children
+                ? item.children.map((child) => (
+                    <li key={child.href}>
+                      <Link
+                        href={child.href}
+                        className="text-sm text-white/70 hover:text-white"
+                      >
+                        {child.label}
+                      </Link>
+                    </li>
+                  ))
+                : [
+                    <li key={item.href}>
+                      <Link
+                        href={item.href ?? "/"}
+                        className="text-sm text-white/70 hover:text-white"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>,
+                  ],
+            )}
             <li>
-              <Link href="/privacy/" className="text-sm text-white/70 hover:text-white">
+              <Link
+                href="/terms/"
+                className="text-sm text-white/70 hover:text-white"
+              >
+                Terms
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/privacy/"
+                className="text-sm text-white/70 hover:text-white"
+              >
                 Privacy
               </Link>
             </li>
             <li>
-              <Link href="/data-policy/" className="text-sm text-white/70 hover:text-white">
+              <Link
+                href="/data-policy/"
+                className="text-sm text-white/70 hover:text-white"
+              >
                 Data Policy
               </Link>
             </li>
@@ -104,7 +132,10 @@ function FooterColumn({
       <ul className="flex flex-col gap-3">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="text-sm text-white/70 hover:text-white">
+            <Link
+              href={link.href}
+              className="text-sm text-white/70 hover:text-white"
+            >
               {link.label}
             </Link>
           </li>

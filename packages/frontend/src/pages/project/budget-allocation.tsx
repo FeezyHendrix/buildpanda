@@ -14,7 +14,9 @@ import {
 } from "recharts";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
+import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectFinances } from "@/hooks/use-finances";
@@ -73,17 +75,29 @@ export default function ProjectBudgetAllocation() {
       />
 
       <div className="mt-8 flex flex-col gap-5">
-        <AllocationBreakdown
-          allocation={finances.budgetAllocation}
-          currency={finances.currency}
-          className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
-        />
+        {finances.budgetAllocation.length === 0 ? (
+          <Card className="rounded-[16px] border-none bg-[#F8F8F8]">
+            <EmptyState
+              icon={<FinancesIcon className="h-6 w-6" />}
+              title="No budget allocation yet"
+              description="Add budget categories and milestones to see planned vs actual breakdowns by phase."
+            />
+          </Card>
+        ) : (
+          <>
+            <AllocationBreakdown
+              allocation={finances.budgetAllocation}
+              currency={finances.currency}
+              className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+            />
 
-        <PlannedVsActualChart
-          allocation={finances.budgetAllocation}
-          currency={finances.currency}
-          className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
-        />
+            <PlannedVsActualChart
+              allocation={finances.budgetAllocation}
+              currency={finances.currency}
+              className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+            />
+          </>
+        )}
       </div>
     </div>
   );
@@ -466,7 +480,7 @@ function VarianceRow({
         {formatCurrency(phase.planned, currency)}
       </td>
       <td className="px-6 py-3 tabular-nums text-gray-700">
-        {hasActual ? formatCurrency(phase.actual, currency) : "—"}
+        {hasActual ? formatCurrency(phase.actual, currency) : "-"}
       </td>
       <td
         className={cn(
@@ -475,7 +489,7 @@ function VarianceRow({
         )}
       >
         {!hasActual
-          ? "—"
+          ? "-"
           : `${isOver ? "+" : "−"}${formatCurrency(Math.abs(variance), currency)}`}
       </td>
       <td className="px-6 py-3">

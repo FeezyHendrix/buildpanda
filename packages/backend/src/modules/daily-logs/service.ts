@@ -18,6 +18,10 @@ function assertDate(value: string, field: string): void {
   }
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+}
+
 function numOrNull(value: string | null): number | null {
   return value === null ? null : Number(value);
 }
@@ -27,7 +31,11 @@ function toLogDateString(value: Date | string): string {
   return value.toISOString().slice(0, 10);
 }
 
-function buildLog(row: DailyLogRow, activities: DailyLogActivityLink[]): DailyLog {
+function buildLog(
+  row: DailyLogRow,
+  activities: DailyLogActivityLink[],
+  voiderNames: Map<string, string>,
+): DailyLog {
   return {
     projectId: row.project_id,
     logDate: toLogDateString(row.log_date),
@@ -40,6 +48,10 @@ function buildLog(row: DailyLogRow, activities: DailyLogActivityLink[]): DailyLo
     totalHours: Number(row.total_hours),
     summary: row.summary,
     activities,
+    voidedAt: row.voided_at ? toIso(row.voided_at) : null,
+    voidedById: row.voided_by_id,
+    voidedByName: row.voided_by_id ? (voiderNames.get(row.voided_by_id) ?? null) : null,
+    voidReason: row.void_reason,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
@@ -69,6 +81,10 @@ export function dailyLogsService(
     const nameRows = await repository.activityNamesByIds(activityIds);
     const names = new Map(nameRows.map((n) => [n.id, n.name]));
 
+    const voiderIds = rows.map((r) => r.voided_by_id).filter((id): id is string => Boolean(id));
+    const voiderRows = await repository.voidersByIds(voiderIds);
+    const voiderNames = new Map(voiderRows.map((v) => [v.id, v.name]));
+
     const linkMap = new Map<string, DailyLogActivityLink[]>();
     for (const link of links) {
       const key = `${link.project_id}|${toLogDateString(link.log_date)}`;
@@ -82,7 +98,7 @@ export function dailyLogsService(
     }
 
     return rows.map((row) =>
-      buildLog(row, linkMap.get(`${row.project_id}|${toLogDateString(row.log_date)}`) ?? []),
+      buildLog(row, linkMap.get(`${row.project_id}|${toLogDateString(row.log_date)}`) ?? [], voiderNames),
     );
   }
 
@@ -114,6 +130,8 @@ export function dailyLogsService(
       actorId: string,
     ): Promise<DailyLog> {
       assertDate(logDate, "logDate");
+      const current = await repository.findOne({ projectId, logDate });
+      if (current?.voided_at) throw new BadRequestError("A voided daily log cannot be edited");
       await repository.upsert({ projectId, logDate }, input, actorId);
       return this.getOne(projectId, logDate);
     },
@@ -159,11 +177,26 @@ export function dailyLogsService(
       return link;
     },
 
-    async remove(projectId: string, logDate: string): Promise<void> {
+    async voidLog(
+      projectId: string,
+      logDate: string,
+      reason: string,
+      actorId: string | null,
+    ): Promise<DailyLog> {
       assertDate(logDate, "logDate");
+      const trimmed = reason.trim();
+      if (trimmed === "" || stripHtml(trimmed) === "") {
+        throw new BadRequestError("A reason is required to void a daily log");
+      }
       const existing = await repository.findOne({ projectId, logDate });
       if (!existing) throw new NotFoundError("Daily log");
-      await repository.deleteOne({ projectId, logDate });
+      if (existing.voided_at) throw new BadRequestError("This daily log has already been voided");
+      await repository.voidOne({ projectId, logDate }, trimmed, actorId);
+      const [voided] = await attachActivities([
+        { ...existing, voided_at: new Date(), voided_by_id: actorId, void_reason: trimmed },
+      ]);
+      if (!voided) throw new NotFoundError("Daily log");
+      return voided;
     },
   };
 }

@@ -3,6 +3,7 @@ import { admin, organization } from "better-auth/plugins";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
+import { sendWelcomeEmail } from "../modules/lifecycle/index.ts";
 import {
   organizationInviteEmail,
   passwordResetEmail,
@@ -224,6 +225,7 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           await ensureUserOrganization(user.id, user.name);
+          void sendWelcomeEmail(db, user.id).catch(() => undefined);
         },
       },
     },

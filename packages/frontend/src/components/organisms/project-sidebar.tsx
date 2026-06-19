@@ -47,6 +47,7 @@ const NAV_ENTRIES: readonly NavEntry[] = [
 
 const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Materials", slug: "materials", Icon: MaterialsIcon, helper: "Orders & requests" },
+  { label: "Material Log", slug: "material-log", Icon: MaterialsIcon, helper: "Stock & audit trail" },
   {
     label: "Equipment Requests",
     slug: "equipment-requests",
@@ -93,7 +94,7 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
   { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
   { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information" },
-  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
+  // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
   { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
   { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
@@ -123,10 +124,6 @@ const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
-const TEAM_ADMIN_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  { label: "Team", slug: "team", Icon: ContractorsIcon, helper: "Project people" },
-] as const;
-
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
 const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
@@ -135,7 +132,7 @@ const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
   { label: "Queries", slug: "queries", Icon: MessagesIcon },
   { label: "RFIs", slug: "rfis", Icon: AlertIcon },
-  { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
+  // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
 ];
 
 interface ProjectSidebarProps {
@@ -189,14 +186,6 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       })),
     [project.id],
   );
-  const teamAdminItems = useMemo<GroupNavItem[]>(
-    () =>
-      TEAM_ADMIN_ENTRIES.map((entry) => ({
-        ...entry,
-        to: `/project/${project.id}/${entry.slug}`,
-      })),
-    [project.id],
-  );
 
   const isScheduleActive =
     location.pathname === `/project/${project.id}/schedules` ||
@@ -213,10 +202,6 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
   const isFinanceActive = financeItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
-  );
-  const isTeamAdminActive = teamAdminItems.some(
     (item) =>
       location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
@@ -273,6 +258,14 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
           {items.slice(0, 2).map((item) => (
             <ProjectNavLink key={item.slug} item={item} />
           ))}
+          <ProjectNavLink
+            item={{
+              label: "Tasks",
+              slug: "tasks",
+              Icon: TrendingUpIcon,
+              to: `/project/${project.id}/tasks`,
+            }}
+          />
           <SidebarNavGroup
             label="Schedules"
             Icon={CalendarIcon}
@@ -306,11 +299,13 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               to: `/project/${project.id}/documents`,
             }}
           />
-          <SidebarNavGroup
-            label="Teams"
-            Icon={ContractorsIcon}
-            items={teamAdminItems}
-            active={isTeamAdminActive}
+          <ProjectNavLink
+            item={{
+              label: "Team",
+              slug: "team",
+              Icon: ContractorsIcon,
+              to: `/project/${project.id}/team`,
+            }}
           />
           <ProjectNavLink
             item={{

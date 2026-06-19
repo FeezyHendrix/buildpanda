@@ -220,6 +220,15 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.get<{ Params: { id: string; modelId: string } }>(
+    "/projects/:id/bim/models/:modelId/xkt-url",
+    { schema: { params: modelParams } },
+    async (request) => {
+      const project = await request.requireProjectAccess(request.params.id);
+      return service.modelXktUrl(project.id, request.params.modelId);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; modelId: string } }>(
     "/projects/:id/bim/models/:modelId/issues",
     { schema: { params: modelParams } },
     async (request) => {

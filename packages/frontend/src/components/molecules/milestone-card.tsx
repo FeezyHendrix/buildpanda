@@ -38,7 +38,7 @@ function MilestoneCard({
     milestone.status !== "Completed" && milestone.proof?.verified === true;
   const amountLabel = milestone.amount
     ? formatCurrency(milestone.amount, currency)
-    : "—";
+    : "-";
 
   const body = (
     <>
@@ -48,7 +48,7 @@ function MilestoneCard({
             {milestone.name || "Untitled milestone"}
           </p>
           <p className="mt-0.5 text-[11px] text-black-300">
-            Phase: {milestone.phase || "—"}
+            Phase: {milestone.phase || "-"}
           </p>
         </div>
         <StatusBadge milestone={milestone} />

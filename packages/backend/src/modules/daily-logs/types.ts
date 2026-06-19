@@ -24,6 +24,10 @@ export interface DailyLog {
   totalHours: number;
   summary: string | null;
   activities: DailyLogActivityLink[];
+  voidedAt: string | null;
+  voidedById: string | null;
+  voidedByName: string | null;
+  voidReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +44,9 @@ export interface DailyLogRow {
   total_hours: string;
   summary: string | null;
   created_by_id: string | null;
+  voided_at: Date | string | null;
+  voided_by_id: string | null;
+  void_reason: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }

@@ -250,12 +250,12 @@ function ActivityCard({
 
       <div className="grid grid-cols-2 gap-4 rounded-xl bg-[#FAFAFA] p-3 text-xs sm:grid-cols-4">
         <Stat label="Planned" value={`${plannedDays} d`} />
-        <Stat label="Actual" value={actualDays !== null ? `${actualDays} d` : "—"} />
+        <Stat label="Actual" value={actualDays !== null ? `${actualDays} d` : "-"} />
         <Stat
           label="Variance"
           value={
             variance === null
-              ? "—"
+              ? "-"
               : variance > 0
                 ? `+${variance} d`
                 : `${variance} d`
@@ -266,7 +266,7 @@ function ActivityCard({
         />
         <Stat
           label="Delay cost"
-          value={totalCost > 0 ? formatCurrency(totalCost, "NGN") : "—"}
+          value={totalCost > 0 ? formatCurrency(totalCost, "NGN") : "-"}
           tone={totalCost > 0 ? "warning" : undefined}
         />
       </div>

@@ -163,7 +163,7 @@ export default function AboutPage() {
                 ))}
               </div>
               <div>
-                <ButtonLink href="/product/" variant="outline" size="md">
+                <ButtonLink href="/for-contractors/" variant="outline" size="md">
                   Explore the product
                   <ArrowRightIcon className="h-5 w-5" />
                 </ButtonLink>

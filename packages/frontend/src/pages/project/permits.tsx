@@ -26,7 +26,7 @@ const STATUS_META: Record<PermitStatus, { label: string; tone: "neutral" | "info
 };
 
 function fmt(value: string | null): string {
-  return formatShortDate(value) || "—";
+  return formatShortDate(value) || "-";
 }
 
 export default function ProjectPermits() {
@@ -59,7 +59,7 @@ export default function ProjectPermits() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Permits & Approvals"
-        description="Regulatory permits and government approvals — track status, references and expiry."
+        description="Regulatory permits and government approvals: track status, references and expiry."
         actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />

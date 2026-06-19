@@ -781,6 +781,10 @@ export interface DailyLog {
   totalHours: number;
   summary: string | null;
   activities: DailyLogActivityLink[];
+  voidedAt: string | null;
+  voidedById: string | null;
+  voidedByName: string | null;
+  voidReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -906,4 +910,118 @@ export interface ChannelMemberLite {
   name: string | null;
   email: string;
   role: "admin" | "member";
+}
+
+export type TaskStatus = "Todo" | "Doing" | "Done";
+
+export interface TaskColumn {
+  id: string;
+  boardId: string;
+  name: string;
+  status: string | null;
+  position: number;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description: string | null;
+  assigneeId: string | null;
+  assigneeTeamMemberId: string | null;
+  assigneeName: string | null;
+  dueDate: string | null;
+  position: number;
+  sourceType: string | null;
+  sourceId: string | null;
+  subtaskTotal: number;
+  subtaskDone: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
+
+export interface Subtask {
+  id: string;
+  taskId: string;
+  title: string;
+  done: boolean;
+  position: number;
+}
+
+export interface TaskLink {
+  id: string;
+  linkType: TaskLinkType;
+  targetTaskId: string;
+  targetTaskTitle: string;
+}
+
+export interface TaskDetail extends Task {
+  subtasks: Subtask[];
+  links: TaskLink[];
+}
+
+export interface TaskBoard {
+  id: string;
+  projectId: string;
+  name: string;
+  isDefault: boolean;
+  columns: TaskColumn[];
+  tasks: Task[];
+}
+
+export type LedgerEntryType = "IN" | "USED" | "VOID";
+export type LedgerEntryStatus = "Posted" | "Voided";
+
+export interface MaterialCatalogItem {
+  id: string;
+  projectId: string;
+  name: string;
+  unit: string;
+  lowStockThreshold: number | null;
+  active: boolean;
+}
+
+export interface LedgerEntryFile {
+  fileId: string;
+  url: string;
+  name: string;
+}
+
+export interface LedgerEntry {
+  id: string;
+  projectId: string;
+  entryType: LedgerEntryType;
+  status: LedgerEntryStatus;
+  materialId: string;
+  materialName: string;
+  unit: string;
+  locationKey: string;
+  quantity: number;
+  stockDelta: number;
+  occurredAt: string;
+  timestampSuspect: boolean;
+  negativeStock: boolean;
+  loggedById: string | null;
+  loggedByName: string | null;
+  materialOrderId: string | null;
+  taskId: string | null;
+  activityId: string | null;
+  reversalForEntryId: string | null;
+  reason: string | null;
+  files: LedgerEntryFile[];
+  createdAt: string;
+}
+
+export interface StockLevel {
+  materialId: string;
+  materialName: string;
+  unit: string;
+  locationKey: string;
+  onHandQty: number;
+  lowStockThreshold: number | null;
+  lowStock: boolean;
 }

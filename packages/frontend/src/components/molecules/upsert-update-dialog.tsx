@@ -69,7 +69,7 @@ function UpsertUpdateDialog({
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
-      const uploaded = await uploadFile.mutateAsync(file);
+      const uploaded = await uploadFile.mutateAsync({ file });
       const type: MediaType = file.type.startsWith("video") ? "video" : "photo";
       setMedia((prev) => [
         ...prev,

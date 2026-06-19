@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -67,19 +69,21 @@ export default function ProjectMilestonePayments() {
       <PageHeader
         title="Milestones"
         description="Use milestone cost gates to organize the work items that drive the project schedule."
-        // actions={
-        //   <Button
-        //     variant="primary"
-        //     size="md"
-        //     onClick={() => {
-        //       setEditingTarget(null);
-        //       setUpsertOpen(true);
-        //     }}
-        //   >
-        //     <PlusIcon className="size-4" />
-        //     New milestone
-        //   </Button>
-        // }
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setEditingTarget(null);
+                setUpsertOpen(true);
+              }}
+            >
+              <PlusIcon className="size-4" />
+              New milestone
+            </Button>
+          ) : undefined
+        }
       />
 
       <EscrowSummary finances={finances} />

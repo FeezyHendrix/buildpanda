@@ -38,7 +38,7 @@ function ProjectTitleStep({
               type="text"
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
-              placeholder="Project Marbella"
+              placeholder="Sample Project"
             />
           </div>
         </form>

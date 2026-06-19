@@ -12,7 +12,7 @@ import { COLORS } from "./theme";
 export const DEMO_TITLE_DURATION = 80;
 export const DEMO_OUTRO_DURATION = 80;
 export const DEMO_SCENE_DURATION = 116;
-const DEMO_IDS = ["dashboard", "proposals", "estimate", "public", "convert", "construction"];
+const DEMO_IDS = ["dashboard", "overview", "kanban", "gantt", "bim", "client"];
 
 const demoScenes = DEMO_IDS.map((id) => {
   const base = SCENES.find((s) => s.id === id);

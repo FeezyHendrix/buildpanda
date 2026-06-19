@@ -17,7 +17,7 @@ FROM base AS build
 COPY package.json ./
 RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
 COPY . ./
-RUN npx tsup src/server.ts --format esm
+RUN npx tsup src/cluster.ts src/server.ts --format esm
 RUN node -e "const p=require('path'),f=require('fs');const pkg=require.resolve('@byteink/mppjs-linux-x64/package.json');const bin=p.join(p.dirname(pkg),'bin','mpxj-convert');if(!f.existsSync(bin)){console.error('missing native binary',bin);process.exit(1)}f.accessSync(bin,f.constants.X_OK);console.log('mppjs native binary ok',bin)"
 
 FROM base AS prod
@@ -29,4 +29,4 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/knexfile.ts ./knexfile.ts
 COPY --from=build /app/src ./src
 EXPOSE 3000
-CMD ["sh", "-c", "npm run db:migrate && node dist/server.js"]
+CMD ["sh", "-c", "npm run db:migrate && node dist/cluster.js"]

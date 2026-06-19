@@ -18,10 +18,10 @@ export function ReadOnlyBanner({ access }: ReadOnlyBannerProps) {
 
   let label: string;
   if (relationship === "company") {
-    label = `You are viewing as a ${orgRole ?? "viewer"} — changes are restricted.`;
+    label = `You are viewing as a ${orgRole ?? "viewer"}. Changes are restricted.`;
   } else if (relationship !== "none") {
     const roleName = ROLE_LABELS[relationship] ?? relationship;
-    label = `You are viewing as a ${roleName} — some actions may be unavailable.`;
+    label = `You are viewing as a ${roleName}. Some actions may be unavailable.`;
   } else {
     return null;
   }

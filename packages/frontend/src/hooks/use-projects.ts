@@ -63,8 +63,22 @@ export function useCreateProject() {
     // Caller owns navigation so it can finish post-create work (e.g. uploading
     // land documents) before leaving the page.
     onSuccess: (project) => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.setQueryData(projectKeys.detail(project.id), project);
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (projectId: string) => {
+      await api.delete(`/projects/${projectId}`);
+    },
+    onSuccess: (_data, projectId) => {
+      queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
     },
   });
 }

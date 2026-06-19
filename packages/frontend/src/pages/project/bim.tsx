@@ -9,6 +9,7 @@ import type { SelectedElement } from "@/components/molecules/bim-viewer";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useBimModelFileUrl,
+  useBimModelXktUrl,
   useBimModels,
   useCreateBimIssue,
 } from "@/hooks/use-bim";
@@ -16,6 +17,7 @@ import { useParticipants } from "@/hooks/use-participants";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
+const XeokitViewer = lazy(() => import("@/components/molecules/xeokit-viewer"));
 
 const STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" }> = {
   Processing: { label: "Processing", tone: "info" },
@@ -69,6 +71,7 @@ export default function ProjectBim() {
 
   const { data: models = [], isLoading } = useBimModels(project.id);
   const fileUrl = useBimModelFileUrl();
+  const xktUrl = useBimModelXktUrl();
   const createIssue = useCreateBimIssue();
   const { data: participants = [] } = useParticipants(project.id);
   const assigneeOptions = participants
@@ -78,6 +81,7 @@ export default function ProjectBim() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [active, setActive] = useState<BimModel | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
+  const [xktModelUrl, setXktModelUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const [issueTitle, setIssueTitle] = useState("");
   const [issueAssignee, setIssueAssignee] = useState("");
@@ -85,15 +89,35 @@ export default function ProjectBim() {
   function openViewer(model: BimModel): void {
     setActive(model);
     setSelected(null);
-    fileUrl.mutate(
+    setModelUrl(null);
+    setXktModelUrl(null);
+    xktUrl.mutate(
       { projectId: project.id, modelId: model.id },
-      { onSuccess: (data) => setModelUrl(data.url) },
+      {
+        onSuccess: (data) => {
+          if (data.url) {
+            setXktModelUrl(data.url);
+          } else {
+            fileUrl.mutate(
+              { projectId: project.id, modelId: model.id },
+              { onSuccess: (ifc) => setModelUrl(ifc.url) },
+            );
+          }
+        },
+        onError: () => {
+          fileUrl.mutate(
+            { projectId: project.id, modelId: model.id },
+            { onSuccess: (ifc) => setModelUrl(ifc.url) },
+          );
+        },
+      },
     );
   }
 
   function closeViewer(): void {
     setActive(null);
     setModelUrl(null);
+    setXktModelUrl(null);
     setSelected(null);
   }
 
@@ -118,77 +142,126 @@ export default function ProjectBim() {
 
   if (active) {
     return (
-      <div className="flex h-[calc(100dvh-4rem)] w-full flex-col px-6 py-6 sm:px-10">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">{active.name}</h2>
-            <p className="text-xs text-gray-500">Click an element to anchor a coordination issue.</p>
+      <div className="absolute inset-0 flex flex-col bg-white">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-gray-900">{active.name}</h2>
+            <p className="text-xs text-gray-500">Click any element to see its details and assign it.</p>
           </div>
           <Button variant="secondary" size="sm" onClick={closeViewer}>
             Back to models
           </Button>
         </div>
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1fr_320px]">
-          <div className="min-h-[400px]">
-            {modelUrl ? (
+        <div className="flex min-h-0 flex-1">
+          <div className="relative min-w-0 flex-1">
+            {xktModelUrl ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center rounded-xl bg-[#1a1a1a] text-sm text-white/70">
+                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
                     Loading viewer…
                   </div>
                 }
               >
-                <BimViewer fileUrl={modelUrl} onSelect={setSelected} />
+                <div className="h-full w-full [&>div]:rounded-none">
+                  <XeokitViewer xktUrl={xktModelUrl} onSelect={setSelected} />
+                </div>
+              </Suspense>
+            ) : modelUrl ? (
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
+                    Loading viewer…
+                  </div>
+                }
+              >
+                <div className="h-full w-full [&>div]:rounded-none">
+                  <BimViewer fileUrl={modelUrl} onSelect={setSelected} />
+                </div>
               </Suspense>
             ) : (
-              <div className="flex h-full items-center justify-center rounded-xl bg-[#1a1a1a] text-sm text-white/70">
+              <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
                 Preparing model…
               </div>
             )}
           </div>
-          <Card className="flex flex-col gap-3 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Selected element
-            </p>
+
+          <aside className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
             {selected?.guid ? (
-              <div className="rounded-lg bg-[#F6F6F6] p-3 text-sm">
-                <p className="font-medium text-gray-900">{selected.name ?? "Element"}</p>
-                <p className="mt-1 break-all text-xs text-gray-500">{selected.guid}</p>
+              <div className="flex flex-col">
+                <div className="border-b border-gray-100 px-5 py-4">
+                  {selected.ifcType && (
+                    <span className="inline-block rounded-md bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#004DE7]">
+                      {selected.ifcType.replace(/^Ifc/, "")}
+                    </span>
+                  )}
+                  <p className="mt-2 text-sm font-semibold text-gray-900">
+                    {selected.name ?? "Unnamed element"}
+                  </p>
+                  <p className="mt-1 break-all text-[11px] text-gray-400">{selected.guid}</p>
+                </div>
+
+                <div className="px-5 py-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Properties
+                  </p>
+                  {selected.properties.length > 0 ? (
+                    <dl className="flex flex-col gap-1.5">
+                      {selected.properties.map((p) => (
+                        <div key={p.label} className="flex justify-between gap-3 text-xs">
+                          <dt className="shrink-0 text-gray-500">{p.label}</dt>
+                          <dd className="truncate text-right font-medium text-gray-900" title={p.value}>
+                            {p.value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="text-xs text-gray-400">No extra properties on this element.</p>
+                  )}
+                </div>
+
+                <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Assign this element
+                  </p>
+                  <input
+                    value={issueTitle}
+                    onChange={(e) => setIssueTitle(e.target.value)}
+                    placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
+                    className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                  />
+                  <select
+                    value={issueAssignee}
+                    onChange={(e) => setIssueAssignee(e.target.value)}
+                    className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                  >
+                    <option value="">Select a person…</option>
+                    {assigneeOptions.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full"
+                    onClick={addIssue}
+                    disabled={issueTitle.trim() === "" || createIssue.isPending}
+                  >
+                    {createIssue.isPending ? "Assigning…" : "Assign element"}
+                  </Button>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-400">No element selected.</p>
+              <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+                <p className="text-sm font-medium text-gray-700">No element selected</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  Click a wall, beam, duct or any part of the model to see its details and assign it to a person.
+                </p>
+              </div>
             )}
-
-            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Raise a coordination issue
-            </p>
-            <input
-              value={issueTitle}
-              onChange={(e) => setIssueTitle(e.target.value)}
-              placeholder="e.g. Beam clashes with duct"
-              className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            />
-            <select
-              value={issueAssignee}
-              onChange={(e) => setIssueAssignee(e.target.value)}
-              className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            >
-              <option value="">Unassigned</option>
-              {assigneeOptions.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={addIssue}
-              disabled={issueTitle.trim() === "" || createIssue.isPending}
-            >
-              {selected?.guid ? "Add issue on element" : "Add issue"}
-            </Button>
-          </Card>
+          </aside>
         </div>
       </div>
     );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { ToggleRow } from "@/components/atoms/toggle-row";
 import { FormDrawer } from "./form-drawer";
 import type { RfiPriority } from "@/lib/project-types";
 
@@ -141,22 +142,18 @@ export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, er
       </div>
 
       <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={values.costImpact}
-            onChange={(e) => update("costImpact", e.target.checked)}
-          />
-          Has cost impact
-        </label>
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={values.scheduleImpact}
-            onChange={(e) => update("scheduleImpact", e.target.checked)}
-          />
-          Has schedule impact
-        </label>
+        <ToggleRow
+          title="Has cost impact"
+          description="Flag if answering this could change the project cost. Lets you convert the RFI into a change event."
+          checked={values.costImpact}
+          onChange={(checked) => update("costImpact", checked)}
+        />
+        <ToggleRow
+          title="Has schedule impact"
+          description="Flag if answering this could affect the programme. Lets you convert the RFI into a change event."
+          checked={values.scheduleImpact}
+          onChange={(checked) => update("scheduleImpact", checked)}
+        />
       </div>
     </FormDrawer>
   );

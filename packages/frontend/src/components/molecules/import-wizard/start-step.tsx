@@ -10,11 +10,11 @@ interface StartStepProps {
 
 export function StartStep({ onSelect, isCreating }: StartStepProps) {
   return (
-    <div className="flex flex-col items-center max-w-2xl mx-auto text-center mt-12">
+    <div className="mx-auto flex w-full max-w-5xl flex-col items-center text-center mt-12">
       <h1 className="text-3xl font-semibold text-gray-900 mb-4">
         Set up a project
       </h1>
-      <p className="text-gray-500 mb-12">
+      <p className="text-gray-500 mb-12 max-w-2xl">
         Choose how you want to start. You can build your project from an existing schedule, or start from scratch.
       </p>
 

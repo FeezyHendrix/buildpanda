@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { currencyCodeSchema, type CurrencyCode } from "../../lib/currencies.ts";
 import { config } from "../../config/index.ts";
 import { generateId } from "../../lib/ids.ts";
+import { sendFirstProjectEmail } from "../lifecycle/index.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
@@ -127,6 +128,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const project = await service.create(request.body, user.id, organizationId);
+      void sendFirstProjectEmail(fastify.db, user.id).catch(() => undefined);
       return reply.status(201).send(project);
     },
   );
@@ -164,6 +166,19 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
         userId: user.id,
         orgRoles: request.orgRoles,
       });
+    },
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    "/projects/:id",
+    { schema: { params: projectIdParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      await service.deleteForUser(request.params.id, {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+      });
+      return reply.status(204).send();
     },
   );
 };

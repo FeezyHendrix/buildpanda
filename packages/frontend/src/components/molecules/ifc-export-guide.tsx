@@ -25,7 +25,7 @@ const GUIDES: ToolGuide[] = [
     label: "ArchiCAD",
     steps: [
       "Go to File → Save As… and choose IFC Files (*.ifc) as the file type.",
-      "Pick a translator — \"General Translator\" or \"IFC2x3 Coordination View 2.0\".",
+      "Pick a translator: \"General Translator\" or \"IFC2x3 Coordination View 2.0\".",
       "Click Save to write the .ifc file.",
       "Upload the resulting .ifc file below.",
     ],
@@ -116,7 +116,7 @@ export function IfcExportGuide({ defaultTool }: { defaultTool?: AuthoringTool })
 
           <p className="mt-3 text-xs text-gray-400">
             Revit, ArchiCAD and other BIM tools all export the open IFC format for
-            free — it keeps your geometry and element data so issues stay linked.
+            free, and it keeps your geometry and element data so issues stay linked.
           </p>
         </div>
       )}
