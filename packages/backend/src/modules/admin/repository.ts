@@ -24,6 +24,8 @@ const USER_FIELDS = [
   "phone",
   "profession",
   "image",
+  "signup_ip as signupIp",
+  "signup_country as signupCountry",
   "createdAt",
   "updatedAt",
 ] as const;
