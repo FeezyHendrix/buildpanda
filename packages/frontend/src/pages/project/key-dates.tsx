@@ -21,7 +21,7 @@ const STATUS_META: Record<KeyDateStatus, { tone: "neutral" | "success" | "danger
 };
 
 function fmt(value: string | null): string {
-  return formatShortDate(value) || "—";
+  return formatShortDate(value) || "-";
 }
 
 export default function ProjectKeyDates() {
@@ -48,7 +48,7 @@ export default function ProjectKeyDates() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Key Dates"
-        description="The milestone dates that matter — target vs actual, so slippage is visible."
+        description="The milestone dates that matter: target vs actual, so slippage is visible."
         actions={canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />

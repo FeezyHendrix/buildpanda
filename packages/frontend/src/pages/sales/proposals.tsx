@@ -32,14 +32,14 @@ function ProposalRow({ row }: { row: ProposalListItem }) {
         <p className="font-medium text-gray-900">{row.title}</p>
         <p className="text-xs text-gray-500">{row.clientName}</p>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{row.location ?? "—"}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{row.location ?? "-"}</td>
       <td className="px-4 py-3">
         <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>
           {LABEL_MAP[row.status] ?? row.status}
         </Badge>
       </td>
       <td className="px-4 py-3 text-sm text-gray-700">
-        {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "—"}
+        {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "-"}
       </td>
       <td className="px-4 py-3 text-xs text-gray-400">{formatShortDate(row.createdAt)}</td>
     </tr>

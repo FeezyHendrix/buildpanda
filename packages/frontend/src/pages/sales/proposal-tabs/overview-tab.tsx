@@ -121,7 +121,7 @@ export function OverviewTab({ proposalId }: Props) {
             <>
               {convert.error && (
                 <p className="mb-3 text-xs text-red-600">
-                  Conversion failed — please try again.
+                  Conversion failed. Please try again.
                 </p>
               )}
               <Button variant="primary" onClick={handleConvert} disabled={convert.isPending}>

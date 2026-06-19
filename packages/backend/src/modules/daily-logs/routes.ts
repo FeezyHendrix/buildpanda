@@ -62,6 +62,15 @@ const linkActivityBody = {
   },
 } as const;
 
+const voidBody = {
+  type: "object",
+  required: ["reason"],
+  additionalProperties: false,
+  properties: {
+    reason: { type: "string", minLength: 1, maxLength: 8000 },
+  },
+} as const;
+
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
   const updates = updatesService(updatesRepository(fastify.db));
   const activitiesRepo = activitiesRepository(fastify.db);
@@ -136,13 +145,13 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.delete<{ Params: { id: string; date: string } }>(
-    "/projects/:id/daily-logs/:date",
-    { schema: { params: dateParams } },
-    async (request, reply) => {
+  fastify.post<{ Params: { id: string; date: string }; Body: { reason: string } }>(
+    "/projects/:id/daily-logs/:date/void",
+    { schema: { params: dateParams, body: voidBody } },
+    async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
-      await service.remove(project.id, request.params.date);
-      return reply.status(204).send();
+      const user = request.requireAuth();
+      return service.voidLog(project.id, request.params.date, request.body.reason, user.id);
     },
   );
 };

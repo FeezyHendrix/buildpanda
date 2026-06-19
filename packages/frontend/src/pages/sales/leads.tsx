@@ -269,8 +269,8 @@ function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => void })
         <p className="font-medium text-gray-900">{lead.name}</p>
         <p className="text-xs text-gray-500">{lead.email}</p>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{lead.location ?? "—"}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{lead.projectType ?? "—"}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{lead.location ?? "-"}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{lead.projectType ?? "-"}</td>
       <td className="px-4 py-3">
         <LeadStatusBadge status={lead.status} />
       </td>

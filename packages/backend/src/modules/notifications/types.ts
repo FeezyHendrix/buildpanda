@@ -7,6 +7,7 @@ export const NOTIFICATION_TYPES = [
   { type: "document_uploaded", label: "Document uploaded", group: "Documents" },
   { type: "action_item_due", label: "Action item due or overdue", group: "Tasks" },
   { type: "action_item_assigned", label: "Action item assigned to you", group: "Tasks" },
+  { type: "task_assigned", label: "Task assigned to you", group: "Tasks" },
   { type: "rfi_assigned", label: "RFI assigned to you (ball in court)", group: "RFIs" },
   { type: "rfi_answered", label: "RFI answered", group: "RFIs" },
   { type: "rfi_due", label: "RFI due or overdue", group: "RFIs" },
@@ -33,6 +34,8 @@ export const NOTIFICATION_TYPES = [
   { type: "budget_overrun", label: "A budget category is over plan", group: "Payments" },
   { type: "team_member_added", label: "You were added to a project", group: "Project" },
   { type: "ai_health_drop", label: "Project health score dropped", group: "Project" },
+  { type: "material_negative_stock", label: "Material stock went negative", group: "Materials" },
+  { type: "material_low_stock", label: "Material is running low", group: "Materials" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];

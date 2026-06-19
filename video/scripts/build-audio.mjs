@@ -40,39 +40,35 @@ const OPENAI_MODEL = ENV.OPENAI_TTS_MODEL || "tts-1-hd";
 const PROVIDER = ELEVEN_KEY ? "elevenlabs" : OPENAI_KEY ? "openai" : `say:${VOICE}`;
 
 const SCENE_IDS = [
-  "dashboard", "suite", "leads", "proposals", "overview", "estimate",
-  "boq", "plans", "public", "convert", "project", "construction",
+  "signup", "dashboard", "overview", "next", "kanban",
+  "gantt", "boq", "rfis", "bim", "client",
 ];
 
 const NARRATION = {
   title:
-    "Meet BuildPanda. The platform that takes builders from first enquiry to a signed, profitable build.",
+    "Here's how to run your first project on BuildPanda, in ten simple steps.",
+  signup:
+    "Step one. Create your account. Sign up in seconds, and you're ready to set up your first build.",
   dashboard:
-    "Open BuildPanda and your whole sales pipeline is right there: total value, win rate, and the deals that need you today.",
-  suite:
-    "One login runs your business. Flip between pre-construction sales and live construction delivery in a single click.",
-  leads:
-    "Every enquiry lands here. Capture the lead and move it from new, to contacted, to won. No more spreadsheets.",
-  proposals:
-    "Turn hot leads into proposals that move: new, sent, accepted, converted, each with its value at a glance.",
+    "Step two. Your dashboard. Every active project, its progress, and what needs you today, all in one place.",
   overview:
-    "Open a proposal and you get a full workspace. Client details, the brief, a live activity trail, every action one click away.",
-  estimate:
-    "Build a precise, line by line estimate, with contingency, tax, and a clear payment schedule, and protect your margin.",
+    "Step three. Open a project and it's ready from day one. Budget, phases, and milestones, built for you from your schedule and bill of quantities.",
+  next:
+    "Step four. Always know what's next. The work that needs your attention is surfaced before it has a chance to slip.",
+  kanban:
+    "Step five. Plan the work on a board. Organise tasks and subtasks, and move them across as the build progresses.",
+  gantt:
+    "Step six. See the whole programme. Your schedule as a Gantt chart, with dependencies and the critical path.",
   boq:
-    "Start from the architect's bill of quantities, then price it straight into your estimate. No double entry.",
-  plans:
-    "Keep every drawing attached to the deal. Architectural, structural, and M E P plans, always on hand.",
-  public:
-    "Send a proposal that sells for you. Your client reviews everything on a polished, branded page, and accepts online.",
-  convert:
-    "The moment they accept, one click turns that signed proposal into a live construction project.",
-  project:
-    "Your project starts fully loaded. Budget, phases, and milestones carried straight over, ready from day one.",
-  construction:
-    "And as you build, track progress, budget, and every active project from one clean dashboard.",
+    "Step seven. Track your materials. Work straight from the bill of quantities as items are ordered and used on site.",
+  rfis:
+    "Step eight. Raise and track R F Is. Log a question, route it to the right person, and keep every answer on the record.",
+  bim:
+    "Step nine. Open the B I M model. View the federated model, select any element, and assign it to a person.",
+  client:
+    "Step ten. Keep your client in the loop. They see real progress and where the budget goes, so the questions stop coming to you.",
   outro:
-    "BuildPanda. From first enquiry to final handover. Build with confidence, at buildpanda dot io.",
+    "That's it. Set up your first project today, at buildpanda dot io.",
 };
 
 const CHORDS = [

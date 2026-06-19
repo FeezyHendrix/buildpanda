@@ -65,6 +65,7 @@ const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
+const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
@@ -75,6 +76,7 @@ const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
+const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
@@ -214,6 +216,7 @@ const router = createBrowserRouter([
       { path: "finances/budget", element: <ProjectBudget /> },
       { path: "panda-ai", element: <ProjectPandaAi /> },
       { path: "materials", element: <ProjectMaterials /> },
+      { path: "material-log", element: <ProjectMaterialLog /> },
       { path: "materials/orders", element: <ProjectMaterials /> },
       { path: "materials/requests", element: <ProjectMaterials /> },
       { path: "equipment-requests", element: <ProjectEquipmentRequests /> },
@@ -240,6 +243,7 @@ const router = createBrowserRouter([
       { path: "schedule", element: <ProjectSchedule /> },
       { path: "stages", element: <ProjectStages /> },
       { path: "action-items", element: <ProjectActionItems /> },
+      { path: "tasks", element: <ProjectTasks /> },
       { path: "queries", element: <ProjectQueries /> },
       { path: "rfis", element: <ProjectRfis /> },
       { path: "bim", element: <ProjectBim /> },

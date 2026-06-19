@@ -89,7 +89,7 @@ export default function ProjectRfis() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="RFIs"
-        description="Requests for Information — formal, numbered questions with a ball-in-court owner and an official response."
+        description="Requests for Information: formal, numbered questions with a ball-in-court owner and an official response."
         actions={
           canRaise ? (
             <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>

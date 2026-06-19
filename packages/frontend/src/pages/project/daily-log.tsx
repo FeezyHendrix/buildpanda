@@ -2,19 +2,20 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-dialog";
+import { VoidDailyLogDialog } from "@/components/molecules/void-daily-log-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
-  useDeleteDailyLog,
+  useVoidDailyLog,
   useProjectDailyLog,
   useProjectDailyLogs,
   useUpsertDailyLog,
 } from "@/hooks/use-daily-logs";
 import type { DailyLog, WeatherCondition } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
 
 const WEATHER_TONE: Record<WeatherCondition, "info" | "warning" | "danger" | "neutral"> = {
   Sunny: "warning",
@@ -61,7 +62,7 @@ export default function ProjectDailyLog() {
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
         title="Daily Log"
-        description="One end-of-day record per day — weather, headcount, hours worked, what got done."
+        description="One end-of-day record per day: weather, headcount, hours worked, what got done."
         actions={canManage ? (
           <Button variant="primary" size="md" onClick={openForToday}>
             <PlusIcon className="size-4" />
@@ -134,21 +135,41 @@ function LogRow({
   log: DailyLog;
   onClick: () => void;
 }) {
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const deleteLog = useDeleteDailyLog();
+  const [voidOpen, setVoidOpen] = useState(false);
+  const voidLog = useVoidDailyLog();
+  const isVoided = log.voidedAt !== null;
+  const voidedOn = isVoided
+    ? new Date(log.voidedAt!).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <>
       <Card
         padding="md"
-        interactive
-        onClick={onClick}
-        className="flex flex-col gap-3"
+        interactive={!isVoided}
+        onClick={isVoided ? undefined : onClick}
+        className={cn("flex flex-col gap-3", isVoided && "opacity-70")}
       >
         <header className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <CalendarIcon className="size-4 text-gray-400" />
-            <p className="text-sm font-semibold text-gray-900">{log.logDate}</p>
+            <p
+              className={cn(
+                "text-sm font-semibold text-gray-900",
+                isVoided && "line-through text-gray-500",
+              )}
+            >
+              {log.logDate}
+            </p>
+            {isVoided && (
+              <Badge tone="danger" size="sm">
+                Voided
+              </Badge>
+            )}
             {log.weatherCondition && (
               <Badge tone={WEATHER_TONE[log.weatherCondition]} size="sm">
                 {log.weatherCondition}
@@ -160,18 +181,20 @@ function LogRow({
               Crew {log.workersPresent}/{log.workersExpected}
             </span>
             <span>{log.totalHours} h</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteOpen(true);
-              }}
-            >
-              Delete
-            </Button>
+            {!isVoided && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVoidOpen(true);
+                }}
+              >
+                Void
+              </Button>
+            )}
           </div>
         </header>
         {log.summary && (
@@ -186,16 +209,34 @@ function LogRow({
             ))}
           </div>
         )}
+        {isVoided && (
+          <div className="rounded-lg border border-red-100 bg-red-50/60 px-3 py-2.5">
+            <p className="text-xs font-semibold text-red-700">
+              Voided{log.voidedByName ? ` by ${log.voidedByName}` : ""}
+              {voidedOn ? ` on ${voidedOn}` : ""}
+            </p>
+            {log.voidReason && (
+              <div
+                className="prose prose-sm mt-1 max-w-none text-xs text-red-900/80 [&_p]:my-0.5"
+                dangerouslySetInnerHTML={{ __html: log.voidReason }}
+              />
+            )}
+          </div>
+        )}
       </Card>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onConfirm={() => deleteLog.mutate({ projectId, logDate: log.logDate })}
-        title="Delete daily log"
-        description={`This permanently removes the daily log for ${log.logDate}. This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="danger"
+      <VoidDailyLogDialog
+        open={voidOpen}
+        onOpenChange={setVoidOpen}
+        logDate={log.logDate}
+        submitting={voidLog.isPending}
+        error={voidLog.error ? (voidLog.error as Error).message : null}
+        onConfirm={(reason) =>
+          voidLog.mutate(
+            { projectId, logDate: log.logDate, reason },
+            { onSuccess: () => setVoidOpen(false) },
+          )
+        }
       />
     </>
   );

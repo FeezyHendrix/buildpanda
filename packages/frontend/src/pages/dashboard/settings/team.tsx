@@ -114,7 +114,7 @@ export default function TeamSettings() {
           <svg className="size-3.5 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
             <path d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1Zm0 1.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM8 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 5Zm0 6.5a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
           </svg>
-          You are viewing team settings as a {currentRole} — only owners and admins can make changes.
+          You are viewing team settings as a {currentRole}. Only owners and admins can make changes.
         </div>
       )}
       <PageHeader

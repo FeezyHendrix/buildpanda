@@ -29,6 +29,7 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   document_uploaded: { eyebrow: "New document", accent: "brand", ctaLabel: "View Document" },
   action_item_due: { eyebrow: "Action item due", accent: "warning", ctaLabel: "View Action Item" },
   action_item_assigned: { eyebrow: "Action item assigned", accent: "brand", ctaLabel: "View Action Item" },
+  task_assigned: { eyebrow: "Task assigned", accent: "brand", ctaLabel: "View Task" },
   rfi_assigned: { eyebrow: "RFI — ball in your court", accent: "brand", ctaLabel: "View RFI" },
   rfi_answered: { eyebrow: "RFI answered", accent: "success", ctaLabel: "View RFI" },
   rfi_due: { eyebrow: "RFI due", accent: "warning", ctaLabel: "View RFI" },
@@ -55,6 +56,8 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   budget_overrun: { eyebrow: "Budget over plan", accent: "warning", ctaLabel: "View Budget" },
   team_member_added: { eyebrow: "Added to project", accent: "brand", ctaLabel: "Open Project" },
   ai_health_drop: { eyebrow: "Project health dropped", accent: "warning", ctaLabel: "View Insights" },
+  material_negative_stock: { eyebrow: "Negative stock", accent: "warning", ctaLabel: "View Materials" },
+  material_low_stock: { eyebrow: "Low stock", accent: "warning", ctaLabel: "View Materials" },
 };
 
 const GENERIC: TypePresentation = {

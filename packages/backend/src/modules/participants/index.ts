@@ -4,6 +4,7 @@ import { participantRole } from "../../lib/authorization.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
+import { captureBug } from "../../lib/sentry.ts";
 import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
 import { messagingRepository } from "../messaging/repository.ts";
@@ -251,6 +252,10 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         });
       } catch (error) {
         request.log.warn({ err: error }, "Failed to send project invite email");
+        captureBug(error, {
+          tags: { area: "participants", channel: "email", event: "project_invite" },
+          extra: { projectId: project.id, email },
+        });
       }
 
       const row = await db<ParticipantRow>("project_participants").where({ id: record.id }).first();

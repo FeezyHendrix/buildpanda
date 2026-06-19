@@ -51,7 +51,7 @@ function RaiseDisputeDialog({
         rows={5}
         autoFocus
         maxLength={2000}
-        placeholder="e.g. Roofing material does not match the specification on the BoQ — colour and gauge differ from sample."
+        placeholder="e.g. Roofing material does not match the specification on the BoQ. Colour and gauge differ from sample."
         className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
       />
       <p className="text-[11px] text-gray-400">

@@ -6,7 +6,9 @@ export function LegalArticle({ doc }: { doc: LegalDocument }) {
     <>
       <section className="bg-white">
         <Container className="flex max-w-3xl flex-col gap-4 py-14 sm:py-16">
-          <Badge>Legal</Badge>
+          <div className="w-fit">
+            <Badge>Legal</Badge>
+          </div>
           <h1 className="text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-ink sm:text-5xl">
             {doc.title}
           </h1>

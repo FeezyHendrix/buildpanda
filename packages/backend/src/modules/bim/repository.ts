@@ -8,6 +8,7 @@ import type {
   BimModelRow,
   BimModelVersionRow,
   BimVersionStatus,
+  BimXktStatus,
 } from "./types.ts";
 
 export interface NewBimModelRecord {
@@ -36,6 +37,7 @@ const MODEL_SELECT = [
   "m.current_version_id",
   "v.status",
   "v.element_count",
+  "v.xkt_status",
   "m.created_by_id",
   "m.created_at",
   "m.updated_at",
@@ -99,6 +101,16 @@ export function bimRepository(db: Knex) {
       extra: { failure_reason?: string | null; element_count?: number } = {},
     ): Promise<void> {
       await db("bim_model_versions").where({ id }).update({ status, ...extra });
+    },
+
+    async setXktStatus(
+      id: string,
+      xktStatus: BimXktStatus,
+      xktStoragePath: string | null = null,
+    ): Promise<void> {
+      await db("bim_model_versions")
+        .where({ id })
+        .update({ xkt_status: xktStatus, xkt_storage_path: xktStoragePath });
     },
 
     async insertElements(records: BimElementRecord[]): Promise<void> {

@@ -150,15 +150,24 @@ export function dailyLogsRepository(db: Knex) {
         .first();
     },
 
-    async deleteOne(key: DailyLogKey): Promise<void> {
-      await db.transaction(async (trx) => {
-        await trx("daily_log_activities")
-          .where({ project_id: key.projectId, log_date: key.logDate })
-          .del();
-        await trx("daily_logs")
-          .where({ project_id: key.projectId, log_date: key.logDate })
-          .del();
-      });
+    async voidOne(key: DailyLogKey, reason: string, actorId: string | null): Promise<DailyLogRow> {
+      const [row] = await db("daily_logs")
+        .where({ project_id: key.projectId, log_date: key.logDate })
+        .update({
+          voided_at: new Date(),
+          voided_by_id: actorId,
+          void_reason: reason,
+          updated_at: new Date(),
+        })
+        .returning<DailyLogRow[]>("*");
+      if (!row) throw new Error("Failed to void daily log");
+      return row;
+    },
+
+    voidersByIds(ids: string[]): Promise<{ id: string; name: string }[]> {
+      const unique = [...new Set(ids)];
+      if (unique.length === 0) return Promise.resolve([]);
+      return db("user").whereIn("id", unique).select("id", "name");
     },
   };
 }
