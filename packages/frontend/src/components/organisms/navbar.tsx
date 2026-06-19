@@ -37,27 +37,35 @@ function Navbar({
   return (
     <nav
       className={cn(
-        "flex h-16 items-center border-b border-[#F6F6F6] bg-white px-8 py-3",
+        "grid h-16 grid-cols-3 items-center border-b border-[#F6F6F6] bg-white px-8 py-3",
         sticky && "sticky top-0 z-40",
         className,
       )}
     >
-      {showLogo && (
-        <Link to="/" className="mr-12 shrink-0 xl:mr-[172px]">
-          <img src={logo} alt="BuildPanda" className="h-9" />
-        </Link>
-      )}
+      <div className="flex items-center">
+        {showLogo && (
+          <Link to="/" className="shrink-0">
+            <img src={logo} alt="BuildPanda" className="h-9" />
+          </Link>
+        )}
+        {leadingSlot && <div className="ml-4 flex items-center">{leadingSlot}</div>}
+      </div>
 
-      <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+      <div className="flex justify-center">
+        <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+      </div>
 
-      {leadingSlot && <div className="ml-4 flex items-center">{leadingSlot}</div>}
-
-      <div className="ml-auto flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
-        <NotificationBell count={notificationCount} />
-        {userSlot ??
-          (user ? (
-            <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-          ) : null)}
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
+          <NotificationBell count={notificationCount} />
+          {userSlot ??
+            (user ? (
+              <>
+                <NotificationBell count={notificationCount} />
+                <Avatar name={user.name} src={user.avatarUrl} size="sm" />
+              </>
+            ) : null)}
+        </div>
       </div>
     </nav>
   );

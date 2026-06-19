@@ -188,7 +188,6 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   );
 
   const isScheduleActive =
-    location.pathname === `/project/${project.id}/schedules` ||
     scheduleItems.some(
       (item) =>
         location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),

@@ -27,7 +27,7 @@ const SUITES = [
 ] as const;
 
 interface SuiteSwitcherProps {
-  variant?: "sidebar" | "navbar" | "segmented";
+  variant?: "sidebar" | "navbar" | "segmented" | "tabs";
   className?: string;
 }
 
@@ -45,6 +45,35 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
     if (open) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
+
+  // Horizontal pill tabs — used in the dashboard navbar.
+  if (variant === "tabs") {
+    return (
+      <div className={cn("flex items-center gap-1 rounded-full bg-[#F6F6F6] p-1", className)}>
+        {SUITES.map((suite) => {
+          const isActive = suite.id === active.id;
+          return (
+            <Link
+              key={suite.id}
+              to={suite.href}
+              onClick={() => localStorage.setItem(LAST_SUITE_KEY, suite.id)}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
+                "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30",
+                isActive
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700",
+              )}
+            >
+              <span className="text-sm leading-none">{suite.icon}</span>
+              <span>{suite.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
 
   // Both workspaces always visible as a segmented toggle — no dropdown needed
   // for a two-way switch. Used in the full-height sidebar.

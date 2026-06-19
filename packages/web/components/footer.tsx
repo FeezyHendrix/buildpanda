@@ -90,7 +90,7 @@ export function Footer() {
             )}
             <li>
               <Link
-                href="/terms/"
+                href="/terms-of-service/"
                 className="text-sm text-white/70 hover:text-white"
               >
                 Terms

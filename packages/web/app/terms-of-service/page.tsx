@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Terms of Service — BuildPanda",
   description:
     "The terms that govern your access to and use of the BuildPanda construction management platform.",
-  alternates: { canonical: "https://buildpanda.io/terms/" },
+  alternates: { canonical: "https://buildpanda.io/terms-of-service/" },
 };
 
 export default function TermsPage() {
