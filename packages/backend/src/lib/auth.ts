@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
 import { sendWelcomeEmail } from "../modules/lifecycle/index.ts";
+import { getRequestContext } from "./request-context.ts";
 import {
   organizationInviteEmail,
   passwordResetEmail,
@@ -225,6 +226,13 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           await ensureUserOrganization(user.id, user.name);
+          const ctx = getRequestContext();
+          if (ctx && (ctx.ip || ctx.country)) {
+            await db("user")
+              .where({ id: user.id })
+              .update({ signup_ip: ctx.ip, signup_country: ctx.country })
+              .catch(() => undefined);
+          }
           void sendWelcomeEmail(db, user.id).catch(() => undefined);
         },
       },
