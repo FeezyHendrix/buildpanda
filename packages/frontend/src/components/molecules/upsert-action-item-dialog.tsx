@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { RichTextField } from "@/components/molecules/rich-text-field";
 import { FormDrawer } from "./form-drawer";
 import type { ActionPriority, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
 
 export interface UpsertActionItemValues {
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assigneeId: string | null;
@@ -64,6 +66,7 @@ function UpsertActionItemDialog({
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const [status, setStatus] = useState<ActionStatus>("Open");
   const [priority, setPriority] = useState<ActionPriority>("Medium");
   const [assigneeId, setAssigneeId] = useState("");
@@ -76,6 +79,7 @@ function UpsertActionItemDialog({
     if (open) {
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
+      setDescriptionHtml(initial?.descriptionHtml ?? "");
       setStatus(initial?.status ?? "Open");
       setPriority(initial?.priority ?? "Medium");
       setAssigneeId(initial?.assigneeId ?? "");
@@ -92,6 +96,7 @@ function UpsertActionItemDialog({
     onSubmit({
       title: title.trim(),
       description: description.trim() || null,
+      descriptionHtml: descriptionHtml.trim() ? descriptionHtml : null,
       status,
       priority,
       assigneeId: assigneeId || null,
@@ -125,17 +130,13 @@ function UpsertActionItemDialog({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ai-desc">Details</Label>
-        <textarea
-          id="ai-desc"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          placeholder="Add any context (optional)"
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
+      <RichTextField
+        label="Details"
+        value={descriptionHtml}
+        onChange={setDescriptionHtml}
+        onChangeText={setDescription}
+        placeholder="Add any context (optional). Add photos with the image button."
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">

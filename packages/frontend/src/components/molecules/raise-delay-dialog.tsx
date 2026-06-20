@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
+import { currencySymbol } from "@/lib/formatters";
 import type { DelayReason } from "@/lib/project-types";
 
 export interface RaiseDelayValues {
@@ -131,13 +133,12 @@ function RaiseDelayDialog({
     
     <div className="flex flex-col gap-1.5">
       <Label htmlFor="delay-cost">Estimated cost impact (NGN)</Label>
-      <input
+      <MoneyInput
         id="delay-cost"
-        type="number"
-        min={0}
         value={costImpact}
-        onChange={(e) => setCostImpact(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        onChange={setCostImpact}
+        currencySymbol={currencySymbol("NGN")}
+        placeholder="0.00"
       />
     </div>
     

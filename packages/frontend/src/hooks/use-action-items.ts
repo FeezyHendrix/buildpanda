@@ -39,6 +39,7 @@ export function useActionItem(projectId: string | undefined, itemId: string | un
 export interface ActionItemInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   status?: ActionStatus;
   priority?: ActionPriority;
   assigneeId?: string | null;
