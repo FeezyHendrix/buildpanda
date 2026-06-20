@@ -752,7 +752,6 @@ export interface Activity {
   isMilestone: boolean;
   source: string;
   delays: ActivityDelay[];
-  percentComplete: number;
   createdAt: string;
   updatedAt: string;
 }
