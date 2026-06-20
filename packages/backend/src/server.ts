@@ -42,6 +42,7 @@ import permitRoutes from "./modules/permits/index.ts";
 import keyDateRoutes from "./modules/key-dates/index.ts";
 import insightsRoutes from "./modules/insights/index.ts";
 import reportingRoutes from "./modules/reporting/routes.ts";
+import weatherRoutes from "./modules/weather/routes.ts";
 import participantRoutes from "./modules/participants/index.ts";
 import messagingRoutes from "./modules/messaging/routes.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
@@ -121,6 +122,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(keyDateRoutes);
   await app.register(insightsRoutes);
   await app.register(reportingRoutes);
+  await app.register(weatherRoutes);
   await app.register(participantRoutes);
   await app.register(messagingRoutes);
   await app.register(materialsEquipmentRoutes);
