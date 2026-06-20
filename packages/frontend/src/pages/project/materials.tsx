@@ -121,7 +121,7 @@ export default function ProjectMaterials() {
           <div className="flex flex-wrap gap-2">
             <Link
               to={`/project/${project.id}/equipment-requests`}
-              className="inline-flex h-[50px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-200"
+              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-200"
             >
               Equipment requests
               <ChevronRightIcon className="size-4" />
@@ -245,10 +245,10 @@ export default function ProjectMaterials() {
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
-    <Card padding="md">
-      <p className="text-xs font-medium uppercase text-gray-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold tabular-nums text-gray-900">{value}</p>
-      <p className="mt-1 text-xs text-gray-500">{helper}</p>
+    <Card padding="md" className="bg-[#F8F8F8] rounded-[1px] border-none p-5">
+      <p className="text-[12px] font-medium text-black-300">{label}</p>
+      <p className="mt-2 text-[20px] font-semibold tabular-nums text-black-500">{value}</p>
+      <p className="mt-1 text-[13px] font-medium text-black-300">{helper}</p>
     </Card>
   );
 }

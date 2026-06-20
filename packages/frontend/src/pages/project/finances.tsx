@@ -93,7 +93,7 @@ export default function ProjectFinances() {
                 variant="primary"
                 size="md"
                 onClick={() => setFundOpen(true)}
-                className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+                className="cursor-pointer"
               >
                 <ReactSVG src={icons.plusCircle} />
                 Fund Project
