@@ -6,7 +6,6 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
