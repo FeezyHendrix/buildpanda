@@ -172,6 +172,13 @@ export interface AdminImportJobRow {
 
 export type AdminImportJobDetail = Record<string, unknown>;
 
+export interface MaintenanceSettings {
+  enabled: boolean;
+  message: string | null;
+  updatedByName: string | null;
+  updatedAt: string;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -204,4 +211,9 @@ export const adminApi = {
     api.get<Paginated<AdminImportJobRow>>("/admin/jobs", { params: params(args) }).then((r) => r.data),
   getJob: (kind: string, id: string) =>
     api.get<AdminImportJobDetail>(`/admin/jobs/${kind}/${id}`).then((r) => r.data),
+
+  getMaintenance: () =>
+    api.get<MaintenanceSettings>("/admin/maintenance").then((r) => r.data),
+  updateMaintenance: (body: { enabled?: boolean; message?: string | null }) =>
+    api.patch<MaintenanceSettings>("/admin/maintenance", body).then((r) => r.data),
 };
