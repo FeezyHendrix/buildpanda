@@ -43,14 +43,18 @@ import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";
 
 import { WhatsNextCard } from "@/components/organisms/whats-next-card";
+import { WeatherDashboard } from "@/components/organisms/weather-dashboard";
+import { useSession } from "@/stores/auth";
 
 const RECENT_UPDATE_LIMIT = 2;
 
 export default function ProjectOverview() {
   const { project } = useProjectContext();
+  const { data: session } = useSession();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
 
+  const firstName = (session?.user?.name ?? "").trim().split(" ")[0] || "there";
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
 
   const tour = useTour({
@@ -62,7 +66,7 @@ export default function ProjectOverview() {
   return (
     <div className="w-full px-6 py-8 sm:px-10">
       <PageHeader
-        title="Overview"
+        title={`Welcome back, ${firstName}`}
         description="Stay in control with real-time updates on progress, payments, and site activity."
         badges={
           <div className="flex items-center gap-2">
@@ -86,6 +90,10 @@ export default function ProjectOverview() {
         <InsightsSummary projectId={project.id} />
       </div> */}
 
+      <div className="mt-8">
+        <WeatherDashboard projectId={project.id} />
+      </div>
+
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div data-tour="construction-progress">
           <KpiCard
@@ -107,14 +115,14 @@ export default function ProjectOverview() {
           <KpiCard
             title="Pending Approvals"
             value={project.pendingApprovals}
-            required={true}
+            subValue={project.pendingApprovals > 0 ? "Awaiting your review" : "Nothing pending"}
             icon={icons.penSquare}
           />
         </div>
         <KpiCard
           title="Next Inspection"
-          value={project.nextInspection.date}
-          subValue={project.nextInspection.type}
+          value={project.nextInspection.date || "None scheduled"}
+          subValue={project.nextInspection.type || undefined}
           icon={icons.calendarSearch}
           className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />
@@ -338,6 +346,7 @@ function RiskFactorRow({
         initial={{
           title: risk.title,
           description: risk.description,
+          descriptionHtml: risk.descriptionHtml,
           severity: risk.severity,
         }}
         onSubmit={handleEdit}
