@@ -1,6 +1,9 @@
 import type { Knex } from "knex";
+import { generateId } from "../../lib/ids.ts";
 import type {
   DailyLogActivityRow,
+  DailyLogEntryRow,
+  DailyLogEntryVoidRow,
   DailyLogRow,
   UpsertDailyLogInput,
   WeatherCondition,
@@ -32,6 +35,7 @@ function toRowPatch(input: UpsertDailyLogInput): Partial<DailyLogRow> {
   if (input.workersPresent !== undefined) set("workers_present", input.workersPresent);
   if (input.totalHours !== undefined) set("total_hours", String(input.totalHours));
   if (input.summary !== undefined) set("summary", input.summary);
+  if (input.summaryHtml !== undefined) set("summary_html", input.summaryHtml);
   return patch;
 }
 
@@ -168,6 +172,74 @@ export function dailyLogsRepository(db: Knex) {
       const unique = [...new Set(ids)];
       if (unique.length === 0) return Promise.resolve([]);
       return db("user").whereIn("id", unique).select("id", "name");
+    },
+
+    entriesForDays(keys: DailyLogKey[]): Promise<DailyLogEntryRow[]> {
+      if (keys.length === 0) return Promise.resolve([]);
+      return db<DailyLogEntryRow>("daily_log_entries")
+        .where(function () {
+          for (const key of keys) {
+            this.orWhere(function () {
+              this.where({ project_id: key.projectId, log_date: key.logDate });
+            });
+          }
+        })
+        .orderBy("created_at", "asc");
+    },
+
+    findEntryById(entryId: string): Promise<DailyLogEntryRow | undefined> {
+      return db<DailyLogEntryRow>("daily_log_entries").where({ id: entryId }).first();
+    },
+
+    async insertEntry(record: {
+      projectId: string;
+      logDate: string;
+      authorId: string | null;
+      authorName: string;
+      authorRole: string;
+      bodyHtml: string | null;
+      bodyText: string | null;
+    }): Promise<DailyLogEntryRow> {
+      const [row] = await db<DailyLogEntryRow>("daily_log_entries")
+        .insert({
+          id: generateId("dle"),
+          project_id: record.projectId,
+          log_date: record.logDate,
+          author_id: record.authorId,
+          author_name: record.authorName,
+          author_role: record.authorRole,
+          body_html: record.bodyHtml,
+          body_text: record.bodyText,
+        })
+        .returning("*");
+      if (!row) throw new Error("Failed to insert daily log entry");
+      return row;
+    },
+
+    voidsForEntries(entryIds: string[]): Promise<DailyLogEntryVoidRow[]> {
+      if (entryIds.length === 0) return Promise.resolve([]);
+      return db<DailyLogEntryVoidRow>("daily_log_entry_voids")
+        .whereIn("entry_id", entryIds)
+        .orderBy("voided_at", "asc");
+    },
+
+    async insertEntryVoid(record: {
+      entryId: string;
+      reason: string;
+      voidedById: string | null;
+      voidedByName: string;
+    }): Promise<DailyLogEntryVoidRow> {
+      const [row] = await db<DailyLogEntryVoidRow>("daily_log_entry_voids")
+        .insert({
+          id: generateId("dlv"),
+          entry_id: record.entryId,
+          reason: record.reason,
+          voided_by_id: record.voidedById,
+          voided_by_name: record.voidedByName,
+        })
+        .returning("*");
+      if (!row) throw new Error("Failed to insert daily log entry void");
+      return row;
     },
   };
 }
