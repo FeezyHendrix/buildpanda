@@ -20,6 +20,7 @@ export interface LogEntryInput {
   activityId?: string | null;
   fileIds?: string[];
   reason?: string | null;
+  notesHtml?: string | null;
 }
 
 interface LogEntryResult {
@@ -89,5 +90,35 @@ export function useVoidMaterialEntry(projectId: string) {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
+  });
+}
+
+export function useDownloadMaterialReport(projectId: string) {
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.get<Blob>(`/projects/${projectId}/materials/report`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `material-report.pdf`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+export function useEmailMaterialReport(projectId: string) {
+  return useMutation({
+    mutationFn: async (email?: string) => {
+      const { data } = await api.post<{ sentTo: string }>(
+        `/projects/${projectId}/materials/report/email`,
+        email ? { email } : {},
+      );
+      return data;
+    },
   });
 }
