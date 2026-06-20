@@ -1,6 +1,6 @@
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { openStoredFile, saveStream, type StoredFile } from "../../lib/file-storage.ts";
+import { openStoredFile, saveStream, streamToBuffer, type StoredFile } from "../../lib/file-storage.ts";
 import type { FilesRepository } from "./repository.ts";
 import type { UploadedFile, UploadedFileRow } from "./types.ts";
 
@@ -15,6 +15,12 @@ export interface DownloadHandle {
   mimeType: string;
   sizeBytes: number;
   stream: NodeJS.ReadableStream;
+}
+
+export interface FileBytes {
+  fileName: string;
+  mimeType: string;
+  bytes: Buffer;
 }
 
 function toFile(row: UploadedFileRow): UploadedFile {
@@ -60,6 +66,18 @@ export function filesService(repository: FilesRepository) {
         sizeBytes: Number(row.size_bytes),
         stream,
       };
+    },
+
+    // Server-side byte read with no per-user ownership check. Only for trusted
+    // internal callers (e.g. report rendering) where the file id originates from
+    // content the project already owns — never expose this to a request handler
+    // without an upstream project-scoped authorization check.
+    async readBytes(id: string): Promise<FileBytes | null> {
+      const row = await repository.findById(id);
+      if (!row) return null;
+      const stream = await openStoredFile(row.storage_path);
+      const bytes = await streamToBuffer(stream);
+      return { fileName: row.file_name, mimeType: row.mime_type, bytes };
     },
   };
 }
