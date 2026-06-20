@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
 import { lazy as reactLazy, type ComponentType } from "react";
 import { HomeRedirect, RequireAuth, RequireCompany } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
+import { withMaintenanceMode } from "@/lib/with-maintenance-mode";
 
 // After a deploy, Vite emits new hashed chunk filenames. A browser holding a
 // stale index.html (or an open tab) requests an old chunk that no longer exists
@@ -256,7 +257,7 @@ const router = createBrowserRouter([
   },
 ]);
 
-export default function App() {
+function App() {
   return (
     <>
       <RouterProvider router={router} />
@@ -264,3 +265,5 @@ export default function App() {
     </>
   );
 }
+
+export default withMaintenanceMode(App);
