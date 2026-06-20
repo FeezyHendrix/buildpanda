@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { CurrencyPicker } from "@/components/atoms/currency-picker";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { Badge } from "@/components/atoms/badge";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { CURRENCY_CODES } from "@/lib/currency";
@@ -351,11 +352,10 @@ function PreviewState({
             </label>
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-xs font-medium text-gray-600">Total budget</span>
-              <input
+              <MoneyInput
                 className={inputClass}
                 value={budgetTotal}
-                onChange={(e) => setBudgetTotal(e.target.value)}
-                inputMode="numeric"
+                onChange={setBudgetTotal}
                 placeholder="0"
               />
             </label>

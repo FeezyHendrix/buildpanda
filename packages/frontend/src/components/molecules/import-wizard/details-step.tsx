@@ -3,6 +3,7 @@ import { useCreateProject } from "@/hooks/use-projects";
 import { useLinkSessionProject } from "@/hooks/use-import-session";
 import { Button } from "@/components/atoms/button";
 import { CurrencyPicker } from "@/components/atoms/currency-picker";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { Switcher, type SwitcherValue } from "@/components/atoms/switcher";
 import { getApiErrorMessage } from "@/lib/api-error";
 import type { Currency } from "@/lib/project-types";
@@ -119,20 +120,18 @@ export function DetailsStep({ sessionId, onProjectCreated, onNext }: Omit<Detail
           <span className="text-sm font-medium text-gray-700">Budget Range</span>
           <div className="flex gap-4 items-center">
             <CurrencyPicker currencies={CURRENCY_CHOICES} value={currency} onChange={setCurrency} />
-            <input 
-              type="number" 
+            <MoneyInput
               placeholder="Min"
-              value={budgetMin} 
-              onChange={(e) => setBudgetMin(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#004DE7]"
+              value={budgetMin}
+              onChange={setBudgetMin}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-left outline-none focus-visible:ring-0 focus:border-[#004DE7]"
             />
             <span className="text-gray-400">-</span>
-            <input 
-              type="number" 
+            <MoneyInput
               placeholder="Max"
-              value={budgetMax} 
-              onChange={(e) => setBudgetMax(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#004DE7]"
+              value={budgetMax}
+              onChange={setBudgetMax}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-left outline-none focus-visible:ring-0 focus:border-[#004DE7]"
             />
           </div>
         </div>
