@@ -77,6 +77,7 @@ export interface ActionItem {
   projectId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assigneeId: string | null;
@@ -694,6 +695,7 @@ export interface RiskFactor {
   id: string;
   title: string;
   description: string;
+  descriptionHtml: string | null;
   severity: RiskLevel;
 }
 
@@ -780,6 +782,7 @@ export interface DailyLog {
   workersPresent: number;
   totalHours: number;
   summary: string | null;
+  summaryHtml: string | null;
   activities: DailyLogActivityLink[];
   voidedAt: string | null;
   voidedById: string | null;
@@ -787,6 +790,43 @@ export interface DailyLog {
   voidReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DailyLogEntryVoid {
+  id: string;
+  reason: string;
+  voidedById: string | null;
+  voidedByName: string;
+  voidedAt: string;
+}
+
+export interface DailyLogEntry {
+  id: string;
+  projectId: string;
+  logDate: string;
+  authorId: string | null;
+  authorName: string;
+  authorRole: string;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  voids: DailyLogEntryVoid[];
+  voided: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyLogDay {
+  projectId: string;
+  logDate: string;
+  weatherCondition: WeatherCondition | null;
+  temperatureC: number | null;
+  precipitationMm: number | null;
+  windKph: number | null;
+  workersExpected: number;
+  workersPresent: number;
+  totalHours: number;
+  activities: DailyLogActivityLink[];
+  entries: DailyLogEntry[];
 }
 
 export interface Notification {
@@ -1012,6 +1052,7 @@ export interface LedgerEntry {
   activityId: string | null;
   reversalForEntryId: string | null;
   reason: string | null;
+  notesHtml: string | null;
   files: LedgerEntryFile[];
   createdAt: string;
 }

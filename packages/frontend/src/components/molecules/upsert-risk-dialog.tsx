@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { RichTextField } from "@/components/molecules/rich-text-field";
 import type { RiskLevel } from "@/lib/project-types";
 
 export interface UpsertRiskValues {
   title: string;
   description: string;
+  descriptionHtml: string | null;
   severity: RiskLevel;
 }
 
@@ -35,12 +37,14 @@ function UpsertRiskDialog({
 }: UpsertRiskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const [severity, setSeverity] = useState<RiskLevel>("Medium");
 
   useEffect(() => {
     if (open) {
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
+      setDescriptionHtml(initial?.descriptionHtml ?? "");
       setSeverity(initial?.severity ?? "Medium");
     }
   }, [open, initial]);
@@ -52,6 +56,7 @@ function UpsertRiskDialog({
     onSubmit({
       title: title.trim(),
       description: description.trim(),
+      descriptionHtml: descriptionHtml.trim() ? descriptionHtml : null,
       severity,
     });
   }
@@ -85,18 +90,14 @@ function UpsertRiskDialog({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="risk-description">Description</Label>
-        <textarea
-          id="risk-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe the risk and its potential impact on the project…"
-          maxLength={2000}
-          rows={4}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
+      <RichTextField
+        label="Description"
+        value={descriptionHtml}
+        onChange={setDescriptionHtml}
+        onChangeText={setDescription}
+        required
+        placeholder="Describe the risk and its potential impact. Add photos with the image button."
+      />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="risk-severity">Severity</Label>
