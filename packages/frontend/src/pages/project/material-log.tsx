@@ -3,17 +3,21 @@ import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { RichTextField } from "@/components/molecules/rich-text-field";
 import { Label } from "@/components/atoms/label";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useMaterialStock,
   useMaterialLedger,
   useLogMaterialEntry,
   useVoidMaterialEntry,
+  useDownloadMaterialReport,
+  useEmailMaterialReport,
 } from "@/hooks/use-materials-ledger";
 import { uploadFileRequest } from "@/hooks/use-files";
 import { toast } from "@/lib/toast";
@@ -31,6 +35,8 @@ export default function ProjectMaterialLog() {
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
   const logEntry = useLogMaterialEntry(project.id);
   const voidEntry = useVoidMaterialEntry(project.id);
+  const downloadReport = useDownloadMaterialReport(project.id);
+  const emailReport = useEmailMaterialReport(project.id);
 
   const [logOpen, setLogOpen] = useState(false);
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
@@ -49,12 +55,43 @@ export default function ProjectMaterialLog() {
         title="Material Log"
         description="An audit trail of materials received and used on site, with live stock."
         actions={
-          canManage ? (
-            <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
-              <PlusIcon className="size-4" />
-              Log material
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
+              disabled={downloadReport.isPending}
+              onClick={() =>
+                downloadReport.mutate(undefined, {
+                  onError: () => toast("Could not download report"),
+                })
+              }
+            >
+              {downloadReport.isPending ? "Preparing…" : "Download report"}
             </Button>
-          ) : null
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
+              disabled={emailReport.isPending}
+              onClick={() =>
+                emailReport.mutate(undefined, {
+                  onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
+                  onError: () => toast("Could not email report"),
+                })
+              }
+            >
+              {emailReport.isPending ? "Sending…" : "Email me"}
+            </Button>
+            {canManage && (
+              <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
+                <PlusIcon className="size-4" />
+                Log material
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -119,25 +156,30 @@ export default function ProjectMaterialLog() {
         }
       />
 
-      <ConfirmDialog
+      <VoidMaterialEntryDialog
         open={!!voiding}
         onOpenChange={(open) => { if (!open) setVoiding(null); }}
-        onConfirm={() => {
+        entryLabel={
+          voiding
+            ? `This reverses ${voiding.entryType} of ${voiding.quantity} ${voiding.unit} ${voiding.materialName}.`
+            : ""
+        }
+        submitting={voidEntry.isPending}
+        error={voidEntry.isError ? "Could not void entry" : null}
+        onConfirm={(reason) => {
           if (voiding) {
             voidEntry.mutate(
-              { entryId: voiding.id, reason: "Voided from Material Log" },
-              { onError: () => toast("Could not void entry") },
+              { entryId: voiding.id, reason },
+              {
+                onSuccess: () => {
+                  setVoiding(null);
+                  toast("Entry voided", "success");
+                },
+                onError: () => toast("Could not void entry"),
+              },
             );
           }
         }}
-        title="Void this entry?"
-        description={
-          voiding
-            ? `This reverses ${voiding.entryType} of ${voiding.quantity} ${voiding.unit} ${voiding.materialName}. The original stays in the log; a reversing entry restores stock.`
-            : ""
-        }
-        confirmLabel="Void entry"
-        variant="danger"
       />
     </div>
   );
@@ -176,6 +218,12 @@ function LedgerRow({
           {entry.loggedByName ?? "Someone"} · {formatTimeAgo(entry.occurredAt)}
           {entry.reason ? ` · ${entry.reason}` : ""}
         </p>
+        {entry.notesHtml && entry.notesHtml.trim().length > 0 && (
+          <div
+            className="prose prose-sm mt-1 max-w-none text-xs text-gray-600 [&_img]:max-h-40 [&_img]:rounded-lg [&_p]:my-0.5"
+            dangerouslySetInnerHTML={{ __html: entry.notesHtml }}
+          />
+        )}
       </div>
       {entry.files.length > 0 && (
         <a
@@ -215,6 +263,7 @@ function LogMaterialDrawer({
     unit: string;
     quantity: number;
     fileIds?: string[];
+    notesHtml?: string | null;
   }) => void;
 }) {
   const [entryType, setEntryType] = useState<"IN" | "USED">("IN");
@@ -224,6 +273,7 @@ function LogMaterialDrawer({
   const [fileId, setFileId] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [notesHtml, setNotesHtml] = useState("");
 
   function reset(): void {
     setEntryType("IN");
@@ -232,6 +282,7 @@ function LogMaterialDrawer({
     setQuantity("");
     setFileId(null);
     setFileName(null);
+    setNotesHtml("");
   }
 
   useEffect(() => {
@@ -263,6 +314,7 @@ function LogMaterialDrawer({
       unit: unit.trim(),
       quantity: qtyNum,
       fileIds: fileId ? [fileId] : [],
+      notesHtml: notesHtml.trim().length > 0 ? notesHtml : null,
     });
   }
 
@@ -313,13 +365,10 @@ function LogMaterialDrawer({
       <div className="flex gap-3">
         <div className="flex flex-1 flex-col gap-1.5">
           <Label htmlFor="mat-qty">Quantity</Label>
-          <input
+          <MoneyInput
             id="mat-qty"
-            type="number"
-            inputMode="decimal"
-            min="0"
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            onChange={setQuantity}
             placeholder="0"
             className={FIELD}
           />
@@ -360,6 +409,13 @@ function LogMaterialDrawer({
           </label>
         )}
       </div>
+
+      <RichTextField
+        label="Notes (optional)"
+        value={notesHtml}
+        onChange={setNotesHtml}
+        placeholder="Delivery condition, batch details, where it's stored. Add photos with the image button."
+      />
     </FormDrawer>
   );
 }
