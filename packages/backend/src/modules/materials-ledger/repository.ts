@@ -27,6 +27,7 @@ export interface PostEntryInput {
   activityId: string | null;
   reversalForEntryId: string | null;
   reason: string | null;
+  notesHtml: string | null;
   fileIds: string[];
   actorId: string | null;
 }
@@ -222,6 +223,7 @@ export function materialsLedgerRepository(db: Knex) {
           activity_id: input.activityId,
           reversal_for_entry_id: input.reversalForEntryId,
           reason: input.reason,
+          notes_html: input.notesHtml,
         });
 
         await trx("materials_stock")

@@ -37,6 +37,7 @@ export interface LedgerEntry {
   activityId: string | null;
   reversalForEntryId: string | null;
   reason: string | null;
+  notesHtml: string | null;
   files: LedgerEntryFile[];
   createdAt: string;
 }
@@ -86,6 +87,7 @@ export interface LedgerEntryRow {
   activity_id: string | null;
   reversal_for_entry_id: string | null;
   reason: string | null;
+  notes_html: string | null;
   created_at: string;
 }
 

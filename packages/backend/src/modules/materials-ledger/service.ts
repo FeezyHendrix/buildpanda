@@ -28,6 +28,7 @@ export interface LogEntryInput {
   activityId?: string | null;
   fileIds?: string[];
   reason?: string | null;
+  notesHtml?: string | null;
   idempotencyKey?: string | null;
 }
 
@@ -105,6 +106,7 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     activityId: row.activity_id,
     reversalForEntryId: row.reversal_for_entry_id,
     reason: row.reason,
+    notesHtml: row.notes_html,
     files: files
       .filter((f) => f.entry_id === row.id)
       .map((f) => ({ fileId: f.file_id, url: fileUrl(f.file_id), name: f.file_id })),
@@ -176,6 +178,7 @@ export function materialsLedgerService(
         activityId: input.activityId ?? null,
         reversalForEntryId: null,
         reason: input.reason ?? null,
+        notesHtml: input.notesHtml ?? null,
         fileIds: input.fileIds ?? [],
         actorId,
       });
@@ -219,6 +222,7 @@ export function materialsLedgerService(
         activityId: null,
         reversalForEntryId: entryId,
         reason,
+        notesHtml: null,
         fileIds: [],
         actorId,
       });
