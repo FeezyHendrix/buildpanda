@@ -16,6 +16,7 @@ import type {
 export interface CreateChangeRequestInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   reason?: string | null;
   costImpact?: number;
   timeImpactDays?: number;
@@ -26,6 +27,7 @@ export interface CreateChangeRequestInput {
 export interface UpdateChangeRequestInput {
   title?: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   reason?: string | null;
   status?: ChangeStatus;
   costImpact?: number;
@@ -81,6 +83,7 @@ function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
     projectId: row.project_id,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     reason: row.reason,
     status: row.status,
     costImpact: Number(row.cost_impact),
@@ -133,6 +136,7 @@ export function changeRequestsService(
         project_id: projectId,
         title: input.title,
         description: input.description ?? null,
+        description_html: input.descriptionHtml ?? null,
         reason: input.reason ?? null,
         status: "Draft",
         cost_impact: String(input.costImpact ?? 0),
@@ -157,6 +161,7 @@ export function changeRequestsService(
       const patch: ChangeRequestUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.title !== undefined) patch.title = input.title;
       if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.reason !== undefined) patch.reason = input.reason;
       if (input.costImpact !== undefined) patch.cost_impact = String(input.costImpact);
       if (input.timeImpactDays !== undefined) patch.time_impact_days = input.timeImpactDays;

@@ -15,6 +15,7 @@ export interface CreateApprovalInput {
   title: string;
   category?: string | null;
   description?: string | null;
+  descriptionHtml?: string | null;
   dueDate?: string | null;
 }
 
@@ -22,6 +23,7 @@ export interface UpdateApprovalInput {
   title?: string;
   category?: string | null;
   description?: string | null;
+  descriptionHtml?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
   dueDate?: string | null;
@@ -58,6 +60,7 @@ function toApproval(row: ApprovalRow, commentCount: number): Approval {
     title: row.title,
     category: row.category,
     description: row.description,
+    descriptionHtml: row.description_html,
     status: row.status,
     response: row.response,
     dueDate: row.due_date,
@@ -104,6 +107,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         title: input.title,
         category: input.category ?? null,
         description: input.description ?? null,
+        description_html: input.descriptionHtml ?? null,
         status: "Pending",
         due_date: input.dueDate ?? null,
         submitted_by_id: userId,
@@ -124,6 +128,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
       if (input.title !== undefined) patch.title = input.title;
       if (input.category !== undefined) patch.category = input.category;
       if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.response !== undefined) patch.response = input.response;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
 

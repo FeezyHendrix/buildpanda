@@ -94,6 +94,7 @@ const estimateItemSchema = {
   properties: {
     groupLabel: { type: "string", minLength: 1, maxLength: 100 },
     description: { type: "string", minLength: 1, maxLength: 500 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     qty: { type: "number", minimum: 0 },
     unit: { type: "string", minLength: 1, maxLength: 50 },
     unitRate: { type: "number", minimum: 0 },
@@ -110,6 +111,7 @@ const scheduleItemSchema = {
     label: { type: "string", minLength: 1, maxLength: 200 },
     percent: { type: "number", minimum: 0, maximum: 100 },
     description: { type: "string", maxLength: 500 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     sort: { type: "integer", minimum: 0 },
   },
 } as const;
@@ -328,6 +330,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
             properties: {
               groupLabel: { type: "string", minLength: 1, maxLength: 100 },
               description: { type: "string", minLength: 1, maxLength: 500 },
+              descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
               qty: { type: "number", minimum: 0 },
               unit: { type: "string", minLength: 1, maxLength: 50 },
               sort: { type: "integer", minimum: 0 },

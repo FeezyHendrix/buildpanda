@@ -7,6 +7,7 @@ export interface ActionItem {
   projectId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assigneeId: string | null;
@@ -40,6 +41,7 @@ export interface ActionItemRow {
   project_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assignee_id: string | null;

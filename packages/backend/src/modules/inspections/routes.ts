@@ -45,6 +45,7 @@ const requestInspectionBody = {
       enum: [...inspectionCategoryEnum],
     },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     scheduledAt: { type: "string", minLength: 1, maxLength: 100 },
     inspector: inspectorBody,
   },
@@ -58,6 +59,7 @@ const editInspectionBody = {
     title: { type: "string", minLength: 1, maxLength: 200 },
     category: { type: "string", enum: [...inspectionCategoryEnum] },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     scheduledAt: { type: "string", minLength: 1, maxLength: 100 },
     status: {
       type: "string",

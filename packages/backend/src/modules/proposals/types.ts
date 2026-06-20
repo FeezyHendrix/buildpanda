@@ -111,6 +111,7 @@ export interface EstimateItemRow {
   estimate_id: string;
   group_label: string;
   description: string;
+  description_html: string | null;
   qty: number | string;
   unit: string;
   unit_rate: number | string;
@@ -124,6 +125,7 @@ export interface EstimateItem {
   estimateId: string;
   groupLabel: string;
   description: string;
+  descriptionHtml: string | null;
   qty: number;
   unit: string;
   unitRate: number;
@@ -138,6 +140,7 @@ export interface PaymentScheduleRow {
   label: string;
   percent: number | string;
   description: string | null;
+  description_html: string | null;
   sort: number;
 }
 
@@ -147,6 +150,7 @@ export interface PaymentScheduleItem {
   label: string;
   percent: number;
   description: string | null;
+  descriptionHtml: string | null;
   sort: number;
 }
 
@@ -183,6 +187,7 @@ export interface CreateProposalInput {
 export interface CreateEstimateItemInput {
   groupLabel: string;
   description: string;
+  descriptionHtml?: string | null;
   qty: number;
   unit: string;
   unitRate: number;
@@ -194,6 +199,7 @@ export interface CreatePaymentScheduleInput {
   label: string;
   percent: number;
   description?: string;
+  descriptionHtml?: string | null;
   sort?: number;
 }
 
@@ -230,6 +236,7 @@ export interface ProposalBoqItemRow {
   proposal_id: string;
   group_label: string;
   description: string;
+  description_html: string | null;
   qty: number | string;
   unit: string;
   sort: number;
@@ -240,6 +247,7 @@ export interface ProposalBoqItem {
   proposalId: string;
   groupLabel: string;
   description: string;
+  descriptionHtml: string | null;
   qty: number;
   unit: string;
   sort: number;
@@ -248,6 +256,7 @@ export interface ProposalBoqItem {
 export interface CreateBoqItemInput {
   groupLabel: string;
   description: string;
+  descriptionHtml?: string | null;
   qty: number;
   unit: string;
   sort?: number;

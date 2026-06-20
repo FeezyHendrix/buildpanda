@@ -82,6 +82,7 @@ const createIssueBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     elementGuid: { type: ["string", "null"], maxLength: 100 },
     position: { type: ["object", "null"] },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
@@ -106,6 +107,7 @@ const updateIssueBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: ["Open", "Closed"] },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
@@ -239,7 +241,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{
     Params: { id: string; modelId: string };
-    Body: { title: string; description?: string | null; elementGuid?: string | null; position?: unknown; assigneeId?: string | null };
+    Body: { title: string; description?: string | null; descriptionHtml?: string | null; elementGuid?: string | null; position?: unknown; assigneeId?: string | null };
   }>(
     "/projects/:id/bim/models/:modelId/issues",
     { schema: { params: modelParams, body: createIssueBody } },
@@ -262,7 +264,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch<{
     Params: { id: string; modelId: string; issueId: string };
-    Body: { title?: string; description?: string | null; status?: "Open" | "Closed"; assigneeId?: string | null };
+    Body: { title?: string; description?: string | null; descriptionHtml?: string | null; status?: "Open" | "Closed"; assigneeId?: string | null };
   }>(
     "/projects/:id/bim/models/:modelId/issues/:issueId",
     { schema: { params: issueParams, body: updateIssueBody } },

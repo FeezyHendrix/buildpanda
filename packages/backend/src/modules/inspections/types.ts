@@ -16,6 +16,7 @@ export interface InspectionReport {
   title: string;
   category: InspectionCategory;
   description: string;
+  descriptionHtml: string | null;
   status: InspectionStatus;
   riskLevel: RiskLevel;
   scheduledAt: string;
@@ -34,6 +35,7 @@ export interface InspectionRow {
   title: string;
   category: InspectionCategory;
   description: string;
+  description_html: string | null;
   status: InspectionStatus;
   risk_level: RiskLevel;
   scheduled_at: string;

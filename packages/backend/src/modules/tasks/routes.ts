@@ -35,6 +35,7 @@ const createBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 50000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
@@ -50,6 +51,7 @@ const updateBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 50000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },

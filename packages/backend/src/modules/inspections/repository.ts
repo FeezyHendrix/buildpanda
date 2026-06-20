@@ -17,6 +17,7 @@ export interface NewInspectionRecord {
   title: string;
   category: InspectionCategory;
   description: string;
+  description_html: string | null;
   status: InspectionStatus;
   risk_level: RiskLevel;
   scheduled_at: string;
@@ -29,6 +30,7 @@ export interface InspectionUpdatePatch {
   title?: string;
   category?: InspectionCategory;
   description?: string;
+  description_html?: string | null;
   status?: InspectionStatus;
   risk_level?: RiskLevel;
   scheduled_at?: string;
