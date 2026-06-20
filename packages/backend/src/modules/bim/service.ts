@@ -58,6 +58,7 @@ function toIssue(row: BimCoordinationIssueRow): BimCoordinationIssue {
     position: row.position,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     status: row.status,
     rfiId: row.rfi_id,
     assigneeId: row.assignee_id,
@@ -256,6 +257,7 @@ export function bimService(
       input: {
         title: string;
         description?: string | null;
+        descriptionHtml?: string | null;
         elementGuid?: string | null;
         position?: unknown;
         assigneeId?: string | null;
@@ -270,6 +272,7 @@ export function bimService(
         position: input.position ?? null,
         title: input.title,
         description: input.description ?? null,
+        description_html: input.descriptionHtml ?? null,
         assignee_id: input.assigneeId ?? null,
         created_by_id: userId,
       });
@@ -286,7 +289,7 @@ export function bimService(
       projectId: string,
       modelId: string,
       issueId: string,
-      patch: { title?: string; description?: string | null; status?: "Open" | "Closed"; assigneeId?: string | null },
+      patch: { title?: string; description?: string | null; descriptionHtml?: string | null; status?: "Open" | "Closed"; assigneeId?: string | null },
       actorId?: string,
     ): Promise<BimCoordinationIssue> {
       await loadModel(projectId, modelId);
@@ -295,6 +298,7 @@ export function bimService(
       const row = await repository.updateIssue(issueId, {
         title: patch.title,
         description: patch.description,
+        description_html: patch.descriptionHtml,
         status: patch.status,
         assignee_id: patch.assigneeId,
         updated_at: new Date().toISOString(),

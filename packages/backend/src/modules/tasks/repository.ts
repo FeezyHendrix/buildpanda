@@ -14,6 +14,7 @@ export interface NewTaskRecord {
   column_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   assignee_id: string | null;
   assignee_team_member_id: string | null;
   due_date: string | null;
@@ -26,6 +27,7 @@ export interface NewTaskRecord {
 export interface TaskUpdatePatch {
   title?: string;
   description?: string | null;
+  description_html?: string | null;
   assignee_id?: string | null;
   assignee_team_member_id?: string | null;
   due_date?: string | null;
@@ -49,6 +51,7 @@ const TASK_SELECT = [
   "t.column_id",
   "t.title",
   "t.description",
+  "t.description_html",
   "t.assignee_id",
   "u.name as assignee_name",
   "t.assignee_team_member_id",

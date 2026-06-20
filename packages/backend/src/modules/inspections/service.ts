@@ -16,6 +16,7 @@ export interface RequestInspectionInput {
   title: string;
   category: InspectionCategory;
   description: string;
+  descriptionHtml?: string | null;
   scheduledAt: string;
   inspector?: {
     id?: string;
@@ -28,6 +29,7 @@ export interface EditInspectionInput {
   title?: string;
   category?: InspectionCategory;
   description?: string;
+  descriptionHtml?: string | null;
   scheduledAt?: string;
   status?: InspectionStatus;
   riskLevel?: RiskLevel;
@@ -77,6 +79,7 @@ function toReport(row: InspectionRow, media: InspectionMediaRow[]): InspectionRe
     title: row.title,
     category: row.category,
     description: row.description,
+    descriptionHtml: row.description_html,
     status: row.status,
     riskLevel: row.risk_level,
     scheduledAt: row.scheduled_at,
@@ -129,6 +132,7 @@ export function inspectionsService(
         title: input.title,
         category: input.category,
         description: input.description,
+        description_html: input.descriptionHtml ?? null,
         status: "Scheduled",
         risk_level: "Low",
         scheduled_at: input.scheduledAt,
@@ -148,6 +152,7 @@ export function inspectionsService(
       if (input.title !== undefined) patch.title = input.title;
       if (input.category !== undefined) patch.category = input.category;
       if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.scheduledAt !== undefined) patch.scheduled_at = input.scheduledAt;
       if (input.status !== undefined) patch.status = input.status;
       if (input.riskLevel !== undefined) patch.risk_level = input.riskLevel;

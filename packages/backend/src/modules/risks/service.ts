@@ -9,12 +9,14 @@ import type { NotificationsService } from "../notifications/service.ts";
 export interface CreateRiskInput {
   title: string;
   description: string;
+  descriptionHtml?: string | null;
   severity: RiskLevel;
 }
 
 export interface EditRiskInput {
   title?: string;
   description?: string;
+  descriptionHtml?: string | null;
   severity?: RiskLevel;
 }
 
@@ -28,6 +30,7 @@ function toRiskFactor(row: RiskFactorRow): RiskFactor {
     id: row.id,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     severity: row.severity,
   };
 }
@@ -65,6 +68,7 @@ export function risksService(repository: RisksRepository, deps: RisksDeps = {}) 
         project_id: projectId,
         title: input.title,
         description: input.description,
+        description_html: input.descriptionHtml ?? null,
         severity: input.severity,
       });
       if (input.severity === "High") {
@@ -85,6 +89,7 @@ export function risksService(repository: RisksRepository, deps: RisksDeps = {}) 
 
       const patch: Parameters<typeof repository.update>[1] = {};
       if (input.title !== undefined) patch.title = input.title;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.description !== undefined) patch.description = input.description;
       if (input.severity !== undefined) patch.severity = input.severity;
 

@@ -20,6 +20,7 @@ import type {
 export interface CreateTaskInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
@@ -32,6 +33,7 @@ export interface CreateTaskInput {
 export interface UpdateTaskInput {
   title?: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
@@ -70,6 +72,7 @@ function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
     columnId: row.column_id,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     assigneeId: row.assignee_id,
     assigneeTeamMemberId: row.assignee_team_member_id,
     assigneeName: row.assignee_name ?? row.assignee_team_member_name,
@@ -256,6 +259,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         column_id: column.id,
         title: input.title,
         description: input.description ?? null,
+        description_html: input.descriptionHtml ?? null,
         assignee_id: assignee.assignee_id,
         assignee_team_member_id: assignee.assignee_team_member_id,
         due_date: input.dueDate ?? null,
@@ -291,6 +295,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       await repository.updateTask(taskId, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
+        ...(input.descriptionHtml !== undefined ? { description_html: input.descriptionHtml } : {}),
         ...(assignee !== null
           ? { assignee_id: assignee.assignee_id, assignee_team_member_id: assignee.assignee_team_member_id }
           : {}),

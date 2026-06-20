@@ -11,6 +11,7 @@ export interface NewChangeRequestRecord {
   project_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   reason: string | null;
   status: ChangeStatus;
   cost_impact: string;
@@ -23,6 +24,7 @@ export interface NewChangeRequestRecord {
 export interface ChangeRequestUpdatePatch {
   title?: string;
   description?: string | null;
+  description_html?: string | null;
   reason?: string | null;
   status?: ChangeStatus;
   cost_impact?: string;
@@ -39,6 +41,7 @@ const SELECT = [
   "c.project_id",
   "c.title",
   "c.description",
+  "c.description_html",
   "c.reason",
   "c.status",
   "c.cost_impact",

@@ -45,6 +45,7 @@ const createBody = {
     title: { type: "string", minLength: 1, maxLength: 200 },
     category: { type: ["string", "null"], maxLength: 80 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
   },
 } as const;
@@ -57,6 +58,7 @@ const updateBody = {
     title: { type: "string", minLength: 1, maxLength: 200 },
     category: { type: ["string", "null"], maxLength: 80 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     response: { type: ["string", "null"], maxLength: 4000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },

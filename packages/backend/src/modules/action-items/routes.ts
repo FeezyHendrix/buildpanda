@@ -42,6 +42,7 @@ const createBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     priority: { type: "string", enum: PRIORITY },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
@@ -59,6 +60,7 @@ const updateBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     priority: { type: "string", enum: PRIORITY },
     assigneeId: { type: ["string", "null"], maxLength: 100 },

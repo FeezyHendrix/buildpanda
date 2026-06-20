@@ -143,6 +143,7 @@ export function bimRepository(db: Knex) {
       position: unknown;
       title: string;
       description: string | null;
+      description_html: string | null;
       assignee_id: string | null;
       created_by_id: string | null;
     }): Promise<BimCoordinationIssueRow> {
@@ -158,6 +159,7 @@ export function bimRepository(db: Knex) {
       patch: {
         title?: string;
         description?: string | null;
+        description_html?: string | null;
         status?: BimIssueStatus;
         rfi_id?: string | null;
         assignee_id?: string | null;

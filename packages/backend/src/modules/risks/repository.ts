@@ -7,12 +7,14 @@ export interface NewRiskFactorRecord {
   project_id: string;
   title: string;
   description: string;
+  description_html: string | null;
   severity: RiskLevel;
 }
 
 export interface RiskFactorUpdatePatch {
   title?: string;
   description?: string;
+  description_html?: string | null;
   severity?: RiskLevel;
 }
 

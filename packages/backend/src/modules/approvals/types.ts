@@ -6,6 +6,7 @@ export interface Approval {
   title: string;
   category: string | null;
   description: string | null;
+  descriptionHtml: string | null;
   status: ApprovalStatus;
   response: string | null;
   dueDate: string | null;
@@ -37,6 +38,7 @@ export interface ApprovalRow {
   title: string;
   category: string | null;
   description: string | null;
+  description_html: string | null;
   status: ApprovalStatus;
   response: string | null;
   due_date: string | null;

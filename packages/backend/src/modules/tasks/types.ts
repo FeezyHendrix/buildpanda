@@ -15,6 +15,7 @@ export interface Task {
   columnId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
@@ -74,6 +75,7 @@ export interface TaskRow {
   column_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   assignee_id: string | null;
   assignee_name: string | null;
   assignee_team_member_id: string | null;

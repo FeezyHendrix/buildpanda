@@ -7,6 +7,7 @@ export interface NewApprovalRecord {
   title: string;
   category: string | null;
   description: string | null;
+  description_html: string | null;
   status: ApprovalStatus;
   due_date: string | null;
   submitted_by_id: string | null;
@@ -16,6 +17,7 @@ export interface ApprovalUpdatePatch {
   title?: string;
   category?: string | null;
   description?: string | null;
+  description_html?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
   due_date?: string | null;
@@ -30,6 +32,7 @@ const SELECT = [
   "a.title",
   "a.category",
   "a.description",
+  "a.description_html",
   "a.status",
   "a.response",
   "a.due_date",

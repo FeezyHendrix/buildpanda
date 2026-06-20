@@ -140,6 +140,7 @@ function toLedgerEntry(row: PaymentLedgerRow): PaymentLedgerEntry {
     id: row.id,
     date: row.entry_date,
     description: row.description,
+    descriptionHtml: row.description_html,
     amount: num(row.amount),
     type: row.type,
   };
