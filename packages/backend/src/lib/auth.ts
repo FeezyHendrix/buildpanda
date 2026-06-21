@@ -113,6 +113,20 @@ export const auth = betterAuth({
   basePath: "/api/auth",
   trustedOrigins: config.http.corsOrigins,
 
+  // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
+  // deliberately skips these to avoid double-counting). Custom rules throttle
+  // the brute-force-sensitive endpoints harder than the default window.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 10 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/forget-password": { window: 60, max: 5 },
+    },
+  },
+
   // Allow cookies on cross-site requests (e.g. localhost frontend hitting the
   // Railway-hosted API at api.buildpanda.io). When the frontend ever lives on
   // a sibling subdomain of the API, switch to `advanced.crossSubDomainCookies`
