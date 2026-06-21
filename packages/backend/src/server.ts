@@ -8,6 +8,7 @@ import { setLogger } from "./lib/logger.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
+import securityPlugin from "./plugins/security.ts";
 import queuePlugin from "./plugins/queue.ts";
 import realtimePlugin from "./plugins/realtime.ts";
 import authRoutes from "./modules/auth/routes.ts";
@@ -61,8 +62,31 @@ import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: { level: config.http.logLevel },
+    logger: {
+      level: config.http.logLevel,
+      // Strip credentials and client PII from logs at the serializer level so
+      // session tokens / passwords / personal data never reach log storage,
+      // regardless of what a handler passes to request.log.
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "res.headers['set-cookie']",
+          "password",
+          "token",
+          "*.password",
+          "*.token",
+          "*.authorization",
+          "*.cookie",
+        ],
+        censor: "[redacted]",
+      },
+    },
     disableRequestLogging: false,
+    // Railway/edge terminates TLS and forwards the client IP via X-Forwarded-For;
+    // trustProxy makes request.ip reflect the real client so rate limiting and
+    // geo key off the caller, not the proxy.
+    trustProxy: true,
     ajv: {
       plugins: [
         (ajv) => {
@@ -84,6 +108,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
+
+  await app.register(securityPlugin);
 
   await app.register(databasePlugin);
   await app.register(errorHandlerPlugin);

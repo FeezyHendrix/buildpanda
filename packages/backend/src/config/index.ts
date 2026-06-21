@@ -10,6 +10,17 @@ function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
 
+// Secret that may be empty in dev/test but MUST be set in production: an empty
+// auth signing secret forges sessions trivially, so we fail fast at boot.
+function requiredInProduction(name: string, devFallback: string): string {
+  const value = process.env[name];
+  if (value) return value;
+  if (env === "production") {
+    throw new Error(`Missing required env var in production: ${name}`);
+  }
+  return devFallback;
+}
+
 function optionalNumber(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -78,7 +89,7 @@ export const config = {
         },
 
   auth: {
-    secret: optional("BETTER_AUTH_SECRET", ""),
+    secret: requiredInProduction("BETTER_AUTH_SECRET", "dev-insecure-secret-change-me"),
     baseUrl: optional("BETTER_AUTH_URL", "http://localhost:3000"),
   },
 
@@ -117,6 +128,14 @@ export const config = {
     url: optional("REDIS_URL", ""),
   },
 
+  rateLimit: {
+    enabled: optionalBool("RATE_LIMIT_ENABLED", true),
+    global: {
+      max: optionalNumber("RATE_LIMIT_GLOBAL_MAX", 300),
+      timeWindow: optionalNumber("RATE_LIMIT_GLOBAL_WINDOW_MS", 60_000),
+    },
+  },
+
   // Panda AI insights. When apiKey is empty the engine falls back to a
   // deterministic local analyzer instead of calling Moonshot/KIMI.
   ai: {
@@ -141,6 +160,10 @@ export const config = {
     secretAccessKey: optional("AWS_SECRET_ACCESS_KEY", ""),
     forcePathStyle: optional("S3_FORCE_PATH_STYLE", "auto"),
     ensureBucketOnStartup: optional("S3_ENSURE_BUCKET", env === "production" ? "false" : "true") === "true",
+    // SSE-S3 (AES256) on server-initiated writes. Real S3 supports it natively;
+    // a plain MinIO (custom endpoint, no KES/KMS) returns NotImplemented, so it
+    // defaults off whenever a custom endpoint is configured.
+    serverSideEncryption: optionalBool("S3_SERVER_SIDE_ENCRYPTION", optional("S3_ENDPOINT", "") === ""),
   },
 
   // Sentry error monitoring. Only runs in production (i.e. on Railway, which
