@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
+import { createHash } from "node:crypto";
 import { NotFoundError } from "../../lib/errors.ts";
-import { chatJson, isLlmConfigured } from "../../lib/llm.ts";
+import { activeModelName, chatJson, isLlmConfigured } from "../../lib/llm.ts";
 import {
   fetchWeatherForLocation,
   type WeatherResult,
@@ -11,6 +12,8 @@ import { activitiesRepository } from "../activities/repository.ts";
 import { financesRepository } from "../finances/repository.ts";
 import { financesService } from "../finances/service.ts";
 import type { ProjectSetup } from "../projects/types.ts";
+import { weatherRepository, type WeatherAnalysisRow } from "./repository.ts";
+import { generateId } from "../../lib/ids.ts";
 
 export interface WeatherAnalysis {
   available: boolean;
@@ -21,6 +24,20 @@ export interface WeatherAnalysis {
   recommendations: string[];
   riskLevel: "low" | "medium" | "high" | null;
 }
+
+export interface RefreshResult {
+  status: "stored" | "skipped_unchanged" | "no_forecast";
+}
+
+const UNAVAILABLE: WeatherAnalysis = {
+  available: false,
+  headline: null,
+  impact: null,
+  scheduleImpact: null,
+  costImpact: null,
+  recommendations: [],
+  riskLevel: null,
+};
 
 function resolveCity(setup: ProjectSetup | null, address: string): string | null {
   const city = setup?.location?.city?.trim();
@@ -35,10 +52,36 @@ function isToday(value: Date | string): boolean {
   return date === today;
 }
 
+// Stable fingerprint of the forecast that actually drives the analysis. Keyed on
+// the day's date plus the forecast days so the daily cron recomputes (and pays
+// for an LLM call) only when the weather outlook has changed since last time.
+function forecastSignature(result: WeatherResult): string {
+  const basis = {
+    day: new Date().toISOString().slice(0, 10),
+    location: result.locationName,
+    current: result.current,
+    forecast: result.forecast,
+  };
+  return createHash("sha256").update(JSON.stringify(basis)).digest("hex");
+}
+
+function rowToAnalysis(row: WeatherAnalysisRow): WeatherAnalysis {
+  return {
+    available: true,
+    headline: row.headline,
+    impact: row.impact,
+    scheduleImpact: row.schedule_impact,
+    costImpact: row.cost_impact,
+    recommendations: Array.isArray(row.recommendations) ? row.recommendations : [],
+    riskLevel: row.risk_level,
+  };
+}
+
 export function weatherService(db: Knex) {
   const projects = projectsRepository(db);
   const activities = activitiesRepository(db);
   const finances = financesService(financesRepository(db));
+  const repo = weatherRepository(db);
 
   async function load(projectId: string): Promise<WeatherResult | null> {
     const project = await projects.findById(projectId);
@@ -56,20 +99,13 @@ export function weatherService(db: Knex) {
     return load(projectId);
   }
 
-  async function analyze(projectId: string): Promise<WeatherAnalysis> {
-    const result = await load(projectId);
-    if (!result) {
-      return {
-        available: false,
-        headline: null,
-        impact: null,
-        scheduleImpact: null,
-        costImpact: null,
-        recommendations: [],
-        riskLevel: null,
-      };
-    }
-
+  // The expensive path: builds the operational context and asks the LLM to score
+  // the weather impact. Only the daily cron and a first-ever cache miss call this
+  // — never a routine dashboard view.
+  async function computeAnalysis(
+    projectId: string,
+    result: WeatherResult,
+  ): Promise<WeatherAnalysis> {
     const rows = await activities.listByProject(projectId);
     const todays = rows
       .filter((row) => row.status !== "Completed" && row.status !== "Cancelled")
@@ -156,7 +192,55 @@ export function weatherService(db: Knex) {
     };
   }
 
-  return { current, forecast, analyze };
+  async function store(
+    projectId: string,
+    result: WeatherResult,
+    analysis: WeatherAnalysis,
+  ): Promise<void> {
+    await repo.upsert(generateId("wx"), {
+      projectId,
+      forecastSignature: forecastSignature(result),
+      locationName: result.locationName,
+      analysis,
+      model: isLlmConfigured() ? activeModelName() : null,
+    });
+  }
+
+  // Route path: serve the cached analysis. On a first-ever miss, compute once,
+  // persist, and return it (the daily cron keeps it fresh thereafter).
+  async function getAnalysis(projectId: string): Promise<WeatherAnalysis> {
+    const cached = await repo.latestForProject(projectId);
+    if (cached) return rowToAnalysis(cached);
+
+    const result = await load(projectId);
+    if (!result) return UNAVAILABLE;
+    const analysis = await computeAnalysis(projectId, result);
+    await store(projectId, result, analysis);
+    return analysis;
+  }
+
+  // Cron path: recompute only when the forecast signature has changed since the
+  // last stored analysis, so an unchanged outlook costs zero LLM calls.
+  async function refreshAnalysis(
+    projectId: string,
+    options: { force?: boolean } = {},
+  ): Promise<RefreshResult> {
+    const result = await load(projectId);
+    if (!result) return { status: "no_forecast" };
+
+    if (!options.force) {
+      const cached = await repo.latestForProject(projectId);
+      if (cached && cached.forecast_signature === forecastSignature(result)) {
+        return { status: "skipped_unchanged" };
+      }
+    }
+
+    const analysis = await computeAnalysis(projectId, result);
+    await store(projectId, result, analysis);
+    return { status: "stored" };
+  }
+
+  return { current, forecast, getAnalysis, refreshAnalysis };
 }
 
 export type WeatherService = ReturnType<typeof weatherService>;

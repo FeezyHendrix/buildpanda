@@ -17,6 +17,7 @@ import { registerBoqImportWorker } from "../modules/materials-equipment/boq-job.
 import { registerProgrammeImportWorker } from "../modules/panda-ai/programme/job.ts";
 import { registerProjectFileImportWorker } from "../modules/panda-ai/project-file-job.ts";
 import { registerProgressRecomputeWorker } from "../modules/activities/progress-job.ts";
+import { registerWeatherImpactWorker } from "../modules/weather/impact-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -46,6 +47,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerPermitExpiryWorker(fastify.db, manager);
     registerKeyDateReminderWorker(fastify.db, manager);
     registerLifecycleEmailWorker(fastify.db, manager);
+    registerWeatherImpactWorker(fastify.db, manager, fastify.log);
     manager.startWorkers();
   }
 

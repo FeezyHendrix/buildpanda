@@ -34,7 +34,7 @@ const weatherRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectAccess(request.params.id);
-      return service.analyze(project.id);
+      return service.getAnalysis(project.id);
     },
   );
 };

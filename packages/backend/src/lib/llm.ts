@@ -56,6 +56,10 @@ export function isLlmConfigured(): boolean {
   return activeProvider() !== null;
 }
 
+export function activeModelName(): string | null {
+  return activeProvider()?.model ?? null;
+}
+
 export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> {
   const provider = activeProvider();
   if (!provider) return null;
