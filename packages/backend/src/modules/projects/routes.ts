@@ -141,6 +141,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       return service.getByIdForUser(request.params.id, {
         userId: user.id,
         orgRoles: request.orgRoles,
+        projectRoles: request.projectRoles,
       });
     },
   );

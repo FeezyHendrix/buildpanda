@@ -23,6 +23,7 @@ interface Rect {
 
 const PAD = 8;
 const TOOLTIP_WIDTH = 320;
+const TOOLTIP_HEIGHT = 220;
 const GAP = 14;
 
 function getRect(target: string): Rect | null {
@@ -46,7 +47,7 @@ function tooltipPosition(
   let top: number;
   let left = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
 
-  if (place === "top") top = rect.top - GAP - 160;
+  if (place === "top") top = rect.top - GAP - TOOLTIP_HEIGHT;
   else if (place === "left") {
     top = rect.top;
     left = rect.left - GAP - TOOLTIP_WIDTH;
@@ -56,7 +57,7 @@ function tooltipPosition(
   } else top = rect.top + rect.height + GAP;
 
   left = Math.max(16, Math.min(left, window.innerWidth - TOOLTIP_WIDTH - 16));
-  top = Math.max(16, Math.min(top, window.innerHeight - 200));
+  top = Math.max(16, Math.min(top, window.innerHeight - TOOLTIP_HEIGHT - 16));
   return { top, left };
 }
 
@@ -73,15 +74,20 @@ export function TourGuide({
 
   useLayoutEffect(() => {
     if (!active || !step) return;
+    let frame = 0;
     function measure() {
       setRect(getRect(step!.target));
     }
-    measure();
     const el = document.querySelector(`[data-tour="${step.target}"]`);
-    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+    frame = window.requestAnimationFrame(measure);
+    const observer = el instanceof HTMLElement ? new ResizeObserver(measure) : null;
+    if (el instanceof HTMLElement) observer?.observe(el);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };

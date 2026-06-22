@@ -229,6 +229,7 @@ export const proposalKeys = {
   comments: (id: string) => [...proposalKeys.detail(id), "comments"] as const,
   plans: (id: string) => [...proposalKeys.detail(id), "plans"] as const,
   boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
+  takeoffs: (id: string) => [...proposalKeys.detail(id), "automated-takeoff"] as const,
   publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
 };
 

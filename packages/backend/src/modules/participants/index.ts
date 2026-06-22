@@ -10,7 +10,7 @@ import { config } from "../../config/index.ts";
 import { messagingRepository } from "../messaging/repository.ts";
 import { messagingService } from "../messaging/service.ts";
 
-type ParticipantRole = "client" | "architect" | "inspector" | "guest";
+type ParticipantRole = string;
 type ParticipantStatus = "invited" | "active" | "revoked";
 
 interface ParticipantRow {
@@ -52,7 +52,7 @@ function toParticipant(r: ParticipantRow): TeamEntry {
   };
 }
 
-const appUrl = config.http.corsOrigins[0] ?? "http://localhost:5173";
+const appUrl = config.mail.appUrl;
 
 const projectIdParams = {
   type: "object",
@@ -85,7 +85,7 @@ const inviteBody = {
   properties: {
     email: { type: "string", minLength: 3, maxLength: 200 },
     name: { type: "string", maxLength: 120 },
-    role: { type: "string", enum: ["client", "architect", "inspector", "guest"] },
+    role: { type: "string", minLength: 1, maxLength: 80 },
   },
 } as const;
 
@@ -94,7 +94,7 @@ const updateBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
-    role: { type: "string", enum: ["client", "architect", "inspector", "guest"] },
+    role: { type: "string", minLength: 1, maxLength: 80 },
     status: { type: "string", enum: ["invited", "active", "revoked"] },
   },
 } as const;
@@ -216,7 +216,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
 
       const email = request.body.email.trim().toLowerCase();
-      const role = request.body.role ?? "client";
+      const role = request.body.role?.trim() || "client";
       const existing = await db<ParticipantRow>("project_participants")
         .where({ project_id: project.id, email })
         .whereNot("status", "revoked")

@@ -346,7 +346,7 @@ interface MaterialOrderDialogProps {
   currency?: string;
 }
 
-function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error, currency = "USD" }: MaterialOrderDialogProps) {
+function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error, currency = "NGN" }: MaterialOrderDialogProps) {
   const [title, setTitle] = useState("");
   const symbol = currencySymbol(currency);
   const [materialName, setMaterialName] = useState("");

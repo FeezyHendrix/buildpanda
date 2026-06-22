@@ -5,6 +5,7 @@ import {
   TimelinePicker,
   type TimelineOption,
 } from "@/components/atoms";
+import type { ProjectType } from "./project-type-step";
 
 // Budgets are in Naira only. Beyond the slider ceiling, a custom amount is used.
 const CURRENCY = "NGN";
@@ -25,6 +26,24 @@ const BUILDING_TYPES = [
     id: "industrial",
     title: "Industrial Facility",
     description: "Warehouses or production plants",
+  },
+] as const;
+
+const RENOVATION_TYPES = [
+  {
+    id: "residential",
+    title: "Home Renovation",
+    description: "Apartment, duplex, or family home upgrades",
+  },
+  {
+    id: "commercial",
+    title: "Commercial Fit-out",
+    description: "Retail, office, hospitality, or workspace refresh",
+  },
+  {
+    id: "industrial",
+    title: "Facility Upgrade",
+    description: "Warehouse, workshop, or production space improvements",
   },
 ] as const;
 
@@ -52,10 +71,27 @@ const TIMELINES: TimelineOption[] = [
   { id: "12-40", label: "12 – 40 months" },
 ];
 
+const RENOVATION_TIMELINES: TimelineOption[] = [
+  { id: "0-3", label: "Under 3 months" },
+  { id: "3-6", label: "3 – 6 months" },
+  { id: "6-12", label: "6 – 12 months" },
+  { id: "12-18", label: "12 – 18 months" },
+  { id: "12-24", label: "12 – 24 months" },
+];
+
+function buildingTypesForProjectType(projectType: ProjectType | null) {
+  return projectType === "renovate" ? RENOVATION_TYPES : BUILDING_TYPES;
+}
+
+function timelineOptionsForProjectType(projectType: ProjectType | null): TimelineOption[] {
+  return projectType === "renovate" ? RENOVATION_TIMELINES : TIMELINES;
+}
+
 type BuildingType = (typeof BUILDING_TYPES)[number]["id"];
 type FundingMethod = (typeof FUNDING_METHODS)[number]["id"];
 
 interface ProjectDetailsStepProps {
+  projectType: ProjectType | null;
   buildingType: string | null;
   currency: string;
   budget: [number, number];
@@ -69,6 +105,7 @@ interface ProjectDetailsStepProps {
 }
 
 function ProjectDetailsStep({
+  projectType,
   buildingType,
   budget,
   fundingMethod,
@@ -78,6 +115,9 @@ function ProjectDetailsStep({
   onFundingMethodChange,
   onTimelineChange,
 }: ProjectDetailsStepProps) {
+  const buildingTypes = buildingTypesForProjectType(projectType);
+  const timelineOptions = timelineOptionsForProjectType(projectType);
+  const isRenovation = projectType === "renovate";
   // Default to custom entry when the budget is beyond the slider's range
   // (e.g. a ₦45M house build doesn't fit the preset slider).
   const [custom, setCustom] = useState(
@@ -96,17 +136,18 @@ function ProjectDetailsStep({
         Tell us about your project
       </h2>
       <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
-        Define the core parameters and scope for your construction project in
-        your home country.
+        {isRenovation
+          ? "Define the scope, budget, and schedule for the renovation work."
+          : "Define the core parameters and scope for your construction project in your home country."}
       </p>
 
       <div className="mt-10 space-y-12">
         <section>
           <h3 className="mb-4 text-base font-semibold text-gray-900">
-            What are you building?
+            {isRenovation ? "What are you renovating?" : "What are you building?"}
           </h3>
           <div className="grid gap-4 md:grid-cols-3">
-            {BUILDING_TYPES.map((type) => (
+            {buildingTypes.map((type) => (
               <RadioCard
                 key={type.id}
                 title={type.title}
@@ -164,10 +205,10 @@ function ProjectDetailsStep({
 
         <section>
           <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Project Timeline
+              {isRenovation ? "Renovation Timeline" : "Project Timeline"}
           </h3>
           <TimelinePicker
-            options={TIMELINES}
+            options={timelineOptions}
             value={timeline}
             onChange={onTimelineChange}
           />
@@ -231,6 +272,10 @@ export {
   type BuildingType,
   type FundingMethod,
   BUILDING_TYPES,
+  RENOVATION_TYPES,
   FUNDING_METHODS,
   TIMELINES,
+  RENOVATION_TIMELINES,
+  buildingTypesForProjectType,
+  timelineOptionsForProjectType,
 };

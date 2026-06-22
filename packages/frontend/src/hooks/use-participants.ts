@@ -59,7 +59,7 @@ export function useInviteParticipant() {
       projectId: string;
       email: string;
       name?: string;
-      role?: ParticipantRole;
+      role?: string;
     }) => {
       const { data } = await api.post<ProjectParticipant>(
         `/projects/${projectId}/participants/invite`,

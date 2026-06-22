@@ -32,6 +32,22 @@ const DEFAULT_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">>
   { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
 ];
 
+const RENOVATION_PHASES: ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> = [
+  { name: "Existing Condition Survey", date_range: "Weeks 1 – 2" },
+  { name: "Scope Confirmation & Approvals", date_range: "Weeks 3 – 4" },
+  { name: "Demolition & Strip-out", date_range: "Weeks 5 – 6" },
+  { name: "Structural & MEP Adjustments", date_range: "Weeks 7 – 12" },
+  { name: "Interior Build-out", date_range: "Weeks 13 – 20" },
+  { name: "Finishes, Fixtures & Joinery", date_range: "Weeks 21 – 26" },
+  { name: "Snagging, Testing & Handover", date_range: "Weeks 27 – 28" },
+];
+
+function phasesForProjectType(
+  projectType: string,
+): ReadonlyArray<Pick<NewPhaseRecord, "name" | "date_range">> {
+  return projectType === "renovate" ? RENOVATION_PHASES : DEFAULT_PHASES;
+}
+
 function toPhase(row: ProjectPhaseRow): ProjectPhase {
   return {
     id: row.id,
@@ -104,14 +120,16 @@ function buildCreate(
     },
   };
 
-  const phases: NewPhaseRecord[] = DEFAULT_PHASES.map((phase, idx) => ({
-    id: generateId("phase"),
-    project_id: projectId,
-    name: phase.name,
-    status: "Pending",
-    date_range: phase.date_range,
-    sort_order: idx,
-  }));
+  const phases: NewPhaseRecord[] = phasesForProjectType(input.projectType).map(
+    (phase, idx) => ({
+      id: generateId("phase"),
+      project_id: projectId,
+      name: phase.name,
+      status: "Pending",
+      date_range: phase.date_range,
+      sort_order: idx,
+    }),
+  );
 
   return { project, phases, financesCurrency: input.details.currency };
 }
@@ -142,7 +160,7 @@ export function projectsService(repository: ProjectsRepository) {
       const row = await repository.findById(id);
       if (!row) throw new NotFoundError("Project");
       assertCanAccessProject(
-        { ownerId: row.owner_id, organizationId: row.organization_id },
+        { id: row.id, ownerId: row.owner_id, organizationId: row.organization_id },
         ctx,
       );
       const phases = await repository.findPhasesByProject(id);

@@ -120,6 +120,28 @@ export interface ProposalWorkspace {
   events: ProposalEvent[];
 }
 
+export type TakeoffStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface TakeoffJob {
+  id: string;
+  proposalId: string | null;
+  projectId: string | null;
+  fileId: string | null;
+  status: TakeoffStatus;
+  fileName: string;
+  drawingCount: number;
+  elementCount: number;
+  error: string | null;
+  result: {
+    drawings: Array<{ id: number; kind: string; widthM: number; heightM: number; entityCount: number }>;
+    selectedDrawingId: number | null;
+    items: Array<{ trade: string; description: string; quantity: number; unit: string; confidence: string; basis: string }>;
+    notes: string[];
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaginatedProposals {
   total: number;
   rows: ProposalListItem[];
@@ -212,6 +234,15 @@ export const proposalsApi = {
 
   deletePlan: (proposalId: string, planId: string) =>
     api.delete(`/proposals/${proposalId}/plans/${planId}`),
+
+  startAutomatedTakeoff: (proposalId: string, planId: string) =>
+    api.post<TakeoffJob>(`/proposals/${proposalId}/plans/${planId}/automated-takeoff`).then((r) => r.data),
+
+  listAutomatedTakeoffs: (proposalId: string) =>
+    api.get<TakeoffJob[]>(`/proposals/${proposalId}/automated-takeoff`).then((r) => r.data),
+
+  exportBoq: (proposalId: string) =>
+    api.get(`/proposals/${proposalId}/boq/export`, { responseType: "blob" }).then((r) => r.data as Blob),
 
   listBoq: (proposalId: string) =>
     api.get<ProposalBoqItem[]>(`/proposals/${proposalId}/boq`).then((r) => r.data),

@@ -169,6 +169,10 @@ const ROLE_LABEL = {
   guest: "Guest",
 } as const;
 
+function roleLabel(role: ProjectParticipant["role"]): string {
+  return ROLE_LABEL[role as keyof typeof ROLE_LABEL] ?? role;
+}
+
 function ParticipantCard({
   projectId,
   participant,
@@ -200,7 +204,7 @@ function ParticipantCard({
             <span className="text-xs text-gray-500">{participant.email}</span>
             <span className="text-xs text-gray-300">•</span>
             <span className="text-xs text-gray-500">
-              {ROLE_LABEL[participant.role]}
+              {roleLabel(participant.role)}
             </span>
           </div>
         </div>
