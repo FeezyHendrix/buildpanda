@@ -4,13 +4,15 @@ import { PROJECT_TYPE_OPTIONS } from "./project-type-step";
 import type { InvolvementLevel, RiskOption } from "./management-step";
 import { INVOLVEMENT_OPTIONS, RISK_OPTIONS_CONFIG } from "./management-step";
 import {
-  BUILDING_TYPES,
   FUNDING_METHODS,
   TIMELINES,
+  buildingTypesForProjectType,
+  timelineOptionsForProjectType,
 } from "./project-details-step";
 import type { SwitcherValue } from "@/components/atoms";
 import { Button } from "@/components/atoms";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 import logo from "@/assets/images/logo.svg";
 
 interface ProjectSummaryData {
@@ -35,8 +37,8 @@ interface ProjectSummaryStepProps {
   isStarting?: boolean;
 }
 
-function resolveLabel<T extends { id: string; title: string }>(
-  list: readonly T[],
+function resolveLabel(
+  list: readonly { id: string; title: string }[],
   id: string | null,
 ): string {
   if (!id) return "-";
@@ -44,12 +46,7 @@ function resolveLabel<T extends { id: string; title: string }>(
 }
 
 function formatBudget(currency: string, range: [number, number]): string {
-  const fmt = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  });
-  return `${fmt.format(range[0])} – ${fmt.format(range[1])}`;
+  return `${formatCurrency(range[0], currency, { whole: true })} – ${formatCurrency(range[1], currency, { whole: true })}`;
 }
 
 const PHASES = [
@@ -91,8 +88,12 @@ function BlueprintPage({
   data: ProjectSummaryData;
   pageIndex: number;
 }) {
+  const buildingTypes = buildingTypesForProjectType(data.projectType);
+  const timelineOptions = timelineOptionsForProjectType(data.projectType);
   const timelineLabel =
-    TIMELINES.find((t) => t.id === data.timeline)?.label ?? "-";
+    timelineOptions.find((t) => t.id === data.timeline)?.label ??
+    TIMELINES.find((t) => t.id === data.timeline)?.label ??
+    "-";
   const locationText = [data.city, data.locationState]
     .filter(Boolean)
     .join(", ");
@@ -205,8 +206,8 @@ function BlueprintPage({
             value={data.ownsLand === "yes" ? "Yes" : "No"}
           />
           <SummaryLine
-            label="Building Type"
-            value={resolveLabel(BUILDING_TYPES, data.buildingType)}
+            label={data.projectType === "renovate" ? "Renovation Type" : "Building Type"}
+            value={resolveLabel(buildingTypes, data.buildingType)}
           />
           <SummaryLine
             label="Budget"

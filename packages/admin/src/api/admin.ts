@@ -179,6 +179,22 @@ export interface MaintenanceSettings {
   updatedAt: string;
 }
 
+export interface FeatureFlag {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  enabledByDefault: boolean;
+  routePrefixes: string[];
+  enabled: boolean;
+}
+
+export interface FeatureFlagsSettings {
+  flags: FeatureFlag[];
+  updatedByName: string | null;
+  updatedAt: string | null;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -216,4 +232,8 @@ export const adminApi = {
     api.get<MaintenanceSettings>("/admin/maintenance").then((r) => r.data),
   updateMaintenance: (body: { enabled?: boolean; message?: string | null }) =>
     api.patch<MaintenanceSettings>("/admin/maintenance", body).then((r) => r.data),
+  getFeatureFlags: () =>
+    api.get<FeatureFlagsSettings>("/admin/feature-flags").then((r) => r.data),
+  updateFeatureFlags: (flags: Record<string, boolean>) =>
+    api.patch<FeatureFlagsSettings>("/admin/feature-flags", { flags }).then((r) => r.data),
 };

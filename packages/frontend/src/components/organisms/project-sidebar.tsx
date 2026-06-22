@@ -102,13 +102,7 @@ const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow" },
-  {
-    label: "Milestones",
-    slug: "milestones",
-    Icon: FinancesIcon,
-    helper: "Cost gates",
-  },
-  { label: "Budgeting", slug: "finances/budget", Icon: FinancesIcon, helper: "Cost codes" },
+  { label: "Budget Categories", slug: "finances/budget", Icon: FinancesIcon, helper: "Add allocations" },
   {
     label: "Budget Allocation",
     slug: "finances/budget-allocation",

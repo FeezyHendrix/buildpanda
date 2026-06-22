@@ -19,7 +19,7 @@ function FundProjectDialog({
   onSubmit,
   isSubmitting = false,
   error,
-  currency = "USD",
+  currency = "NGN",
 }: FundProjectDialogProps) {
   const [amount, setAmount] = useState<string>("");
   const [description, setDescription] = useState<string>("");

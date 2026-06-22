@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMemo } from "react";
 import {
   BarChart,
@@ -14,13 +15,19 @@ import {
 } from "recharts";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
-import { FinancesIcon } from "@/components/atoms/project-nav-icons";
+import { Button } from "@/components/atoms/button";
+import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
+import {
+  UpsertBudgetCategoryDialog,
+  type UpsertBudgetCategoryValues,
+} from "@/components/molecules/upsert-budget-category-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useCreateBudgetCategory } from "@/hooks/use-budget";
 import { useProjectFinances } from "@/hooks/use-finances";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type {
   BudgetPhase,
@@ -40,17 +47,31 @@ const DONUT_COLORS = [
 ] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-function abbreviateCurrency(amount: number): string {
-  if (amount >= 1_000_000_000) return `₦${(amount / 1_000_000_000).toFixed(1)}B`;
-  if (amount >= 1_000_000)     return `₦${(amount / 1_000_000).toFixed(1)}M`;
-  if (amount >= 1_000)         return `₦${(amount / 1_000).toFixed(0)}k`;
-  return `₦${amount}`;
+function toCategoryInput(values: UpsertBudgetCategoryValues) {
+  return {
+    name: values.name,
+    costCode: values.costCode || undefined,
+    planned: values.planned ? Number(values.planned) : undefined,
+    committed: values.committed ? Number(values.committed) : undefined,
+    actual: values.actual ? Number(values.actual) : undefined,
+    notes: values.notes || undefined,
+  };
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function ProjectBudgetAllocation() {
-  const { project } = useProjectContext();
+  const { project, access } = useProjectContext();
+  const canManage = access?.capabilities?.canManage ?? false;
   const { data: finances, isPending } = useProjectFinances(project.id);
+  const createCategory = useCreateBudgetCategory();
+  const [createOpen, setCreateOpen] = useState(false);
+
+  function handleCreate(values: UpsertBudgetCategoryValues): void {
+    createCategory.mutate(
+      { projectId: project.id, ...toCategoryInput(values) },
+      { onSuccess: () => setCreateOpen(false) },
+    );
+  }
 
   if (isPending || !finances) {
     return (
@@ -71,7 +92,22 @@ export default function ProjectBudgetAllocation() {
       />
       <PageHeader
         title="Budget Allocation & Analysis"
-        description="Detailed phase-by-phase planned vs actual breakdown with variance tracking."
+        description="Create budget categories, then track planned vs actual allocation by phase."
+        actions={canManage ? (
+          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="size-4" /> Add budget allocation
+          </Button>
+        ) : undefined}
+      />
+
+      <UpsertBudgetCategoryDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        onSubmit={handleCreate}
+        isSubmitting={createCategory.isPending}
+        error={(createCategory.error as Error | undefined)?.message ?? null}
+        currency={finances.currency}
       />
 
       <div className="mt-8 flex flex-col gap-5">
@@ -80,7 +116,12 @@ export default function ProjectBudgetAllocation() {
             <EmptyState
               icon={<FinancesIcon className="h-6 w-6" />}
               title="No budget allocation yet"
-              description="Add budget categories and milestones to see planned vs actual breakdowns by phase."
+              description="Add your first budget category to start allocation and variance tracking."
+              action={canManage ? (
+                <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+                  <PlusIcon className="size-4" /> Add budget allocation
+                </Button>
+              ) : undefined}
             />
           </Card>
         ) : (
@@ -199,7 +240,7 @@ function AllocationBreakdown({
             {/* Centered text overlay */}
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
               <p className="text-[18px] font-bold leading-tight text-black-500">
-                {abbreviateCurrency(totalPlanned)}
+                {formatCompactCurrency(totalPlanned, currency)}
               </p>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-black-300">
                 Total Capital

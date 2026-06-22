@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { budgetKeys } from "./query-keys";
+import { budgetKeys, financeKeys } from "./query-keys";
 
 export interface BudgetCategory {
   id: string;
@@ -96,6 +96,7 @@ export function useCreateBudgetCategory() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
     },
   });
 }
@@ -122,6 +123,7 @@ export function useEditBudgetCategory() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
     },
   });
 }
@@ -161,6 +163,7 @@ export function useCreateBudgetPeriod() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
     },
   });
 }
@@ -187,6 +190,7 @@ export function useEditBudgetPeriod() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: budgetKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
     },
   });
 }

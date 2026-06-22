@@ -1,7 +1,9 @@
 import { Menu } from "@base-ui-components/react/menu";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   useActiveOrganizationId,
+  useCreateOrganization,
   useOrganizations,
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
@@ -46,6 +48,8 @@ function OrgSwitcher() {
   const { data: organizations } = useOrganizations();
   const activeOrganizationId = useActiveOrganizationId();
   const setActive = useSetActiveOrganization();
+  const createOrganization = useCreateOrganization();
+  const [newCompanyName, setNewCompanyName] = useState("");
 
   const orgs = organizations ?? [];
   const activeOrg = orgs.find((org) => org.id === activeOrganizationId);
@@ -57,6 +61,16 @@ function OrgSwitcher() {
   function handleSelect(organizationId: string): void {
     if (organizationId === activeOrganizationId) return;
     setActive.mutate(organizationId);
+  }
+
+  function handleCreate(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const name = newCompanyName.trim();
+    if (!name) return;
+    createOrganization.mutate(
+      { name },
+      { onSuccess: () => setNewCompanyName("") },
+    );
   }
 
   return (
@@ -103,6 +117,33 @@ function OrgSwitcher() {
                 )}
               </Menu.Item>
             ))}
+
+            <form onSubmit={handleCreate} className="mt-1 border-t border-gray-100 px-2 py-2">
+              <label className="text-xs font-medium text-gray-500" htmlFor="new-company-name">
+                New company
+              </label>
+              <div className="mt-1 flex gap-1.5">
+                <input
+                  id="new-company-name"
+                  value={newCompanyName}
+                  onChange={(event) => setNewCompanyName(event.target.value)}
+                  placeholder="Company name"
+                  className="h-8 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                />
+                <button
+                  type="submit"
+                  disabled={!newCompanyName.trim() || createOrganization.isPending}
+                  className="rounded-lg bg-[#004DE7] px-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+              {createOrganization.error && (
+                <p className="mt-1 text-xs text-red-600">
+                  {(createOrganization.error as Error).message}
+                </p>
+              )}
+            </form>
 
           </Menu.Popup>
         </Menu.Positioner>

@@ -380,7 +380,8 @@ export interface WhatsNext {
 
 export type StageStatus = PhaseStatus;
 
-export type ParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type KnownParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
 
 export interface ProjectParticipant {

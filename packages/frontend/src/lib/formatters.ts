@@ -34,6 +34,10 @@ export function formatCurrency(
   }
 }
 
+export function formatCompactCurrency(value: number, currency: string): string {
+  return formatCurrency(value, currency, { compact: true, whole: true });
+}
+
 export function currencySymbol(currency: string): string {
   const locale = CURRENCY_LOCALE[currency] ?? "en-US";
   try {

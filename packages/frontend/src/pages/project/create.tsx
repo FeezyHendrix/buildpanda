@@ -265,6 +265,7 @@ export default function CreateProject() {
       )}
       {!isReview && step === 3 && (
         <ProjectDetailsStep
+          projectType={projectType}
           buildingType={buildingType}
           currency={currency}
           budget={budget}

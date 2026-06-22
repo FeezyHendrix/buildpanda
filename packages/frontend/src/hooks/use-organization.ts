@@ -45,6 +45,37 @@ export function useOrganizations() {
   });
 }
 
+function slugifyOrganizationName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "company"
+  );
+}
+
+export function useCreateOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string }) => {
+      const name = input.name.trim();
+      const organization = unwrap(
+        await authClient.organization.create({
+          name,
+          slug: slugifyOrganizationName(name),
+        }),
+      );
+      if (!organization) throw new Error("Could not create company.");
+      await authClient.organization.setActive({ organizationId: organization.id });
+      return organization;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+    },
+  });
+}
+
 export function useFullOrganization(organizationId: string | undefined) {
   return useQuery({
     queryKey: organizationId
