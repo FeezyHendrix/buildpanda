@@ -201,8 +201,12 @@ function ParticipantCard({
             {participant.name ?? participant.email}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-gray-500">{participant.email}</span>
-            <span className="text-xs text-gray-300">•</span>
+            {participant.name && (
+              <>
+                <span className="text-xs text-gray-500">{participant.email}</span>
+                <span className="text-xs text-gray-300">•</span>
+              </>
+            )}
             <span className="text-xs text-gray-500">
               {roleLabel(participant.role)}
             </span>
