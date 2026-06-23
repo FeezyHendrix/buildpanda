@@ -230,6 +230,25 @@ export async function down(knex: Knex) {
 }
 ```
 
+### Panda AI awareness
+
+The in-app assistant (`modules/panda-ai/agent`) answers project questions by
+calling read **tools** — each tool runs one query in `agent/repository.ts` and
+returns a small DTO from `agent/tools.ts`; the domains it can read are listed in
+the `SYSTEM_PROMPT` in `agent/service.ts`. The assistant can ONLY see data a
+tool exposes. So whenever you add or change project-scoped data, ask: **"would a
+PM reasonably ask Panda AI about this?"** If yes, wire it in:
+
+1. Add a query to `agent/repository.ts` (project-scoped, mirror the others).
+2. Add a `tool(fn(...))` in `agent/tools.ts` returning the minimal useful fields.
+3. Mention the new domain in the `SYSTEM_PROMPT` so the model knows it exists.
+
+Skip it for plumbing tables (jobs, events, link/junction, media blobs) and for
+data already covered by an existing tool — check `get_*` tools first to avoid
+overlap (e.g. milestone payments already live inside `get_finances`). When the
+answer is no, leave it to the `navigate` tool. A new user-facing feature that
+the assistant cannot read is a gap, not a non-feature.
+
 ### Config & integrations
 
 All env access lives in `config/index.ts` behind `required`/`optional`,
@@ -383,3 +402,5 @@ req.log.info({ projectId, count: items.length }, "listed action items")
   factory.
 - `enum` in `types.ts` instead of an `as const` array — breaks type stripping.
 - Closing the DB inside a handler instead of the plugin's `onClose` hook.
+- Shipping a user-facing project feature without asking whether Panda AI should
+  read it — add an agent tool when a PM would ask about the data (Panda AI awareness).
