@@ -186,6 +186,99 @@ export function agentRepository(db: Knex) {
           "c.group as categoryGroup",
         );
     },
+
+    tasks(projectId: string) {
+      return db("tasks as t")
+        .leftJoin("task_columns as col", "col.id", "t.column_id")
+        .leftJoin("user as u", "u.id", "t.assignee_id")
+        .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id")
+        .where("t.project_id", projectId)
+        .orderBy("t.due_date", "asc")
+        .limit(100)
+        .select(
+          "t.id",
+          "t.title",
+          "col.name as columnName",
+          "t.due_date",
+          "u.name as assigneeUserName",
+          "tm.name as assigneeTeamName",
+        );
+    },
+
+    rfisOpen(projectId: string) {
+      return db("rfis as r")
+        .where("r.project_id", projectId)
+        .whereNotIn("r.status", ["Answered", "Closed", "Void"])
+        .orderBy("r.due_date", "asc")
+        .limit(50)
+        .select("r.id", "r.subject as title", "r.status", "r.priority", "r.due_date");
+    },
+
+    approvalsOpen(projectId: string) {
+      return db("approvals as a")
+        .leftJoin("user as u", "u.id", "a.submitted_by_id")
+        .where("a.project_id", projectId)
+        .whereIn("a.status", ["Pending", "Resubmit"])
+        .orderBy("a.due_date", "asc")
+        .limit(50)
+        .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
+    },
+
+    actionItemsOpen(projectId: string) {
+      return db("action_items as ai")
+        .leftJoin("user as u", "u.id", "ai.assignee_id")
+        .where("ai.project_id", projectId)
+        .whereNot("ai.status", "Resolved")
+        .orderBy("ai.due_date", "asc")
+        .limit(50)
+        .select("ai.id", "ai.title", "ai.status", "ai.priority", "ai.due_date", "u.name as assignee");
+    },
+
+    queriesOpen(projectId: string) {
+      return db("queries as q")
+        .leftJoin("user as u", "u.id", "q.assignee_id")
+        .where("q.project_id", projectId)
+        .whereNot("q.status", "Closed")
+        .orderBy("q.due_date", "asc")
+        .limit(50)
+        .select("q.id", "q.subject as title", "q.status", "q.due_date", "u.name as assignee");
+    },
+
+    changeRequests(projectId: string) {
+      return db("change_requests as cr")
+        .leftJoin("user as u", "u.id", "cr.submitted_by_id")
+        .where("cr.project_id", projectId)
+        .orderBy("cr.created_at", "desc")
+        .limit(50)
+        .select(
+          "cr.id",
+          "cr.title",
+          "cr.status",
+          "cr.cost_impact",
+          "cr.time_impact_days",
+          "cr.currency",
+          "cr.reason",
+          "cr.decided_at",
+          "u.name as submittedBy",
+        );
+    },
+
+    permits(projectId: string) {
+      return db("permits")
+        .where({ project_id: projectId })
+        .orderBy("expiry_date", "asc")
+        .limit(50)
+        .select(
+          "id",
+          "title",
+          "authority",
+          "reference_no",
+          "status",
+          "applied_date",
+          "approved_date",
+          "expiry_date",
+        );
+    },
   };
 }
 
