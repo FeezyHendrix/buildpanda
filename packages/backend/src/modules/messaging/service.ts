@@ -124,10 +124,20 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     for (const userId of targets) {
       if (mutedUsers.has(userId)) continue;
       if (recentlyActive.has(userId)) continue;
-      if (deps.realtime?.isOnline(userId)) continue;
+      const title = `${actorName} mentioned you in ${channelName}`;
+      // Online users get a live desktop notification instead of the in-app +
+      // email path, so a mention reaches them even when they're on another page.
+      if (deps.realtime?.isOnline(userId)) {
+        deps.realtime.publish({
+          event: "notification.created",
+          userId,
+          data: { type: "chat_mention", title, projectId, channelName },
+        });
+        continue;
+      }
       void deps.notifications
         .notify(userId, "chat_mention", {
-          title: `${actorName} mentioned you in ${channelName}`,
+          title,
           body: "",
           projectId: projectId ?? undefined,
         })
