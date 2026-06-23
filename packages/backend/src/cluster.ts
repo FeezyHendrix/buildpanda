@@ -2,8 +2,6 @@ import "./instrument.ts";
 import cluster from "node:cluster";
 import os from "node:os";
 import { config } from "./config/index.ts";
-import db from "./db/connection.ts";
-import { runMigrations } from "./db/migrations-runner.ts";
 import { start } from "./server.ts";
 
 const WORKER_ROLE_ENV = "RUN_WORKERS";
@@ -62,26 +60,13 @@ function runPrimary(workerCount: number): void {
   process.on("SIGINT", () => broadcast("SIGINT"));
 }
 
-async function migrateOnce(): Promise<void> {
-  try {
-    await runMigrations(db);
-  } catch (error) {
-    process.stderr.write(
-      `${JSON.stringify({ level: "fatal", scope: "migrations", msg: "migration failed", error: String(error) })}\n`,
-    );
-    process.exit(1);
-  }
-}
-
 async function main(): Promise<void> {
   if (clusteringDisabled()) {
-    await migrateOnce();
     await runSingleProcess();
     return;
   }
 
   if (cluster.isPrimary) {
-    await migrateOnce();
     runPrimary(resolveWorkerCount());
     return;
   }
