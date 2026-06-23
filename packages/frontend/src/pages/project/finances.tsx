@@ -194,6 +194,7 @@ export default function ProjectFinances() {
       <FundProjectDialog
         open={fundOpen}
         onOpenChange={setFundOpen}
+        currency={finances.currency}
         isSubmitting={fundProject.isPending}
         error={fundProject.error ? (fundProject.error as Error).message : null}
         onSubmit={(input) => {
