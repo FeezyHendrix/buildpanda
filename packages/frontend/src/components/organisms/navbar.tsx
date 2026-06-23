@@ -60,10 +60,7 @@ function Navbar({
           <NotificationBell count={notificationCount} />
           {userSlot ??
             (user ? (
-              <>
-                <NotificationBell count={notificationCount} />
-                <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-              </>
+              <Avatar name={user.name} src={user.avatarUrl} size="sm" />
             ) : null)}
         </div>
       </div>
