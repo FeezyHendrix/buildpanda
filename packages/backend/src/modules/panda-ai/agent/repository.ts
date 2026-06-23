@@ -135,6 +135,20 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    materialStock(projectId: string) {
+      return db("materials_stock as s")
+        .join("materials_catalog as c", "c.id", "s.material_id")
+        .where("s.project_id", projectId)
+        .orderBy("c.name", "asc")
+        .select(
+          "c.name as material_name",
+          "c.unit",
+          "s.location_key",
+          "s.on_hand_qty",
+          "c.low_stock_threshold",
+        );
+    },
+
     documents(projectId: string) {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")
