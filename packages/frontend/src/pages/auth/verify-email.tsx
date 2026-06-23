@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useSearchParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
-import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
+import { PENDING_PROJECT_INVITE_KEY, homePathFor } from "@/lib/route-guards";
 
 function continueAfterVerifyPath(redirectTo?: string | null): string {
   if (redirectTo) return redirectTo;
@@ -16,6 +16,7 @@ export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state as { email?: string; redirectTo?: string | null } | null;
   const email = state?.email ?? null;
   const redirectTo = state?.redirectTo ?? null;
@@ -84,6 +85,15 @@ export default function VerifyEmailPage() {
 
         if (res.ok) {
           setSuccess(true);
+          // autoSignInAfterVerification establishes a session on the verify
+          // response; refetch it and, if signed in, land the user in-app
+          // automatically instead of asking them to click Continue.
+          const { data: session } = await authClient.getSession();
+          if (isMounted && session?.user) {
+            const accountType = (session.user as { accountType?: string }).accountType;
+            const target = redirectTo ?? continueAfterVerifyPath(null);
+            navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
+          }
         } else {
           setError("Verification failed. The link may have expired.");
         }
