@@ -168,6 +168,9 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     expiresIn: 3600,
+    afterEmailVerification: async (user) => {
+      void sendWelcomeEmail(db, user.id).catch(() => undefined);
+    },
   },
 
   socialProviders: {
@@ -247,7 +250,6 @@ export const auth = betterAuth({
               .update({ signup_ip: ctx.ip, signup_country: ctx.country })
               .catch(() => undefined);
           }
-          void sendWelcomeEmail(db, user.id).catch(() => undefined);
         },
       },
     },
