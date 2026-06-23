@@ -166,10 +166,10 @@ export function BoqStep({ sessionId, projectId, onNext }: BoqStepProps) {
 
           <Button 
             onClick={handleApply} 
-            disabled={bulkCreate.isPending}
+            loading={bulkCreate.isPending}
             className="w-full"
           >
-            {bulkCreate.isPending ? "Applying..." : "Apply BoQ Data"}
+            Apply BoQ Data
           </Button>
         </div>
       ) : (

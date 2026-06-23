@@ -124,8 +124,8 @@ export function OverviewTab({ proposalId }: Props) {
                   Conversion failed. Please try again.
                 </p>
               )}
-              <Button variant="primary" onClick={handleConvert} disabled={convert.isPending}>
-                {convert.isPending ? "Converting…" : "Convert to project"}
+              <Button variant="primary" onClick={handleConvert} loading={convert.isPending}>
+                Convert to project
               </Button>
             </>
           ) : (

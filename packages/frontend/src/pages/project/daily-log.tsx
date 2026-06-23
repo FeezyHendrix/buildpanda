@@ -231,7 +231,7 @@ function DayCard({
             variant="ghost"
             size="sm"
             className="h-8 px-2.5 text-xs text-black-300 hover:text-black-500"
-            disabled={downloadReport.isPending}
+            loading={downloadReport.isPending}
             onClick={() =>
               downloadReport.mutate(
                 { projectId, logDate: day.logDate },
@@ -239,14 +239,14 @@ function DayCard({
               )
             }
           >
-            {downloadReport.isPending ? "Preparing…" : "Download report"}
+            Download report
           </Button>
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="h-8 px-2.5 text-xs text-black-300 hover:text-black-500"
-            disabled={emailReport.isPending}
+            loading={emailReport.isPending}
             onClick={() =>
               emailReport.mutate(
                 { projectId, logDate: day.logDate },
@@ -257,7 +257,7 @@ function DayCard({
               )
             }
           >
-            {emailReport.isPending ? "Sending…" : "Email me"}
+            Email me
           </Button>
           <Button variant="primary" size="sm" className="h-8 px-3 text-xs" onClick={onAddEntry}>
             <PlusIcon className="size-3.5" />

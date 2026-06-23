@@ -141,10 +141,11 @@ export function DetailsStep({ sessionId, onProjectCreated, onNext }: Omit<Detail
 
       <Button 
         onClick={handleCreate} 
-        disabled={!isComplete || createProject.isPending}
+        loading={createProject.isPending}
+        disabled={!isComplete}
         className="w-full mt-4"
       >
-        {createProject.isPending ? "Creating..." : "Create Project"}
+        Create Project
       </Button>
     </div>
   );

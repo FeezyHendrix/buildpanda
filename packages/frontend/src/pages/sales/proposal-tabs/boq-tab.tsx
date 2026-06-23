@@ -123,8 +123,8 @@ export function BoqTab({ proposalId, estimateId }: Props) {
             Review auto-generated take-off lines, adjust quantities, then export a professionally structured workbook.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => void exportBoq()} disabled={exporting || items.length === 0}>
-          {exporting ? "Exporting…" : "Export XLSX"}
+        <Button variant="secondary" onClick={() => void exportBoq()} disabled={items.length === 0} loading={exporting}>
+          Export XLSX
         </Button>
       </div>
 
@@ -185,9 +185,9 @@ export function BoqTab({ proposalId, estimateId }: Props) {
           variant="primary"
           size="sm"
           onClick={save}
-          disabled={replace.isPending}
+          loading={replace.isPending}
         >
-          {replace.isPending ? "Saving…" : "Save BoQ"}
+          Save BOQ
         </Button>
         {estimateId && items.length > 0 && (
           <Button type="button" variant="secondary" size="sm" onClick={priceIntoEstimate}>

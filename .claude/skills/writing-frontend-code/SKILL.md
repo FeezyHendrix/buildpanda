@@ -186,6 +186,48 @@ export function UpsertActionItemDialog({ projectId, initial, onClose }: Props) {
 }
 ```
 
+### Loading & busy states
+
+One loader for the whole app: the circular `Spinner` atom
+(`components/atoms/spinner.tsx`). Never hand-roll `animate-spin`, dots, skeletons,
+or "Loading…" text as a substitute — every busy indicator routes through
+`Spinner` so the UI reads as one product.
+
+- **Sizes**: `xs` (inline, inside controls), `sm`/`md`/`lg` (page/section). **Tones**:
+  `brand` (default, blue on light surfaces), `current` (inherits text colour — use
+  on solid/coloured fills so the spinner stays visible).
+- **Buttons own their busy state via the `loading` prop** — never place a bare
+  `Spinner` next to a `<Button>` or swap the label for "Saving…". `loading`
+  disables the button, sets `aria-busy`, and overlays the spinner while keeping the
+  label width so the layout doesn't jump. Wire it straight to the mutation's
+  `isPending`.
+- **`ConfirmDialog`** takes `loading` for destructive/async confirms: pass the
+  mutation's `isPending`, keep the dialog open, and close it yourself in
+  `onSuccess`/`onError`. This is what prevents double-submit on deletes.
+- **Page/section loading** renders `<Spinner size="md" />` centred in the
+  region (this is how route-split fallbacks and query `isPending` branches render).
+
+```tsx
+// Good — button drives its own busy state from the mutation
+const save = useUpdateThing(id)
+<Button loading={save.isPending}
+  onClick={() => save.mutate(values, { onSuccess: onClose })}>
+  Save changes
+</Button>
+
+// Good — confirm dialog stays open until the mutation settles
+const remove = useDeleteThing(id)
+<ConfirmDialog open={open} onOpenChange={setOpen} variant="danger"
+  loading={remove.isPending} confirmLabel="Delete"
+  onConfirm={() => remove.mutate(target.id, { onSuccess: () => setOpen(false) })} />
+
+// Bad — ad-hoc spinner + manual disable + relabel; drifts from the standard
+<button disabled={save.isPending}>
+  {save.isPending ? <span className="animate-spin …" /> : null}
+  {save.isPending ? "Saving…" : "Save changes"}
+</button>
+```
+
 ### Styling
 
 Tailwind utility classes with the theme palette (`primary` scale `#004DE7`,
@@ -251,6 +293,7 @@ correctness rules vs measure-first optimizations.
 - Separate "create" and "edit" dialogs — one upsert dialog, `initial` prop.
 - Hex colors that drift from the theme; check the Tailwind palette first.
 - Mutating an array with `.sort()` in a `useMemo` over props — use `.toSorted()` (J-6).
+- Hand-rolling a spinner/skeleton or relabelling buttons to "Saving…" — use the `Spinner` atom and the `Button`/`ConfirmDialog` `loading` prop instead.
 
 ---
 

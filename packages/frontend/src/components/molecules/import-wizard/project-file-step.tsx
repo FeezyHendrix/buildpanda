@@ -253,12 +253,10 @@ export function ProjectFileStep({
 
           <Button
             onClick={handleApply}
-            disabled={applyMutation.isPending}
+            loading={applyMutation.isPending}
             className="w-full mt-4"
           >
-            {applyMutation.isPending
-              ? "Creating project…"
-              : "Create project from this file"}
+            Create project from this file
           </Button>
         </div>
       ) : (

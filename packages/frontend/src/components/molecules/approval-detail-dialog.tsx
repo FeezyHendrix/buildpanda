@@ -109,13 +109,13 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                     className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                   />
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" disabled={updateApproval.isPending} onClick={() => decide("Approved")}>
+                    <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
                       Approve
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" disabled={updateApproval.isPending} onClick={() => decide("Resubmit")}>
+                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
                       Request resubmit
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" disabled={updateApproval.isPending} onClick={() => decide("Rejected")}>
+                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
                       Reject
                     </Button>
                   </div>
@@ -154,7 +154,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                   variant="primary"
                   size="sm"
                   className="h-9 px-4 text-sm"
-                  disabled={!comment.trim() || addComment.isPending}
+                  disabled={!comment.trim()} loading={addComment.isPending}
                   onClick={submitComment}
                 >
                   Send

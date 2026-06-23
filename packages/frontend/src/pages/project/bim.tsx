@@ -247,9 +247,10 @@ export default function ProjectBim() {
                     size="sm"
                     className="w-full"
                     onClick={addIssue}
-                    disabled={issueTitle.trim() === "" || createIssue.isPending}
+                    loading={createIssue.isPending}
+                    disabled={issueTitle.trim() === ""}
                   >
-                    {createIssue.isPending ? "Assigning…" : "Assign element"}
+                    Assign element
                   </Button>
                 </div>
               </div>

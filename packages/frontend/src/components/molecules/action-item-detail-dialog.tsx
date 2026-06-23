@@ -129,10 +129,11 @@ function ActionItemDetailDialog({ open, onOpenChange, projectId, itemId }: Props
                     variant="primary"
                     size="sm"
                     className="h-9 px-4 text-sm"
-                    disabled={!comment.trim() || addComment.isPending}
+                    loading={addComment.isPending}
+                    disabled={!comment.trim()}
                     onClick={submitComment}
                   >
-                    {addComment.isPending ? "Posting…" : "Comment"}
+                    Comment
                   </Button>
                 </div>
               </footer>

@@ -61,9 +61,10 @@ export function MessagesTab({ proposalId }: Props) {
             variant="primary"
             size="sm"
             onClick={handleSend}
-            disabled={!body.trim() || postComment.isPending}
+            disabled={!body.trim()}
+            loading={postComment.isPending}
           >
-            {postComment.isPending ? "Sending…" : "Send"}
+            Send
           </Button>
         </div>
       </div>

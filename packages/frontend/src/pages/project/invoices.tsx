@@ -293,7 +293,8 @@ function InvoiceBudgetAllocations({ projectId, invoice, currency }: { projectId:
           <Button 
             variant="primary" 
             size="sm" 
-            disabled={setAllocations.isPending || isOver} 
+            loading={setAllocations.isPending}
+            disabled={isOver} 
             onClick={handleSave}
           >
             Save allocations

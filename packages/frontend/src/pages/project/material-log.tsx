@@ -61,21 +61,21 @@ export default function ProjectMaterialLog() {
               variant="ghost"
               size="sm"
               className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
-              disabled={downloadReport.isPending}
+              loading={downloadReport.isPending}
               onClick={() =>
                 downloadReport.mutate(undefined, {
                   onError: () => toast("Could not download report"),
                 })
               }
             >
-              {downloadReport.isPending ? "Preparing…" : "Download report"}
+              Download report
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
-              disabled={emailReport.isPending}
+              loading={emailReport.isPending}
               onClick={() =>
                 emailReport.mutate(undefined, {
                   onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
@@ -83,7 +83,7 @@ export default function ProjectMaterialLog() {
                 })
               }
             >
-              {emailReport.isPending ? "Sending…" : "Email me"}
+              Email me
             </Button>
             {canManage && (
               <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
