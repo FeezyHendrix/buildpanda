@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { channelKeys, messageKeys } from "@/hooks/query-keys";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
+import { playMessageChime } from "@/lib/notification-sound";
 import type { ChatMessage } from "@/lib/project-types";
 
 type RealtimeEvent =
@@ -48,6 +49,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const signedIn = Boolean(session?.user);
+  const currentUserId = session?.user?.id ?? null;
+  const currentUserIdRef = useRef<string | null>(currentUserId);
+  currentUserIdRef.current = currentUserId;
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const subscribedRef = useRef<Set<string>>(new Set());
@@ -77,7 +81,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         } catch {
           return;
         }
-        handleEvent(queryClient, payload);
+        handleEvent(queryClient, payload, currentUserIdRef.current);
       };
 
       ws.onclose = () => {
@@ -131,9 +135,13 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 function handleEvent(
   queryClient: ReturnType<typeof useQueryClient>,
   payload: RealtimePayload,
+  currentUserId: string | null,
 ): void {
   if (payload.event === "message.created" && payload.channelId) {
     const message = payload.data as ChatMessage;
+    if (message.authorId && message.authorId !== currentUserId) {
+      playMessageChime();
+    }
     if (message.parentMessageId) {
       void queryClient.invalidateQueries({ queryKey: ["messages", message.parentMessageId, "thread"] });
       void queryClient.invalidateQueries({ queryKey: messageKeys.list(payload.channelId) });
