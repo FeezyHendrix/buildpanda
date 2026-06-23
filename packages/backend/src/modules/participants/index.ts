@@ -354,7 +354,10 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/me/projects", async (request) => {
     const user = request.requireAuth();
     const orgIds = [...request.orgRoles.keys()];
-    const participantProjectIds = [...request.projectRoles.keys()];
+    const participantProjectIds = await db("project_participants")
+      .where({ user_id: user.id })
+      .whereNot("status", "revoked")
+      .pluck("project_id");
     const rows = await db("projects")
       .where(function () {
         this.where("owner_id", user.id);
