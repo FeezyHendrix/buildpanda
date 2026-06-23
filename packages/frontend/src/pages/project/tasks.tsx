@@ -1,13 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Combobox } from "@base-ui-components/react/combobox";
 import {
   DndContext,
   PointerSensor,
   useSensor,
   useSensors,
-  useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -30,6 +36,7 @@ import {
   useAddColumn,
   useRenameColumn,
   useDeleteColumn,
+  useReorderColumns,
   useTaskDetail,
   useAddSubtask,
   useUpdateSubtask,
@@ -57,6 +64,99 @@ function htmlToText(html: string): string {
   return (el.textContent ?? "").trim();
 }
 
+interface ComboItem {
+  id: string;
+  label: string;
+  group?: string;
+}
+
+function ComboSelect({
+  items,
+  value,
+  onChange,
+  placeholder = "Select…",
+  searchPlaceholder = "Search…",
+  emptyText = "No matches",
+  className,
+}: {
+  items: ComboItem[];
+  value: string | null;
+  onChange: (value: string | null) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  className?: string;
+}) {
+  const ids = useMemo(() => items.map((i) => i.id), [items]);
+  const labelOf = useMemo(() => {
+    const map = new Map(items.map((i) => [i.id, i.label]));
+    return (id: string | null) => (id ? (map.get(id) ?? id) : "");
+  }, [items]);
+
+  return (
+    <Combobox.Root
+      items={ids}
+      value={value}
+      onValueChange={onChange}
+      itemToStringLabel={(id) => labelOf(id)}
+    >
+      <Combobox.Trigger
+        className={cn(
+          "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
+          "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "cursor-default select-none",
+          className,
+        )}
+      >
+        <Combobox.Value>
+          {(selected: string | null) =>
+            selected ? (
+              <span className="truncate">{labelOf(selected)}</span>
+            ) : (
+              <span className="text-gray-400">{placeholder}</span>
+            )
+          }
+        </Combobox.Value>
+        <span className="text-gray-400">▾</span>
+      </Combobox.Trigger>
+      <Combobox.Portal>
+        <Combobox.Positioner align="start" sideOffset={4} className="z-50">
+          <Combobox.Popup className="z-50 max-h-72 w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
+            <div className="p-1">
+              <Combobox.Input
+                placeholder={searchPlaceholder}
+                className="h-9 w-full rounded-md bg-[#F6F6F6] px-2 text-sm outline-none"
+              />
+            </div>
+            <Combobox.Empty className="px-3 py-2 text-sm text-gray-400">
+              {emptyText}
+            </Combobox.Empty>
+            <Combobox.List>
+              {(id: string) => {
+                const item = items.find((i) => i.id === id);
+                return (
+                  <Combobox.Item
+                    key={id}
+                    value={id}
+                    className="flex cursor-default items-center justify-between rounded-md px-3 py-2 text-sm text-gray-700 data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900"
+                  >
+                    <span className="truncate">{item?.label ?? id}</span>
+                    {item?.group && (
+                      <span className="ml-2 shrink-0 text-[10px] uppercase tracking-wide text-gray-400">
+                        {item.group}
+                      </span>
+                    )}
+                  </Combobox.Item>
+                );
+              }}
+            </Combobox.List>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
+  );
+}
+
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
@@ -71,6 +171,10 @@ export default function ProjectTasks() {
   const addColumn = useAddColumn(project.id);
   const renameColumn = useRenameColumn(project.id);
   const deleteColumn = useDeleteColumn(project.id);
+  const reorderColumns = useReorderColumns(project.id);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusedTaskId = searchParams.get("task");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -78,6 +182,28 @@ export default function ProjectTasks() {
   const [deleting, setDeleting] = useState<Task | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
+
+  useEffect(() => {
+    if (!focusedTaskId || !board) return;
+    const target = board.tasks.find((t) => t.id === focusedTaskId);
+    if (target) {
+      setEditing(target);
+      setCreateColumnId(null);
+      setDialogOpen(true);
+    }
+  }, [focusedTaskId, board]);
+
+  function setFocusedTask(taskId: string | null): void {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (taskId) next.set("task", taskId);
+        else next.delete("task");
+        return next;
+      },
+      { replace: true },
+    );
+  }
 
   const userOptions: AssigneeOption[] = useMemo(
     () =>
@@ -121,6 +247,12 @@ export default function ProjectTasks() {
     setEditing(task);
     setCreateColumnId(null);
     setDialogOpen(true);
+    setFocusedTask(task.id);
+  }
+
+  function handleDialogOpenChange(open: boolean): void {
+    setDialogOpen(open);
+    if (!open) setFocusedTask(null);
   }
 
   function handleAddColumn(): void {
@@ -151,6 +283,19 @@ export default function ProjectTasks() {
   function handleDragEnd(event: DragEndEvent): void {
     const { active, over } = event;
     if (!over) return;
+
+    if (active.data.current?.type === "column") {
+      if (active.id === over.id) return;
+      const ids = board!.columns.map((c) => c.id);
+      const from = ids.indexOf(String(active.id));
+      const to = ids.indexOf(String(over.id));
+      if (from === -1 || to === -1) return;
+      const next = [...ids];
+      next.splice(to, 0, next.splice(from, 1)[0]!);
+      reorderColumns.mutate(next);
+      return;
+    }
+
     const taskId = String(active.id);
     const targetColumnId = String(over.id);
     const task = board!.tasks.find((t) => t.id === taskId);
@@ -218,18 +363,23 @@ export default function ProjectTasks() {
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="mt-6 flex items-start gap-4 overflow-x-auto pb-4">
-          {board.columns.map((column) => (
-            <BoardColumn
-              key={column.id}
-              column={column}
-              tasks={tasksByColumn.get(column.id) ?? []}
-              canManage={canManage}
-              onAddCard={() => openCreate(column.id)}
-              onOpenTask={openEdit}
-              onRename={(name) => handleRenameColumn(column.id, name)}
-              onDelete={() => handleDeleteColumn(column.id)}
-            />
-          ))}
+          <SortableContext
+            items={board.columns.map((c) => c.id)}
+            strategy={horizontalListSortingStrategy}
+          >
+            {board.columns.map((column) => (
+              <BoardColumn
+                key={column.id}
+                column={column}
+                tasks={tasksByColumn.get(column.id) ?? []}
+                canManage={canManage}
+                onAddCard={() => openCreate(column.id)}
+                onOpenTask={openEdit}
+                onRename={(name) => handleRenameColumn(column.id, name)}
+                onDelete={() => handleDeleteColumn(column.id)}
+              />
+            ))}
+          </SortableContext>
 
           {canManage && (
             <div className="w-72 shrink-0">
@@ -272,7 +422,7 @@ export default function ProjectTasks() {
 
       <UpsertTaskDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         projectId={project.id}
         task={editing}
         allTasks={board.tasks}
@@ -281,6 +431,10 @@ export default function ProjectTasks() {
         submitting={createTask.isPending || updateTask.isPending}
         onSubmit={handleSubmit}
         onRequestDelete={editing ? () => { setDeleting(editing); setDialogOpen(false); } : undefined}
+        onOpenTask={(taskId) => {
+          const target = board.tasks.find((t) => t.id === taskId);
+          if (target) openEdit(target);
+        }}
       />
 
       <ConfirmDialog
@@ -317,7 +471,19 @@ function BoardColumn({
   onRename: (name: string) => void;
   onDelete: () => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isOver,
+    isDragging,
+  } = useSortable({
+    id: column.id,
+    data: { type: "column" },
+    disabled: !canManage,
+  });
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(column.name);
 
@@ -331,34 +497,56 @@ function BoardColumn({
   return (
     <div
       ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "flex w-72 shrink-0 flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors",
         isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
+        isDragging && "opacity-50",
       )}
     >
       <div className="flex items-center justify-between gap-2 px-1">
-        {renaming ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={commitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") { setName(column.name); setRenaming(false); }
-            }}
-            className="h-7 min-w-0 flex-1 rounded-md bg-white px-2 text-sm font-semibold text-gray-900 outline-none ring-1 ring-gray-300"
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => canManage && setRenaming(true)}
-            className={cn("truncate text-left text-sm font-semibold text-gray-900", canManage && "hover:text-[#004DE7]")}
-            title={canManage ? "Rename column" : undefined}
-          >
-            {column.name}
-          </button>
-        )}
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {canManage && (
+            <button
+              type="button"
+              aria-label={`Reorder ${column.name} column`}
+              className="flex size-6 shrink-0 cursor-grab items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <svg className="size-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="9" cy="6" r="1.6" />
+                <circle cx="15" cy="6" r="1.6" />
+                <circle cx="9" cy="12" r="1.6" />
+                <circle cx="15" cy="12" r="1.6" />
+                <circle cx="9" cy="18" r="1.6" />
+                <circle cx="15" cy="18" r="1.6" />
+              </svg>
+            </button>
+          )}
+          {renaming ? (
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") { setName(column.name); setRenaming(false); }
+              }}
+              className="h-7 min-w-0 flex-1 rounded-md bg-white px-2 text-sm font-semibold text-gray-900 outline-none ring-1 ring-gray-300"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => canManage && setRenaming(true)}
+              className={cn("truncate text-left text-sm font-semibold text-gray-900", canManage && "hover:text-[#004DE7]")}
+              title={canManage ? "Rename column" : undefined}
+            >
+              {column.name}
+            </button>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-medium text-gray-600">
             {tasks.length}
@@ -480,6 +668,7 @@ function UpsertTaskDialog({
   submitting,
   onSubmit,
   onRequestDelete,
+  onOpenTask,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -491,18 +680,43 @@ function UpsertTaskDialog({
   submitting: boolean;
   onSubmit: (values: { title: string; description: string; assignee: AssigneeOption | null; dueDate: string | null }) => void;
   onRequestDelete?: () => void;
+  onOpenTask?: (taskId: string) => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const [assigneeValue, setAssigneeValue] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
 
   const dialogKey = task?.id ?? "new";
 
+  const assigneeItems = useMemo<ComboItem[]>(
+    () => [
+      ...userOptions.map((o) => ({ id: `user:${o.id}`, label: o.name, group: "Person" })),
+      ...teamOptions.map((o) => ({ id: `team:${o.id}`, label: o.name, group: "Team" })),
+    ],
+    [userOptions, teamOptions],
+  );
+
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function copyTaskLink(): void {
+    if (!task) return;
+    const url = `${window.location.origin}${window.location.pathname}?task=${task.id}`;
+    void navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setLinkCopied(true);
+        window.setTimeout(() => setLinkCopied(false), 1500);
+      })
+      .catch(() => toast("Could not copy link"));
+  }
+
   useMemo(() => {
     if (open) {
       setTitle(task?.title ?? "");
       setDescription(task?.description ?? "");
+      setDescriptionHtml(task?.descriptionHtml ?? task?.description ?? "");
       setAssigneeValue(
         task?.assigneeId
           ? `user:${task.assigneeId}`
@@ -524,11 +738,12 @@ function UpsertTaskDialog({
 
   function handleSubmit(): void {
     if (!title.trim()) return;
-    const html = description.trim();
+    const html = descriptionHtml.trim();
     const isEmpty = html === "" || html === "<p></p>";
     onSubmit({
       title: title.trim(),
-      description: isEmpty ? "" : html,
+      description: isEmpty ? "" : description.trim(),
+      descriptionHtml: isEmpty ? "" : html,
       assignee: resolveAssignee(),
       dueDate: dueDate || null,
     });
@@ -544,6 +759,19 @@ function UpsertTaskDialog({
       submitting={submitting}
       onSubmit={handleSubmit}
     >
+      {task && (
+        <button
+          type="button"
+          onClick={copyTaskLink}
+          className="-mt-1 flex items-center gap-1.5 self-start rounded-lg bg-[#F6F6F6] px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
+        >
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.07 0l1.93-1.93a5 5 0 0 0-7.07-7.07L10.5 5.5" />
+            <path d="M14 11a5 5 0 0 0-7.07 0L5 12.93a5 5 0 0 0 7.07 7.07L13.5 18.5" />
+          </svg>
+          {linkCopied ? "Link copied" : "Copy task link"}
+        </button>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-title">Title</Label>
         <input
@@ -559,37 +787,20 @@ function UpsertTaskDialog({
         <RichTextEditor
           value={description}
           onChange={(html) => setDescription(html)}
+          projectId={projectId}
           placeholder="Add details, checklists, images…"
         />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-assignee">Assignee</Label>
-        <select
-          id="task-assignee"
-          value={assigneeValue}
-          onChange={(e) => setAssigneeValue(e.target.value)}
-          className={FIELD}
-        >
-          <option value="">Unassigned</option>
-          {userOptions.length > 0 && (
-            <optgroup label="People">
-              {userOptions.map((o) => (
-                <option key={`user:${o.id}`} value={`user:${o.id}`}>
-                  {o.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {teamOptions.length > 0 && (
-            <optgroup label="Team members">
-              {teamOptions.map((o) => (
-                <option key={`team:${o.id}`} value={`team:${o.id}`}>
-                  {o.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        <ComboSelect
+          items={assigneeItems}
+          value={assigneeValue || null}
+          onChange={(v) => setAssigneeValue(v ?? "")}
+          placeholder="Unassigned"
+          searchPlaceholder="Search people or team…"
+          emptyText="No people found"
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-due">Due date (optional)</Label>
@@ -602,7 +813,7 @@ function UpsertTaskDialog({
         />
       </div>
       {task && (
-        <TaskExtras projectId={projectId} taskId={task.id} allTasks={allTasks} />
+        <TaskExtras projectId={projectId} taskId={task.id} allTasks={allTasks} onOpenTask={onOpenTask} />
       )}
       {onRequestDelete && (
         <button
@@ -624,14 +835,25 @@ const LINK_TYPE_LABELS: Record<TaskLinkType, string> = {
   duplicates: "Duplicates",
 };
 
+const LINK_TYPE_ORDER: TaskLinkType[] = ["blocks", "blocked_by", "relates_to", "duplicates"];
+
+const LINK_TYPE_TONE: Record<TaskLinkType, string> = {
+  blocks: "bg-[#FEE2E2] text-[#B42318]",
+  blocked_by: "bg-[#FEF0C7] text-[#B54708]",
+  relates_to: "bg-[#EEF2FF] text-[#004DE7]",
+  duplicates: "bg-[#F2F4F7] text-[#475467]",
+};
+
 function TaskExtras({
   projectId,
   taskId,
   allTasks,
+  onOpenTask,
 }: {
   projectId: string;
   taskId: string;
   allTasks: Task[];
+  onOpenTask?: (taskId: string) => void;
 }) {
   const { data: detail } = useTaskDetail(projectId, taskId);
   const addSubtask = useAddSubtask(projectId, taskId);
@@ -641,10 +863,30 @@ function TaskExtras({
   const deleteLink = useDeleteLink(projectId, taskId);
 
   const [newSubtask, setNewSubtask] = useState("");
-  const [linkTarget, setLinkTarget] = useState("");
+  const [linkTarget, setLinkTarget] = useState<string | null>(null);
   const [linkType, setLinkType] = useState<TaskLinkType>("relates_to");
 
-  const linkableTasks = allTasks.filter((t) => t.id !== taskId);
+  const linkedTargetIds = new Set((detail?.links ?? []).map((l) => l.targetTaskId));
+  const linkableItems = useMemo<ComboItem[]>(
+    () =>
+      allTasks
+        .filter((t) => t.id !== taskId && !linkedTargetIds.has(t.id))
+        .map((t) => ({ id: t.id, label: t.title })),
+    [allTasks, taskId, detail?.links],
+  );
+
+  const groupedLinks = useMemo(() => {
+    const groups = new Map<TaskLinkType, NonNullable<typeof detail>["links"]>();
+    for (const link of detail?.links ?? []) {
+      const list = groups.get(link.linkType) ?? [];
+      list.push(link);
+      groups.set(link.linkType, list);
+    }
+    return LINK_TYPE_ORDER.filter((t) => groups.has(t)).map((t) => ({
+      type: t,
+      links: groups.get(t)!,
+    }));
+  }, [detail?.links]);
 
   function submitSubtask(): void {
     const title = newSubtask.trim();
@@ -657,7 +899,7 @@ function TaskExtras({
     addLink.mutate(
       { targetTaskId: linkTarget, linkType },
       {
-        onSuccess: () => setLinkTarget(""),
+        onSuccess: () => setLinkTarget(null),
         onError: (err) => {
           const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
           toast(message ?? "Could not link task");
@@ -707,41 +949,72 @@ function TaskExtras({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label>Linked tasks</Label>
-        <div className="flex flex-col gap-1">
-          {detail?.links.map((link) => (
-            <div key={link.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-gray-50">
-              <span className="rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold uppercase text-[#004DE7]">
-                {LINK_TYPE_LABELS[link.linkType]}
-              </span>
-              <span className="flex-1 truncate text-sm text-gray-700">{link.targetTaskTitle}</span>
-              <button
-                type="button"
-                onClick={() => deleteLink.mutate(link.id)}
-                aria-label="Remove link"
-                className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+      <div className="flex flex-col gap-3">
+        <Label>Related tasks{detail && detail.links.length > 0 ? ` (${detail.links.length})` : ""}</Label>
+
+        {groupedLinks.length === 0 ? (
+          <p className="text-xs text-gray-400">No related tasks yet.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {groupedLinks.map((group) => (
+              <div key={group.type} className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase", LINK_TYPE_TONE[group.type])}>
+                    {LINK_TYPE_LABELS[group.type]}
+                  </span>
+                  <span className="text-[11px] text-gray-400">{group.links.length}</span>
+                </div>
+                {group.links.map((link) => (
+                  <div key={link.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-gray-50">
+                    <button
+                      type="button"
+                      onClick={() => onOpenTask?.(link.targetTaskId)}
+                      className="flex-1 truncate text-left text-sm text-gray-700 hover:text-[#004DE7]"
+                      title="Open task"
+                    >
+                      {link.targetTaskTitle}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteLink.mutate(link.id)}
+                      aria-label="Remove link"
+                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {linkableItems.length > 0 && (
+          <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
+            <div className="flex gap-2">
+              <select
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value as TaskLinkType)}
+                className={cn(FIELD, "h-9 w-36 shrink-0")}
               >
-                ✕
-              </button>
+                {LINK_TYPE_ORDER.map((t) => (
+                  <option key={t} value={t}>{LINK_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+              <div className="min-w-0 flex-1">
+                <ComboSelect
+                  items={linkableItems}
+                  value={linkTarget}
+                  onChange={setLinkTarget}
+                  placeholder="Search a task to link…"
+                  searchPlaceholder="Search tasks…"
+                  emptyText="No tasks found"
+                  className="h-9"
+                />
+              </div>
             </div>
-          ))}
-        </div>
-        {linkableTasks.length > 0 && (
-          <div className="flex gap-2">
-            <select value={linkType} onChange={(e) => setLinkType(e.target.value as TaskLinkType)} className={cn(FIELD, "h-9 w-32")}>
-              {(Object.keys(LINK_TYPE_LABELS) as TaskLinkType[]).map((t) => (
-                <option key={t} value={t}>{LINK_TYPE_LABELS[t]}</option>
-              ))}
-            </select>
-            <select value={linkTarget} onChange={(e) => setLinkTarget(e.target.value)} className={cn(FIELD, "h-9 flex-1")}>
-              <option value="">Select a task…</option>
-              {linkableTasks.map((t) => (
-                <option key={t.id} value={t.id}>{t.title}</option>
-              ))}
-            </select>
-            <Button variant="ghost" size="sm" onClick={submitLink} disabled={!linkTarget}>
-              Link
+            <Button variant="ghost" size="sm" onClick={submitLink} disabled={!linkTarget} className="self-end">
+              Add relation
             </Button>
           </div>
         )}
