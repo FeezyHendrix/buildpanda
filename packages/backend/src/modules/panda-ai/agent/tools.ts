@@ -183,6 +183,76 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_tasks", "Get the project's task board (Kanban) with each task's column, assignee and due date. Use for questions about tasks, the board, what's in progress, what's assigned to someone, or what tasks are overdue."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const tasks = await repo.tasks(ctx.projectId);
+      return {
+        output: tasks.map((t) => ({
+          title: t.title,
+          column: t.columnName,
+          assignee: t.assigneeUserName ?? t.assigneeTeamName ?? null,
+          dueDate: t.due_date,
+          overdue: Boolean(t.due_date) && new Date(t.due_date as string).getTime() < now && t.columnName !== "Done",
+        })),
+      };
+    }),
+
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
+      const [rfis, approvals, actionItems, queries] = await Promise.all([
+        repo.rfisOpen(ctx.projectId),
+        repo.approvalsOpen(ctx.projectId),
+        repo.actionItemsOpen(ctx.projectId),
+        repo.queriesOpen(ctx.projectId),
+      ]);
+      return {
+        output: {
+          rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
+          approvals: approvals.map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          actionItems: actionItems.map((a) => ({ title: a.title, status: a.status, priority: a.priority, assignee: a.assignee, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          queries: queries.map((q) => ({ title: q.title, status: q.status, assignee: q.assignee, dueDate: q.due_date, overdue: overdue(q.due_date) })),
+        },
+      };
+    }),
+
+    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. Use for questions about changes, variations, scope changes, or why the budget or timeline is moving."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const changes = await repo.changeRequests(ctx.projectId);
+      return {
+        output: changes.map((c) => ({
+          title: c.title,
+          status: c.status,
+          costImpact: c.cost_impact === null ? null : Number(c.cost_impact),
+          scheduleImpactDays: c.time_impact_days === null ? null : Number(c.time_impact_days),
+          currency: c.currency,
+          reason: c.reason,
+          decidedAt: c.decided_at,
+          submittedBy: c.submittedBy,
+        })),
+      };
+    }),
+
+    tool(fn("get_permits", "Get the project's permits with authority, status and key dates. Use for questions about permits, approvals to start work, regulatory status, or what is expiring."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const permits = await repo.permits(ctx.projectId);
+      return {
+        output: permits.map((p) => ({
+          title: p.title,
+          authority: p.authority,
+          reference: p.reference_no,
+          status: p.status,
+          appliedDate: p.applied_date,
+          approvedDate: p.approved_date,
+          expiryDate: p.expiry_date,
+          daysToExpiry: p.expiry_date ? Math.round((new Date(p.expiry_date as string).getTime() - now) / 86_400_000) : null,
+        })),
+      };
+    }),
+
     tool(fn("list_documents", "List the documents and drawings on file for the project (name + category). Use this before analyzing a document so you know what exists."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const docs = await repo.documents(ctx.projectId);
