@@ -9,12 +9,9 @@ export async function up(knex: Knex): Promise<void> {
       .references("id")
       .inTable("change_requests")
       .onDelete("CASCADE");
-    table
-      .text("budget_category_id")
-      .notNullable()
-      .references("id")
-      .inTable("project_budget_categories")
-      .onDelete("CASCADE");
+    // The project_budget_categories table is introduced by the next migration.
+    // Add the FK there so fresh DBs can run migrations in timestamp order.
+    table.text("budget_category_id").notNullable();
     table.decimal("amount", 14, 2).notNullable();
     table.boolean("committed").notNullable().defaultTo(false);
     table.timestamp("created_at", { useTz: true }).notNullable().defaultTo(knex.fn.now());
@@ -31,12 +28,7 @@ export async function up(knex: Knex): Promise<void> {
       .references("id")
       .inTable("project_invoices")
       .onDelete("CASCADE");
-    table
-      .text("budget_category_id")
-      .notNullable()
-      .references("id")
-      .inTable("project_budget_categories")
-      .onDelete("CASCADE");
+    table.text("budget_category_id").notNullable();
     table.decimal("amount", 14, 2).notNullable();
     table.timestamp("created_at", { useTz: true }).notNullable().defaultTo(knex.fn.now());
     table.unique(["invoice_id", "budget_category_id"]);
