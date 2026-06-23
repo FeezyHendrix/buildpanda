@@ -54,7 +54,15 @@ export interface NewFinancesRecord {
 
 export function projectsRepository(db: Knex) {
   return {
-    listForOwner(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
+    // Lists projects the user can see: ones they own, seed rows, projects in the
+    // given orgs (the dashboard passes only the active org so switching company
+    // changes the list; cross-org views pass all orgs), and projects they are an
+    // active participant on regardless of org.
+    async listForUser(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
+      const participantProjectIds = await db("project_participants")
+        .where({ user_id: ownerId })
+        .whereNot("status", "revoked")
+        .pluck<string[]>("project_id");
       return db<ProjectRow>("projects")
         .where(function () {
           this.where("owner_id", ownerId)
@@ -62,6 +70,7 @@ export function projectsRepository(db: Knex) {
               this.whereNull("owner_id").whereNull("organization_id");
             });
           if (orgIds.length) this.orWhereIn("organization_id", orgIds);
+          if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
         })
         .orderBy("updated_at", "desc");
     },

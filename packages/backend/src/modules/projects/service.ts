@@ -136,8 +136,8 @@ function buildCreate(
 
 export function projectsService(repository: ProjectsRepository) {
   return {
-    async listForOwner(ownerId: string, orgIds: string[]): Promise<Project[]> {
-      const rows = await repository.listForOwner(ownerId, orgIds);
+    async listForUser(ownerId: string, orgIds: string[]): Promise<Project[]> {
+      const rows = await repository.listForUser(ownerId, orgIds);
       if (rows.length === 0) return [];
       const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
       const grouped = new Map<string, ProjectPhaseRow[]>();
