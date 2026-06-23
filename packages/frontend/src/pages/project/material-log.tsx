@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
@@ -40,6 +40,18 @@ export default function ProjectMaterialLog() {
 
   const [logOpen, setLogOpen] = useState(false);
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
+
+  const totals = useMemo(() => {
+    let received = 0;
+    let used = 0;
+    for (const e of entries) {
+      if (e.status === "Voided") continue;
+      if (e.entryType === "IN") received += e.quantity;
+      else if (e.entryType === "USED") used += e.quantity;
+    }
+    const onHand = stock.reduce((sum, s) => sum + s.onHandQty, 0);
+    return { received, used, onHand };
+  }, [entries, stock]);
 
   if (stockLoading || ledgerLoading) {
     return (
@@ -95,8 +107,37 @@ export default function ProjectMaterialLog() {
         }
       />
 
+      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Card padding="md" className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-gray-500">Total received</span>
+          <span className="text-2xl font-semibold tabular-nums text-gray-900">
+            {totals.received.toLocaleString()}
+          </span>
+        </Card>
+        <Card padding="md" className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-gray-500">Total used</span>
+          <span className="text-2xl font-semibold tabular-nums text-gray-900">
+            {totals.used.toLocaleString()}
+          </span>
+        </Card>
+        <Card
+          padding="md"
+          className="col-span-2 flex flex-col gap-1 bg-[#004DE7] text-white"
+        >
+          <span className="text-xs font-medium text-white/80">Stock in hand</span>
+          <span
+            className={cn(
+              "text-3xl font-bold tabular-nums",
+              totals.onHand < 0 ? "text-red-200" : "text-white",
+            )}
+          >
+            {totals.onHand.toLocaleString()}
+          </span>
+        </Card>
+      </section>
+
       <section className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Stock on hand</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900">Stock by material</h2>
         {stock.length === 0 ? (
           <Card padding="md" className="text-sm text-gray-500">No materials logged yet.</Card>
         ) : (
