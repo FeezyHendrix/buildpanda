@@ -13,11 +13,16 @@ export interface UploadedAttachment {
   name: string;
 }
 
+export interface RichTextEditorHandle {
+  insertImageFile: (file: File) => void;
+}
+
 interface Props {
   value: string;
   onChange: (html: string, text: string) => void;
   onAttach?: (attachment: UploadedAttachment) => void;
   projectId?: string;
+  onReady?: (handle: RichTextEditorHandle) => void;
   placeholder?: string;
   disabled?: boolean;
 }
@@ -80,7 +85,7 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onAttach, projectId, placeholder, disabled }: Props) {
+export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
@@ -124,6 +129,10 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, placehold
     },
     [insertImage],
   );
+
+  useEffect(() => {
+    if (editor) onReady?.({ insertImageFile: (file) => void insertImage(file) });
+  }, [editor, onReady, insertImage]);
 
   // Refresh each embedded image's src from its stable data-file-id. Presigned
   // S3 URLs expire, so the stored HTML keeps only the id and we fetch a live

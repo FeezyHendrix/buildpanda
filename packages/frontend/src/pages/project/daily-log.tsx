@@ -156,6 +156,7 @@ export default function ProjectDailyLog() {
         open={entryDate !== null}
         onOpenChange={(next) => { if (!next) setEntryDate(null); }}
         logDate={entryDate ?? today}
+        projectId={project.id}
         submitting={addEntry.isPending}
         error={addEntry.error ? (addEntry.error as Error).message : null}
         onSubmit={(bodyHtml, bodyText) => {
