@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { CountrySelect } from "@/components/atoms";
 import { RadioCard } from "@/components/atoms";
@@ -49,6 +49,9 @@ export default function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
+  const invitedEmail = searchParams.get("email");
 
   const isProjectManager = accountType === "project_manager";
   const personaComplete =
@@ -60,6 +63,10 @@ export default function SignUpForm() {
       setProfession(null);
     }
   }
+
+  useEffect(() => {
+    if (invitedEmail) setEmail(invitedEmail);
+  }, [invitedEmail]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -93,7 +100,7 @@ export default function SignUpForm() {
       return;
     }
 
-    navigate("/auth/verify-email", { state: { email } });
+    navigate("/auth/verify-email", { state: { email, redirectTo } });
   }
 
   return (

@@ -104,12 +104,17 @@ export function useProjectInvite(token: string | undefined) {
 }
 
 export function useAcceptProjectInvite() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (token: string) => {
       const { data } = await api.post<{ projectId: string; role: string }>(
         `/project-invites/${token}/accept`,
       );
       return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: participantKeys.myProjects() });
+      qc.invalidateQueries({ queryKey: participantKeys.access(data.projectId) });
     },
   });
 }
