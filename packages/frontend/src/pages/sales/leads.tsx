@@ -233,7 +233,8 @@ function LeadDetailDrawer({
             type="button"
             variant="secondary"
             size="sm"
-            disabled={!notesDirty || savingNotes}
+            disabled={!notesDirty}
+            loading={savingNotes}
             onClick={saveNotes}
           >
             {savingNotes ? "Saving…" : notesDirty ? "Save notes" : "Saved"}

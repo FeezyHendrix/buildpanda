@@ -377,12 +377,8 @@ function PreviewState({
       )}
 
       <div className="flex items-center justify-end">
-        <Button type="submit" disabled={!canSubmit || isApplying}>
-          {isApplying
-            ? intoExisting
-              ? "Importing…"
-              : "Building project…"
-            : intoExisting
+        <Button type="submit" loading={isApplying} disabled={!canSubmit}>
+          {intoExisting
               ? "Import into project"
               : "Build project"}
         </Button>

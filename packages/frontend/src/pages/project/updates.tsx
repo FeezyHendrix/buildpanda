@@ -326,14 +326,13 @@ function UpdateCard({
           <Button
             size="sm"
             variant={update.cta.tone === "primary" ? "primary" : "secondary"}
-            disabled={!isOpen || transition.isPending}
+            loading={transition.isPending}
+            disabled={!isOpen}
             onClick={handleTransition}
           >
-            {transition.isPending
-              ? "Submitting…"
-              : !isOpen
-                ? update.status
-                : update.cta.label}
+            {!isOpen
+              ? update.status
+              : update.cta.label}
           </Button>
         )}
       </footer>

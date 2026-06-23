@@ -168,9 +168,9 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
           <Button
             variant="primary"
             onClick={() => createEstimate.mutate({})}
-            disabled={createEstimate.isPending}
+            loading={createEstimate.isPending}
           >
-            {createEstimate.isPending ? "Creating…" : "Create estimate"}
+            Create estimate
           </Button>
         )}
         {createEstimate.isError && (
@@ -198,7 +198,7 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
             <Button
               variant="secondary"
               size="sm"
-              disabled={seedBudget.isPending}
+              loading={seedBudget.isPending}
               onClick={async () => {
                 try {
                   const items = estimate.items.map((i) => ({
@@ -216,20 +216,20 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
                 }
               }}
             >
-              {seedBudget.isPending ? "Seeding…" : "Seed budget"}
+              Seed budget
             </Button>
           )}
           {estimate.status === "Draft" && canSend && (
             <Button
               variant="primary"
               size="sm"
-              disabled={sendEstimate.isPending}
+              loading={sendEstimate.isPending}
               onClick={async () => {
                 const result = await sendEstimate.mutateAsync(estimate.id);
                 setShareUrl(result.shareUrl);
               }}
             >
-              {sendEstimate.isPending ? "Sending…" : "Send to client"}
+              Send to client
             </Button>
           )}
           {estimate.status !== "Draft" && canCreate && (
@@ -346,9 +346,9 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
                 variant="primary"
                 size="sm"
                 onClick={saveItems}
-                disabled={savingItems}
+                loading={savingItems}
               >
-                {savingItems ? "Saving…" : "Save items"}
+                Save items
               </Button>
               {saveItemsError && (
                 <span className="text-xs text-red-600">{saveItemsError}</span>
@@ -404,10 +404,10 @@ export function EstimateTab({ proposalId, estimate, currency, projectId }: Props
                 variant="secondary"
                 size="sm"
                 onClick={saveTotals}
-                disabled={patchEstimate.isPending}
+                loading={patchEstimate.isPending}
                 className="self-start"
               >
-                {patchEstimate.isPending ? "Updating…" : "Update totals"}
+                Update totals
               </Button>
             )}
           </div>

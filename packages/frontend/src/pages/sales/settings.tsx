@@ -176,9 +176,9 @@ export default function SalesSettings() {
         <Button
           variant="primary"
           onClick={handleSave}
-          disabled={update.isPending}
+          loading={update.isPending}
         >
-          {update.isPending ? "Saving…" : "Save changes"}
+          Save changes
         </Button>
       </div>
     </div>

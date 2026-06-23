@@ -63,8 +63,8 @@ export default function AcceptProjectInvite() {
             </div>
             {signedIn ? (
               <>
-                <Button variant="primary" size="lg" disabled={accept.isPending} onClick={handleAccept}>
-                  {accept.isPending ? "Opening…" : "Open my portal"}
+                <Button variant="primary" size="lg" loading={accept.isPending} onClick={handleAccept}>
+                  Open my portal
                 </Button>
                 {accept.isError && (
                   <p className="text-sm text-red-600">

@@ -204,10 +204,11 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
 
           <Button 
             onClick={handleApply} 
-            disabled={!projectName || !city || !stateName || !budgetTotal || applyMutation.isPending}
+            loading={applyMutation.isPending}
+            disabled={!projectName || !city || !stateName || !budgetTotal}
             className="w-full mt-4"
           >
-            {applyMutation.isPending ? "Creating..." : "Create Project"}
+            Create Project
           </Button>
         </div>
       ) : (

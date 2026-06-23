@@ -113,7 +113,8 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                         variant="primary"
                         size="sm"
                         className="h-9 px-4 text-sm"
-                        disabled={!answer.trim() || updateQuery.isPending}
+                        loading={updateQuery.isPending}
+                        disabled={!answer.trim()}
                         onClick={saveAnswer}
                       >
                         Save answer
@@ -157,7 +158,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                       variant="secondary"
                       size="sm"
                       className="mr-auto h-9 px-4 text-sm"
-                      disabled={updateQuery.isPending}
+                      loading={updateQuery.isPending}
                       onClick={close}
                     >
                       Mark closed
@@ -175,7 +176,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                     variant="primary"
                     size="sm"
                     className="h-9 px-4 text-sm"
-                    disabled={!comment.trim() || addComment.isPending}
+                    disabled={!comment.trim()} loading={addComment.isPending}
                     onClick={submitComment}
                   >
                     Comment

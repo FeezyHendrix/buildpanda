@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { AlertDialog } from "@base-ui-components/react/alert-dialog";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/atoms/spinner";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -11,6 +12,9 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "danger" | "default";
+  // When provided, the confirm button shows a busy state and the dialog stays
+  // open while the action runs; the caller closes it on success/error.
+  loading?: boolean;
   children?: ReactNode;
 }
 
@@ -23,6 +27,7 @@ function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   variant = "default",
+  loading,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -49,19 +54,27 @@ function ConfirmDialog({
             </AlertDialog.Close>
             <button
               type="button"
+              disabled={loading}
+              aria-busy={loading || undefined}
               className={cn(
-                "flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold select-none",
+                "relative flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold select-none",
                 "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                "disabled:cursor-not-allowed disabled:opacity-60",
                 variant === "danger"
                   ? "bg-red-500 text-white hover:bg-red-600"
                   : "bg-[#004DE7] text-white hover:bg-[#0041c4]",
               )}
               onClick={() => {
                 onConfirm();
-                onOpenChange(false);
+                if (loading === undefined) onOpenChange(false);
               }}
             >
-              {confirmLabel}
+              {loading && (
+                <span className="absolute inset-0 inline-flex items-center justify-center">
+                  <Spinner size="xs" tone="current" />
+                </span>
+              )}
+              <span className={cn(loading && "invisible")}>{confirmLabel}</span>
             </button>
           </div>
         </AlertDialog.Popup>
