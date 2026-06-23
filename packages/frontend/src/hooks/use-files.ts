@@ -27,8 +27,12 @@ export type UploadProgressHandler = (percent: number) => void;
 export async function uploadFileRequest(
   file: File,
   onProgress?: UploadProgressHandler,
+  projectId?: string,
 ): Promise<UploadedFile> {
   const form = new FormData();
+  // projectId must precede the file part: @fastify/multipart only exposes
+  // sibling text fields on `request.file()` when they arrive before the stream.
+  if (projectId) form.append("projectId", projectId);
   form.append("file", file);
   const { data } = await api.post<UploadedFile>("/files", form, {
     headers: { "Content-Type": undefined },
@@ -52,4 +56,9 @@ export function useUploadFile() {
     mutationFn: ({ file, onProgress }: UploadFileVariables) =>
       uploadFileRequest(file, onProgress),
   });
+}
+
+export async function resolveFileUrl(fileId: string): Promise<string> {
+  const { data } = await api.get<{ url: string }>(`/files/${fileId}/url`);
+  return data.url;
 }
