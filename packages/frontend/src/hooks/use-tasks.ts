@@ -6,6 +6,7 @@ import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLi
 export interface CreateTaskInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
@@ -15,6 +16,7 @@ export interface CreateTaskInput {
 export interface UpdateTaskInput {
   title?: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
@@ -135,6 +137,43 @@ export function useDeleteColumn(projectId: string) {
       await api.delete(`/projects/${projectId}/tasks/columns/${columnId}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
+  });
+}
+
+export function useReorderColumns(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (columnIds: string[]) => {
+      const { data } = await api.patch<TaskColumn[]>(
+        `/projects/${projectId}/tasks/columns/reorder`,
+        { columnIds },
+      );
+      return data;
+    },
+    onMutate: async (columnIds: string[]) => {
+      await qc.cancelQueries({ queryKey: taskKeys.board(projectId) });
+      const previous = qc.getQueryData<TaskBoard>(taskKeys.board(projectId));
+      if (previous) {
+        const byId = new Map(previous.columns.map((c) => [c.id, c]));
+        const reordered = columnIds
+          .map((id, index) => {
+            const column = byId.get(id);
+            return column ? { ...column, position: index } : null;
+          })
+          .filter((c): c is TaskColumn => c !== null);
+        qc.setQueryData<TaskBoard>(taskKeys.board(projectId), {
+          ...previous,
+          columns: reordered,
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(taskKeys.board(projectId), context.previous);
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
 
