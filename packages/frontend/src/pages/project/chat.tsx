@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "@/lib/toast";
 import { uploadFileRequest } from "@/hooks/use-files";
@@ -30,6 +30,13 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useChannelRealtime } from "@/lib/realtime";
+import {
+  cacheMessages,
+  clearCachedDraft,
+  readCachedDraft,
+  readCachedMessages,
+  saveCachedDraft,
+} from "@/lib/chat-cache";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
 
 function chatFileUrl(fileId: string): string {
@@ -481,6 +488,23 @@ function Composer({
   const { data: members = [] } = useChannelMembers(channelId);
   const send = useSendMessage(projectId, channelId);
 
+  useEffect(() => {
+    let cancelled = false;
+    void readCachedDraft(channelId, parentMessageId).then((draft) => {
+      if (!cancelled) setText(draft);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [channelId, parentMessageId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void saveCachedDraft(channelId, parentMessageId, text);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [channelId, parentMessageId, text]);
+
   const handleFiles = async (files: FileList | null): Promise<void> => {
     if (!files || files.length === 0) return;
     setUploading(true);
@@ -525,6 +549,7 @@ function Composer({
             setMentions([]);
             setReferences([]);
             setAttachments([]);
+            void clearCachedDraft(channelId, parentMessageId);
           },
         }
       );
@@ -885,6 +910,7 @@ export default function ProjectChat() {
   const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
 
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [cachedMessages, setCachedMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     if (projectChannels.length > 0 && !activeChannelId) {
@@ -893,8 +919,34 @@ export default function ProjectChat() {
   }, [projectChannels, activeChannelId]);
 
   const { data: messagesData, hasPreviousPage, fetchPreviousPage, isFetchingPreviousPage } = useChannelMessages(activeChannelId);
-  const messages = messagesData?.pages.flat() || [];
+  const serverMessages = useMemo(
+    () => messagesData?.pages.flat() ?? [],
+    [messagesData],
+  );
+  const messages = serverMessages.length > 0 ? serverMessages : cachedMessages;
   useChannelRealtime(activeChannelId ?? undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeChannelId) {
+      setCachedMessages([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void readCachedMessages(activeChannelId).then((rows) => {
+      if (!cancelled) setCachedMessages(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeChannelId]);
+
+  useEffect(() => {
+    if (!activeChannelId || serverMessages.length === 0) return;
+    setCachedMessages(serverMessages);
+    void cacheMessages(activeChannelId, serverMessages);
+  }, [activeChannelId, serverMessages]);
   const markRead = useMarkChannelRead(project.id, activeChannelId!);
 
   useEffect(() => {

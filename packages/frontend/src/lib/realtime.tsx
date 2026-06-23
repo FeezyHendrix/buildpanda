@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { channelKeys, messageKeys } from "@/hooks/query-keys";
+import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import type { ChatMessage } from "@/lib/project-types";
 
 type RealtimeEvent =
@@ -138,6 +139,7 @@ function handleEvent(
       void queryClient.invalidateQueries({ queryKey: messageKeys.list(payload.channelId) });
       return;
     }
+    void cacheMessages(payload.channelId, [message]);
     queryClient.setQueryData<{ pages: ChatMessage[][]; pageParams: unknown[] } | undefined>(
       messageKeys.list(payload.channelId),
       (prev) => {
@@ -159,6 +161,11 @@ function handleEvent(
     payload.channelId
   ) {
     const message = payload.data as ChatMessage;
+    if (payload.event === "message.deleted") {
+      void deleteCachedMessage(message.id);
+    } else {
+      void cacheMessages(payload.channelId, [message]);
+    }
     queryClient.setQueryData<{ pages: ChatMessage[][]; pageParams: unknown[] } | undefined>(
       messageKeys.list(payload.channelId),
       (prev) => {
