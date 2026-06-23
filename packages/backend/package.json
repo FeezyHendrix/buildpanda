@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
-    "build": "tsup src/cluster.ts src/server.ts --format esm --dts && tsup \"src/db/migrations/*.ts\" --format esm --out-dir dist/migrations --no-splitting --no-clean",
+    "build": "tsup src/cluster.ts src/server.ts --format esm --dts",
     "start": "node dist/cluster.js",
     "db:migrate": "tsx ./node_modules/knex/bin/cli.js migrate:latest --knexfile knexfile.ts",
     "db:rollback": "tsx ./node_modules/knex/bin/cli.js migrate:rollback --knexfile knexfile.ts",
