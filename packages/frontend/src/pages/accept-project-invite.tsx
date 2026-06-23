@@ -15,12 +15,13 @@ export default function AcceptProjectInvite() {
   const accept = useAcceptProjectInvite();
 
   const signedIn = Boolean(session?.user);
+  const sessionEmail = session?.user?.email?.toLowerCase() ?? null;
+  const emailMatches =
+    !invite || !sessionEmail || sessionEmail === invite.email.toLowerCase();
 
   useEffect(() => {
     if (sessionPending || !token) return;
-    if (signedIn) {
-      localStorage.removeItem(PENDING_PROJECT_INVITE_KEY);
-    } else {
+    if (!signedIn) {
       localStorage.setItem(PENDING_PROJECT_INVITE_KEY, token);
     }
   }, [sessionPending, signedIn, token]);
@@ -33,6 +34,13 @@ export default function AcceptProjectInvite() {
       },
     });
   }
+
+  useEffect(() => {
+    if (sessionPending || !token || !signedIn || !invite || invite.expired) return;
+    if (!emailMatches || accept.isPending || accept.isSuccess) return;
+    handleAccept();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionPending, signedIn, token, invite, emailMatches]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA] p-6">
@@ -67,10 +75,10 @@ export default function AcceptProjectInvite() {
             ) : (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-gray-500">Sign in or create an account as {invite.email} to continue.</p>
-                <Link to={`/auth/sign-up?email=${encodeURIComponent(invite.email)}`}>
+                <Link to={`/auth/sign-up?email=${encodeURIComponent(invite.email)}&redirect=${encodeURIComponent(`/accept-project-invite/${token}`)}`}>
                   <Button variant="primary" size="lg" className="w-full">Create account</Button>
                 </Link>
-                <Link to="/auth/sign-in" className="text-sm font-medium text-[#004DE7] hover:text-[#0041c4]">
+                <Link to={`/auth/sign-in?redirect=${encodeURIComponent(`/accept-project-invite/${token}`)}`} className="text-sm font-medium text-[#004DE7] hover:text-[#0041c4]">
                   I already have an account
                 </Link>
               </div>

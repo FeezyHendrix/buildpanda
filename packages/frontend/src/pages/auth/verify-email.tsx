@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
+import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
+
+function continueAfterVerifyPath(redirectTo?: string | null): string {
+  if (redirectTo) return redirectTo;
+  const pendingInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
+  return pendingInvite ? `/accept-project-invite/${pendingInvite}` : "/";
+}
 
 const RESEND_COOLDOWN_S = 30;
 
@@ -9,7 +16,9 @@ export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const location = useLocation();
-  const email = (location.state as { email?: string } | null)?.email ?? null;
+  const state = location.state as { email?: string; redirectTo?: string | null } | null;
+  const email = state?.email ?? null;
+  const redirectTo = state?.redirectTo ?? null;
 
   const [loading, setLoading] = useState(!!token);
   const [success, setSuccess] = useState(false);
@@ -185,8 +194,7 @@ export default function VerifyEmailPage() {
           Email verified!
         </p>
 
-        {/* "/" routes each account type to its home (owners → My Build). */}
-        <Link to="/">
+        <Link to={continueAfterVerifyPath(redirectTo)}>
           <Button type="button" className="w-full">
             Continue
           </Button>
