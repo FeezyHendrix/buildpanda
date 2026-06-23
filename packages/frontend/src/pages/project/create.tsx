@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { authClient } from "@/lib/auth-client";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import type { Currency } from "@/lib/project-types";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
@@ -84,10 +85,24 @@ export default function CreateProject() {
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
 
+  const { data: session } = authClient.useSession();
+  const accountType =
+    (session?.user as { accountType?: string } | undefined)?.accountType ?? null;
+  // Contractors and project managers run their own delivery, so the
+  // "level of involvement" question doesn't apply — default it and skip the step.
+  const skipInvolvementStep =
+    accountType === "construction_company" || accountType === "project_manager";
+
   const [involvementLevel, setInvolvementLevel] =
     useState<InvolvementLevel | null>(null);
   const [riskOptions, setRiskOptions] =
     useState<RiskOption[]>(DEFAULT_RISK_OPTIONS);
+
+  useEffect(() => {
+    if (skipInvolvementStep && involvementLevel === null) {
+      setInvolvementLevel("contractors");
+    }
+  }, [skipInvolvementStep, involvementLevel]);
 
   const [projectTitle, setProjectTitle] = useState("");
 
@@ -104,7 +119,7 @@ export default function CreateProject() {
     if (step === 1) return !!projectType;
     if (step === 2) return !!locationState && city.trim() !== "";
     if (step === 3) return !!buildingType && !!timeline && !!fundingMethod;
-    if (step === 4) return !!involvementLevel;
+    if (step === 4) return skipInvolvementStep || !!involvementLevel;
     if (step === 5) return !!projectTitle.trim();
     return false;
   };
@@ -285,6 +300,7 @@ export default function CreateProject() {
         <ManagementStep
           involvementLevel={involvementLevel}
           riskOptions={riskOptions}
+          hideInvolvement={skipInvolvementStep}
           onInvolvementChange={setInvolvementLevel}
           onRiskOptionToggle={handleRiskToggle}
         />
