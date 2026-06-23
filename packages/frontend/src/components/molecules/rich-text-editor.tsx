@@ -1,9 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
-import { uploadFileRequest } from "@/hooks/use-files";
+import { uploadFileRequest, resolveFileUrl } from "@/hooks/use-files";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export interface UploadedAttachment {
@@ -16,14 +17,38 @@ interface Props {
   value: string;
   onChange: (html: string, text: string) => void;
   onAttach?: (attachment: UploadedAttachment) => void;
+  projectId?: string;
   placeholder?: string;
   disabled?: boolean;
 }
 
-function fileUrl(fileId: string): string {
-  const base = import.meta.env.VITE_API_BASE_URL || "/api";
-  return `${base}/files/${fileId}/download`;
-}
+// Persist only the stable file id on the image node, never the src. The src is
+// a short-lived S3 presigned URL resolved from data-file-id at render time, so
+// serialized HTML must omit it — otherwise saved content would bake an expiring
+// link. renderHTML drops src whenever a data-file-id is present.
+const FileImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      "data-file-id": {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-file-id"),
+        renderHTML: (attrs) =>
+          attrs["data-file-id"] ? { "data-file-id": attrs["data-file-id"] } : {},
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "img[src]" }, { tag: "img[data-file-id]" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    if (HTMLAttributes["data-file-id"]) {
+      const { src: _src, ...rest } = HTMLAttributes;
+      return ["img", rest];
+    }
+    return ["img", HTMLAttributes];
+  },
+});
 
 function ToolbarButton({
   active,
@@ -55,13 +80,13 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onAttach, placeholder, disabled }: Props) {
+export function RichTextEditor({ value, onChange, onAttach, projectId, placeholder, disabled }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image.configure({ inline: false }),
+      FileImage.configure({ inline: false }),
       Placeholder.configure({ placeholder: placeholder ?? "Write a response…" }),
     ],
     content: value,
@@ -73,15 +98,22 @@ export function RichTextEditor({ value, onChange, onAttach, placeholder, disable
     async (file: File) => {
       if (!editor) return;
       try {
-        const uploaded = await uploadFileRequest(file);
-        const url = fileUrl(uploaded.id);
-        editor.chain().focus().setImage({ src: url, alt: uploaded.fileName }).run();
+        const uploaded = await uploadFileRequest(file, undefined, projectId);
+        const url = await resolveFileUrl(uploaded.id);
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: url, alt: uploaded.fileName, "data-file-id": uploaded.id } as {
+            src: string;
+            alt: string;
+          })
+          .run();
         onAttach?.({ fileId: uploaded.id, url, name: uploaded.fileName });
       } catch {
-        void 0;
+        toast("Could not upload image", "error");
       }
     },
-    [editor, onAttach],
+    [editor, onAttach, projectId],
   );
 
   const onPickFile = useCallback(
@@ -92,6 +124,31 @@ export function RichTextEditor({ value, onChange, onAttach, placeholder, disable
     },
     [insertImage],
   );
+
+  // Refresh each embedded image's src from its stable data-file-id. Presigned
+  // S3 URLs expire, so the stored HTML keeps only the id and we fetch a live
+  // URL on load. The src is set on the DOM node directly (not via an editor
+  // transaction) so re-resolving never marks the content dirty.
+  useEffect(() => {
+    if (!editor) return;
+    let cancelled = false;
+    const root = editor.view.dom as HTMLElement;
+    const images = Array.from(
+      root.querySelectorAll<HTMLImageElement>("img[data-file-id]"),
+    );
+    for (const img of images) {
+      const fileId = img.getAttribute("data-file-id");
+      if (!fileId) continue;
+      void resolveFileUrl(fileId)
+        .then((url) => {
+          if (!cancelled) img.src = url;
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [editor, value]);
 
   if (!editor) return null;
 
