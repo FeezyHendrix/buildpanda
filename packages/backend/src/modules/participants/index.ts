@@ -187,7 +187,18 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.project_id", project.id)
         .whereNot("p.status", "revoked")
-        .select("p.*", "u.name as name")
+        .select(
+          "p.id",
+          "p.project_id",
+          "p.user_id",
+          "p.email",
+          "p.role",
+          "p.status",
+          "p.invited_by_id",
+          "p.created_at",
+          "p.updated_at",
+          db.raw("COALESCE(p.name, u.name) as name"),
+        )
         .orderBy("p.created_at", "asc");
 
       const participants: TeamEntry[] = rows.map(toParticipant);
@@ -224,11 +235,13 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       if (existing) throw new BadRequestError("That person is already invited to this project.");
 
       const token = generateId("pinv");
+      const name = request.body.name?.trim() || null;
       const record = {
         id: generateId("pp"),
         project_id: project.id,
         user_id: null,
         email,
+        name,
         role,
         status: "invited" as const,
         invited_by_id: user.id,
@@ -246,7 +259,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         });
         await sendEmail({
           to: email,
-          toName: request.body.name ?? email,
+          toName: name ?? email,
           subject,
           html,
         });
@@ -277,7 +290,18 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       const row = await db<ParticipantRow>("project_participants as p")
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.id", request.params.participantId)
-        .select("p.*", "u.name as name")
+        .select(
+          "p.id",
+          "p.project_id",
+          "p.user_id",
+          "p.email",
+          "p.role",
+          "p.status",
+          "p.invited_by_id",
+          "p.created_at",
+          "p.updated_at",
+          db.raw("COALESCE(p.name, u.name) as name"),
+        )
         .first();
       if (!row) throw new NotFoundError("Participant");
       return toParticipant(row);
