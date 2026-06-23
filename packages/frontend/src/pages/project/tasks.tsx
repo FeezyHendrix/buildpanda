@@ -311,6 +311,7 @@ export default function ProjectTasks() {
   function handleSubmit(values: {
     title: string;
     description: string;
+    descriptionHtml: string;
     assignee: AssigneeOption | null;
     dueDate: string | null;
   }): void {
@@ -322,7 +323,13 @@ export default function ProjectTasks() {
       updateTask.mutate(
         {
           taskId: editing.id,
-          input: { title: values.title, description: values.description, dueDate: values.dueDate, ...assigneeFields },
+          input: {
+            title: values.title,
+            description: values.description,
+            descriptionHtml: values.descriptionHtml,
+            dueDate: values.dueDate,
+            ...assigneeFields,
+          },
         },
         {
           onSuccess: () => setDialogOpen(false),
@@ -334,6 +341,7 @@ export default function ProjectTasks() {
         {
           title: values.title,
           description: values.description,
+          descriptionHtml: values.descriptionHtml,
           dueDate: values.dueDate,
           columnId: createColumnId,
           ...assigneeFields,
@@ -678,7 +686,7 @@ function UpsertTaskDialog({
   userOptions: AssigneeOption[];
   teamOptions: AssigneeOption[];
   submitting: boolean;
-  onSubmit: (values: { title: string; description: string; assignee: AssigneeOption | null; dueDate: string | null }) => void;
+  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null }) => void;
   onRequestDelete?: () => void;
   onOpenTask?: (taskId: string) => void;
 }) {
@@ -785,8 +793,11 @@ function UpsertTaskDialog({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-desc">Description (optional)</Label>
         <RichTextEditor
-          value={description}
-          onChange={(html) => setDescription(html)}
+          value={descriptionHtml}
+          onChange={(html, text) => {
+            setDescriptionHtml(html);
+            setDescription(text);
+          }}
           projectId={projectId}
           placeholder="Add details, checklists, images…"
         />
