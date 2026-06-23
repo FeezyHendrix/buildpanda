@@ -162,10 +162,25 @@ export function buildTools(): AgentTool[] {
       return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at })) };
     }),
 
-    tool(fn("get_materials", "Get material orders and requests with status, supplier and cost."), async (ctx) => {
+    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier and cost. This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const materials = await repo.materials(ctx.projectId);
       return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
+    }),
+
+    tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const stock = await repo.materialStock(ctx.projectId);
+      return {
+        output: stock.map((s) => ({
+          material: s.material_name,
+          unit: s.unit,
+          location: s.location_key,
+          onHand: Number(s.on_hand_qty),
+          lowStockThreshold: s.low_stock_threshold === null ? null : Number(s.low_stock_threshold),
+          lowStock: s.low_stock_threshold !== null && Number(s.on_hand_qty) <= Number(s.low_stock_threshold),
+        })),
+      };
     }),
 
     tool(fn("list_documents", "List the documents and drawings on file for the project (name + category). Use this before analyzing a document so you know what exists."), async (ctx) => {
