@@ -1,12 +1,19 @@
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { openStoredFile, saveStream, streamToBuffer, type StoredFile } from "../../lib/file-storage.ts";
+import {
+  getDownloadUrl,
+  openStoredFile,
+  saveStream,
+  streamToBuffer,
+  type StoredFile,
+} from "../../lib/file-storage.ts";
 import type { FilesRepository } from "./repository.ts";
 import type { UploadedFile, UploadedFileRow } from "./types.ts";
 
 export interface IncomingFile {
   fileName: string;
   mimeType: string;
+  projectId?: string | null;
   data: NodeJS.ReadableStream;
 }
 
@@ -40,6 +47,7 @@ export function filesService(repository: FilesRepository) {
       const row = await repository.create({
         id: generateId("file"),
         owner_id: ownerId,
+        project_id: incoming.projectId ?? null,
         file_name: incoming.fileName,
         mime_type: incoming.mimeType,
         size_bytes: stored.sizeBytes,
@@ -53,6 +61,14 @@ export function filesService(repository: FilesRepository) {
       if (!row) throw new NotFoundError("File");
       if (row.owner_id !== ownerId) throw new ForbiddenError();
       return toFile(row);
+    },
+
+    findRow(id: string): Promise<UploadedFileRow | undefined> {
+      return repository.findById(id);
+    },
+
+    async presignViewUrl(row: UploadedFileRow): Promise<string> {
+      return getDownloadUrl(row.storage_path);
     },
 
     async download(ownerId: string, id: string): Promise<DownloadHandle> {
