@@ -104,6 +104,17 @@ export default function CreateProject() {
     }
   }, [skipInvolvementStep, involvementLevel]);
 
+  // Contractors and project managers skip the management step entirely, so the
+  // wizard runs on the active step ids rather than a fixed 1..N range.
+  const steps = skipInvolvementStep ? [1, 2, 3, 5] : [1, 2, 3, 4, 5];
+  const stepIndex = steps.indexOf(step);
+  const displayStep = stepIndex === -1 ? steps.length : stepIndex + 1;
+  const isLastStep = step === steps[steps.length - 1];
+
+  useEffect(() => {
+    if (!isReview && stepIndex === -1) setStep(3);
+  }, [isReview, stepIndex, setStep]);
+
   const [projectTitle, setProjectTitle] = useState("");
 
   const handleRiskToggle = (id: string) => {
@@ -232,28 +243,28 @@ export default function CreateProject() {
   const handleContinue = () => {
     if (isReview) {
       void handleFinish();
-    } else if (step === TOTAL_STEPS) {
+    } else if (isLastStep) {
       setStep("review");
     } else {
-      setStep(step + 1);
+      setStep(steps[stepIndex + 1]!);
     }
   };
 
   const handleBack = () => {
     if (submitting) return;
     if (isReview) {
-      setStep(TOTAL_STEPS);
-    } else if (step === 1) {
+      setStep(steps[steps.length - 1]!);
+    } else if (stepIndex <= 0) {
       navigate("/dashboard");
     } else {
-      setStep(step - 1);
+      setStep(steps[stepIndex - 1]!);
     }
   };
 
   return (
     <WizardLayout
-      currentStep={step}
-      totalSteps={TOTAL_STEPS}
+      currentStep={displayStep}
+      totalSteps={steps.length}
       onCancel={handleBack}
       onContinue={handleContinue}
       continueDisabled={!canContinue() || submitting}
@@ -300,7 +311,6 @@ export default function CreateProject() {
         <ManagementStep
           involvementLevel={involvementLevel}
           riskOptions={riskOptions}
-          hideInvolvement={skipInvolvementStep}
           onInvolvementChange={setInvolvementLevel}
           onRiskOptionToggle={handleRiskToggle}
         />
@@ -331,6 +341,7 @@ export default function CreateProject() {
           onEdit={(s) => setStep(s)}
           onStart={handleContinue}
           isStarting={createProject.isPending}
+          hideManagement={skipInvolvementStep}
         />
       )}
     </WizardLayout>

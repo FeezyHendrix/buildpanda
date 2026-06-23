@@ -35,6 +35,7 @@ interface ProjectSummaryStepProps {
   onEdit: (step: number) => void;
   onStart: () => void;
   isStarting?: boolean;
+  hideManagement?: boolean;
 }
 
 function resolveLabel(
@@ -84,9 +85,11 @@ const PDF_PAGE_HEIGHT = 842;
 function BlueprintPage({
   data,
   pageIndex,
+  hideManagement = false,
 }: {
   data: ProjectSummaryData;
   pageIndex: number;
+  hideManagement?: boolean;
 }) {
   const buildingTypes = buildingTypesForProjectType(data.projectType);
   const timelineOptions = timelineOptionsForProjectType(data.projectType);
@@ -218,23 +221,27 @@ function BlueprintPage({
             label="Funding"
             value={resolveLabel(FUNDING_METHODS, data.fundingMethod)}
           />
-          <SummaryLine
-            label="Involvement"
-            value={resolveLabel(INVOLVEMENT_OPTIONS, data.involvementLevel)}
-          />
-          <SummaryLine
-            label="Risk Protection"
-            value={
-              data.riskOptions
-                .filter((r) => r.enabled)
-                .map(
-                  (r) =>
-                    RISK_OPTIONS_CONFIG.find((c) => c.id === r.id)?.title,
-                )
-                .filter(Boolean)
-                .join(", ") || "None selected"
-            }
-          />
+          {!hideManagement && (
+            <SummaryLine
+              label="Involvement"
+              value={resolveLabel(INVOLVEMENT_OPTIONS, data.involvementLevel)}
+            />
+          )}
+          {!hideManagement && (
+            <SummaryLine
+              label="Risk Protection"
+              value={
+                data.riskOptions
+                  .filter((r) => r.enabled)
+                  .map(
+                    (r) =>
+                      RISK_OPTIONS_CONFIG.find((c) => c.id === r.id)?.title,
+                  )
+                  .filter(Boolean)
+                  .join(", ") || "None selected"
+              }
+            />
+          )}
         </div>
       </div>
     </div>
@@ -272,7 +279,7 @@ function DownloadIcon() {
   );
 }
 
-function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false }: ProjectSummaryStepProps) {
+function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideManagement = false }: ProjectSummaryStepProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [activePage, setActivePage] = useState(0);
@@ -293,7 +300,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false }: Proje
           className="rounded-sm border border-gray-200 bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
           style={{ minHeight: PDF_PAGE_HEIGHT }}
         >
-          <BlueprintPage data={data} pageIndex={activePage} />
+          <BlueprintPage data={data} pageIndex={activePage} hideManagement={hideManagement} />
         </div>
       </div>
 
