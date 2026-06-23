@@ -57,7 +57,7 @@ export function PlansTab({ proposalId }: Props) {
         headers: { "Content-Type": undefined },
       });
       const nextPlans = await addPlan.mutateAsync({ fileId: uploaded.id });
-      const added = nextPlans.find((plan) => plan.fileId === uploaded.id) ?? nextPlans.at(-1);
+      const added = nextPlans.find((plan) => plan.fileId === uploaded.id) ?? nextPlans[nextPlans.length - 1];
       if (added && /\.dwg$/i.test(added.fileName)) {
         setPromptPlan({ id: added.id, fileName: added.fileName });
       }
