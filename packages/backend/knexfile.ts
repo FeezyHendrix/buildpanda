@@ -1,5 +1,18 @@
 import type { Knex } from "knex";
 
+// Any deployed environment (production, staging, …) connects via DATABASE_URL.
+// knex CLI selects the config by NODE_ENV, so every deploy env needs an entry —
+// a missing key resolves to undefined and fails with "client is missing".
+const hosted: Knex.Config = {
+  client: "pg",
+  connection: process.env["DATABASE_URL"],
+  pool: { min: 2, max: 10 },
+  migrations: {
+    directory: "./src/db/migrations",
+    extension: "ts",
+  },
+};
+
 const config: Record<string, Knex.Config> = {
   development: {
     client: "pg",
@@ -19,15 +32,8 @@ const config: Record<string, Knex.Config> = {
       extension: "ts",
     },
   },
-  production: {
-    client: "pg",
-    connection: process.env["DATABASE_URL"],
-    pool: { min: 2, max: 10 },
-    migrations: {
-      directory: "./src/db/migrations",
-      extension: "ts",
-    },
-  },
+  production: hosted,
+  staging: hosted,
 };
 
 export default config;
