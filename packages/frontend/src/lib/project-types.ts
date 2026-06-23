@@ -969,6 +969,7 @@ export interface Task {
   columnId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
