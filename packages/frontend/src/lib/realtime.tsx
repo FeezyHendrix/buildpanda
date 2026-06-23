@@ -2,9 +2,13 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
-import { channelKeys, messageKeys } from "@/hooks/query-keys";
+import { channelKeys, messageKeys, notificationKeys } from "@/hooks/query-keys";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import { playMessageChime } from "@/lib/notification-sound";
+import {
+  requestNotificationPermission,
+  showDesktopNotification,
+} from "@/lib/desktop-notification";
 import type { ChatMessage } from "@/lib/project-types";
 
 type RealtimeEvent =
@@ -16,7 +20,8 @@ type RealtimeEvent =
   | "presence"
   | "read.updated"
   | "channel.updated"
-  | "unread.changed";
+  | "unread.changed"
+  | "notification.created";
 
 interface RealtimePayload {
   event: RealtimeEvent;
@@ -59,6 +64,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!signedIn) return;
+    requestNotificationPermission();
     let closed = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -184,6 +190,13 @@ function handleEvent(
         return { ...prev, pages };
       },
     );
+    return;
+  }
+
+  if (payload.event === "notification.created") {
+    const data = payload.data as { title?: string; body?: string };
+    if (data.title) showDesktopNotification(data.title, data.body);
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
     return;
   }
 
