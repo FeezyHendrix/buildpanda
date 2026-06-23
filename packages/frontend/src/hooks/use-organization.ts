@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
-import { organizationKeys } from "./query-keys";
+import { organizationKeys, projectKeys } from "./query-keys";
 
 function unwrap<T>(result: { data: T; error: { message?: string } | null }): T {
   if (result.error) {
@@ -298,8 +298,11 @@ export function useSetActiveOrganization() {
   return useMutation({
     mutationFn: async (organizationId: string) =>
       unwrap(await authClient.organization.setActive({ organizationId })),
+    // The dashboard project list is scoped to the active org server-side, so it
+    // must refetch when the active org changes (and any org-scoped data resets).
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }
