@@ -340,11 +340,31 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
         throw new BadRequestError("This invitation was sent to a different email address.");
       }
-      await db("project_participants").where({ id: invite.id }).update({
-        user_id: user.id,
-        status: "active",
-        invite_token: null,
-        updated_at: new Date().toISOString(),
+      // The partial unique index on (project_id, user_id) means a prior (even
+      // revoked) row already holding this user blocks setting user_id on the new
+      // invite row. Merge the new invite's role into that existing row and drop
+      // the redundant invite, so re-invites and role changes accept cleanly.
+      const now = new Date().toISOString();
+      await db.transaction(async (trx) => {
+        const linked = await trx<ParticipantRow>("project_participants")
+          .where({ project_id: invite.project_id, user_id: user.id })
+          .first();
+        if (linked && linked.id !== invite.id) {
+          await trx("project_participants").where({ id: linked.id }).update({
+            role: invite.role,
+            status: "active",
+            invite_token: null,
+            updated_at: now,
+          });
+          await trx("project_participants").where({ id: invite.id }).delete();
+        } else {
+          await trx("project_participants").where({ id: invite.id }).update({
+            user_id: user.id,
+            status: "active",
+            invite_token: null,
+            updated_at: now,
+          });
+        }
       });
       return { projectId: invite.project_id, role: invite.role };
     },
