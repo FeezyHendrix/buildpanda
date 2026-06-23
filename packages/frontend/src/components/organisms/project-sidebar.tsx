@@ -207,7 +207,7 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       )}
     >
       <Link
-        to="/dashboard"
+        to={isClient ? "/my-build" : "/dashboard"}
         className={cn(
           "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
           "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",

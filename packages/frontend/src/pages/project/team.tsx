@@ -64,7 +64,7 @@ export default function ProjectTeam() {
     <div className="w-full px-6 py-8 sm:px-10">
       <div className="mb-4">
         <Link
-          to="/dashboard"
+          to="/"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
         >
           <BackArrowIcon className="size-4" />
