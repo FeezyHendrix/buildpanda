@@ -1,6 +1,10 @@
 import { useId } from "react";
 import { Label } from "@/components/atoms/label";
-import { RichTextEditor, type UploadedAttachment } from "@/components/molecules/rich-text-editor";
+import {
+  RichTextEditor,
+  type UploadedAttachment,
+  type RichTextEditorHandle,
+} from "@/components/molecules/rich-text-editor";
 import { cn } from "@/lib/utils";
 
 interface RichTextFieldProps {
@@ -9,6 +13,8 @@ interface RichTextFieldProps {
   onChange: (html: string) => void;
   onChangeText?: (text: string) => void;
   onAttach?: (attachment: UploadedAttachment) => void;
+  projectId?: string;
+  onReady?: (handle: RichTextEditorHandle) => void;
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
@@ -21,6 +27,8 @@ export function RichTextField({
   onChange,
   onChangeText,
   onAttach,
+  projectId,
+  onReady,
   placeholder,
   disabled,
   required,
@@ -43,6 +51,8 @@ export function RichTextField({
             onChangeText?.(text);
           }}
           onAttach={onAttach}
+          projectId={projectId}
+          onReady={onReady}
           placeholder={placeholder}
           disabled={disabled}
         />
