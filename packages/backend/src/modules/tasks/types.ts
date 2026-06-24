@@ -24,6 +24,7 @@ export interface Task {
   assigneeName: string | null;
   dueDate: string | null;
   priority: TaskPriority;
+  labels: string[];
   position: number;
   sourceType: string | null;
   sourceId: string | null;
@@ -88,6 +89,7 @@ export interface TaskRow {
   assignee_team_member_name: string | null;
   due_date: string | null;
   priority: TaskPriority;
+  labels: string[] | string;
   position: number;
   source_type: string | null;
   source_id: string | null;

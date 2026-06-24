@@ -41,6 +41,7 @@ const createBody = {
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     priority: { type: "string", enum: PRIORITY },
+    labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
     columnId: { type: ["string", "null"], maxLength: 100 },
     status: { type: "string", enum: STATUS },
   },
@@ -58,6 +59,7 @@ const updateBody = {
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     priority: { type: "string", enum: PRIORITY },
+    labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
   },
 } as const;
 

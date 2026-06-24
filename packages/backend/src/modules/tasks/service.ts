@@ -26,6 +26,7 @@ export interface CreateTaskInput {
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
   priority?: TaskPriority;
+  labels?: string[];
   columnId?: string | null;
   status?: TaskStatus;
   sourceType?: string | null;
@@ -40,6 +41,7 @@ export interface UpdateTaskInput {
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
   priority?: TaskPriority;
+  labels?: string[];
 }
 
 export interface MoveTaskInput {
@@ -75,6 +77,34 @@ function toColumn(row: TaskColumnRow): TaskColumn {
   };
 }
 
+function parseLabels(value: string[] | string): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (typeof value === "string") {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeLabels(labels: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of labels) {
+    const label = raw.trim().slice(0, 40);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
 function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
   return {
     id: row.id,
@@ -89,6 +119,7 @@ function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
     assigneeName: row.assignee_name ?? row.assignee_team_member_name,
     dueDate: row.due_date,
     priority: row.priority,
+    labels: parseLabels(row.labels),
     position: row.position,
     sourceType: row.source_type,
     sourceId: row.source_id,
@@ -311,6 +342,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         assignee_team_member_id: assignee.assignee_team_member_id,
         due_date: input.dueDate ?? null,
         priority: input.priority ?? "Medium",
+        labels: JSON.stringify(normalizeLabels(input.labels ?? [])),
         position: maxPosition + 1000,
         source_type: input.sourceType ?? null,
         source_id: input.sourceId ?? null,
@@ -349,6 +381,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
           : {}),
         ...(input.dueDate !== undefined ? { due_date: input.dueDate } : {}),
         ...(input.priority !== undefined ? { priority: input.priority } : {}),
+        ...(input.labels !== undefined ? { labels: JSON.stringify(normalizeLabels(input.labels)) } : {}),
       });
 
       const row = await repository.findTaskById(taskId);

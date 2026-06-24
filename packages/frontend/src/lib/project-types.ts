@@ -975,6 +975,7 @@ export interface Task {
   assigneeName: string | null;
   dueDate: string | null;
   priority: TaskPriority;
+  labels: string[];
   position: number;
   sourceType: string | null;
   sourceId: string | null;
