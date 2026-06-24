@@ -1,13 +1,9 @@
 import { Dialog } from "@base-ui-components/react/dialog";
-import { useState, useRef, useCallback, type DragEvent } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
-import { CurrencyPicker } from "@/components/atoms/currency-picker";
-import { MoneyInput } from "@/components/atoms/money-input";
-import { Badge } from "@/components/atoms/badge";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { CURRENCY_CODES } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -15,9 +11,6 @@ import {
   useStartProgrammeImport,
   useProgrammeImportJob,
   useApplyProgramme,
-  type StructuredProgramme,
-  type ProgrammePhase,
-  type ProgrammeActivity,
 } from "@/hooks/use-programme-import";
 
 interface ImportProgrammeDialogProps {
@@ -26,10 +19,8 @@ interface ImportProgrammeDialogProps {
   projectId?: string;
 }
 
-const ACCEPT =
-  ".mpp,.xml,.xls,.xlsx,application/vnd.ms-project,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-const CURRENCY_CHOICES = CURRENCY_CODES.slice(0, 5);
+import { UploadState } from "./import-programme-dialog/upload-state";
+import { PreviewState } from "./import-programme-dialog/preview-state";
 
 function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgrammeDialogProps) {
   const navigate = useNavigate();
@@ -151,286 +142,6 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
       </Dialog.Portal>
     </Dialog.Root>
   );
-}
-
-function UploadState({
-  isPending,
-  onFileSelect,
-  error,
-}: {
-  isPending: boolean;
-  onFileSelect: (f: File) => void;
-  error: string | null;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const openPicker = useCallback(() => fileInputRef.current?.click(), []);
-
-  function handleDrop(event: DragEvent<HTMLButtonElement>): void {
-    event.preventDefault();
-    setDragging(false);
-    if (isPending) return;
-    const file = event.dataTransfer.files?.[0];
-    if (file) onFileSelect(file);
-  }
-
-  return (
-    <div>
-      <button
-        type="button"
-        disabled={isPending}
-        onClick={openPicker}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        className={cn(
-          "flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-white px-6 py-14 text-center transition-colors",
-          dragging ? "border-[#004DE7] bg-[#F0F4FF]" : "border-[#EDEDED] hover:border-[#004DE7]/50",
-          isPending && "cursor-not-allowed opacity-60",
-        )}
-      >
-        <span className="mb-4 inline-flex size-14 items-center justify-center rounded-2xl bg-[#F0F4FF] text-[#004DE7]">
-          <ReactSVG src={icons.upload} className="size-6" />
-        </span>
-        <span className="mb-2 text-lg font-semibold text-gray-900">
-          {isPending ? "Uploading…" : "Upload schedule file"}
-        </span>
-        <span className="max-w-sm text-sm text-gray-500">
-          Drag and drop your file here, or click to browse.
-        </span>
-        <span className="mt-3 text-xs font-medium text-gray-400">
-          Accepts .mpp · .xml · .xls · .xlsx
-        </span>
-      </button>
-
-      <div className="mt-4 rounded-xl border border-[#EDEDED] bg-[#FAFBFF] p-4">
-        <p className="mb-2 text-sm font-semibold text-gray-900">Using Microsoft Project?</p>
-        <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-600">
-          <li>Open your schedule in Microsoft Project.</li>
-          <li>
-            Go to <span className="font-medium text-gray-800">File → Save As</span> and choose{" "}
-            <span className="font-medium text-gray-800">XML (*.xml)</span> as the file type.
-          </li>
-          <li>Upload the saved <span className="font-medium text-gray-800">.xml</span> file here.</li>
-        </ol>
-        <p className="mt-2 text-xs text-gray-400">
-          Exporting to XML preserves your tasks, dependencies, % complete and milestones. Excel
-          (.xls/.xlsx) schedules work too.
-        </p>
-      </div>
-
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      )}
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept={ACCEPT}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onFileSelect(file);
-          e.target.value = "";
-        }}
-      />
-    </div>
-  );
-}
-
-function PreviewState({
-  result,
-  projectId,
-  isApplying,
-  applyError,
-  onApply,
-}: {
-  result: StructuredProgramme;
-  projectId?: string;
-  isApplying: boolean;
-  applyError: string | null;
-  onApply: (data: {
-    projectName?: string;
-    city?: string;
-    state?: string;
-    budgetTotal?: number;
-    currency?: string;
-  }) => void;
-}) {
-  const [projectName, setProjectName] = useState(result.projectName || "");
-  const [city, setCity] = useState("");
-  const [locationState, setLocationState] = useState("");
-  const [budgetTotal, setBudgetTotal] = useState("");
-  const [currency, setCurrency] = useState("NGN");
-
-  const intoExisting = Boolean(projectId);
-  const milestoneCount = result.activities.filter((a) => a.isMilestone).length;
-  const canSubmit = intoExisting || (projectName.trim() && city.trim() && locationState.trim());
-
-  function submit(event: React.FormEvent): void {
-    event.preventDefault();
-    if (intoExisting) {
-      onApply({});
-      return;
-    }
-    onApply({
-      projectName: projectName.trim(),
-      city: city.trim(),
-      state: locationState.trim(),
-      budgetTotal: Number(budgetTotal.replace(/[^0-9.]/g, "")) || 0,
-      currency,
-    });
-  }
-
-  const inputClass =
-    "h-10 w-full rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]";
-
-  return (
-    <form onSubmit={submit} className="space-y-6">
-      {intoExisting ? (
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Import schedule</h3>
-          <Badge tone="neutral" size="md">
-            {result.phases.length} phases · {result.activities.length} activities
-            {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
-          </Badge>
-          {result.usedAi ? (
-            <Badge tone="info" size="md">
-              Panda AI
-            </Badge>
-          ) : null}
-        </div>
-      ) : (
-        <div>
-          <div className="mb-3 flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-900">Project details</h3>
-            <Badge tone="neutral" size="md">
-              {result.phases.length} phases · {result.activities.length} activities
-              {milestoneCount > 0 ? ` · ${milestoneCount} milestones` : ""}
-            </Badge>
-            {result.usedAi ? (
-              <Badge tone="info" size="md">
-                Panda AI
-              </Badge>
-            ) : null}
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Project name</span>
-              <input
-                className={inputClass}
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="e.g. Lekki Phase 1 Residential"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Currency</span>
-              <CurrencyPicker currencies={CURRENCY_CHOICES} value={currency} onChange={setCurrency} />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">City</span>
-              <input
-                className={inputClass}
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Lagos"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-gray-600">State / Region</span>
-              <input
-                className={inputClass}
-                value={locationState}
-                onChange={(e) => setLocationState(e.target.value)}
-                placeholder="e.g. Lagos State"
-              />
-            </label>
-            <label className="block sm:col-span-2">
-              <span className="mb-1 block text-xs font-medium text-gray-600">Total budget</span>
-              <MoneyInput
-                className={inputClass}
-                value={budgetTotal}
-                onChange={setBudgetTotal}
-                placeholder="0"
-              />
-            </label>
-          </div>
-        </div>
-      )}
-
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">Parsed schedule preview</h3>
-        <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-[#EDEDED] p-3">
-          {result.phases.map((phase) => (
-            <PhasePreview key={phase.key} phase={phase} activities={result.activities} />
-          ))}
-        </div>
-      </div>
-
-      {applyError && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{applyError}</div>
-      )}
-
-      <div className="flex items-center justify-end">
-        <Button type="submit" loading={isApplying} disabled={!canSubmit}>
-          {intoExisting
-              ? "Import into project"
-              : "Build project"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function PhasePreview({
-  phase,
-  activities,
-}: {
-  phase: ProgrammePhase;
-  activities: ProgrammeActivity[];
-}) {
-  const phaseActivities = activities.filter((a) => a.phaseKey === phase.key);
-  return (
-    <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {phase.name}
-      </p>
-      <div className="space-y-1">
-        {phaseActivities.map((activity) => (
-          <ActivityPreview key={activity.refId} activity={activity} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ActivityPreview({ activity }: { activity: ProgrammeActivity }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-[#FAFAFA] px-3 py-2 text-sm">
-      <span className="truncate text-gray-900">{activity.name}</span>
-      <span className="ml-3 flex shrink-0 items-center gap-2 text-xs text-gray-500">
-        {formatRange(activity.startAt, activity.endAt)}
-        {activity.isMilestone ? (
-          <Badge tone="warning" size="sm">
-            Milestone
-          </Badge>
-        ) : null}
-        {activity.predecessors.length > 0 ? (
-          <span className="text-gray-400">· {activity.predecessors.length} deps</span>
-        ) : null}
-      </span>
-    </div>
-  );
-}
-
-function formatRange(start: string, end: string): string {
-  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB");
-  return `${fmt(start)} – ${fmt(end)}`;
 }
 
 ImportProgrammeDialog.displayName = "ImportProgrammeDialog";
