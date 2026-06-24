@@ -137,6 +137,13 @@ each asserted to mount without the error boundary and present its main landmark.
 So **every project module has at least reachability coverage**, and 13 have deep
 upsert coverage.
 
+**Cross-role authorization (the brief's "authorization is not presentation"):**
+an owner shares a project with another user as an active `client` participant
+(via a direct `project_participants` insert == accepted invite, in
+`fixtures/seed.ts`); a second viewer browser context then verifies the
+participant can READ the project but is offered NO create action. See
+`specs/authorization.spec.ts`.
+
 **Logged product defect (test.fixme, kept out of the green count):**
 - **Budget allocation** — creating a category via the "Add budget allocation"
   drawer closes successfully (form + API accept name + costCode), but the page
@@ -145,12 +152,12 @@ upsert coverage.
   first?) or a create→list invalidation/display gap. See `specs/budget.spec.ts`.
 
 **Remaining (bespoke flows, not the generic recipe):** activities (a template-
-grid picker, not a simple form), daily-log (a day-grouped conditions model),
-documents / bim (file-upload flows needing file fixtures), updates (a RichText
-composer). Cross-role permission-denial assertions also remain (they need one
-project shared across roles via the participants API — the harness self-provisions
-one project per role today). The `team` module is intentionally skipped while
-another workstream refactors it.
+grid picker, not a simple form), daily-log (a day-grouped model whose entry
+dialog drives a RichText editor), documents / bim (file-upload flows needing file
+fixtures), updates (the `UpsertUpdateDialog` is a standard FormDrawer, but the
+current page has no visible control that opens it — `createOpen` is never set to
+true — so it needs a trigger or a deep-link to test). The `team` module is
+intentionally skipped while another workstream refactors it.
 
 ## Suite structure
 
