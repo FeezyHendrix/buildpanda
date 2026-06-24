@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { useAddPlan, useDeletePlan, useProposalPlans } from "@/hooks/use-proposals";
+import {
+  useAddPlan,
+  useDeletePlan,
+  useProposalPlans,
+  useProposalTakeoffs,
+  useStartProposalTakeoff,
+} from "@/hooks/use-proposals";
 import api from "@/api/client";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
+import { proposalKeys } from "@/hooks/query-keys";
 
 interface Props {
   proposalId: string;
@@ -20,12 +28,22 @@ function formatBytes(bytes: number): string {
 }
 
 export function PlansTab({ proposalId }: Props) {
+  const qc = useQueryClient();
   const { data: plans = [], isLoading } = useProposalPlans(proposalId);
+  const { data: takeoffs = [] } = useProposalTakeoffs(proposalId);
   const addPlan = useAddPlan(proposalId);
   const deletePlan = useDeletePlan(proposalId);
+  const startTakeoff = useStartProposalTakeoff(proposalId);
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promptPlan, setPromptPlan] = useState<{ id: string; fileName: string } | null>(null);
+
+  useEffect(() => {
+    if (takeoffs.some((job) => job.status === "completed")) {
+      void qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
+    }
+  }, [proposalId, qc, takeoffs]);
 
   async function handleUpload(file: File) {
     setError(null);
@@ -38,7 +56,11 @@ export function PlansTab({ proposalId }: Props) {
       const { data: uploaded } = await api.post<{ id: string }>("/files", form, {
         headers: { "Content-Type": undefined },
       });
-      await addPlan.mutateAsync({ fileId: uploaded.id });
+      const nextPlans = await addPlan.mutateAsync({ fileId: uploaded.id });
+      const added = nextPlans.find((plan) => plan.fileId === uploaded.id) ?? nextPlans[nextPlans.length - 1];
+      if (added && /\.dwg$/i.test(added.fileName)) {
+        setPromptPlan({ id: added.id, fileName: added.fileName });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to upload. Try again."));
     } finally {
@@ -55,11 +77,12 @@ export function PlansTab({ proposalId }: Props) {
       <div className="flex flex-col gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6">
         <p className="text-sm text-gray-600">
           Upload architectural drawings, site plans, MEP schematics, or any reference
-          artwork for this proposal. PDFs and images supported.
+          artwork for this proposal. DWG files can be used to auto-generate a draft BoQ.
         </p>
         <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-medium text-white hover:bg-[#003fb8]">
           <input
             type="file"
+            accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp"
             className="hidden"
             disabled={uploading}
             onChange={(e) => {
@@ -118,6 +141,54 @@ export function PlansTab({ proposalId }: Props) {
             );
           })}
         </ul>
+      )}
+
+      {promptPlan && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-blue-950">Generate a draft BoQ from this DWG?</p>
+              <p className="mt-1 text-sm text-blue-800">
+                BuildPanda can run an automated take-off for <strong>{promptPlan.fileName}</strong>, then add the measured lines to the BoQ tab for review.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPromptPlan(null)}
+                className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-white"
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                disabled={startTakeoff.isPending}
+                onClick={() => {
+                  void startTakeoff.mutateAsync(promptPlan.id).then(() => setPromptPlan(null));
+                }}
+                className="rounded-lg bg-[#004DE7] px-3 py-2 text-sm font-medium text-white hover:bg-[#003fb8] disabled:opacity-60"
+              >
+                {startTakeoff.isPending ? "Starting…" : "Auto-generate BoQ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {takeoffs.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-sm font-semibold text-gray-900">Automated take-off jobs</p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {takeoffs.slice(0, 5).map((job) => (
+              <li key={job.id} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <span className="truncate text-gray-700">{job.fileName}</span>
+                <span className="text-xs font-medium text-gray-500">
+                  {job.status === "completed" ? `${job.elementCount} lines added` : job.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

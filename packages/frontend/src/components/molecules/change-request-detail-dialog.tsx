@@ -129,7 +129,8 @@ function CRBudgetAllocations({ projectId, cr }: { projectId: string; cr: ChangeR
           <Button 
             variant="primary" 
             size="sm" 
-            disabled={setLinks.isPending || isOver} 
+            loading={setLinks.isPending}
+            disabled={isOver} 
             onClick={handleSave}
           >
             Save allocations
@@ -199,17 +200,17 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
               <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
                 <div className="flex flex-wrap gap-2">
                   {cr.status === "Draft" && (
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" disabled={update.isPending} onClick={() => decide("Submitted")}>
+                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" loading={update.isPending} onClick={() => decide("Submitted")}>
                       Submit for decision
                     </Button>
                   )}
                   {cr.status !== "Approved" && (
-                    <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" disabled={update.isPending} onClick={() => decide("Approved")}>
+                    <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={update.isPending} onClick={() => decide("Approved")}>
                       Approve
                     </Button>
                   )}
                   {cr.status !== "Rejected" && (
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" disabled={update.isPending} onClick={() => decide("Rejected")}>
+                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" loading={update.isPending} onClick={() => decide("Rejected")}>
                       Reject
                     </Button>
                   )}
@@ -245,7 +246,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                   placeholder="Add a comment…"
                   className="min-h-[40px] flex-1 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                 />
-                <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" disabled={!comment.trim() || addComment.isPending} onClick={submitComment}>
+                <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" disabled={!comment.trim()} loading={addComment.isPending} onClick={submitComment}>
                   Send
                 </Button>
                 <Dialog.Close render={<Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">Close</Button>} />

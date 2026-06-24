@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { authClient } from "@/lib/auth-client";
 import { useOrgProfile } from "@/hooks/use-org-profile";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import type { Currency } from "@/lib/project-types";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import {
@@ -17,13 +19,10 @@ import {
 } from "@/components/molecules/management-step";
 import { ProjectTitleStep } from "@/components/molecules/project-title-step";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
-import type { SwitcherValue } from "@/components/atoms";
 import { useCreateProject } from "@/hooks/use-projects";
-import { uploadFileRequest } from "@/hooks/use-files";
 import { api } from "@/api/client";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
-import type { DocumentCategory } from "@/lib/project-types";
 
 const TOTAL_STEPS = 5;
 
@@ -67,11 +66,14 @@ export default function CreateProject() {
 
   const [locationState, setLocationState] = useState<string | null>(null);
   const [city, setCity] = useState("");
-  const [ownsLand, setOwnsLand] = useState<SwitcherValue>("no");
-  const [landFiles, setLandFiles] = useState<FileList | null>(null);
-  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
 
+  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
   const { data: orgProfile } = useOrgProfile();
+  const { data: flagsData } = useFeatureFlags();
+  const bimEnabled = useMemo(() => {
+    const flag = (flagsData?.flags ?? []).find((f) => f.key === "projects.bim");
+    return flag ? flag.enabled : true;
+  }, [flagsData]);
   const [buildingType, setBuildingType] = useState<string | null>(null);
   const [currency, setCurrency] = useState<Currency>("NGN");
   const [currencyTouched, setCurrencyTouched] = useState(false);
@@ -84,10 +86,35 @@ export default function CreateProject() {
   const [timeline, setTimeline] = useState<string | null>(null);
   const [fundingMethod, setFundingMethod] = useState<string | null>(null);
 
+  const { data: session } = authClient.useSession();
+  const accountType =
+    (session?.user as { accountType?: string } | undefined)?.accountType ?? null;
+  // Contractors and project managers run their own delivery, so the
+  // "level of involvement" question doesn't apply — default it and skip the step.
+  const skipInvolvementStep =
+    accountType === "construction_company" || accountType === "project_manager";
+
   const [involvementLevel, setInvolvementLevel] =
     useState<InvolvementLevel | null>(null);
   const [riskOptions, setRiskOptions] =
     useState<RiskOption[]>(DEFAULT_RISK_OPTIONS);
+
+  useEffect(() => {
+    if (skipInvolvementStep && involvementLevel === null) {
+      setInvolvementLevel("contractors");
+    }
+  }, [skipInvolvementStep, involvementLevel]);
+
+  // Contractors and project managers skip the management step entirely, so the
+  // wizard runs on the active step ids rather than a fixed 1..N range.
+  const steps = skipInvolvementStep ? [1, 2, 3, 5] : [1, 2, 3, 4, 5];
+  const stepIndex = steps.indexOf(step);
+  const displayStep = stepIndex === -1 ? steps.length : stepIndex + 1;
+  const isLastStep = step === steps[steps.length - 1];
+
+  useEffect(() => {
+    if (!isReview && stepIndex === -1) setStep(3);
+  }, [isReview, stepIndex, setStep]);
 
   const [projectTitle, setProjectTitle] = useState("");
 
@@ -104,36 +131,10 @@ export default function CreateProject() {
     if (step === 1) return !!projectType;
     if (step === 2) return !!locationState && city.trim() !== "";
     if (step === 3) return !!buildingType && !!timeline && !!fundingMethod;
-    if (step === 4) return !!involvementLevel;
+    if (step === 4) return skipInvolvementStep || !!involvementLevel;
     if (step === 5) return !!projectTitle.trim();
     return false;
   };
-
-  // Best-effort: attach the land documents the user uploaded in step 2 to the
-  // new project's "Land Documents" category. The project already exists, so a
-  // failure here must not block navigation — the user can re-upload from the
-  // Documents page.
-  async function uploadLandDocuments(
-    projectId: string,
-    files: FileList,
-  ): Promise<void> {
-    try {
-      const { data: categories } = await api.get<DocumentCategory[]>(
-        `/projects/${projectId}/documents/categories`,
-      );
-      const landCategory = categories.find((c) => c.name === "Land Documents");
-      if (!landCategory) return;
-      for (const file of Array.from(files)) {
-        const uploaded = await uploadFileRequest(file);
-        await api.post(`/projects/${projectId}/documents`, {
-          categoryId: landCategory.id,
-          fileId: uploaded.id,
-        });
-      }
-    } catch {
-      // swallow — see note above
-    }
-  }
 
   async function seedBimModel(projectId: string, files: FileList): Promise<void> {
     try {
@@ -183,7 +184,7 @@ export default function CreateProject() {
         location: {
           state: locationState,
           city: city.trim(),
-          ownsLand: ownsLand === "yes",
+          ownsLand: true,
         },
         details: {
           buildingType,
@@ -198,10 +199,7 @@ export default function CreateProject() {
           riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
         },
       });
-      if (landFiles && landFiles.length > 0) {
-        await uploadLandDocuments(project.id, landFiles);
-      }
-      if (bimFiles && bimFiles.length > 0) {
+      if (bimEnabled && bimFiles && bimFiles.length > 0) {
         await seedBimModel(project.id, bimFiles);
       }
       navigate(`/project/${project.id}/overview`);
@@ -217,28 +215,28 @@ export default function CreateProject() {
   const handleContinue = () => {
     if (isReview) {
       void handleFinish();
-    } else if (step === TOTAL_STEPS) {
+    } else if (isLastStep) {
       setStep("review");
     } else {
-      setStep(step + 1);
+      setStep(steps[stepIndex + 1]!);
     }
   };
 
   const handleBack = () => {
     if (submitting) return;
     if (isReview) {
-      setStep(TOTAL_STEPS);
-    } else if (step === 1) {
+      setStep(steps[steps.length - 1]!);
+    } else if (stepIndex <= 0) {
       navigate("/dashboard");
     } else {
-      setStep(step - 1);
+      setStep(steps[stepIndex - 1]!);
     }
   };
 
   return (
     <WizardLayout
-      currentStep={step}
-      totalSteps={TOTAL_STEPS}
+      currentStep={displayStep}
+      totalSteps={steps.length}
       onCancel={handleBack}
       onContinue={handleContinue}
       continueDisabled={!canContinue() || submitting}
@@ -255,16 +253,15 @@ export default function CreateProject() {
         <LocationStep
           state={locationState}
           city={city}
-          ownsLand={ownsLand}
           onStateChange={setLocationState}
           onCityChange={setCity}
-          onOwnsLandChange={setOwnsLand}
-          onFilesChange={setLandFiles}
           onBimFileChange={setBimFiles}
+          showBim={bimEnabled}
         />
       )}
       {!isReview && step === 3 && (
         <ProjectDetailsStep
+          projectType={projectType}
           buildingType={buildingType}
           currency={currency}
           budget={budget}
@@ -302,7 +299,6 @@ export default function CreateProject() {
             projectType,
             locationState,
             city,
-            ownsLand,
             buildingType,
           currency,
             budget,
@@ -314,6 +310,7 @@ export default function CreateProject() {
           onEdit={(s) => setStep(s)}
           onStart={handleContinue}
           isStarting={createProject.isPending}
+          hideManagement={skipInvolvementStep}
         />
       )}
     </WizardLayout>

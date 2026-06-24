@@ -4,6 +4,7 @@ import { useLinkSessionProject, useAttachSessionDocument } from "@/hooks/use-imp
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { CurrencyPicker } from "@/components/atoms/currency-picker";
+import { MoneyInput } from "@/components/atoms/money-input";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { CURRENCY_CODES } from "@/lib/currency";
@@ -185,11 +186,11 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium text-gray-700">Budget Total</span>
-                <input 
-                  type="number" 
-                  value={budgetTotal} 
-                  onChange={(e) => setBudgetTotal(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-[#004DE7]"
+                <MoneyInput
+                  value={budgetTotal}
+                  onChange={setBudgetTotal}
+                  placeholder="0"
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-left outline-none focus-visible:ring-0 focus:border-[#004DE7]"
                 />
               </label>
               <div className="flex flex-col gap-1.5">
@@ -203,10 +204,11 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
 
           <Button 
             onClick={handleApply} 
-            disabled={!projectName || !city || !stateName || !budgetTotal || applyMutation.isPending}
+            loading={applyMutation.isPending}
+            disabled={!projectName || !city || !stateName || !budgetTotal}
             className="w-full mt-4"
           >
-            {applyMutation.isPending ? "Creating..." : "Create Project"}
+            Create Project
           </Button>
         </div>
       ) : (

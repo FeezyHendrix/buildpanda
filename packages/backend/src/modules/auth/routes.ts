@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { auth } from "../../lib/auth.ts";
+import { clientIp, countryFromIp } from "../../lib/client-geo.ts";
+import { runWithRequestContext } from "../../lib/request-context.ts";
 
 function toHeaders(record: Record<string, string | string[] | undefined>): Headers {
   const headers = new Headers();
@@ -26,7 +28,11 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         ...(request.body ? { body: JSON.stringify(request.body) } : {}),
       });
 
-      const response = await auth.handler(req);
+      const ip = clientIp(request);
+      const response = await runWithRequestContext(
+        { ip, country: countryFromIp(ip) },
+        () => auth.handler(req),
+      );
 
       reply.status(response.status);
       response.headers.forEach((value, key) => {

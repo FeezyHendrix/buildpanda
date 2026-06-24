@@ -24,6 +24,7 @@ const createRiskBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     severity: severitySchema,
   },
 } as const;
@@ -35,6 +36,7 @@ const editRiskBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     severity: severitySchema,
   },
 } as const;

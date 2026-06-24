@@ -119,7 +119,7 @@ function UploadDocumentDialog({
           type="button"
           variant="secondary"
           size="sm"
-          disabled={isSubmitting}
+          loading={isSubmitting}
           className="h-9 px-3 text-xs"
           onClick={() => fileInputRef.current?.click()}
         >

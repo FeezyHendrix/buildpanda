@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import type {
   MyProjectCard,
+  ParticipantPermissions,
   ParticipantRole,
   ProjectAccess,
   ProjectParticipant,
@@ -55,15 +56,42 @@ export function useInviteParticipant() {
       email,
       name,
       role,
+      permissions,
     }: {
       projectId: string;
       email: string;
       name?: string;
-      role?: ParticipantRole;
+      role?: string;
+      permissions?: ParticipantPermissions;
     }) => {
       const { data } = await api.post<ProjectParticipant>(
         `/projects/${projectId}/participants/invite`,
-        { email, name, role },
+        { email, name, role, permissions },
+      );
+      return data;
+    },
+    onSuccess: (_d, { projectId }) =>
+      qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
+  });
+}
+
+export function useUpdateParticipant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      participantId,
+      role,
+      permissions,
+    }: {
+      projectId: string;
+      participantId: string;
+      role?: string;
+      permissions?: ParticipantPermissions;
+    }) => {
+      const { data } = await api.patch<ProjectParticipant>(
+        `/projects/${projectId}/participants/${participantId}`,
+        { role, permissions },
       );
       return data;
     },
@@ -104,12 +132,17 @@ export function useProjectInvite(token: string | undefined) {
 }
 
 export function useAcceptProjectInvite() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (token: string) => {
       const { data } = await api.post<{ projectId: string; role: string }>(
         `/project-invites/${token}/accept`,
       );
       return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: participantKeys.myProjects() });
+      qc.invalidateQueries({ queryKey: participantKeys.access(data.projectId) });
     },
   });
 }

@@ -1,27 +1,41 @@
 import { cn } from "@/lib/utils";
 
-type SpinnerSize = "sm" | "md" | "lg";
+type SpinnerSize = "xs" | "sm" | "md" | "lg";
+type SpinnerTone = "brand" | "current";
 
 interface SpinnerProps {
   size?: SpinnerSize;
+  tone?: SpinnerTone;
   className?: string;
   label?: string;
 }
 
 const sizeClass: Record<SpinnerSize, string> = {
-  sm: "size-6",
-  md: "size-7",
-  lg: "size-8",
+  xs: "size-4 border-2",
+  sm: "size-6 border-2",
+  md: "size-7 border-2",
+  lg: "size-8 border-2",
 };
 
-function Spinner({ size = "md", className, label = "Loading" }: SpinnerProps) {
+const toneClass: Record<SpinnerTone, string> = {
+  brand: "border-gray-200 border-t-[#004DE7]",
+  current: "border-current/30 border-t-current",
+};
+
+function Spinner({
+  size = "md",
+  tone = "brand",
+  className,
+  label = "Loading",
+}: SpinnerProps) {
   return (
     <div
       role="status"
       aria-label={label}
       className={cn(
-        "animate-spin rounded-full border-2 border-gray-200 border-t-[#004DE7]",
+        "animate-spin rounded-full",
         sizeClass[size],
+        toneClass[tone],
         className,
       )}
     />
@@ -30,4 +44,4 @@ function Spinner({ size = "md", className, label = "Loading" }: SpinnerProps) {
 
 Spinner.displayName = "Spinner";
 
-export { Spinner, type SpinnerProps };
+export { Spinner, type SpinnerProps, type SpinnerSize, type SpinnerTone };

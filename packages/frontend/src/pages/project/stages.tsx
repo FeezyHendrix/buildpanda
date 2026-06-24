@@ -21,7 +21,10 @@ import {
 import { cn } from "@/lib/utils";
 import type { Stage, StageStatus } from "@/lib/project-types";
 
-const STATUS_META: Record<StageStatus, { label: string; tone: "neutral" | "info" | "success" }> = {
+const STATUS_META: Record<
+  StageStatus,
+  { label: string; tone: "neutral" | "info" | "success" }
+> = {
   Pending: { label: "Not started", tone: "neutral" },
   InProgress: { label: "In progress", tone: "info" },
   Done: { label: "Complete", tone: "success" },
@@ -42,7 +45,9 @@ export default function ProjectStages() {
   const overall =
     stages.length === 0
       ? 0
-      : Math.round(stages.reduce((sum, s) => sum + s.progressPercent, 0) / stages.length);
+      : Math.round(
+          stages.reduce((sum, s) => sum + s.progressPercent, 0) / stages.length,
+        );
 
   function handleCreate(values: UpsertStageValues): void {
     createStage.mutate(
@@ -60,27 +65,45 @@ export default function ProjectStages() {
     if (!current || !swap) return;
     next[index] = swap;
     next[target] = current;
-    reorderStages.mutate({ projectId: project.id, stageIds: next.map((s) => s.id) });
+    reorderStages.mutate({
+      projectId: project.id,
+      stageIds: next.map((s) => s.id),
+    });
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedule", to: `/project/${project.id}/schedule` },
+          { label: "Build Stages" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Build Stages"
         description="Break the build into stages and track progress all the way to handover."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            Add stage
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              Add stage
+            </Button>
+          ) : undefined
+        }
       />
 
       {stages.length > 0 && (
         <Card padding="md" className="mt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-gray-900">Overall progress</p>
+              <p className="text-sm font-semibold text-gray-900">
+                Overall progress
+              </p>
               <p className="text-xs text-gray-500">
                 {complete} of {stages.length} stages complete
               </p>
@@ -88,14 +111,19 @@ export default function ProjectStages() {
             <span className="text-2xl font-bold text-gray-900">{overall}%</span>
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#F0F0F0]">
-            <div className="h-full rounded-full bg-[#004DE7]" style={{ width: `${overall}%` }} />
+            <div
+              className="h-full rounded-full bg-[#004DE7]"
+              style={{ width: `${overall}%` }}
+            />
           </div>
         </Card>
       )}
 
       <div className="mt-6 flex flex-col gap-3">
         {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">Loading stages…</p>
+          <p className="py-10 text-center text-sm text-gray-500">
+            Loading stages…
+          </p>
         ) : stages.length === 0 ? (
           <Card padding="lg" className="text-center">
             <p className="text-sm font-medium text-gray-900">No stages yet</p>
@@ -113,9 +141,15 @@ export default function ProjectStages() {
               projectId={project.id}
               onMove={move}
               onUpdate={(values) =>
-                updateStage.mutate({ projectId: project.id, stageId: stage.id, ...values })
+                updateStage.mutate({
+                  projectId: project.id,
+                  stageId: stage.id,
+                  ...values,
+                })
               }
-              onDelete={() => deleteStage.mutate({ projectId: project.id, stageId: stage.id })}
+              onDelete={() =>
+                deleteStage.mutate({ projectId: project.id, stageId: stage.id })
+              }
             />
           ))
         )}
@@ -182,7 +216,9 @@ function StageRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-semibold text-gray-900">{stage.name}</p>
+          <p className="truncate text-sm font-semibold text-gray-900">
+            {stage.name}
+          </p>
           <Badge tone={meta.tone} size="sm">
             {meta.label}
           </Badge>

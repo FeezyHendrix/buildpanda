@@ -77,6 +77,29 @@ export function useDeletePlan(proposalId: string) {
   });
 }
 
+export function useProposalTakeoffs(proposalId: string) {
+  return useQuery({
+    queryKey: proposalKeys.takeoffs(proposalId),
+    queryFn: () => proposalsApi.listAutomatedTakeoffs(proposalId),
+    enabled: !!proposalId,
+    refetchInterval: (query) =>
+      query.state.data?.some((job) => job.status === "pending" || job.status === "processing")
+        ? 3000
+        : false,
+  });
+}
+
+export function useStartProposalTakeoff(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) => proposalsApi.startAutomatedTakeoff(proposalId, planId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.takeoffs(proposalId) });
+      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
+    },
+  });
+}
+
 export function useProposalBoq(proposalId: string) {
   return useQuery({
     queryKey: proposalKeys.boq(proposalId),

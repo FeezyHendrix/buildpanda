@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import * as XLSX from "xlsx";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
@@ -94,6 +95,7 @@ const estimateItemSchema = {
   properties: {
     groupLabel: { type: "string", minLength: 1, maxLength: 100 },
     description: { type: "string", minLength: 1, maxLength: 500 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     qty: { type: "number", minimum: 0 },
     unit: { type: "string", minLength: 1, maxLength: 50 },
     unitRate: { type: "number", minimum: 0 },
@@ -110,6 +112,7 @@ const scheduleItemSchema = {
     label: { type: "string", minLength: 1, maxLength: 200 },
     percent: { type: "number", minimum: 0, maximum: 100 },
     description: { type: "string", maxLength: 500 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     sort: { type: "integer", minimum: 0 },
   },
 } as const;
@@ -328,6 +331,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
             properties: {
               groupLabel: { type: "string", minLength: 1, maxLength: 100 },
               description: { type: "string", minLength: 1, maxLength: 500 },
+              descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
               qty: { type: "number", minimum: 0 },
               unit: { type: "string", minLength: 1, maxLength: 50 },
               sort: { type: "integer", minimum: 0 },
@@ -342,6 +346,52 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       if (!exists) throw new NotFoundError("Proposal");
       await repo.replaceBoqItems(request.params.id, request.body);
       return repo.listBoqItems(request.params.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/proposals/:id/boq/export",
+    { schema: { params: idParams } },
+    async (request, reply) => {
+      const orgId = request.requireOrgScope();
+      const proposal = await repo.getById(request.params.id, orgId);
+      if (!proposal) throw new NotFoundError("Proposal");
+      const items = await repo.listBoqItems(request.params.id);
+
+      const rows: Array<Array<string | number | null>> = [
+        [`BILL OF QUANTITIES — ${proposal.title}`],
+        [`Client: ${proposal.client_name}`, "", "", `Currency: ${proposal.currency}`],
+        [`Location: ${proposal.location ?? "To be confirmed"}`],
+        [],
+        ["S/N", "DESCRIPTION OF ITEM", "QTY", "UNIT"],
+      ];
+
+      let currentGroup = "";
+      let sn = 0;
+      for (const item of items) {
+        if (item.groupLabel !== currentGroup) {
+          currentGroup = item.groupLabel;
+          rows.push([], [currentGroup.toUpperCase()]);
+        }
+        rows.push([
+          String.fromCharCode(65 + (sn % 26)),
+          item.description,
+          item.qty,
+          item.unit,
+        ]);
+        sn += 1;
+      }
+      rows.push([], ["", "NOTE: Quantities are draft take-offs and must be reviewed by a quantity surveyor."]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 6 }, { wch: 72 }, { wch: 12 }, { wch: 10 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "BoQ");
+      const buffer = XLSX.write(wb, { bookType: "xlsx", type: "buffer" }) as Buffer;
+
+      reply.header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      reply.header("Content-Disposition", `attachment; filename="${proposal.number}_boq.xlsx"`);
+      return reply.send(buffer);
     },
   );
 

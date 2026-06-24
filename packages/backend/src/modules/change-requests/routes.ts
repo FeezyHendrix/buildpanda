@@ -42,6 +42,7 @@ const createBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     reason: { type: ["string", "null"], maxLength: 1000 },
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
@@ -78,6 +79,7 @@ const updateBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     reason: { type: ["string", "null"], maxLength: 1000 },
     status: { type: "string", enum: STATUS },
     costImpact: { type: "number" },

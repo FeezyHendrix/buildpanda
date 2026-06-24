@@ -33,6 +33,7 @@ export interface ProjectUpdate {
   category: UpdateCategory;
   title: string;
   description: string;
+  descriptionHtml: string | null;
   media: MediaItem[];
   cta: { label: string; tone: CtaTone };
   secondaryAction?: { label: string };
@@ -52,6 +53,7 @@ export interface UpdateRow {
   category: UpdateCategory;
   title: string;
   description: string;
+  description_html: string | null;
   cta_label: string;
   cta_tone: CtaTone;
   secondary_action_label: string | null;

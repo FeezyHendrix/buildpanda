@@ -11,6 +11,8 @@ import ProjectsPage from "@/pages/projects";
 import ProjectDetailPage from "@/pages/project-detail";
 import LeadsPage from "@/pages/leads";
 import JobsPage from "@/pages/jobs";
+import MaintenancePage from "@/pages/maintenance";
+import FeatureFlagsPage from "@/pages/feature-flags";
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
             <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="leads" element={<LeadsPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="maintenance" element={<MaintenancePage />} />
+            <Route path="feature-flags" element={<FeatureFlagsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

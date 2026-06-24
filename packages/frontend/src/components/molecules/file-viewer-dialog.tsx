@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Dialog } from "@base-ui-components/react/dialog";
 import { cn } from "@/lib/utils";
 
@@ -24,13 +25,20 @@ function FileViewerDialog({
   fileName,
   url,
 }: FileViewerDialogProps) {
+  const [zoom, setZoom] = useState(1);
+  const canZoom = isImage(fileName);
+
+  useEffect(() => {
+    if (open) setZoom(1);
+  }, [open, url]);
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" />
         <Dialog.Popup
           className={cn(
-            "fixed left-1/2 top-1/2 z-[60] flex h-[min(85vh,900px)] w-[min(960px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
+            "fixed left-1/2 top-1/2 z-[60] flex h-[min(92vh,1100px)] w-[min(1200px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
             "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
           )}
         >
@@ -42,6 +50,34 @@ function FileViewerDialog({
               <p className="truncate text-xs text-gray-500">{fileName}</p>
             </div>
             <div className="flex items-center gap-2">
+              {canZoom && (
+                <div className="flex items-center rounded-lg bg-[#F6F6F6] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setZoom((value) => Math.max(0.5, Number((value - 0.25).toFixed(2))))}
+                    className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-gray-900"
+                    aria-label="Zoom out"
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom(1)}
+                    className="min-w-12 rounded-md px-2 py-1 text-xs font-medium tabular-nums text-gray-600 hover:bg-white hover:text-gray-900"
+                    aria-label="Reset zoom"
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoom((value) => Math.min(3, Number((value + 0.25).toFixed(2))))}
+                    className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-white hover:text-gray-900"
+                    aria-label="Zoom in"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
               <a
                 href={url}
                 target="_blank"
@@ -58,8 +94,13 @@ function FileViewerDialog({
 
           <div className="flex-1 overflow-auto bg-[#FAFAFA]">
             {isImage(fileName) ? (
-              <div className="flex h-full items-center justify-center p-4">
-                <img src={url} alt={fileName} className="max-h-full max-w-full object-contain" />
+              <div className="flex min-h-full items-center justify-center p-4">
+                <img
+                  src={url}
+                  alt={fileName}
+                  className="max-h-full max-w-full object-contain transition-transform duration-150 ease-out"
+                  style={{ transform: `scale(${zoom})` }}
+                />
               </div>
             ) : isPdf(fileName) ? (
               <iframe src={url} title={fileName} className="h-full w-full border-0" />

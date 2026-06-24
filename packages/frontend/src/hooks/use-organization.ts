@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
-import { organizationKeys } from "./query-keys";
+import { organizationKeys, projectKeys } from "./query-keys";
 
 function unwrap<T>(result: { data: T; error: { message?: string } | null }): T {
   if (result.error) {
@@ -42,6 +42,37 @@ export function useOrganizations() {
   return useQuery({
     queryKey: organizationKeys.list(),
     queryFn: async () => unwrap(await authClient.organization.list()),
+  });
+}
+
+function slugifyOrganizationName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "company"
+  );
+}
+
+export function useCreateOrganization() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { name: string }) => {
+      const name = input.name.trim();
+      const organization = unwrap(
+        await authClient.organization.create({
+          name,
+          slug: slugifyOrganizationName(name),
+        }),
+      );
+      if (!organization) throw new Error("Could not create company.");
+      await authClient.organization.setActive({ organizationId: organization.id });
+      return organization;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+    },
   });
 }
 
@@ -267,8 +298,11 @@ export function useSetActiveOrganization() {
   return useMutation({
     mutationFn: async (organizationId: string) =>
       unwrap(await authClient.organization.setActive({ organizationId })),
+    // The dashboard project list is scoped to the active org server-side, so it
+    // must refetch when the active org changes (and any org-scoped data resets).
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }

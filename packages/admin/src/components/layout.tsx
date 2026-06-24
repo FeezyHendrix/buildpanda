@@ -10,6 +10,7 @@ import {
   LogoutIcon,
   LeadsIcon,
   JobsIcon,
+  ShieldIcon,
 } from "@/components/icons";
 
 const nav = [
@@ -19,6 +20,8 @@ const nav = [
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
   { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
   { to: "/jobs", label: "Import jobs", icon: JobsIcon, end: false },
+  { to: "/maintenance", label: "Maintenance", icon: ShieldIcon, end: false },
+  { to: "/feature-flags", label: "Feature flags", icon: ShieldIcon, end: false },
 ];
 
 export function Layout() {

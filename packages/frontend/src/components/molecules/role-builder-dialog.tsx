@@ -48,6 +48,8 @@ const ACTION_LABELS: Record<string, string> = {
   request: "Request",
   post: "Post",
   send: "Send",
+  void: "Void",
+  report: "Generate report",
 };
 
 const RESOURCE_GROUPS: { label: string; resources: readonly string[] }[] = [

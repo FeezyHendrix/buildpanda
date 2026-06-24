@@ -1,5 +1,8 @@
 export type TaskStatus = "Todo" | "Doing" | "Done";
 
+export const TASK_PRIORITIES = ["Low", "Medium", "High"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
 export interface TaskColumn {
   id: string;
   boardId: string;
@@ -15,15 +18,21 @@ export interface Task {
   columnId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
   dueDate: string | null;
+  priority: TaskPriority;
+  labels: string[];
   position: number;
   sourceType: string | null;
   sourceId: string | null;
+  createdById: string | null;
+  createdByName: string | null;
   subtaskTotal: number;
   subtaskDone: number;
+  entityLinkTypes: TaskEntityType[];
   createdAt: string;
   updatedAt: string;
 }
@@ -45,9 +54,37 @@ export interface TaskLink {
   targetTaskTitle: string;
 }
 
+export const TASK_ENTITY_TYPES = [
+  "action_item",
+  "rfi",
+  "change_request",
+  "material",
+  "invoice",
+  "milestone_payment",
+] as const;
+export type TaskEntityType = (typeof TASK_ENTITY_TYPES)[number];
+
+export interface TaskEntityLink {
+  id: string;
+  entityType: TaskEntityType;
+  entityId: string;
+  label: string;
+  status: string | null;
+}
+
+export interface TaskEntityLinkRow {
+  id: string;
+  project_id: string;
+  task_id: string;
+  entity_type: TaskEntityType;
+  entity_id: string;
+  created_at: string;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
+  entityLinks: TaskEntityLink[];
 }
 
 export interface TaskBoard {
@@ -74,15 +111,19 @@ export interface TaskRow {
   column_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   assignee_id: string | null;
   assignee_name: string | null;
   assignee_team_member_id: string | null;
   assignee_team_member_name: string | null;
   due_date: string | null;
+  priority: TaskPriority;
+  labels: string[] | string;
   position: number;
   source_type: string | null;
   source_id: string | null;
   created_by_id: string | null;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

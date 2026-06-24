@@ -92,7 +92,11 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get("/projects", async (request) => {
     const user = request.requireAuth();
-    return service.listForOwner(user.id, [...request.orgRoles.keys()]);
+    const activeOrg =
+      request.activeOrganizationId !== null && request.orgRoles.has(request.activeOrganizationId)
+        ? request.activeOrganizationId
+        : null;
+    return service.listForUser(user.id, activeOrg ? [activeOrg] : []);
   });
 
   fastify.post<{ Body: CreateProjectInput }>(
@@ -141,6 +145,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       return service.getByIdForUser(request.params.id, {
         userId: user.id,
         orgRoles: request.orgRoles,
+        projectRoles: request.projectRoles,
       });
     },
   );

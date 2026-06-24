@@ -1,19 +1,28 @@
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useWhatsNext } from "@/hooks/use-insights";
 import { formatDayMonth as fmt } from "@/lib/formatters";
 import type { ReactNode } from "react";
 
-function Section({ title, count, children }: { title: string; count: number; children: ReactNode }) {
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+}) {
   if (count === 0) return null;
   return (
     <Card padding="md" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        <Badge tone="info" size="sm">{count}</Badge>
+        <Badge tone="info" size="sm">
+          {count}
+        </Badge>
       </div>
       <ul className="flex flex-col divide-y divide-[#F0F0F0]">{children}</ul>
     </Card>
@@ -35,8 +44,11 @@ export default function ProjectWhatsNext() {
 
   if (isLoading || !data) {
     return (
-      <div className="w-full px-6 py-8 sm:px-10">
-        <PageHeader title="What's Next" description="The next two weeks at a glance." />
+      <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+        <PageHeader
+          title="What's Next"
+          description="The next two weeks at a glance."
+        />
         <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
       </div>
     );
@@ -52,7 +64,7 @@ export default function ProjectWhatsNext() {
     data.expiringPermits.length;
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="What's Next"
         description={`Coming up between ${fmt(data.from)} and ${fmt(data.to)}, so you always know what's happening, wherever you are.`}
@@ -60,12 +72,17 @@ export default function ProjectWhatsNext() {
 
       {total === 0 ? (
         <Card padding="lg" className="mt-6 text-center">
-          <p className="text-sm font-medium text-gray-900">Nothing due in the next two weeks</p>
+          <p className="text-sm font-medium text-gray-900">
+            Nothing due in the next two weeks
+          </p>
           <p className="mt-1 text-sm text-gray-500">You're all caught up.</p>
         </Card>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Section title="Stages in progress" count={data.stagesInProgress.length}>
+          <Section
+            title="Stages in progress"
+            count={data.stagesInProgress.length}
+          >
             {data.stagesInProgress.map((s) => (
               <Row key={s.id} label={s.name} meta={`${s.progress_percent}%`} />
             ))}
@@ -77,7 +94,11 @@ export default function ProjectWhatsNext() {
           </Section>
           <Section title="Action items due" count={data.dueActionItems.length}>
             {data.dueActionItems.map((a) => (
-              <Row key={a.id} label={a.title} meta={`${a.priority} · ${fmt(a.due_date)}`} />
+              <Row
+                key={a.id}
+                label={a.title}
+                meta={`${a.priority} · ${fmt(a.due_date)}`}
+              />
             ))}
           </Section>
           <Section title="Open queries due" count={data.dueQueries.length}>

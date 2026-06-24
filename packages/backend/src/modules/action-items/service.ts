@@ -16,6 +16,7 @@ import type {
 export interface CreateActionItemInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   status?: ActionStatus;
   priority?: ActionPriority;
   assigneeId?: string | null;
@@ -28,6 +29,7 @@ export interface CreateActionItemInput {
 export interface UpdateActionItemInput {
   title?: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   status?: ActionStatus;
   priority?: ActionPriority;
   assigneeId?: string | null;
@@ -47,6 +49,7 @@ function toItem(row: ActionItemRow, commentCount: number): ActionItem {
     projectId: row.project_id,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     status: row.status,
     priority: row.priority,
     assigneeId: row.assignee_id,
@@ -101,6 +104,7 @@ async function spawnNextOccurrence(
     project_id: origin.project_id,
     title: origin.title,
     description: origin.description,
+    description_html: origin.description_html,
     status: "Open",
     priority: origin.priority,
     assignee_id: origin.assignee_id,
@@ -189,6 +193,7 @@ export function actionItemsService(repository: ActionItemsRepository, deps: Acti
         project_id: projectId,
         title: input.title,
         description: input.description ?? null,
+        description_html: input.descriptionHtml ?? null,
         status,
         priority: input.priority ?? "Medium",
         assignee_id: input.assigneeId ?? null,
@@ -221,6 +226,7 @@ export function actionItemsService(repository: ActionItemsRepository, deps: Acti
       const patch: ActionItemUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.title !== undefined) patch.title = input.title;
       if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.priority !== undefined) patch.priority = input.priority;
       if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
       if (input.dueDate !== undefined) {

@@ -4,17 +4,26 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertKeyDateDialog,
   type UpsertKeyDateValues,
 } from "@/components/molecules/upsert-key-date-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useCreateKeyDate, useDeleteKeyDate, useKeyDates, useUpdateKeyDate } from "@/hooks/use-key-dates";
+import {
+  useCreateKeyDate,
+  useDeleteKeyDate,
+  useKeyDates,
+  useUpdateKeyDate,
+} from "@/hooks/use-key-dates";
 import { formatShortDate } from "@/lib/formatters";
 import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
 
-const STATUS_META: Record<KeyDateStatus, { tone: "neutral" | "success" | "danger" }> = {
+const STATUS_META: Record<
+  KeyDateStatus,
+  { tone: "neutral" | "success" | "danger" }
+> = {
   Upcoming: { tone: "neutral" },
   Met: { tone: "success" },
   Missed: { tone: "danger" },
@@ -37,24 +46,43 @@ export default function ProjectKeyDates() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   function handleCreate(values: UpsertKeyDateValues): void {
-    createKd.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
+    createKd.mutate(
+      { projectId: project.id, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
   }
   function handleEdit(values: UpsertKeyDateValues): void {
     if (!editKd) return;
-    updateKd.mutate({ projectId: project.id, keyDateId: editKd.id, ...values }, { onSuccess: () => setEditKd(null) });
+    updateKd.mutate(
+      { projectId: project.id, keyDateId: editKd.id, ...values },
+      { onSuccess: () => setEditKd(null) },
+    );
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedule", to: `/project/${project.id}/schedule` },
+          { label: "Key Dates" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Key Dates"
         description="The milestone dates that matter: target vs actual, so slippage is visible."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            Add key date
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              Add key date
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="mt-6 flex flex-col gap-3">
@@ -62,16 +90,24 @@ export default function ProjectKeyDates() {
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
         ) : keyDates.length === 0 ? (
           <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">No key dates yet</p>
-            <p className="mt-1 text-sm text-gray-500">Add the milestones you want to track.</p>
+            <p className="text-sm font-medium text-gray-900">
+              No key dates yet
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Add the milestones you want to track.
+            </p>
           </Card>
         ) : (
           keyDates.map((kd) => (
             <Card key={kd.id} padding="md" className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-gray-900">{kd.label}</p>
-                  <Badge tone={STATUS_META[kd.status].tone} size="sm">{kd.status}</Badge>
+                  <p className="truncate text-sm font-semibold text-gray-900">
+                    {kd.label}
+                  </p>
+                  <Badge tone={STATUS_META[kd.status].tone} size="sm">
+                    {kd.status}
+                  </Badge>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                   <span>Target {fmt(kd.targetDate)}</span>
@@ -80,8 +116,20 @@ export default function ProjectKeyDates() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setEditKd(kd)} className="text-xs font-medium text-gray-500 hover:text-gray-900">Edit</button>
-                <button type="button" onClick={() => setDeleteId(kd.id)} className="text-xs font-medium text-red-500 hover:text-red-600">Delete</button>
+                <button
+                  type="button"
+                  onClick={() => setEditKd(kd)}
+                  className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteId(kd.id)}
+                  className="text-xs font-medium text-red-500 hover:text-red-600"
+                >
+                  Delete
+                </button>
               </div>
             </Card>
           ))
@@ -109,7 +157,8 @@ export default function ProjectKeyDates() {
         open={deleteId !== null}
         onOpenChange={(o) => !o && setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) deleteKd.mutate({ projectId: project.id, keyDateId: deleteId });
+          if (deleteId)
+            deleteKd.mutate({ projectId: project.id, keyDateId: deleteId });
           setDeleteId(null);
         }}
         title="Delete key date"

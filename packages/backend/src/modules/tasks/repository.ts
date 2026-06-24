@@ -3,6 +3,8 @@ import type {
   SubtaskRow,
   TaskBoardRow,
   TaskColumnRow,
+  TaskEntityLinkRow,
+  TaskEntityType,
   TaskLinkRow,
   TaskRow,
 } from "./types.ts";
@@ -14,9 +16,12 @@ export interface NewTaskRecord {
   column_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   assignee_id: string | null;
   assignee_team_member_id: string | null;
   due_date: string | null;
+  priority: string;
+  labels: string;
   position: number;
   source_type: string | null;
   source_id: string | null;
@@ -26,9 +31,12 @@ export interface NewTaskRecord {
 export interface TaskUpdatePatch {
   title?: string;
   description?: string | null;
+  description_html?: string | null;
   assignee_id?: string | null;
   assignee_team_member_id?: string | null;
   due_date?: string | null;
+  priority?: string;
+  labels?: string;
   column_id?: string;
   position?: number;
   updated_at?: string;
@@ -49,24 +57,43 @@ const TASK_SELECT = [
   "t.column_id",
   "t.title",
   "t.description",
+  "t.description_html",
   "t.assignee_id",
   "u.name as assignee_name",
   "t.assignee_team_member_id",
   "tm.name as assignee_team_member_name",
   "t.due_date",
+  "t.priority",
+  "t.labels",
   "t.position",
   "t.source_type",
   "t.source_id",
   "t.created_by_id",
+  "creator.name as created_by_name",
   "t.created_at",
   "t.updated_at",
 ] as const;
+
+// Maps each linkable entity type to its owning table's label/status columns;
+// the resolver batches one whereIn query per type, never a query per link.
+const ENTITY_SOURCES: Record<
+  TaskEntityType,
+  { table: string; labelColumn: string; statusColumn: string }
+> = {
+  action_item: { table: "action_items", labelColumn: "title", statusColumn: "status" },
+  rfi: { table: "rfis", labelColumn: "subject", statusColumn: "status" },
+  change_request: { table: "change_requests", labelColumn: "title", statusColumn: "status" },
+  material: { table: "material_orders", labelColumn: "material_name", statusColumn: "status" },
+  invoice: { table: "project_invoices", labelColumn: "vendor_name", statusColumn: "status" },
+  milestone_payment: { table: "milestone_payments", labelColumn: "name", statusColumn: "status" },
+};
 
 export function tasksRepository(db: Knex) {
   function taskBase() {
     return db("tasks as t")
       .leftJoin("user as u", "u.id", "t.assignee_id")
-      .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id");
+      .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id")
+      .leftJoin("user as creator", "creator.id", "t.created_by_id");
   }
 
   return {
@@ -191,6 +218,21 @@ export function tasksRepository(db: Knex) {
       return result;
     },
 
+    async entityLinkTypesByTask(taskIds: string[]): Promise<Map<string, TaskEntityType[]>> {
+      const result = new Map<string, TaskEntityType[]>();
+      if (taskIds.length === 0) return result;
+      const rows = await db("task_entity_links")
+        .whereIn("task_id", taskIds)
+        .distinct("task_id", "entity_type")
+        .orderBy("entity_type", "asc");
+      for (const row of rows as { task_id: string; entity_type: TaskEntityType }[]) {
+        const list = result.get(row.task_id) ?? [];
+        list.push(row.entity_type);
+        result.set(row.task_id, list);
+      }
+      return result;
+    },
+
     listSubtasks(taskId: string): Promise<SubtaskRow[]> {
       return db<SubtaskRow>("task_subtasks").where({ task_id: taskId }).orderBy("position", "asc");
     },
@@ -252,6 +294,113 @@ export function tasksRepository(db: Knex) {
 
     async deleteLink(id: string): Promise<void> {
       await db("task_links").where({ id }).delete();
+    },
+
+    listEntityLinks(taskId: string): Promise<TaskEntityLinkRow[]> {
+      return db<TaskEntityLinkRow>("task_entity_links")
+        .where({ task_id: taskId })
+        .orderBy("created_at", "asc")
+        .select("id", "project_id", "task_id", "entity_type", "entity_id", "created_at");
+    },
+
+    findEntityLinkById(id: string): Promise<TaskEntityLinkRow | undefined> {
+      return db<TaskEntityLinkRow>("task_entity_links").where({ id }).first();
+    },
+
+    entityLinkExists(taskId: string, entityType: TaskEntityType, entityId: string): Promise<boolean> {
+      return db("task_entity_links")
+        .where({ task_id: taskId, entity_type: entityType, entity_id: entityId })
+        .first()
+        .then((row) => Boolean(row));
+    },
+
+    async createEntityLink(record: {
+      id: string;
+      project_id: string;
+      task_id: string;
+      entity_type: TaskEntityType;
+      entity_id: string;
+      created_by_id: string | null;
+    }): Promise<void> {
+      await db("task_entity_links").insert(record);
+    },
+
+    async deleteEntityLink(id: string): Promise<void> {
+      await db("task_entity_links").where({ id }).delete();
+    },
+
+    entityExists(entityType: TaskEntityType, entityId: string, projectId: string): Promise<boolean> {
+      const source = ENTITY_SOURCES[entityType];
+      return db(source.table)
+        .where({ id: entityId, project_id: projectId })
+        .first()
+        .then((row) => Boolean(row));
+    },
+
+    async resolveEntityLabels(
+      links: ReadonlyArray<{ entity_type: TaskEntityType; entity_id: string }>,
+    ): Promise<Map<string, { label: string; status: string | null }>> {
+      const idsByType = new Map<TaskEntityType, string[]>();
+      for (const link of links) {
+        const list = idsByType.get(link.entity_type) ?? [];
+        list.push(link.entity_id);
+        idsByType.set(link.entity_type, list);
+      }
+
+      const resolved = new Map<string, { label: string; status: string | null }>();
+      await Promise.all(
+        [...idsByType.entries()].map(async ([type, ids]) => {
+          const source = ENTITY_SOURCES[type];
+          const rows = await db(source.table)
+            .whereIn("id", ids)
+            .select(
+              "id",
+              `${source.labelColumn} as label`,
+              `${source.statusColumn} as status`,
+            );
+          for (const row of rows as { id: string; label: string | null; status: string | null }[]) {
+            resolved.set(`${type}:${row.id}`, { label: row.label ?? "(untitled)", status: row.status });
+          }
+        }),
+      );
+      return resolved;
+    },
+
+    async assignableUsers(
+      projectId: string,
+      organizationId: string | null,
+      ownerId: string | null,
+    ): Promise<{ id: string; name: string; email: string }[]> {
+      // People who can own a task: org members of the project's org, the
+      // project owner, and active project participants who have a user account.
+      const orgMembers = organizationId
+        ? db("member as m")
+            .join("user as u", "u.id", "m.userId")
+            .where("m.organizationId", organizationId)
+            .select("u.id", "u.name", "u.email")
+        : db("user").whereRaw("1 = 0").select("id", "name", "email");
+
+      const participants = db("project_participants as p")
+        .join("user as u", "u.id", "p.user_id")
+        .where("p.project_id", projectId)
+        .where("p.status", "active")
+        .select("u.id", "u.name", "u.email");
+
+      const owner = ownerId
+        ? db("user").where("id", ownerId).select("id", "name", "email")
+        : db("user").whereRaw("1 = 0").select("id", "name", "email");
+
+      return orgMembers.unionAll([participants, owner]);
+    },
+
+    teamAssignees(
+      projectId: string,
+    ): Promise<{ id: string; name: string; role: string }[]> {
+      return db("team_members")
+        .where({ project_id: projectId })
+        .whereNot("status", "removed")
+        .orderBy("name", "asc")
+        .select("id", "name", "role");
     },
   };
 }

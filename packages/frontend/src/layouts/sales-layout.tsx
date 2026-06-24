@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
@@ -13,12 +13,13 @@ import {
 } from "@/components/molecules/suite-switcher";
 import { authClient } from "@/lib/auth-client";
 import { AbilityProvider } from "@/contexts/ability-context";
+import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import logo from "@/assets/images/logo.svg";
 
 export { LAST_SUITE_KEY, SUITE_SALES };
 export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 
-const salesNav = [
+const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNode }> = [
   {
     label: "Dashboard",
     to: "/sales",
@@ -34,6 +35,7 @@ const salesNav = [
   {
     label: "Leads",
     to: "/sales/leads",
+    flag: "sales.leads",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -45,6 +47,7 @@ const salesNav = [
   {
     label: "Proposals",
     to: "/sales/proposals",
+    flag: "sales.proposals",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -121,6 +124,11 @@ function SalesSidebar({
   onClose: () => void;
   onOpen: () => void;
 }) {
+  const { data: flagsData } = useFeatureFlags();
+  const visibleNav = salesNav.filter(
+    (item) => !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true),
+  );
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -179,7 +187,7 @@ function SalesSidebar({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
-            {salesNav.map((item) => (
+            {visibleNav.map((item) => (
               <SalesNavLink key={item.to} item={item} />
             ))}
           </nav>
@@ -211,6 +219,7 @@ export default function SalesLayout() {
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const notificationsEnabled = useFeatureFlag("collaboration.notifications");
 
   // Stamp the last suite so HomeRedirect returns here for company users
   useEffect(() => {
@@ -239,7 +248,7 @@ export default function SalesLayout() {
         onOpen={() => setSidebarOpen(true)}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Navbar showLogo={false} sticky />
+        <Navbar showLogo={false} sticky showNotifications={notificationsEnabled} />
         <main className="flex-1 overflow-y-auto bg-white no-scrollbar">
           <ErrorBoundary>
             <AbilityProvider>

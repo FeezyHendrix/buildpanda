@@ -7,6 +7,12 @@ export interface UpsertApprovalValues {
   category: string | null;
   description: string | null;
   dueDate: string | null;
+  requestedReviewerId: string | null;
+}
+
+export interface ReviewerOption {
+  id: string;
+  name: string;
 }
 
 interface Props {
@@ -14,6 +20,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initial?: Partial<UpsertApprovalValues>;
+  reviewerOptions?: ReviewerOption[];
   onSubmit: (values: UpsertApprovalValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -29,6 +36,7 @@ function UpsertApprovalDialog({
   onOpenChange,
   mode,
   initial,
+  reviewerOptions = [],
   onSubmit,
   isSubmitting = false,
   error,
@@ -37,6 +45,7 @@ function UpsertApprovalDialog({
   const [category, setCategory] = useState("Finishes");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [requestedReviewerId, setRequestedReviewerId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -44,6 +53,7 @@ function UpsertApprovalDialog({
       setCategory(initial?.category ?? "Finishes");
       setDescription(initial?.description ?? "");
       setDueDate(initial?.dueDate ?? "");
+      setRequestedReviewerId(initial?.requestedReviewerId ?? "");
     }
   }, [open, initial]);
 
@@ -54,6 +64,7 @@ function UpsertApprovalDialog({
       category: category || null,
       description: description.trim() || null,
       dueDate: dueDate || null,
+      requestedReviewerId: requestedReviewerId || null,
     });
   }
 
@@ -107,6 +118,26 @@ function UpsertApprovalDialog({
           placeholder="Describe what's being submitted for approval"
           className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
         />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="ap-reviewer">Request approval from</Label>
+        <select
+          id="ap-reviewer"
+          value={requestedReviewerId}
+          onChange={(e) => setRequestedReviewerId(e.target.value)}
+          className={field}
+        >
+          <option value="">Anyone who can approve (clients & team)</option>
+          {reviewerOptions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-400">
+          Pick a person to send this to them specifically; otherwise clients and other approvers can sign off.
+        </p>
       </div>
     </FormDrawer>
   );

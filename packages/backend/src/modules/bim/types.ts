@@ -44,6 +44,7 @@ export interface BimCoordinationIssue {
   position: unknown;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   status: BimIssueStatus;
   rfiId: string | null;
   assigneeId: string | null;
@@ -99,6 +100,7 @@ export interface BimCoordinationIssueRow {
   position: unknown;
   title: string;
   description: string | null;
+  description_html: string | null;
   status: BimIssueStatus;
   rfi_id: string | null;
   assignee_id: string | null;

@@ -8,6 +8,8 @@ import { setLogger } from "./lib/logger.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
+import securityPlugin from "./plugins/security.ts";
+import featureFlagsPlugin from "./plugins/feature-flags.ts";
 import queuePlugin from "./plugins/queue.ts";
 import realtimePlugin from "./plugins/realtime.ts";
 import authRoutes from "./modules/auth/routes.ts";
@@ -42,12 +44,16 @@ import permitRoutes from "./modules/permits/index.ts";
 import keyDateRoutes from "./modules/key-dates/index.ts";
 import insightsRoutes from "./modules/insights/index.ts";
 import reportingRoutes from "./modules/reporting/routes.ts";
+import weatherRoutes from "./modules/weather/routes.ts";
+import maintenanceRoutes from "./modules/maintenance/routes.ts";
+import featureFlagRoutes from "./modules/feature-flags/routes.ts";
 import participantRoutes from "./modules/participants/index.ts";
 import messagingRoutes from "./modules/messaging/routes.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
+import automatedTakeoffRoutes from "./modules/panda-ai/automated-takeoff/routes.ts";
 import importSessionRoutes from "./modules/import-sessions/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import proposalRoutes from "./modules/proposals/routes.ts";
@@ -59,8 +65,31 @@ import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: { level: config.http.logLevel },
+    logger: {
+      level: config.http.logLevel,
+      // Strip credentials and client PII from logs at the serializer level so
+      // session tokens / passwords / personal data never reach log storage,
+      // regardless of what a handler passes to request.log.
+      redact: {
+        paths: [
+          "req.headers.authorization",
+          "req.headers.cookie",
+          "res.headers['set-cookie']",
+          "password",
+          "token",
+          "*.password",
+          "*.token",
+          "*.authorization",
+          "*.cookie",
+        ],
+        censor: "[redacted]",
+      },
+    },
     disableRequestLogging: false,
+    // Railway/edge terminates TLS and forwards the client IP via X-Forwarded-For;
+    // trustProxy makes request.ip reflect the real client so rate limiting and
+    // geo key off the caller, not the proxy.
+    trustProxy: true,
     ajv: {
       plugins: [
         (ajv) => {
@@ -83,9 +112,12 @@ export async function buildApp(): Promise<FastifyInstance> {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
+  await app.register(securityPlugin);
+
   await app.register(databasePlugin);
   await app.register(errorHandlerPlugin);
   await app.register(authContextPlugin);
+  await app.register(featureFlagsPlugin);
   await app.register(queuePlugin);
   await app.register(realtimePlugin);
 
@@ -121,12 +153,16 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(keyDateRoutes);
   await app.register(insightsRoutes);
   await app.register(reportingRoutes);
+  await app.register(weatherRoutes);
+  await app.register(maintenanceRoutes);
+  await app.register(featureFlagRoutes);
   await app.register(participantRoutes);
   await app.register(messagingRoutes);
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
   await app.register(pandaAiAgentRoutes);
   await app.register(programmeImportRoutes);
+  await app.register(automatedTakeoffRoutes);
   await app.register(importSessionRoutes);
   await app.register(orgProfileRoutes);
   await app.register(proposalRoutes);

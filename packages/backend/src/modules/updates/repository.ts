@@ -29,6 +29,7 @@ export interface NewUpdateRecord {
   category: UpdateCategory;
   title: string;
   description: string;
+  description_html: string | null;
   cta_label: string;
   cta_tone: CtaTone;
   status: UpdateStatus;
@@ -38,6 +39,7 @@ export interface NewUpdateRecord {
 export interface UpdateContentPatch {
   title?: string;
   description?: string;
+  description_html?: string | null;
   category?: UpdateCategory;
   cta_label?: string;
   cta_tone?: CtaTone;

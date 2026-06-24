@@ -9,6 +9,7 @@ import {
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import type { ApprovalStatus } from "@/lib/project-types";
 
 export const APPROVAL_STATUS_META: Record<
@@ -21,6 +22,13 @@ export const APPROVAL_STATUS_META: Record<
   Resubmit: { label: "Resubmit", tone: "warning" },
 };
 
+const DECISION_TOAST: Record<ApprovalStatus, string> = {
+  Pending: "Approval reopened",
+  Approved: "Approval approved",
+  Rejected: "Approval rejected",
+  Resubmit: "Resubmission requested",
+};
+
 function formatWhen(value: string): string {
   return formatShortDate(value) || value;
 }
@@ -30,9 +38,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   approvalId: string | null;
+  canDecide?: boolean;
+  currentUserId?: string;
 }
 
-function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Props) {
+function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDecide = false, currentUserId }: Props) {
   const { data: approval, isLoading } = useApproval(projectId, approvalId ?? undefined);
   const updateApproval = useUpdateApproval();
   const addComment = useAddApprovalComment();
@@ -45,7 +55,16 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
 
   function decide(status: ApprovalStatus): void {
     if (!approvalId) return;
-    updateApproval.mutate({ projectId, approvalId, status, response: response.trim() || null });
+    updateApproval.mutate(
+      { projectId, approvalId, status, response: response.trim() || null },
+      {
+        onSuccess: () => {
+          toast(DECISION_TOAST[status], "success");
+          onOpenChange(false);
+        },
+        onError: () => toast("Could not record the decision"),
+      },
+    );
   }
 
   function submitComment(): void {
@@ -54,6 +73,11 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
   }
 
   const decided = approval && approval.status !== "Pending";
+  // Mirror the backend gate: the user may decide only if they are an approver,
+  // and when a specific reviewer was requested it must be them.
+  const mayDecide =
+    canDecide &&
+    (!approval?.requestedReviewerId || approval.requestedReviewerId === currentUserId);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -75,6 +99,9 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                     {APPROVAL_STATUS_META[approval.status].label}
                   </Badge>
                   {approval.category && <Badge tone="neutral" size="sm">{approval.category}</Badge>}
+                  {approval.requestedReviewerName && (
+                    <Badge tone="info" size="sm">For {approval.requestedReviewerName}</Badge>
+                  )}
                   {approval.dueDate && (
                     <span className="text-xs text-gray-500">Needed by {formatWhen(approval.dueDate)}</span>
                   )}
@@ -88,7 +115,9 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
               </header>
 
               <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Decision</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  {decided ? `Decision · ${APPROVAL_STATUS_META[approval.status].label}` : "Decision"}
+                </p>
                 {decided && approval.response ? (
                   <div className="mt-2 rounded-xl bg-[#FAFAFA] p-3">
                     <p className="whitespace-pre-wrap text-sm text-gray-900">{approval.response}</p>
@@ -100,26 +129,39 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                     )}
                   </div>
                 ) : null}
-                <div className="mt-2 flex flex-col gap-2">
-                  <textarea
-                    value={response}
-                    onChange={(e) => setResponse(e.target.value)}
-                    rows={2}
-                    placeholder="Add a note for your decision (optional)"
-                    className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" disabled={updateApproval.isPending} onClick={() => decide("Approved")}>
-                      Approve
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" disabled={updateApproval.isPending} onClick={() => decide("Resubmit")}>
-                      Request resubmit
-                    </Button>
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" disabled={updateApproval.isPending} onClick={() => decide("Rejected")}>
-                      Reject
-                    </Button>
+                {mayDecide ? (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <textarea
+                      value={response}
+                      onChange={(e) => setResponse(e.target.value)}
+                      rows={2}
+                      placeholder="Add a note for your decision (optional)"
+                      className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
+                        {approval.status === "Approved" ? "Approved" : "Approve"}
+                      </Button>
+                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
+                        Request resubmit
+                      </Button>
+                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
+                        {approval.status === "Rejected" ? "Rejected" : "Reject"}
+                      </Button>
+                    </div>
+                    {decided && (
+                      <p className="text-xs text-gray-400">This approval is {APPROVAL_STATUS_META[approval.status].label.toLowerCase()}. Choosing a different outcome updates the decision.</p>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    {!decided && approval.requestedReviewerName
+                      ? `Awaiting a decision from ${approval.requestedReviewerName}.`
+                      : decided
+                        ? "This decision has been recorded."
+                        : "You do not have permission to decide this approval."}
+                  </p>
+                )}
 
                 <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Discussion ({approval.comments.length})
@@ -154,7 +196,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                   variant="primary"
                   size="sm"
                   className="h-9 px-4 text-sm"
-                  disabled={!comment.trim() || addComment.isPending}
+                  disabled={!comment.trim()} loading={addComment.isPending}
                   onClick={submitComment}
                 >
                   Send

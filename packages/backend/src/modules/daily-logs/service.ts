@@ -5,6 +5,10 @@ import type {
   DailyLog,
   DailyLogActivityLink,
   DailyLogActivityRow,
+  DailyLogDay,
+  DailyLogEntry,
+  DailyLogEntryRow,
+  DailyLogEntryVoidRow,
   DailyLogRow,
   LinkActivityInput,
   UpsertDailyLogInput,
@@ -31,6 +35,48 @@ function toLogDateString(value: Date | string): string {
   return value.toISOString().slice(0, 10);
 }
 
+function buildEntry(row: DailyLogEntryRow, voidRows: DailyLogEntryVoidRow[]): DailyLogEntry {
+  const voids = voidRows
+    .filter((v) => v.entry_id === row.id)
+    .map((v) => ({
+      id: v.id,
+      reason: v.reason,
+      voidedById: v.voided_by_id,
+      voidedByName: v.voided_by_name,
+      voidedAt: toIso(v.voided_at),
+    }));
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    logDate: toLogDateString(row.log_date),
+    authorId: row.author_id,
+    authorName: row.author_name,
+    authorRole: row.author_role,
+    bodyHtml: row.body_html,
+    bodyText: row.body_text,
+    voids,
+    voided: voids.length > 0,
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
+function toDay(log: DailyLog, entries: DailyLogEntry[]): DailyLogDay {
+  return {
+    projectId: log.projectId,
+    logDate: log.logDate,
+    weatherCondition: log.weatherCondition,
+    temperatureC: log.temperatureC,
+    precipitationMm: log.precipitationMm,
+    windKph: log.windKph,
+    workersExpected: log.workersExpected,
+    workersPresent: log.workersPresent,
+    totalHours: log.totalHours,
+    activities: log.activities,
+    entries,
+  };
+}
+
 function buildLog(
   row: DailyLogRow,
   activities: DailyLogActivityLink[],
@@ -47,6 +93,7 @@ function buildLog(
     workersPresent: row.workers_present,
     totalHours: Number(row.total_hours),
     summary: row.summary,
+    summaryHtml: row.summary_html,
     activities,
     voidedAt: row.voided_at ? toIso(row.voided_at) : null,
     voidedById: row.voided_by_id,
@@ -100,6 +147,23 @@ export function dailyLogsService(
     return rows.map((row) =>
       buildLog(row, linkMap.get(`${row.project_id}|${toLogDateString(row.log_date)}`) ?? [], voiderNames),
     );
+  }
+
+  async function loadEntriesByDay(
+    keys: { projectId: string; logDate: string }[],
+  ): Promise<Map<string, DailyLogEntry[]>> {
+    const map = new Map<string, DailyLogEntry[]>();
+    if (keys.length === 0) return map;
+    const entryRows = await repository.entriesForDays(keys);
+    if (entryRows.length === 0) return map;
+    const voidRows = await repository.voidsForEntries(entryRows.map((e) => e.id));
+    for (const row of entryRows) {
+      const key = `${row.project_id}|${toLogDateString(row.log_date)}`;
+      const list = map.get(key) ?? [];
+      list.push(buildEntry(row, voidRows));
+      map.set(key, list);
+    }
+    return map;
   }
 
   return {
@@ -197,6 +261,93 @@ export function dailyLogsService(
       ]);
       if (!voided) throw new NotFoundError("Daily log");
       return voided;
+    },
+
+    async listDays(projectId: string, from?: string, to?: string): Promise<DailyLogDay[]> {
+      if (from) assertDate(from, "from");
+      if (to) assertDate(to, "to");
+      const rows = await repository.listByProjectInRange(projectId, from, to);
+      const logs = await attachActivities(rows);
+      const keys = rows.map((r) => ({ projectId: r.project_id, logDate: toLogDateString(r.log_date) }));
+      const entriesByDay = await loadEntriesByDay(keys);
+      return logs.map((log) => toDay(log, entriesByDay.get(`${log.projectId}|${log.logDate}`) ?? []));
+    },
+
+    async getDay(projectId: string, logDate: string): Promise<DailyLogDay> {
+      assertDate(logDate, "logDate");
+      const row = await repository.findOne({ projectId, logDate });
+      const entriesByDay = await loadEntriesByDay([{ projectId, logDate }]);
+      const entries = entriesByDay.get(`${projectId}|${logDate}`) ?? [];
+      if (!row) {
+        return {
+          projectId,
+          logDate,
+          weatherCondition: null,
+          temperatureC: null,
+          precipitationMm: null,
+          windKph: null,
+          workersExpected: 0,
+          workersPresent: 0,
+          totalHours: 0,
+          activities: [],
+          entries,
+        };
+      }
+      const [log] = await attachActivities([row]);
+      if (!log) throw new NotFoundError("Daily log");
+      return toDay(log, entries);
+    },
+
+    async addEntry(
+      projectId: string,
+      logDate: string,
+      bodyHtml: string,
+      bodyText: string | null,
+      author: { id: string; name: string; role: string },
+    ): Promise<DailyLogEntry> {
+      assertDate(logDate, "logDate");
+      if (stripHtml(bodyHtml).trim() === "") {
+        throw new BadRequestError("Your daily log entry cannot be empty");
+      }
+      const existing = await repository.findOne({ projectId, logDate });
+      if (!existing) {
+        await repository.upsert({ projectId, logDate }, {}, author.id);
+      }
+      const row = await repository.insertEntry({
+        projectId,
+        logDate,
+        authorId: author.id,
+        authorName: author.name,
+        authorRole: author.role,
+        bodyHtml,
+        bodyText,
+      });
+      return buildEntry(row, []);
+    },
+
+    async voidEntry(
+      projectId: string,
+      entryId: string,
+      reason: string,
+      actor: { id: string; name: string; canManage: boolean },
+    ): Promise<DailyLogEntry> {
+      const trimmed = reason.trim();
+      if (trimmed === "" || stripHtml(trimmed) === "") {
+        throw new BadRequestError("A reason is required to void a daily log entry");
+      }
+      const entry = await repository.findEntryById(entryId);
+      if (!entry || entry.project_id !== projectId) throw new NotFoundError("Daily log entry");
+      if (entry.author_id !== actor.id && !actor.canManage) {
+        throw new BadRequestError("You can only void your own daily log entry");
+      }
+      await repository.insertEntryVoid({
+        entryId,
+        reason: trimmed,
+        voidedById: actor.id,
+        voidedByName: actor.name,
+      });
+      const voids = await repository.voidsForEntries([entryId]);
+      return buildEntry(entry, voids);
     },
   };
 }

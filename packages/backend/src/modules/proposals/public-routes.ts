@@ -4,6 +4,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalResponseEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
+import { publicTokenRateLimit } from "../../plugins/security.ts";
 
 const tokenParams = {
   type: "object",
@@ -27,7 +28,7 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { token: string } }>(
     "/proposals/public/:token",
-    { schema: { params: tokenParams } },
+    { schema: { params: tokenParams }, config: { rateLimit: publicTokenRateLimit } },
     async (request) => {
       const result = await repo.getByShareToken(request.params.token);
       if (!result) throw new NotFoundError("Proposal");
@@ -67,7 +68,7 @@ const publicProposalRoutes: FastifyPluginAsync = async (fastify) => {
     Body: { action: "accept" | "decline" | "change_requested"; name?: string };
   }>(
     "/proposals/public/:token/respond",
-    { schema: { params: tokenParams, body: respondBody } },
+    { schema: { params: tokenParams, body: respondBody }, config: { rateLimit: publicTokenRateLimit } },
     async (request, reply) => {
       const result = await repo.getByShareToken(request.params.token);
       if (!result) throw new NotFoundError("Proposal");

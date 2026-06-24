@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { useCurrentWeather, type WeatherSnapshot } from "@/hooks/use-weather";
 import { cn } from "@/lib/utils";
-import type { DailyLog, WeatherCondition } from "@/lib/project-types";
+import type { DailyLogDay, WeatherCondition } from "@/lib/project-types";
 
 const WEATHER_OPTIONS: { value: WeatherCondition; label: string }[] = [
   { value: "Sunny", label: "Sunny" },
@@ -22,14 +23,14 @@ export interface UpsertDailyLogValues {
   workersExpected: number;
   workersPresent: number;
   totalHours: number;
-  summary: string;
 }
 
 interface UpsertDailyLogDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initial?: DailyLog | null;
+  initial?: DailyLogDay | null;
   defaultDate: string;
+  projectId: string;
   onSubmit: (values: UpsertDailyLogValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -46,6 +47,7 @@ function UpsertDailyLogDialog({
   onOpenChange,
   initial,
   defaultDate,
+  projectId,
   onSubmit,
   isSubmitting = false,
   error,
@@ -59,7 +61,16 @@ function UpsertDailyLogDialog({
   const [workersExpected, setWorkersExpected] = useState("");
   const [workersPresent, setWorkersPresent] = useState("");
   const [totalHours, setTotalHours] = useState("");
-  const [summary, setSummary] = useState("");
+  const prefilledRef = useRef(false);
+
+  const weather = useCurrentWeather(projectId, open);
+
+  const applyWeather = useCallback((data: WeatherSnapshot) => {
+    setWeatherCondition(data.condition);
+    setTemperatureC(String(data.temperatureC));
+    setWindKph(String(data.windKph));
+    setPrecipitationMm(String(data.precipitationMm));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -83,8 +94,17 @@ function UpsertDailyLogDialog({
     setWorkersExpected(String(initial?.workersExpected ?? 0));
     setWorkersPresent(String(initial?.workersPresent ?? 0));
     setTotalHours(String(initial?.totalHours ?? 0));
-    setSummary(initial?.summary ?? "");
+    prefilledRef.current = false;
   }, [open, initial, defaultDate]);
+
+  useEffect(() => {
+    if (!open || prefilledRef.current) return;
+    if (initial?.weatherCondition) return;
+    if (weather.data) {
+      applyWeather(weather.data);
+      prefilledRef.current = true;
+    }
+  }, [open, initial, weather.data, applyWeather]);
 
   const isValid = /^\d{4}-\d{2}-\d{2}$/.test(logDate);
 
@@ -99,14 +119,13 @@ function UpsertDailyLogDialog({
       workersExpected: Math.max(0, Number(workersExpected) || 0),
       workersPresent: Math.max(0, Number(workersPresent) || 0),
       totalHours: Math.max(0, Number(totalHours) || 0),
-      summary: summary.trim(),
     });
   }
 
   return (
     <FormDrawer open={open}
     onOpenChange={onOpenChange}
-    title={initial ? "Update daily log" : "New daily log"}
+    title={initial ? "Update day conditions" : "Set day conditions"}
     submitLabel={initial ? "Save changes" : "Save log"}
     submitDisabled={!isValid}
     submitting={isSubmitting}
@@ -124,7 +143,18 @@ function UpsertDailyLogDialog({
     </div>
     
     <div className="flex flex-col gap-1.5">
-      <Label>Weather</Label>
+      <div className="flex items-center justify-between">
+        <Label>Weather</Label>
+        {weather.data && (
+          <button
+            type="button"
+            onClick={() => weather.data && applyWeather(weather.data)}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            ↻ Prefill from live weather
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
         {WEATHER_OPTIONS.map((opt) => (
           <button
@@ -214,19 +244,7 @@ function UpsertDailyLogDialog({
         />
       </div>
     </div>
-    
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor="log-summary">End-of-day summary</Label>
-      <textarea
-        id="log-summary"
-        value={summary}
-        onChange={(e) => setSummary(e.target.value)}
-        rows={3}
-        maxLength={4000}
-        placeholder="What got done, what blocked progress, what's planned for tomorrow."
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-      />
-    </div></FormDrawer>
+    </FormDrawer>
   );
 }
 

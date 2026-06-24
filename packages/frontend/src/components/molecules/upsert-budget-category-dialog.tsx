@@ -44,7 +44,7 @@ function UpsertBudgetCategoryDialog({
   onSubmit,
   isSubmitting = false,
   error,
-  currency = "USD",
+  currency = "NGN",
 }: UpsertBudgetCategoryDialogProps) {
   const [values, setValues] = useState<UpsertBudgetCategoryValues>(EMPTY);
   const symbol = currencySymbol(currency);

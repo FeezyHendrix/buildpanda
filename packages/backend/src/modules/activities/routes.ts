@@ -98,6 +98,7 @@ const raiseDelayBody = {
   properties: {
     reasonCode: { type: "string", minLength: 1, maxLength: 50 },
     description: { type: "string", maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     startedAt: isoString,
     costImpact: { type: "number", minimum: 0 },
     currency: { type: "string", enum: ["NGN", "USD"] },

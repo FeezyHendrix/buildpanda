@@ -46,6 +46,7 @@ export interface CreateUpdateInput {
   category: UpdateCategory;
   title: string;
   description: string;
+  descriptionHtml?: string | null;
   media?: MediaInput[];
   activityId?: string | null;
 }
@@ -54,6 +55,7 @@ export interface EditUpdateInput {
   category?: UpdateCategory;
   title?: string;
   description?: string;
+  descriptionHtml?: string | null;
   media?: MediaInput[];
 }
 
@@ -101,6 +103,7 @@ function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate {
     category: row.category,
     title: row.title,
     description: row.description,
+    descriptionHtml: row.description_html,
     media: media.map(toMedia),
     cta: { label: row.cta_label, tone: row.cta_tone },
     status: row.status,
@@ -223,6 +226,7 @@ export function updatesService(repository: UpdatesRepository) {
           category: input.category,
           title: input.title,
           description: input.description,
+          description_html: input.descriptionHtml ?? null,
           cta_label: cta.label,
           cta_tone: cta.tone,
           status: "Open",
@@ -243,6 +247,7 @@ export function updatesService(repository: UpdatesRepository) {
       const patch: UpdateContentPatch = {};
       if (input.title !== undefined) patch.title = input.title;
       if (input.description !== undefined) patch.description = input.description;
+      if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.category !== undefined) {
         patch.category = input.category;
         const cta = CTA_DEFAULTS[input.category];

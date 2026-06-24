@@ -14,7 +14,11 @@ import {
   CHANGE_STATUS_META,
 } from "@/components/molecules/change-request-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { CHANGE_COLUMNS, textMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
+import {
+  CHANGE_COLUMNS,
+  textMeta,
+  assigneeFooter,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useParticipants } from "@/hooks/use-participants";
 import {
@@ -44,7 +48,10 @@ export default function ProjectChangeRequests() {
   const canManage = access?.capabilities?.canManage ?? false;
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
-  const { data: items = [], isLoading } = useChangeRequests(project.id, filter === "all" ? undefined : filter);
+  const { data: items = [], isLoading } = useChangeRequests(
+    project.id,
+    filter === "all" ? undefined : filter,
+  );
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
   const deleteCr = useDeleteChangeRequest();
@@ -59,7 +66,9 @@ export default function ProjectChangeRequests() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const approvedCost = items.filter((i) => i.status === "Approved").reduce((s, i) => s + i.costImpact, 0);
+  const approvedCost = items
+    .filter((i) => i.status === "Approved")
+    .reduce((s, i) => s + i.costImpact, 0);
 
   function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
     if (cr.status === status) return;
@@ -71,28 +80,40 @@ export default function ProjectChangeRequests() {
   }
 
   function handleCreate(values: UpsertChangeValues): void {
-    createCr.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
+    createCr.mutate(
+      { projectId: project.id, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
   }
   function handleEdit(values: UpsertChangeValues): void {
     if (!editItem) return;
-    updateCr.mutate({ projectId: project.id, changeId: editItem.id, ...values }, { onSuccess: () => setEditItem(null) });
+    updateCr.mutate(
+      { projectId: project.id, changeId: editItem.id, ...values },
+      { onSuccess: () => setEditItem(null) },
+    );
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Change Requests"
         description="Proposed changes to scope, cost or schedule, with their budget and time impact."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            New change request
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              New change request
+            </Button>
+          ) : undefined
+        }
       />
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -100,15 +121,17 @@ export default function ProjectChangeRequests() {
               onClick={() => setFilter(f.value)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                filter === f.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900",
               )}
             >
               {f.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+        <div className="flex items-center gap-3 justify-end lg:justify-start self-end lg:self-auto">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
             {(["list", "board"] as const).map((v) => (
               <button
                 key={v}
@@ -116,14 +139,20 @@ export default function ProjectChangeRequests() {
                 onClick={() => setView(v)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                  view === v
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900",
                 )}
               >
                 {v}
               </button>
             ))}
           </div>
-          {approvedCost > 0 && <p className="text-xs text-gray-500">Approved impact: {money(approvedCost, "NGN")}</p>}
+          {approvedCost > 0 && (
+            <p className="text-xs text-gray-500">
+              Approved impact: {money(approvedCost, "NGN")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -139,7 +168,11 @@ export default function ProjectChangeRequests() {
               getId={(cr) => cr.id}
               getStatus={(cr) => cr.status}
               getTitle={(cr) => cr.title}
-              renderMeta={(cr) => textMeta(cr.costImpact ? money(cr.costImpact, cr.currency) : null)}
+              renderMeta={(cr) =>
+                textMeta(
+                  cr.costImpact ? money(cr.costImpact, cr.currency) : null,
+                )
+              }
               renderFooter={(cr) => assigneeFooter(cr.assigneeName, null)}
               onMove={handleMove}
               onOpen={setDetailId}
@@ -150,38 +183,74 @@ export default function ProjectChangeRequests() {
           )}
         </div>
       ) : (
-      <div className="mt-5 flex flex-col gap-3">
-        {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
-        ) : items.length === 0 ? (
-          <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">No change requests</p>
-            <p className="mt-1 text-sm text-gray-500">Raise one when scope, cost or schedule changes.</p>
-          </Card>
-        ) : (
-          items.map((cr) => (
-            <Card key={cr.id} padding="md" interactive className="flex items-center gap-4">
-              <button type="button" onClick={() => setDetailId(cr.id)} className="min-w-0 flex-1 text-left">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-gray-900">{cr.title}</p>
-                  <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
-                    {CHANGE_STATUS_META[cr.status].label}
-                  </Badge>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">{money(cr.costImpact, cr.currency)}</span>
-                  {cr.timeImpactDays > 0 && <span>+{cr.timeImpactDays} days</span>}
-                  {cr.commentCount > 0 && <span>{cr.commentCount} comment{cr.commentCount === 1 ? "" : "s"}</span>}
-                </div>
-              </button>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setEditItem(cr)} className="text-xs font-medium text-gray-500 hover:text-gray-900">Edit</button>
-                <button type="button" onClick={() => setDeleteId(cr.id)} className="text-xs font-medium text-red-500 hover:text-red-600">Delete</button>
-              </div>
+        <div className="mt-5 flex flex-col gap-3">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : items.length === 0 ? (
+            <Card padding="lg" className="text-center">
+              <p className="text-sm font-medium text-gray-900">
+                No change requests
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Raise one when scope, cost or schedule changes.
+              </p>
             </Card>
-          ))
-        )}
-      </div>
+          ) : (
+            items.map((cr) => (
+              <Card
+                key={cr.id}
+                padding="md"
+                interactive
+                className="flex items-center gap-4"
+              >
+                <button
+                  type="button"
+                  onClick={() => setDetailId(cr.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {cr.title}
+                    </p>
+                    <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
+                      {CHANGE_STATUS_META[cr.status].label}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                    <span className="font-medium text-gray-700">
+                      {money(cr.costImpact, cr.currency)}
+                    </span>
+                    {cr.timeImpactDays > 0 && (
+                      <span>+{cr.timeImpactDays} days</span>
+                    )}
+                    {cr.commentCount > 0 && (
+                      <span>
+                        {cr.commentCount} comment
+                        {cr.commentCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditItem(cr)}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(cr.id)}
+                    className="text-xs font-medium text-red-500 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       )}
 
       <UpsertChangeRequestDialog
@@ -226,7 +295,8 @@ export default function ProjectChangeRequests() {
         open={deleteId !== null}
         onOpenChange={(o) => !o && setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) deleteCr.mutate({ projectId: project.id, changeId: deleteId });
+          if (deleteId)
+            deleteCr.mutate({ projectId: project.id, changeId: deleteId });
           setDeleteId(null);
         }}
         title="Delete change request"

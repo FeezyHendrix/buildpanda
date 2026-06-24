@@ -111,6 +111,8 @@ export default function UserDetailPage() {
           <Field label="Profession" value={user.profession} />
           <Field label="Country" value={user.country} />
           <Field label="Phone" value={user.phone} />
+          <Field label="Signup IP" value={user.signupIp} />
+          <Field label="Signup country" value={user.signupCountry} />
           <Field label="Email verified" value={user.emailVerified ? "Yes" : "No"} />
           <Field label="Joined" value={formatDate(user.createdAt)} />
         </dl>

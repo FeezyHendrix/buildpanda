@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { NotFoundError } from "../../lib/errors.ts";
 import { openStoredFile } from "../../lib/file-storage.ts";
 import { fileSharesRepository, type ShareFileInfo } from "./repository.ts";
+import { publicTokenRateLimit } from "../../plugins/security.ts";
 
 const tokenParams = {
   type: "object",
@@ -21,7 +22,7 @@ const publicFileShareRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { token: string } }>(
     "/share/:token",
-    { schema: { params: tokenParams } },
+    { schema: { params: tokenParams }, config: { rateLimit: publicTokenRateLimit } },
     async (request) => {
       const share = await repo.byToken(request.params.token);
       if (!share) throw new NotFoundError("Shared file");
@@ -42,7 +43,7 @@ const publicFileShareRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { token: string } }>(
     "/share/:token/file",
-    { schema: { params: tokenParams } },
+    { schema: { params: tokenParams }, config: { rateLimit: publicTokenRateLimit } },
     async (request, reply) => {
       const share = await repo.byToken(request.params.token);
       if (!share || isUnavailable(share) || !share.storagePath) {

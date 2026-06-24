@@ -7,6 +7,7 @@ export interface ChangeRequest {
   projectId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   reason: string | null;
   status: ChangeStatus;
   costImpact: number;
@@ -47,6 +48,7 @@ export interface ChangeRequestRow {
   project_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   reason: string | null;
   status: ChangeStatus;
   cost_impact: string;

@@ -35,6 +35,7 @@ export interface PaymentLedgerEntry {
   id: string;
   date: string;
   description: string;
+  descriptionHtml: string | null;
   amount: number;
   type: LedgerType;
 }
@@ -102,6 +103,7 @@ export interface PaymentLedgerRow {
   project_id: string;
   entry_date: string;
   description: string;
+  description_html: string | null;
   amount: string;
   type: LedgerType;
   sort_order: number;

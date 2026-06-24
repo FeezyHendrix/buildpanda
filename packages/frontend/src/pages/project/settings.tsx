@@ -97,7 +97,8 @@ export default function ProjectSettings() {
             <Button
               variant="primary"
               size="md"
-              disabled={!currencyDirty || updateCurrency.isPending}
+              loading={updateCurrency.isPending}
+              disabled={!currencyDirty}
               onClick={() =>
                 updateCurrency.mutate(currency, {
                   onSuccess: () => toast("Project currency updated.", "success"),

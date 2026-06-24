@@ -13,6 +13,7 @@ interface NavbarUser {
 
 type NavbarProps = {
   notificationCount?: number;
+  showNotifications?: boolean;
   showLogo?: boolean;
   sticky?: boolean;
   searchPlaceholder?: string;
@@ -27,6 +28,7 @@ type NavbarProps = {
 function Navbar({
   user,
   notificationCount = 0,
+  showNotifications = true,
   showLogo = false,
   sticky = false,
   searchPlaceholder = "Search Build Panda",
@@ -59,13 +61,10 @@ function Navbar({
 
       <div className="flex items-center justify-end">
         <div className="flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
-          <NotificationBell count={notificationCount} />
+          {showNotifications && <NotificationBell count={notificationCount} />}
           {userSlot ??
             (user ? (
-              <>
-                <NotificationBell count={notificationCount} />
-                <Avatar name={user.name} src={user.avatarUrl} size="sm" />
-              </>
+              <Avatar name={user.name} src={user.avatarUrl} size="sm" />
             ) : null)}
         </div>
       </div>

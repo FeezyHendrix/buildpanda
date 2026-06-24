@@ -23,6 +23,7 @@ export function BoqTab({ proposalId, estimateId }: Props) {
   const replace = useReplaceBoq(proposalId);
   const [items, setItems] = useState<BoqDraft[]>([]);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -82,6 +83,23 @@ export function BoqTab({ proposalId, estimateId }: Props) {
     );
   }
 
+  async function exportBoq() {
+    setExporting(true);
+    try {
+      const blob = await proposalsApi.exportBoq(proposalId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `proposal-${proposalId}-boq.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-10">
@@ -96,6 +114,18 @@ export function BoqTab({ proposalId, estimateId }: Props) {
         Use this tab for the architect's bill of quantities: what needs to be built and
         how much of it, without prices. When you're ready, click <strong>Price into estimate</strong>{" "}
         to seed the Estimate tab with these line items and set the rates.
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Editable BoQ workspace</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Review auto-generated take-off lines, adjust quantities, then export a professionally structured workbook.
+          </p>
+        </div>
+        <Button variant="secondary" onClick={() => void exportBoq()} disabled={items.length === 0} loading={exporting}>
+          Export XLSX
+        </Button>
       </div>
 
       {items.length === 0 ? (
@@ -155,9 +185,9 @@ export function BoqTab({ proposalId, estimateId }: Props) {
           variant="primary"
           size="sm"
           onClick={save}
-          disabled={replace.isPending}
+          loading={replace.isPending}
         >
-          {replace.isPending ? "Saving…" : "Save BoQ"}
+          Save BOQ
         </Button>
         {estimateId && items.length > 0 && (
           <Button type="button" variant="secondary" size="sm" onClick={priceIntoEstimate}>

@@ -17,6 +17,13 @@ const client = config.mail.token
   ? new SendMailClient({ url: ZEPTOMAIL_API_URL, token: config.mail.token })
   : null;
 
+export interface EmailAttachment {
+  /** Raw file bytes; encoded to base64 for the ZeptoMail payload. */
+  content: Buffer;
+  name: string;
+  mimeType: string;
+}
+
 export interface SendEmailOptions {
   /** One or more recipient addresses. */
   to: string | string[];
@@ -27,6 +34,7 @@ export interface SendEmailOptions {
   text?: string;
   from?: { address: string; name: string };
   replyTo?: { address: string; name: string };
+  attachments?: EmailAttachment[];
 }
 
 function htmlToText(html: string): string {
@@ -60,14 +68,20 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 
   if (!client) {
     const links = options.html.match(/href="([^"]+)"/g) ?? [];
+    const attached = options.attachments?.map((file) => file.name) ?? [];
     logger.warn(
-      { to: recipients, subject: options.subject, links },
+      { to: recipients, subject: options.subject, links, attachments: attached },
       "[mail] ZEPTOMAIL_TOKEN not set — skipping send",
     );
     return;
   }
 
   try {
+    const attachments = options.attachments?.map((file) => ({
+      content: file.content.toString("base64"),
+      mime_type: file.mimeType,
+      name: file.name,
+    }));
     const response = await client.sendMail({
       from: options.from ?? { address: config.mail.fromAddress, name: config.mail.fromName },
       reply_to: [
@@ -82,6 +96,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       subject: options.subject,
       htmlbody: options.html,
       textbody: text,
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
     });
     const requestId =
       (response as { request_id?: string } | undefined)?.request_id ?? "unknown";

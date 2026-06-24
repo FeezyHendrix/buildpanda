@@ -14,7 +14,11 @@ import {
   QUERY_STATUS_META,
 } from "@/components/molecules/query-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { QUERY_COLUMNS, dueMeta, assigneeFooter } from "@/components/molecules/kanban-configs";
+import {
+  QUERY_COLUMNS,
+  dueMeta,
+  assigneeFooter,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useParticipants } from "@/hooks/use-participants";
 import {
@@ -62,7 +66,11 @@ export default function ProjectQueries() {
   }
 
   function handleAssign(query: SiteQuery, assigneeId: string | null): void {
-    updateQuery.mutate({ projectId: project.id, queryId: query.id, assigneeId });
+    updateQuery.mutate({
+      projectId: project.id,
+      queryId: query.id,
+      assigneeId,
+    });
   }
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -74,10 +82,10 @@ export default function ProjectQueries() {
 
   function handleCreate(values: UpsertQueryValues): void {
     createQuery.mutate(
-      { 
-        projectId: project.id, 
-        subject: values.subject, 
-        question: values.question, 
+      {
+        projectId: project.id,
+        subject: values.subject,
+        question: values.question,
         dueDate: values.dueDate,
         assigneeId: values.assigneeId,
       },
@@ -94,20 +102,26 @@ export default function ProjectQueries() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Queries"
         description="Site questions and clarifications between you, the builder and the design team."
-        actions={canRaiseQueries ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            Raise query
-          </Button>
-        ) : undefined}
+        actions={
+          canRaiseQueries ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              Raise query
+            </Button>
+          ) : undefined
+        }
       />
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -115,7 +129,9 @@ export default function ProjectQueries() {
               onClick={() => setFilter(f.value)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                filter === f.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900",
               )}
             >
               {f.label}
@@ -123,7 +139,7 @@ export default function ProjectQueries() {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
             {(["list", "board"] as const).map((v) => (
               <button
                 key={v}
@@ -131,7 +147,9 @@ export default function ProjectQueries() {
                 onClick={() => setView(v)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                  view === v
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900",
                 )}
               >
                 {v}
@@ -165,41 +183,69 @@ export default function ProjectQueries() {
           )}
         </div>
       ) : (
-      <div className="mt-5 flex flex-col gap-3">
-        {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
-        ) : queries.length === 0 ? (
-          <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">No queries</p>
-            <p className="mt-1 text-sm text-gray-500">Raise a query when you need a clarification.</p>
-          </Card>
-        ) : (
-          queries.map((q) => (
-            <Card key={q.id} padding="md" interactive className="flex items-center gap-4">
-              <button type="button" onClick={() => setDetailId(q.id)} className="min-w-0 flex-1 text-left">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-gray-900">{q.subject}</p>
-                  <Badge tone={QUERY_STATUS_META[q.status].tone} size="sm">
-                    {QUERY_STATUS_META[q.status].label}
-                  </Badge>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                  {formatDue(q.dueDate) && <span>Needed by {formatDue(q.dueDate)}</span>}
-                  {q.commentCount > 0 && <span>{q.commentCount} comment{q.commentCount === 1 ? "" : "s"}</span>}
-                </div>
-              </button>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setEditQuery(q)} className="text-xs font-medium text-gray-500 hover:text-gray-900">
-                  Edit
-                </button>
-                <button type="button" onClick={() => setDeleteId(q.id)} className="text-xs font-medium text-red-500 hover:text-red-600">
-                  Delete
-                </button>
-              </div>
+        <div className="mt-5 flex flex-col gap-3">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : queries.length === 0 ? (
+            <Card padding="lg" className="text-center">
+              <p className="text-sm font-medium text-gray-900">No queries</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Raise a query when you need a clarification.
+              </p>
             </Card>
-          ))
-        )}
-      </div>
+          ) : (
+            queries.map((q) => (
+              <Card
+                key={q.id}
+                padding="md"
+                interactive
+                className="flex items-center gap-4"
+              >
+                <button
+                  type="button"
+                  onClick={() => setDetailId(q.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {q.subject}
+                    </p>
+                    <Badge tone={QUERY_STATUS_META[q.status].tone} size="sm">
+                      {QUERY_STATUS_META[q.status].label}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                    {formatDue(q.dueDate) && (
+                      <span>Needed by {formatDue(q.dueDate)}</span>
+                    )}
+                    {q.commentCount > 0 && (
+                      <span>
+                        {q.commentCount} comment
+                        {q.commentCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditQuery(q)}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(q.id)}
+                    className="text-xs font-medium text-red-500 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       )}
 
       <UpsertQueryDialog
@@ -244,7 +290,8 @@ export default function ProjectQueries() {
         open={deleteId !== null}
         onOpenChange={(o) => !o && setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) deleteQuery.mutate({ projectId: project.id, queryId: deleteId });
+          if (deleteId)
+            deleteQuery.mutate({ projectId: project.id, queryId: deleteId });
           setDeleteId(null);
         }}
         title="Delete query"

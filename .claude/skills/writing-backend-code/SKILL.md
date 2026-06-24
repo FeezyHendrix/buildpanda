@@ -230,6 +230,54 @@ export async function down(knex: Knex) {
 }
 ```
 
+**No N+1 queries.** Never run a query per row in a loop — fetch the parent set
+once, collect the ids, then fetch children in a single batched query (`whereIn`)
+and stitch in memory. The repo already does this everywhere (e.g.
+`updates/repository.ts` `mediaForUpdates(updateIds[])`,
+`messaging/repository.ts` `whereIn("message_id", messageIds)`); copy that shape.
+Independent queries that don't depend on each other run together with
+`Promise.all`. Repository methods that resolve a collection should take an array
+(`findByIds(ids)`), not be called once per id by the service.
+
+```ts
+// Bad — N+1: one query per task to get its subtasks
+const tasks = await repo.listTasks(projectId)
+for (const t of tasks) {
+  t.subtasks = await repo.subtasksForTask(t.id)   // a query PER task
+}
+
+// Good — two queries total: parents, then all children by id, stitched in memory
+const tasks = await repo.listTasks(projectId)
+const byTask = groupBy(
+  await repo.subtasksForTasks(tasks.map((t) => t.id)),  // whereIn("task_id", ids)
+  (s) => s.task_id,
+)
+for (const t of tasks) t.subtasks = byTask.get(t.id) ?? []
+
+// Good — independent reads in parallel
+const [board, assignees] = await Promise.all([repo.board(projectId), repo.assignees(projectId)])
+```
+
+
+### Panda AI awareness
+
+The in-app assistant (`modules/panda-ai/agent`) answers project questions by
+calling read **tools** — each tool runs one query in `agent/repository.ts` and
+returns a small DTO from `agent/tools.ts`; the domains it can read are listed in
+the `SYSTEM_PROMPT` in `agent/service.ts`. The assistant can ONLY see data a
+tool exposes. So whenever you add or change project-scoped data, ask: **"would a
+PM reasonably ask Panda AI about this?"** If yes, wire it in:
+
+1. Add a query to `agent/repository.ts` (project-scoped, mirror the others).
+2. Add a `tool(fn(...))` in `agent/tools.ts` returning the minimal useful fields.
+3. Mention the new domain in the `SYSTEM_PROMPT` so the model knows it exists.
+
+Skip it for plumbing tables (jobs, events, link/junction, media blobs) and for
+data already covered by an existing tool — check `get_*` tools first to avoid
+overlap (e.g. milestone payments already live inside `get_finances`). When the
+answer is no, leave it to the `navigate` tool. A new user-facing feature that
+the assistant cannot read is a gap, not a non-feature.
+
 ### Config & integrations
 
 All env access lives in `config/index.ts` behind `required`/`optional`,
@@ -367,6 +415,9 @@ req.log.info({ projectId, count: items.length }, "listed action items")
 - Business logic in `routes.ts` "because it's short" — move it to the service
   from the first line (Layering).
 - Reaching into another module's tables instead of calling its service.
+- N+1 queries — a query per row in a loop instead of one batched `whereIn` (or
+  `Promise.all` for independent reads); repository collection methods should take
+  an id array, not be called once per id.
 - Returning raw rows or omitting the `response` schema — map via `toX` and
   declare the response.
 - `format: "email"` in a schema — crashes at startup (no ajv-formats); use
@@ -383,3 +434,5 @@ req.log.info({ projectId, count: items.length }, "listed action items")
   factory.
 - `enum` in `types.ts` instead of an `as const` array — breaks type stripping.
 - Closing the DB inside a handler instead of the plugin's `onClose` hook.
+- Shipping a user-facing project feature without asking whether Panda AI should
+  read it — add an agent tool when a PM would ask about the data (Panda AI awareness).

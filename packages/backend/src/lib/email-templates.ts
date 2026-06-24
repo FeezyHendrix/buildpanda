@@ -41,8 +41,7 @@ function escapeHtml(value: string): string {
 }
 
 function logoSrc(): string {
-  const base = config.mail.appUrl.replace(/\/+$/, "");
-  return `${base}/static/email-logo.png`;
+  return config.mail.logoUrl;
 }
 
 export type EmailAccent = "brand" | "success" | "danger" | "warning";

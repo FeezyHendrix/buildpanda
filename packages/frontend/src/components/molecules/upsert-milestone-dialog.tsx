@@ -38,7 +38,7 @@ function UpsertMilestoneDialog({
   onSubmit,
   isSubmitting = false,
   error,
-  currency = "USD",
+  currency = "NGN",
 }: UpsertMilestoneDialogProps) {
   const fallbackPhase = phases[0]?.name ?? "";
   const symbol = currencySymbol(currency);
