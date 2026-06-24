@@ -24,6 +24,7 @@ interface ParticipantRow {
   invite_token: string | null;
   invite_expires_at: string | null;
   name?: string | null;
+  permissions: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ interface TeamEntry {
   email: string;
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
+  permissions: Record<string, string>;
   createdAt: string;
 }
 
@@ -48,6 +50,7 @@ function toParticipant(r: ParticipantRow): TeamEntry {
     email: r.email,
     role: r.role,
     status: r.status,
+    permissions: (r.permissions as Record<string, string>) ?? {},
     createdAt: r.created_at,
   };
 }
@@ -86,6 +89,7 @@ const inviteBody = {
     email: { type: "string", minLength: 3, maxLength: 200 },
     name: { type: "string", maxLength: 120 },
     role: { type: "string", minLength: 1, maxLength: 80 },
+    permissions: { type: "object", additionalProperties: { type: "string" } },
   },
 } as const;
 
@@ -96,6 +100,7 @@ const updateBody = {
   properties: {
     role: { type: "string", minLength: 1, maxLength: 80 },
     status: { type: "string", enum: ["invited", "active", "revoked"] },
+    permissions: { type: "object", additionalProperties: { type: "string" } },
   },
 } as const;
 
@@ -212,6 +217,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           email: owner.email,
           role: "owner",
           status: "active",
+          permissions: {},
           createdAt: String(project.created_at),
         });
       }
@@ -219,7 +225,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole } }>(
+  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole; permissions?: Record<string, string> } }>(
     "/projects/:id/participants/invite",
     { schema: { params: projectIdParams, body: inviteBody } },
     async (request, reply) => {
@@ -247,6 +253,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         invited_by_id: user.id,
         invite_token: token,
         invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        permissions: JSON.stringify(request.body.permissions ?? {}),
       };
       await db("project_participants").insert(record);
 
@@ -276,7 +283,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus } }>(
+  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus; permissions?: Record<string, string> } }>(
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams, body: updateBody } },
     async (request) => {
@@ -284,6 +291,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (request.body.role) patch.role = request.body.role;
       if (request.body.status) patch.status = request.body.status;
+      if (request.body.permissions !== undefined) patch.permissions = JSON.stringify(request.body.permissions);
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update(patch);
