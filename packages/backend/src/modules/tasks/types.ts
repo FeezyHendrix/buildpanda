@@ -1,5 +1,8 @@
 export type TaskStatus = "Todo" | "Doing" | "Done";
 
+export const TASK_PRIORITIES = ["Low", "Medium", "High"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
 export interface TaskColumn {
   id: string;
   boardId: string;
@@ -20,6 +23,7 @@ export interface Task {
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
   dueDate: string | null;
+  priority: TaskPriority;
   position: number;
   sourceType: string | null;
   sourceId: string | null;
@@ -81,6 +85,7 @@ export interface TaskRow {
   assignee_team_member_id: string | null;
   assignee_team_member_name: string | null;
   due_date: string | null;
+  priority: TaskPriority;
   position: number;
   source_type: string | null;
   source_id: string | null;

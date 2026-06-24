@@ -15,6 +15,7 @@ import type {
   TaskLinkRow,
   TaskRow,
   TaskStatus,
+  TaskPriority,
 } from "./types.ts";
 
 export interface CreateTaskInput {
@@ -24,6 +25,7 @@ export interface CreateTaskInput {
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
+  priority?: TaskPriority;
   columnId?: string | null;
   status?: TaskStatus;
   sourceType?: string | null;
@@ -37,6 +39,7 @@ export interface UpdateTaskInput {
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
+  priority?: TaskPriority;
 }
 
 export interface MoveTaskInput {
@@ -77,6 +80,7 @@ function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
     assigneeTeamMemberId: row.assignee_team_member_id,
     assigneeName: row.assignee_name ?? row.assignee_team_member_name,
     dueDate: row.due_date,
+    priority: row.priority,
     position: row.position,
     sourceType: row.source_type,
     sourceId: row.source_id,
@@ -263,6 +267,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         assignee_id: assignee.assignee_id,
         assignee_team_member_id: assignee.assignee_team_member_id,
         due_date: input.dueDate ?? null,
+        priority: input.priority ?? "Medium",
         position: maxPosition + 1000,
         source_type: input.sourceType ?? null,
         source_id: input.sourceId ?? null,
@@ -300,6 +305,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
           ? { assignee_id: assignee.assignee_id, assignee_team_member_id: assignee.assignee_team_member_id }
           : {}),
         ...(input.dueDate !== undefined ? { due_date: input.dueDate } : {}),
+        ...(input.priority !== undefined ? { priority: input.priority } : {}),
       });
 
       const row = await repository.findTaskById(taskId);
