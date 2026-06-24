@@ -264,7 +264,8 @@ function DocumentsTable({
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
-      <table className="w-full text-left">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] text-left">
         <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
           <tr>
             <TableHeader className="pr-6 font-semibold capitalize">File Name</TableHeader>
@@ -298,6 +299,7 @@ function DocumentsTable({
           )}
         </tbody>
       </table>
+      </div>
     </Card>
   );
 }

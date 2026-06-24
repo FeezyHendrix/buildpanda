@@ -6,6 +6,22 @@ import {
   useOrganizations,
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
+import { useState, useEffect } from "react";
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    setMatches(media.matches);
+
+    const listener = () => setMatches(media.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+}
 
 function ChevronDownIcon() {
   return (
@@ -47,6 +63,7 @@ function OrgSwitcher() {
   const { data: organizations } = useOrganizations();
   const activeOrganizationId = useActiveOrganizationId();
   const setActive = useSetActiveOrganization();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const orgs = organizations ?? [];
   const activeOrg = orgs.find((org) => org.id === activeOrganizationId);
@@ -76,7 +93,13 @@ function OrgSwitcher() {
       </Menu.Trigger>
 
       <Menu.Portal>
-        <Menu.Positioner side="bottom" align="start" alignOffset={50} sideOffset={30} className="z-50 border border-muted rounded-xl">
+        <Menu.Positioner 
+          side="bottom" 
+          align={isDesktop ? "start" : "center"} 
+          alignOffset={isDesktop ? 50 : 20} 
+          sideOffset={isDesktop ? 30 : 8} 
+          className="z-50 border border-muted rounded-xl"
+        >
           <Menu.Popup
             className={cn(
               "min-w-[240px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 border border-muted",

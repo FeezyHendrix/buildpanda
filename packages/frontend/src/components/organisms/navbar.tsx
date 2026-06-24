@@ -37,7 +37,8 @@ function Navbar({
   return (
     <nav
       className={cn(
-        "grid h-16 grid-cols-3 items-center border-b border-[#F6F6F6] bg-white px-8 py-3",
+        "flex h-16 items-center justify-between border-b border-[#F6F6F6] bg-white px-4 py-3",
+        "lg:grid lg:grid-cols-3 lg:px-8",
         sticky && "sticky top-0 z-40",
         className,
       )}
@@ -45,13 +46,14 @@ function Navbar({
       <div className="flex items-center">
         {showLogo && (
           <Link to="/" className="shrink-0">
-            <img src={logo} alt="BuildPanda" className="h-9" />
+            <img src={logo} alt="BuildPanda" className="h-8 lg:h-9" />
           </Link>
         )}
-        {leadingSlot && <div className="ml-4 flex items-center">{leadingSlot}</div>}
+        {leadingSlot && <div className="ml-3 flex items-center">{leadingSlot}</div>}
       </div>
 
-      <div className="flex justify-center">
+      {/* Search — hidden on mobile to avoid overflow, centered on desktop */}
+      <div className="hidden lg:flex lg:justify-center">
         <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
       </div>
 

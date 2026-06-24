@@ -60,7 +60,7 @@ export default function ProjectOverview() {
   });
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Overview"
         description="Stay in control with real-time updates on progress, payments, and site activity."
@@ -139,8 +139,10 @@ export default function ProjectOverview() {
             View Detailed Gantt
           </Link>
         </div>
-        <div className="bg-white rounded-[12px] h-full m-1 p-6">
-          <TimelineStepper phases={project.timeline} />
+        <div className="bg-white rounded-[12px] h-full m-1 overflow-x-auto">
+          <div className="min-w-[480px] p-6">
+            <TimelineStepper phases={project.timeline} />
+          </div>
         </div>
       </Card>
 
@@ -440,8 +442,8 @@ function StepDot({ status }: { status: PhaseStatus }) {
 function UpdatePreview({ update }: { update: ProjectUpdate }) {
   const preview = update.media[0];
   return (
-    <div className="flex gap-6">
-      <div className="rounded-[8px] w-[50%] relative">
+    <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+      <div className="rounded-[8px] w-full sm:w-[50%] relative">
       {/* <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#F6F6F6]"> */}
         {preview ? (
           <img
@@ -460,7 +462,7 @@ function UpdatePreview({ update }: { update: ProjectUpdate }) {
             {UPDATE_CATEGORY_LABEL[update.category]}
           </Badge>
       </div>
-      <div className='flex flex-col gap-2 w-[50%]'>
+      <div className='flex flex-col gap-2 w-full sm:w-[50%]'>
         <h1 className="text-[#131B2E] text-[16px] font-semibold">
           {update.title}
         </h1>

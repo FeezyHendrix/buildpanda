@@ -82,7 +82,7 @@ export default function ProjectFinances() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -164,18 +164,18 @@ export default function ProjectFinances() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-6">
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <BudgetAllocationCard
           projectId={project.id}
           allocation={finances.budgetAllocation}
           currency={finances.currency}
-          className="w-[60%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+          className="w-full lg:w-[60%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
         <MaterialsProcurementCard
           projectId={project.id}
           materials={finances.materialsProcured}
           currency={finances.currency}
-          className="w-[40%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+          className="w-full lg:w-[40%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
 

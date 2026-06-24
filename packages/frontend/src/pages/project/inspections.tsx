@@ -234,7 +234,7 @@ function InspectionCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-6 border-b border-[#F6F6F6] pb-6">
+      <div className="flex flex-wrap items-start gap-4 sm:gap-6 border-b border-[#F6F6F6] pb-6">
         <div className='flex flex-col gap-1'>
           <p className="text-[13px] font-medium text-black-300">Inspector</p>
           <p className='text-[13px] text-black-500'>{report.inspector.name}</p>

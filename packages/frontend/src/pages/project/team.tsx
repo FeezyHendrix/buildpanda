@@ -61,7 +61,7 @@ export default function ProjectTeam() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <div className="mb-4">
         <Link
           to="/dashboard"
@@ -78,12 +78,12 @@ export default function ProjectTeam() {
       />
 
       <section className="mt-8">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Project access</h2>
             <p className="text-sm text-gray-500">People with access to view or manage this project.</p>
           </div>
-          <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
+          <Button variant="primary" size="md" onClick={() => setInviteOpen(true)} className="self-start sm:self-auto">
             <PlusIcon className="size-4" />
             Invite to project
           </Button>
@@ -105,14 +105,14 @@ export default function ProjectTeam() {
       </section>
 
       <section className="mt-12 border-t border-gray-200 pt-10">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
             <p className="text-sm text-gray-500">
               People delivering this build (for reference, does not grant access).
             </p>
           </div>
-          <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)}>
+          <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)} className="self-start sm:self-auto">
             <PlusIcon className="size-4" />
             Add Contact
           </Button>
