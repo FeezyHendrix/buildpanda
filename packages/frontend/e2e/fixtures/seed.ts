@@ -1,5 +1,6 @@
 import { ApiClient } from "./api-client";
-import { uniqueName } from "./ids";
+import { db } from "./db";
+import { generateId, uniqueName } from "./ids";
 
 export interface SeededProject {
   id: string;
@@ -41,3 +42,29 @@ export async function teardownProject(api: ApiClient, projectId: string): Promis
     // Best-effort; a failed teardown should not mask the spec result.
   }
 }
+
+// Makes another user an ACTIVE participant of a project, bypassing the email
+// invite/token round-trip by inserting the project_participants row directly
+// (auth-context loads projectRoles from active participants by user_id, so this
+// is exactly what an accepted invite produces). Role defaults to "client", whose
+// capabilities are additive-view only — the basis for the cross-role read-only
+// permission test. Returns the participant row id for teardown.
+export async function shareProjectWithParticipant(
+  projectId: string,
+  participant: { userId: string; email: string },
+  invitedById: string,
+  role = "client",
+): Promise<string> {
+  const id = generateId("pp");
+  await db()("project_participants").insert({
+    id,
+    project_id: projectId,
+    user_id: participant.userId,
+    email: participant.email.toLowerCase(),
+    role,
+    status: "active",
+    invited_by_id: invitedById,
+  });
+  return id;
+}
+
