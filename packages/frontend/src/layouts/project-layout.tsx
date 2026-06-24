@@ -19,6 +19,7 @@ import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 
@@ -99,11 +100,13 @@ interface AppShellProps {
 }
 
 function AppShell({ session, onLogout, children }: AppShellProps) {
+  const notificationsEnabled = useFeatureFlag("collaboration.notifications");
   return (
     <div className="flex h-dvh flex-col">
       <Navbar
         showLogo
         sticky
+        showNotifications={notificationsEnabled}
         userSlot={
           <UserMenu
             name={session.user.name}

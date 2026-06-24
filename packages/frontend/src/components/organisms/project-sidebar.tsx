@@ -22,6 +22,7 @@ import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { useProjectChannels } from "@/hooks/use-chat";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 
 type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
@@ -29,6 +30,7 @@ interface NavEntry {
   label: string;
   slug: string;
   Icon: IconComponent | string;
+  flag?: string;
 }
 
 interface ProjectNavItem extends NavEntry {
@@ -42,90 +44,50 @@ interface GroupNavItem extends ProjectNavItem {
 
 const NAV_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
-  { label: "Updates", slug: "updates", Icon: UpdatesIcon },
+  { label: "Updates", slug: "updates", Icon: UpdatesIcon, flag: "project.updates" },
 ] as const;
 
 const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  { label: "Materials", slug: "materials", Icon: MaterialsIcon, helper: "Orders & requests" },
-  { label: "Material Log", slug: "material-log", Icon: MaterialsIcon, helper: "Stock & audit trail" },
-  {
-    label: "Equipment Requests",
-    slug: "equipment-requests",
-    Icon: MaterialsIcon,
-    helper: "Rental workflow",
-  },
+  { label: "Materials", slug: "materials", Icon: MaterialsIcon, helper: "Orders & requests", flag: "commercial.materialsEquipment" },
+  { label: "Material Log", slug: "material-log", Icon: MaterialsIcon, helper: "Stock & audit trail", flag: "commercial.materialsLedger" },
+  { label: "Equipment Requests", slug: "equipment-requests", Icon: MaterialsIcon, helper: "Rental workflow", flag: "commercial.materialsEquipment" },
 ] as const;
 
 const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  {
-    label: "Build Stages",
-    slug: "schedules/stages",
-    Icon: OverviewIcon,
-    helper: "Phases & progress",
-  },
-  {
-    label: "Key Dates",
-    slug: "schedules/key-dates",
-    Icon: CalendarIcon,
-    helper: "Milestone dates",
-  },
-  {
-    label: "Site Activity",
-    slug: "schedules/activities",
-    Icon: TrendingUpIcon,
-    helper: "Work items",
-  },
-  {
-    label: "Daily Log",
-    slug: "schedules/daily-log",
-    Icon: CalendarIcon,
-    helper: "Field reports",
-  },
-  {
-    label: "Project Chart",
-    slug: "schedules/project-chart",
-    Icon: CalendarIcon,
-    helper: "Gantt chart",
-  },
+  { label: "Build Stages", slug: "schedules/stages", Icon: OverviewIcon, helper: "Phases & progress", flag: "projects.schedule" },
+  { label: "Key Dates", slug: "schedules/key-dates", Icon: CalendarIcon, helper: "Milestone dates", flag: "compliance.keyDates" },
+  { label: "Site Activity", slug: "schedules/activities", Icon: TrendingUpIcon, helper: "Work items", flag: "projects.schedule" },
+  { label: "Daily Log", slug: "schedules/daily-log", Icon: CalendarIcon, helper: "Field reports", flag: "quality.dailyLogs" },
+  { label: "Project Chart", slug: "schedules/project-chart", Icon: CalendarIcon, helper: "Gantt chart", flag: "projects.schedule" },
 ] as const;
 
 const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  { label: "Inspections", slug: "inspections", Icon: InspectionsIcon, helper: "Quality checks" },
-  { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers" },
-  { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions" },
-  { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information" },
+  { label: "Inspections", slug: "inspections", Icon: InspectionsIcon, helper: "Quality checks", flag: "quality.inspections" },
+  { label: "Action Items", slug: "action-items", Icon: TrendingUpIcon, helper: "Open blockers", flag: "workflow.actionItems" },
+  { label: "Queries", slug: "queries", Icon: MessagesIcon, helper: "Field questions", flag: "workflow.queries" },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon, helper: "Requests for information", flag: "workflow.rfis" },
   // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
-  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs" },
-  { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes" },
-  { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records" },
+  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, helper: "Owner sign-offs", flag: "workflow.approvals" },
+  { label: "Change Requests", slug: "change-requests", Icon: FinancesIcon, helper: "Scope changes", flag: "workflow.changeRequests" },
+  { label: "Permits", slug: "permits", Icon: DocumentsIcon, helper: "Authority records", flag: "compliance.permits" },
 ] as const;
 
 const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
-  { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow" },
-  { label: "Budget Categories", slug: "finances/budget", Icon: FinancesIcon, helper: "Add allocations" },
-  {
-    label: "Budget Allocation",
-    slug: "finances/budget-allocation",
-    Icon: FinancesIcon,
-    helper: "Planned vs actual",
-  },
-  { label: "Invoicing", slug: "finances/invoices", Icon: FinancesIcon, helper: "Vendor bills" },
-  {
-    label: "Milestone Payments",
-    slug: "finances/milestone-payments",
-    Icon: FinancesIcon,
-    helper: "Payment gates",
-  },
+  { label: "Overview", slug: "finances", Icon: FinancesIcon, helper: "Cashflow & escrow", flag: "commercial.finances" },
+  { label: "Budget Categories", slug: "finances/budget", Icon: FinancesIcon, helper: "Add allocations", flag: "commercial.budget" },
+  { label: "Budget Allocation", slug: "finances/budget-allocation", Icon: FinancesIcon, helper: "Planned vs actual", flag: "commercial.budget" },
+  { label: "Invoicing", slug: "finances/invoices", Icon: FinancesIcon, helper: "Vendor bills", flag: "commercial.invoices" },
+  { label: "Milestone Payments", slug: "finances/milestone-payments", Icon: FinancesIcon, helper: "Payment gates", flag: "commercial.finances" },
 ] as const;
 
 // Homeowner / client portal: a curated, read-mostly subset of the workspace.
 const CLIENT_ENTRIES: readonly NavEntry[] = [
   { label: "Overview", slug: "overview", Icon: OverviewIcon },
   { label: "What's Next", slug: "whats-next", Icon: TrendingUpIcon },
-  { label: "Build Stages", slug: "stages", Icon: OverviewIcon },
-  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon },
-  { label: "Queries", slug: "queries", Icon: MessagesIcon },
-  { label: "RFIs", slug: "rfis", Icon: AlertIcon },
+  { label: "Build Stages", slug: "stages", Icon: OverviewIcon, flag: "projects.schedule" },
+  { label: "Approvals", slug: "approvals", Icon: InspectionsIcon, flag: "workflow.approvals" },
+  { label: "Queries", slug: "queries", Icon: MessagesIcon, flag: "workflow.queries" },
+  { label: "RFIs", slug: "rfis", Icon: AlertIcon, flag: "workflow.rfis" },
   // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon },
 ];
 
@@ -140,63 +102,74 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const isClient = access?.relationship !== "company";
   const { data: channels = [] } = useProjectChannels(project.id);
   const totalUnread = channels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
+
+  const { data: flagsData } = useFeatureFlags();
+  const enabledKeys = useMemo(
+    () => new Map((flagsData?.flags ?? []).map((f) => [f.key, f.enabled])),
+    [flagsData],
+  );
+  const isOn = (key?: string) => !key || (enabledKeys.get(key) ?? true);
+
   const items = useMemo<ProjectNavItem[]>(
     () =>
-      NAV_ENTRIES.map((entry) => ({
+      NAV_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id],
+    [project.id, enabledKeys],
   );
   const scheduleItems = useMemo<GroupNavItem[]>(
     () =>
-      SCHEDULE_ENTRIES.map((entry) => ({
+      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id],
+    [project.id, enabledKeys],
   );
   const materialsItems = useMemo<GroupNavItem[]>(
     () =>
-      MATERIALS_ENTRIES.map((entry) => ({
+      MATERIALS_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id],
+    [project.id, enabledKeys],
   );
   const siteControlItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_CONTROL_ENTRIES.map((entry) => ({
+      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id],
+    [project.id, enabledKeys],
   );
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
-      FINANCE_ENTRIES.map((entry) => ({
+      FINANCE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id],
+    [project.id, enabledKeys],
+  );
+  const clientItems = useMemo<ProjectNavItem[]>(
+    () =>
+      CLIENT_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id, enabledKeys],
   );
 
-  const isScheduleActive =
-    scheduleItems.some(
-      (item) =>
-        location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
-    );
+  const isScheduleActive = scheduleItems.some(
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+  );
   const isMaterialsActive = materialsItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
   const isSiteControlActive = siteControlItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
   const isFinanceActive = financeItems.some(
-    (item) =>
-      location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
+    (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`),
   );
 
   return (
@@ -236,11 +209,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
-          {CLIENT_ENTRIES.map((entry) => (
-            <ProjectNavLink
-              key={entry.slug}
-              item={{ ...entry, to: `/project/${project.id}/${entry.slug}` }}
-            />
+          {clientItems.map((item) => (
+            <ProjectNavLink key={item.slug} item={item} />
           ))}
         </nav>
       ) : (
@@ -248,67 +218,83 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             Main menu
           </p>
-          {items.slice(0, 2).map((item) => (
+          {items.map((item) => (
             <ProjectNavLink key={item.slug} item={item} />
           ))}
-          <ProjectNavLink
-            item={{
-              label: "Tasks",
-              slug: "tasks",
-              Icon: TrendingUpIcon,
-              to: `/project/${project.id}/tasks`,
-            }}
-          />
-          <SidebarNavGroup
-            label="Schedules"
-            Icon={CalendarIcon}
-            items={scheduleItems}
-            active={isScheduleActive}
-          />
-          <SidebarNavGroup
-            label="Site Control"
-            Icon={InspectionsIcon}
-            items={siteControlItems}
-            active={isSiteControlActive}
-          />
-          <SidebarNavGroup
-            label="Materials & Equipment"
-            Icon={MaterialsIcon}
-            items={materialsItems}
-            active={isMaterialsActive}
-            activeIconClassName="text-[#004DE7]"
-          />
-          <SidebarNavGroup
-            label="Finance"
-            Icon={FinancesIcon}
-            items={financeItems}
-            active={isFinanceActive}
-          />
-          <ProjectNavLink
-            item={{
-              label: "Documents",
-              slug: "documents",
-              Icon: DocumentsIcon,
-              to: `/project/${project.id}/documents`,
-            }}
-          />
-          <ProjectNavLink
-            item={{
-              label: "Team",
-              slug: "team",
-              Icon: ContractorsIcon,
-              to: `/project/${project.id}/team`,
-            }}
-          />
-          <ProjectNavLink
-            item={{
-              label: "Messages",
-              slug: "chat",
-              Icon: MessagesIcon,
-              to: `/project/${project.id}/chat`,
-              badge: totalUnread > 0 ? totalUnread : undefined,
-            }}
-          />
+          {isOn("projects.schedule") && (
+            <ProjectNavLink
+              item={{
+                label: "Tasks",
+                slug: "tasks",
+                Icon: TrendingUpIcon,
+                to: `/project/${project.id}/tasks`,
+              }}
+            />
+          )}
+          {scheduleItems.length > 0 && (
+            <SidebarNavGroup
+              label="Schedules"
+              Icon={CalendarIcon}
+              items={scheduleItems}
+              active={isScheduleActive}
+            />
+          )}
+          {siteControlItems.length > 0 && (
+            <SidebarNavGroup
+              label="Site Control"
+              Icon={InspectionsIcon}
+              items={siteControlItems}
+              active={isSiteControlActive}
+            />
+          )}
+          {materialsItems.length > 0 && (
+            <SidebarNavGroup
+              label="Materials & Equipment"
+              Icon={MaterialsIcon}
+              items={materialsItems}
+              active={isMaterialsActive}
+              activeIconClassName="text-[#004DE7]"
+            />
+          )}
+          {financeItems.length > 0 && (
+            <SidebarNavGroup
+              label="Finance"
+              Icon={FinancesIcon}
+              items={financeItems}
+              active={isFinanceActive}
+            />
+          )}
+          {isOn("projects.documents") && (
+            <ProjectNavLink
+              item={{
+                label: "Documents",
+                slug: "documents",
+                Icon: DocumentsIcon,
+                to: `/project/${project.id}/documents`,
+              }}
+            />
+          )}
+          {isOn("project.team") && (
+            <ProjectNavLink
+              item={{
+                label: "Team",
+                slug: "team",
+                Icon: ContractorsIcon,
+                to: `/project/${project.id}/team`,
+              }}
+            />
+          )}
+          {isOn("collaboration.messaging") && (
+            <ProjectNavLink
+              item={{
+                label: "Messages",
+                slug: "chat",
+                Icon: MessagesIcon,
+                to: `/project/${project.id}/chat`,
+                badge: totalUnread > 0 ? totalUnread : undefined,
+              }}
+            />
+          )}
           <ProjectNavLink
             item={{
               label: "Panda AI",
