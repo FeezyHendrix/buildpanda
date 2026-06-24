@@ -118,14 +118,15 @@
 
 ## Coverage status (delivered)
 
-Green across owner / member / viewer (90 tests; deterministic, with a 1-retry
-safety net for the heavy dnd-kit tasks board).
+Green across owner / member / viewer (104 passing + 3 skipped, deterministic
+with a 1-retry safety net for the heavy dnd-kit tasks board).
 
-**Deep upsert + persistence specs (8 modules):** tasks (create persists + edit
+**Deep upsert + persistence specs (13 modules):** tasks (create persists + edit
 round-trip + default columns), action-items (upsert + edit round-trip), invoices
 (**flagship** — payment balance reconciliation verified at the API/DB layer),
-change-requests, rfis, queries, permits, key-dates. All use the FormDrawer upsert
-pattern and assert the post-invalidation DOM.
+change-requests, rfis, queries, permits, key-dates, materials, milestone-payments,
+inspections, stages, equipment-requests. All use the FormDrawer upsert pattern
+and assert the post-invalidation DOM.
 
 **Navigation reachability smoke (19 routes):** overview, updates, documents,
 inspections, daily-log, bim, materials, material-log, equipment-requests,
@@ -133,17 +134,23 @@ finances, finances/budget, finances/milestone-payments, schedules/project-chart,
 schedules/activities, schedules/stages, approvals, people, panda-ai, settings —
 each asserted to mount without the error boundary and present its main landmark.
 
-So **every project module has at least reachability coverage**, and the
-highest-value / highest-risk modules have deep upsert coverage.
+So **every project module has at least reachability coverage**, and 13 have deep
+upsert coverage.
 
-**Remaining (incremental, on top of nav coverage):** deep upsert specs for
-materials (5 required fields incl. quantity + date), inspections (date fields),
-milestone-payments (name + phase + amount), equipment-requests, stages, budget
-allocation, activities; the daily-log single-record model; documents / bim upload
-flows; cross-role permission-denial assertions (need one project shared across
-roles via the participants API — the harness self-provisions one project per role
-today). The `team` module is intentionally skipped while another workstream
-refactors it. Each remaining module is a small `ListUpsertPage` config + spec.
+**Logged product defect (test.fixme, kept out of the green count):**
+- **Budget allocation** — creating a category via the "Add budget allocation"
+  drawer closes successfully (form + API accept name + costCode), but the page
+  still shows the "No budget allocation yet" empty state; the category never
+  appears. Either a missing precondition (a project budget total must be set
+  first?) or a create→list invalidation/display gap. See `specs/budget.spec.ts`.
+
+**Remaining (bespoke flows, not the generic recipe):** activities (a template-
+grid picker, not a simple form), daily-log (a day-grouped conditions model),
+documents / bim (file-upload flows needing file fixtures), updates (a RichText
+composer). Cross-role permission-denial assertions also remain (they need one
+project shared across roles via the participants API — the harness self-provisions
+one project per role today). The `team` module is intentionally skipped while
+another workstream refactors it.
 
 ## Suite structure
 
