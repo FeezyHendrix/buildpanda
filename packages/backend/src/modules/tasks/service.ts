@@ -47,6 +47,14 @@ export interface MoveTaskInput {
   position: number;
 }
 
+export interface AssignableUser {
+  kind: "user" | "team";
+  id: string;
+  name: string;
+  email: string | null;
+  isSelf: boolean;
+}
+
 export interface TasksDeps {
   notifications?: NotificationsService;
 }
@@ -84,6 +92,8 @@ function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
     position: row.position,
     sourceType: row.source_type,
     sourceId: row.source_id,
+    createdById: row.created_by_id,
+    createdByName: row.created_by_name,
     subtaskTotal: counts?.total ?? 0,
     subtaskDone: counts?.done ?? 0,
     createdAt: row.created_at,
@@ -185,6 +195,39 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     async getDefaultBoard(projectId: string, userId: string | null): Promise<TaskBoard> {
       const board = await ensureDefaultBoard(projectId, userId);
       return assembleBoard(board);
+    },
+
+    async listAssignable(
+      projectId: string,
+      organizationId: string | null,
+      ownerId: string | null,
+      currentUserId: string,
+    ): Promise<AssignableUser[]> {
+      const [users, teams] = await Promise.all([
+        repository.assignableUsers(projectId, organizationId, ownerId),
+        repository.teamAssignees(projectId),
+      ]);
+      const seen = new Set<string>();
+      const result: AssignableUser[] = [];
+      for (const u of users) {
+        if (seen.has(u.id)) continue;
+        seen.add(u.id);
+        result.push({
+          kind: "user",
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          isSelf: u.id === currentUserId,
+        });
+      }
+      for (const t of teams) {
+        result.push({ kind: "team", id: t.id, name: t.name, email: null, isSelf: false });
+      }
+      result.sort((a, b) => {
+        if (a.isSelf !== b.isSelf) return a.isSelf ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      return result;
     },
 
     async addColumn(projectId: string, name: string, userId: string | null): Promise<TaskColumn> {

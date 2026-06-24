@@ -27,6 +27,8 @@ export interface Task {
   position: number;
   sourceType: string | null;
   sourceId: string | null;
+  createdById: string | null;
+  createdByName: string | null;
   subtaskTotal: number;
   subtaskDone: number;
   createdAt: string;
@@ -90,6 +92,7 @@ export interface TaskRow {
   source_type: string | null;
   source_id: string | null;
   created_by_id: string | null;
+  created_by_name: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -64,6 +64,7 @@ const TASK_SELECT = [
   "t.source_type",
   "t.source_id",
   "t.created_by_id",
+  "creator.name as created_by_name",
   "t.created_at",
   "t.updated_at",
 ] as const;
@@ -72,7 +73,8 @@ export function tasksRepository(db: Knex) {
   function taskBase() {
     return db("tasks as t")
       .leftJoin("user as u", "u.id", "t.assignee_id")
-      .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id");
+      .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id")
+      .leftJoin("user as creator", "creator.id", "t.created_by_id");
   }
 
   return {
@@ -258,6 +260,43 @@ export function tasksRepository(db: Knex) {
 
     async deleteLink(id: string): Promise<void> {
       await db("task_links").where({ id }).delete();
+    },
+
+    async assignableUsers(
+      projectId: string,
+      organizationId: string | null,
+      ownerId: string | null,
+    ): Promise<{ id: string; name: string; email: string }[]> {
+      // People who can own a task: org members of the project's org, the
+      // project owner, and active project participants who have a user account.
+      const orgMembers = organizationId
+        ? db("member as m")
+            .join("user as u", "u.id", "m.userId")
+            .where("m.organizationId", organizationId)
+            .select("u.id", "u.name", "u.email")
+        : db("user").whereRaw("1 = 0").select("id", "name", "email");
+
+      const participants = db("project_participants as p")
+        .join("user as u", "u.id", "p.user_id")
+        .where("p.project_id", projectId)
+        .where("p.status", "active")
+        .select("u.id", "u.name", "u.email");
+
+      const owner = ownerId
+        ? db("user").where("id", ownerId).select("id", "name", "email")
+        : db("user").whereRaw("1 = 0").select("id", "name", "email");
+
+      return orgMembers.unionAll([participants, owner]);
+    },
+
+    teamAssignees(
+      projectId: string,
+    ): Promise<{ id: string; name: string; role: string }[]> {
+      return db("team_members")
+        .where({ project_id: projectId })
+        .whereNot("status", "removed")
+        .orderBy("name", "asc")
+        .select("id", "name", "role");
     },
   };
 }

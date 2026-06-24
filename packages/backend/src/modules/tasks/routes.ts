@@ -173,6 +173,21 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/tasks/assignable",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectAccess(request.params.id);
+      const user = request.requireAuth();
+      return service.listAssignable(
+        project.id,
+        project.organization_id,
+        project.owner_id,
+        user.id,
+      );
+    },
+  );
+
   fastify.post<{ Params: { id: string }; Body: { name: string } }>(
     "/projects/:id/tasks/columns",
     { schema: { params: projectIdParams, body: createColumnBody } },

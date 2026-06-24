@@ -25,10 +25,9 @@ import { FormDrawer } from "@/components/molecules/form-drawer";
 import { RichTextEditor } from "@/components/molecules/rich-text-editor";
 import { Label } from "@/components/atoms/label";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useParticipants } from "@/hooks/use-participants";
-import { useProjectTeam } from "@/hooks/use-team";
 import {
   useTaskBoard,
+  useAssignableUsers,
   useCreateTask,
   useUpdateTask,
   useMoveTask,
@@ -206,8 +205,7 @@ export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const { data: board, isLoading } = useTaskBoard(project.id);
-  const { data: participants = [] } = useParticipants(project.id);
-  const { data: teamMembers = [] } = useProjectTeam(project.id);
+  const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);
   const updateTask = useUpdateTask(project.id);
@@ -252,15 +250,19 @@ export default function ProjectTasks() {
 
   const userOptions: AssigneeOption[] = useMemo(
     () =>
-      participants
-        .filter((p) => p.userId)
-        .map((p) => ({ kind: "user" as const, id: p.userId as string, name: p.name ?? p.email })),
-    [participants],
+      assignable
+        .filter((a) => a.kind === "user")
+        .map((a) => ({ kind: "user" as const, id: a.id, name: a.isSelf ? `${a.name} (me)` : a.name })),
+    [assignable],
   );
   const teamOptions: AssigneeOption[] = useMemo(
-    () => teamMembers.map((m) => ({ kind: "team" as const, id: m.id, name: m.name })),
-    [teamMembers],
+    () =>
+      assignable
+        .filter((a) => a.kind === "team")
+        .map((a) => ({ kind: "team" as const, id: a.id, name: a.name })),
+    [assignable],
   );
+  const selfId = useMemo(() => assignable.find((a) => a.isSelf)?.id ?? null, [assignable]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -484,6 +486,7 @@ export default function ProjectTasks() {
         allTasks={board.tasks}
         userOptions={userOptions}
         teamOptions={teamOptions}
+        selfId={selfId}
         submitting={createTask.isPending || updateTask.isPending}
         onSubmit={handleSubmit}
         onRequestDelete={editing ? () => { setDeleting(editing); setDialogOpen(false); } : undefined}
@@ -751,6 +754,7 @@ function UpsertTaskDialog({
   allTasks,
   userOptions,
   teamOptions,
+  selfId,
   submitting,
   onSubmit,
   onRequestDelete,
@@ -763,6 +767,7 @@ function UpsertTaskDialog({
   allTasks: Task[];
   userOptions: AssigneeOption[];
   teamOptions: AssigneeOption[];
+  selfId: string | null;
   submitting: boolean;
   onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null; priority: TaskPriority }) => void;
   onRequestDelete?: () => void;
@@ -884,7 +889,18 @@ function UpsertTaskDialog({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="task-assignee">Assignee</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="task-assignee">Assignee</Label>
+          {selfId && assigneeValue !== `user:${selfId}` && (
+            <button
+              type="button"
+              onClick={() => setAssigneeValue(`user:${selfId}`)}
+              className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              Assign to me
+            </button>
+          )}
+        </div>
         <ComboSelect
           items={assigneeItems}
           value={assigneeValue || null}
@@ -927,6 +943,23 @@ function UpsertTaskDialog({
           })}
         </div>
       </div>
+      {task && (task.createdByName || task.createdAt) && (
+        <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          {task.createdByName && (
+            <span>
+              Reporter <span className="font-medium text-gray-700">{task.createdByName}</span>
+            </span>
+          )}
+          {task.createdAt && (
+            <span>
+              Created{" "}
+              <span className="font-medium text-gray-700">
+                {new Date(task.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+              </span>
+            </span>
+          )}
+        </div>
+      )}
       {task && (
         <TaskExtras projectId={projectId} taskId={task.id} allTasks={allTasks} onOpenTask={onOpenTask} />
       )}
