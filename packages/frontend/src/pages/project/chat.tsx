@@ -353,7 +353,10 @@ export default function ProjectChat() {
                 setShowNewGroup(false);
                 toast("Group created", "success");
               },
-              onError: () => toast("Could not create group"),
+              onError: (err) => {
+                const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+                toast(message ?? "Could not create group");
+              },
             },
           );
         }}
