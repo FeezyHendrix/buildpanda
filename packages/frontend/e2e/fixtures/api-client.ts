@@ -80,13 +80,34 @@ export class ApiClient {
 
   // Like post(), but throws with context on a non-2xx — for seeding steps that
   // must succeed (a failed seed should fail the test loudly, not silently).
+  // Retries on 429: project creation is rate-limited, and many specs seed in
+  // parallel, so transient rate-limits are expected and recoverable.
   async postOrThrow<T = unknown>(path: string, body?: Json): Promise<T> {
-    const r = await this.post<T>(path, body);
-    if (!r.ok) {
+    const maxAttempts = 5;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const r = await this.post<T>(path, body);
+      if (r.ok) return r.body;
+      if (r.status === 429 && attempt < maxAttempts) {
+        // Honour the server's Retry-After (project creation cooldown can be ~40s);
+        // fall back to a linear backoff. Capped so a stuck server still fails.
+        await sleep(retryAfterMs(r.body) ?? 2000 * attempt);
+        continue;
+      }
       throw new Error(`POST ${path} -> ${r.status}: ${JSON.stringify(r.body)}`);
     }
-    return r.body;
+    throw new Error(`POST ${path}: exhausted retries`);
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, Math.min(ms + 500, 50_000)));
+}
+
+function retryAfterMs(body: unknown): number | null {
+  const details = (body as { details?: { retryAfter?: string } })?.details;
+  if (!details?.retryAfter) return null;
+  const seconds = parseInt(details.retryAfter, 10);
+  return Number.isFinite(seconds) ? seconds * 1000 : null;
 }
 
 function mergeCookie(existing: string, incoming: string): string {

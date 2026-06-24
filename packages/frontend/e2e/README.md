@@ -25,6 +25,27 @@ pnpm e2e:report       # open the last HTML report
 If the dev servers are already up, set `E2E_NO_WEBSERVER=1` so Playwright reuses
 them instead of booting `pnpm dev`.
 
+## Determinism (why local runs serial)
+
+`POST /projects` is rate-limited server-side. Projects are seeded once **per
+worker** (worker-scoped fixture), and seeding retries while honouring the
+server's `Retry-After`. Locally the suite runs with **1 worker** so the startup
+burst never trips the limit — deterministic, flake-free signal. CI fans out with
+**sharding** across machines (each with a couple of workers), so no single
+machine hits the limit. Override concurrency with `E2E_WORKERS=N` if your
+environment has a higher limit.
+
+## Covered modules
+
+Green across owner/member/viewer: **tasks** (persist + edit round-trip, columns),
+**action-items** (upsert + edit round-trip), **invoices** (flagship — payment
+balance reconciliation asserted at the API/DB layer), **change-requests**,
+**rfis**, **queries**, **permits**, **key-dates**. The generic `ListUpsertPage`
+POM covers the shared list+FormDrawer shape; new list modules are a few lines of
+config. See `COVERAGE_MAP.md` for the full module inventory and the remaining
+modules (materials, daily-log, inspections, team, schedule, etc.) which follow
+the same recipe but need per-module field wiring.
+
 ## Config (env, mirrors backend `config/index.ts`)
 
 | Var | Default | Purpose |
