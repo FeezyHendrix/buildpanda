@@ -17,6 +17,7 @@ export interface CreateApprovalInput {
   description?: string | null;
   descriptionHtml?: string | null;
   dueDate?: string | null;
+  requestedReviewerId?: string | null;
 }
 
 export interface UpdateApprovalInput {
@@ -27,6 +28,7 @@ export interface UpdateApprovalInput {
   status?: ApprovalStatus;
   response?: string | null;
   dueDate?: string | null;
+  requestedReviewerId?: string | null;
 }
 
 const DECISIONS: ApprovalStatus[] = ["Approved", "Rejected", "Resubmit"];
@@ -65,6 +67,8 @@ function toApproval(row: ApprovalRow, commentCount: number): Approval {
     response: row.response,
     dueDate: row.due_date,
     submittedById: row.submitted_by_id,
+    requestedReviewerId: row.requested_reviewer_id,
+    requestedReviewerName: row.requested_reviewer_name,
     reviewedById: row.reviewed_by_id,
     reviewedByName: row.reviewed_by_name,
     reviewedAt: row.reviewed_at,
@@ -111,6 +115,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         status: "Pending",
         due_date: input.dueDate ?? null,
         submitted_by_id: userId,
+        requested_reviewer_id: input.requestedReviewerId ?? null,
       });
       return toApproval(row, 0);
     },
@@ -131,6 +136,7 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
       if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
       if (input.response !== undefined) patch.response = input.response;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
+      if (input.requestedReviewerId !== undefined) patch.requested_reviewer_id = input.requestedReviewerId;
 
       if (input.status !== undefined) {
         patch.status = input.status;

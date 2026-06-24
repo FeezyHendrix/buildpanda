@@ -252,6 +252,8 @@ export interface Approval {
   response: string | null;
   dueDate: string | null;
   submittedById: string | null;
+  requestedReviewerId: string | null;
+  requestedReviewerName: string | null;
   reviewedById: string | null;
   reviewedByName: string | null;
   reviewedAt: string | null;

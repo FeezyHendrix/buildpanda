@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertCanActAsClient } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
+import { NotFoundError, ForbiddenError } from "../../lib/errors.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { projectsRepository } from "../projects/repository.ts";
@@ -47,6 +47,7 @@ const createBody = {
     description: { type: ["string", "null"], maxLength: 4000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -62,6 +63,7 @@ const updateBody = {
     status: { type: "string", enum: STATUS },
     response: { type: ["string", "null"], maxLength: 4000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
@@ -119,11 +121,24 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const user = request.requireAuth();
       const project = await loadProject(request.params.id);
-      // The homeowner (client) signs off approvals, as well as company staff.
+      // Baseline: the homeowner (client) signs off approvals, as well as company
+      // staff. assertCanActAsClient blocks viewers and unrelated participants.
       assertCanActAsClient(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
       );
+      // If the approval was directed at a specific reviewer, only that person may
+      // record the decision (status change). Editing other fields stays open to
+      // the baseline set above.
+      const decidingStatus =
+        request.body.status !== undefined &&
+        ["Approved", "Rejected", "Resubmit"].includes(request.body.status);
+      if (decidingStatus) {
+        const approval = await service.get(project.id, request.params.approvalId);
+        if (approval.requestedReviewerId && approval.requestedReviewerId !== user.id) {
+          throw new ForbiddenError("This approval is awaiting a decision from its requested reviewer");
+        }
+      }
       return service.update(project.id, request.params.approvalId, request.body, user.id);
     },
   );

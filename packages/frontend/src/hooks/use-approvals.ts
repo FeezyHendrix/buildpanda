@@ -39,6 +39,7 @@ export interface ApprovalCreateInput {
   category?: string | null;
   description?: string | null;
   dueDate?: string | null;
+  requestedReviewerId?: string | null;
 }
 
 export interface ApprovalUpdateInput {
@@ -48,6 +49,7 @@ export interface ApprovalUpdateInput {
   status?: ApprovalStatus;
   response?: string | null;
   dueDate?: string | null;
+  requestedReviewerId?: string | null;
 }
 
 export function useCreateApproval() {
