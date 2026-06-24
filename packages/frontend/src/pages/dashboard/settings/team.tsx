@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -18,6 +18,9 @@ import {
   useRoles,
   useUpdateMemberRole,
 } from "@/hooks/use-organization";
+import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
+import { Label } from "@/components/atoms/label";
+import { toast } from "@/lib/toast";
 
 import { MembersSection } from "./team/members-section";
 import { InvitationsSection } from "./team/invitations-section";
@@ -45,6 +48,15 @@ export default function TeamSettings() {
   const [roleBuilderOpen, setRoleBuilderOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<CustomRole | null>(null);
+
+  const { data: orgProfile } = useOrgProfile();
+  const updateOrgProfile = useUpdateOrgProfile();
+  const [orgName, setOrgName] = useState("");
+  const orgNameDirty = orgProfile ? orgName !== orgProfile.name : false;
+
+  useEffect(() => {
+    if (orgProfile?.name) setOrgName(orgProfile.name);
+  }, [orgProfile?.name]);
 
   const members = membersQuery.data?.members ?? [];
   const customRoles = rolesQuery.data ?? [];
@@ -93,6 +105,34 @@ export default function TeamSettings() {
           )
         }
       />
+
+      <div className="mb-8 mt-6 rounded-xl border border-gray-200 p-5">
+        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Company name</Label>
+        <div className="mt-2 flex gap-3">
+          <input
+            id="org-name"
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            className="h-10 flex-1 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          />
+          <Button
+            size="sm"
+            onClick={() =>
+              updateOrgProfile.mutate(
+                { name: orgName.trim() },
+                {
+                  onSuccess: () => toast("Company name updated", "success"),
+                  onError: () => toast("Could not update company name"),
+                },
+              )
+            }
+            disabled={!orgNameDirty || !orgName.trim()}
+            loading={updateOrgProfile.isPending}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
 
       <MembersSection
         members={members}

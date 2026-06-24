@@ -13,6 +13,7 @@ export interface OrgProfile {
 }
 
 export interface UpdateOrgProfileInput {
+  name?: string;
   phone?: string | null;
   address?: string | null;
   contactEmail?: string | null;
