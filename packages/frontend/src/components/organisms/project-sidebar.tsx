@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
-import { useProjectChannels } from "@/hooks/use-chat";
+import { useProjectChannels, useAllChannels } from "@/hooks/use-chat";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
 
 import {
@@ -44,10 +44,14 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   const location = useLocation();
   const isClient = access?.relationship !== "company";
   const { data: channels = [] } = useProjectChannels(project.id);
-  const totalUnread = channels.reduce(
-    (sum, c) => sum + (c.unreadCount ?? 0),
-    0,
-  );
+  const { data: allChannels = [] } = useAllChannels();
+  // DMs are global (project_id null), so they are NOT returned by the per-project
+  // channels endpoint. Count this project's channels plus the user's DM channels
+  // so a direct message also bumps the Messages badge.
+  const dmChannels = allChannels.filter((c) => c.type === "dm");
+  const totalUnread =
+    channels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0) +
+    dmChannels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
 
   const { data: flagsData } = useFeatureFlags();
   const enabledKeys = useMemo(
