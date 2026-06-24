@@ -116,6 +116,35 @@
 9. **Budget allocation**: allocations across phases must not exceed the total.
 10. **Daily log — void**: must archive (audit trail), never hard-delete.
 
+## Coverage status (delivered)
+
+Green across owner / member / viewer (90 tests; deterministic, with a 1-retry
+safety net for the heavy dnd-kit tasks board).
+
+**Deep upsert + persistence specs (8 modules):** tasks (create persists + edit
+round-trip + default columns), action-items (upsert + edit round-trip), invoices
+(**flagship** — payment balance reconciliation verified at the API/DB layer),
+change-requests, rfis, queries, permits, key-dates. All use the FormDrawer upsert
+pattern and assert the post-invalidation DOM.
+
+**Navigation reachability smoke (19 routes):** overview, updates, documents,
+inspections, daily-log, bim, materials, material-log, equipment-requests,
+finances, finances/budget, finances/milestone-payments, schedules/project-chart,
+schedules/activities, schedules/stages, approvals, people, panda-ai, settings —
+each asserted to mount without the error boundary and present its main landmark.
+
+So **every project module has at least reachability coverage**, and the
+highest-value / highest-risk modules have deep upsert coverage.
+
+**Remaining (incremental, on top of nav coverage):** deep upsert specs for
+materials (5 required fields incl. quantity + date), inspections (date fields),
+milestone-payments (name + phase + amount), equipment-requests, stages, budget
+allocation, activities; the daily-log single-record model; documents / bim upload
+flows; cross-role permission-denial assertions (need one project shared across
+roles via the participants API — the harness self-provisions one project per role
+today). The `team` module is intentionally skipped while another workstream
+refactors it. Each remaining module is a small `ListUpsertPage` config + spec.
+
 ## Suite structure
 
 ```
