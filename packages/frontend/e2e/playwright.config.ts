@@ -10,8 +10,17 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: env.isCi,
   retries: env.isCi ? 2 : 0,
-  workers: env.isCi ? undefined : "50%",
-  timeout: 30_000,
+  // Project creation is rate-limited server-side. Locally we run serial (1
+  // worker) for deterministic, flake-free signal — the brief prefers truth over
+  // breadth. CI fans out with sharding across machines (each with few workers),
+  // so no single machine trips the limit. Override with E2E_WORKERS if needed.
+  workers: process.env["E2E_WORKERS"]
+    ? Number(process.env["E2E_WORKERS"])
+    : env.isCi
+      ? 2
+      : 1,
+  // Headroom for the worker-scoped seed to ride out a rate-limit Retry-After.
+  timeout: 60_000,
   expect: { timeout: 10_000 },
   reporter: env.isCi
     ? [["list"], ["junit", { outputFile: ".results/junit.xml" }], ["blob"]]
