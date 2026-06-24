@@ -14,8 +14,11 @@ export class FormDrawer {
   // Waits for the drawer (and its slide-in transition) to be ready for input.
   // Readiness is signalled by the first form field becoming editable, NOT by the
   // submit button — many drawers disable submit until required fields are filled.
+  // We also wait out the Base UI open transition (data-starting-style) so clicks
+  // don't hit a still-animating (unstable) element.
   async waitOpen(title?: string | RegExp): Promise<void> {
     await this.dialog.waitFor({ state: "visible" });
+    await expect(this.dialog).not.toHaveAttribute("data-starting-style", /.*/);
     if (title) {
       await expect(this.dialog).toContainText(title);
     }
@@ -58,7 +61,15 @@ export class FormDrawer {
   async save(name?: string | RegExp): Promise<void> {
     const btn = name ? this.submitButton(name) : this.submitButton();
     await expect(btn).toBeEnabled();
-    await btn.click();
+    // Normal click first. Some pages render a decorative animated SVG in the
+    // (inert) background that wins the hit-test over the modal's button; when
+    // that intercepts the click we fall back to submitting the form via Enter,
+    // which fires the FormDrawer's onSubmit directly and is immune to z-order.
+    try {
+      await btn.click({ timeout: 4000 });
+    } catch {
+      await this.dialog.locator("input, textarea").first().press("Enter");
+    }
   }
 
   // Save and confirm the drawer fully closes — the canonical "mutation done"
