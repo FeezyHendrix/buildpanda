@@ -3,6 +3,8 @@ import { api } from "@/api/client";
 import { channelKeys, messageKeys } from "./query-keys";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
 
+const MESSAGE_PAGE_SIZE = 50;
+
 export function useProjectChannels(projectId: string | undefined | null) {
   return useQuery({
     queryKey: channelKeys.project(projectId!),
@@ -17,11 +19,11 @@ export function useChannelMessages(channelId: string | undefined | null) {
     queryKey: messageKeys.list(channelId!),
     queryFn: ({ pageParam }) =>
       api.get<ChatMessage[]>(`/channels/${channelId}/messages`, {
-        params: { before: pageParam },
+        params: { before: pageParam, limit: MESSAGE_PAGE_SIZE },
       }).then((r) => r.data),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: () => undefined,
-    getPreviousPageParam: (firstPage) => firstPage.length > 0 ? firstPage[0]!.id : undefined,
+    getPreviousPageParam: (firstPage) => firstPage.length === MESSAGE_PAGE_SIZE ? firstPage[0]!.id : undefined,
     enabled: Boolean(channelId),
     refetchInterval: 5000,
   });

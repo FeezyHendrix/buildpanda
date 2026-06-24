@@ -32,6 +32,7 @@ export interface Task {
   createdByName: string | null;
   subtaskTotal: number;
   subtaskDone: number;
+  entityLinkTypes: TaskEntityType[];
   createdAt: string;
   updatedAt: string;
 }
@@ -53,9 +54,37 @@ export interface TaskLink {
   targetTaskTitle: string;
 }
 
+export const TASK_ENTITY_TYPES = [
+  "action_item",
+  "rfi",
+  "change_request",
+  "material",
+  "invoice",
+  "milestone_payment",
+] as const;
+export type TaskEntityType = (typeof TASK_ENTITY_TYPES)[number];
+
+export interface TaskEntityLink {
+  id: string;
+  entityType: TaskEntityType;
+  entityId: string;
+  label: string;
+  status: string | null;
+}
+
+export interface TaskEntityLinkRow {
+  id: string;
+  project_id: string;
+  task_id: string;
+  entity_type: TaskEntityType;
+  entity_id: string;
+  created_at: string;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
+  entityLinks: TaskEntityLink[];
 }
 
 export interface TaskBoard {

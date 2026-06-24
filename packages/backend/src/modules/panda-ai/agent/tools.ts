@@ -198,6 +198,20 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_task_links", "Get cross-references between tasks and other project records (action items, RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.taskEntityLinks(ctx.projectId);
+      const byTask = new Map<string, { entityType: string; label: string }[]>();
+      for (const row of rows as { taskTitle: string; entityType: string; label: string | null }[]) {
+        const list = byTask.get(row.taskTitle) ?? [];
+        list.push({ entityType: row.entityType, label: row.label ?? "(untitled)" });
+        byTask.set(row.taskTitle, list);
+      }
+      return {
+        output: [...byTask.entries()].map(([task, links]) => ({ task, linkedItems: links })),
+      };
+    }),
+
     tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();

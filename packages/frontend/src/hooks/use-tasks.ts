@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { taskKeys } from "./query-keys";
-import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority, AssignableUser } from "@/lib/project-types";
+import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority, AssignableUser, TaskEntityLink, TaskEntityType } from "@/lib/project-types";
 
 export interface CreateTaskInput {
   title: string;
@@ -246,5 +246,20 @@ export function useAddLink(projectId: string, taskId: string) {
 export function useDeleteLink(projectId: string, taskId: string) {
   return useTaskChildMutation<string>(projectId, taskId, (linkId) =>
     api.delete(`/projects/${projectId}/tasks/${taskId}/links/${linkId}`),
+  );
+}
+
+export function useAddEntityLink(projectId: string, taskId: string) {
+  return useTaskChildMutation<{ entityType: TaskEntityType; entityId: string }>(
+    projectId,
+    taskId,
+    (body) =>
+      api.post<TaskEntityLink>(`/projects/${projectId}/tasks/${taskId}/entity-links`, body).then((r) => r.data),
+  );
+}
+
+export function useDeleteEntityLink(projectId: string, taskId: string) {
+  return useTaskChildMutation<string>(projectId, taskId, (linkId) =>
+    api.delete(`/projects/${projectId}/tasks/${taskId}/entity-links/${linkId}`),
   );
 }

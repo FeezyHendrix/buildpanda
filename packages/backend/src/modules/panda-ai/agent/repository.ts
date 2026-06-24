@@ -279,6 +279,39 @@ export function agentRepository(db: Knex) {
           "expiry_date",
         );
     },
+
+    taskEntityLinks(projectId: string) {
+      return db("task_entity_links as el")
+        .join("tasks as t", "t.id", "el.task_id")
+        .leftJoin("action_items as ai", function () {
+          this.on("el.entity_type", db.raw("?", ["action_item"])).andOn("ai.id", "el.entity_id");
+        })
+        .leftJoin("rfis as r", function () {
+          this.on("el.entity_type", db.raw("?", ["rfi"])).andOn("r.id", "el.entity_id");
+        })
+        .leftJoin("change_requests as cr", function () {
+          this.on("el.entity_type", db.raw("?", ["change_request"])).andOn("cr.id", "el.entity_id");
+        })
+        .leftJoin("material_orders as mo", function () {
+          this.on("el.entity_type", db.raw("?", ["material"])).andOn("mo.id", "el.entity_id");
+        })
+        .leftJoin("project_invoices as inv", function () {
+          this.on("el.entity_type", db.raw("?", ["invoice"])).andOn("inv.id", "el.entity_id");
+        })
+        .leftJoin("milestone_payments as mp", function () {
+          this.on("el.entity_type", db.raw("?", ["milestone_payment"])).andOn("mp.id", "el.entity_id");
+        })
+        .where("el.project_id", projectId)
+        .orderBy("t.title", "asc")
+        .limit(200)
+        .select(
+          "t.title as taskTitle",
+          "el.entity_type as entityType",
+          db.raw(
+            "COALESCE(ai.title, r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
+          ),
+        );
+    },
   };
 }
 
