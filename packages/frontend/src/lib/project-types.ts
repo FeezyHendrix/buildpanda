@@ -383,6 +383,8 @@ export type StageStatus = PhaseStatus;
 export type KnownParticipantRole = "client" | "architect" | "inspector" | "guest";
 export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
+export type SectionPermission = "hidden" | "view" | "edit";
+export type ParticipantPermissions = Record<string, SectionPermission>;
 
 export interface ProjectParticipant {
   id: string;
@@ -392,6 +394,7 @@ export interface ProjectParticipant {
   email: string;
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
+  permissions: ParticipantPermissions;
   createdAt: string;
 }
 
