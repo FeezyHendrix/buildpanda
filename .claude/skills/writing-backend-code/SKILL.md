@@ -230,6 +230,35 @@ export async function down(knex: Knex) {
 }
 ```
 
+**No N+1 queries.** Never run a query per row in a loop — fetch the parent set
+once, collect the ids, then fetch children in a single batched query (`whereIn`)
+and stitch in memory. The repo already does this everywhere (e.g.
+`updates/repository.ts` `mediaForUpdates(updateIds[])`,
+`messaging/repository.ts` `whereIn("message_id", messageIds)`); copy that shape.
+Independent queries that don't depend on each other run together with
+`Promise.all`. Repository methods that resolve a collection should take an array
+(`findByIds(ids)`), not be called once per id by the service.
+
+```ts
+// Bad — N+1: one query per task to get its subtasks
+const tasks = await repo.listTasks(projectId)
+for (const t of tasks) {
+  t.subtasks = await repo.subtasksForTask(t.id)   // a query PER task
+}
+
+// Good — two queries total: parents, then all children by id, stitched in memory
+const tasks = await repo.listTasks(projectId)
+const byTask = groupBy(
+  await repo.subtasksForTasks(tasks.map((t) => t.id)),  // whereIn("task_id", ids)
+  (s) => s.task_id,
+)
+for (const t of tasks) t.subtasks = byTask.get(t.id) ?? []
+
+// Good — independent reads in parallel
+const [board, assignees] = await Promise.all([repo.board(projectId), repo.assignees(projectId)])
+```
+
+
 ### Panda AI awareness
 
 The in-app assistant (`modules/panda-ai/agent`) answers project questions by
@@ -386,6 +415,9 @@ req.log.info({ projectId, count: items.length }, "listed action items")
 - Business logic in `routes.ts` "because it's short" — move it to the service
   from the first line (Layering).
 - Reaching into another module's tables instead of calling its service.
+- N+1 queries — a query per row in a loop instead of one batched `whereIn` (or
+  `Promise.all` for independent reads); repository collection methods should take
+  an id array, not be called once per id.
 - Returning raw rows or omitting the `response` schema — map via `toX` and
   declare the response.
 - `format: "email"` in a schema — crashes at startup (no ajv-formats); use

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { taskKeys } from "./query-keys";
-import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority } from "@/lib/project-types";
+import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority, AssignableUser } from "@/lib/project-types";
 
 export interface CreateTaskInput {
   title: string;
@@ -29,6 +29,17 @@ export function useTaskBoard(projectId: string) {
     queryKey: taskKeys.board(projectId),
     queryFn: async () => {
       const { data } = await api.get<TaskBoard>(`/projects/${projectId}/tasks/board`);
+      return data;
+    },
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useAssignableUsers(projectId: string) {
+  return useQuery({
+    queryKey: taskKeys.assignable(projectId),
+    queryFn: async () => {
+      const { data } = await api.get<AssignableUser[]>(`/projects/${projectId}/tasks/assignable`);
       return data;
     },
     enabled: Boolean(projectId),

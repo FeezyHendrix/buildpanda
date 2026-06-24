@@ -978,6 +978,8 @@ export interface Task {
   position: number;
   sourceType: string | null;
   sourceId: string | null;
+  createdById: string | null;
+  createdByName: string | null;
   subtaskTotal: number;
   subtaskDone: number;
   createdAt: string;
@@ -985,6 +987,14 @@ export interface Task {
 }
 
 export type TaskPriority = "Low" | "Medium" | "High";
+
+export interface AssignableUser {
+  kind: "user" | "team";
+  id: string;
+  name: string;
+  email: string | null;
+  isSelf: boolean;
+}
 
 export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
 
