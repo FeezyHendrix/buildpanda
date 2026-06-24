@@ -235,17 +235,41 @@ Plus Jakarta Sans). Match neighbouring files' tokens; use `cn()` from
 `lib/utils.ts` for conditional classes. No CSS-in-JS, no new style systems, no
 raw hex that drifts from the theme.
 
+**The design system is the source of truth for colour — never hardcode a value
+that an existing atom/token already owns.** If a colour (or spacing, radius,
+shadow, typography) is expressed by a design-system component or token, reuse
+that, don't re-type its hex. Map your domain enum to a *semantic* token (a Badge
+`tone`, a `primary-*` class), not to literal colours, so a palette change in one
+place updates every usage. Re-typing `#C72525` because "danger is red" is the
+drift this rule exists to stop.
+
 ```tsx
-// Good — a Badge tone mapped from status via cn(), theme tokens only
+// Good — domain enum -> semantic Badge tone; the Badge atom owns the colours,
+// and the selected/idle look is just a Badge variant. Zero hex here.
+const PRIORITY_META: Record<Priority, { tone: BadgeTone; shape: Shape }> = {
+  Low:    { tone: "info",    shape: "down" },
+  Medium: { tone: "warning", shape: "dash" },
+  High:   { tone: "danger",  shape: "up" },
+}
+<Badge tone={meta.tone} variant={selected ? "solid" : "soft"}>{label}</Badge>
+
+// Good — a status badge built from theme tokens via cn()
 function StatusBadge({ status }: { status: Status }) {
   return <span className={cn("rounded px-2 py-0.5 text-xs",
-    status === "done"        ? "bg-primary-100 text-primary-700"
-    : status === "open"      ? "bg-gray-100 text-gray-600"
+    status === "done"   ? "bg-primary-100 text-primary-700"
+    : status === "open" ? "bg-gray-100 text-gray-600"
     : "bg-amber-100 text-amber-700")} />
 }
-// Bad — inline hex drifts from the palette
-<span style={{ color: "#004DE7" }} />   // use text-primary-600 instead
+// Bad — re-typing colours the Badge already owns, or inline hex off-palette
+<span className="text-[#C72525]">High</span>          // use <Badge tone="danger">
+<span style={{ color: "#004DE7" }} />                 // use text-primary-600
 ```
+
+**Encode meaning beyond colour.** ~8% of men are red-green colour-blind, so a
+status/priority must also carry a non-colour cue (icon/shape + text label),
+never colour alone (WCAG 1.4.1). The priority badges pair each tone with a
+distinct shape (▲/▬/▼) and always show the label.
+
 
 ### Imports & files
 
@@ -292,6 +316,10 @@ correctness rules vs measure-first optimizations.
 - Gating UI on `accountType` and assuming it's secure — it's presentation.
 - Separate "create" and "edit" dialogs — one upsert dialog, `initial` prop.
 - Hex colors that drift from the theme; check the Tailwind palette first.
+- Re-typing a colour/spacing/radius the design system already owns (e.g. a
+  Badge tone's hex) instead of reusing the token/component — map enums to
+  semantic tokens, never literal values.
+- Conveying status/priority by colour alone — add an icon/shape + label (colour-blind safe, WCAG 1.4.1).
 - Mutating an array with `.sort()` in a `useMemo` over props — use `.toSorted()` (J-6).
 - Hand-rolling a spinner/skeleton or relabelling buttons to "Saving…" — use the `Spinner` atom and the `Button`/`ConfirmDialog` `loading` prop instead.
 
