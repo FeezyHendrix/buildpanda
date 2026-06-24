@@ -16,6 +16,8 @@ import {
 import { KanbanBoard } from "@/components/molecules/kanban-board";
 import { APPROVAL_COLUMNS, assigneeFooter, textMeta } from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useSession } from "@/stores/auth";
+import { useAssignableUsers } from "@/hooks/use-tasks";
 import {
   useApprovals,
   useCreateApproval,
@@ -41,6 +43,10 @@ function formatDue(value: string | null): string | null {
 export default function ProjectApprovals() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
+  const canDecide = access?.capabilities?.canDecideApprovals ?? false;
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ?? "";
+  const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
   const [filter, setFilter] = useState<ApprovalStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: approvals = [], isLoading } = useApprovals(
@@ -57,6 +63,15 @@ export default function ProjectApprovals() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const pendingCount = approvals.filter((a) => a.status === "Pending").length;
+
+  // Whether the current user may record a decision on THIS approval: they must
+  // be an approver (canDecide), and if a specific reviewer was requested it must
+  // be them. Mirrors the backend gate so the UI never offers a blocked action.
+  function canDecideApproval(a: Approval): boolean {
+    if (!canDecide) return false;
+    if (a.requestedReviewerId && a.requestedReviewerId !== currentUserId) return false;
+    return true;
+  }
 
   function handleMove(approval: Approval, status: ApprovalStatus): void {
     if (approval.status === status) return;
@@ -172,7 +187,7 @@ export default function ProjectApprovals() {
                 </div>
               </button>
               <div className="flex items-center gap-3">
-                {a.status === "Pending" && (
+                {a.status === "Pending" && canDecideApproval(a) && (
                   <button
                     type="button"
                     onClick={() => setDetailId(a.id)}
@@ -198,6 +213,7 @@ export default function ProjectApprovals() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        reviewerOptions={reviewerOptions}
         onSubmit={handleCreate}
         isSubmitting={createApproval.isPending}
         error={(createApproval.error as Error | undefined)?.message ?? null}
@@ -207,6 +223,7 @@ export default function ProjectApprovals() {
         open={editApproval !== null}
         onOpenChange={(o) => !o && setEditApproval(null)}
         mode="edit"
+        reviewerOptions={reviewerOptions}
         initial={
           editApproval
             ? {
@@ -214,6 +231,7 @@ export default function ProjectApprovals() {
                 category: editApproval.category,
                 description: editApproval.description,
                 dueDate: editApproval.dueDate,
+                requestedReviewerId: editApproval.requestedReviewerId,
               }
             : undefined
         }
@@ -227,6 +245,8 @@ export default function ProjectApprovals() {
         onOpenChange={(o) => !o && setDetailId(null)}
         projectId={project.id}
         approvalId={detailId}
+        canDecide={canDecide}
+        currentUserId={currentUserId}
       />
 
       <ConfirmDialog
