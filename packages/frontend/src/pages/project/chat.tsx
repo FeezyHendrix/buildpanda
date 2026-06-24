@@ -885,6 +885,7 @@ export default function ProjectChat() {
   const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
 
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
 
   useEffect(() => {
     if (projectChannels.length > 0 && !activeChannelId) {
@@ -980,7 +981,11 @@ export default function ProjectChat() {
   
   return (
     <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
-      <div className="flex w-64 flex-col border-r border-gray-200 bg-gray-50/50">
+      <div className={cn(
+        "flex flex-col border-r border-gray-200 bg-gray-50/50",
+        "w-full lg:w-64",
+        mobileShowChat ? "hidden lg:flex" : "flex",
+      )}>
         <div className="flex h-14 items-center border-b border-gray-200 px-4">
           <h2 className="font-semibold text-gray-900">Channels</h2>
         </div>
@@ -993,7 +998,7 @@ export default function ProjectChat() {
                   key={c.id}
                   channel={{...c, name: c.name || "general"}}
                   isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
                 />
               ))}
             </div>
@@ -1011,7 +1016,7 @@ export default function ProjectChat() {
                   channel={c}
                   currentUserId={currentUserId}
                   isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
                 />
               ))}
             </div>
@@ -1020,14 +1025,24 @@ export default function ProjectChat() {
       </div>
 
       {activeChannelId && activeChannel ? (
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex h-14 items-center justify-between border-b border-gray-200 px-6">
-            <div className="flex items-center gap-3">
+        <div className={cn("flex flex-1 flex-col overflow-hidden", !mobileShowChat && "hidden lg:flex")}>
+          <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4 lg:px-6">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileShowChat(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 lg:hidden"
+                aria-label="Back to channels"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
               <h3 className="font-semibold text-gray-900">
                 {activeChannel.type === "dm" ? "Direct Message" : `# ${activeChannel.name || "general"}`}
               </h3>
               {activeChannel.topic && (
-                <span className="text-sm text-gray-500">| {activeChannel.topic}</span>
+                <span className="hidden text-sm text-gray-500 sm:inline">| {activeChannel.topic}</span>
               )}
             </div>
             <div className="flex items-center gap-4">
@@ -1098,7 +1113,7 @@ export default function ProjectChat() {
           <Composer channelId={activeChannelId} projectId={project.id} />
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center text-gray-500">
+        <div className={cn("flex flex-1 items-center justify-center text-gray-500", !mobileShowChat && "hidden lg:flex")}>
           Select a channel
         </div>
       )}

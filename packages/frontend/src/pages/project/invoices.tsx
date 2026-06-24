@@ -130,7 +130,7 @@ export default function ProjectInvoices() {
 
       <section
         aria-label="Invoice summary"
-        className="mt-8 grid grid-cols-2 gap-3 xl:grid-cols-4"
+        className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
       >
         <SummaryTile
           label="Total Billed"

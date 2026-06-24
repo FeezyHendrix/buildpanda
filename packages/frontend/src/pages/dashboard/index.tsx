@@ -45,7 +45,7 @@ export default function Dashboard() {
 
   return (
     // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 max-w-7xl mx-auto w-full">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 lg:max-w-7xl mx-auto w-full max-w-fit lg:px-3 px-4">
       <div className="flex items-center justify-between mb-6">
         <div className="flex justify-center flex-1">
           <SuiteSwitcher variant="tabs" />
@@ -55,12 +55,12 @@ export default function Dashboard() {
 
       <section className="flex flex-col gap-4 mt-10">
         <div className="mx-auto w-fit">
-          <div className="flex w-full items-center justify-between mb-4">
+          <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between mb-4 lg:gap-0 gap-4">
             <div className="flex items-center gap-1">
               <ReactSVG src={icons.folder} />
               <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center lg:items-start lg:gap-3 gap-3">
               <OrgSwitcher />
               <Link
                 to="/dashboard/settings/team"
@@ -71,7 +71,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {list.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
@@ -159,7 +159,7 @@ function ProjectCard({ project }: { project: Project }) {
   return (
     <Card
       padding="md"
-      className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 w-[334.82px]"
+      className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 lg:w-[334.82px] w-full"
     >
       <button
         type="button"

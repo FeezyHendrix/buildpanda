@@ -123,7 +123,7 @@ export default function ProjectUpdates() {
       />
 
       {/* <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px]"> */}
-      <div className='flex items-start gap-8 relative mt-4'>
+      <div className='flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 relative mt-4'>
         <section className="flex flex-col flex-1 gap-4 min-w-0">
           {visible.length === 0 ? (
             <Card padding="lg" className="text-center text-sm text-gray-500">
@@ -141,7 +141,7 @@ export default function ProjectUpdates() {
           )}
         </section>
 
-        <div className="w-[377px] shrink-0 sticky top-8">
+        <div className="w-full lg:w-[377px] lg:shrink-0 lg:sticky lg:top-8">
           <FiltersPanel
             filters={filters}
             contractors={contractors}
