@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Combobox } from "@base-ui-components/react/combobox";
 import {
   DndContext,
@@ -42,13 +42,21 @@ import {
   useDeleteSubtask,
   useAddLink,
   useDeleteLink,
+  useAddEntityLink,
+  useDeleteEntityLink,
 } from "@/hooks/use-tasks";
+import { useActionItems } from "@/hooks/use-action-items";
+import { useProjectRfis } from "@/hooks/use-rfis";
+import { useChangeRequests } from "@/hooks/use-change-requests";
+import { useMaterialOrders } from "@/hooks/use-materials-equipment";
+import { useProjectInvoices } from "@/hooks/use-invoices";
+import { useProjectFinances } from "@/hooks/use-finances";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { resolveFileUrl } from "@/hooks/use-files";
-import type { Task, TaskColumn, TaskLinkType, TaskPriority } from "@/lib/project-types";
+import type { Task, TaskColumn, TaskLinkType, TaskPriority, TaskEntityType, TaskEntityLink } from "@/lib/project-types";
 
 // Priority styling maps each level to a design-system Badge tone (colours live
 // in the Badge atom, never hardcoded here) plus a distinct shape, so the level
@@ -70,6 +78,15 @@ function PriorityIcon({ shape }: { shape: "down" | "dash" | "up" }) {
       {shape === "down" && <polyline points="6 9 12 15 18 9" />}
       {shape === "dash" && <line x1="5" y1="12" x2="19" y2="12" />}
       {shape === "up" && <polyline points="6 15 12 9 18 15" />}
+    </svg>
+  );
+}
+
+function LinkGlyph() {
+  return (
+    <svg className="size-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
     </svg>
   );
 }
@@ -709,6 +726,20 @@ function TaskCard({
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <PriorityBadge priority={task.priority} />
+          {task.entityLinkTypes.length > 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              {task.entityLinkTypes.map((type) => (
+                <span
+                  key={type}
+                  className="inline-flex items-center gap-1 rounded bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#004DE7]"
+                  title={`Linked to ${ENTITY_META[type].label.toLowerCase()}`}
+                >
+                  <LinkGlyph />
+                  {ENTITY_META[type].label}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <button type="button" onClick={onOpen} className="block w-full text-left outline-none">
           <p className="text-sm font-medium text-gray-900">{task.title}</p>
@@ -1256,6 +1287,173 @@ function TaskExtras({
           </div>
         )}
       </div>
+      <TaskEntityLinks projectId={projectId} taskId={taskId} entityLinks={detail?.entityLinks ?? []} />
     </>
+  );
+}
+
+const ENTITY_META: Record<TaskEntityType, { label: string; route: string }> = {
+  action_item: { label: "Action item", route: "action-items" },
+  rfi: { label: "RFI", route: "rfis" },
+  change_request: { label: "Change request", route: "change-requests" },
+  material: { label: "Material", route: "materials" },
+  invoice: { label: "Invoice", route: "finances/invoices" },
+  milestone_payment: { label: "Milestone", route: "schedules/milestones" },
+};
+
+const ENTITY_ORDER: TaskEntityType[] = [
+  "action_item",
+  "rfi",
+  "change_request",
+  "material",
+  "invoice",
+  "milestone_payment",
+];
+
+function TaskEntityLinks({
+  projectId,
+  taskId,
+  entityLinks,
+}: {
+  projectId: string;
+  taskId: string;
+  entityLinks: TaskEntityLink[];
+}) {
+  const navigate = useNavigate();
+  const addEntityLink = useAddEntityLink(projectId, taskId);
+  const deleteEntityLink = useDeleteEntityLink(projectId, taskId);
+
+  const [entityType, setEntityType] = useState<TaskEntityType>("action_item");
+  const [entityTarget, setEntityTarget] = useState<string | null>(null);
+
+  const actionItems = useActionItems(projectId);
+  const rfis = useProjectRfis(projectId);
+  const changeRequests = useChangeRequests(projectId);
+  const materialOrders = useMaterialOrders(projectId);
+  const invoices = useProjectInvoices(projectId);
+  const finances = useProjectFinances(projectId);
+
+  const candidatesByType = useMemo<Record<TaskEntityType, ComboItem[]>>(
+    () => ({
+      action_item: (actionItems.data ?? []).map((i) => ({ id: i.id, label: i.title })),
+      rfi: (rfis.data ?? []).map((i) => ({ id: i.id, label: i.subject })),
+      change_request: (changeRequests.data ?? []).map((i) => ({ id: i.id, label: i.title })),
+      material: (materialOrders.data ?? []).map((i) => ({ id: i.id, label: i.materialName })),
+      invoice: (invoices.data ?? []).map((i) => ({
+        id: i.id,
+        label: i.number ? `${i.vendorName} · ${i.number}` : i.vendorName,
+      })),
+      milestone_payment: (finances.data?.milestones ?? []).map((i) => ({ id: i.id, label: i.name })),
+    }),
+    [actionItems.data, rfis.data, changeRequests.data, materialOrders.data, invoices.data, finances.data],
+  );
+
+  const linkedIds = useMemo(() => new Set(entityLinks.map((l) => `${l.entityType}:${l.entityId}`)), [entityLinks]);
+  const pickerItems = useMemo(
+    () => candidatesByType[entityType].filter((c) => !linkedIds.has(`${entityType}:${c.id}`)),
+    [candidatesByType, entityType, linkedIds],
+  );
+
+  const grouped = useMemo(() => {
+    const groups = new Map<TaskEntityType, TaskEntityLink[]>();
+    for (const link of entityLinks) {
+      const list = groups.get(link.entityType) ?? [];
+      list.push(link);
+      groups.set(link.entityType, list);
+    }
+    return ENTITY_ORDER.filter((t) => groups.has(t)).map((t) => ({ type: t, links: groups.get(t)! }));
+  }, [entityLinks]);
+
+  function submitEntityLink(): void {
+    if (!entityTarget) return;
+    addEntityLink.mutate(
+      { entityType, entityId: entityTarget },
+      {
+        onSuccess: () => setEntityTarget(null),
+        onError: (err) => {
+          const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+          toast(message ?? "Could not link item");
+        },
+      },
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label>Linked items{entityLinks.length > 0 ? ` (${entityLinks.length})` : ""}</Label>
+
+      {grouped.length === 0 ? (
+        <p className="text-xs text-gray-400">No linked items yet.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {grouped.map((group) => (
+            <div key={group.type} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[10px] font-semibold uppercase text-gray-500">
+                  {ENTITY_META[group.type].label}
+                </span>
+                <span className="text-[11px] text-gray-400">{group.links.length}</span>
+              </div>
+              {group.links.map((link) => (
+                <div key={link.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/project/${projectId}/${ENTITY_META[link.entityType].route}`)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-gray-700 hover:text-[#004DE7]"
+                    title={`Open ${ENTITY_META[link.entityType].label.toLowerCase()}`}
+                  >
+                    <span className="truncate">{link.label}</span>
+                    {link.status && (
+                      <span className="shrink-0 rounded-full bg-[#F6F6F6] px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                        {link.status}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteEntityLink.mutate(link.id)}
+                    aria-label="Remove linked item"
+                    className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
+        <div className="flex gap-2">
+          <select
+            value={entityType}
+            onChange={(e) => {
+              setEntityType(e.target.value as TaskEntityType);
+              setEntityTarget(null);
+            }}
+            className={cn(FIELD, "h-9 w-36 shrink-0")}
+          >
+            {ENTITY_ORDER.map((t) => (
+              <option key={t} value={t}>{ENTITY_META[t].label}</option>
+            ))}
+          </select>
+          <div className="min-w-0 flex-1">
+            <ComboSelect
+              items={pickerItems}
+              value={entityTarget}
+              onChange={setEntityTarget}
+              placeholder={`Search ${ENTITY_META[entityType].label.toLowerCase()}…`}
+              searchPlaceholder="Search…"
+              emptyText="Nothing to link"
+              className="h-9"
+            />
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={submitEntityLink} disabled={!entityTarget} className="self-end">
+          Add link
+        </Button>
+      </div>
+    </div>
   );
 }

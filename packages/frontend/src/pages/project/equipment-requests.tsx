@@ -12,6 +12,7 @@ import {
   MaterialsIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -108,6 +109,13 @@ export default function ProjectEquipmentRequests() {
 
   return (
     <div className="w-full px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Materials", to: `/project/${project.id}/materials` },
+          { label: "Equipment Requests" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Rental / equipment requests"
         description="Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan."

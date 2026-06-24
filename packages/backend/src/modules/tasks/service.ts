@@ -1,5 +1,5 @@
 import { generateId } from "../../lib/ids.ts";
-import { NotFoundError, BadRequestError } from "../../lib/errors.ts";
+import { NotFoundError, BadRequestError, ConflictError } from "../../lib/errors.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { NewColumnRecord, TasksRepository } from "./repository.ts";
 import type {
@@ -11,6 +11,9 @@ import type {
   TaskColumn,
   TaskColumnRow,
   TaskDetail,
+  TaskEntityLink,
+  TaskEntityLinkRow,
+  TaskEntityType,
   TaskLink,
   TaskLinkRow,
   TaskRow,
@@ -105,7 +108,11 @@ function normalizeLabels(labels: string[]): string[] {
   return out;
 }
 
-function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
+function toTask(
+  row: TaskRow,
+  counts?: { total: number; done: number },
+  entityLinkTypes?: TaskEntityType[],
+): Task {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -127,6 +134,7 @@ function toTask(row: TaskRow, counts?: { total: number; done: number }): Task {
     createdByName: row.created_by_name,
     subtaskTotal: counts?.total ?? 0,
     subtaskDone: counts?.done ?? 0,
+    entityLinkTypes: entityLinkTypes ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -187,14 +195,18 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       repository.listColumns(boardRow.id),
       repository.listTasksByBoard(boardRow.id),
     ]);
-    const counts = await repository.subtaskCounts(tasks.map((t) => t.id));
+    const taskIds = tasks.map((t) => t.id);
+    const [counts, linkTypes] = await Promise.all([
+      repository.subtaskCounts(taskIds),
+      repository.entityLinkTypesByTask(taskIds),
+    ]);
     return {
       id: boardRow.id,
       projectId: boardRow.project_id,
       name: boardRow.name,
       isDefault: boardRow.is_default,
       columns: columns.map(toColumn),
-      tasks: tasks.map((t) => toTask(t, counts.get(t.id))),
+      tasks: tasks.map((t) => toTask(t, counts.get(t.id), linkTypes.get(t.id))),
     };
   }
 
@@ -220,6 +232,21 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       return { assignee_id: null, assignee_team_member_id: assigneeTeamMemberId };
     }
     return { assignee_id: assigneeId ?? null, assignee_team_member_id: null };
+  }
+
+  async function resolveEntityLinks(rows: TaskEntityLinkRow[]): Promise<TaskEntityLink[]> {
+    if (rows.length === 0) return [];
+    const labels = await repository.resolveEntityLabels(rows);
+    return rows.map((row) => {
+      const resolved = labels.get(`${row.entity_type}:${row.entity_id}`);
+      return {
+        id: row.id,
+        entityType: row.entity_type,
+        entityId: row.entity_id,
+        label: resolved?.label ?? "(deleted)",
+        status: resolved?.status ?? null,
+      };
+    });
   }
 
   return {
@@ -417,15 +444,17 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     async getTaskDetail(projectId: string, taskId: string): Promise<TaskDetail> {
       const row = await repository.findTaskById(taskId);
       if (!row || row.project_id !== projectId) throw new NotFoundError("Task");
-      const [subtaskRows, linkRows, counts] = await Promise.all([
+      const [subtaskRows, linkRows, entityLinkRows, counts] = await Promise.all([
         repository.listSubtasks(taskId),
         repository.listLinks(taskId),
+        repository.listEntityLinks(taskId),
         repository.subtaskCounts([taskId]),
       ]);
       return {
         ...toTask(row, counts.get(taskId)),
         subtasks: subtaskRows.map(toSubtask),
         links: linkRows.map(toLink),
+        entityLinks: await resolveEntityLinks(entityLinkRows),
       };
     },
 
@@ -500,6 +529,43 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const link = await repository.findLinkById(linkId);
       if (!link || link.source_task_id !== taskId) throw new NotFoundError("Task link");
       await repository.deleteLink(linkId);
+    },
+
+    async addEntityLink(
+      projectId: string,
+      taskId: string,
+      entityType: TaskEntityType,
+      entityId: string,
+      userId: string | null,
+    ): Promise<TaskEntityLink> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const exists = await repository.entityExists(entityType, entityId, projectId);
+      if (!exists) throw new BadRequestError("Linked item must belong to this project");
+      const alreadyLinked = await repository.entityLinkExists(taskId, entityType, entityId);
+      if (alreadyLinked) throw new ConflictError("This item is already linked to the task");
+      const id = generateId("telink");
+      await repository.createEntityLink({
+        id,
+        project_id: projectId,
+        task_id: taskId,
+        entity_type: entityType,
+        entity_id: entityId,
+        created_by_id: userId,
+      });
+      const created = await repository.findEntityLinkById(id);
+      if (!created) throw new NotFoundError("Task link");
+      const [link] = await resolveEntityLinks([created]);
+      if (!link) throw new NotFoundError("Task link");
+      return link;
+    },
+
+    async removeEntityLink(projectId: string, taskId: string, linkId: string): Promise<void> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const link = await repository.findEntityLinkById(linkId);
+      if (!link || link.task_id !== taskId) throw new NotFoundError("Task link");
+      await repository.deleteEntityLink(linkId);
     },
   };
 }

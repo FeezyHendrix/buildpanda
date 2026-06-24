@@ -38,7 +38,25 @@ import {
   saveCachedDraft,
 } from "@/lib/chat-cache";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
-import { BellIcon, BellOffIcon } from "@/components/atoms/chat-icons";
+import {
+  AtSignIcon,
+  BellIcon,
+  BellOffIcon,
+  BoldIcon,
+  CodeIcon,
+  FileTextIcon,
+  ItalicIcon,
+  LinkIcon,
+  ListIcon,
+  PlusCircleIcon,
+  PlusIcon,
+  ReplyIcon,
+  SearchIcon,
+  SendIcon,
+  SmileIcon,
+  StarIcon,
+  XIcon,
+} from "@/components/atoms/chat-icons";
 
 function chatFileUrl(fileId: string): string {
   const base = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -128,12 +146,17 @@ function AttachmentChip({ attachment }: { attachment: NonNullable<ChatMessage["a
       href={attachment.url}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 transition-shadow hover:shadow-sm"
+      className="mt-2 flex w-fit items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700 transition-colors hover:bg-gray-100"
     >
-      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-      </svg>
-      <span className="max-w-[200px] truncate font-medium">{attachment.name}</span>
+      <span className="flex size-9 items-center justify-center rounded-md bg-white text-gray-500 ring-1 ring-gray-200">
+        <FileTextIcon />
+      </span>
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="max-w-[220px] truncate text-sm font-semibold text-gray-800">{attachment.name}</span>
+        {attachment.size && (
+          <span className="text-xs text-gray-500">{Math.max(1, Math.round(attachment.size / 1024))} KB</span>
+        )}
+      </span>
     </a>
   );
 }
@@ -232,15 +255,15 @@ function MessageItem({
 
   if (message.deletedAt) {
     return (
-      <div className="py-1 pl-12 text-sm italic text-gray-400">
+      <div className="py-1 text-sm italic text-gray-400">
         This message was deleted
       </div>
     );
   }
 
   return (
-    <div className="group relative py-1 pl-12 hover:bg-gray-50/50">
-      <div className="text-sm text-gray-900 whitespace-pre-wrap break-words">
+    <div className="group relative py-0.5">
+      <div className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-gray-700">
         {message.body}
         {message.editedAt && (
           <span className="ml-2 text-[10px] text-gray-400">(edited)</span>
@@ -264,18 +287,18 @@ function MessageItem({
       )}
 
       {message.reactions && message.reactions.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-2">
           {message.reactions.map((r) => (
             <button
               key={r.emoji}
               onClick={() => onReaction(message, r.emoji)}
               className={cn(
-                "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs",
-                r.mine ? "border-primary-100 bg-primary-50 text-primary-500" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                "flex items-center gap-1 rounded-full border px-2 py-0.5 text-sm transition-colors",
+                r.mine ? "border-primary-200 bg-primary-50 text-primary-500" : "border-gray-200 bg-gray-50 text-gray-600 hover:border-primary-200"
               )}
             >
               <span>{r.emoji}</span>
-              <span className="font-medium">{r.count}</span>
+              <span className="text-xs font-medium">{r.count}</span>
             </button>
           ))}
         </div>
@@ -285,8 +308,9 @@ function MessageItem({
         <div className="mt-1">
           <button 
             onClick={() => onReply(message)} 
-            className="text-xs font-medium text-primary-500 hover:underline"
+            className="inline-flex items-center gap-1.5 rounded-lg border-l-4 border-primary-500 bg-gray-50 px-3 py-2 text-left text-xs font-medium text-primary-500 transition-colors hover:bg-gray-100"
           >
+            <ReplyIcon className="size-4" />
             {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
           </button>
         </div>
@@ -402,20 +426,20 @@ function MessageGroup({
   if (!first) return null;
 
   return (
-    <div className="mt-4 flex gap-3 px-4">
-      <div className="mt-1 shrink-0">
+    <div className="flex gap-3 px-6 py-2">
+      <div className="shrink-0">
         <Avatar name={first.authorName ?? "?"} size="md" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="font-bold text-gray-900">
             {first.authorName ?? "Unknown User"}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-400">
             {formatTimeAgo(first.createdAt)}
           </span>
         </div>
-        <div className="mt-1 flex flex-col">
+        <div className="mt-0.5 flex flex-col">
           {messages.map((m) => (
             <MessageItem
               key={m.id}
@@ -475,11 +499,13 @@ function Composer({
   projectId,
   parentMessageId,
   isThread = false,
+  placeholder = "Message #general",
 }: {
   channelId: string;
   projectId: string;
   parentMessageId?: string;
   isThread?: boolean;
+  placeholder?: string;
 }) {
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<{ kind: "user" | "here" | "channel"; userId?: string }[]>([]);
@@ -566,8 +592,12 @@ function Composer({
     setMentions((prev) => [...prev, { kind: "user", userId: m.id }]);
   };
 
+  const submitFromButton = () => {
+    handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>);
+  };
+
   return (
-    <div className={cn("relative", isThread ? "" : "border-t border-gray-200 bg-gray-50 p-4")}>
+    <div className={cn("relative", isThread ? "" : "px-6 pb-3 pt-1")}>
       {showMentions && (
         <MentionDropdown
           members={members}
@@ -624,7 +654,7 @@ function Composer({
         </div>
       )}
 
-      <div className={cn(isThread ? "flex items-center bg-gray-100 rounded-md px-3 py-2" : "flex items-end gap-2")}>
+      <div className={cn(isThread ? "flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3" : "overflow-hidden rounded-xl border border-gray-200 bg-white")}>
         <input
           ref={fileInputRef}
           type="file"
@@ -632,72 +662,104 @@ function Composer({
           className="hidden"
           onChange={(e) => void handleFiles(e.target.files)}
         />
-        {!isThread && (
+        {isThread ? (
           <>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Reply..."
+              className="flex-1 bg-transparent text-[15px] text-gray-700 outline-none placeholder:text-gray-400"
+            />
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              title="Attach files"
-              className="mb-1 flex shrink-0 items-center justify-center rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+              onClick={submitFromButton}
+              disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
+              className="text-primary-500 transition-colors hover:text-primary-600 disabled:opacity-50"
+              aria-label="Send reply"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPickerOpen(!pickerOpen)}
-              className="mb-1 flex shrink-0 items-center justify-center rounded-xl p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
+              <SendIcon className="size-5" />
             </button>
           </>
-        )}
-
-        {isThread ? (
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Reply..."
-            className="flex-1 bg-transparent border-none outline-none text-[14px]"
-          />
         ) : (
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message... (Enter to send, Shift+Enter for newline)"
-            className="min-h-[60px] max-h-56 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm outline-none placeholder:text-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
-            rows={2}
-          />
-        )}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+              {[BoldIcon, ItalicIcon, LinkIcon, ListIcon, CodeIcon].map((Icon, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  disabled
+                  className="flex size-8 items-center justify-center rounded-md text-gray-400 disabled:opacity-60"
+                >
+                  <Icon />
+                </button>
+              ))}
+            </div>
 
-        {isThread ? (
-          <button
-            type="button"
-            onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement>)}
-            disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-            className="p-1 text-primary-500 hover:text-primary-600 disabled:opacity-50"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement>)}
-            disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-500 text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </button>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              className="max-h-56 min-h-[88px] w-full resize-none px-4 py-3 text-[15px] leading-relaxed text-gray-700 outline-none placeholder:text-gray-400"
+              rows={3}
+            />
+
+            <div className="flex items-center justify-between px-3 py-2.5">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  title="Attach files"
+                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+                >
+                  <PlusCircleIcon />
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="flex size-8 items-center justify-center rounded-md text-gray-400 disabled:opacity-60"
+                  title="Emoji picker unavailable"
+                >
+                  <SmileIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setText((current) => `${current}@`)}
+                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  title="Mention someone"
+                >
+                  <AtSignIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(!pickerOpen)}
+                  className="flex size-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  title="Reference project item"
+                >
+                  <LinkIcon className="size-5" />
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={submitFromButton}
+                disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
+                className="flex items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
+              >
+                Send
+                <SendIcon />
+              </button>
+            </div>
+
+          </div>
         )}
       </div>
+      {!isThread && (
+        <p className="mt-2 text-center text-xs text-gray-500">
+          <span className="font-semibold">Return</span> to send, <span className="font-semibold">Shift + Return</span> for new line
+        </p>
+      )}
     </div>
   );
 }
@@ -735,29 +797,27 @@ function ThreadPanel({
   }, [thread]);
 
   return (
-    <div className="flex w-96 flex-col border-l border-gray-200 bg-white shadow-sm z-10 relative">
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 bg-gray-50/80">
-        <h3 className="font-semibold text-gray-900">Thread</h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+    <div className="relative z-10 flex w-[420px] shrink-0 flex-col border-l border-gray-200 bg-white">
+      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+        <h3 className="text-lg font-bold text-gray-900">Thread</h3>
+        <button onClick={onClose} className="text-gray-500 transition-colors hover:text-gray-800" aria-label="Close thread">
+          <XIcon />
+        </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <MessageGroup
-          messages={[rootMessage]}
-          currentUserId={currentUserId}
-          pinnedIds={pinnedIds}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onPin={onPin}
-          onUnpin={onUnpin}
-          onReply={() => {}}
-          onReaction={onReaction}
-        />
-        
-        <div className="flex items-center gap-4 py-2">
-          <hr className="flex-1 border-gray-200" />
-          <span className="text-xs font-medium text-gray-400">{thread.length} replies</span>
-          <hr className="flex-1 border-gray-200" />
+      <div className="flex-1 overflow-y-auto py-3">
+        <div className="bg-gray-50/70">
+          <MessageGroup
+            messages={[rootMessage]}
+            currentUserId={currentUserId}
+            pinnedIds={pinnedIds}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onPin={onPin}
+            onUnpin={onUnpin}
+            onReply={() => {}}
+            onReaction={onReaction}
+          />
         </div>
 
         {thread.map((m: ChatMessage) => (
@@ -777,7 +837,7 @@ function ThreadPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 border-t border-gray-100 shrink-0">
+      <div className="shrink-0 border-t border-gray-200 px-5 py-4">
         <Composer channelId={rootMessage.channelId} projectId={projectId} parentMessageId={rootMessage.id} isThread />
       </div>
     </div>
@@ -855,23 +915,20 @@ function MessageSearch({ onSelect }: { onSelect: (channelId: string) => void }) 
 
   if (!isOpen) {
     return (
-      <button type="button" onClick={() => setIsOpen(true)} className="flex items-center text-gray-500 hover:text-gray-900 transition-colors">
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+      <button type="button" onClick={() => setIsOpen(true)} className="relative flex min-w-[280px] items-center rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-left text-sm text-gray-400 transition-colors hover:border-primary-300">
+        <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+        Search messages...
       </button>
     );
   }
 
   return (
     <div className="relative z-10 flex items-center">
-      <div className="flex items-center rounded-md border border-gray-200 bg-gray-50 px-2">
-        <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+      <div className="flex items-center rounded-lg border border-gray-200 bg-white px-2 py-1">
+        <SearchIcon className="size-4 text-gray-400" />
         <input
           autoFocus
-          className="w-48 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-gray-400"
+          className="w-64 bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-gray-400"
           placeholder="Search messages..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -1060,14 +1117,20 @@ export default function ProjectChat() {
 
   
   return (
-    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
-      <div className="flex w-64 flex-col border-r border-gray-200 bg-gray-50/50">
-        <div className="flex h-14 items-center border-b border-gray-200 px-4">
-          <h2 className="font-semibold text-gray-900">Channels</h2>
+    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white font-sans text-gray-900">
+      <div className="flex w-[300px] shrink-0 flex-col border-r border-gray-200 bg-gray-50">
+        <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
+          <h2 className="font-semibold text-gray-900">Groups</h2>
+          <button className="text-gray-500 transition-colors hover:text-gray-800" aria-label="New message" onClick={() => setShowNewDm(true)}>
+            <PlusIcon className="size-5" />
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        <div className="mt-4 flex-1 overflow-y-auto px-3">
           <div>
-            <div className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Project</div>
+            <div className="mb-1 flex items-center justify-between px-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Groups</span>
+              <PlusIcon className="size-4 text-gray-400" />
+            </div>
             <div className="space-y-1">
               {projectChannels.map((c) => (
                 <ChannelRow
@@ -1081,9 +1144,11 @@ export default function ProjectChat() {
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <div className="mb-1 mt-5 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
               <span>Direct Messages</span>
-              <button onClick={() => setShowNewDm(true)} className="hover:text-gray-900">+</button>
+              <button onClick={() => setShowNewDm(true)} className="text-gray-400 hover:text-gray-700" aria-label="Add direct message">
+                <PlusIcon className="size-4" />
+              </button>
             </div>
             <div className="space-y-1">
               {dmChannels.map((c: Channel) => (
@@ -1098,20 +1163,24 @@ export default function ProjectChat() {
             </div>
           </div>
         </div>
+
       </div>
 
       {activeChannelId && activeChannel ? (
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex h-14 items-center justify-between border-b border-gray-200 px-6">
-            <div className="flex items-center gap-3">
-              <h3 className="font-semibold text-gray-900">
-                {activeChannel.type === "dm" ? "Direct Message" : `# ${activeChannel.name || "general"}`}
-              </h3>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex items-start gap-4 border-b border-gray-200 px-6 py-3.5">
+            <div className="min-w-0 max-w-[260px]">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-lg font-bold text-gray-900">
+                  {activeChannel.type === "dm" ? "Direct Message" : <><span className="text-gray-400">#</span> {activeChannel.name || "general"}</>}
+                </h3>
+                {activeChannel.type !== "dm" && <StarIcon className="text-gray-300" />}
+              </div>
               {activeChannel.topic && (
-                <span className="text-sm text-gray-500">| {activeChannel.topic}</span>
+                <p className="mt-0.5 text-xs leading-snug text-gray-500">{activeChannel.topic}</p>
               )}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-1 items-center justify-end gap-4">
               <MessageSearch onSelect={(cid) => { setActiveChannelId(cid); setThreadRootMsg(null); }} />
               {pins.length > 0 && (
                 <div className="relative">
@@ -1137,14 +1206,14 @@ export default function ProjectChat() {
               <button 
                 onClick={() => updateMembership.mutate({ muted: !activeChannel.muted })}
                 className="text-gray-500 hover:text-gray-900 transition-colors"
-                title={activeChannel.muted ? "Unmute channel" : "Mute channel"}
+                title={activeChannel.muted ? "Unmute group" : "Mute group"}
               >
                 {activeChannel.muted ? <BellOffIcon className="size-5" /> : <BellIcon className="size-5" />}
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto py-4">
             {hasPreviousPage && (
               <div className="flex justify-center py-4">
                 <button
@@ -1176,7 +1245,11 @@ export default function ProjectChat() {
             <div ref={bottomRef} className="h-4" />
           </div>
 
-          <Composer channelId={activeChannelId} projectId={project.id} />
+          <Composer
+            channelId={activeChannelId}
+            projectId={project.id}
+            placeholder={activeChannel.type === "dm" ? "Message direct message" : `Message #${activeChannel.name || "general"}`}
+          />
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center text-gray-500">

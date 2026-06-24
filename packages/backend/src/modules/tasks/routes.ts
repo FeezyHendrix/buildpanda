@@ -8,6 +8,7 @@ import {
 } from "./service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import type { TaskEntityType } from "./types.ts";
 
 const STATUS = ["Todo", "Doing", "Done"] as const;
 const PRIORITY = ["Low", "Medium", "High"] as const;
@@ -146,6 +147,19 @@ const createLinkBody = {
   properties: {
     targetTaskId: { type: "string", minLength: 1, maxLength: 100 },
     linkType: { type: "string", enum: ["relates_to", "blocks", "blocked_by", "duplicates"] },
+  },
+} as const;
+
+const createEntityLinkBody = {
+  type: "object",
+  required: ["entityType", "entityId"],
+  additionalProperties: false,
+  properties: {
+    entityType: {
+      type: "string",
+      enum: ["action_item", "rfi", "change_request", "material", "invoice", "milestone_payment"],
+    },
+    entityId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -330,6 +344,33 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
       await service.removeLink(project.id, request.params.taskId, request.params.linkId);
+      return reply.status(204).send();
+    },
+  );
+
+  fastify.post<{ Params: { id: string; taskId: string }; Body: { entityType: TaskEntityType; entityId: string } }>(
+    "/projects/:id/tasks/:taskId/entity-links",
+    { schema: { params: taskParams, body: createEntityLinkBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
+      const link = await service.addEntityLink(
+        project.id,
+        request.params.taskId,
+        request.body.entityType,
+        request.body.entityId,
+        user.id,
+      );
+      return reply.status(201).send(link);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string; taskId: string; linkId: string } }>(
+    "/projects/:id/tasks/:taskId/entity-links/:linkId",
+    { schema: { params: linkParams } },
+    async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      await service.removeEntityLink(project.id, request.params.taskId, request.params.linkId);
       return reply.status(204).send();
     },
   );

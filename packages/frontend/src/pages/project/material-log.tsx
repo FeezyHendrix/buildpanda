@@ -5,6 +5,7 @@ import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
 import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { RichTextField } from "@/components/molecules/rich-text-field";
@@ -63,6 +64,13 @@ export default function ProjectMaterialLog() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8">
+      <Breadcrumbs
+        items={[
+          { label: "Materials", to: `/project/${project.id}/materials` },
+          { label: "Material Log" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Material Log"
         description="An audit trail of materials received and used on site, with live stock."

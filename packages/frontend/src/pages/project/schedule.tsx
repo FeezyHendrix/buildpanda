@@ -6,6 +6,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
@@ -322,6 +323,13 @@ export default function ProjectSchedule() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
       <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
+        <Breadcrumbs
+          items={[
+            { label: "Schedule", to: `/project/${project.id}/schedule` },
+            { label: "Project Chart" },
+          ]}
+          className="mb-4"
+        />
         <PageHeader
           title="Project Chart"
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."

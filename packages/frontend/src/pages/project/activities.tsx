@@ -13,6 +13,7 @@ import {
   type ActivityPrefill,
 } from "@/components/molecules/create-activity-dialog";
 import { ActivityTemplateDialog } from "@/components/molecules/activity-template-dialog";
+import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
@@ -62,6 +63,13 @@ export default function ProjectActivities() {
 
   return (
     <div className="w-full px-6 py-8 sm:px-10">
+      <Breadcrumbs
+        items={[
+          { label: "Schedule", to: `/project/${project.id}/schedule` },
+          { label: "Site Activities" },
+        ]}
+        className="mb-4"
+      />
       <PageHeader
         title="Site Activities"
         description="Track discrete work items with planned vs actual times and delay causes."

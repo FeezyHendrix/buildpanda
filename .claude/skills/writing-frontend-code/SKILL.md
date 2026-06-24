@@ -109,6 +109,16 @@ Don't hardcode repetitive markup — drive nav, filters and status chips from
 related values into an object prop). Prefer hooks over HOCs/render-props. Never
 define a component inside another component (perf rule R-1).
 
+**File size: 400 lines is the hard ceiling.** Any `.tsx`/`.ts` file over 400
+lines must be refactored — split it before adding more. A page that has grown
+past the limit usually hides several components in one file: extract each
+non-trivial sub-component (card, dialog, picker, row), each `as const` config /
+icon set, and any shared `ComboSelect`-style primitive into their own files
+(`components/molecules/<feature>-<thing>.tsx`), leaving the page as a thin
+composition root. Co-locate the pieces under the feature; keep the public
+surface (the default-exported page) small. Splitting is also a render win — a
+1000-line page re-renders as one unit; small components re-render independently.
+
 ### State & data
 
 Server state lives in React Query, nothing else: `useQuery` keyed from the
@@ -322,6 +332,8 @@ correctness rules vs measure-first optimizations.
 - Conveying status/priority by colour alone — add an icon/shape + label (colour-blind safe, WCAG 1.4.1).
 - Mutating an array with `.sort()` in a `useMemo` over props — use `.toSorted()` (J-6).
 - Hand-rolling a spinner/skeleton or relabelling buttons to "Saving…" — use the `Spinner` atom and the `Button`/`ConfirmDialog` `loading` prop instead.
+- Letting a `.tsx`/`.ts` file grow past 400 lines — split sub-components, config
+  arrays and shared primitives into their own files before adding more.
 
 ---
 
