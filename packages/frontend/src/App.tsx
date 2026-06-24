@@ -1,6 +1,12 @@
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
-import { lazy as reactLazy, type ComponentType } from "react";
-import { HomeRedirect, RequireAuth, RequireCompany } from "@/lib/route-guards";
+import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
+import {
+  HomeRedirect,
+  RequireAuth,
+  RequireCompany,
+  ProjectFeatureFlagGate,
+  SalesFeatureFlagGate,
+} from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
 import { withMaintenanceMode } from "@/lib/with-maintenance-mode";
 
@@ -94,6 +100,13 @@ const SharePage = lazy(() => import("@/pages/public/share-page"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 
+function pf(flag: string, el: ReactElement) {
+  return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
+}
+function sf(flag: string, el: ReactElement) {
+  return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
+}
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -133,9 +146,9 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <SalesDashboard /> },
-      { path: "leads", element: <SalesLeads /> },
-      { path: "proposals", element: <SalesProposals /> },
-      { path: "proposals/:id", element: <SalesProposalWorkspace /> },
+      { path: "leads", element: sf("sales.leads", <SalesLeads />) },
+      { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
+      { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
@@ -200,59 +213,59 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="overview" replace /> },
       { path: "overview", element: <ProjectOverview /> },
-      { path: "chat", element: <ProjectChat /> },
-
-      { path: "updates", element: <ProjectUpdates /> },
-      { path: "finances", element: <ProjectFinances /> },
-      {
-        path: "finances/budget-allocation",
-        element: <ProjectBudgetAllocation />,
-      },
-      {
-        path: "finances/milestone-payments",
-        element: <ProjectMilestonePayments />,
-      },
-      { path: "finances/invoices", element: <ProjectInvoices /> },
-      { path: "finances/budget", element: <ProjectBudget /> },
-      { path: "panda-ai", element: <ProjectPandaAi /> },
-      { path: "materials", element: <ProjectMaterials /> },
-      { path: "material-log", element: <ProjectMaterialLog /> },
-      { path: "materials/orders", element: <ProjectMaterials /> },
-      { path: "materials/requests", element: <ProjectMaterials /> },
-      { path: "equipment-requests", element: <ProjectEquipmentRequests /> },
-      { path: "equipment-requests/:bucket", element: <ProjectEquipmentRequests /> },
-      { path: "documents", element: <ProjectDocuments /> },
-      { path: "team", element: <ProjectTeam /> },
-      { path: "inspections", element: <ProjectInspections /> },
-      { path: "messages", element: <ProjectChat /> },
       { path: "settings", element: <ProjectSettings /> },
-      { path: "schedules/activities", element: <ProjectActivities /> },
-      { path: "schedules/activities/:activityId", element: <ProjectActivities /> },
-      { path: "schedules/milestones", element: <ProjectMilestonePayments /> },
-      { path: "schedules/project-chart", element: <ProjectSchedule /> },
-      { path: "schedules/stages", element: <ProjectStages /> },
-      { path: "schedules/key-dates", element: <ProjectKeyDates /> },
-      { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
-      { path: "schedules/daily-log", element: <ProjectDailyLog /> },
-      // legacy flat routes kept for deep-link compatibility
-      { path: "activities", element: <ProjectActivities /> },
-      { path: "activities/:activityId", element: <ProjectActivities /> },
-      { path: "milestones", element: <ProjectMilestonePayments /> },
-      { path: "project-chart", element: <ProjectSchedule /> },
-      { path: "schedule", element: <ProjectSchedule /> },
-      { path: "stages", element: <ProjectStages /> },
-      { path: "action-items", element: <ProjectActionItems /> },
-      { path: "tasks", element: <ProjectTasks /> },
-      { path: "queries", element: <ProjectQueries /> },
-      { path: "rfis", element: <ProjectRfis /> },
-      { path: "bim", element: <ProjectBim /> },
-      { path: "approvals", element: <ProjectApprovals /> },
-      { path: "change-requests", element: <ProjectChangeRequests /> },
-      { path: "permits", element: <ProjectPermits /> },
-      { path: "key-dates", element: <ProjectKeyDates /> },
+
+      { path: "updates", element: pf("project.updates", <ProjectUpdates />) },
+      { path: "chat", element: pf("collaboration.messaging", <ProjectChat />) },
+      { path: "messages", element: pf("collaboration.messaging", <ProjectChat />) },
+      { path: "panda-ai", element: pf("ai.insights", <ProjectPandaAi />) },
+      { path: "people", element: pf("collaboration.participants", <ProjectPeople />) },
+
+      { path: "documents", element: pf("projects.documents", <ProjectDocuments />) },
+      { path: "team", element: pf("project.team", <ProjectTeam />) },
+      { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
+      { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "bim", element: pf("projects.bim", <ProjectBim />) },
+
+      { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
+      { path: "tasks", element: pf("projects.schedule", <ProjectTasks />) },
+      { path: "queries", element: pf("workflow.queries", <ProjectQueries />) },
+      { path: "rfis", element: pf("workflow.rfis", <ProjectRfis />) },
+      { path: "approvals", element: pf("workflow.approvals", <ProjectApprovals />) },
+      { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
+      { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
+      { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "whats-next", element: <ProjectWhatsNext /> },
-      { path: "people", element: <ProjectPeople /> },
-      { path: "daily-log", element: <ProjectDailyLog /> },
+
+      { path: "finances", element: pf("commercial.finances", <ProjectFinances />) },
+      { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
+      { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
+      { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
+
+      { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
+      { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
+      { path: "materials/orders", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
+      { path: "materials/requests", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
+      { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
+      { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
+
+      { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
+      { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
+      { path: "schedules/milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
+      { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
+      { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
+      { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
+      { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+
+      // legacy flat routes kept for deep-link compatibility
+      { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
+      { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
+      { path: "milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
+      { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
+      { path: "stages", element: pf("projects.schedule", <ProjectStages />) },
     ],
   },
 ]);

@@ -98,6 +98,14 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/projects/:id/weather"],
   },
   {
+    key: "project.team",
+    label: "Team management",
+    group: "Project controls",
+    description: "On-site team members, roles, rates and site team tracking.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/team-members"],
+  },
+  {
     key: "quality.inspections",
     label: "Inspections",
     group: "Quality & risk",
@@ -184,6 +192,14 @@ export const FEATURE_FLAGS = [
     description: "External stakeholders, homeowner access and project participant roles.",
     enabledByDefault: true,
     routePrefixes: ["/projects/:id/participants"],
+  },
+  {
+    key: "project.updates",
+    label: "Project updates",
+    group: "Collaboration",
+    description: "Project announcements, update posts and milestone communications.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/updates"],
   },
   {
     key: "workflow.rfis",

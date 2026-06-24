@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type FeatureFlag, type FeatureFlagsSettings } from "@/api/admin";
-import { Badge, Button, Card, ErrorState, Loading, PageHeader } from "@/components/ui";
+import { Button, Card, ErrorState, Loading, PageHeader, Switch } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
 
 function groupFlags(flags: FeatureFlag[]): Array<{ group: string; flags: FeatureFlag[] }> {
@@ -12,6 +12,30 @@ function groupFlags(flags: FeatureFlag[]): Array<{ group: string; flags: Feature
     byGroup.set(flag.group, list);
   }
   return [...byGroup.entries()].map(([group, rows]) => ({ group, flags: rows }));
+}
+
+function FlagRow({
+  flag,
+  enabled,
+  onChange,
+}: {
+  flag: FeatureFlag;
+  enabled: boolean;
+  onChange: (key: string, value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-6 px-5 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-ink">{flag.label}</p>
+        <p className="mt-0.5 text-sm text-muted">{flag.description}</p>
+      </div>
+      <Switch
+        checked={enabled}
+        onCheckedChange={(val) => onChange(flag.key, val)}
+        className="mt-0.5"
+      />
+    </div>
+  );
 }
 
 export default function FeatureFlagsPage() {
@@ -43,27 +67,43 @@ export default function FeatureFlagsPage() {
   const dirty = flags.some((flag) => values[flag.key] !== flag.enabled);
   const enabledCount = flags.filter((flag) => values[flag.key]).length;
 
+  function handleChange(key: string, value: boolean) {
+    setDraft((prev) => ({ ...prev, [key]: value }));
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Feature flags"
-        description="Turn product areas on or off platform-wide. Disabled features are hidden from users by API enforcement, while admin stays accessible."
+        description="Turn product areas on or off platform-wide. Disabled features are blocked at the API level — admin access stays unaffected."
       />
 
       <Card className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-ink">{enabledCount} of {flags.length} features enabled</p>
+          <p className="text-sm font-semibold text-ink">
+            {enabledCount} of {flags.length} features enabled
+          </p>
           <p className="mt-1 text-sm text-muted">
             Last updated {data.updatedAt ? formatDate(data.updatedAt) : "never"}
             {data.updatedByName ? ` by ${data.updatedByName}` : ""}.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" disabled={!dirty || mutation.isPending} onClick={() => setDraft({})}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!dirty || mutation.isPending}
+            onClick={() => setDraft({})}
+          >
             Reset
           </Button>
-          <Button disabled={!dirty || mutation.isPending} onClick={() => mutation.mutate(values)}>
-            {mutation.isPending ? "Saving…" : "Save changes"}
+          <Button
+            size="sm"
+            disabled={!dirty}
+            loading={mutation.isPending}
+            onClick={() => mutation.mutate(values)}
+          >
+            Save changes
           </Button>
         </div>
       </Card>
@@ -72,33 +112,17 @@ export default function FeatureFlagsPage() {
         {groupFlags(flags).map(({ group, flags: groupRows }) => (
           <Card key={group} className="overflow-hidden">
             <div className="border-b border-line bg-surface-muted px-5 py-3">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-muted">{group}</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-muted">{group}</h2>
             </div>
             <div className="divide-y divide-line">
-              {groupRows.map((flag) => {
-                const enabled = values[flag.key] ?? flag.enabled;
-                return (
-                  <div key={flag.key} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-start md:justify-between">
-                    <div className="max-w-2xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-ink">{flag.label}</p>
-                        <Badge tone={enabled ? "success" : "danger"}>{enabled ? "Enabled" : "Off"}</Badge>
-                      </div>
-                      <p className="mt-1 text-sm text-muted">{flag.description}</p>
-                      <p className="mt-2 text-xs text-muted/80">{flag.routePrefixes.join(", ")}</p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={enabled}
-                      onClick={() => setDraft((prev) => ({ ...prev, [flag.key]: !enabled }))}
-                      className={`relative h-7 w-12 rounded-full transition-colors ${enabled ? "bg-brand" : "bg-[#d1d5db]"}`}
-                    >
-                      <span className={`absolute top-1 size-5 rounded-full bg-white transition-transform ${enabled ? "translate-x-6" : "translate-x-1"}`} />
-                    </button>
-                  </div>
-                );
-              })}
+              {groupRows.map((flag) => (
+                <FlagRow
+                  key={flag.key}
+                  flag={flag}
+                  enabled={values[flag.key] ?? flag.enabled}
+                  onChange={handleChange}
+                />
+              ))}
             </div>
           </Card>
         ))}

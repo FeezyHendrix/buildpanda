@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
 
 /**
  * Route guards for the owner/company split.
@@ -56,6 +57,21 @@ export function RequireCompany({ children }: { children: ReactNode }) {
   if (accountType === "project_owner") {
     return <Navigate to="/my-build" replace />;
   }
+  return <>{children}</>;
+}
+
+/** Redirects to project overview if the given feature flag is disabled. */
+export function ProjectFeatureFlagGate({ flag, children }: { flag: string; children: ReactNode }) {
+  const { projectId } = useParams<{ projectId: string }>();
+  const enabled = useFeatureFlag(flag);
+  if (!enabled) return <Navigate to={`/project/${projectId}/overview`} replace />;
+  return <>{children}</>;
+}
+
+/** Redirects to /sales if the given feature flag is disabled. */
+export function SalesFeatureFlagGate({ flag, children }: { flag: string; children: ReactNode }) {
+  const enabled = useFeatureFlag(flag);
+  if (!enabled) return <Navigate to="/sales" replace />;
   return <>{children}</>;
 }
 
