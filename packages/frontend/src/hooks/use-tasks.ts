@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { taskKeys } from "./query-keys";
-import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType } from "@/lib/project-types";
+import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority } from "@/lib/project-types";
 
 export interface CreateTaskInput {
   title: string;
@@ -10,6 +10,7 @@ export interface CreateTaskInput {
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
+  priority?: TaskPriority;
   columnId?: string | null;
 }
 
@@ -20,6 +21,7 @@ export interface UpdateTaskInput {
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
+  priority?: TaskPriority;
 }
 
 export function useTaskBoard(projectId: string) {

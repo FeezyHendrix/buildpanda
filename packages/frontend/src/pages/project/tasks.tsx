@@ -47,7 +47,52 @@ import {
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
-import type { Task, TaskColumn, TaskLinkType } from "@/lib/project-types";
+import { Badge } from "@/components/atoms/badge";
+import { resolveFileUrl } from "@/hooks/use-files";
+import type { Task, TaskColumn, TaskLinkType, TaskPriority } from "@/lib/project-types";
+
+// Priority styling maps each level to a design-system Badge tone (colours live
+// in the Badge atom, never hardcoded here) plus a distinct shape, so the level
+// reads without relying on colour — robust for colour-blind users (WCAG 1.4.1).
+const PRIORITY_META: Record<
+  TaskPriority,
+  { tone: "info" | "warning" | "danger"; shape: "down" | "dash" | "up" }
+> = {
+  Low: { tone: "info", shape: "down" },
+  Medium: { tone: "warning", shape: "dash" },
+  High: { tone: "danger", shape: "up" },
+};
+
+const PRIORITY_ORDER: TaskPriority[] = ["Low", "Medium", "High"];
+
+function PriorityIcon({ shape }: { shape: "down" | "dash" | "up" }) {
+  return (
+    <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {shape === "down" && <polyline points="6 9 12 15 18 9" />}
+      {shape === "dash" && <line x1="5" y1="12" x2="19" y2="12" />}
+      {shape === "up" && <polyline points="6 15 12 9 18 15" />}
+    </svg>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: TaskPriority }) {
+  const meta = PRIORITY_META[priority];
+  return (
+    <Badge tone={meta.tone} size="sm">
+      <PriorityIcon shape={meta.shape} />
+      {priority}
+    </Badge>
+  );
+}
+
+// The first image embedded in a task's description (data-file-id) becomes the
+// card cover. We parse the id out of the stored HTML and resolve a fresh
+// presigned URL on demand, mirroring the rich-text editor's resolution.
+function firstImageFileId(html: string | null): string | null {
+  if (!html) return null;
+  const match = html.match(/data-file-id="([^"]+)"/);
+  return match ? match[1]! : null;
+}
 
 interface AssigneeOption {
   kind: "user" | "team";
@@ -314,6 +359,7 @@ export default function ProjectTasks() {
     descriptionHtml: string;
     assignee: AssigneeOption | null;
     dueDate: string | null;
+    priority: TaskPriority;
   }): void {
     const assigneeFields = {
       assigneeId: values.assignee?.kind === "user" ? values.assignee.id : null,
@@ -328,6 +374,7 @@ export default function ProjectTasks() {
             description: values.description,
             descriptionHtml: values.descriptionHtml,
             dueDate: values.dueDate,
+            priority: values.priority,
             ...assigneeFields,
           },
         },
@@ -343,6 +390,7 @@ export default function ProjectTasks() {
           description: values.description,
           descriptionHtml: values.descriptionHtml,
           dueDate: values.dueDate,
+          priority: values.priority,
           columnId: createColumnId,
           ...assigneeFields,
         },
@@ -614,53 +662,83 @@ function TaskCard({
     disabled: !canManage,
   });
   const due = formatDayMonth(task.dueDate) || null;
+  const coverFileId = firstImageFileId(task.descriptionHtml);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!coverFileId) {
+      setCoverUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void resolveFileUrl(coverFileId)
+      .then((url) => {
+        if (!cancelled) setCoverUrl(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [coverFileId]);
 
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-shadow",
+        "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow",
         isDragging ? "opacity-50 shadow-md" : "hover:shadow-md",
         canManage && "cursor-grab active:cursor-grabbing",
       )}
       {...(canManage ? listeners : {})}
       {...attributes}
     >
-      <button type="button" onClick={onOpen} className="block w-full text-left outline-none">
-        <p className="text-sm font-medium text-gray-900">{task.title}</p>
-        {task.description && htmlToText(task.description) && (
-          <p className="mt-1 line-clamp-2 text-xs text-gray-500">{htmlToText(task.description)}</p>
-        )}
-      </button>
-      {(task.assigneeName || due || task.subtaskTotal > 0) && (
-        <div className="mt-2.5 flex items-center justify-between">
-          {task.assigneeName ? (
-            <div className="flex items-center gap-1.5">
-              <Avatar name={task.assigneeName} size="sm" />
-              <span className="text-xs text-gray-600">{task.assigneeName}</span>
-            </div>
-          ) : (
-            <span />
-          )}
-          <div className="flex items-center gap-2">
-            {task.subtaskTotal > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
-                <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 11l3 3L22 4" />
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                </svg>
-                {task.subtaskDone}/{task.subtaskTotal}
-              </span>
-            )}
-            {due && (
-              <span className="rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
-                {due}
-              </span>
-            )}
-          </div>
-        </div>
+      {coverUrl && (
+        <img
+          src={coverUrl}
+          alt=""
+          className="h-28 w-full object-cover"
+          draggable={false}
+        />
       )}
+      <div className="p-3">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <PriorityBadge priority={task.priority} />
+        </div>
+        <button type="button" onClick={onOpen} className="block w-full text-left outline-none">
+          <p className="text-sm font-medium text-gray-900">{task.title}</p>
+          {task.description && htmlToText(task.description) && (
+            <p className="mt-1 line-clamp-2 text-xs text-gray-500">{htmlToText(task.description)}</p>
+          )}
+        </button>
+        {(task.assigneeName || due || task.subtaskTotal > 0) && (
+          <div className="mt-2.5 flex items-center justify-between">
+            {task.assigneeName ? (
+              <div className="flex items-center gap-1.5">
+                <Avatar name={task.assigneeName} size="sm" />
+                <span className="text-xs text-gray-600">{task.assigneeName}</span>
+              </div>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-2">
+              {task.subtaskTotal > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                  <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                  {task.subtaskDone}/{task.subtaskTotal}
+                </span>
+              )}
+              {due && (
+                <span className="rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                  {due}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -686,7 +764,7 @@ function UpsertTaskDialog({
   userOptions: AssigneeOption[];
   teamOptions: AssigneeOption[];
   submitting: boolean;
-  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null }) => void;
+  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null; priority: TaskPriority }) => void;
   onRequestDelete?: () => void;
   onOpenTask?: (taskId: string) => void;
 }) {
@@ -695,6 +773,7 @@ function UpsertTaskDialog({
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [assigneeValue, setAssigneeValue] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
+  const [priority, setPriority] = useState<TaskPriority>("Medium");
 
   const dialogKey = task?.id ?? "new";
 
@@ -733,6 +812,7 @@ function UpsertTaskDialog({
             : "",
       );
       setDueDate(task?.dueDate ? task.dueDate.slice(0, 10) : "");
+      setPriority(task?.priority ?? "Medium");
     }
   }, [open, dialogKey]);
 
@@ -754,6 +834,7 @@ function UpsertTaskDialog({
       descriptionHtml: isEmpty ? "" : html,
       assignee: resolveAssignee(),
       dueDate: dueDate || null,
+      priority,
     });
   }
 
@@ -822,6 +903,29 @@ function UpsertTaskDialog({
           onChange={(e) => setDueDate(e.target.value)}
           className={FIELD}
         />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Priority</Label>
+        <div className="flex gap-2">
+          {PRIORITY_ORDER.map((p) => {
+            const meta = PRIORITY_META[p];
+            const selected = priority === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                aria-pressed={selected}
+                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+              >
+                <Badge tone={meta.tone} variant={selected ? "solid" : "soft"} size="md">
+                  <PriorityIcon shape={meta.shape} />
+                  {p}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
       </div>
       {task && (
         <TaskExtras projectId={projectId} taskId={task.id} allTasks={allTasks} onOpenTask={onOpenTask} />

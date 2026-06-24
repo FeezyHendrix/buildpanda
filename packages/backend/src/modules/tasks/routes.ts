@@ -10,6 +10,7 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 
 const STATUS = ["Todo", "Doing", "Done"] as const;
+const PRIORITY = ["Low", "Medium", "High"] as const;
 
 const projectIdParams = {
   type: "object",
@@ -39,6 +40,7 @@ const createBody = {
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    priority: { type: "string", enum: PRIORITY },
     columnId: { type: ["string", "null"], maxLength: 100 },
     status: { type: "string", enum: STATUS },
   },
@@ -55,6 +57,7 @@ const updateBody = {
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
+    priority: { type: "string", enum: PRIORITY },
   },
 } as const;
 

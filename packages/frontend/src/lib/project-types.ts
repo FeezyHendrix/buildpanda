@@ -974,6 +974,7 @@ export interface Task {
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
   dueDate: string | null;
+  priority: TaskPriority;
   position: number;
   sourceType: string | null;
   sourceId: string | null;
@@ -982,6 +983,8 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 }
+
+export type TaskPriority = "Low" | "Medium" | "High";
 
 export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
 
