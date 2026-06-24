@@ -14,6 +14,7 @@ import {
   PriorityIcon,
 } from "./task-ui";
 import { TaskExtras } from "./task-extras";
+import { TaskImageGallery } from "./task-image-gallery";
 
 export function UpsertTaskDialog({
   open,
@@ -182,6 +183,14 @@ export function UpsertTaskDialog({
           placeholder="Add details, checklists, images…"
         />
       </div>
+      <TaskImageGallery
+        descriptionHtml={descriptionHtml}
+        onDescriptionChange={(html, text) => {
+          setDescriptionHtml(html);
+          setDescription(text);
+        }}
+        projectId={projectId}
+      />
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <Label htmlFor="task-assignee">Assignee</Label>
