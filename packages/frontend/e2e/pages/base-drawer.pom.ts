@@ -27,7 +27,9 @@ export class FormDrawer {
   }
 
   async waitClosed(): Promise<void> {
-    await this.dialog.waitFor({ state: "detached" });
+    // The drawer dismisses only after the save's mutation + React Query
+    // invalidation complete; allow headroom on a busy worker session.
+    await this.dialog.waitFor({ state: "detached", timeout: 20_000 });
   }
 
   submitButton(name: string | RegExp = /save|create|submit|add|send|request/i): Locator {

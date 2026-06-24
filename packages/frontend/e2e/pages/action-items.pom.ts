@@ -19,6 +19,7 @@ export class ActionItemsPage {
 
   async goto(): Promise<void> {
     await this.nav.goto("action-items");
+    await this.newButton().waitFor({ state: "visible" });
     await expect(this.newButton()).toBeEnabled();
   }
 
