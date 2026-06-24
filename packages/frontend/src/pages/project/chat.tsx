@@ -38,6 +38,7 @@ import {
   saveCachedDraft,
 } from "@/lib/chat-cache";
 import type { Channel, ChatMessage, ChannelMemberLite } from "@/lib/project-types";
+import { BellIcon, BellOffIcon } from "@/components/atoms/chat-icons";
 
 function chatFileUrl(fileId: string): string {
   const base = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -60,7 +61,7 @@ function ChannelRow({
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
-          ? "bg-[#EEF2FF] text-[#004DE7]"
+          ? "bg-primary-50 text-primary-500"
           : "text-gray-700 hover:bg-gray-100",
         channel.muted && !isActive && "text-gray-400"
       )}
@@ -68,7 +69,7 @@ function ChannelRow({
       <span className="text-gray-400">#</span>
       <span className="flex-1 truncate">{channel.name || "general"}</span>
       {channel.unreadCount > 0 && (
-        <span className="flex h-5 items-center justify-center rounded-full bg-[#004DE7] px-2 text-[10px] font-bold text-white">
+        <span className="flex h-5 items-center justify-center rounded-full bg-primary-500 px-2 text-[10px] font-bold text-white">
           {channel.unreadCount}
         </span>
       )}
@@ -79,7 +80,7 @@ function ChannelRow({
 function ReferenceChip({ refItem }: { refItem: NonNullable<ChatMessage["resolvedReferences"]>[0] }) {
   if (refItem.restricted) {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-[#F6F6F6] px-2 py-1 text-xs text-gray-400">
+      <div className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-400">
         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
@@ -99,7 +100,7 @@ function ReferenceChip({ refItem }: { refItem: NonNullable<ChatMessage["resolved
   const label = typeLabels[refItem.type] || refItem.type;
 
   return (
-    <Link to={refItem.url!} className="inline-flex items-center gap-2 rounded border border-[#EDEDED] bg-white px-2.5 py-1.5 text-xs transition-shadow hover:shadow-sm">
+    <Link to={refItem.url!} className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-2.5 py-1.5 text-xs transition-shadow hover:shadow-sm">
       <span className="font-medium text-gray-500">{label}</span>
       <span className="font-semibold text-gray-900">{refItem.title}</span>
       {refItem.status && (
@@ -127,7 +128,7 @@ function AttachmentChip({ attachment }: { attachment: NonNullable<ChatMessage["a
       href={attachment.url}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg border border-[#EDEDED] bg-white px-3 py-2 text-xs text-gray-700 transition-shadow hover:shadow-sm"
+      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 transition-shadow hover:shadow-sm"
     >
       <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -170,7 +171,7 @@ function ReferencePicker({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search entities..."
-          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30"
+          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30"
         />
       </div>
       <div className="max-h-48 overflow-y-auto p-1">
@@ -270,7 +271,7 @@ function MessageItem({
               onClick={() => onReaction(message, r.emoji)}
               className={cn(
                 "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs",
-                r.mine ? "border-[#C7D7FF] bg-[#EEF2FF] text-[#004DE7]" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                r.mine ? "border-primary-100 bg-primary-50 text-primary-500" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
               <span>{r.emoji}</span>
@@ -284,7 +285,7 @@ function MessageItem({
         <div className="mt-1">
           <button 
             onClick={() => onReply(message)} 
-            className="text-xs font-medium text-[#004DE7] hover:underline"
+            className="text-xs font-medium text-primary-500 hover:underline"
           >
             {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
           </button>
@@ -564,7 +565,7 @@ function Composer({
   };
 
   return (
-    <div className="relative border-t border-gray-200 bg-[#FAFAFA] p-4">
+    <div className="relative border-t border-gray-200 bg-gray-50 p-4">
       {showMentions && (
         <MentionDropdown
           members={members}
@@ -655,14 +656,14 @@ function Composer({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Message... (Enter to send, Shift+Enter for newline)"
-          className="min-h-[60px] max-h-56 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm outline-none placeholder:text-gray-400 focus:border-[#004DE7] focus:ring-2 focus:ring-[#004DE7]/20"
+          className="min-h-[60px] max-h-56 flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-[15px] leading-relaxed text-gray-900 shadow-sm outline-none placeholder:text-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
           rows={2}
         />
         <button
           type="button"
           onClick={() => handleKeyDown({ key: "Enter", preventDefault: () => {}, shiftKey: false } as unknown as React.KeyboardEvent<HTMLTextAreaElement>)}
           disabled={(!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending}
-          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#004DE7] text-white transition-colors hover:bg-[#0041c4] disabled:opacity-50"
+          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary-500 text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -786,7 +787,7 @@ function NewDmModal({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search members..."
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30 mb-4"
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30 mb-4"
           />
           <div className="max-h-64 overflow-y-auto space-y-1">
             {filtered.map(m => (
@@ -836,7 +837,7 @@ function MessageSearch({ onSelect }: { onSelect: (channelId: string) => void }) 
 
   return (
     <div className="relative z-10 flex items-center">
-      <div className="flex items-center rounded-md border border-[#EDEDED] bg-[#F6F6F6] px-2">
+      <div className="flex items-center rounded-md border border-gray-200 bg-gray-50 px-2">
         <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
@@ -1097,7 +1098,7 @@ export default function ProjectChat() {
                           <div className="text-xs text-gray-600 truncate">{p.body}</div>
                           <div className="mt-2 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => unpinMsg.mutate(p.id)} className="text-[10px] font-medium text-gray-400 hover:text-red-500">Unpin</button>
-                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-[#004DE7]">Reply</button>
+                            <button onClick={() => { setThreadRootMsg(p); setShowPins(false); }} className="text-[10px] font-medium text-gray-400 hover:text-primary-500">Reply</button>
                           </div>
                         </div>
                       ))}
@@ -1107,10 +1108,10 @@ export default function ProjectChat() {
               )}
               <button 
                 onClick={() => updateMembership.mutate({ muted: !activeChannel.muted })}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 flex items-center justify-center p-1 rounded-md hover:bg-gray-100"
                 title={activeChannel.muted ? "Unmute channel" : "Mute channel"}
               >
-                {activeChannel.muted ? "🔕" : "🔔"}
+                {activeChannel.muted ? <BellOffIcon className="size-4" /> : <BellIcon className="size-4" />}
               </button>
             </div>
           </div>
@@ -1208,7 +1209,7 @@ export default function ProjectChat() {
               autoFocus
               value={editBody || editingMsg.body}
               onChange={(e) => setEditBody(e.target.value)}
-              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/30"
+              className="h-32 w-full resize-none rounded-md border border-gray-200 p-3 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30"
             />
             <div className="mt-4 flex justify-end gap-3">
               <button
@@ -1231,7 +1232,7 @@ export default function ProjectChat() {
                   setEditingMsg(null);
                   setEditBody("");
                 }}
-                className="rounded-md bg-[#004DE7] px-4 py-2 text-sm font-medium text-white hover:bg-[#0041c4]"
+                className="rounded-md bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600"
               >
                 Save Changes
               </button>
@@ -1265,7 +1266,7 @@ function DmChannelRow({
       className={cn(
         "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
         isActive
-          ? "bg-[#EEF2FF] text-[#004DE7]"
+          ? "bg-primary-50 text-primary-500"
           : "text-gray-700 hover:bg-gray-100",
         channel.muted && !isActive && "text-gray-400"
       )}
@@ -1275,7 +1276,7 @@ function DmChannelRow({
       </div>
       <span className="flex-1 truncate">{displayName}</span>
       {channel.unreadCount > 0 && (
-        <span className="flex h-5 items-center justify-center rounded-full bg-[#004DE7] px-2 text-[10px] font-bold text-white">
+        <span className="flex h-5 items-center justify-center rounded-full bg-primary-500 px-2 text-[10px] font-bold text-white">
           {channel.unreadCount}
         </span>
       )}
