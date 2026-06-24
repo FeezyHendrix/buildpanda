@@ -334,6 +334,9 @@ correctness rules vs measure-first optimizations.
 - Hand-rolling a spinner/skeleton or relabelling buttons to "Saving…" — use the `Spinner` atom and the `Button`/`ConfirmDialog` `loading` prop instead.
 - Letting a `.tsx`/`.ts` file grow past 400 lines — split sub-components, config
   arrays and shared primitives into their own files before adding more.
+- Using `<input type="checkbox">` or a custom toggle for boolean on/off — always
+  use the `Switcher` atom (`components/atoms/switcher.tsx`) for yes/no toggles;
+  it renders a consistent segmented "Yes / No" control across the app.
 
 ---
 

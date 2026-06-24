@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog } from "@base-ui-components/react/dialog";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
+import { Switcher, type SwitcherValue } from "@/components/atoms";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -16,14 +17,14 @@ const FIELD =
 
 export function NewGroupDialog({ open, onClose, onSubmit, loading = false }: Props) {
   const [name, setName] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [isPrivate, setIsPrivate] = useState<SwitcherValue>("no");
 
   function handleSubmit(): void {
     const trimmed = name.trim();
     if (!trimmed) return;
-    onSubmit(trimmed, isPrivate);
+    onSubmit(trimmed, isPrivate === "yes");
     setName("");
-    setIsPrivate(false);
+    setIsPrivate("no");
   }
 
   return (
@@ -63,20 +64,15 @@ export function NewGroupDialog({ open, onClose, onSubmit, loading = false }: Pro
             />
           </div>
 
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              type="checkbox"
-              checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
-              className="size-4 rounded border-gray-300 text-[#004DE7] focus:ring-[#004DE7]"
-            />
+          <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900">Make private</p>
               <p className="text-xs text-gray-500">
                 Only invited members can see and post in a private group.
               </p>
             </div>
-          </label>
+            <Switcher value={isPrivate} onChange={setIsPrivate} />
+          </div>
 
           <div className="flex items-center justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>
