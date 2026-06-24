@@ -191,3 +191,22 @@ export function useUpdateMembership(channelId: string) {
     },
   });
 }
+
+export interface CreateChannelInput {
+  type: "project" | "org";
+  name: string;
+  projectId?: string | null;
+  isPrivate?: boolean;
+  topic?: string | null;
+}
+
+export function useCreateChannel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateChannelInput) =>
+      api.post<Channel>("/channels", input).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    },
+  });
+}

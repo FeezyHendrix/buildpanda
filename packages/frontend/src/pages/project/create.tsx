@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useOrgProfile } from "@/hooks/use-org-profile";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import type { Currency } from "@/lib/project-types";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import {
@@ -68,6 +69,11 @@ export default function CreateProject() {
 
   const [bimFiles, setBimFiles] = useState<FileList | null>(null);
   const { data: orgProfile } = useOrgProfile();
+  const { data: flagsData } = useFeatureFlags();
+  const bimEnabled = useMemo(() => {
+    const flag = (flagsData?.flags ?? []).find((f) => f.key === "projects.bim");
+    return flag ? flag.enabled : true;
+  }, [flagsData]);
   const [buildingType, setBuildingType] = useState<string | null>(null);
   const [currency, setCurrency] = useState<Currency>("NGN");
   const [currencyTouched, setCurrencyTouched] = useState(false);
@@ -193,7 +199,7 @@ export default function CreateProject() {
           riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
         },
       });
-      if (bimFiles && bimFiles.length > 0) {
+      if (bimEnabled && bimFiles && bimFiles.length > 0) {
         await seedBimModel(project.id, bimFiles);
       }
       navigate(`/project/${project.id}/overview`);
@@ -250,6 +256,7 @@ export default function CreateProject() {
           onStateChange={setLocationState}
           onCityChange={setCity}
           onBimFileChange={setBimFiles}
+          showBim={bimEnabled}
         />
       )}
       {!isReview && step === 3 && (
