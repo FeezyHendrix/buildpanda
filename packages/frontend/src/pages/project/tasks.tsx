@@ -217,7 +217,7 @@ export default function ProjectTasks() {
           },
         },
         {
-          onSuccess: () => setDialogOpen(false),
+          onSuccess: () => handleDialogOpenChange(false),
           onError: () => toast("Could not update task"),
         },
       );
@@ -234,7 +234,7 @@ export default function ProjectTasks() {
           ...assigneeFields,
         },
         {
-          onSuccess: () => setDialogOpen(false),
+          onSuccess: () => handleDialogOpenChange(false),
           onError: () => toast("Could not create task"),
         },
       );
