@@ -355,6 +355,7 @@ export default function ProjectChat() {
               },
               onError: (err) => {
                 const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+                setShowNewGroup(false);
                 toast(message ?? "Could not create group");
               },
             },
