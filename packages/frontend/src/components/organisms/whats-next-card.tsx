@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/atoms/card";
-import { Badge } from "@/components/atoms/badge";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { HealthTrendChart } from "./charts/health-trend-chart";
 import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
@@ -11,18 +10,67 @@ interface WhatsNextCardProps {
   projectId: string;
 }
 
+const PRIORITY_DOT: Record<AiSuggestion["priority"], string> = {
+  high: "bg-red-500",
+  medium: "bg-amber-500",
+  low: "bg-primary",
+};
+
+function healthStroke(score: number | null): string {
+  if (score === null) return "#D0D5DD";
+  if (score >= 80) return "#16A34A";
+  if (score >= 50) return "#D97706";
+  return "#DC2626";
+}
+
+function HealthGauge({ score }: { score: number | null }) {
+  const size = 132;
+  const stroke = 10;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = score === null ? 0 : Math.max(0, Math.min(100, score));
+  const dash = (pct / 100) * circumference;
+  const color = healthStroke(score);
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#EAECF0" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circumference}`}
+          className="transition-[stroke-dasharray] duration-700 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[34px] font-bold leading-none tracking-tight" style={{ color }}>
+          {score ?? "--"}
+        </span>
+        <span className="mt-0.5 text-[11px] font-medium text-black-300">out of 100</span>
+      </div>
+    </div>
+  );
+}
+
 export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
   const { data, isLoading, isError } = useReportingSnapshot(projectId);
 
   if (isLoading) {
-    return (
-      <Card className="h-64 animate-pulse bg-gray-100/50" />
-    );
+    return <Card padding="lg" className="h-64 animate-pulse rounded-[16px] border-none bg-[#F8F8F8]" />;
   }
 
   if (isError || !data) {
     return (
-      <Card className="flex h-32 items-center justify-center bg-gray-50/50 text-sm text-gray-500">
+      <Card
+        padding="lg"
+        className="flex h-32 items-center justify-center rounded-[16px] border-none bg-[#F8F8F8] text-sm text-black-300"
+      >
         Reporting temporarily unavailable
       </Card>
     );
@@ -30,12 +78,6 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
 
   const { health, operations } = data;
   const isEmpty = health.score === null && health.suggestions.length === 0;
-
-  const getPriorityTone = (priority: AiSuggestion["priority"]) => {
-    if (priority === "high") return "danger";
-    if (priority === "medium") return "warning";
-    return "info";
-  };
 
   const getSuggestionLink = (category: string) => {
     switch (category) {
@@ -57,104 +99,70 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
     })
     .slice(0, 3);
 
-  const getHealthColor = (score: number | null) => {
-    if (score === null) return "text-gray-400";
-    if (score >= 80) return "text-[#16A34A]";
-    if (score >= 50) return "text-[#D97706]";
-    return "text-[#DC2626]";
-  };
-
   return (
-    <Card className="flex flex-col overflow-hidden bg-white shadow-sm border border-[#EDEDED] rounded-[16px]">
-      <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
-        <div className="flex shrink-0 flex-col items-center justify-center p-6 sm:w-48">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+    <Card padding="lg" className="overflow-hidden rounded-[16px] border-none bg-[#F8F8F8] p-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+        <div className="flex flex-col items-center justify-center gap-4 border-b border-[#EDEDED] p-7 lg:border-b-0 lg:border-r">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">
             Health Score
-          </h3>
-          <div className="mt-2 text-5xl font-bold tracking-tight">
-            <span className={getHealthColor(health.score)}>
-              {health.score ?? "--"}
-            </span>
-            <span className="text-xl text-gray-300">/100</span>
-          </div>
+          </p>
+          <HealthGauge score={health.score} />
+          {health.trendOldestFirst.length >= 2 && (
+            <div className="w-full">
+              <HealthTrendChart points={health.trendOldestFirst} compact />
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 p-6">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="flex flex-col p-7">
+          <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">
             Top Priorities
-          </h3>
+          </p>
           {isEmpty ? (
-            <p className="text-sm text-gray-500">
+            <div className="flex flex-1 items-center rounded-[12px] bg-white px-4 py-6 text-[13px] text-black-300">
               Panda AI will analyse this project shortly.
-            </p>
+            </div>
           ) : topSuggestions.length > 0 ? (
             <div className="flex flex-col gap-2">
               {topSuggestions.map((suggestion, idx) => (
                 <Link
                   key={idx}
                   to={getSuggestionLink(suggestion.category)}
-                  className="group flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/50 p-3 hover:bg-gray-50 hover:border-gray-200 transition-colors"
+                  className="group flex items-center justify-between rounded-[12px] bg-white px-4 py-3 ring-1 ring-transparent transition-all hover:ring-primary/20"
                 >
                   <div className="flex items-center gap-3">
-                    <Badge tone={getPriorityTone(suggestion.priority)} size="sm">
-                      {suggestion.priority}
-                    </Badge>
-                    <span className="text-sm font-medium text-gray-900 group-hover:text-[#004DE7]">
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[suggestion.priority])} />
+                    <span className="text-[13px] font-medium text-black-500 group-hover:text-primary">
                       {suggestion.title}
                     </span>
                   </div>
-                  <ChevronRightIcon className="h-4 w-4 text-gray-400 group-hover:text-[#004DE7]" />
+                  <ChevronRightIcon className="size-4 shrink-0 text-black-200 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                 </Link>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No urgent priorities right now.</p>
+            <div className="flex flex-1 items-center rounded-[12px] bg-white px-4 py-6 text-[13px] text-black-300">
+              No urgent priorities right now.
+            </div>
           )}
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <ChipLink to={`/project/${projectId}/action-items`} count={operations.dueActionItems} label="action items" />
+            <ChipLink to={`/project/${projectId}/queries`} count={operations.openQueries} label="queries" />
+            <ChipLink to={`/project/${projectId}/approvals`} count={operations.pendingApprovals} label="approvals" />
+            <ChipLink to={`/project/${projectId}/permits`} count={operations.expiringPermits} label="permits" />
+            <ChipLink to={`/project/${projectId}/key-dates`} count={operations.upcomingKeyDates} label="key dates" />
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-gray-100 bg-gray-50/30 p-4">
-        <div className="flex flex-wrap gap-2">
-          <ChipLink
-            to={`/project/${projectId}/action-items`}
-            count={operations.dueActionItems}
-            label="action items"
-          />
-          <ChipLink
-            to={`/project/${projectId}/queries`}
-            count={operations.openQueries}
-            label="queries"
-          />
-          <ChipLink
-            to={`/project/${projectId}/approvals`}
-            count={operations.pendingApprovals}
-            label="approvals"
-          />
-          <ChipLink
-            to={`/project/${projectId}/permits`}
-            count={operations.expiringPermits}
-            label="permits"
-          />
-          <ChipLink
-            to={`/project/${projectId}/key-dates`}
-            count={operations.upcomingKeyDates}
-            label="key dates"
-          />
-        </div>
-      </div>
-
-      {health.trendOldestFirst.length >= 2 && (
-        <div className="border-t border-gray-100">
-          <HealthTrendChart points={health.trendOldestFirst} compact />
-        </div>
-      )}
-
-      <div className="border-t border-gray-100 p-4">
+      <div className="border-t border-[#EDEDED] px-7 py-3.5">
         <Link
           to={`/project/${projectId}/whats-next`}
-          className="text-sm font-semibold text-[#004DE7] hover:underline"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:gap-1.5"
         >
-          See full What's Next &rarr;
+          See full What&rsquo;s Next
+          <ChevronRightIcon className="size-3.5" />
         </Link>
       </div>
     </Card>
@@ -167,13 +175,13 @@ function ChipLink({ to, count, label }: { to: string; count: number; label: stri
     <Link
       to={to}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors border",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
         isZero
-          ? "border-gray-200 bg-white text-gray-400 hover:bg-gray-50"
-          : "border-[#004DE7]/20 bg-[#F0F5FF] text-[#004DE7] hover:bg-[#E6F0FF]"
+          ? "bg-white text-black-200 hover:text-black-300"
+          : "bg-primary/[0.08] text-primary hover:bg-primary/[0.12]",
       )}
     >
-      <span className={cn("font-bold", !isZero && "text-[#004DE7]")}>{count}</span>
+      <span className="font-bold tabular-nums">{count}</span>
       {label}
     </Link>
   );

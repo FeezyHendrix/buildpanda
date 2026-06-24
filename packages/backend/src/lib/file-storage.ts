@@ -109,6 +109,7 @@ export async function saveStream(
       Bucket: config.storage.bucket,
       Key: key,
       Body: counter,
+      ...(config.storage.serverSideEncryption ? { ServerSideEncryption: "AES256" } : {}),
     },
   });
   await upload.done();
@@ -217,6 +218,7 @@ export async function createMultipartUpload(
       Bucket: config.storage.bucket,
       Key: storagePath,
       ContentType: contentType,
+      ...(config.storage.serverSideEncryption ? { ServerSideEncryption: "AES256" as const } : {}),
     }),
   );
   if (!result.UploadId) throw new Error("S3 did not return an UploadId");

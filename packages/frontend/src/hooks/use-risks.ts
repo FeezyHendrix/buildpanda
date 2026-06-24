@@ -20,6 +20,7 @@ interface CreateRiskVariables {
   projectId: string;
   title: string;
   description: string;
+  descriptionHtml?: string | null;
   severity: RiskLevel;
 }
 
@@ -45,6 +46,7 @@ interface EditRiskVariables {
   riskId: string;
   title?: string;
   description?: string;
+  descriptionHtml?: string | null;
   severity?: RiskLevel;
 }
 

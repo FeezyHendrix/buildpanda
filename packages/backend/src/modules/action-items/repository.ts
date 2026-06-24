@@ -12,6 +12,7 @@ export interface NewActionItemRecord {
   project_id: string;
   title: string;
   description: string | null;
+  description_html: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assignee_id: string | null;
@@ -26,6 +27,7 @@ export interface NewActionItemRecord {
 export interface ActionItemUpdatePatch {
   title?: string;
   description?: string | null;
+  description_html?: string | null;
   status?: ActionStatus;
   priority?: ActionPriority;
   assignee_id?: string | null;
@@ -44,6 +46,7 @@ const SELECT = [
   "ai.project_id",
   "ai.title",
   "ai.description",
+  "ai.description_html",
   "ai.status",
   "ai.priority",
   "ai.assignee_id",

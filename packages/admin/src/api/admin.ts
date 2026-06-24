@@ -48,6 +48,8 @@ export interface AdminUserRow {
   phone: string | null;
   profession: string | null;
   image: string | null;
+  signupIp: string | null;
+  signupCountry: string | null;
   createdAt: string;
   updatedAt: string;
   projectCount: number;
@@ -170,6 +172,29 @@ export interface AdminImportJobRow {
 
 export type AdminImportJobDetail = Record<string, unknown>;
 
+export interface MaintenanceSettings {
+  enabled: boolean;
+  message: string | null;
+  updatedByName: string | null;
+  updatedAt: string;
+}
+
+export interface FeatureFlag {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  enabledByDefault: boolean;
+  routePrefixes: string[];
+  enabled: boolean;
+}
+
+export interface FeatureFlagsSettings {
+  flags: FeatureFlag[];
+  updatedByName: string | null;
+  updatedAt: string | null;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -202,4 +227,13 @@ export const adminApi = {
     api.get<Paginated<AdminImportJobRow>>("/admin/jobs", { params: params(args) }).then((r) => r.data),
   getJob: (kind: string, id: string) =>
     api.get<AdminImportJobDetail>(`/admin/jobs/${kind}/${id}`).then((r) => r.data),
+
+  getMaintenance: () =>
+    api.get<MaintenanceSettings>("/admin/maintenance").then((r) => r.data),
+  updateMaintenance: (body: { enabled?: boolean; message?: string | null }) =>
+    api.patch<MaintenanceSettings>("/admin/maintenance", body).then((r) => r.data),
+  getFeatureFlags: () =>
+    api.get<FeatureFlagsSettings>("/admin/feature-flags").then((r) => r.data),
+  updateFeatureFlags: (flags: Record<string, boolean>) =>
+    api.patch<FeatureFlagsSettings>("/admin/feature-flags", { flags }).then((r) => r.data),
 };

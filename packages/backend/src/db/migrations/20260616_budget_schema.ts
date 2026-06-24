@@ -26,6 +26,21 @@ export async function up(knex: Knex): Promise<void> {
     `ALTER TABLE project_budget_categories ADD CONSTRAINT project_budget_categories_amounts_check CHECK (planned >= 0 AND committed >= 0 AND actual >= 0)`,
   );
 
+  await knex.schema.alterTable("change_request_budget_links", (table) => {
+    table
+      .foreign("budget_category_id")
+      .references("id")
+      .inTable("project_budget_categories")
+      .onDelete("CASCADE");
+  });
+  await knex.schema.alterTable("invoice_budget_allocations", (table) => {
+    table
+      .foreign("budget_category_id")
+      .references("id")
+      .inTable("project_budget_categories")
+      .onDelete("CASCADE");
+  });
+
   await knex.schema.createTable("project_budget_periods", (table) => {
     table.text("id").primary();
     table
@@ -54,6 +69,12 @@ export async function up(knex: Knex): Promise<void> {
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.schema.alterTable("invoice_budget_allocations", (table) => {
+    table.dropForeign(["budget_category_id"]);
+  });
+  await knex.schema.alterTable("change_request_budget_links", (table) => {
+    table.dropForeign(["budget_category_id"]);
+  });
   await knex.schema.dropTableIfExists("project_budget_periods");
   await knex.schema.dropTableIfExists("project_budget_categories");
 }

@@ -67,7 +67,7 @@ export default function AcceptInvitation() {
           This invitation is no longer valid. It may have been cancelled or
           already used.
         </p>
-        <Link to="/dashboard" className="mt-6 inline-block">
+        <Link to="/" className="mt-6 inline-block">
           <Button variant="secondary" size="sm">
             Go to dashboard
           </Button>
@@ -85,7 +85,7 @@ export default function AcceptInvitation() {
         <p className="text-sm text-gray-500">
           This invitation has already been {invitation.status}.
         </p>
-        <Link to="/dashboard" className="mt-6 inline-block">
+        <Link to="/" className="mt-6 inline-block">
           <Button variant="secondary" size="sm">
             Go to dashboard
           </Button>
@@ -97,6 +97,12 @@ export default function AcceptInvitation() {
   const emailMismatch =
     session.user.email.toLowerCase() !== invitation.email.toLowerCase();
 
+  async function switchAccount(): Promise<void> {
+    if (invitationId) localStorage.setItem(PENDING_ORG_INVITE_KEY, invitationId);
+    await authClient.signOut();
+    navigate(`/auth/sign-in?redirect=${encodeURIComponent(`/accept-invitation/${invitationId}`)}`);
+  }
+
   if (emailMismatch) {
     return (
       <InvitationShell title="Wrong account">
@@ -105,6 +111,11 @@ export default function AcceptInvitation() {
           you are signed in as <strong>{session.user.email}</strong>. Sign in
           with the invited email to accept.
         </p>
+        <div className="mt-6">
+          <Button size="sm" className="w-full" onClick={() => void switchAccount()}>
+            Sign out & use a different account
+          </Button>
+        </div>
       </InvitationShell>
     );
   }
@@ -114,7 +125,7 @@ export default function AcceptInvitation() {
     acceptInvitation.mutate(invitationId, {
       onSuccess: () => {
         localStorage.removeItem(PENDING_ORG_INVITE_KEY);
-        navigate("/dashboard");
+        navigate("/");
       },
     });
   }
@@ -124,7 +135,7 @@ export default function AcceptInvitation() {
     rejectInvitation.mutate(invitationId, {
       onSuccess: () => {
         localStorage.removeItem(PENDING_ORG_INVITE_KEY);
-        navigate("/dashboard");
+        navigate("/");
       },
     });
   }

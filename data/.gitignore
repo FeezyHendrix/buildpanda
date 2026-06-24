@@ -1,0 +1,17 @@
+# Derived RAG index (regenerate with kb-extract + rag) — large, contains embeddings
+knowledge-base/index/
+knowledge-base/besmm-corpus.json
+
+# Large source PDFs / sample workbooks (keep locally, don't bloat the repo)
+knowledge-base/*.pdf
+samples/boq/Project-McNeil-Handover-May2026.xlsx
+samples/boq/Priced-Moniepoint-Abuja-BoQ.xlsx
+samples/dwg/*.dwg
+
+# Build-only: symlink to backend node_modules (created at run time)
+boq-pipeline/node_modules
+boq-pipeline/package.json
+
+# Generated outputs (re-runnable)
+samples/boq/GENERATED-*.xlsx
+samples/boq/GENERATED-*.csv

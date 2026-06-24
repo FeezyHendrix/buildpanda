@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
 import { sendWelcomeEmail } from "../modules/lifecycle/index.ts";
+import { getRequestContext } from "./request-context.ts";
 import {
   organizationInviteEmail,
   passwordResetEmail,
@@ -112,6 +113,20 @@ export const auth = betterAuth({
   basePath: "/api/auth",
   trustedOrigins: config.http.corsOrigins,
 
+  // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
+  // deliberately skips these to avoid double-counting). Custom rules throttle
+  // the brute-force-sensitive endpoints harder than the default window.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 10 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/forget-password": { window: 60, max: 5 },
+    },
+  },
+
   // Allow cookies on cross-site requests (e.g. localhost frontend hitting the
   // Railway-hosted API at api.buildpanda.io). When the frontend ever lives on
   // a sibling subdomain of the API, switch to `advanced.crossSubDomainCookies`
@@ -153,6 +168,9 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     expiresIn: 3600,
+    afterEmailVerification: async (user) => {
+      void sendWelcomeEmail(db, user.id).catch(() => undefined);
+    },
   },
 
   socialProviders: {
@@ -225,7 +243,13 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           await ensureUserOrganization(user.id, user.name);
-          void sendWelcomeEmail(db, user.id).catch(() => undefined);
+          const ctx = getRequestContext();
+          if (ctx && (ctx.ip || ctx.country)) {
+            await db("user")
+              .where({ id: user.id })
+              .update({ signup_ip: ctx.ip, signup_country: ctx.country })
+              .catch(() => undefined);
+          }
         },
       },
     },

@@ -11,7 +11,8 @@ export type RealtimeEvent =
   | "presence"
   | "read.updated"
   | "channel.updated"
-  | "unread.changed";
+  | "unread.changed"
+  | "notification.created";
 
 export interface RealtimePayload {
   event: RealtimeEvent;

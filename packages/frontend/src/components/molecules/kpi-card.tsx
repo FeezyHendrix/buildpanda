@@ -33,7 +33,7 @@ function KpiCard({
   const heading = title ?? label;
   return (
     <Card padding={padding} className={cn(
-        "flex flex-col gap-4 bg-[#F8F8F8] p-5 flex-1 min-w-0 rounded-[1px] border-none",
+        "flex flex-col gap-4 bg-[#F8F8F8] p-5 flex-1 min-w-0 min-h-[112px] rounded-[1px] border-none",
         className
       )}>
       {/* Icon + title */}
@@ -48,9 +48,9 @@ function KpiCard({
 
       {children}
 
-      {value && (
+      {value !== undefined && value !== null && value !== "" && (
         <div className='flex flex-col gap-2'>
-          <p className="text-[20px] font-semibold text-black-500">{value}</p>
+          <p className="text-[20px] font-semibold text-black-500 leading-tight [overflow-wrap:anywhere]">{value}</p>
           {subValue && (
             <div>
               {subValue && title === 'Next Inspection' ? (

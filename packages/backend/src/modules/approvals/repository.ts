@@ -7,18 +7,22 @@ export interface NewApprovalRecord {
   title: string;
   category: string | null;
   description: string | null;
+  description_html: string | null;
   status: ApprovalStatus;
   due_date: string | null;
   submitted_by_id: string | null;
+  requested_reviewer_id: string | null;
 }
 
 export interface ApprovalUpdatePatch {
   title?: string;
   category?: string | null;
   description?: string | null;
+  description_html?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
   due_date?: string | null;
+  requested_reviewer_id?: string | null;
   reviewed_by_id?: string | null;
   reviewed_at?: string | null;
   updated_at?: string;
@@ -30,10 +34,13 @@ const SELECT = [
   "a.title",
   "a.category",
   "a.description",
+  "a.description_html",
   "a.status",
   "a.response",
   "a.due_date",
   "a.submitted_by_id",
+  "a.requested_reviewer_id",
+  "rr.name as requested_reviewer_name",
   "a.reviewed_by_id",
   "u.name as reviewed_by_name",
   "a.reviewed_at",
@@ -43,7 +50,9 @@ const SELECT = [
 
 export function approvalsRepository(db: Knex) {
   function base() {
-    return db("approvals as a").leftJoin("user as u", "u.id", "a.reviewed_by_id");
+    return db("approvals as a")
+      .leftJoin("user as u", "u.id", "a.reviewed_by_id")
+      .leftJoin("user as rr", "rr.id", "a.requested_reviewer_id");
   }
 
   return {

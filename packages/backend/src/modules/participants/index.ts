@@ -10,7 +10,7 @@ import { config } from "../../config/index.ts";
 import { messagingRepository } from "../messaging/repository.ts";
 import { messagingService } from "../messaging/service.ts";
 
-type ParticipantRole = "client" | "architect" | "inspector" | "guest";
+type ParticipantRole = string;
 type ParticipantStatus = "invited" | "active" | "revoked";
 
 interface ParticipantRow {
@@ -24,6 +24,7 @@ interface ParticipantRow {
   invite_token: string | null;
   invite_expires_at: string | null;
   name?: string | null;
+  permissions: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +37,7 @@ interface TeamEntry {
   email: string;
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
+  permissions: Record<string, string>;
   createdAt: string;
 }
 
@@ -48,11 +50,12 @@ function toParticipant(r: ParticipantRow): TeamEntry {
     email: r.email,
     role: r.role,
     status: r.status,
+    permissions: (r.permissions as Record<string, string>) ?? {},
     createdAt: r.created_at,
   };
 }
 
-const appUrl = config.http.corsOrigins[0] ?? "http://localhost:5173";
+const appUrl = config.mail.appUrl;
 
 const projectIdParams = {
   type: "object",
@@ -85,7 +88,8 @@ const inviteBody = {
   properties: {
     email: { type: "string", minLength: 3, maxLength: 200 },
     name: { type: "string", maxLength: 120 },
-    role: { type: "string", enum: ["client", "architect", "inspector", "guest"] },
+    role: { type: "string", minLength: 1, maxLength: 80 },
+    permissions: { type: "object", additionalProperties: { type: "string" } },
   },
 } as const;
 
@@ -94,8 +98,9 @@ const updateBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
-    role: { type: "string", enum: ["client", "architect", "inspector", "guest"] },
+    role: { type: "string", minLength: 1, maxLength: 80 },
     status: { type: "string", enum: ["invited", "active", "revoked"] },
+    permissions: { type: "object", additionalProperties: { type: "string" } },
   },
 } as const;
 
@@ -187,7 +192,18 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.project_id", project.id)
         .whereNot("p.status", "revoked")
-        .select("p.*", "u.name as name")
+        .select(
+          "p.id",
+          "p.project_id",
+          "p.user_id",
+          "p.email",
+          "p.role",
+          "p.status",
+          "p.invited_by_id",
+          "p.created_at",
+          "p.updated_at",
+          db.raw("COALESCE(p.name, u.name) as name"),
+        )
         .orderBy("p.created_at", "asc");
 
       const participants: TeamEntry[] = rows.map(toParticipant);
@@ -201,6 +217,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           email: owner.email,
           role: "owner",
           status: "active",
+          permissions: {},
           createdAt: String(project.created_at),
         });
       }
@@ -208,7 +225,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole } }>(
+  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole; permissions?: Record<string, string> } }>(
     "/projects/:id/participants/invite",
     { schema: { params: projectIdParams, body: inviteBody } },
     async (request, reply) => {
@@ -216,7 +233,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
 
       const email = request.body.email.trim().toLowerCase();
-      const role = request.body.role ?? "client";
+      const role = request.body.role?.trim() || "client";
       const existing = await db<ParticipantRow>("project_participants")
         .where({ project_id: project.id, email })
         .whereNot("status", "revoked")
@@ -224,16 +241,19 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       if (existing) throw new BadRequestError("That person is already invited to this project.");
 
       const token = generateId("pinv");
+      const name = request.body.name?.trim() || null;
       const record = {
         id: generateId("pp"),
         project_id: project.id,
         user_id: null,
         email,
+        name,
         role,
         status: "invited" as const,
         invited_by_id: user.id,
         invite_token: token,
         invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        permissions: JSON.stringify(request.body.permissions ?? {}),
       };
       await db("project_participants").insert(record);
 
@@ -246,7 +266,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         });
         await sendEmail({
           to: email,
-          toName: request.body.name ?? email,
+          toName: name ?? email,
           subject,
           html,
         });
@@ -263,7 +283,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus } }>(
+  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus; permissions?: Record<string, string> } }>(
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams, body: updateBody } },
     async (request) => {
@@ -271,13 +291,25 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (request.body.role) patch.role = request.body.role;
       if (request.body.status) patch.status = request.body.status;
+      if (request.body.permissions !== undefined) patch.permissions = JSON.stringify(request.body.permissions);
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update(patch);
       const row = await db<ParticipantRow>("project_participants as p")
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.id", request.params.participantId)
-        .select("p.*", "u.name as name")
+        .select(
+          "p.id",
+          "p.project_id",
+          "p.user_id",
+          "p.email",
+          "p.role",
+          "p.status",
+          "p.invited_by_id",
+          "p.created_at",
+          "p.updated_at",
+          db.raw("COALESCE(p.name, u.name) as name"),
+        )
         .first();
       if (!row) throw new NotFoundError("Participant");
       return toParticipant(row);
@@ -340,11 +372,31 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
       if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
         throw new BadRequestError("This invitation was sent to a different email address.");
       }
-      await db("project_participants").where({ id: invite.id }).update({
-        user_id: user.id,
-        status: "active",
-        invite_token: null,
-        updated_at: new Date().toISOString(),
+      // The partial unique index on (project_id, user_id) means a prior (even
+      // revoked) row already holding this user blocks setting user_id on the new
+      // invite row. Merge the new invite's role into that existing row and drop
+      // the redundant invite, so re-invites and role changes accept cleanly.
+      const now = new Date().toISOString();
+      await db.transaction(async (trx) => {
+        const linked = await trx<ParticipantRow>("project_participants")
+          .where({ project_id: invite.project_id, user_id: user.id })
+          .first();
+        if (linked && linked.id !== invite.id) {
+          await trx("project_participants").where({ id: linked.id }).update({
+            role: invite.role,
+            status: "active",
+            invite_token: null,
+            updated_at: now,
+          });
+          await trx("project_participants").where({ id: invite.id }).delete();
+        } else {
+          await trx("project_participants").where({ id: invite.id }).update({
+            user_id: user.id,
+            status: "active",
+            invite_token: null,
+            updated_at: now,
+          });
+        }
       });
       return { projectId: invite.project_id, role: invite.role };
     },
@@ -354,7 +406,10 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get("/me/projects", async (request) => {
     const user = request.requireAuth();
     const orgIds = [...request.orgRoles.keys()];
-    const participantProjectIds = [...request.projectRoles.keys()];
+    const participantProjectIds = await db("project_participants")
+      .where({ user_id: user.id })
+      .whereNot("status", "revoked")
+      .pluck("project_id");
     const rows = await db("projects")
       .where(function () {
         this.where("owner_id", user.id);

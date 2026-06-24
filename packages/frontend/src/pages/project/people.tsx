@@ -29,19 +29,28 @@ export default function ProjectPeople() {
 
   function handleInvite(values: InviteHomeownerValues): void {
     invite.mutate(
-      { projectId: project.id, email: values.email, name: values.name || undefined, role: values.role },
+      {
+        projectId: project.id,
+        email: values.email,
+        name: values.name || undefined,
+        role: values.role,
+      },
       { onSuccess: () => setInviteOpen(false) },
     );
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="People"
         description="Homeowners and stakeholders with a portal on this build. Company staff are managed under Team."
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={() => setInviteOpen(true)}>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setInviteOpen(true)}
+            >
               <PlusIcon className="size-4" />
               Invite to project
             </Button>
@@ -54,21 +63,31 @@ export default function ProjectPeople() {
           <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
         ) : participants.length === 0 ? (
           <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">No one invited yet</p>
-            <p className="mt-1 text-sm text-gray-500">Invite the homeowner so they can follow progress.</p>
+            <p className="text-sm font-medium text-gray-900">
+              No one invited yet
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Invite the homeowner so they can follow progress.
+            </p>
           </Card>
         ) : (
           participants.map((p) => (
             <Card key={p.id} padding="md" className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-gray-900">{p.name ?? p.email}</p>
-                  <Badge tone="info" size="sm">{p.role}</Badge>
+                  <p className="truncate text-sm font-semibold text-gray-900">
+                    {p.name ?? p.email}
+                  </p>
+                  <Badge tone="info" size="sm">
+                    {p.role}
+                  </Badge>
                   <Badge tone={STATUS_TONE[p.status]} size="sm">
                     {p.status === "invited" ? "Invite sent" : p.status}
                   </Badge>
                 </div>
-                <p className="mt-0.5 truncate text-xs text-gray-500">{p.email}</p>
+                <p className="mt-0.5 truncate text-xs text-gray-500">
+                  {p.email}
+                </p>
               </div>
               {canManage && (
                 <button
@@ -97,7 +116,8 @@ export default function ProjectPeople() {
         open={removeId !== null}
         onOpenChange={(o) => !o && setRemoveId(null)}
         onConfirm={() => {
-          if (removeId) remove.mutate({ projectId: project.id, participantId: removeId });
+          if (removeId)
+            remove.mutate({ projectId: project.id, participantId: removeId });
           setRemoveId(null);
         }}
         title="Remove access"

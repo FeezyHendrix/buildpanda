@@ -35,6 +35,11 @@ const columns: Column<AdminUserRow>[] = [
   },
   { key: "projects", header: "Projects", render: (u) => u.projectCount },
   { key: "orgs", header: "Orgs", render: (u) => u.organizationCount },
+  {
+    key: "signupCountry",
+    header: "Country",
+    render: (u) => <span className="text-muted">{u.signupCountry ?? "—"}</span>,
+  },
   { key: "joined", header: "Joined", render: (u) => <span className="text-muted">{formatDate(u.createdAt)}</span> },
 ];
 

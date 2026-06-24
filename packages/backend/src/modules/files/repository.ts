@@ -4,6 +4,7 @@ import type { UploadedFileRow } from "./types.ts";
 export interface NewUploadedFileRecord {
   id: string;
   owner_id: string;
+  project_id?: string | null;
   file_name: string;
   mime_type: string;
   size_bytes: number;

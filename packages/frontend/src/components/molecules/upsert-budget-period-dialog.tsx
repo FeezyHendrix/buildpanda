@@ -40,7 +40,7 @@ function UpsertBudgetPeriodDialog({
   onSubmit,
   isSubmitting = false,
   error,
-  currency = "USD",
+  currency = "NGN",
 }: UpsertBudgetPeriodDialogProps) {
   const [values, setValues] = useState<UpsertBudgetPeriodValues>(EMPTY);
   const symbol = currencySymbol(currency);

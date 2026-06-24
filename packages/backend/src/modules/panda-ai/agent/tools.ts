@@ -162,10 +162,109 @@ export function buildTools(): AgentTool[] {
       return { output: inspections.map((i) => ({ title: i.title, category: i.category, status: i.status, riskLevel: i.risk_level, scheduledAt: i.scheduled_at })) };
     }),
 
-    tool(fn("get_materials", "Get material orders and requests with status, supplier and cost."), async (ctx) => {
+    tool(fn("get_materials", "Get planned material orders and requests (what was ordered) with status, supplier and cost. This is the procurement list, NOT current stock on hand — for how much of a material is currently available, use get_material_stock."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const materials = await repo.materials(ctx.projectId);
       return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
+    }),
+
+    tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const stock = await repo.materialStock(ctx.projectId);
+      return {
+        output: stock.map((s) => ({
+          material: s.material_name,
+          unit: s.unit,
+          location: s.location_key,
+          onHand: Number(s.on_hand_qty),
+          lowStockThreshold: s.low_stock_threshold === null ? null : Number(s.low_stock_threshold),
+          lowStock: s.low_stock_threshold !== null && Number(s.on_hand_qty) <= Number(s.low_stock_threshold),
+        })),
+      };
+    }),
+
+    tool(fn("get_tasks", "Get the project's task board (Kanban) with each task's column, assignee and due date. Use for questions about tasks, the board, what's in progress, what's assigned to someone, or what tasks are overdue."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const tasks = await repo.tasks(ctx.projectId);
+      return {
+        output: tasks.map((t) => ({
+          title: t.title,
+          column: t.columnName,
+          assignee: t.assigneeUserName ?? t.assigneeTeamName ?? null,
+          dueDate: t.due_date,
+          overdue: Boolean(t.due_date) && new Date(t.due_date as string).getTime() < now && t.columnName !== "Done",
+        })),
+      };
+    }),
+
+    tool(fn("get_task_links", "Get cross-references between tasks and other project records (action items, RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.taskEntityLinks(ctx.projectId);
+      const byTask = new Map<string, { entityType: string; label: string }[]>();
+      for (const row of rows as { taskTitle: string; entityType: string; label: string | null }[]) {
+        const list = byTask.get(row.taskTitle) ?? [];
+        list.push({ entityType: row.entityType, label: row.label ?? "(untitled)" });
+        byTask.set(row.taskTitle, list);
+      }
+      return {
+        output: [...byTask.entries()].map(([task, links]) => ({ task, linkedItems: links })),
+      };
+    }),
+
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
+      const [rfis, approvals, actionItems, queries] = await Promise.all([
+        repo.rfisOpen(ctx.projectId),
+        repo.approvalsOpen(ctx.projectId),
+        repo.actionItemsOpen(ctx.projectId),
+        repo.queriesOpen(ctx.projectId),
+      ]);
+      return {
+        output: {
+          rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
+          approvals: approvals.map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          actionItems: actionItems.map((a) => ({ title: a.title, status: a.status, priority: a.priority, assignee: a.assignee, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          queries: queries.map((q) => ({ title: q.title, status: q.status, assignee: q.assignee, dueDate: q.due_date, overdue: overdue(q.due_date) })),
+        },
+      };
+    }),
+
+    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. Use for questions about changes, variations, scope changes, or why the budget or timeline is moving."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const changes = await repo.changeRequests(ctx.projectId);
+      return {
+        output: changes.map((c) => ({
+          title: c.title,
+          status: c.status,
+          costImpact: c.cost_impact === null ? null : Number(c.cost_impact),
+          scheduleImpactDays: c.time_impact_days === null ? null : Number(c.time_impact_days),
+          currency: c.currency,
+          reason: c.reason,
+          decidedAt: c.decided_at,
+          submittedBy: c.submittedBy,
+        })),
+      };
+    }),
+
+    tool(fn("get_permits", "Get the project's permits with authority, status and key dates. Use for questions about permits, approvals to start work, regulatory status, or what is expiring."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const permits = await repo.permits(ctx.projectId);
+      return {
+        output: permits.map((p) => ({
+          title: p.title,
+          authority: p.authority,
+          reference: p.reference_no,
+          status: p.status,
+          appliedDate: p.applied_date,
+          approvedDate: p.approved_date,
+          expiryDate: p.expiry_date,
+          daysToExpiry: p.expiry_date ? Math.round((new Date(p.expiry_date as string).getTime() - now) / 86_400_000) : null,
+        })),
+      };
     }),
 
     tool(fn("list_documents", "List the documents and drawings on file for the project (name + category). Use this before analyzing a document so you know what exists."), async (ctx) => {

@@ -135,6 +135,20 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    materialStock(projectId: string) {
+      return db("materials_stock as s")
+        .join("materials_catalog as c", "c.id", "s.material_id")
+        .where("s.project_id", projectId)
+        .orderBy("c.name", "asc")
+        .select(
+          "c.name as material_name",
+          "c.unit",
+          "s.location_key",
+          "s.on_hand_qty",
+          "c.low_stock_threshold",
+        );
+    },
+
     documents(projectId: string) {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")
@@ -170,6 +184,132 @@ export function agentRepository(db: Knex) {
           "f.mime_type",
           "c.name as categoryName",
           "c.group as categoryGroup",
+        );
+    },
+
+    tasks(projectId: string) {
+      return db("tasks as t")
+        .leftJoin("task_columns as col", "col.id", "t.column_id")
+        .leftJoin("user as u", "u.id", "t.assignee_id")
+        .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id")
+        .where("t.project_id", projectId)
+        .orderBy("t.due_date", "asc")
+        .limit(100)
+        .select(
+          "t.id",
+          "t.title",
+          "col.name as columnName",
+          "t.due_date",
+          "u.name as assigneeUserName",
+          "tm.name as assigneeTeamName",
+        );
+    },
+
+    rfisOpen(projectId: string) {
+      return db("rfis as r")
+        .where("r.project_id", projectId)
+        .whereNotIn("r.status", ["Answered", "Closed", "Void"])
+        .orderBy("r.due_date", "asc")
+        .limit(50)
+        .select("r.id", "r.subject as title", "r.status", "r.priority", "r.due_date");
+    },
+
+    approvalsOpen(projectId: string) {
+      return db("approvals as a")
+        .leftJoin("user as u", "u.id", "a.submitted_by_id")
+        .where("a.project_id", projectId)
+        .whereIn("a.status", ["Pending", "Resubmit"])
+        .orderBy("a.due_date", "asc")
+        .limit(50)
+        .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
+    },
+
+    actionItemsOpen(projectId: string) {
+      return db("action_items as ai")
+        .leftJoin("user as u", "u.id", "ai.assignee_id")
+        .where("ai.project_id", projectId)
+        .whereNot("ai.status", "Resolved")
+        .orderBy("ai.due_date", "asc")
+        .limit(50)
+        .select("ai.id", "ai.title", "ai.status", "ai.priority", "ai.due_date", "u.name as assignee");
+    },
+
+    queriesOpen(projectId: string) {
+      return db("queries as q")
+        .leftJoin("user as u", "u.id", "q.assignee_id")
+        .where("q.project_id", projectId)
+        .whereNot("q.status", "Closed")
+        .orderBy("q.due_date", "asc")
+        .limit(50)
+        .select("q.id", "q.subject as title", "q.status", "q.due_date", "u.name as assignee");
+    },
+
+    changeRequests(projectId: string) {
+      return db("change_requests as cr")
+        .leftJoin("user as u", "u.id", "cr.submitted_by_id")
+        .where("cr.project_id", projectId)
+        .orderBy("cr.created_at", "desc")
+        .limit(50)
+        .select(
+          "cr.id",
+          "cr.title",
+          "cr.status",
+          "cr.cost_impact",
+          "cr.time_impact_days",
+          "cr.currency",
+          "cr.reason",
+          "cr.decided_at",
+          "u.name as submittedBy",
+        );
+    },
+
+    permits(projectId: string) {
+      return db("permits")
+        .where({ project_id: projectId })
+        .orderBy("expiry_date", "asc")
+        .limit(50)
+        .select(
+          "id",
+          "title",
+          "authority",
+          "reference_no",
+          "status",
+          "applied_date",
+          "approved_date",
+          "expiry_date",
+        );
+    },
+
+    taskEntityLinks(projectId: string) {
+      return db("task_entity_links as el")
+        .join("tasks as t", "t.id", "el.task_id")
+        .leftJoin("action_items as ai", function () {
+          this.on("el.entity_type", db.raw("?", ["action_item"])).andOn("ai.id", "el.entity_id");
+        })
+        .leftJoin("rfis as r", function () {
+          this.on("el.entity_type", db.raw("?", ["rfi"])).andOn("r.id", "el.entity_id");
+        })
+        .leftJoin("change_requests as cr", function () {
+          this.on("el.entity_type", db.raw("?", ["change_request"])).andOn("cr.id", "el.entity_id");
+        })
+        .leftJoin("material_orders as mo", function () {
+          this.on("el.entity_type", db.raw("?", ["material"])).andOn("mo.id", "el.entity_id");
+        })
+        .leftJoin("project_invoices as inv", function () {
+          this.on("el.entity_type", db.raw("?", ["invoice"])).andOn("inv.id", "el.entity_id");
+        })
+        .leftJoin("milestone_payments as mp", function () {
+          this.on("el.entity_type", db.raw("?", ["milestone_payment"])).andOn("mp.id", "el.entity_id");
+        })
+        .where("el.project_id", projectId)
+        .orderBy("t.title", "asc")
+        .limit(200)
+        .select(
+          "t.title as taskTitle",
+          "el.entity_type as entityType",
+          db.raw(
+            "COALESCE(ai.title, r.subject, cr.title, mo.material_name, inv.vendor_name, mp.name) as label",
+          ),
         );
     },
   };

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatCompactCurrency } from "@/lib/formatters";
 
 interface BudgetSliderProps {
   min?: number;
@@ -8,21 +9,6 @@ interface BudgetSliderProps {
   onChange: (value: [number, number]) => void;
   currency?: string;
   className?: string;
-}
-
-function formatCurrency(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatLabel(amount: number) {
-  if (amount >= 1_000_000_000) return `${amount / 1_000_000_000}B`;
-  if (amount >= 1_000_000) return `${amount / 1_000_000}M`;
-  if (amount >= 1_000) return `${amount / 1_000}k`;
-  return String(amount);
 }
 
 function BudgetSlider({
@@ -43,8 +29,8 @@ function BudgetSlider({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="text-xl font-semibold text-[#004DE7]">
-        {formatCurrency(value[0], currency)} –{" "}
-        {formatCurrency(value[1], currency)}
+        {formatCurrency(value[0], currency, { whole: true })} –{" "}
+        {formatCurrency(value[1], currency, { whole: true })}
       </div>
 
       <div className="relative flex h-6 items-center">
@@ -87,7 +73,7 @@ function BudgetSlider({
 
       <div className="flex justify-between text-xs text-gray-500">
         {labels.map((l) => (
-          <span key={l}>₦{formatLabel(l)}</span>
+          <span key={l}>{formatCompactCurrency(l, currency)}</span>
         ))}
       </div>
     </div>

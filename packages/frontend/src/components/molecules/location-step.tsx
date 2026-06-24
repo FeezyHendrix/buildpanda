@@ -3,32 +3,26 @@ import { Label } from "@/components/atoms/label";
 import {
   MapPlaceholder,
   SearchableSelect,
-  Switcher,
   FileUpload,
-  type SwitcherValue,
 } from "@/components/atoms";
 import { nigerianStates } from "@/lib/nigerian-states";
 
 interface LocationStepProps {
   state: string | null;
   city: string;
-  ownsLand: SwitcherValue;
   onStateChange: (value: string | null) => void;
   onCityChange: (value: string) => void;
-  onOwnsLandChange: (value: SwitcherValue) => void;
-  onFilesChange?: (files: FileList | null) => void;
   onBimFileChange?: (files: FileList | null) => void;
+  showBim?: boolean;
 }
 
 function LocationStep({
   state,
   city,
-  ownsLand,
   onStateChange,
   onCityChange,
-  onOwnsLandChange,
-  onFilesChange,
   onBimFileChange,
+  showBim = true,
 }: LocationStepProps) {
   return (
     <div>
@@ -62,40 +56,23 @@ function LocationStep({
 
         <MapPlaceholder />
 
-        <div className="flex items-center justify-between">
+        {showBim && (
           <div>
             <p className="text-sm font-semibold text-gray-900">
-              Do you own the land?
+              Do you have a 3D model (BIM)?
             </p>
             <p className="mt-1 text-xs text-[#929292] text-pretty">
-              Ownership status helps us verify legal compliance.
+              If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
             </p>
+            <FileUpload
+              label="Upload IFC model"
+              optional
+              accept=".ifc"
+              height={200}
+              onChange={onBimFileChange}
+            />
           </div>
-          <Switcher value={ownsLand} onChange={onOwnsLandChange} />
-        </div>
-
-        <FileUpload
-          label="Upload land documents"
-          optional
-          height={300}
-          onChange={onFilesChange}
-        />
-
-        <div>
-          <p className="text-sm font-semibold text-gray-900">
-            Do you have a 3D model (BIM)?
-          </p>
-          <p className="mt-1 text-xs text-[#929292] text-pretty">
-            If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
-          </p>
-          <FileUpload
-            label="Upload IFC model"
-            optional
-            accept=".ifc"
-            height={200}
-            onChange={onBimFileChange}
-          />
-        </div>
+        )}
       </div>
     </div>
   );

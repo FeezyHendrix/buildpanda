@@ -139,7 +139,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { querystring: whatsNextQuery } },
     async (request) => {
       const user = request.requireAuth();
-      const projects = await projectsRepository(db).listForOwner(user.id, [
+      const projects = await projectsRepository(db).listForUser(user.id, [
         ...request.orgRoles.keys(),
       ]);
       const days = request.query.days ?? 14;

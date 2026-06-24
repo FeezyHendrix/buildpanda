@@ -7,6 +7,40 @@ import {
 } from "react";
 import { cn, initials } from "@/lib/utils";
 
+export function Switch({
+  checked,
+  onCheckedChange,
+  disabled,
+  className,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-brand" : "bg-gray-300",
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          "absolute top-[2px] h-5 w-5 rounded-full bg-white shadow-sm transition-[left] duration-200",
+          checked ? "left-[22px]" : "left-[2px]",
+        )}
+      />
+    </button>
+  );
+}
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
 
@@ -23,18 +57,22 @@ const sizes: Record<Size, string> = {
 
 export const Button = forwardRef<
   HTMLButtonElement,
-  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }
->(({ className, variant = "primary", size = "md", ...props }, ref) => (
+  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size; loading?: boolean }
+>(({ className, variant = "primary", size = "md", loading, disabled, children, ...props }, ref) => (
   <button
     ref={ref}
+    disabled={disabled || loading}
     className={cn(
-      "inline-flex items-center justify-center rounded-lg font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-50",
+      "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-50",
       variants[variant],
       sizes[size],
       className,
     )}
     {...props}
-  />
+  >
+    {loading && <Spinner className="h-4 w-4 text-current" />}
+    {children}
+  </button>
 ));
 Button.displayName = "Button";
 

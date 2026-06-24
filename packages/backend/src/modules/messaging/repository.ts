@@ -203,6 +203,15 @@ export function messagingRepository(db: Knex) {
       await db("channels").where({ id: channelId }).update({ updated_at: new Date().toISOString() });
     },
 
+    async recentlyActiveUserIds(channelId: string, sinceIso: string): Promise<string[]> {
+      const rows = await db("messages")
+        .where("channel_id", channelId)
+        .where("created_at", ">=", sinceIso)
+        .whereNotNull("author_id")
+        .distinct<{ author_id: string }[]>("author_id");
+      return rows.map((r) => r.author_id);
+    },
+
     async updateChannel(
       channelId: string,
       patch: { name?: string; topic?: string | null; archived_at?: string | null },

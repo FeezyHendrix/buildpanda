@@ -229,6 +229,7 @@ export const proposalKeys = {
   comments: (id: string) => [...proposalKeys.detail(id), "comments"] as const,
   plans: (id: string) => [...proposalKeys.detail(id), "plans"] as const,
   boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
+  takeoffs: (id: string) => [...proposalKeys.detail(id), "automated-takeoff"] as const,
   publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
 };
 
@@ -248,6 +249,7 @@ export const messageKeys = {
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
   board: (projectId: string) => [...taskKeys.all(projectId), "board"] as const,
+  assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
 

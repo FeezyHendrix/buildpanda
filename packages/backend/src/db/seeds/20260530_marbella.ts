@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 
-const PROJECT_ID = "marbella";
+const PROJECT_ID = "sample-project";
 
 const MEDIA_URLS = [
   "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=640&q=70",
@@ -21,7 +21,7 @@ export async function seed(knex: Knex): Promise<void> {
     id: PROJECT_ID,
     owner_id: null,
     name: "Sample Project",
-    address: "30, John great court, Lekki, Lagos state",
+    address: "123 Example Street, Sample City",
     status: "On Track",
     health_score: 92,
     risk: "Low",

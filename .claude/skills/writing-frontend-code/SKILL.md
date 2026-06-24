@@ -109,6 +109,16 @@ Don't hardcode repetitive markup — drive nav, filters and status chips from
 related values into an object prop). Prefer hooks over HOCs/render-props. Never
 define a component inside another component (perf rule R-1).
 
+**File size: 400 lines is the hard ceiling.** Any `.tsx`/`.ts` file over 400
+lines must be refactored — split it before adding more. A page that has grown
+past the limit usually hides several components in one file: extract each
+non-trivial sub-component (card, dialog, picker, row), each `as const` config /
+icon set, and any shared `ComboSelect`-style primitive into their own files
+(`components/molecules/<feature>-<thing>.tsx`), leaving the page as a thin
+composition root. Co-locate the pieces under the feature; keep the public
+surface (the default-exported page) small. Splitting is also a render win — a
+1000-line page re-renders as one unit; small components re-render independently.
+
 ### State & data
 
 Server state lives in React Query, nothing else: `useQuery` keyed from the
@@ -186,6 +196,48 @@ export function UpsertActionItemDialog({ projectId, initial, onClose }: Props) {
 }
 ```
 
+### Loading & busy states
+
+One loader for the whole app: the circular `Spinner` atom
+(`components/atoms/spinner.tsx`). Never hand-roll `animate-spin`, dots, skeletons,
+or "Loading…" text as a substitute — every busy indicator routes through
+`Spinner` so the UI reads as one product.
+
+- **Sizes**: `xs` (inline, inside controls), `sm`/`md`/`lg` (page/section). **Tones**:
+  `brand` (default, blue on light surfaces), `current` (inherits text colour — use
+  on solid/coloured fills so the spinner stays visible).
+- **Buttons own their busy state via the `loading` prop** — never place a bare
+  `Spinner` next to a `<Button>` or swap the label for "Saving…". `loading`
+  disables the button, sets `aria-busy`, and overlays the spinner while keeping the
+  label width so the layout doesn't jump. Wire it straight to the mutation's
+  `isPending`.
+- **`ConfirmDialog`** takes `loading` for destructive/async confirms: pass the
+  mutation's `isPending`, keep the dialog open, and close it yourself in
+  `onSuccess`/`onError`. This is what prevents double-submit on deletes.
+- **Page/section loading** renders `<Spinner size="md" />` centred in the
+  region (this is how route-split fallbacks and query `isPending` branches render).
+
+```tsx
+// Good — button drives its own busy state from the mutation
+const save = useUpdateThing(id)
+<Button loading={save.isPending}
+  onClick={() => save.mutate(values, { onSuccess: onClose })}>
+  Save changes
+</Button>
+
+// Good — confirm dialog stays open until the mutation settles
+const remove = useDeleteThing(id)
+<ConfirmDialog open={open} onOpenChange={setOpen} variant="danger"
+  loading={remove.isPending} confirmLabel="Delete"
+  onConfirm={() => remove.mutate(target.id, { onSuccess: () => setOpen(false) })} />
+
+// Bad — ad-hoc spinner + manual disable + relabel; drifts from the standard
+<button disabled={save.isPending}>
+  {save.isPending ? <span className="animate-spin …" /> : null}
+  {save.isPending ? "Saving…" : "Save changes"}
+</button>
+```
+
 ### Styling
 
 Tailwind utility classes with the theme palette (`primary` scale `#004DE7`,
@@ -193,17 +245,41 @@ Plus Jakarta Sans). Match neighbouring files' tokens; use `cn()` from
 `lib/utils.ts` for conditional classes. No CSS-in-JS, no new style systems, no
 raw hex that drifts from the theme.
 
+**The design system is the source of truth for colour — never hardcode a value
+that an existing atom/token already owns.** If a colour (or spacing, radius,
+shadow, typography) is expressed by a design-system component or token, reuse
+that, don't re-type its hex. Map your domain enum to a *semantic* token (a Badge
+`tone`, a `primary-*` class), not to literal colours, so a palette change in one
+place updates every usage. Re-typing `#C72525` because "danger is red" is the
+drift this rule exists to stop.
+
 ```tsx
-// Good — a Badge tone mapped from status via cn(), theme tokens only
+// Good — domain enum -> semantic Badge tone; the Badge atom owns the colours,
+// and the selected/idle look is just a Badge variant. Zero hex here.
+const PRIORITY_META: Record<Priority, { tone: BadgeTone; shape: Shape }> = {
+  Low:    { tone: "info",    shape: "down" },
+  Medium: { tone: "warning", shape: "dash" },
+  High:   { tone: "danger",  shape: "up" },
+}
+<Badge tone={meta.tone} variant={selected ? "solid" : "soft"}>{label}</Badge>
+
+// Good — a status badge built from theme tokens via cn()
 function StatusBadge({ status }: { status: Status }) {
   return <span className={cn("rounded px-2 py-0.5 text-xs",
-    status === "done"        ? "bg-primary-100 text-primary-700"
-    : status === "open"      ? "bg-gray-100 text-gray-600"
+    status === "done"   ? "bg-primary-100 text-primary-700"
+    : status === "open" ? "bg-gray-100 text-gray-600"
     : "bg-amber-100 text-amber-700")} />
 }
-// Bad — inline hex drifts from the palette
-<span style={{ color: "#004DE7" }} />   // use text-primary-600 instead
+// Bad — re-typing colours the Badge already owns, or inline hex off-palette
+<span className="text-[#C72525]">High</span>          // use <Badge tone="danger">
+<span style={{ color: "#004DE7" }} />                 // use text-primary-600
 ```
+
+**Encode meaning beyond colour.** ~8% of men are red-green colour-blind, so a
+status/priority must also carry a non-colour cue (icon/shape + text label),
+never colour alone (WCAG 1.4.1). The priority badges pair each tone with a
+distinct shape (▲/▬/▼) and always show the label.
+
 
 ### Imports & files
 
@@ -250,7 +326,17 @@ correctness rules vs measure-first optimizations.
 - Gating UI on `accountType` and assuming it's secure — it's presentation.
 - Separate "create" and "edit" dialogs — one upsert dialog, `initial` prop.
 - Hex colors that drift from the theme; check the Tailwind palette first.
+- Re-typing a colour/spacing/radius the design system already owns (e.g. a
+  Badge tone's hex) instead of reusing the token/component — map enums to
+  semantic tokens, never literal values.
+- Conveying status/priority by colour alone — add an icon/shape + label (colour-blind safe, WCAG 1.4.1).
 - Mutating an array with `.sort()` in a `useMemo` over props — use `.toSorted()` (J-6).
+- Hand-rolling a spinner/skeleton or relabelling buttons to "Saving…" — use the `Spinner` atom and the `Button`/`ConfirmDialog` `loading` prop instead.
+- Letting a `.tsx`/`.ts` file grow past 400 lines — split sub-components, config
+  arrays and shared primitives into their own files before adding more.
+- Using `<input type="checkbox">` or a custom toggle for boolean on/off — always
+  use the `Switcher` atom (`components/atoms/switcher.tsx`) for yes/no toggles;
+  it renders a consistent segmented "Yes / No" control across the app.
 
 ---
 

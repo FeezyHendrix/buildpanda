@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -8,7 +7,6 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   ContractorsIcon,
   PlusIcon,
-  BackArrowIcon,
 } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -16,10 +14,7 @@ import {
   UpsertTeamMemberDialog,
   type UpsertTeamMemberValues,
 } from "@/components/molecules/upsert-team-member-dialog";
-import {
-  InviteHomeownerDialog,
-  type InviteHomeownerValues,
-} from "@/components/molecules/invite-homeowner-dialog";
+import { InviteParticipantDrawer } from "@/components/molecules/invite-participant-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectTeam,
@@ -30,89 +25,121 @@ import {
 } from "@/hooks/use-team";
 import {
   useParticipants,
-  useInviteParticipant,
   useRemoveParticipant,
 } from "@/hooks/use-participants";
+import { cn } from "@/lib/utils";
 import type { ProjectParticipant } from "@/lib/project-types";
+
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  client: "Client",
+  architect: "Architect",
+  inspector: "Inspector",
+  guest: "Guest",
+};
+
+function roleLabel(role: string): string {
+  return ROLE_LABEL[role] ?? role;
+}
 
 export default function ProjectTeam() {
   const { project } = useProjectContext();
-  
-  const { data: participants = [] } = useParticipants(project.id);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const inviteParticipant = useInviteParticipant();
 
-  function handleInvite(values: InviteHomeownerValues): void {
-    inviteParticipant.mutate(
-      { projectId: project.id, ...values },
-      { onSuccess: () => setInviteOpen(false) }
-    );
-  }
+  const { data: participants = [] } = useParticipants(project.id);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<
+    ProjectParticipant | undefined
+  >();
 
   const { data: members = [] } = useProjectTeam(project.id);
   const [createOpen, setCreateOpen] = useState(false);
   const createMember = useCreateTeamMember();
 
+  function openInvite() {
+    setEditTarget(undefined);
+    setDrawerOpen(true);
+  }
+
+  function openEdit(p: ProjectParticipant) {
+    setEditTarget(p);
+    setDrawerOpen(true);
+  }
+
   function handleCreate(values: UpsertTeamMemberValues): void {
     createMember.mutate(
       { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) }
+      { onSuccess: () => setCreateOpen(false) },
     );
   }
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <div className="mb-4">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
-        >
-          <BackArrowIcon className="size-4" />
-          Back to projects
-        </Link>
-      </div>
-
       <PageHeader
         title="Project Team"
-        description="Manage who has access to this project and list the people delivering this build."
+        description="Manage who has access to this project and the people delivering this build."
       />
 
+      {/* Project access */}
       <section className="mt-8">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Project access</h2>
-            <p className="text-sm text-gray-500">People with access to view or manage this project.</p>
-          </div>
-          <Button variant="primary" size="md" onClick={() => setInviteOpen(true)} className="self-start sm:self-auto">
-            <PlusIcon className="size-4" />
-            Invite to project
-          </Button>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            Project access
+          </h2>
+          <p className="text-sm text-gray-500">
+            People who can view or manage this project.
+          </p>
         </div>
 
-        <InviteHomeownerDialog
-          open={inviteOpen}
-          onOpenChange={setInviteOpen}
-          onSubmit={handleInvite}
-          isSubmitting={inviteParticipant.isPending}
-          error={(inviteParticipant.error as Error | undefined)?.message ?? null}
-        />
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {participants.map((p) => (
-            <ParticipantCard key={p.id} projectId={project.id} participant={p} />
+        <div className="overflow-hidden rounded-2xl border border-[#EBEBEB]">
+          {participants.map((p, idx) => (
+            <ParticipantRow
+              key={p.id}
+              projectId={project.id}
+              participant={p}
+              showDivider={idx < participants.length}
+              onEdit={() => openEdit(p)}
+            />
           ))}
+          <button
+            type="button"
+            onClick={openInvite}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300">
+              <PlusIcon className="size-3.5 text-gray-400" />
+            </div>
+            <span className="text-sm text-gray-400">Invite someone…</span>
+          </button>
         </div>
       </section>
 
-      <section className="mt-12 border-t border-gray-200 pt-10">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
+      <InviteParticipantDrawer
+        key={editTarget ? editTarget.id : "invite"}
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) setEditTarget(undefined);
+        }}
+        projectId={project.id}
+        initial={editTarget}
+      />
+
+      {/* Contacts */}
+      <section className="mt-10 border-t border-gray-200 pt-8">
+        <div className="mb-4 flex lg:flex-row lg:gap-0 gap-2 flex-col items-center justify-between">
+          <div className="order-2 lg:order-1">
+            <h2 className="text-base font-semibold text-gray-900">Contacts</h2>
             <p className="text-sm text-gray-500">
-              People delivering this build (for reference, does not grant access).
+              People delivering this build — for reference only, does not grant
+              access.
             </p>
           </div>
-          <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)} className="self-start sm:self-auto">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setCreateOpen(true)}
+            className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
+          >
             <PlusIcon className="size-4" />
             Add Contact
           </Button>
@@ -132,7 +159,7 @@ export default function ProjectTeam() {
             <EmptyState
               icon={<ContractorsIcon className="size-6" />}
               title="No contacts yet"
-              description="Add the engineers, contractors, and managers working on this project to keep everyone aligned."
+              description="Add the engineers, contractors and managers working on this project."
               action={
                 <Button
                   variant="primary"
@@ -161,82 +188,96 @@ export default function ProjectTeam() {
   );
 }
 
-const ROLE_LABEL = {
-  owner: "Owner",
-  client: "Client",
-  architect: "Architect",
-  inspector: "Inspector",
-  guest: "Guest",
-} as const;
-
-function ParticipantCard({
+function ParticipantRow({
   projectId,
   participant,
+  showDivider,
+  onEdit,
 }: {
   projectId: string;
   participant: ProjectParticipant;
+  showDivider: boolean;
+  onEdit: () => void;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const removeParticipant = useRemoveParticipant();
-
-  function handleDelete(): void {
-    removeParticipant.mutate(
-      { projectId, participantId: participant.id },
-      { onSuccess: () => setDeleteOpen(false) }
-    );
-  }
-
+  const remove = useRemoveParticipant();
   const isOwner = participant.role === "owner";
-  
+
   return (
-    <Card padding="lg" className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <Avatar name={participant.name ?? participant.email} size="md" />
-        <div className="flex flex-col">
-          <span className="text-sm font-medium text-gray-900">
-            {participant.name ?? participant.email}
-          </span>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-gray-500">{participant.email}</span>
-            <span className="text-xs text-gray-300">•</span>
-            <span className="text-xs text-gray-500">
-              {ROLE_LABEL[participant.role]}
-            </span>
-          </div>
-        </div>
+    <div
+      className={cn(
+        "flex items-center gap-3 px-4 py-3.5",
+        showDivider && "border-b border-[#F0F0F0]",
+      )}
+    >
+      <Avatar
+        name={participant.name ?? participant.email}
+        size="sm"
+        className="shrink-0"
+      />
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">
+          {participant.name ?? participant.email}
+        </p>
+        {participant.name && (
+          <p className="truncate text-xs text-gray-400">{participant.email}</p>
+        )}
       </div>
-      
-      <div className="flex items-center gap-3">
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="text-xs text-gray-500">
+          {roleLabel(participant.role)}
+        </span>
+
         {isOwner ? (
-          <Badge tone="info">Owner</Badge>
+          <Badge tone="info" size="sm">
+            Owner
+          </Badge>
         ) : participant.status === "invited" ? (
-          <Badge tone="neutral">Invited</Badge>
-        ) : participant.status === "active" ? (
-          <Badge tone="success">Active</Badge>
+          <Badge tone="neutral" size="sm">
+            Invited
+          </Badge>
         ) : null}
 
         {!isOwner && (
           <>
             <button
               type="button"
+              onClick={onEdit}
+              className="ml-1 text-xs font-medium text-gray-400 transition-colors hover:text-gray-700"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
               onClick={() => setDeleteOpen(true)}
-              className="ml-2 text-xs font-medium text-red-500 hover:text-red-600"
+              className="text-xs font-medium text-red-400 transition-colors hover:text-red-600"
             >
               Remove
             </button>
-            <ConfirmDialog
-              open={deleteOpen}
-              onOpenChange={setDeleteOpen}
-              onConfirm={handleDelete}
-              title="Remove access"
-              description={`Are you sure you want to remove ${participant.name ?? participant.email}'s access to this project?`}
-              confirmLabel="Remove"
-              variant="danger"
-            />
           </>
         )}
       </div>
-    </Card>
+
+      {!isOwner && (
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onConfirm={() =>
+            remove.mutate(
+              { projectId, participantId: participant.id },
+              { onSuccess: () => setDeleteOpen(false) },
+            )
+          }
+          loading={remove.isPending}
+          title="Remove access"
+          description={`Remove ${participant.name ?? participant.email}'s access to this project?`}
+          confirmLabel="Remove"
+          variant="danger"
+        />
+      )}
+    </div>
   );
 }
 
@@ -298,7 +339,7 @@ function TeamMemberCard({
           {member.email && (
             <a
               href={`mailto:${member.email}`}
-              className="font-medium text-[#004DE7] hover:underline"
+              className="font-medium text-brand hover:underline"
             >
               {member.email}
             </a>

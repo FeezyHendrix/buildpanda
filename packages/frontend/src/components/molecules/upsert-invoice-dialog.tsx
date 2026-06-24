@@ -53,7 +53,7 @@ function UpsertInvoiceDialog({
   onSubmit,
   isSubmitting = false,
   error,
-  currency = "USD",
+  currency = "NGN",
 }: UpsertInvoiceDialogProps) {
   const [values, setValues] = useState<UpsertInvoiceValues>(EMPTY);
   const symbol = currencySymbol(currency);

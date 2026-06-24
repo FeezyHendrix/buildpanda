@@ -73,10 +73,11 @@ function CommentPanel({
           type="submit"
           size="sm"
           variant="primary"
-          disabled={!body.trim() || isSubmitting}
+          loading={isSubmitting}
+          disabled={!body.trim()}
           className="h-9 px-3 text-xs"
         >
-          {isSubmitting ? "Posting…" : "Post"}
+          Post
         </Button>
       </form>
     </div>

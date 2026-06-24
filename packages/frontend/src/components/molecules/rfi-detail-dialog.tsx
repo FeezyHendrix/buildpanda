@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui-components/react/dialog";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -161,7 +161,6 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
   }
 
   const isClosed = rfi?.status === "Closed" || rfi?.status === "Void";
-  const canSubmit = useMemo(() => text.trim() !== "" && !respond.isPending, [text, respond.isPending]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -329,7 +328,8 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                         size="sm"
                         className="ml-auto"
                         onClick={submitResponse}
-                        disabled={!canSubmit}
+                        loading={respond.isPending}
+                        disabled={text.trim() === ""}
                       >
                         {official && canManage ? "Post official response" : "Add response"}
                       </Button>
@@ -345,7 +345,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       variant="secondary"
                       size="sm"
                       onClick={() => transition.mutate({ projectId, rfiId: rfi.id, status: "Closed" })}
-                      disabled={transition.isPending}
+                      loading={transition.isPending}
                     >
                       Close RFI
                     </Button>
@@ -355,7 +355,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       variant="secondary"
                       size="sm"
                       onClick={() => transition.mutate({ projectId, rfiId: rfi.id, status: "Open" })}
-                      disabled={transition.isPending}
+                      loading={transition.isPending}
                     >
                       Reopen
                     </Button>
@@ -365,7 +365,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       variant="secondary"
                       size="sm"
                       onClick={() => convert.mutate({ projectId, rfiId: rfi.id })}
-                      disabled={convert.isPending}
+                      loading={convert.isPending}
                     >
                       Convert to change event
                     </Button>

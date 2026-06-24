@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { rfisRepository } from "./repository.ts";
 import { rfisService } from "./service.ts";
+import { publicTokenRateLimit } from "../../plugins/security.ts";
 
 const tokenParams = {
   type: "object",
@@ -21,7 +22,7 @@ const publicRfiRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Params: { token: string }; Body: { body: string } }>(
     "/rfi-reply/:token",
-    { schema: { params: tokenParams, body: replyBody } },
+    { schema: { params: tokenParams, body: replyBody }, config: { rateLimit: publicTokenRateLimit } },
     async (request, reply) => {
       const result = await service.replyByToken(request.params.token, request.body.body);
       if (!result.ok) {

@@ -41,7 +41,21 @@ function toLocalInput(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}T07:00`;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function defaultStart(): Date {
+  const d = new Date();
+  d.setHours(7, 0, 0, 0);
+  return d;
+}
+
+function defaultEnd(): Date {
+  const d = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+  d.setHours(17, 0, 0, 0);
+  return d;
 }
 
 function CreateActivityDialog({
@@ -59,10 +73,8 @@ function CreateActivityDialog({
   const [activityType, setActivityType] = useState("");
   const [phaseId, setPhaseId] = useState("");
   const [location, setLocation] = useState("");
-  const today = new Date();
-  const nextWeek = new Date(Date.now() + 7 * 24 * 3600 * 1000);
-  const [plannedStartAt, setPlannedStartAt] = useState(toLocalInput(today));
-  const [plannedEndAt, setPlannedEndAt] = useState(toLocalInput(nextWeek));
+  const [plannedStartAt, setPlannedStartAt] = useState(toLocalInput(defaultStart()));
+  const [plannedEndAt, setPlannedEndAt] = useState(toLocalInput(defaultEnd()));
   const [workerCountPlanned, setWorkerCountPlanned] = useState("8");
   const [notes, setNotes] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
@@ -74,12 +86,10 @@ function CreateActivityDialog({
     setPhaseId(initial?.phaseId ?? "");
     setLocation(initial?.location ?? "");
     setPlannedStartAt(
-      initial ? toLocalInput(new Date(initial.plannedStartAt)) : toLocalInput(new Date()),
+      initial ? toLocalInput(new Date(initial.plannedStartAt)) : toLocalInput(defaultStart()),
     );
     setPlannedEndAt(
-      initial
-        ? toLocalInput(new Date(initial.plannedEndAt))
-        : toLocalInput(new Date(Date.now() + 7 * 24 * 3600 * 1000)),
+      initial ? toLocalInput(new Date(initial.plannedEndAt)) : toLocalInput(defaultEnd()),
     );
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
     setNotes(initial?.notes ?? "");

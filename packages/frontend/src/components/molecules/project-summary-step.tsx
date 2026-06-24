@@ -4,13 +4,14 @@ import { PROJECT_TYPE_OPTIONS } from "./project-type-step";
 import type { InvolvementLevel, RiskOption } from "./management-step";
 import { INVOLVEMENT_OPTIONS, RISK_OPTIONS_CONFIG } from "./management-step";
 import {
-  BUILDING_TYPES,
   FUNDING_METHODS,
   TIMELINES,
+  buildingTypesForProjectType,
+  timelineOptionsForProjectType,
 } from "./project-details-step";
-import type { SwitcherValue } from "@/components/atoms";
 import { Button } from "@/components/atoms";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 import logo from "@/assets/images/logo.svg";
 
 interface ProjectSummaryData {
@@ -18,7 +19,6 @@ interface ProjectSummaryData {
   projectType: ProjectType | null;
   locationState: string | null;
   city: string;
-  ownsLand: SwitcherValue;
   buildingType: string | null;
   currency: string;
   budget: [number, number];
@@ -33,10 +33,11 @@ interface ProjectSummaryStepProps {
   onEdit: (step: number) => void;
   onStart: () => void;
   isStarting?: boolean;
+  hideManagement?: boolean;
 }
 
-function resolveLabel<T extends { id: string; title: string }>(
-  list: readonly T[],
+function resolveLabel(
+  list: readonly { id: string; title: string }[],
   id: string | null,
 ): string {
   if (!id) return "-";
@@ -44,12 +45,7 @@ function resolveLabel<T extends { id: string; title: string }>(
 }
 
 function formatBudget(currency: string, range: [number, number]): string {
-  const fmt = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  });
-  return `${fmt.format(range[0])} – ${fmt.format(range[1])}`;
+  return `${formatCurrency(range[0], currency, { whole: true })} – ${formatCurrency(range[1], currency, { whole: true })}`;
 }
 
 const PHASES = [
@@ -87,12 +83,18 @@ const PDF_PAGE_HEIGHT = 842;
 function BlueprintPage({
   data,
   pageIndex,
+  hideManagement = false,
 }: {
   data: ProjectSummaryData;
   pageIndex: number;
+  hideManagement?: boolean;
 }) {
+  const buildingTypes = buildingTypesForProjectType(data.projectType);
+  const timelineOptions = timelineOptionsForProjectType(data.projectType);
   const timelineLabel =
-    TIMELINES.find((t) => t.id === data.timeline)?.label ?? "-";
+    timelineOptions.find((t) => t.id === data.timeline)?.label ??
+    TIMELINES.find((t) => t.id === data.timeline)?.label ??
+    "-";
   const locationText = [data.city, data.locationState]
     .filter(Boolean)
     .join(", ");
@@ -201,12 +203,8 @@ function BlueprintPage({
           />
           <SummaryLine label="Location" value={locationText || "-"} />
           <SummaryLine
-            label="Owns Land"
-            value={data.ownsLand === "yes" ? "Yes" : "No"}
-          />
-          <SummaryLine
-            label="Building Type"
-            value={resolveLabel(BUILDING_TYPES, data.buildingType)}
+            label={data.projectType === "renovate" ? "Renovation Type" : "Building Type"}
+            value={resolveLabel(buildingTypes, data.buildingType)}
           />
           <SummaryLine
             label="Budget"
@@ -217,23 +215,27 @@ function BlueprintPage({
             label="Funding"
             value={resolveLabel(FUNDING_METHODS, data.fundingMethod)}
           />
-          <SummaryLine
-            label="Involvement"
-            value={resolveLabel(INVOLVEMENT_OPTIONS, data.involvementLevel)}
-          />
-          <SummaryLine
-            label="Risk Protection"
-            value={
-              data.riskOptions
-                .filter((r) => r.enabled)
-                .map(
-                  (r) =>
-                    RISK_OPTIONS_CONFIG.find((c) => c.id === r.id)?.title,
-                )
-                .filter(Boolean)
-                .join(", ") || "None selected"
-            }
-          />
+          {!hideManagement && (
+            <SummaryLine
+              label="Involvement"
+              value={resolveLabel(INVOLVEMENT_OPTIONS, data.involvementLevel)}
+            />
+          )}
+          {!hideManagement && (
+            <SummaryLine
+              label="Risk Protection"
+              value={
+                data.riskOptions
+                  .filter((r) => r.enabled)
+                  .map(
+                    (r) =>
+                      RISK_OPTIONS_CONFIG.find((c) => c.id === r.id)?.title,
+                  )
+                  .filter(Boolean)
+                  .join(", ") || "None selected"
+              }
+            />
+          )}
         </div>
       </div>
     </div>
@@ -271,7 +273,7 @@ function DownloadIcon() {
   );
 }
 
-function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false }: ProjectSummaryStepProps) {
+function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideManagement = false }: ProjectSummaryStepProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [activePage, setActivePage] = useState(0);
@@ -292,7 +294,7 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false }: Proje
           className="rounded-sm border border-gray-200 bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
           style={{ minHeight: PDF_PAGE_HEIGHT }}
         >
-          <BlueprintPage data={data} pageIndex={activePage} />
+          <BlueprintPage data={data} pageIndex={activePage} hideManagement={hideManagement} />
         </div>
       </div>
 

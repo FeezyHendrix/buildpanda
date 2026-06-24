@@ -10,6 +10,7 @@ import { leadsService } from "./service.ts";
 import { LEAD_STATUSES } from "./types.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
+import { leadsRateLimit } from "../../plugins/security.ts";
 
 const consultationBody = {
   type: "object",
@@ -72,7 +73,7 @@ const leadRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: ConsultationLead }>(
     "/leads/consultation",
-    { schema: { body: consultationBody } },
+    { schema: { body: consultationBody }, config: { rateLimit: leadsRateLimit } },
     async (request, reply) => {
       const body = request.body;
       const lead = await service.createLead({

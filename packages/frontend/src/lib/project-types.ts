@@ -77,6 +77,7 @@ export interface ActionItem {
   projectId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   status: ActionStatus;
   priority: ActionPriority;
   assigneeId: string | null;
@@ -251,6 +252,8 @@ export interface Approval {
   response: string | null;
   dueDate: string | null;
   submittedById: string | null;
+  requestedReviewerId: string | null;
+  requestedReviewerName: string | null;
   reviewedById: string | null;
   reviewedByName: string | null;
   reviewedAt: string | null;
@@ -379,8 +382,11 @@ export interface WhatsNext {
 
 export type StageStatus = PhaseStatus;
 
-export type ParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type KnownParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
+export type SectionPermission = "hidden" | "view" | "edit";
+export type ParticipantPermissions = Record<string, SectionPermission>;
 
 export interface ProjectParticipant {
   id: string;
@@ -390,6 +396,7 @@ export interface ProjectParticipant {
   email: string;
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
+  permissions: ParticipantPermissions;
   createdAt: string;
 }
 
@@ -694,6 +701,7 @@ export interface RiskFactor {
   id: string;
   title: string;
   description: string;
+  descriptionHtml: string | null;
   severity: RiskLevel;
 }
 
@@ -750,7 +758,6 @@ export interface Activity {
   isMilestone: boolean;
   source: string;
   delays: ActivityDelay[];
-  percentComplete: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -780,6 +787,7 @@ export interface DailyLog {
   workersPresent: number;
   totalHours: number;
   summary: string | null;
+  summaryHtml: string | null;
   activities: DailyLogActivityLink[];
   voidedAt: string | null;
   voidedById: string | null;
@@ -787,6 +795,43 @@ export interface DailyLog {
   voidReason: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DailyLogEntryVoid {
+  id: string;
+  reason: string;
+  voidedById: string | null;
+  voidedByName: string;
+  voidedAt: string;
+}
+
+export interface DailyLogEntry {
+  id: string;
+  projectId: string;
+  logDate: string;
+  authorId: string | null;
+  authorName: string;
+  authorRole: string;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  voids: DailyLogEntryVoid[];
+  voided: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DailyLogDay {
+  projectId: string;
+  logDate: string;
+  weatherCondition: WeatherCondition | null;
+  temperatureC: number | null;
+  precipitationMm: number | null;
+  windKph: number | null;
+  workersExpected: number;
+  workersPresent: number;
+  totalHours: number;
+  activities: DailyLogActivityLink[];
+  entries: DailyLogEntry[];
 }
 
 export interface Notification {
@@ -929,17 +974,33 @@ export interface Task {
   columnId: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
   dueDate: string | null;
+  priority: TaskPriority;
+  labels: string[];
   position: number;
   sourceType: string | null;
   sourceId: string | null;
+  createdById: string | null;
+  createdByName: string | null;
   subtaskTotal: number;
   subtaskDone: number;
+  entityLinkTypes: TaskEntityType[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type TaskPriority = "Low" | "Medium" | "High";
+
+export interface AssignableUser {
+  kind: "user" | "team";
+  id: string;
+  name: string;
+  email: string | null;
+  isSelf: boolean;
 }
 
 export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
@@ -959,9 +1020,28 @@ export interface TaskLink {
   targetTaskTitle: string;
 }
 
+export const TASK_ENTITY_TYPES = [
+  "action_item",
+  "rfi",
+  "change_request",
+  "material",
+  "invoice",
+  "milestone_payment",
+] as const;
+export type TaskEntityType = (typeof TASK_ENTITY_TYPES)[number];
+
+export interface TaskEntityLink {
+  id: string;
+  entityType: TaskEntityType;
+  entityId: string;
+  label: string;
+  status: string | null;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
+  entityLinks: TaskEntityLink[];
 }
 
 export interface TaskBoard {
@@ -1012,6 +1092,7 @@ export interface LedgerEntry {
   activityId: string | null;
   reversalForEntryId: string | null;
   reason: string | null;
+  notesHtml: string | null;
   files: LedgerEntryFile[];
   createdAt: string;
 }

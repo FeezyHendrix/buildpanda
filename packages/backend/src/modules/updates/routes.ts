@@ -75,6 +75,7 @@ const createUpdateBody = {
     category: { type: "string", enum: [...updateCategoryEnum] },
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     media: mediaItems,
   },
 } as const;
@@ -87,6 +88,7 @@ const editUpdateBody = {
     category: { type: "string", enum: [...updateCategoryEnum] },
     title: { type: "string", minLength: 1, maxLength: 200 },
     description: { type: "string", minLength: 1, maxLength: 2000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     media: mediaItems,
   },
 } as const;

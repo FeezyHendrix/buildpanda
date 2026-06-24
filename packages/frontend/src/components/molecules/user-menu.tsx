@@ -105,9 +105,9 @@ function UserMenu({
                 "flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700",
                 "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
               )}
-              render={<Link to="/dashboard" />}
+              render={<Link to="/" />}
             >
-              Dashboard
+              Home
             </Menu.Item>
 
             <Menu.Item

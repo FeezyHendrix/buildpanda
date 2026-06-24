@@ -239,6 +239,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       const { method, url } = request;
       const isPublic =
         (method === "GET" && url === "/healthz") ||
+        (method === "GET" && url === "/maintenance") ||
         (method === "GET" && url.startsWith("/static/")) ||
         (method === "GET" && url === "/ws") ||
         (method === "GET" && /^\/proposals\/public\/[^/?]+$/.test(url)) ||

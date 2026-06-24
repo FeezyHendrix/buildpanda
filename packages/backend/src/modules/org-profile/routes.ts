@@ -8,6 +8,7 @@ const patchBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: {
+    name: { type: "string", minLength: 1, maxLength: 120 },
     phone: { type: "string", maxLength: 50 },
     address: { type: "string", maxLength: 500 },
     contactEmail: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", maxLength: 320 },
@@ -19,6 +20,7 @@ const patchBody = {
 } as const;
 
 interface OrgProfilePatch {
+  name?: string;
   phone?: string;
   address?: string;
   contactEmail?: string;
@@ -63,13 +65,11 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const orgId = request.requireOrgPermission("orgProfile", "manage");
 
-      const { phone, address, contactEmail, website, defaultCurrency, defaultTaxLabel, defaultTaxPct } =
+      const { name, phone, address, contactEmail, website, defaultCurrency, defaultTaxLabel, defaultTaxPct } =
         request.body;
 
-      // The `organization` table is owned by better-auth: timestamps are
-      // camelCase (`updatedAt`). The profile columns are snake_case. Both
-      // conventions coexist on this one table.
       const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (name !== undefined) patch["name"] = name.trim();
       if (phone !== undefined) patch["phone"] = phone;
       if (address !== undefined) patch["address"] = address;
       if (contactEmail !== undefined) patch["contact_email"] = contactEmail;

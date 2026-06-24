@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
-import { BadRequestError } from "../../lib/errors.ts";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { filesRepository } from "./repository.ts";
 import { filesService } from "./service.ts";
 
@@ -27,13 +27,40 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     const part = await request.file();
     if (!part) throw new BadRequestError("Missing file upload");
 
+    const projectField = part.fields.projectId;
+    const projectId =
+      projectField && !Array.isArray(projectField) && projectField.type === "field"
+        ? String(projectField.value) || null
+        : null;
+    // Associating a file with a project both records ownership for later
+    // access checks and asserts the uploader may write to that project.
+    if (projectId) await request.requireProjectWrite(projectId);
+
     const uploaded = await service.upload(user.id, {
       fileName: part.filename,
       mimeType: part.mimetype,
+      projectId,
       data: part.file,
     });
     return reply.status(201).send(uploaded);
   });
+
+  fastify.get<{ Params: { id: string } }>(
+    "/files/:id/url",
+    { schema: { params: fileIdParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      const row = await service.findRow(request.params.id);
+      if (!row) throw new NotFoundError("File");
+      if (row.project_id) {
+        await request.requireProjectAccess(row.project_id);
+      } else if (row.owner_id !== user.id) {
+        throw new ForbiddenError();
+      }
+      const url = await service.presignViewUrl(row);
+      return { url };
+    },
+  );
 
   fastify.get<{ Params: { id: string } }>(
     "/files/:id",

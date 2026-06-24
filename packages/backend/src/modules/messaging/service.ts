@@ -108,6 +108,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     mentions: MessageMention[],
     memberIds: Set<string>,
     mutedUsers: Set<string>,
+    recentlyActive: Set<string>,
     projectId: string | null,
     channelName: string,
     actorId: string,
@@ -122,10 +123,21 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     }
     for (const userId of targets) {
       if (mutedUsers.has(userId)) continue;
-      if (deps.realtime?.isOnline(userId)) continue;
+      if (recentlyActive.has(userId)) continue;
+      const title = `${actorName} mentioned you in ${channelName}`;
+      // Online users get a live desktop notification instead of the in-app +
+      // email path, so a mention reaches them even when they're on another page.
+      if (deps.realtime?.isOnline(userId)) {
+        deps.realtime.publish({
+          event: "notification.created",
+          userId,
+          data: { type: "chat_mention", title, projectId, channelName },
+        });
+        continue;
+      }
       void deps.notifications
         .notify(userId, "chat_mention", {
-          title: `${actorName} mentioned you in ${channelName}`,
+          title,
           body: "",
           projectId: projectId ?? undefined,
         })
@@ -135,12 +147,14 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
 
   function notifyDm(
     memberIds: string[],
+    recentlyActive: Set<string>,
     actorId: string,
     actorName: string,
   ): void {
     if (!deps.notifications) return;
     for (const userId of memberIds) {
       if (userId === actorId) continue;
+      if (recentlyActive.has(userId)) continue;
       void deps.notifications
         .notify(userId, "chat_dm", {
           title: `New message from ${actorName}`,
@@ -340,6 +354,13 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const mutedUsers = new Set(
         members.filter((m) => m.muted || m.notify_level === "none").map((m) => m.user_id),
       );
+      // Suppress chat emails for anyone who replied in this channel within the
+      // last 10 minutes — they're actively in the conversation, so emailing them
+      // every message would be noise.
+      const activeCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const recentlyActive = new Set(
+        await repository.recentlyActiveUserIds(channelId, activeCutoff),
+      );
       const channelName = channelRow.name ? `#${channelRow.name}` : "a conversation";
       const withAuthor = await repository.findMessageById(row.id);
       const message = toMessage(withAuthor ?? row);
@@ -356,13 +377,14 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         input.mentions ?? [],
         new Set(memberIds),
         mutedUsers,
+        recentlyActive,
         channelRow.project_id,
         channelName,
         actor.id,
         actor.name,
       );
       if (channelRow.type === "dm" || channelRow.type === "group_dm") {
-        notifyDm(memberIds, actor.id, actor.name);
+        notifyDm(memberIds, recentlyActive, actor.id, actor.name);
       }
 
       return message;

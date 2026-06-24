@@ -92,6 +92,7 @@ function toEstimateItem(row: EstimateItemRow): EstimateItem {
     estimateId: row.estimate_id,
     groupLabel: row.group_label,
     description: row.description,
+    descriptionHtml: row.description_html,
     qty: Number(row.qty),
     unit: row.unit,
     unitRate: Number(row.unit_rate),
@@ -108,6 +109,7 @@ function toScheduleItem(row: PaymentScheduleRow): PaymentScheduleItem {
     label: row.label,
     percent: Number(row.percent),
     description: row.description,
+    descriptionHtml: row.description_html,
     sort: row.sort,
   };
 }
@@ -425,6 +427,7 @@ export function proposalsRepository(db: Knex) {
             estimate_id: estimateId,
             group_label: item.groupLabel,
             description: item.description,
+            description_html: item.descriptionHtml ?? null,
             qty: item.qty,
             unit: item.unit,
             unit_rate: item.unitRate,
@@ -465,6 +468,7 @@ export function proposalsRepository(db: Knex) {
             label: item.label,
             percent: item.percent,
             description: item.description ?? null,
+            description_html: item.descriptionHtml ?? null,
             sort: item.sort ?? i,
           })),
         );
@@ -673,6 +677,7 @@ export function proposalsRepository(db: Knex) {
       proposalId: r.proposal_id,
       groupLabel: r.group_label,
       description: r.description,
+      descriptionHtml: r.description_html,
       qty: Number(r.qty),
       unit: r.unit,
       sort: r.sort,
@@ -691,6 +696,7 @@ export function proposalsRepository(db: Knex) {
         proposal_id: proposalId,
         group_label: item.groupLabel,
         description: item.description,
+        description_html: item.descriptionHtml ?? null,
         qty: item.qty,
         unit: item.unit,
         sort: item.sort ?? idx,

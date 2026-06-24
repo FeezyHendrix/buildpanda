@@ -52,6 +52,12 @@ export class ValidationError extends AppError {
   }
 }
 
+export class TooManyRequestsError extends AppError {
+  constructor(message = "Rate limit exceeded", details?: unknown) {
+    super(message, { statusCode: 429, code: "rate_limited", details });
+  }
+}
+
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }

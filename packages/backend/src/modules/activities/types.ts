@@ -17,6 +17,7 @@ export interface ActivityDelay {
   reasonName: string;
   reasonCategory: string;
   description: string | null;
+  descriptionHtml: string | null;
   startedAt: string;
   resolvedAt: string | null;
   costImpact: number;
@@ -95,6 +96,7 @@ export interface ActivityDelayRow {
   activity_id: string;
   reason_code: string;
   description: string | null;
+  description_html: string | null;
   started_at: Date | string;
   resolved_at: Date | string | null;
   cost_impact: string;
@@ -154,6 +156,7 @@ export interface UpdateActivityInput {
 export interface RaiseDelayInput {
   reasonCode: string;
   description?: string;
+  descriptionHtml?: string | null;
   startedAt: string;
   costImpact?: number;
   currency?: Currency;

@@ -82,6 +82,7 @@ const RISK_OPTIONS_CONFIG: RiskOptionConfig[] = [
 interface ManagementStepProps {
   involvementLevel: InvolvementLevel | null;
   riskOptions: RiskOption[];
+  hideInvolvement?: boolean;
   onInvolvementChange: (level: InvolvementLevel) => void;
   onRiskOptionToggle: (id: string) => void;
 }
@@ -89,6 +90,7 @@ interface ManagementStepProps {
 function ManagementStep({
   involvementLevel,
   riskOptions,
+  hideInvolvement = false,
   onInvolvementChange,
   onRiskOptionToggle,
 }: ManagementStepProps) {
@@ -98,30 +100,35 @@ function ManagementStep({
   return (
     <div>
       <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
-        How Would You Like to Manage Your Project?
+        {hideInvolvement
+          ? "Add Risk Protection to Your Project"
+          : "How Would You Like to Manage Your Project?"}
       </h2>
       <p className="mt-2 text-center text-sm text-[#64748B] text-pretty">
-        Configure your management level and risk protection preferences to
-        ensure your peace of mind throughout the construction journey.
+        {hideInvolvement
+          ? "Choose the safeguards you want on this build. You can change these later."
+          : "Configure your management level and risk protection preferences to ensure your peace of mind throughout the construction journey."}
       </p>
 
       <div className="mt-10 space-y-12">
-        <section>
-          <h3 className="mb-4 text-base font-semibold text-gray-900">
-            Level of Involvement
-          </h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            {INVOLVEMENT_OPTIONS.map((opt) => (
-              <RadioCard
-                key={opt.id}
-                title={opt.title}
-                description={opt.description}
-                selected={involvementLevel === opt.id}
-                onClick={() => onInvolvementChange(opt.id)}
-              />
-            ))}
-          </div>
-        </section>
+        {!hideInvolvement && (
+          <section>
+            <h3 className="mb-4 text-base font-semibold text-gray-900">
+              Level of Involvement
+            </h3>
+            <div className="grid gap-4 md:grid-cols-3">
+              {INVOLVEMENT_OPTIONS.map((opt) => (
+                <RadioCard
+                  key={opt.id}
+                  title={opt.title}
+                  description={opt.description}
+                  selected={involvementLevel === opt.id}
+                  onClick={() => onInvolvementChange(opt.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h3 className="mb-4 text-base font-semibold text-gray-900">

@@ -56,6 +56,7 @@ export interface NewDelayRecord {
   activity_id: string;
   reason_code: string;
   description: string | null;
+  description_html: string | null;
   started_at: string;
   cost_impact: number;
   currency: Currency;

@@ -4,8 +4,6 @@ import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actua
 
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -15,13 +13,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectBudget,
   useCreateBudgetCategory,
-  useEditBudgetCategory,
-  useDeleteBudgetCategory,
   useCreateBudgetPeriod,
-  useEditBudgetPeriod,
-  useDeleteBudgetPeriod,
-  type BudgetCategory,
-  type BudgetPeriod,
 } from "@/hooks/use-budget";
 import {
   UpsertBudgetCategoryDialog,
@@ -34,58 +26,17 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-function toCategoryInput(values: UpsertBudgetCategoryValues) {
-  return {
-    name: values.name,
-    costCode: values.costCode || undefined,
-    planned: values.planned ? Number(values.planned) : undefined,
-    committed: values.committed ? Number(values.committed) : undefined,
-    actual: values.actual ? Number(values.actual) : undefined,
-    notes: values.notes || undefined,
-  };
-}
-
-function toCategoryValues(cat: BudgetCategory): UpsertBudgetCategoryValues {
-  return {
-    name: cat.name,
-    costCode: cat.costCode ?? "",
-    planned: String(cat.planned),
-    committed: String(cat.committed),
-    actual: String(cat.actual),
-    notes: cat.notes ?? "",
-  };
-}
-
-function toPeriodInput(values: UpsertBudgetPeriodValues) {
-  return {
-    period: values.period,
-    planned: values.planned ? Number(values.planned) : undefined,
-    actual: values.actual ? Number(values.actual) : undefined,
-    notes: values.notes || undefined,
-  };
-}
-
-function toPeriodValues(period: BudgetPeriod): UpsertBudgetPeriodValues {
-  return {
-    period: period.period,
-    planned: String(period.planned),
-    actual: String(period.actual),
-    notes: period.notes ?? "",
-  };
-}
-
-function formatMonth(yyyyMm: string): string {
-  const [year, month] = yyyyMm.split("-");
-  const date = new Date(Number(year), Number(month) - 1);
-  return date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
-}
-
+import { CategoryCard } from "./budget/category-card";
+import { PeriodCard } from "./budget/period-card";
+import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
 export default function ProjectBudget() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
+    project.id,
+  );
 
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
@@ -117,16 +68,25 @@ export default function ProjectBudget() {
 
   const { categories = [], periods = [], summary } = budget ?? {};
 
-  const effectiveTotalPlanned = categories.reduce((sum, cat) => sum + cat.effectivePlanned, 0);
-  const effectiveTotalCommitted = categories.reduce((sum, cat) => sum + cat.effectiveCommitted, 0);
-  const effectiveTotalActual = categories.reduce((sum, cat) => sum + cat.effectiveActual, 0);
+  const effectiveTotalPlanned = categories.reduce(
+    (sum, cat) => sum + cat.effectivePlanned,
+    0,
+  );
+  const effectiveTotalCommitted = categories.reduce(
+    (sum, cat) => sum + cat.effectiveCommitted,
+    0,
+  );
+  const effectiveTotalActual = categories.reduce(
+    (sum, cat) => sum + cat.effectiveActual,
+    0,
+  );
 
   const sortedPeriods = [...periods].sort((a, b) =>
     a.period.localeCompare(b.period),
   );
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -172,7 +132,12 @@ export default function ProjectBudget() {
               {formatCurrency(effectiveTotalCommitted, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalCommitted / effectiveTotalPlanned) * 100) : 0}% of planned
+              {effectiveTotalPlanned > 0
+                ? Math.round(
+                    (effectiveTotalCommitted / effectiveTotalPlanned) * 100,
+                  )
+                : 0}
+              % of planned
             </p>
           </KpiCard>
           <KpiCard label="Actual Spent">
@@ -180,14 +145,21 @@ export default function ProjectBudget() {
               {formatCurrency(effectiveTotalActual, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalActual / effectiveTotalPlanned) * 100) : 0}% of planned
+              {effectiveTotalPlanned > 0
+                ? Math.round(
+                    (effectiveTotalActual / effectiveTotalPlanned) * 100,
+                  )
+                : 0}
+              % of planned
             </p>
           </KpiCard>
           <KpiCard label="Variance">
             <p
               className={cn(
                 "text-base font-bold tabular-nums",
-                summary.totalVariance >= 0 ? "text-[#1B8E45]" : "text-[#E5484D]",
+                summary.totalVariance >= 0
+                  ? "text-[#1B8E45]"
+                  : "text-[#E5484D]",
               )}
             >
               {summary.totalVariance >= 0 ? "+" : ""}
@@ -197,7 +169,8 @@ export default function ProjectBudget() {
           {snapshot?.finance?.budget && (
             <KpiCard label="Variance Status">
               <p className="text-base font-bold text-[#E5484D]">
-                {snapshot.finance.budget.overBudgetCount} of {snapshot.finance.budget.categoryCount} over budget
+                {snapshot.finance.budget.overBudgetCount} of{" "}
+                {snapshot.finance.budget.categoryCount} over budget
               </p>
             </KpiCard>
           )}
@@ -233,7 +206,11 @@ export default function ProjectBudget() {
             description="Add budget categories to track your planned vs actual costs."
             action={
               canManage ? (
-                <Button variant="secondary" size="sm" onClick={() => setCreateCategoryOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCreateCategoryOpen(true)}
+                >
                   Add category
                 </Button>
               ) : undefined
@@ -286,7 +263,11 @@ export default function ProjectBudget() {
             description="Add monthly forecasts to track your project's spend over time."
             action={
               canManage ? (
-                <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCreatePeriodOpen(true)}
+                >
                   Add month
                 </Button>
               ) : undefined
@@ -306,252 +287,6 @@ export default function ProjectBudget() {
           </div>
         )}
       </section>
-    </div>
-  );
-}
-
-function CategoryCard({
-  projectId,
-  category,
-  currency,
-  canManage,
-}: {
-  projectId: string;
-  category: BudgetCategory;
-  currency: string;
-  canManage: boolean;
-}) {
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const editCategory = useEditBudgetCategory();
-  const deleteCategory = useDeleteBudgetCategory();
-
-  function handleEdit(values: UpsertBudgetCategoryValues): void {
-    editCategory.mutate(
-      { projectId, categoryId: category.id, ...toCategoryInput(values) },
-      { onSuccess: () => setEditOpen(false) },
-    );
-  }
-
-  return (
-    <Card padding="lg" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-base font-semibold text-gray-900">
-              {category.name}
-            </p>
-          </div>
-          {category.costCode && (
-            <p className="mt-0.5 text-xs text-gray-500">{category.costCode}</p>
-          )}
-        </div>
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteOpen(true)}
-            >
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Metric
-          label="Planned"
-          value={formatCurrency(category.effectivePlanned, currency)}
-          secondaryValue={category.effectivePlanned !== category.planned ? formatCurrency(category.planned, currency) : undefined}
-          projectedValue={category.projectedPlanned !== category.effectivePlanned ? formatCurrency(category.projectedPlanned, currency) : undefined}
-        />
-        <Metric
-          label="Committed"
-          value={formatCurrency(category.effectiveCommitted, currency)}
-        />
-        <Metric
-          label="Actual"
-          value={formatCurrency(category.effectiveActual, currency)}
-          secondaryValue={category.effectiveActual !== category.actual ? formatCurrency(category.actual, currency) : undefined}
-        />
-        <Metric
-          label="Variance"
-          value={`${category.variance >= 0 ? "+" : ""}${formatCurrency(
-            category.variance,
-            currency,
-          )}`}
-          valueClassName={
-            category.variance >= 0 ? "text-[#1B8E45]" : "text-[#E5484D]"
-          }
-        />
-        <Metric label="Spent" value={`${category.percentSpent}%`} />
-      </div>
-
-      {category.notes && (
-        <div className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-          {category.notes}
-        </div>
-      )}
-
-      <UpsertBudgetCategoryDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        initial={toCategoryValues(category)}
-        onSubmit={handleEdit}
-        isSubmitting={editCategory.isPending}
-        currency={currency}
-      />
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete category"
-        description={`Are you sure you want to delete "${category.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={() => {
-          deleteCategory.mutate(
-            { projectId, categoryId: category.id },
-            { onSuccess: () => setDeleteOpen(false) },
-          );
-        }}
-      />
-    </Card>
-  );
-}
-
-function PeriodCard({
-  projectId,
-  period,
-  currency,
-  canManage,
-}: {
-  projectId: string;
-  period: BudgetPeriod;
-  currency: string;
-  canManage: boolean;
-}) {
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const editPeriod = useEditBudgetPeriod();
-  const deletePeriod = useDeleteBudgetPeriod();
-
-  function handleEdit(values: UpsertBudgetPeriodValues): void {
-    editPeriod.mutate(
-      { projectId, periodId: period.id, ...toPeriodInput(values) },
-      { onSuccess: () => setEditOpen(false) },
-    );
-  }
-
-  return (
-    <Card padding="lg" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold text-gray-900">
-            {formatMonth(period.period)}
-          </p>
-        </div>
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteOpen(true)}
-            >
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Metric
-          label="Planned"
-          value={formatCurrency(period.planned, currency)}
-        />
-        <Metric
-          label="Actual"
-          value={formatCurrency(period.actual, currency)}
-        />
-        <Metric
-          label="Variance"
-          value={`${period.variance >= 0 ? "+" : ""}${formatCurrency(
-            period.variance,
-            currency,
-          )}`}
-          valueClassName={
-            period.variance >= 0 ? "text-[#1B8E45]" : "text-[#E5484D]"
-          }
-        />
-      </div>
-
-      {period.notes && (
-        <div className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-          {period.notes}
-        </div>
-      )}
-
-      <UpsertBudgetPeriodDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        initial={toPeriodValues(period)}
-        onSubmit={handleEdit}
-        isSubmitting={editPeriod.isPending}
-        currency={currency}
-      />
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete month"
-        description={`Are you sure you want to delete the forecast for ${formatMonth(
-          period.period,
-        )}?`}
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={() => {
-          deletePeriod.mutate(
-            { projectId, periodId: period.id },
-            { onSuccess: () => setDeleteOpen(false) },
-          );
-        }}
-      />
-    </Card>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  secondaryValue,
-  projectedValue,
-  valueClassName,
-}: {
-  label: string;
-  value: string;
-  secondaryValue?: string;
-  projectedValue?: string;
-  valueClassName?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-medium text-gray-500">{label}</span>
-      <span className={cn("text-sm font-semibold text-gray-900 tabular-nums", valueClassName)}>
-        {value}
-      </span>
-      {secondaryValue && <span className="text-xs text-gray-400 tabular-nums">Manual: {secondaryValue}</span>}
-      {projectedValue && <span className="text-xs text-gray-400 tabular-nums">Projected: {projectedValue}</span>}
     </div>
   );
 }
