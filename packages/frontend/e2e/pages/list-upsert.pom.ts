@@ -33,6 +33,10 @@ export class ListUpsertPage {
 
   async goto(): Promise<void> {
     await this.nav.goto(this.cfg.route);
+    // The create button mounts after the page's lazy chunk + list query resolve;
+    // wait for it to attach before asserting enabled (heavier projects are
+    // slower, so don't assume it's there immediately).
+    await this.createBtn().waitFor({ state: "visible" });
     await expect(this.createBtn()).toBeEnabled();
   }
 

@@ -20,6 +20,7 @@ export class InvoicesPage {
 
   async goto(): Promise<void> {
     await this.nav.goto("finances/invoices");
+    await this.newButton().waitFor({ state: "visible" });
     await expect(this.newButton()).toBeEnabled();
   }
 

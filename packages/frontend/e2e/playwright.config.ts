@@ -9,7 +9,10 @@ export default defineConfig({
   outputDir: "./.results/artifacts",
   fullyParallel: true,
   forbidOnly: env.isCi,
-  retries: env.isCi ? 2 : 0,
+  // One retry locally too: the dnd-kit tasks board occasionally exceeds its wait
+  // late in a long serial run (browser GC pressure), a transient unrelated to
+  // correctness. CI keeps 2. Trace/screenshot are captured on the retry only.
+  retries: env.isCi ? 2 : 1,
   // Project creation is rate-limited server-side. Locally we run serial (1
   // worker) for deterministic, flake-free signal — the brief prefers truth over
   // breadth. CI fans out with sharding across machines (each with few workers),

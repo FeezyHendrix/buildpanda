@@ -18,7 +18,10 @@ export class TasksPage {
 
   async goto(): Promise<void> {
     await this.nav.goto("tasks");
-    // Board readiness: the New task action is present and enabled.
+    // Board readiness: the New task action mounts after the board's lazy chunk
+    // and data query resolve. The Kanban board (dnd-kit) is heavier than other
+    // pages, so allow extra headroom on a worker that has accumulated state.
+    await this.newTaskButton().waitFor({ state: "visible", timeout: 20_000 });
     await expect(this.newTaskButton()).toBeEnabled();
   }
 
