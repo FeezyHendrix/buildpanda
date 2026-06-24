@@ -15,7 +15,8 @@ import {
   useAllChannels,
   useUpdateMembership,
   useForwardToActionItem,
-  useChannelMembers
+  useChannelMembers,
+  useCreateChannel,
 } from "@/hooks/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -29,6 +30,7 @@ import { MessageGroup } from "./chat/message-group";
 import { Composer } from "./chat/composer";
 import { ThreadPanel } from "./chat/thread-panel";
 import { NewDmModal } from "./chat/new-dm-modal";
+import { NewGroupDialog } from "./chat/new-group-dialog";
 import { MessageSearch } from "./chat/message-search";
 import { DmChannelRow } from "./chat/dm-channel-row";
 
@@ -119,6 +121,8 @@ export default function ProjectChat() {
   const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
   const [showPins, setShowPins] = useState(false);
   const [showNewDm, setShowNewDm] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const createChannel = useCreateChannel();
 
   const handleReaction = (m: ChatMessage, emoji: string) => {
     toggleReaction.mutate({ messageId: m.id, emoji });
@@ -175,7 +179,9 @@ export default function ProjectChat() {
           <div>
             <div className="mb-1 flex items-center justify-between px-3">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-black-300">Groups</span>
-              <PlusIcon className="size-4 text-gray-400" />
+              <button onClick={() => setShowNewGroup(true)} className="text-gray-400 hover:text-gray-700" aria-label="New group">
+                <PlusIcon className="size-4" />
+              </button>
             </div>
             <div className="space-y-1">
               {projectChannels.map((c) => (
@@ -333,6 +339,25 @@ export default function ProjectChat() {
           }}
         />
       )}
+
+      <NewGroupDialog
+        open={showNewGroup}
+        onClose={() => setShowNewGroup(false)}
+        loading={createChannel.isPending}
+        onSubmit={(name, isPrivate) => {
+          createChannel.mutate(
+            { type: "project", name, projectId: project.id, isPrivate },
+            {
+              onSuccess: (newChannel) => {
+                setActiveChannelId(newChannel.id);
+                setShowNewGroup(false);
+                toast("Group created", "success");
+              },
+              onError: () => toast("Could not create group"),
+            },
+          );
+        }}
+      />
 
       <ConfirmDialog
         open={!!deletingMsg}

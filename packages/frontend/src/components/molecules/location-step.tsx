@@ -13,6 +13,7 @@ interface LocationStepProps {
   onStateChange: (value: string | null) => void;
   onCityChange: (value: string) => void;
   onBimFileChange?: (files: FileList | null) => void;
+  showBim?: boolean;
 }
 
 function LocationStep({
@@ -21,6 +22,7 @@ function LocationStep({
   onStateChange,
   onCityChange,
   onBimFileChange,
+  showBim = true,
 }: LocationStepProps) {
   return (
     <div>
@@ -54,21 +56,23 @@ function LocationStep({
 
         <MapPlaceholder />
 
-        <div>
-          <p className="text-sm font-semibold text-gray-900">
-            Do you have a 3D model (BIM)?
-          </p>
-          <p className="mt-1 text-xs text-[#929292] text-pretty">
-            If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
-          </p>
-          <FileUpload
-            label="Upload IFC model"
-            optional
-            accept=".ifc"
-            height={200}
-            onChange={onBimFileChange}
-          />
-        </div>
+        {showBim && (
+          <div>
+            <p className="text-sm font-semibold text-gray-900">
+              Do you have a 3D model (BIM)?
+            </p>
+            <p className="mt-1 text-xs text-[#929292] text-pretty">
+              If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
+            </p>
+            <FileUpload
+              label="Upload IFC model"
+              optional
+              accept=".ifc"
+              height={200}
+              onChange={onBimFileChange}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
