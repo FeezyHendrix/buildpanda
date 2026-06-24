@@ -9,7 +9,6 @@ import {
   buildingTypesForProjectType,
   timelineOptionsForProjectType,
 } from "./project-details-step";
-import type { SwitcherValue } from "@/components/atoms";
 import { Button } from "@/components/atoms";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
@@ -20,7 +19,6 @@ interface ProjectSummaryData {
   projectType: ProjectType | null;
   locationState: string | null;
   city: string;
-  ownsLand: SwitcherValue;
   buildingType: string | null;
   currency: string;
   budget: [number, number];
@@ -204,10 +202,6 @@ function BlueprintPage({
             }
           />
           <SummaryLine label="Location" value={locationText || "-"} />
-          <SummaryLine
-            label="Owns Land"
-            value={data.ownsLand === "yes" ? "Yes" : "No"}
-          />
           <SummaryLine
             label={data.projectType === "renovate" ? "Renovation Type" : "Building Type"}
             value={resolveLabel(buildingTypes, data.buildingType)}
