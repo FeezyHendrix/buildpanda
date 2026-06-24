@@ -9,6 +9,7 @@ import {
   useUpdateApproval,
 } from "@/hooks/use-approvals";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import type { ApprovalStatus } from "@/lib/project-types";
 
 export const APPROVAL_STATUS_META: Record<
@@ -19,6 +20,13 @@ export const APPROVAL_STATUS_META: Record<
   Approved: { label: "Approved", tone: "success" },
   Rejected: { label: "Rejected", tone: "danger" },
   Resubmit: { label: "Resubmit", tone: "warning" },
+};
+
+const DECISION_TOAST: Record<ApprovalStatus, string> = {
+  Pending: "Approval reopened",
+  Approved: "Approval approved",
+  Rejected: "Approval rejected",
+  Resubmit: "Resubmission requested",
 };
 
 function formatWhen(value: string): string {
@@ -45,7 +53,16 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
 
   function decide(status: ApprovalStatus): void {
     if (!approvalId) return;
-    updateApproval.mutate({ projectId, approvalId, status, response: response.trim() || null });
+    updateApproval.mutate(
+      { projectId, approvalId, status, response: response.trim() || null },
+      {
+        onSuccess: () => {
+          toast(DECISION_TOAST[status], "success");
+          onOpenChange(false);
+        },
+        onError: () => toast("Could not record the decision"),
+      },
+    );
   }
 
   function submitComment(): void {
@@ -88,7 +105,9 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
               </header>
 
               <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Decision</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  {decided ? `Decision · ${APPROVAL_STATUS_META[approval.status].label}` : "Decision"}
+                </p>
                 {decided && approval.response ? (
                   <div className="mt-2 rounded-xl bg-[#FAFAFA] p-3">
                     <p className="whitespace-pre-wrap text-sm text-gray-900">{approval.response}</p>
@@ -110,15 +129,18 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId }: Pro
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
-                      Approve
+                      {approval.status === "Approved" ? "Approved" : "Approve"}
                     </Button>
                     <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
                       Request resubmit
                     </Button>
                     <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
-                      Reject
+                      {approval.status === "Rejected" ? "Rejected" : "Reject"}
                     </Button>
                   </div>
+                  {decided && (
+                    <p className="text-xs text-gray-400">This approval is {APPROVAL_STATUS_META[approval.status].label.toLowerCase()}. Choosing a different outcome updates the decision.</p>
+                  )}
                 </div>
 
                 <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">

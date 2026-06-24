@@ -172,6 +172,15 @@ export default function ProjectApprovals() {
                 </div>
               </button>
               <div className="flex items-center gap-3">
+                {a.status === "Pending" && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailId(a.id)}
+                    className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600"
+                  >
+                    Review
+                  </button>
+                )}
                 <button type="button" onClick={() => setEditApproval(a)} className="text-xs font-medium text-gray-500 hover:text-gray-900">
                   Edit
                 </button>
