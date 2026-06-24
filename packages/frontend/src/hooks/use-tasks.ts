@@ -11,6 +11,7 @@ export interface CreateTaskInput {
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
   priority?: TaskPriority;
+  labels?: string[];
   columnId?: string | null;
 }
 
@@ -22,6 +23,7 @@ export interface UpdateTaskInput {
   assigneeTeamMemberId?: string | null;
   dueDate?: string | null;
   priority?: TaskPriority;
+  labels?: string[];
 }
 
 export function useTaskBoard(projectId: string) {

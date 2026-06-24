@@ -19,6 +19,7 @@ export interface NewTaskRecord {
   assignee_team_member_id: string | null;
   due_date: string | null;
   priority: string;
+  labels: string;
   position: number;
   source_type: string | null;
   source_id: string | null;
@@ -33,6 +34,7 @@ export interface TaskUpdatePatch {
   assignee_team_member_id?: string | null;
   due_date?: string | null;
   priority?: string;
+  labels?: string;
   column_id?: string;
   position?: number;
   updated_at?: string;
@@ -60,6 +62,7 @@ const TASK_SELECT = [
   "tm.name as assignee_team_member_name",
   "t.due_date",
   "t.priority",
+  "t.labels",
   "t.position",
   "t.source_type",
   "t.source_id",

@@ -362,6 +362,7 @@ export default function ProjectTasks() {
     assignee: AssigneeOption | null;
     dueDate: string | null;
     priority: TaskPriority;
+    labels: string[];
   }): void {
     const assigneeFields = {
       assigneeId: values.assignee?.kind === "user" ? values.assignee.id : null,
@@ -377,6 +378,7 @@ export default function ProjectTasks() {
             descriptionHtml: values.descriptionHtml,
             dueDate: values.dueDate,
             priority: values.priority,
+            labels: values.labels,
             ...assigneeFields,
           },
         },
@@ -393,6 +395,7 @@ export default function ProjectTasks() {
           descriptionHtml: values.descriptionHtml,
           dueDate: values.dueDate,
           priority: values.priority,
+          labels: values.labels,
           columnId: createColumnId,
           ...assigneeFields,
         },
@@ -713,6 +716,23 @@ function TaskCard({
             <p className="mt-1 line-clamp-2 text-xs text-gray-500">{htmlToText(task.description)}</p>
           )}
         </button>
+        {task.labels.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {task.labels.slice(0, 3).map((label) => (
+              <span
+                key={label}
+                className="inline-flex max-w-[140px] items-center truncate rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-600"
+              >
+                {label}
+              </span>
+            ))}
+            {task.labels.length > 3 && (
+              <span className="inline-flex items-center rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-400">
+                +{task.labels.length - 3}
+              </span>
+            )}
+          </div>
+        )}
         {(task.assigneeName || due || task.subtaskTotal > 0) && (
           <div className="mt-2.5 flex items-center justify-between">
             {task.assigneeName ? (
@@ -769,7 +789,7 @@ function UpsertTaskDialog({
   teamOptions: AssigneeOption[];
   selfId: string | null;
   submitting: boolean;
-  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null; priority: TaskPriority }) => void;
+  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null; priority: TaskPriority; labels: string[] }) => void;
   onRequestDelete?: () => void;
   onOpenTask?: (taskId: string) => void;
 }) {
@@ -779,6 +799,8 @@ function UpsertTaskDialog({
   const [assigneeValue, setAssigneeValue] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
+  const [labels, setLabels] = useState<string[]>([]);
+  const [labelDraft, setLabelDraft] = useState<string>("");
 
   const dialogKey = task?.id ?? "new";
 
@@ -818,8 +840,25 @@ function UpsertTaskDialog({
       );
       setDueDate(task?.dueDate ? task.dueDate.slice(0, 10) : "");
       setPriority(task?.priority ?? "Medium");
+      setLabels(task?.labels ?? []);
+      setLabelDraft("");
     }
   }, [open, dialogKey]);
+
+  function addLabel(raw: string): void {
+    const label = raw.trim().slice(0, 40);
+    if (!label) return;
+    setLabels((prev) =>
+      prev.some((l) => l.toLowerCase() === label.toLowerCase()) || prev.length >= 20
+        ? prev
+        : [...prev, label],
+    );
+    setLabelDraft("");
+  }
+
+  function removeLabel(label: string): void {
+    setLabels((prev) => prev.filter((l) => l !== label));
+  }
 
   function resolveAssignee(): AssigneeOption | null {
     if (!assigneeValue) return null;
@@ -833,6 +872,11 @@ function UpsertTaskDialog({
     if (!title.trim()) return;
     const html = descriptionHtml.trim();
     const isEmpty = html === "" || html === "<p></p>";
+    const draft = labelDraft.trim().slice(0, 40);
+    const finalLabels =
+      draft && !labels.some((l) => l.toLowerCase() === draft.toLowerCase()) && labels.length < 20
+        ? [...labels, draft]
+        : labels;
     onSubmit({
       title: title.trim(),
       description: isEmpty ? "" : description.trim(),
@@ -840,6 +884,7 @@ function UpsertTaskDialog({
       assignee: resolveAssignee(),
       dueDate: dueDate || null,
       priority,
+      labels: finalLabels,
     });
   }
 
@@ -942,6 +987,50 @@ function UpsertTaskDialog({
             );
           })}
         </div>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="task-labels">Labels (optional)</Label>
+        {labels.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {labels.map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] py-0.5 pl-2.5 pr-1 text-xs font-medium text-gray-700"
+              >
+                {label}
+                <button
+                  type="button"
+                  onClick={() => removeLabel(label)}
+                  aria-label={`Remove label ${label}`}
+                  className="flex h-4 w-4 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                    <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <input
+          id="task-labels"
+          type="text"
+          value={labelDraft}
+          onChange={(e) => setLabelDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addLabel(labelDraft);
+            } else if (e.key === "Backspace" && labelDraft === "" && labels.length > 0) {
+              const last = labels[labels.length - 1];
+              if (last) removeLabel(last);
+            }
+          }}
+          onBlur={() => addLabel(labelDraft)}
+          placeholder="Add a label, press Enter"
+          maxLength={40}
+          className={FIELD}
+        />
       </div>
       {task && (task.createdByName || task.createdAt) && (
         <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
