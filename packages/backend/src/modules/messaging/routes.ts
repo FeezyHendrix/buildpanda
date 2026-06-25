@@ -77,6 +77,7 @@ const sendMessageBody = {
     body: { type: "string", maxLength: 8000 },
     contentHtml: { type: ["string", "null"], maxLength: 50000 },
     parentMessageId: { type: ["string", "null"], maxLength: 100 },
+    quotedMessageId: { type: ["string", "null"], maxLength: 100 },
     references: { type: "array", maxItems: 50, items: referenceItem },
     mentions: { type: "array", maxItems: 100, items: mentionItem },
     attachments: { type: "array", maxItems: 20, items: attachmentItem },
@@ -307,6 +308,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
       body: string;
       contentHtml?: string | null;
       parentMessageId?: string | null;
+      quotedMessageId?: string | null;
       references?: MessageReference[];
       mentions?: MessageMention[];
       attachments?: MessageAttachment[];

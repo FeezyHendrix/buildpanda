@@ -20,6 +20,7 @@ export function ReferenceChip({ refItem }: { refItem: NonNullable<ChatMessage["r
     query: "Query",
     change_request: "Change request",
     activity: "Activity",
+    task: "Task",
   };
 
   const label = typeLabels[refItem.type] || refItem.type;

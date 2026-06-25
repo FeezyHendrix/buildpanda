@@ -49,6 +49,7 @@ import maintenanceRoutes from "./modules/maintenance/routes.ts";
 import featureFlagRoutes from "./modules/feature-flags/routes.ts";
 import participantRoutes from "./modules/participants/index.ts";
 import messagingRoutes from "./modules/messaging/routes.ts";
+import linkPreviewRoutes from "./modules/link-preview/routes.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
@@ -158,6 +159,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(featureFlagRoutes);
   await app.register(participantRoutes);
   await app.register(messagingRoutes);
+  await app.register(linkPreviewRoutes);
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
   await app.register(pandaAiAgentRoutes);

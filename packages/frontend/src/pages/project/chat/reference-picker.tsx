@@ -24,6 +24,7 @@ export function ReferencePicker({
     query: "Query",
     change_request: "Change request",
     activity: "Activity",
+    task: "Task",
   };
 
   return (

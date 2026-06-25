@@ -931,6 +931,13 @@ export interface ChatMessage {
   body: string;
   contentHtml: string | null;
   parentMessageId: string | null;
+  quotedMessageId: string | null;
+  quotedMessage?: {
+    id: string;
+    authorName: string | null;
+    body: string;
+    deleted: boolean;
+  } | null;
   references: { type: string; id: string; label: string }[];
   resolvedReferences?: {
     type: string;

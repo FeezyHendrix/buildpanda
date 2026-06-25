@@ -4,6 +4,8 @@ import { formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { ReferenceChip } from "./reference-chip";
 import { AttachmentChip } from "./attachment-chip";
+import { LinkText, LinkPreviewCard } from "./message-content";
+import { QuotedBlock } from "./quoted-block";
 import { ReplyIcon } from "@/components/atoms/chat-icons";
 import type { ChatMessage } from "@/lib/project-types";
 
@@ -16,6 +18,8 @@ export function MessageItem({
   onPin,
   onUnpin,
   onReply,
+  onQuote,
+  onJumpToMessage,
   onReaction,
   onForward,
 }: {
@@ -27,6 +31,8 @@ export function MessageItem({
   onPin: (m: ChatMessage) => void;
   onUnpin: (m: ChatMessage) => void;
   onReply: (m: ChatMessage) => void;
+  onQuote?: (m: ChatMessage) => void;
+  onJumpToMessage?: (messageId: string) => void;
   onReaction: (m: ChatMessage, emoji: string) => void;
   onForward?: (m: ChatMessage) => void;
 }) {
@@ -41,13 +47,28 @@ export function MessageItem({
   }
 
   return (
-    <div className="group relative py-0.5">
+    <div id={`message-${message.id}`} className="group relative rounded py-0.5 transition-colors">
+      {message.quotedMessage && (
+        <div className="mb-1">
+          <QuotedBlock
+            quoted={message.quotedMessage}
+            onClick={
+              onJumpToMessage && message.quotedMessageId
+                ? () => onJumpToMessage(message.quotedMessageId!)
+                : undefined
+            }
+          />
+        </div>
+      )}
+
       <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-black-500">
-        {message.body}
+        <LinkText text={message.body} />
         {message.editedAt && (
           <span className="ml-2 text-[10px] text-black-300">(edited)</span>
         )}
       </div>
+
+      <LinkPreviewCard text={message.body} />
 
       {message.resolvedReferences && message.resolvedReferences.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-2">
@@ -129,6 +150,16 @@ export function MessageItem({
           Reply
         </button>
 
+        {onQuote && (
+          <button
+            type="button"
+            onClick={() => onQuote(message)}
+            className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
+          >
+            Quote
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => onForward?.(message)}
@@ -187,6 +218,8 @@ export function MessageGroup({
   onPin,
   onUnpin,
   onReply,
+  onQuote,
+  onJumpToMessage,
   onReaction,
   onForward,
 }: {
@@ -198,6 +231,8 @@ export function MessageGroup({
   onPin: (m: ChatMessage) => void;
   onUnpin: (m: ChatMessage) => void;
   onReply: (m: ChatMessage) => void;
+  onQuote?: (m: ChatMessage) => void;
+  onJumpToMessage?: (messageId: string) => void;
   onReaction: (m: ChatMessage, emoji: string) => void;
   onForward?: (m: ChatMessage) => void;
 }) {
@@ -230,6 +265,8 @@ export function MessageGroup({
               onPin={onPin}
               onUnpin={onUnpin}
               onReply={onReply}
+              onQuote={onQuote}
+              onJumpToMessage={onJumpToMessage}
               onReaction={onReaction}
               onForward={onForward}
             />

@@ -19,13 +19,12 @@ import {
   AtSignIcon,
 } from "@/components/atoms/chat-icons";
 import { chatFileUrl } from "./chat-utils";
-import { MentionDropdown } from "./mention-dropdown";
+import { MentionDropdown, type MentionOption } from "./mention-dropdown";
 import { ReferencePicker } from "./reference-picker";
 import { EmojiPopover } from "./emoji-popover";
-import type { ChannelMemberLite } from "@/lib/project-types";
-import {   useChannelMembers,
-  useSendMessage,
-} from "@/hooks/use-chat";
+import { QuotedBlock } from "./quoted-block";
+import { useChannelMembers, useSendMessage } from "@/hooks/use-chat";
+import type { ChatMessage } from "@/lib/project-types";
 
 export function Composer({
   channelId,
@@ -33,12 +32,16 @@ export function Composer({
   parentMessageId,
   isThread = false,
   placeholder = "Message #general",
+  quotedMessage = null,
+  onClearQuote,
 }: {
   channelId: string;
   projectId: string;
   parentMessageId?: string;
   isThread?: boolean;
   placeholder?: string;
+  quotedMessage?: ChatMessage | null;
+  onClearQuote?: () => void;
 }) {
   const [text, setText] = useState("");
   const [mentions, setMentions] = useState<{ kind: "user" | "here" | "channel"; userId?: string }[]>([]);
@@ -115,22 +118,32 @@ export function Composer({
       e.preventDefault();
       if ((!text.trim() && references.length === 0 && attachments.length === 0) || send.isPending) return;
 
-      const validMentions = mentions.filter(
-        (m) =>
-          m.kind === "user" &&
+      const validMentions = mentions.filter((m) => {
+        if (m.kind === "here") return text.includes("@project-team");
+        if (m.kind === "channel") return text.includes("@company");
+        return Boolean(
           m.userId &&
-          members.find((mb) => mb.id === m.userId)?.name &&
-          text.includes(`@${members.find((mb) => mb.id === m.userId)?.name}`)
-      );
+            members.find((mb) => mb.id === m.userId)?.name &&
+            text.includes(`@${members.find((mb) => mb.id === m.userId)?.name}`),
+        );
+      });
 
       send.mutate(
-        { body: text.trim(), mentions: validMentions, references, attachments, parentMessageId },
+        {
+          body: text.trim(),
+          mentions: validMentions,
+          references,
+          attachments,
+          parentMessageId,
+          quotedMessageId: quotedMessage?.id,
+        },
         {
           onSuccess: () => {
             setText("");
             setMentions([]);
             setReferences([]);
             setAttachments([]);
+            onClearQuote?.();
             void clearCachedDraft(channelId, parentMessageId);
           },
         }
@@ -138,11 +151,17 @@ export function Composer({
     }
   };
 
-  const handleMentionSelect = (m: ChannelMemberLite) => {
-    if (!m.name) return;
-    const newText = text.slice(0, atIndex) + `@${m.name} `;
+  const handleMentionSelect = (option: MentionOption) => {
+    if (option.kind === "user") {
+      if (!option.member.name) return;
+      const newText = text.slice(0, atIndex) + `@${option.member.name} `;
+      setText(newText);
+      setMentions((prev) => [...prev, { kind: "user", userId: option.member.id }]);
+      return;
+    }
+    const newText = text.slice(0, atIndex) + `@${option.label} `;
     setText(newText);
-    setMentions((prev) => [...prev, { kind: "user", userId: m.id }]);
+    setMentions((prev) => [...prev, { kind: option.kind }]);
   };
 
   const submitFromButton = () => {
@@ -169,6 +188,27 @@ export function Composer({
         />
       )}
       
+      {quotedMessage && (
+        <div className="mb-2 flex items-center gap-2">
+          <QuotedBlock
+            quoted={{
+              id: quotedMessage.id,
+              authorName: quotedMessage.authorName,
+              body: quotedMessage.body,
+              deleted: Boolean(quotedMessage.deletedAt),
+            }}
+          />
+          <button
+            type="button"
+            onClick={onClearQuote}
+            className="shrink-0 text-gray-400 hover:text-gray-600"
+            aria-label="Remove quote"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {references.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2">
           {references.map((r) => (
@@ -341,5 +381,3 @@ export function Composer({
     </div>
   );
 }
-
-

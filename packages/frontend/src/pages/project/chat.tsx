@@ -121,7 +121,21 @@ export default function ProjectChat() {
   const [deletingMsg, setDeletingMsg] = useState<ChatMessage | null>(null);
   
   const [threadRootMsg, setThreadRootMsg] = useState<ChatMessage | null>(null);
+  const [quotedMsg, setQuotedMsg] = useState<ChatMessage | null>(null);
   const [showPins, setShowPins] = useState(false);
+
+  useEffect(() => {
+    setQuotedMsg(null);
+  }, [activeChannelId]);
+
+  const handleJumpToMessage = (messageId: string) => {
+    const el = document.getElementById(`message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("bg-primary-50");
+      setTimeout(() => el.classList.remove("bg-primary-50"), 1500);
+    }
+  };
   const [showNewDm, setShowNewDm] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const createChannel = useCreateChannel();
@@ -303,6 +317,8 @@ export default function ProjectChat() {
                 onPin={(m) => pinMsg.mutate(m.id)}
                 onUnpin={(m) => unpinMsg.mutate(m.id)}
                 onReply={setThreadRootMsg}
+                onQuote={setQuotedMsg}
+                onJumpToMessage={handleJumpToMessage}
                 onReaction={handleReaction}
                 onForward={handleForward}
               />
@@ -314,6 +330,8 @@ export default function ProjectChat() {
             channelId={activeChannelId}
             projectId={project.id}
             placeholder={activeChannel.type === "dm" ? "Message direct message" : `Message #${activeChannel.name || "general"}`}
+            quotedMessage={quotedMsg}
+            onClearQuote={() => setQuotedMsg(null)}
           />
         </div>
       ) : (

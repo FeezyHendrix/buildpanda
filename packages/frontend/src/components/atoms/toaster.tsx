@@ -22,7 +22,20 @@ export function Toaster() {
           key={t.id}
           className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg text-sm max-w-sm ${VARIANT_STYLES[t.variant]}`}
         >
-          <span className="flex-1">{t.message}</span>
+          {t.onClick ? (
+            <button
+              type="button"
+              onClick={() => {
+                t.onClick?.();
+                dismiss(t.id);
+              }}
+              className="flex-1 text-left hover:underline"
+            >
+              {t.message}
+            </button>
+          ) : (
+            <span className="flex-1">{t.message}</span>
+          )}
           <button
             onClick={() => dismiss(t.id)}
             className="shrink-0 opacity-70 hover:opacity-100 text-lg leading-none"

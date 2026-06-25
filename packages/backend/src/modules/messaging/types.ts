@@ -41,6 +41,13 @@ export interface Channel {
   notifyLevel: NotifyLevel;
 }
 
+export interface QuotedMessagePreview {
+  id: string;
+  authorName: string | null;
+  body: string;
+  deleted: boolean;
+}
+
 export interface Message {
   id: string;
   channelId: string;
@@ -49,6 +56,8 @@ export interface Message {
   body: string;
   contentHtml: string | null;
   parentMessageId: string | null;
+  quotedMessageId: string | null;
+  quotedMessage?: QuotedMessagePreview | null;
   references: MessageReference[];
   resolvedReferences?: {
     type: string;
@@ -106,6 +115,7 @@ export interface MessageRow {
   body: string;
   content_html: string | null;
   parent_message_id: string | null;
+  quoted_message_id: string | null;
   references: MessageReference[] | string;
   mentions: MessageMention[] | string;
   attachments: MessageAttachment[] | string;
