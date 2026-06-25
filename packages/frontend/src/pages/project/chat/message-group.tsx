@@ -205,7 +205,7 @@ export function MessageGroup({
   if (!first) return null;
 
   return (
-    <div className="flex gap-3 px-6 py-2">
+    <div className="flex gap-3 px-4 lg:px-6 py-2">
       <div className="shrink-0">
         <Avatar name={first.authorName ?? "?"} size="md" />
       </div>

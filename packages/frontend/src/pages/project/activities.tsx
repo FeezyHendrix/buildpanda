@@ -52,7 +52,7 @@ export default function ProjectActivities() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Schedule", to: `/project/${project.id}/schedule` },

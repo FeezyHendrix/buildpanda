@@ -4,7 +4,10 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { ContractorsIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import {
+  ContractorsIcon,
+  PlusIcon,
+} from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
@@ -20,7 +23,10 @@ import {
   useDeleteTeamMember,
   type TeamMember,
 } from "@/hooks/use-team";
-import { useParticipants, useRemoveParticipant } from "@/hooks/use-participants";
+import {
+  useParticipants,
+  useRemoveParticipant,
+} from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import type { ProjectParticipant } from "@/lib/project-types";
 
@@ -41,7 +47,9 @@ export default function ProjectTeam() {
 
   const { data: participants = [] } = useParticipants(project.id);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<ProjectParticipant | undefined>();
+  const [editTarget, setEditTarget] = useState<
+    ProjectParticipant | undefined
+  >();
 
   const { data: members = [] } = useProjectTeam(project.id);
   const [createOpen, setCreateOpen] = useState(false);
@@ -65,7 +73,7 @@ export default function ProjectTeam() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Project Team"
         description="Manage who has access to this project and the people delivering this build."
@@ -74,8 +82,12 @@ export default function ProjectTeam() {
       {/* Project access */}
       <section className="mt-8">
         <div className="mb-3">
-          <h2 className="text-base font-semibold text-gray-900">Project access</h2>
-          <p className="text-sm text-gray-500">People who can view or manage this project.</p>
+          <h2 className="text-base font-semibold text-gray-900">
+            Project access
+          </h2>
+          <p className="text-sm text-gray-500">
+            People who can view or manage this project.
+          </p>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-[#EBEBEB]">
@@ -91,7 +103,7 @@ export default function ProjectTeam() {
           <button
             type="button"
             onClick={openInvite}
-            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#FAFAFA]"
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300">
               <PlusIcon className="size-3.5 text-gray-400" />
@@ -114,14 +126,20 @@ export default function ProjectTeam() {
 
       {/* Contacts */}
       <section className="mt-10 border-t border-gray-200 pt-8">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex lg:flex-row lg:gap-0 gap-2 flex-col items-center justify-between">
+          <div className="order-2 lg:order-1">
             <h2 className="text-base font-semibold text-gray-900">Contacts</h2>
             <p className="text-sm text-gray-500">
-              People delivering this build — for reference only, does not grant access.
+              People delivering this build — for reference only, does not grant
+              access.
             </p>
           </div>
-          <Button variant="secondary" size="md" onClick={() => setCreateOpen(true)}>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setCreateOpen(true)}
+            className="self-end lg:self-start sm:self-auto order-1 lg:order-2"
+          >
             <PlusIcon className="size-4" />
             Add Contact
           </Button>
@@ -143,7 +161,11 @@ export default function ProjectTeam() {
               title="No contacts yet"
               description="Add the engineers, contractors and managers working on this project."
               action={
-                <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setCreateOpen(true)}
+                >
                   <PlusIcon className="size-4" />
                   Add Contact
                 </Button>
@@ -153,7 +175,11 @@ export default function ProjectTeam() {
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {members.map((member) => (
-              <TeamMemberCard key={member.id} projectId={project.id} member={member} />
+              <TeamMemberCard
+                key={member.id}
+                projectId={project.id}
+                member={member}
+              />
             ))}
           </div>
         )}
@@ -184,7 +210,11 @@ function ParticipantRow({
         showDivider && "border-b border-[#F0F0F0]",
       )}
     >
-      <Avatar name={participant.name ?? participant.email} size="sm" className="shrink-0" />
+      <Avatar
+        name={participant.name ?? participant.email}
+        size="sm"
+        className="shrink-0"
+      />
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-gray-900">
@@ -196,7 +226,9 @@ function ParticipantRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <span className="text-xs text-gray-500">{roleLabel(participant.role)}</span>
+        <span className="text-xs text-gray-500">
+          {roleLabel(participant.role)}
+        </span>
 
         {isOwner ? (
           <Badge tone="info" size="sm">
@@ -249,7 +281,13 @@ function ParticipantRow({
   );
 }
 
-function TeamMemberCard({ projectId, member }: { projectId: string; member: TeamMember }) {
+function TeamMemberCard({
+  projectId,
+  member,
+}: {
+  projectId: string;
+  member: TeamMember;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const editMember = useEditTeamMember();
@@ -272,31 +310,45 @@ function TeamMemberCard({ projectId, member }: { projectId: string; member: Team
         <div className="flex items-start gap-3">
           <Avatar name={member.name} size="md" />
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-gray-900">{member.name}</p>
+            <p className="truncate text-base font-semibold text-gray-900">
+              {member.name}
+            </p>
             <p className="text-xs text-gray-500">
               {member.role}
               {member.company ? ` · ${member.company}` : ""}
             </p>
           </div>
         </div>
-        <Badge tone={member.status === "Active" ? "success" : "neutral"} size="md" dot>
+        <Badge
+          tone={member.status === "Active" ? "success" : "neutral"}
+          size="md"
+          dot
+        >
           {member.status}
         </Badge>
       </div>
 
       {member.responsibilities && (
-        <p className="text-sm text-pretty text-gray-600">{member.responsibilities}</p>
+        <p className="text-sm text-pretty text-gray-600">
+          {member.responsibilities}
+        </p>
       )}
 
       {(member.email || member.phone) && (
         <div className="flex flex-col gap-1 border-t border-[#F0F0F0] pt-3 text-xs">
           {member.email && (
-            <a href={`mailto:${member.email}`} className="font-medium text-brand hover:underline">
+            <a
+              href={`mailto:${member.email}`}
+              className="font-medium text-brand hover:underline"
+            >
               {member.email}
             </a>
           )}
           {member.phone && (
-            <a href={`tel:${member.phone}`} className="text-gray-600 hover:text-gray-900">
+            <a
+              href={`tel:${member.phone}`}
+              className="text-gray-600 hover:text-gray-900"
+            >
               {member.phone}
             </a>
           )}

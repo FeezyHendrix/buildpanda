@@ -6,17 +6,15 @@ import {
   type UpsertUpdateValues,
 } from "@/components/molecules/upsert-update-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import {
-  useCreateUpdate,
-  useProjectUpdates,
-} from "@/hooks/use-updates";
-import type {
-  Person,
-  ProjectUpdate,
-} from "@/lib/project-types";
+import { useCreateUpdate, useProjectUpdates } from "@/hooks/use-updates";
+import type { Person, ProjectUpdate } from "@/lib/project-types";
 
 import { UpdateCard } from "./updates/update-card";
-import { FiltersPanel, type FilterState, INITIAL_FILTERS } from "./updates/filters-panel";
+import {
+  FiltersPanel,
+  type FilterState,
+  INITIAL_FILTERS,
+} from "./updates/filters-panel";
 
 export default function ProjectUpdates() {
   const { project, access } = useProjectContext();
@@ -45,7 +43,7 @@ export default function ProjectUpdates() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Updates"
         description="Track construction progress with real-time reports from the site."
@@ -60,7 +58,7 @@ export default function ProjectUpdates() {
         error={(createUpdate.error as Error | undefined)?.message ?? null}
       />
 
-      <div className='flex items-start gap-8 relative mt-4'>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 relative mt-4">
         <section className="flex flex-col flex-1 gap-4 min-w-0">
           {visible.length === 0 ? (
             <Card padding="lg" className="text-center text-sm text-gray-500">
@@ -78,7 +76,7 @@ export default function ProjectUpdates() {
           )}
         </section>
 
-        <div className="w-[377px] shrink-0 sticky top-8">
+        <div className="w-full lg:w-[377px] lg:shrink-0 lg:sticky lg:top-8">
           <FiltersPanel
             filters={filters}
             contractors={contractors}

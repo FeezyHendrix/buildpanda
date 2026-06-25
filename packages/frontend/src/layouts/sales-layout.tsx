@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
@@ -95,12 +95,34 @@ interface SidebarUser {
   avatarUrl?: string | null;
 }
 
+function ChevronRightIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 4l4 4-4 4" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 4l10 10M14 4L4 14" />
+    </svg>
+  );
+}
+
 function SalesSidebar({
   user,
   onLogout,
+  open,
+  onClose,
+  onOpen,
 }: {
   user: SidebarUser;
   onLogout: () => void;
+  open: boolean;
+  onClose: () => void;
+  onOpen: () => void;
 }) {
   const { data: flagsData } = useFeatureFlags();
   const visibleNav = salesNav.filter(
@@ -108,34 +130,80 @@ function SalesSidebar({
   );
 
   return (
-    <aside className="flex w-[240px] shrink-0 flex-col border-r border-[#EFEFEF] bg-[#F8F8F8]">
-      <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
-        <Link to="/sales" className="px-1" aria-label="BuildPanda home">
-          <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
-        </Link>
-        <OrgSwitcher />
+    <>
+      {/* Mobile backdrop */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+        )}
+        onClick={onClose}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close sidebar"
+          className="absolute top-4 left-[256px] flex size-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+        >
+          <XIcon />
+        </button>
       </div>
 
-      <div className="px-3 pb-1">
-        <SuiteSwitcher variant="segmented" />
-      </div>
+      {/* Wrapper handles slide animation; tab hangs off the right edge */}
+      <div
+        className={cn(
+          "relative",
+          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full",
+          "lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:max-h-full lg:shrink-0",
+        )}
+      >
+        {/* Pull-tab */}
+        <button
+          type="button"
+          onClick={open ? onClose : onOpen}
+          aria-label={open ? "Close sidebar" : "Open sidebar"}
+          className={cn(
+            "absolute right-0 top-1/2 -translate-y-1/2 translate-x-full",
+            "flex h-14 w-7 items-center justify-center",
+            "rounded-r-xl border border-l-0 border-[#EFEFEF] bg-[#F8F8F8] shadow-sm",
+            "lg:hidden",
+          )}
+        >
+          <ChevronRightIcon />
+        </button>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
-        {visibleNav.map((item) => (
-          <SalesNavLink key={item.to} item={item} />
-        ))}
-      </nav>
+        <aside className="flex h-full w-[240px] flex-col border-r border-[#EFEFEF] bg-[#F8F8F8]">
+          <div className="flex flex-col gap-3 px-3 pb-4 pt-5">
+            <Link to="/sales" className="px-1" aria-label="BuildPanda home">
+              <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
+            </Link>
+            <OrgSwitcher />
+          </div>
 
-      <div className="border-t border-[#EFEFEF] px-3 py-3">
-        <UserMenu
-          variant="full"
-          name={user.name}
-          email={user.email}
-          avatarUrl={user.avatarUrl}
-          onLogout={onLogout}
-        />
+          <div className="px-3 pb-1">
+            <SuiteSwitcher variant="segmented" />
+          </div>
+
+          <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
+            {visibleNav.map((item) => (
+              <SalesNavLink key={item.to} item={item} />
+            ))}
+          </nav>
+
+          <div className="border-t border-[#EFEFEF] px-3 py-3">
+            <UserMenu
+              variant="full"
+              name={user.name}
+              email={user.email}
+              avatarUrl={user.avatarUrl}
+              onLogout={onLogout}
+            />
+          </div>
+        </aside>
       </div>
-    </aside>
+    </>
   );
 }
 
@@ -150,6 +218,7 @@ function FullPageLoader() {
 export default function SalesLayout() {
   const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const notificationsEnabled = useFeatureFlag("collaboration.notifications");
 
   // Stamp the last suite so HomeRedirect returns here for company users
@@ -174,6 +243,9 @@ export default function SalesLayout() {
           avatarUrl: session.user.image,
         }}
         onLogout={handleLogout}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onOpen={() => setSidebarOpen(true)}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Navbar showLogo={false} sticky showNotifications={notificationsEnabled} />

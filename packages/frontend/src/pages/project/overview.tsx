@@ -9,6 +9,9 @@ import { useProjectUpdates } from "@/hooks/use-updates";
 import { useTour } from "@/hooks/use-tour";
 import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import {
+  useCreateRiskFactor,
+  useDeleteRiskFactor,
+  useEditRiskFactor,
   useProjectRiskFactors,
 } from "@/hooks/use-risks";
 import { formatCurrency } from "@/lib/formatters";
@@ -22,6 +25,11 @@ import { useSession } from "@/stores/auth";
 import { RecentUpdatesPanel } from "./overview/recent-updates-panel";
 import { RiskFactorsPanel } from "./overview/risk-factors-panel";
 import { TimelineStepper } from "./overview/timeline-stepper";
+import { ProjectUpdate, RiskFactor } from "@/lib/project-types";
+import { UpsertRiskDialog, UpsertRiskValues } from "@/components/molecules/upsert-risk-dialog";
+import { useState } from "react";
+import { ConfirmDialog, EmptyState, IconBox } from "@/components";
+import { AlertIcon } from "@/components/atoms/project-nav-icons";
 
 
 const RECENT_UPDATE_LIMIT = 2;
@@ -42,7 +50,7 @@ export default function ProjectOverview() {
   });
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title={`Welcome back, ${firstName}`}
         description="Stay in control with real-time updates on progress, payments, and site activity."
@@ -125,8 +133,10 @@ export default function ProjectOverview() {
             View Detailed Gantt
           </Link>
         </div>
-        <div className="bg-white rounded-[12px] h-full m-1 p-6">
-          <TimelineStepper phases={project.timeline} />
+        <div className="bg-white rounded-[12px] h-full m-1 overflow-x-auto">
+          <div className="min-w-[480px] p-6">
+            <TimelineStepper phases={project.timeline} />
+          </div>
         </div>
       </Card>
 

@@ -17,16 +17,12 @@ import {
   useReleaseMilestone,
 } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
-import type {
-  MilestonePayment,
-} from "@/lib/project-types";
+import type { MilestonePayment } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { BudgetAllocationCard } from "./finances/budget-allocation-card";
 import { MaterialsProcurementCard } from "./finances/materials-procurement-card";
 import { MilestonePaymentsCard } from "./finances/milestone-payments-card";
-
-
 
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
@@ -36,8 +32,12 @@ export default function ProjectFinances() {
   const { data: snapshot } = useReportingSnapshot(project.id);
 
   const [fundOpen, setFundOpen] = useState(false);
-  const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(null);
-  const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
+  const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(
+    null,
+  );
+  const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(
+    null,
+  );
 
   const fundProject = useFundProject();
   const releaseMilestone = useReleaseMilestone();
@@ -53,7 +53,7 @@ export default function ProjectFinances() {
 
   if (!finances) {
     return (
-      <div className="w-full px-6 py-8 sm:px-10">
+      <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
         <PageHeader
           title="Finances"
           description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -66,7 +66,7 @@ export default function ProjectFinances() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Finances"
         description="Track spending, control payments, and monitor budget transparency across all phases."
@@ -121,7 +121,10 @@ export default function ProjectFinances() {
           <KpiCard
             title="Retention Held"
             icon={icons.safeSquare}
-            value={formatCurrency(snapshot.finance.invoices.retentionHeld, finances.currency)}
+            value={formatCurrency(
+              snapshot.finance.invoices.retentionHeld,
+              finances.currency,
+            )}
             className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
           />
         ) : (
@@ -133,33 +136,48 @@ export default function ProjectFinances() {
         <div className="mt-3 flex items-center justify-center gap-4 rounded-xl border border-[#EDEDED] bg-white p-4 text-sm font-medium text-gray-700 shadow-sm">
           <span className="flex items-center gap-2">
             Committed
-            <span className="text-gray-900">{formatCurrency(snapshot.finance.budget.totalCommitted, finances.currency)}</span>
+            <span className="text-gray-900">
+              {formatCurrency(
+                snapshot.finance.budget.totalCommitted,
+                finances.currency,
+              )}
+            </span>
           </span>
           <span className="text-gray-300">›</span>
           <span className="flex items-center gap-2">
             Invoiced
-            <span className="text-gray-900">{formatCurrency(snapshot.finance.invoices.invoicedTotal, finances.currency)}</span>
+            <span className="text-gray-900">
+              {formatCurrency(
+                snapshot.finance.invoices.invoicedTotal,
+                finances.currency,
+              )}
+            </span>
           </span>
           <span className="text-gray-300">›</span>
           <span className="flex items-center gap-2">
             Paid
-            <span className="text-gray-900">{formatCurrency(snapshot.finance.invoices.paidTotal, finances.currency)}</span>
+            <span className="text-gray-900">
+              {formatCurrency(
+                snapshot.finance.invoices.paidTotal,
+                finances.currency,
+              )}
+            </span>
           </span>
         </div>
       )}
 
-      <div className="mt-6 flex gap-6">
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <BudgetAllocationCard
           projectId={project.id}
           allocation={finances.budgetAllocation}
           currency={finances.currency}
-          className="w-[60%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+          className="w-full lg:w-[60%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
         <MaterialsProcurementCard
           projectId={project.id}
           materials={finances.materialsProcured}
           currency={finances.currency}
-          className="w-[40%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
+          className="w-full lg:w-[40%] rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
 
@@ -196,7 +214,9 @@ export default function ProjectFinances() {
         }}
         title={`Release ${releaseTarget?.name ?? "milestone"} funds?`}
         description={`${
-          releaseTarget ? formatCurrency(releaseTarget.amount, finances.currency) : ""
+          releaseTarget
+            ? formatCurrency(releaseTarget.amount, finances.currency)
+            : ""
         } will be released from escrow to the contractor.`}
         confirmLabel="Release funds"
         cancelLabel="Cancel"
@@ -216,7 +236,9 @@ export default function ProjectFinances() {
         }}
         milestoneName={disputeTarget?.name ?? ""}
         isSubmitting={raiseDispute.isPending}
-        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
+        error={
+          raiseDispute.error ? (raiseDispute.error as Error).message : null
+        }
         onSubmit={({ reason }) => {
           if (!disputeTarget) return;
           raiseDispute.mutate(
@@ -228,5 +250,3 @@ export default function ProjectFinances() {
     </div>
   );
 }
-
-

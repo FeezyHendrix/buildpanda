@@ -91,7 +91,7 @@ export function UpdateCard({
 
   return (
     <Card className="flex flex-col gap-4 border border-[#F6F6F6] rounded-[8px] p-[24px]">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap gap-3 items-start justify-between">
         <div className="flex gap-2">
           <Avatar
             name={update.author.name}
@@ -139,7 +139,7 @@ export function UpdateCard({
       </div>
 
 
-      <footer className='flex justify-between items-center border-t border-[#F6F6F6] pt-6'>
+      <footer className='flex flex-wrap gap-3 justify-between items-center border-t border-[#F6F6F6] pt-6'>
         <div className="flex items-center gap-4">
           <button
             type="button"

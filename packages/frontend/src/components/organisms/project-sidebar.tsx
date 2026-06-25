@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
   CalendarIcon,
+  ChevronRightIcon,
   ContractorsIcon,
   DocumentsIcon,
   FinancesIcon,
@@ -38,9 +39,12 @@ interface ProjectSidebarProps {
   project: Project;
   className?: string;
   access?: ProjectAccess;
+  open?: boolean;
+  onClose?: () => void;
+  onOpen?: () => void;
 }
 
-function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
+function ProjectSidebar({ project, className, access, open = false, onClose, onOpen }: ProjectSidebarProps) {
   const location = useLocation();
   const isClient = access?.relationship !== "company";
   const { data: channels = [] } = useProjectChannels(project.id);
@@ -131,12 +135,56 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
   );
 
   return (
-    <aside
-      className={cn(
-        "flex max-h-full w-[260px] shrink-0 flex-col gap-6 overflow-hidden border-r border-[#F0F0F0]  px-4 py-6",
-        className,
-      )}
-    >
+    <>
+      {/* Mobile backdrop */}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+        )}
+        onClick={onClose}
+      >
+        {/* <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close sidebar"
+          className="absolute top-4 left-[276px] flex size-9 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
+        >
+          <XIcon />
+        </button> */}
+      </div>
+
+      {/* Wrapper handles positioning & slide animation; tab hangs off the right edge */}
+      <div
+        className={cn(
+          "relative",
+          "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full",
+          "lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:max-h-full lg:shrink-0",
+        )}
+      >
+        {/* Pull-tab — peeks from left edge of screen when sidebar is closed (mobile only) */}
+        <button
+          type="button"
+          onClick={open ? onClose : onOpen}
+          aria-label={open ? "Close sidebar" : "Open sidebar"}
+          className={cn(
+            "absolute right-0 top-1/2 -translate-y-1/2 translate-x-full",
+            "flex h-14 w-7 items-center justify-center",
+            "rounded-r-xl border border-l-0 border-[#F0F0F0] bg-white shadow-sm",
+            "lg:hidden",
+          )}
+        >
+          <ChevronRightIcon className={cn("size-4 text-gray-400 transition-transform duration-300", open && "rotate-180")} />
+        </button>
+
+      <aside
+        className={cn(
+          "flex h-full flex-col gap-6 overflow-hidden border-r border-[#F0F0F0] bg-white px-4 py-6 w-[260px]",
+          className,
+        )}
+      >
       <Link
         to={isClient ? "/my-build" : "/dashboard"}
         className={cn(
@@ -163,24 +211,25 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
       </div>
 
       {isClient ? (
-        <nav
-          data-tour="project-nav"
-          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1"
-        >
+        <nav data-tour="project-nav" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 no-scrollbar">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
-          {clientItems.map((item) => (
-            <ProjectNavLink key={item.slug} item={item} />
+          {CLIENT_ENTRIES.map((entry) => (
+            <ProjectNavLink
+              key={entry.slug}
+              item={{ ...entry, to: `/project/${project.id}/${entry.slug}` }}
+              onClose={onClose}
+            />
           ))}
         </nav>
       ) : (
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 no-scrollbar">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             Main menu
           </p>
-          {items.map((item) => (
-            <ProjectNavLink key={item.slug} item={item} />
+          {items.slice(0, 2).map((item) => (
+            <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
           ))}
           {isOn("projects.schedule") && (
             <ProjectNavLink
@@ -190,7 +239,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
                 Icon: TrendingUpIcon,
                 to: `/project/${project.id}/tasks`,
               }}
-            />
+              onClose={onClose}
+          />
           )}
           {scheduleItems.length > 0 && (
             <SidebarNavGroup
@@ -198,7 +248,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               Icon={CalendarIcon}
               items={scheduleItems}
               active={isScheduleActive}
-            />
+              onClose={onClose}
+          />
           )}
           {siteControlItems.length > 0 && (
             <SidebarNavGroup
@@ -206,7 +257,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               Icon={InspectionsIcon}
               items={siteControlItems}
               active={isSiteControlActive}
-            />
+              onClose={onClose}
+          />
           )}
           {materialsItems.length > 0 && (
             <SidebarNavGroup
@@ -215,7 +267,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               items={materialsItems}
               active={isMaterialsActive}
               activeIconClassName="text-[#004DE7]"
-            />
+              onClose={onClose}
+          />
           )}
           {financeItems.length > 0 && (
             <SidebarNavGroup
@@ -223,7 +276,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               Icon={FinancesIcon}
               items={financeItems}
               active={isFinanceActive}
-            />
+              onClose={onClose}
+          />
           )}
           {isOn("projects.documents") && (
             <ProjectNavLink
@@ -233,7 +287,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
                 Icon: DocumentsIcon,
                 to: `/project/${project.id}/documents`,
               }}
-            />
+              onClose={onClose}
+          />
           )}
           {isOn("project.team") && (
             <ProjectNavLink
@@ -243,7 +298,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
                 Icon: ContractorsIcon,
                 to: `/project/${project.id}/team`,
               }}
-            />
+              onClose={onClose}
+          />
           )}
           {isOn("collaboration.messaging") && (
             <ProjectNavLink
@@ -254,7 +310,8 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
                 to: `/project/${project.id}/chat`,
                 badge: totalUnread > 0 ? totalUnread : undefined,
               }}
-            />
+              onClose={onClose}
+          />
           )}
           <ProjectNavLink
             item={{
@@ -263,6 +320,7 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               Icon: SparkleIcon,
               to: `/project/${project.id}/panda-ai`,
             }}
+            onClose={onClose}
           />
           <ProjectNavLink
             item={{
@@ -271,12 +329,16 @@ function ProjectSidebar({ project, className, access }: ProjectSidebarProps) {
               Icon: SettingsIcon,
               to: `/project/${project.id}/settings`,
             }}
+            onClose={onClose}
           />
         </nav>
       )}
-    </aside>
+      </aside>
+      </div>
+    </>
   );
 }
+
 
 ProjectSidebar.displayName = "ProjectSidebar";
 

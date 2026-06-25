@@ -19,7 +19,10 @@ import type { BimModel } from "@/lib/project-types";
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
 const XeokitViewer = lazy(() => import("@/components/molecules/xeokit-viewer"));
 
-const STATUS_META: Record<string, { label: string; tone: "neutral" | "info" | "success" | "danger" }> = {
+const STATUS_META: Record<
+  string,
+  { label: string; tone: "neutral" | "info" | "success" | "danger" }
+> = {
   Processing: { label: "Processing", tone: "info" },
   Ready: { label: "Ready", tone: "success" },
   Failed: { label: "Failed", tone: "danger" },
@@ -40,9 +43,13 @@ function ModelCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-gray-900">{model.name}</p>
-          {model.discipline && <p className="text-xs text-gray-500">{model.discipline}</p>}
+          {model.discipline && (
+            <p className="text-xs text-gray-500">{model.discipline}</p>
+          )}
           {model.elementCount != null && (
-            <p className="mt-1 text-xs text-gray-400">{model.elementCount} elements</p>
+            <p className="mt-1 text-xs text-gray-400">
+              {model.elementCount} elements
+            </p>
           )}
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -145,8 +152,12 @@ export default function ProjectBim() {
       <div className="absolute inset-0 flex flex-col bg-white">
         <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-gray-900">{active.name}</h2>
-            <p className="text-xs text-gray-500">Click any element to see its details and assign it.</p>
+            <h2 className="truncate text-base font-semibold text-gray-900">
+              {active.name}
+            </h2>
+            <p className="text-xs text-gray-500">
+              Click any element to see its details and assign it.
+            </p>
           </div>
           <Button variant="secondary" size="sm" onClick={closeViewer}>
             Back to models
@@ -197,7 +208,9 @@ export default function ProjectBim() {
                   <p className="mt-2 text-sm font-semibold text-gray-900">
                     {selected.name ?? "Unnamed element"}
                   </p>
-                  <p className="mt-1 break-all text-[11px] text-gray-400">{selected.guid}</p>
+                  <p className="mt-1 break-all text-[11px] text-gray-400">
+                    {selected.guid}
+                  </p>
                 </div>
 
                 <div className="px-5 py-4">
@@ -207,16 +220,24 @@ export default function ProjectBim() {
                   {selected.properties.length > 0 ? (
                     <dl className="flex flex-col gap-1.5">
                       {selected.properties.map((p) => (
-                        <div key={p.label} className="flex justify-between gap-3 text-xs">
+                        <div
+                          key={p.label}
+                          className="flex justify-between gap-3 text-xs"
+                        >
                           <dt className="shrink-0 text-gray-500">{p.label}</dt>
-                          <dd className="truncate text-right font-medium text-gray-900" title={p.value}>
+                          <dd
+                            className="truncate text-right font-medium text-gray-900"
+                            title={p.value}
+                          >
                             {p.value}
                           </dd>
                         </div>
                       ))}
                     </dl>
                   ) : (
-                    <p className="text-xs text-gray-400">No extra properties on this element.</p>
+                    <p className="text-xs text-gray-400">
+                      No extra properties on this element.
+                    </p>
                   )}
                 </div>
 
@@ -256,9 +277,12 @@ export default function ProjectBim() {
               </div>
             ) : (
               <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                <p className="text-sm font-medium text-gray-700">No element selected</p>
+                <p className="text-sm font-medium text-gray-700">
+                  No element selected
+                </p>
                 <p className="mt-1 text-xs text-gray-400">
-                  Click a wall, beam, duct or any part of the model to see its details and assign it to a person.
+                  Click a wall, beam, duct or any part of the model to see its
+                  details and assign it to a person.
                 </p>
               </div>
             )}
@@ -269,7 +293,7 @@ export default function ProjectBim() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="BIM models"
         description="Import your Revit, ArchiCAD or Navisworks model (via IFC) and view it in 3D. Anchor coordination issues to elements and promote them to RFIs."
@@ -308,7 +332,12 @@ export default function ProjectBim() {
           </Card>
         ) : (
           models.map((model) => (
-            <ModelCard key={model.id} model={model} onOpen={openViewer} canOpen={true} />
+            <ModelCard
+              key={model.id}
+              model={model}
+              onOpen={openViewer}
+              canOpen={true}
+            />
           ))
         )}
       </div>

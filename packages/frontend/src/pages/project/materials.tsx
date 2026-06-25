@@ -29,7 +29,6 @@ import { LifecyclePanel } from "./materials/lifecycle-panel";
 import { MaterialOrderDialog } from "./materials/material-order-dialog";
 import { STATUS_META, STATUS_FILTERS } from "./materials/shared";
 
-
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
@@ -47,8 +46,12 @@ export default function ProjectMaterials() {
   const deleteOrder = useDeleteMaterialOrder();
 
   const committed = orders.reduce((sum, order) => sum + order.estimatedCost, 0);
-  const received = orders.filter((order) => order.status === "Delivered").length;
-  const critical = orders.filter((order) => order.priority === "Critical").length;
+  const received = orders.filter(
+    (order) => order.status === "Delivered",
+  ).length;
+  const critical = orders.filter(
+    (order) => order.priority === "Critical",
+  ).length;
 
   function upsert(values: MaterialOrderInput): void {
     if (editTarget) {
@@ -58,11 +61,14 @@ export default function ProjectMaterials() {
       );
       return;
     }
-    createOrder.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateOpen(false) });
+    createOrder.mutate(
+      { projectId: project.id, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Materials & equipment"
         description="Request materials, track deliveries, and connect every order to phases, site activities, receipts, and project cost control."
@@ -76,12 +82,20 @@ export default function ProjectMaterials() {
               <ChevronRightIcon className="size-4" />
             </Link>
             {canManage && (
-              <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setImportOpen(true)}
+              >
                 Import from BoQ
               </Button>
             )}
             {canManage && (
-              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setCreateOpen(true)}
+              >
                 <PlusIcon className="size-4" />
                 New material order
               </Button>
@@ -96,22 +110,44 @@ export default function ProjectMaterials() {
         projectId={project.id}
         currency={project.currency}
         onImported={(count) =>
-          toast(`Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`, "success")
+          toast(
+            `Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`,
+            "success",
+          )
         }
       />
 
       <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <MetricCard label="Open material orders" value={orders.length.toString()} helper="Requests through delivery" />
-        <MetricCard label="Committed material cost" value={formatCurrency(committed, project.currency, { compact: true })} helper="Estimated against finance" />
-        <MetricCard label="Lifecycle health" value={`${received} delivered`} helper={critical ? `${critical} critical priority` : "No critical orders"} />
+        <MetricCard
+          label="Open material orders"
+          value={orders.length.toString()}
+          helper="Requests through delivery"
+        />
+        <MetricCard
+          label="Committed material cost"
+          value={formatCurrency(committed, project.currency, { compact: true })}
+          helper="Estimated against finance"
+        />
+        <MetricCard
+          label="Lifecycle health"
+          value={`${received} delivered`}
+          helper={
+            critical ? `${critical} critical priority` : "No critical orders"
+          }
+        />
       </section>
 
       <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card padding="lg" className="min-w-0">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Material orders & requests</h2>
-              <p className="mt-0.5 text-xs text-gray-500">Every row carries schedule, activity, document, and finance context.</p>
+              <h2 className="text-base font-semibold text-gray-900">
+                Material orders & requests
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Every row carries schedule, activity, document, and finance
+                context.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {STATUS_FILTERS.map((item) => (
@@ -121,7 +157,9 @@ export default function ProjectMaterials() {
                   onClick={() => setFilter(item)}
                   className={cn(
                     "rounded-full px-3 py-1.5 text-xs font-semibold",
-                    filter === item ? "bg-[#004DE7] text-white" : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
+                    filter === item
+                      ? "bg-[#004DE7] text-white"
+                      : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
                   )}
                 >
                   {item === "all" ? "All" : STATUS_META[item].label}
@@ -131,13 +169,19 @@ export default function ProjectMaterials() {
           </div>
 
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading material orders…</p>
+            <p className="py-10 text-center text-sm text-gray-500">
+              Loading material orders…
+            </p>
           ) : orders.length === 0 ? (
             <EmptyState
               icon={<MaterialsIcon className="size-8 text-gray-300" />}
               title="No material orders yet"
               description="Create the first request and tie it to the phase and site activity it unlocks."
-              action={<Button onClick={() => setCreateOpen(true)}>Create order</Button>}
+              action={
+                <Button onClick={() => setCreateOpen(true)}>
+                  Create order
+                </Button>
+              }
               className="py-10"
             />
           ) : (
@@ -149,7 +193,11 @@ export default function ProjectMaterials() {
                   onEdit={() => setEditTarget(order)}
                   onDelete={() => setDeleteTarget(order)}
                   onAdvance={(status) =>
-                    updateOrder.mutate({ projectId: project.id, orderId: order.id, status })
+                    updateOrder.mutate({
+                      projectId: project.id,
+                      orderId: order.id,
+                      status,
+                    })
                   }
                 />
               ))}
@@ -171,7 +219,11 @@ export default function ProjectMaterials() {
         initial={editTarget}
         onSubmit={upsert}
         isSubmitting={createOrder.isPending || updateOrder.isPending}
-        error={editTarget ? (updateOrder.error as Error | null)?.message ?? null : (createOrder.error as Error | null)?.message ?? null}
+        error={
+          editTarget
+            ? ((updateOrder.error as Error | null)?.message ?? null)
+            : ((createOrder.error as Error | null)?.message ?? null)
+        }
         currency={project.currency}
       />
       <ConfirmDialog
@@ -184,16 +236,13 @@ export default function ProjectMaterials() {
         confirmLabel="Delete"
         onConfirm={() => {
           if (deleteTarget) {
-            deleteOrder.mutate({ projectId: project.id, orderId: deleteTarget.id }, { onSuccess: () => setDeleteTarget(null) });
+            deleteOrder.mutate(
+              { projectId: project.id, orderId: deleteTarget.id },
+              { onSuccess: () => setDeleteTarget(null) },
+            );
           }
         }}
       />
     </div>
   );
 }
-
-
-
-
-
-

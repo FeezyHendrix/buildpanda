@@ -10,12 +10,14 @@ export function SidebarNavGroup({
   items,
   active,
   activeIconClassName,
+  onClose,
 }: {
   label: string;
   Icon: IconComponent;
   items: GroupNavItem[];
   active: boolean;
   activeIconClassName?: string;
+  onClose?: () => void;
 }) {
   const [open, setOpen] = useState(active);
   return (
@@ -43,7 +45,7 @@ export function SidebarNavGroup({
       {open && (
         <div className="mt-0.5 flex flex-col gap-0.5 pl-4">
           {items.map((item) => (
-            <ProjectGroupNavLink key={item.slug} item={item} />
+            <ProjectGroupNavLink key={item.slug} item={item} onClose={onClose} />
           ))}
         </div>
       )}
@@ -51,7 +53,7 @@ export function SidebarNavGroup({
   );
 }
 
-export function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
+export function ProjectGroupNavLink({ item, onClose }: { item: GroupNavItem; onClose?: () => void }) {
   const { label, slug, to } = item;
   const location = useLocation();
   const isActive =
@@ -61,6 +63,7 @@ export function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
   return (
     <Link
       to={to}
+      onClick={onClose}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-500",
@@ -74,13 +77,14 @@ export function ProjectGroupNavLink({ item }: { item: GroupNavItem }) {
   );
 }
 
-export function ProjectNavLink({ item }: { item: ProjectNavItem }) {
+export function ProjectNavLink({ item, onClose }: { item: ProjectNavItem; onClose?: () => void }) {
   const { Icon, label, to, badge } = item;
   const IconCmp = Icon as React.ElementType;
 
   return (
     <NavLink
       to={to}
+      onClick={onClose}
       className={({ isActive }) =>
         cn(
           "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-500",

@@ -60,8 +60,8 @@ export function RecentUpdatesPanel({
 function UpdatePreview({ update }: { update: ProjectUpdate }) {
   const preview = update.media[0];
   return (
-    <div className="flex gap-6">
-      <div className="rounded-[8px] w-[50%] relative">
+    <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+      <div className="rounded-[8px] w-full sm:w-[50%] relative">
       {/* <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#F6F6F6]"> */}
         {preview ? (
           <img
@@ -80,7 +80,7 @@ function UpdatePreview({ update }: { update: ProjectUpdate }) {
             {UPDATE_CATEGORY_LABEL[update.category]}
           </Badge>
       </div>
-      <div className='flex flex-col gap-2 w-[50%]'>
+      <div className='flex flex-col gap-2 w-full sm:w-[50%]'>
         <h1 className="text-[#131B2E] text-[16px] font-semibold">
           {update.title}
         </h1>

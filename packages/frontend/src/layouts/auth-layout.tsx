@@ -16,7 +16,7 @@ export default function AuthLayout() {
   const header = headerMap[pathname] ?? headerMap["/auth/sign-up"]!;
 
   return (
-    <div className="flex h-dvh p-4">
+    <div className="flex h-dvh p-2 sm:p-4">
       <div className="relative hidden w-[40%] shrink-0 overflow-hidden rounded-2xl bg-white lg:block">
         <video
           className="absolute inset-0 size-full object-cover"
@@ -31,8 +31,8 @@ export default function AuthLayout() {
         </video>
       </div>
 
-      <div className="flex flex-1 flex-col px-6 py-8 sm:px-12 lg:px-20">
-        <header className="flex items-center justify-between">
+      <div className="flex flex-1 flex-col lg:px-20 lg:py-8 px-2 py-2">
+        <header className="flex items-center justify-between lg:pb-0 pb-4">
           <Link to="/">
             <img src={logo} alt="BuildPanda" className="h-9" />
           </Link>
@@ -48,7 +48,7 @@ export default function AuthLayout() {
           </p>
         </header>
 
-        <main className="flex-1 overflow-y-auto py-8">
+        <main className="flex-1 overflow-y-auto py-8 no-scrollbar">
           <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center">
             <Outlet />
           </div>
