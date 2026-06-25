@@ -160,7 +160,7 @@ export const dailyLogKeys = {
 
 export const notificationKeys = {
   all: ["notifications"] as const,
-  list: (filters?: { unreadOnly?: boolean }) =>
+  list: (filters?: { unreadOnly?: boolean; limit?: number }) =>
     filters
       ? ([...notificationKeys.all, "list", filters] as const)
       : ([...notificationKeys.all, "list"] as const),

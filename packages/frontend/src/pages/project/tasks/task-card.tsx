@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Avatar } from "@/components/atoms/avatar";
+import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { resolveFileUrl } from "@/hooks/use-files";
@@ -24,6 +25,7 @@ export function TaskCard({
   const due = formatDayMonth(task.dueDate) || null;
   const coverFileId = firstImageFileId(task.descriptionHtml);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
   useEffect(() => {
     if (!coverFileId) {
       setCoverUrl(null);
@@ -53,12 +55,26 @@ export function TaskCard({
       {...attributes}
     >
       {coverUrl && (
-        <img
-          src={coverUrl}
-          alt=""
-          className="h-28 w-full object-cover"
-          draggable={false}
-        />
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setViewerOpen(true);
+          }}
+          className="group relative block w-full overflow-hidden text-left"
+          aria-label="View task image"
+        >
+          <img
+            src={coverUrl}
+            alt=""
+            className="h-28 w-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02]"
+            draggable={false}
+          />
+          <span className="absolute bottom-2 right-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-gray-700 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+            View
+          </span>
+        </button>
       )}
       <div className="p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -130,6 +146,15 @@ export function TaskCard({
           </div>
         )}
       </div>
+      {coverUrl && (
+        <FileViewerDialog
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+          title={task.title}
+          fileName="Task image.jpg"
+          url={coverUrl}
+        />
+      )}
     </div>
   );
 }

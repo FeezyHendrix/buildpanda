@@ -23,6 +23,19 @@ function healthStroke(score: number | null): string {
   return "#DC2626";
 }
 
+function formatSuggestionTitle(title: string): string {
+  return title.replace("1 inspection need action", "1 inspection needs action");
+}
+
+function countLabel(count: number, label: string): string {
+  if (count !== 1) return label;
+  if (label === "queries") return "query";
+  if (label === "permits") return "permit";
+  if (label === "key dates") return "key date";
+  if (label === "action items") return "action item";
+  return label;
+}
+
 function HealthGauge({ score }: { score: number | null }) {
   const size = 132;
   const stroke = 10;
@@ -115,26 +128,36 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
         </div>
 
         <div className="flex flex-col p-7">
-          <p className="mb-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-black-300">
-            Top Priorities
-          </p>
+          <div className="mb-4">
+            <p className="text-[13px] font-semibold text-black-500">
+              Recommended actions
+            </p>
+            <p className="mt-1 text-[12px] text-black-300">
+              The next useful things to check.
+            </p>
+          </div>
           {isEmpty ? (
             <div className="flex flex-1 items-center rounded-[12px] bg-white px-4 py-6 text-[13px] text-black-300">
               Panda AI will analyse this project shortly.
             </div>
           ) : topSuggestions.length > 0 ? (
-            <div className="flex flex-col gap-2">
+            <div className="overflow-hidden rounded-[12px] bg-white ring-1 ring-[#EDEDED]">
               {topSuggestions.map((suggestion, idx) => (
                 <Link
                   key={idx}
                   to={getSuggestionLink(suggestion.category)}
-                  className="group flex items-center justify-between rounded-[12px] bg-white px-4 py-3 ring-1 ring-transparent transition-all hover:ring-primary/20"
+                  className="group flex items-center justify-between gap-4 border-b border-[#EDEDED] px-4 py-3 transition-colors last:border-b-0 hover:bg-[#F8F8F8]"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[suggestion.priority])} />
-                    <span className="text-[13px] font-medium text-black-500 group-hover:text-primary">
-                      {suggestion.title}
-                    </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_DOT[suggestion.priority])} />
+                      <span className="truncate text-[13px] font-medium text-black-500 group-hover:text-primary">
+                        {formatSuggestionTitle(suggestion.title)}
+                      </span>
+                    </div>
+                    <p className="mt-1 pl-4 text-[11px] text-black-300">
+                      {suggestion.category}
+                    </p>
                   </div>
                   <ChevronRightIcon className="size-4 shrink-0 text-black-200 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                 </Link>
@@ -146,12 +169,17 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <ChipLink to={`/project/${projectId}/action-items`} count={operations.dueActionItems} label="action items" />
-            <ChipLink to={`/project/${projectId}/queries`} count={operations.openQueries} label="queries" />
-            <ChipLink to={`/project/${projectId}/approvals`} count={operations.pendingApprovals} label="approvals" />
-            <ChipLink to={`/project/${projectId}/permits`} count={operations.expiringPermits} label="permits" />
-            <ChipLink to={`/project/${projectId}/key-dates`} count={operations.upcomingKeyDates} label="key dates" />
+          <div className="mt-6 border-t border-[#EDEDED] pt-4">
+            <p className="mb-2 text-[12px] font-medium text-black-300">
+              Needs attention
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <ChipLink to={`/project/${projectId}/action-items`} count={operations.dueActionItems} label="action items" />
+              <ChipLink to={`/project/${projectId}/queries`} count={operations.openQueries} label="queries" />
+              <ChipLink to={`/project/${projectId}/approvals`} count={operations.pendingApprovals} label="approvals" />
+              <ChipLink to={`/project/${projectId}/permits`} count={operations.expiringPermits} label="permits" />
+              <ChipLink to={`/project/${projectId}/key-dates`} count={operations.upcomingKeyDates} label="key dates" />
+            </div>
           </div>
         </div>
       </div>
@@ -161,7 +189,7 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
           to={`/project/${projectId}/whats-next`}
           className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:gap-1.5"
         >
-          See full What&rsquo;s Next
+          View all recommendations
           <ChevronRightIcon className="size-3.5" />
         </Link>
       </div>
@@ -181,8 +209,8 @@ function ChipLink({ to, count, label }: { to: string; count: number; label: stri
           : "bg-primary/[0.08] text-primary hover:bg-primary/[0.12]",
       )}
     >
-      <span className="font-bold tabular-nums">{count}</span>
-      {label}
+      <span className="font-semibold tabular-nums">{count}</span>
+      {countLabel(count, label)}
     </Link>
   );
 }
