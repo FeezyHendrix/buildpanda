@@ -9,7 +9,14 @@ import {
   requestNotificationPermission,
   showDesktopNotification,
 } from "@/lib/desktop-notification";
-import type { ChatMessage } from "@/lib/project-types";
+import { toast } from "@/lib/toast";
+import type { ChatMessage, Channel } from "@/lib/project-types";
+
+// Lazy import avoids a static cycle with @/App (which is rendered *inside*
+// RealtimeProvider); the router is only needed when a notification is clicked.
+function navigateTo(path: string): void {
+  void import("@/App").then((m) => m.router.navigate(path));
+}
 
 type RealtimeEvent =
   | "message.created"
@@ -138,6 +145,44 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }
 
+function onChatPage(): boolean {
+  const path = window.location.pathname;
+  return path.endsWith("/chat") || path.endsWith("/messages");
+}
+
+function notifyIncomingMessage(
+  queryClient: ReturnType<typeof useQueryClient>,
+  message: ChatMessage,
+  currentUserId: string | null,
+): void {
+  const channels = queryClient.getQueryData<Channel[]>(channelKeys.list()) ?? [];
+  const channel = channels.find((c) => c.id === message.channelId);
+  // Channel unknown means the channel list hasn't loaded yet — suppress rather
+  // than risk pinging for a channel the user has muted but we can't see yet.
+  if (!channel) return;
+  if (channel.muted || channel.notifyLevel === "none") return;
+
+  const mentioned = (message.mentions ?? []).some(
+    (m) => (m.kind === "user" && m.userId === currentUserId) || m.kind === "here" || m.kind === "channel",
+  );
+  if (channel.notifyLevel === "mentions" && !mentioned) return;
+
+  const author = message.authorName ?? "New message";
+  const chars = Array.from(message.body);
+  const preview = chars.length > 120 ? `${chars.slice(0, 120).join("")}…` : message.body;
+
+  if (document.visibilityState === "hidden") {
+    showDesktopNotification(author, preview);
+    return;
+  }
+
+  if (!onChatPage()) {
+    toast(`${author}: ${preview}`, "info", {
+      onClick: channel.projectId ? () => navigateTo(`/project/${channel.projectId}/chat`) : undefined,
+    });
+  }
+}
+
 function handleEvent(
   queryClient: ReturnType<typeof useQueryClient>,
   payload: RealtimePayload,
@@ -147,6 +192,7 @@ function handleEvent(
     const message = payload.data as ChatMessage;
     if (message.authorId && message.authorId !== currentUserId) {
       playMessageChime();
+      notifyIncomingMessage(queryClient, message, currentUserId);
     }
     if (message.parentMessageId) {
       void queryClient.invalidateQueries({ queryKey: ["messages", message.parentMessageId, "thread"] });

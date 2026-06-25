@@ -4,6 +4,12 @@ export interface ToastMessage {
   id: number;
   message: string;
   variant: ToastVariant;
+  onClick?: () => void;
+}
+
+interface ToastOptions {
+  duration?: number;
+  onClick?: () => void;
 }
 
 type Listener = (toasts: ToastMessage[]) => void;
@@ -16,11 +22,11 @@ function notify() {
   listeners.forEach((l) => l([...toasts]));
 }
 
-export function toast(message: string, variant: ToastVariant = "error") {
+export function toast(message: string, variant: ToastVariant = "error", options: ToastOptions = {}) {
   const id = ++nextId;
-  toasts = [...toasts, { id, message, variant }];
+  toasts = [...toasts, { id, message, variant, onClick: options.onClick }];
   notify();
-  setTimeout(() => dismiss(id), 5000);
+  setTimeout(() => dismiss(id), options.duration ?? 5000);
 }
 
 export function dismiss(id: number) {

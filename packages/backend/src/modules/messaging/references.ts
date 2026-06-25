@@ -20,6 +20,8 @@ export interface ResolvedReference {
 interface EntityConfig {
   table: string;
   titleColumn: string;
+  // tasks have no status column of their own — it lives on the joined task_columns row.
+  statusJoin?: { table: string; on: string; statusColumn: string };
   path: (projectId: string, id: string) => string;
 }
 
@@ -29,6 +31,12 @@ const ENTITY_CONFIG: Record<string, EntityConfig> = {
   query: { table: "queries", titleColumn: "subject", path: (p, id) => `/project/${p}/queries?open=${id}` },
   change_request: { table: "change_requests", titleColumn: "title", path: (p, id) => `/project/${p}/change-requests?open=${id}` },
   activity: { table: "activities", titleColumn: "name", path: (p, id) => `/project/${p}/activities?open=${id}` },
+  task: {
+    table: "tasks",
+    titleColumn: "title",
+    statusJoin: { table: "task_columns", on: "column_id", statusColumn: "status" },
+    path: (p, id) => `/project/${p}/tasks?task=${id}`,
+  },
 };
 
 export function referenceableTypes(): string[] {
@@ -42,16 +50,20 @@ export function referenceResolver(db: Knex) {
   ): Promise<{ project_id: string | null; title: string; status: string | null; owner_id: string | null; organization_id: string | null } | null> {
     const cfg = ENTITY_CONFIG[type];
     if (!cfg) return null;
-    const row = await db(`${cfg.table} as e`)
+    const statusColumn = cfg.statusJoin ? "s.status as status" : "e.status as status";
+    let q = db(`${cfg.table} as e`)
       .leftJoin("projects as p", "p.id", "e.project_id")
-      .where("e.id", id)
-      .first<{ project_id: string | null; title: string; status: string | null; owner_id: string | null; organization_id: string | null }>(
-        "e.project_id as project_id",
-        `e.${cfg.titleColumn} as title`,
-        "e.status as status",
-        "p.owner_id as owner_id",
-        "p.organization_id as organization_id",
-      );
+      .where("e.id", id);
+    if (cfg.statusJoin) {
+      q = q.leftJoin(`${cfg.statusJoin.table} as s`, "s.id", `e.${cfg.statusJoin.on}`);
+    }
+    const row = await q.first<{ project_id: string | null; title: string; status: string | null; owner_id: string | null; organization_id: string | null }>(
+      "e.project_id as project_id",
+      `e.${cfg.titleColumn} as title`,
+      statusColumn,
+      "p.owner_id as owner_id",
+      "p.organization_id as organization_id",
+    );
     return row ?? null;
   }
 

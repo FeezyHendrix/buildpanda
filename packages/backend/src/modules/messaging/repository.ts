@@ -34,9 +34,17 @@ export interface NewMessageRecord {
   body: string;
   content_html: string | null;
   parent_message_id: string | null;
+  quoted_message_id: string | null;
   references: string;
   mentions: string;
   attachments: string;
+}
+
+export interface QuotedPreviewRow {
+  id: string;
+  author_name: string | null;
+  body: string;
+  deleted_at: Date | string | null;
 }
 
 export interface MessageUpdatePatch {
@@ -140,6 +148,33 @@ export function messagingRepository(db: Knex) {
         );
     },
 
+    async projectMentionUserIds(projectId: string): Promise<string[]> {
+      const participantIds = await db("project_participants")
+        .where({ project_id: projectId, status: "active" })
+        .whereNotNull("user_id")
+        .pluck<string[]>("user_id");
+      const project = await db("projects")
+        .where({ id: projectId })
+        .first<{ owner_id: string | null }>("owner_id");
+      return [...new Set([...(project?.owner_id ? [project.owner_id] : []), ...participantIds])];
+    },
+
+    async companyMentionUserIds(input: { projectId?: string | null; organizationId?: string | null }): Promise<string[]> {
+      let organizationId = input.organizationId ?? null;
+      let ownerId: string | null = null;
+      if (!organizationId && input.projectId) {
+        const project = await db("projects")
+          .where({ id: input.projectId })
+          .first<{ organization_id: string | null; owner_id: string | null }>("organization_id", "owner_id");
+        organizationId = project?.organization_id ?? null;
+        ownerId = project?.owner_id ?? null;
+      }
+      const orgMemberIds = organizationId
+        ? await db("member").where({ organizationId }).pluck<string[]>("userId")
+        : [];
+      return [...new Set([...(ownerId ? [ownerId] : []), ...orgMemberIds])];
+    },
+
     async addMember(record: NewMemberRecord): Promise<void> {
       await db("channel_members")
         .insert(record)
@@ -187,6 +222,14 @@ export function messagingRepository(db: Knex) {
         .where("m.id", id)
         .select<MessageRow[]>("m.*", "u.name as author_name")
         .first();
+    },
+
+    findQuotedPreviews(ids: string[]): Promise<QuotedPreviewRow[]> {
+      if (ids.length === 0) return Promise.resolve([]);
+      return db("messages as m")
+        .leftJoin("user as u", "u.id", "m.author_id")
+        .whereIn("m.id", ids)
+        .select<QuotedPreviewRow[]>("m.id", "u.name as author_name", "m.body", "m.deleted_at");
     },
 
     async createMessage(record: NewMessageRecord): Promise<MessageRow> {

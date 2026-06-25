@@ -41,7 +41,7 @@ export function useChannelMembers(channelId: string | undefined | null) {
 export function useSendMessage(projectId: string, channelId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { body: string; parentMessageId?: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[]; attachments?: { fileId: string; url: string; name: string; mime?: string; size?: number }[] }) =>
+    mutationFn: (data: { body: string; parentMessageId?: string; quotedMessageId?: string; mentions?: { kind: "user" | "here" | "channel"; userId?: string }[]; references?: { type: string; id: string; label: string }[]; attachments?: { fileId: string; url: string; name: string; mime?: string; size?: number }[] }) =>
       api.post<ChatMessage>(`/channels/${channelId}/messages`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messageKeys.all(channelId) });
@@ -57,6 +57,25 @@ export function useReferenceSearch(query: string) {
       api.get<{ type: string; id: string; label: string; projectId: string }[]>('/references/search', { params: { q: query } }).then((r) => r.data),
     enabled: query.trim().length >= 2,
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+}
+
+export function useLinkPreview(url: string | null) {
+  return useQuery({
+    queryKey: ["link-preview", url],
+    queryFn: () =>
+      api.post<{ preview: LinkPreview | null }>("/link-preview", { url }).then((r) => r.data.preview),
+    enabled: Boolean(url),
+    staleTime: 1000 * 60 * 60,
+    retry: false,
   });
 }
 

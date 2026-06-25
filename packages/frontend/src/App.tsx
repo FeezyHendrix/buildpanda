@@ -107,7 +107,7 @@ function sf(flag: string, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
 
-const router = createBrowserRouter([
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <HomeRedirect />,

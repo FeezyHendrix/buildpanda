@@ -46,6 +46,7 @@ export interface SendMessageInput {
   mentions?: MessageMention[];
   attachments?: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
   parentMessageId?: string | null;
+  quotedMessageId?: string | null;
 }
 
 function parseJson<T>(value: T[] | string): T[] {
@@ -88,6 +89,7 @@ function toMessage(row: MessageRow): Message {
     body: deleted ? "" : row.body,
     contentHtml: deleted ? null : row.content_html,
     parentMessageId: row.parent_message_id,
+    quotedMessageId: row.quoted_message_id,
     references: deleted ? [] : parseJson<MessageReference>(row.references),
     mentions: deleted ? [] : parseJson<MessageMention>(row.mentions),
     attachments: deleted ? [] : parseJson(row.attachments),
@@ -104,21 +106,54 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     return membership;
   }
 
-  function notifyMentions(
+  async function attachQuotedPreviews(messages: Message[]): Promise<void> {
+    const quotedIds = [...new Set(messages.map((m) => m.quotedMessageId).filter((id): id is string => Boolean(id)))];
+    if (quotedIds.length === 0) return;
+    const previews = await repository.findQuotedPreviews(quotedIds);
+    const byId = new Map(
+      previews.map((p) => {
+        const deleted = p.deleted_at !== null && p.deleted_at !== undefined;
+        return [p.id, { id: p.id, authorName: p.author_name ?? null, body: deleted ? "" : p.body, deleted }];
+      }),
+    );
+    for (const message of messages) {
+      if (message.quotedMessageId) {
+        message.quotedMessage = byId.get(message.quotedMessageId) ?? null;
+      }
+    }
+  }
+
+  async function notifyMentions(
     mentions: MessageMention[],
     memberIds: Set<string>,
     mutedUsers: Set<string>,
     recentlyActive: Set<string>,
     projectId: string | null,
+    organizationId: string | null,
     channelName: string,
     actorId: string,
     actorName: string,
-  ): void {
+  ): Promise<void> {
     if (!deps.notifications) return;
     const targets = new Set<string>();
     for (const m of mentions) {
       if (m.kind === "user" && m.userId && m.userId !== actorId && memberIds.has(m.userId)) {
         targets.add(m.userId);
+      }
+      if (m.kind === "here") {
+        const projectTargets = projectId
+          ? await repository.projectMentionUserIds(projectId)
+          : [...memberIds];
+        for (const userId of projectTargets) {
+          if (userId !== actorId) targets.add(userId);
+        }
+      }
+      if (m.kind === "channel") {
+        const companyTargets = await repository.companyMentionUserIds({ projectId, organizationId });
+        const fallbackTargets = companyTargets.length > 0 ? companyTargets : [...memberIds];
+        for (const userId of fallbackTargets) {
+          if (userId !== actorId) targets.add(userId);
+        }
       }
     }
     for (const userId of targets) {
@@ -308,6 +343,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         const count = replyCounts.get(message.id);
         if (count) message.replyCount = count;
       }
+      await attachQuotedPreviews(messages);
       return messages;
     },
 
@@ -332,6 +368,12 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       await requireMembership(channelId, actor.id);
       if (channelRow.archived_at) throw new ForbiddenError("This channel is archived");
 
+      let quotedMessageId: string | null = null;
+      if (input.quotedMessageId) {
+        const quoted = await repository.findMessageById(input.quotedMessageId);
+        if (quoted && quoted.channel_id === channelId) quotedMessageId = input.quotedMessageId;
+      }
+
       const row = await repository.createMessage({
         id: generateId("msg"),
         channel_id: channelId,
@@ -339,6 +381,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         body: input.body,
         content_html: input.contentHtml ?? null,
         parent_message_id: input.parentMessageId ?? null,
+        quoted_message_id: quotedMessageId,
         references: JSON.stringify(input.references ?? []),
         mentions: JSON.stringify(input.mentions ?? []),
         attachments: JSON.stringify(input.attachments ?? []),
@@ -364,6 +407,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const channelName = channelRow.name ? `#${channelRow.name}` : "a conversation";
       const withAuthor = await repository.findMessageById(row.id);
       const message = toMessage(withAuthor ?? row);
+      await attachQuotedPreviews([message]);
 
       if (deps.realtime) {
         deps.realtime.publish({ event: "message.created", channelId, data: message });
@@ -373,12 +417,13 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         }
       }
 
-      notifyMentions(
+      await notifyMentions(
         input.mentions ?? [],
         new Set(memberIds),
         mutedUsers,
         recentlyActive,
         channelRow.project_id,
+        channelRow.organization_id,
         channelName,
         actor.id,
         actor.name,
