@@ -7,8 +7,6 @@ import { UploadDocumentDialog } from "@/components/molecules/upload-document-dia
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateDocument,
-  useDeleteDocument,
-  useEditDocument,
   useProjectDocumentCategories,
   useProjectDocuments,
 } from "@/hooks/use-documents";
@@ -18,12 +16,9 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type {
   CategoryGroup,
-  DocumentCategory,
-  ProjectDocument,
 } from "@/lib/project-types";
 import { CategoryMetricsCard } from "./documents/category-metrics-card";
 import { DocumentsTable } from "./documents/documents-table";
-import { Card } from "@/components";
 
 export default function ProjectDocuments() {
   const { project, access } = useProjectContext();

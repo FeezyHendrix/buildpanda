@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
@@ -215,7 +215,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
             My build
           </p>
-          {CLIENT_ENTRIES.map((entry) => (
+          {clientItems.map((entry) => (
             <ProjectNavLink
               key={entry.slug}
               item={{ ...entry, to: `/project/${project.id}/${entry.slug}` }}
