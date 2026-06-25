@@ -14,7 +14,7 @@ import {
   useProjectBudget,
   useCreateBudgetCategory,
   useCreateBudgetPeriod,
-  } from "@/hooks/use-budget";
+} from "@/hooks/use-budget";
 import {
   UpsertBudgetCategoryDialog,
   type UpsertBudgetCategoryValues,
@@ -26,7 +26,6 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
-
 import { CategoryCard } from "./budget/category-card";
 import { PeriodCard } from "./budget/period-card";
 import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
@@ -35,7 +34,9 @@ export default function ProjectBudget() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
+    project.id,
+  );
 
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
@@ -67,16 +68,25 @@ export default function ProjectBudget() {
 
   const { categories = [], periods = [], summary } = budget ?? {};
 
-  const effectiveTotalPlanned = categories.reduce((sum, cat) => sum + cat.effectivePlanned, 0);
-  const effectiveTotalCommitted = categories.reduce((sum, cat) => sum + cat.effectiveCommitted, 0);
-  const effectiveTotalActual = categories.reduce((sum, cat) => sum + cat.effectiveActual, 0);
+  const effectiveTotalPlanned = categories.reduce(
+    (sum, cat) => sum + cat.effectivePlanned,
+    0,
+  );
+  const effectiveTotalCommitted = categories.reduce(
+    (sum, cat) => sum + cat.effectiveCommitted,
+    0,
+  );
+  const effectiveTotalActual = categories.reduce(
+    (sum, cat) => sum + cat.effectiveActual,
+    0,
+  );
 
   const sortedPeriods = [...periods].sort((a, b) =>
     a.period.localeCompare(b.period),
   );
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -122,7 +132,12 @@ export default function ProjectBudget() {
               {formatCurrency(effectiveTotalCommitted, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalCommitted / effectiveTotalPlanned) * 100) : 0}% of planned
+              {effectiveTotalPlanned > 0
+                ? Math.round(
+                    (effectiveTotalCommitted / effectiveTotalPlanned) * 100,
+                  )
+                : 0}
+              % of planned
             </p>
           </KpiCard>
           <KpiCard label="Actual Spent">
@@ -130,14 +145,21 @@ export default function ProjectBudget() {
               {formatCurrency(effectiveTotalActual, currency)}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0 ? Math.round((effectiveTotalActual / effectiveTotalPlanned) * 100) : 0}% of planned
+              {effectiveTotalPlanned > 0
+                ? Math.round(
+                    (effectiveTotalActual / effectiveTotalPlanned) * 100,
+                  )
+                : 0}
+              % of planned
             </p>
           </KpiCard>
           <KpiCard label="Variance">
             <p
               className={cn(
                 "text-base font-bold tabular-nums",
-                summary.totalVariance >= 0 ? "text-[#1B8E45]" : "text-[#E5484D]",
+                summary.totalVariance >= 0
+                  ? "text-[#1B8E45]"
+                  : "text-[#E5484D]",
               )}
             >
               {summary.totalVariance >= 0 ? "+" : ""}
@@ -147,7 +169,8 @@ export default function ProjectBudget() {
           {snapshot?.finance?.budget && (
             <KpiCard label="Variance Status">
               <p className="text-base font-bold text-[#E5484D]">
-                {snapshot.finance.budget.overBudgetCount} of {snapshot.finance.budget.categoryCount} over budget
+                {snapshot.finance.budget.overBudgetCount} of{" "}
+                {snapshot.finance.budget.categoryCount} over budget
               </p>
             </KpiCard>
           )}
@@ -183,7 +206,11 @@ export default function ProjectBudget() {
             description="Add budget categories to track your planned vs actual costs."
             action={
               canManage ? (
-                <Button variant="secondary" size="sm" onClick={() => setCreateCategoryOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCreateCategoryOpen(true)}
+                >
                   Add category
                 </Button>
               ) : undefined
@@ -236,7 +263,11 @@ export default function ProjectBudget() {
             description="Add monthly forecasts to track your project's spend over time."
             action={
               canManage ? (
-                <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCreatePeriodOpen(true)}
+                >
                   Add month
                 </Button>
               ) : undefined
@@ -259,4 +290,3 @@ export default function ProjectBudget() {
     </div>
   );
 }
-

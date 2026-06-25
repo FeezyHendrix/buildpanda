@@ -20,11 +20,18 @@ import {
   useDownloadDailyReport,
   useEmailDailyReport,
 } from "@/hooks/use-daily-logs";
-import type { DailyLogDay, DailyLogEntry, WeatherCondition } from "@/lib/project-types";
+import type {
+  DailyLogDay,
+  DailyLogEntry,
+  WeatherCondition,
+} from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 
-const WEATHER_TONE: Record<WeatherCondition, "info" | "warning" | "danger" | "neutral"> = {
+const WEATHER_TONE: Record<
+  WeatherCondition,
+  "info" | "warning" | "danger" | "neutral"
+> = {
   Sunny: "warning",
   Cloudy: "neutral",
   Rain: "info",
@@ -41,7 +48,12 @@ function todayIso(): string {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export default function ProjectDailyLog() {
@@ -57,7 +69,10 @@ export default function ProjectDailyLog() {
 
   const upsert = useUpsertDailyLog();
   const addEntry = useAddDailyLogEntry();
-  const headerDay = useProjectDailyLog(headerDate ? project.id : undefined, headerDate ?? undefined);
+  const headerDay = useProjectDailyLog(
+    headerDate ? project.id : undefined,
+    headerDate ?? undefined,
+  );
 
   const today = todayIso();
 
@@ -67,7 +82,7 @@ export default function ProjectDailyLog() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Schedule", to: `/project/${project.id}/schedule` },
@@ -79,7 +94,11 @@ export default function ProjectDailyLog() {
         title="Daily Log"
         description="Everyone on the team logs what they did each day. The report covers the whole day."
         actions={
-          <Button variant="primary" size="md" onClick={() => setEntryDate(today)}>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setEntryDate(today)}
+          >
             <PlusIcon className="size-4" />
             Add my log
           </Button>
@@ -91,7 +110,9 @@ export default function ProjectDailyLog() {
         className="mt-8 flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8] p-5"
       >
         <div className="flex items-center justify-between">
-          <p className="text-[12px] font-medium text-black-300">Overall project completion</p>
+          <p className="text-[12px] font-medium text-black-300">
+            Overall project completion
+          </p>
           <p className="text-[20px] font-semibold tabular-nums text-black-500">
             {Math.round(project.progressPercent)}%
           </p>
@@ -99,14 +120,19 @@ export default function ProjectDailyLog() {
         <div className="h-2 w-full overflow-hidden rounded-full bg-[#E9EDFB]">
           <div
             className="h-full rounded-full bg-primary transition-[width]"
-            style={{ width: `${Math.max(0, Math.min(100, project.progressPercent))}%` }}
+            style={{
+              width: `${Math.max(0, Math.min(100, project.progressPercent))}%`,
+            }}
           />
         </div>
       </section>
 
       <section className="mt-8 flex flex-col gap-4">
         {isPending ? (
-          <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8] text-center text-sm text-black-300">
+          <Card
+            padding="lg"
+            className="rounded-[16px] border-none bg-[#F8F8F8] text-center text-sm text-black-300"
+          >
             Loading daily logs…
           </Card>
         ) : days.length === 0 ? (
@@ -115,7 +141,11 @@ export default function ProjectDailyLog() {
             title="No daily logs yet"
             description="Add your first log to start the project diary. Anyone on the team can contribute."
             action={
-              <Button variant="primary" size="md" onClick={() => setEntryDate(today)}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setEntryDate(today)}
+              >
                 <PlusIcon className="size-4" />
                 Add my log
               </Button>
@@ -162,7 +192,9 @@ export default function ProjectDailyLog() {
 
       <AddDailyLogEntryDialog
         open={entryDate !== null}
-        onOpenChange={(next) => { if (!next) setEntryDate(null); }}
+        onOpenChange={(next) => {
+          if (!next) setEntryDate(null);
+        }}
         logDate={entryDate ?? today}
         projectId={project.id}
         submitting={addEntry.isPending}
@@ -202,18 +234,23 @@ function DayCard({
 }) {
   const downloadReport = useDownloadDailyReport();
   const emailReport = useEmailDailyReport();
-  const dateLabel = new Date(`${day.logDate}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const dateLabel = new Date(`${day.logDate}T00:00:00`).toLocaleDateString(
+    undefined,
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    },
+  );
 
   return (
     <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8] p-0">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EDEDED] px-6 py-4">
         <div className="flex items-center gap-3">
           <CalendarIcon className="size-4 text-black-300" />
-          <p className="text-[15px] font-semibold text-black-500">{dateLabel}</p>
+          <p className="text-[15px] font-semibold text-black-500">
+            {dateLabel}
+          </p>
           {day.weatherCondition && (
             <Badge tone={WEATHER_TONE[day.weatherCondition]} size="sm">
               {day.weatherCondition}
@@ -260,7 +297,8 @@ function DayCard({
               emailReport.mutate(
                 { projectId, logDate: day.logDate },
                 {
-                  onSuccess: (res) => toast(`Report sent to ${res.sentTo}`, "success"),
+                  onSuccess: (res) =>
+                    toast(`Report sent to ${res.sentTo}`, "success"),
                   onError: () => toast("Could not email report"),
                 },
               )
@@ -268,7 +306,12 @@ function DayCard({
           >
             Email me
           </Button>
-          <Button variant="primary" size="sm" className="h-8 px-3 text-xs" onClick={onAddEntry}>
+          <Button
+            variant="primary"
+            size="sm"
+            className="h-8 px-3 text-xs"
+            onClick={onAddEntry}
+          >
             <PlusIcon className="size-3.5" />
             Add log
           </Button>
@@ -313,7 +356,8 @@ function EntryRow({
   const [voidOpen, setVoidOpen] = useState(false);
   const voidEntry = useVoidDailyLogEntry();
   const canVoid = !entry.voided && (entry.authorId === userId || canManage);
-  const lastVoid = entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
+  const lastVoid =
+    entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
 
   return (
     <div className={cn("px-6 py-4", entry.voided && "opacity-70")}>
@@ -337,7 +381,9 @@ function EntryRow({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-black-200">Added {formatTime(entry.createdAt)}</span>
+          <span className="text-[11px] text-black-200">
+            Added {formatTime(entry.createdAt)}
+          </span>
           {canVoid && (
             <Button
               type="button"

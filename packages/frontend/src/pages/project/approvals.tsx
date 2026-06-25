@@ -14,7 +14,11 @@ import {
   APPROVAL_STATUS_META,
 } from "@/components/molecules/approval-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { APPROVAL_COLUMNS, assigneeFooter, textMeta } from "@/components/molecules/kanban-configs";
+import {
+  APPROVAL_COLUMNS,
+  assigneeFooter,
+  textMeta,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useSession } from "@/stores/auth";
 import { useAssignableUsers } from "@/hooks/use-tasks";
@@ -69,13 +73,18 @@ export default function ProjectApprovals() {
   // be them. Mirrors the backend gate so the UI never offers a blocked action.
   function canDecideApproval(a: Approval): boolean {
     if (!canDecide) return false;
-    if (a.requestedReviewerId && a.requestedReviewerId !== currentUserId) return false;
+    if (a.requestedReviewerId && a.requestedReviewerId !== currentUserId)
+      return false;
     return true;
   }
 
   function handleMove(approval: Approval, status: ApprovalStatus): void {
     if (approval.status === status) return;
-    updateApproval.mutate({ projectId: project.id, approvalId: approval.id, status });
+    updateApproval.mutate({
+      projectId: project.id,
+      approvalId: approval.id,
+      status,
+    });
   }
 
   function handleCreate(values: UpsertApprovalValues): void {
@@ -94,20 +103,26 @@ export default function ProjectApprovals() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Approvals"
         description="Submit selections and specs for sign-off, and track what's awaiting a decision."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            Submit for approval
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              Submit for approval
+            </Button>
+          ) : undefined
+        }
       />
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
           {FILTERS.map((f) => (
             <button
               key={f.value}
@@ -115,14 +130,16 @@ export default function ProjectApprovals() {
               onClick={() => setFilter(f.value)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                filter === f.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900",
               )}
             >
               {f.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-end lg:justify-start gap-3 self-end lg:self-auto">
           <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
             {(["list", "board"] as const).map((v) => (
               <button
@@ -131,14 +148,18 @@ export default function ProjectApprovals() {
                 onClick={() => setView(v)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                  view === v
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900",
                 )}
               >
                 {v}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-500">{pendingCount} awaiting sign-off</p>
+          <p className="text-xs text-gray-500">
+            {pendingCount} awaiting sign-off
+          </p>
         </div>
       </div>
 
@@ -162,51 +183,83 @@ export default function ProjectApprovals() {
           )}
         </div>
       ) : (
-      <div className="mt-5 flex flex-col gap-3">
-        {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
-        ) : approvals.length === 0 ? (
-          <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">No approvals</p>
-            <p className="mt-1 text-sm text-gray-500">Submit a selection or spec to get sign-off.</p>
-          </Card>
-        ) : (
-          approvals.map((a) => (
-            <Card key={a.id} padding="md" interactive className="flex items-center gap-4">
-              <button type="button" onClick={() => setDetailId(a.id)} className="min-w-0 flex-1 text-left">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate text-sm font-semibold text-gray-900">{a.title}</p>
-                  <Badge tone={APPROVAL_STATUS_META[a.status].tone} size="sm">
-                    {APPROVAL_STATUS_META[a.status].label}
-                  </Badge>
-                  {a.category && <Badge tone="neutral" size="sm">{a.category}</Badge>}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                  {formatDue(a.dueDate) && <span>Needed by {formatDue(a.dueDate)}</span>}
-                  {a.commentCount > 0 && <span>{a.commentCount} comment{a.commentCount === 1 ? "" : "s"}</span>}
-                </div>
-              </button>
-              <div className="flex items-center gap-3">
-                {a.status === "Pending" && canDecideApproval(a) && (
+        <div className="mt-5 flex flex-col gap-3">
+          {isLoading ? (
+            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          ) : approvals.length === 0 ? (
+            <Card padding="lg" className="text-center">
+              <p className="text-sm font-medium text-gray-900">No approvals</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Submit a selection or spec to get sign-off.
+              </p>
+            </Card>
+          ) : (
+            approvals.map((a) => (
+              <Card
+                key={a.id}
+                padding="md"
+                interactive
+                className="flex items-center gap-4"
+              >
+                <button
+                  type="button"
+                  onClick={() => setDetailId(a.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {a.title}
+                    </p>
+                    <Badge tone={APPROVAL_STATUS_META[a.status].tone} size="sm">
+                      {APPROVAL_STATUS_META[a.status].label}
+                    </Badge>
+                    {a.category && (
+                      <Badge tone="neutral" size="sm">
+                        {a.category}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                    {formatDue(a.dueDate) && (
+                      <span>Needed by {formatDue(a.dueDate)}</span>
+                    )}
+                    {a.commentCount > 0 && (
+                      <span>
+                        {a.commentCount} comment
+                        {a.commentCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <div className="flex items-center gap-3">
+                  {a.status === "Pending" && canDecideApproval(a) && (
+                    <button
+                      type="button"
+                      onClick={() => setDetailId(a.id)}
+                      className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600"
+                    >
+                      Review
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setDetailId(a.id)}
-                    className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600"
+                    onClick={() => setEditApproval(a)}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
                   >
-                    Review
+                    Edit
                   </button>
-                )}
-                <button type="button" onClick={() => setEditApproval(a)} className="text-xs font-medium text-gray-500 hover:text-gray-900">
-                  Edit
-                </button>
-                <button type="button" onClick={() => setDeleteId(a.id)} className="text-xs font-medium text-red-500 hover:text-red-600">
-                  Delete
-                </button>
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteId(a.id)}
+                    className="text-xs font-medium text-red-500 hover:text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
       )}
 
       <UpsertApprovalDialog
@@ -253,7 +306,11 @@ export default function ProjectApprovals() {
         open={deleteId !== null}
         onOpenChange={(o) => !o && setDeleteId(null)}
         onConfirm={() => {
-          if (deleteId) deleteApproval.mutate({ projectId: project.id, approvalId: deleteId });
+          if (deleteId)
+            deleteApproval.mutate({
+              projectId: project.id,
+              approvalId: deleteId,
+            });
           setDeleteId(null);
         }}
         title="Delete approval"

@@ -150,9 +150,10 @@ function KanbanBoard<T, S extends string>({
   onAssign,
 }: KanbanBoardProps<T, S>) {
   return (
+    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-2">
     <div
       className="grid gap-4"
-      style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(280px, 1fr))` }}
     >
       {columns.map((column) => {
         const colItems = items.filter((i) => getStatus(i) === column.status);
@@ -217,6 +218,7 @@ function KanbanBoard<T, S extends string>({
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

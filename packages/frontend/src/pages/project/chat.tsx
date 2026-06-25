@@ -21,6 +21,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useChannelRealtime } from "@/lib/realtime";
+import { cn } from "@/lib/utils";
 import { cacheMessages, readCachedMessages } from "@/lib/chat-cache";
 import type { Channel, ChatMessage } from "@/lib/project-types";
 import { BellIcon, BellOffIcon, PlusIcon, StarIcon } from "@/components/atoms/chat-icons";
@@ -44,6 +45,7 @@ export default function ProjectChat() {
   const dmChannels = allChannels.filter((c: Channel) => c.type === "dm");
 
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
   const [cachedMessages, setCachedMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
@@ -167,13 +169,14 @@ export default function ProjectChat() {
 
   
   return (
-    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white font-sans text-gray-900">
-      <div className="flex w-60 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
-        <div className="flex h-14 items-center justify-between border-b border-gray-200 px-4">
-          <h2 className="text-[15px] font-semibold text-black-900">Groups</h2>
-          <button className="text-gray-500 transition-colors hover:text-gray-800" aria-label="New message" onClick={() => setShowNewDm(true)}>
-            <PlusIcon className="size-5" />
-          </button>
+    <div className="absolute inset-0 flex min-h-0 w-full overflow-hidden bg-white">
+      <div className={cn(
+        "flex flex-col border-r border-gray-200 bg-gray-50/50",
+        "w-full lg:w-64",
+        mobileShowChat ? "hidden lg:flex" : "flex",
+      )}>
+        <div className="flex h-14 items-center border-b border-gray-200 px-4">
+          <h2 className="font-semibold text-gray-900">Channels</h2>
         </div>
         <div className="mt-4 flex-1 overflow-y-auto px-3">
           <div>
@@ -189,7 +192,7 @@ export default function ProjectChat() {
                   key={c.id}
                   channel={{...c, name: c.name || "general"}}
                   isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
                 />
               ))}
             </div>
@@ -209,7 +212,7 @@ export default function ProjectChat() {
                   channel={c}
                   currentUserId={currentUserId}
                   isActive={c.id === activeChannelId}
-                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); }}
+                  onClick={() => { setActiveChannelId(c.id); setThreadRootMsg(null); setMobileShowChat(true); }}
                 />
               ))}
             </div>
@@ -219,17 +222,27 @@ export default function ProjectChat() {
       </div>
 
       {activeChannelId && activeChannel ? (
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex items-start gap-4 border-b border-gray-200 px-6 py-3.5">
+        <div className={cn("flex min-w-0 flex-1 flex-col overflow-hidden", !mobileShowChat && "hidden lg:flex")}>
+          <div className="relative overflow-visible flex items-start gap-4 border-b border-gray-200 px-4 lg:px-6 py-3.5">
             <div className="min-w-0 max-w-[260px]">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 lg:gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMobileShowChat(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 lg:hidden"
+                aria-label="Back to channels"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
                 <h3 className="text-[15px] font-semibold text-black-900">
                   {activeChannel.type === "dm" ? "Direct Message" : <><span className="text-gray-400">#</span> {activeChannel.name || "general"}</>}
                 </h3>
                 {activeChannel.type !== "dm" && <StarIcon className="size-4 text-gray-300" />}
               </div>
               {activeChannel.topic && (
-                <p className="mt-0.5 text-[11px] leading-snug text-black-300">{activeChannel.topic}</p>
+                <p className="hidden mt-0.5 text-[11px] leading-snug text-black-300 sm:inline">{activeChannel.topic}</p>
               )}
             </div>
             <div className="flex flex-1 items-center justify-end gap-4">
@@ -304,7 +317,7 @@ export default function ProjectChat() {
           />
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center text-gray-500">
+        <div className={cn("flex flex-1 items-center justify-center text-gray-500", !mobileShowChat && "hidden lg:flex")}>
           Select a channel
         </div>
       )}

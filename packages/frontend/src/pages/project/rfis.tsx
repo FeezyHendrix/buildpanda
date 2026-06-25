@@ -4,8 +4,14 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
-import { UpsertRfiDialog, type UpsertRfiValues } from "@/components/molecules/upsert-rfi-dialog";
-import { RfiDetailDialog, RFI_STATUS_META } from "@/components/molecules/rfi-detail-dialog";
+import {
+  UpsertRfiDialog,
+  type UpsertRfiValues,
+} from "@/components/molecules/upsert-rfi-dialog";
+import {
+  RfiDetailDialog,
+  RFI_STATUS_META,
+} from "@/components/molecules/rfi-detail-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateRfi, useProjectRfis } from "@/hooks/use-rfis";
 import { useParticipants } from "@/hooks/use-participants";
@@ -29,25 +35,43 @@ function RfiRow({ rfi, onOpen }: { rfi: Rfi; onOpen: (id: string) => void }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400">RFI-{rfi.number}</span>
+            <span className="text-xs font-semibold text-gray-400">
+              RFI-{rfi.number}
+            </span>
             <Badge tone={RFI_STATUS_META[rfi.status].tone} size="sm">
               {RFI_STATUS_META[rfi.status].label}
             </Badge>
-            {rfi.priority === "High" && <Badge tone="danger" size="sm">High</Badge>}
-            {rfi.changeRequestId && <Badge tone="accent" size="sm">Change event</Badge>}
+            {rfi.priority === "High" && (
+              <Badge tone="danger" size="sm">
+                High
+              </Badge>
+            )}
+            {rfi.changeRequestId && (
+              <Badge tone="accent" size="sm">
+                Change event
+              </Badge>
+            )}
           </div>
-          <p className="mt-1.5 truncate text-sm font-medium text-gray-900">{rfi.subject}</p>
-          <p className="mt-0.5 line-clamp-1 text-sm text-gray-500">{rfi.question}</p>
+          <p className="mt-1.5 truncate text-sm font-medium text-gray-900">
+            {rfi.subject}
+          </p>
+          <p className="mt-0.5 line-clamp-1 text-sm text-gray-500">
+            {rfi.question}
+          </p>
         </div>
         <div className="shrink-0 text-right">
           {rfi.ballInCourtName && (
             <p className="text-xs text-gray-500">{rfi.ballInCourtName}</p>
           )}
           {rfi.dueDate && (
-            <p className="mt-0.5 text-xs text-gray-400">Due {formatDayMonth(rfi.dueDate)}</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              Due {formatDayMonth(rfi.dueDate)}
+            </p>
           )}
           {rfi.commentCount > 0 && (
-            <p className="mt-0.5 text-xs text-gray-400">{rfi.commentCount} response(s)</p>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {rfi.commentCount} response(s)
+            </p>
           )}
         </div>
       </div>
@@ -59,7 +83,7 @@ export default function ProjectRfis() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const canRaise = access?.capabilities?.canRaiseQueries ?? canManage;
-  const canRespond = canManage || (access?.relationship === "architect");
+  const canRespond = canManage || access?.relationship === "architect";
 
   const [filter, setFilter] = useState<RfiStatus | "all">("all");
   const { data: rfis = [], isLoading } = useProjectRfis(
@@ -76,7 +100,9 @@ export default function ProjectRfis() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const openCount = rfis.filter((r) => r.status === "Open" || r.status === "InReview").length;
+  const openCount = rfis.filter(
+    (r) => r.status === "Open" || r.status === "InReview",
+  ).length;
 
   function handleCreate(values: UpsertRfiValues): void {
     createRfi.mutate(
@@ -86,13 +112,17 @@ export default function ProjectRfis() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="RFIs"
         description="Requests for Information: formal, numbered questions with a ball-in-court owner and an official response."
         actions={
           canRaise ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
               <PlusIcon className="size-4" />
               Raise RFI
             </Button>
@@ -119,7 +149,9 @@ export default function ProjectRfis() {
           ))}
         </div>
         {openCount > 0 && (
-          <span className="text-sm text-gray-500">{openCount} awaiting response</span>
+          <span className="text-sm text-gray-500">
+            {openCount} awaiting response
+          </span>
         )}
       </div>
 
@@ -141,7 +173,9 @@ export default function ProjectRfis() {
             )}
           </Card>
         ) : (
-          rfis.map((rfi) => <RfiRow key={rfi.id} rfi={rfi} onOpen={setDetailId} />)
+          rfis.map((rfi) => (
+            <RfiRow key={rfi.id} rfi={rfi} onOpen={setDetailId} />
+          ))
         )}
       </div>
 
@@ -150,7 +184,9 @@ export default function ProjectRfis() {
         onOpenChange={setCreateOpen}
         onSubmit={handleCreate}
         isSubmitting={createRfi.isPending}
-        error={createRfi.error instanceof Error ? createRfi.error.message : null}
+        error={
+          createRfi.error instanceof Error ? createRfi.error.message : null
+        }
         assigneeOptions={assigneeOptions}
       />
 

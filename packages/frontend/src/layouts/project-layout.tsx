@@ -6,7 +6,7 @@ import {
   useOutletContext,
   useParams,
 } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
@@ -39,6 +39,7 @@ export default function ProjectLayout() {
   const { data: access } = useProjectAccess(projectId);
   const navigate = useNavigate();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (projectId === "marbella") {
     return (
@@ -78,7 +79,13 @@ export default function ProjectLayout() {
   return (
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
-        <ProjectSidebar project={project} access={access} />
+        <ProjectSidebar
+          project={project}
+          access={access}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpen={() => setSidebarOpen(true)}
+        />
         <main className="relative flex-1 overflow-y-auto no-scrollbar">
           {access && <ReadOnlyBanner access={access} />}
           <ErrorBoundary>

@@ -53,7 +53,7 @@ export default function ProjectBudgetAllocation() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -64,11 +64,17 @@ export default function ProjectBudgetAllocation() {
       <PageHeader
         title="Budget Allocation & Analysis"
         description="Create budget categories, then track planned vs actual allocation by phase."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" /> Add budget allocation
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" /> Add budget allocation
+            </Button>
+          ) : undefined
+        }
       />
 
       <UpsertBudgetCategoryDialog
@@ -88,11 +94,17 @@ export default function ProjectBudgetAllocation() {
               icon={<FinancesIcon className="h-6 w-6" />}
               title="No budget allocation yet"
               description="Add your first budget category to start allocation and variance tracking."
-              action={canManage ? (
-                <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-                  <PlusIcon className="size-4" /> Add budget allocation
-                </Button>
-              ) : undefined}
+              action={
+                canManage ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <PlusIcon className="size-4" /> Add budget allocation
+                  </Button>
+                ) : undefined
+              }
             />
           </Card>
         ) : (

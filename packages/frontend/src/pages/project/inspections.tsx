@@ -6,10 +6,16 @@ import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
-import { UpsertInspectionDialog, type UpsertInspectionValues } from "@/components/molecules/upsert-inspection-dialog";
+import {
+  UpsertInspectionDialog,
+  type UpsertInspectionValues,
+} from "@/components/molecules/upsert-inspection-dialog";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
-import { INSPECTION_COLUMNS, textMeta } from "@/components/molecules/kanban-configs";
+import {
+  INSPECTION_COLUMNS,
+  textMeta,
+} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectInspections,
@@ -17,10 +23,7 @@ import {
   useEditInspection,
   useDeleteInspection,
 } from "@/hooks/use-inspections";
-import {
-  INSPECTION_STATUS_TONE,
-  RISK_LEVEL_TONE,
-} from "@/lib/project-meta";
+import { INSPECTION_STATUS_TONE, RISK_LEVEL_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import type {
   InspectionCategory,
@@ -41,7 +44,9 @@ const FILTERS: InspectionCategory[] = [
 
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
-  const canRequestInspection = (access?.capabilities?.canManage ?? false) || access?.relationship === "inspector";
+  const canRequestInspection =
+    (access?.capabilities?.canManage ?? false) ||
+    access?.relationship === "inspector";
   const { data: inspections = [] } = useProjectInspections(project.id);
   const [activeFilter, setActiveFilter] =
     useState<InspectionCategory>("All Reports");
@@ -58,13 +63,20 @@ export default function ProjectInspections() {
     [inspections, activeFilter],
   );
 
-  function handleMove(report: InspectionReport, status: InspectionStatus): void {
+  function handleMove(
+    report: InspectionReport,
+    status: InspectionStatus,
+  ): void {
     if (report.status === status) return;
-    editInspection.mutate({ projectId: project.id, inspectionId: report.id, status });
+    editInspection.mutate({
+      projectId: project.id,
+      inspectionId: report.id,
+      status,
+    });
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Independent Inspections & Quality Reports"
         description="Verified structural and progress assessments for peace of mind."
@@ -100,13 +112,13 @@ export default function ProjectInspections() {
         }}
       />
 
-      <div className="mt-8 flex items-center justify-between gap-3">
+      <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-3">
         <FilterTabs
           filters={FILTERS}
           active={activeFilter}
           onChange={setActiveFilter}
         />
-        <div className="inline-flex shrink-0 rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
+        <div className="inline-flex shrink-0 rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
           {(["list", "board"] as const).map((v) => (
             <button
               key={v}
@@ -114,7 +126,9 @@ export default function ProjectInspections() {
               onClick={() => setView(v)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                view === v ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+                view === v
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900",
               )}
             >
               {v}
@@ -134,7 +148,9 @@ export default function ProjectInspections() {
             getTitle={(r) => r.title}
             renderMeta={(r) => textMeta(r.category)}
             renderFooter={(r) => (
-              <span className="truncate text-xs text-gray-500">{r.inspector.name}</span>
+              <span className="truncate text-xs text-gray-500">
+                {r.inspector.name}
+              </span>
             )}
             onMove={handleMove}
             onOpen={() => undefined}
@@ -148,7 +164,11 @@ export default function ProjectInspections() {
             </Card>
           ) : (
             visible.map((report) => (
-              <InspectionCard key={report.id} projectId={project.id} report={report} />
+              <InspectionCard
+                key={report.id}
+                projectId={project.id}
+                report={report}
+              />
             ))
           )}
         </section>
@@ -169,7 +189,10 @@ function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
     <div
       role="tablist"
       aria-label="Inspection categories"
-      className={cn("flex bg-[#F6F6F6] rounded-[1000px] h-[32px] max-w-[657px]", className)}
+      className={cn(
+        "flex bg-[#F6F6F6] rounded-[1000px] h-[32px] overflow-x-auto max-w-full lg:max-w-[657px]",
+        className,
+      )}
     >
       {filters.map((filter) => (
         <button
@@ -179,7 +202,7 @@ function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
           aria-selected={filter === active}
           onClick={() => onChange(filter)}
           className={cn(
-            "rounded-full px-4 text-xs font-medium transition-colors m-1 cursor-pointer",
+            "rounded-full whitespace-nowrap px-4 text-xs font-medium transition-colors m-1 cursor-pointer",
             "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
             filter === active
               ? "bg-[#FFFFFF] text-black-500"
@@ -234,18 +257,23 @@ function InspectionCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-6 border-b border-[#F6F6F6] pb-6">
-        <div className='flex flex-col gap-1'>
+      <div className="flex flex-wrap items-start gap-4 sm:gap-6 border-b border-[#F6F6F6] pb-6">
+        <div className="flex flex-col gap-1">
           <p className="text-[13px] font-medium text-black-300">Inspector</p>
-          <p className='text-[13px] text-black-500'>{report.inspector.name}</p>
+          <p className="text-[13px] text-black-500">{report.inspector.name}</p>
         </div>
-        <div className='flex flex-col gap-1'>
+        <div className="flex flex-col gap-1">
           <p className="text-[13px] font-medium text-black-300">Date & Time</p>
-          <p className='text-[13px] text-black-500'>{report.scheduledAt}</p>
+          <p className="text-[13px] text-black-500">{report.scheduledAt}</p>
         </div>
-        <div className='flex flex-col gap-1'>
+        <div className="flex flex-col gap-1">
           <p className="text-[13px] font-medium text-black-300">Risk Level</p>
-          <Badge tone={RISK_LEVEL_TONE[report.riskLevel]} size="md" dot className='bg-transparent p-0 m-0'>
+          <Badge
+            tone={RISK_LEVEL_TONE[report.riskLevel]}
+            size="md"
+            dot
+            className="bg-transparent p-0 m-0"
+          >
             {report.riskLevel}
           </Badge>
         </div>
@@ -278,7 +306,10 @@ function InspectionCard({
         mode="edit"
         initial={{
           title: report.title,
-          category: report.category as Exclude<InspectionCategory, "All Reports">,
+          category: report.category as Exclude<
+            InspectionCategory,
+            "All Reports"
+          >,
           description: report.description,
           scheduledAt: report.scheduledAt,
           status: report.status,

@@ -5,10 +5,7 @@ import { useMemo, useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import {
-  FinancesIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
+import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -17,10 +14,7 @@ import {
   type UpsertInvoiceValues,
 } from "@/components/molecules/upsert-invoice-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import {
-  useProjectInvoices,
-  useCreateInvoice,
-} from "@/hooks/use-invoices";
+import { useProjectInvoices, useCreateInvoice } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
 import { toInput } from "./invoices/invoice-utils";
 import { InvoiceCard } from "./invoices/invoice-card";
@@ -31,7 +25,9 @@ export default function ProjectInvoices() {
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
+    project.id,
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const createInvoice = useCreateInvoice();
 
@@ -56,7 +52,7 @@ export default function ProjectInvoices() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${project.id}/finances` },
@@ -67,12 +63,18 @@ export default function ProjectInvoices() {
       <PageHeader
         title="Invoices"
         description="Track vendor invoices, retainage withheld, and payments made across the project."
-        actions={canManage ? (
-          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="size-4" />
-            New invoice
-          </Button>
-        ) : undefined}
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setCreateOpen(true)}
+            >
+              <PlusIcon className="size-4" />
+              New invoice
+            </Button>
+          ) : undefined
+        }
       />
 
       <UpsertInvoiceDialog
@@ -86,7 +88,7 @@ export default function ProjectInvoices() {
 
       <section
         aria-label="Invoice summary"
-        className="mt-8 grid grid-cols-2 gap-3 xl:grid-cols-4"
+        className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
       >
         <SummaryTile
           label="Total Billed"
@@ -110,10 +112,10 @@ export default function ProjectInvoices() {
       {snapshot && (
         <section className="mt-6">
           <div className="lg:w-1/2">
-            <InvoiceAgingBar 
-              aging={snapshot.finance.invoices.aging} 
-              currency={snapshot.currency} 
-              isLoading={isSnapshotLoading} 
+            <InvoiceAgingBar
+              aging={snapshot.finance.invoices.aging}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
             />
           </div>
         </section>
@@ -130,16 +132,18 @@ export default function ProjectInvoices() {
               icon={<FinancesIcon className="size-6" />}
               title="No invoices yet"
               description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
-              action={canManage ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <PlusIcon className="size-4" />
-                  New invoice
-                </Button>
-              ) : undefined}
+              action={
+                canManage ? (
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => setCreateOpen(true)}
+                  >
+                    <PlusIcon className="size-4" />
+                    New invoice
+                  </Button>
+                ) : undefined
+              }
             />
           </Card>
         ) : (

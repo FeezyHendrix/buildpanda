@@ -150,7 +150,7 @@ export function Composer({
   };
 
   return (
-    <div className={cn("relative", isThread ? "" : "px-6 pb-3 pt-1")}>
+    <div className={cn("relative", isThread ? "" : "px-4 lg:px-6 pb-3 pt-1")}>
       {showMentions && (
         <MentionDropdown
           members={members}

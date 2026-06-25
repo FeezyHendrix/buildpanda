@@ -86,7 +86,11 @@ export default function ProjectTasks() {
     () =>
       assignable
         .filter((a) => a.kind === "user")
-        .map((a) => ({ kind: "user" as const, id: a.id, name: a.isSelf ? `${a.name} (me)` : a.name })),
+        .map((a) => ({
+          kind: "user" as const,
+          id: a.id,
+          name: a.isSelf ? `${a.name} (me)` : a.name,
+        })),
     [assignable],
   );
   const teamOptions: AssigneeOption[] = useMemo(
@@ -96,7 +100,10 @@ export default function ProjectTasks() {
         .map((a) => ({ kind: "team" as const, id: a.id, name: a.name })),
     [assignable],
   );
-  const selfId = useMemo(() => assignable.find((a) => a.isSelf)?.id ?? null, [assignable]);
+  const selfId = useMemo(
+    () => assignable.find((a) => a.isSelf)?.id ?? null,
+    [assignable],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -116,7 +123,8 @@ export default function ProjectTasks() {
     const list = tasksByColumn.get(task.columnId);
     if (list) list.push(task);
   }
-  for (const list of tasksByColumn.values()) list.sort((a, b) => a.position - b.position);
+  for (const list of tasksByColumn.values())
+    list.sort((a, b) => a.position - b.position);
 
   function openCreate(columnId: string): void {
     setEditing(null);
@@ -149,13 +157,17 @@ export default function ProjectTasks() {
   }
 
   function handleRenameColumn(columnId: string, name: string): void {
-    renameColumn.mutate({ columnId, name }, { onError: () => toast("Could not rename column") });
+    renameColumn.mutate(
+      { columnId, name },
+      { onError: () => toast("Could not rename column") },
+    );
   }
 
   function handleDeleteColumn(columnId: string): void {
     deleteColumn.mutate(columnId, {
       onError: (err) => {
-        const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        const message = (err as { response?: { data?: { error?: string } } })
+          ?.response?.data?.error;
         toast(message ?? "Could not delete column");
       },
     });
@@ -186,7 +198,11 @@ export default function ProjectTasks() {
     const lastPosition = targetTasks.length
       ? targetTasks[targetTasks.length - 1]!.position
       : 0;
-    moveTask.mutate({ taskId, columnId: targetColumnId, position: lastPosition + 1000 });
+    moveTask.mutate({
+      taskId,
+      columnId: targetColumnId,
+      position: lastPosition + 1000,
+    });
   }
 
   function handleSubmit(values: {
@@ -200,7 +216,8 @@ export default function ProjectTasks() {
   }): void {
     const assigneeFields = {
       assigneeId: values.assignee?.kind === "user" ? values.assignee.id : null,
-      assigneeTeamMemberId: values.assignee?.kind === "team" ? values.assignee.id : null,
+      assigneeTeamMemberId:
+        values.assignee?.kind === "team" ? values.assignee.id : null,
     };
     if (editing) {
       updateTask.mutate(
@@ -242,13 +259,17 @@ export default function ProjectTasks() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Tasks"
         description="Plan and track work across the team. Drag cards between columns."
         actions={
           canManage && board.columns[0] ? (
-            <Button variant="primary" size="md" onClick={() => openCreate(board.columns[0]!.id)}>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => openCreate(board.columns[0]!.id)}
+            >
               <PlusIcon className="size-4" />
               New task
             </Button>
@@ -286,16 +307,31 @@ export default function ProjectTasks() {
                     onChange={(e) => setNewColumnName(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleAddColumn();
-                      if (e.key === "Escape") { setAddingColumn(false); setNewColumnName(""); }
+                      if (e.key === "Escape") {
+                        setAddingColumn(false);
+                        setNewColumnName("");
+                      }
                     }}
                     placeholder="Column name"
                     className={FIELD}
                   />
                   <div className="flex gap-2">
-                    <Button variant="primary" size="sm" onClick={handleAddColumn} disabled={!newColumnName.trim()}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleAddColumn}
+                      disabled={!newColumnName.trim()}
+                    >
                       Add
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setAddingColumn(false); setNewColumnName(""); }}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAddingColumn(false);
+                        setNewColumnName("");
+                      }}
+                    >
                       Cancel
                     </Button>
                   </div>
@@ -326,7 +362,14 @@ export default function ProjectTasks() {
         selfId={selfId}
         submitting={createTask.isPending || updateTask.isPending}
         onSubmit={handleSubmit}
-        onRequestDelete={editing ? () => { setDeleting(editing); setDialogOpen(false); } : undefined}
+        onRequestDelete={
+          editing
+            ? () => {
+                setDeleting(editing);
+                setDialogOpen(false);
+              }
+            : undefined
+        }
         onOpenTask={(taskId) => {
           const target = board.tasks.find((t) => t.id === taskId);
           if (target) openEdit(target);
@@ -335,18 +378,23 @@ export default function ProjectTasks() {
 
       <ConfirmDialog
         open={!!deleting}
-        onOpenChange={(open) => { if (!open) setDeleting(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
         onConfirm={() => {
           if (deleting) {
-            deleteTask.mutate(deleting.id, { onError: () => toast("Could not delete task") });
+            deleteTask.mutate(deleting.id, {
+              onError: () => toast("Could not delete task"),
+            });
           }
         }}
         title="Delete task"
-        description={deleting ? `Delete "${deleting.title}"? This cannot be undone.` : ""}
+        description={
+          deleting ? `Delete "${deleting.title}"? This cannot be undone.` : ""
+        }
         confirmLabel="Delete"
         variant="danger"
       />
     </div>
   );
 }
-

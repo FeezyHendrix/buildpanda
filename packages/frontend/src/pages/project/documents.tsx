@@ -7,6 +7,8 @@ import { UploadDocumentDialog } from "@/components/molecules/upload-document-dia
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateDocument,
+  useDeleteDocument,
+  useEditDocument,
   useProjectDocumentCategories,
   useProjectDocuments,
 } from "@/hooks/use-documents";
@@ -14,9 +16,14 @@ import { useUploadFile } from "@/hooks/use-files";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { CategoryGroup } from "@/lib/project-types";
+import type {
+  CategoryGroup,
+  DocumentCategory,
+  ProjectDocument,
+} from "@/lib/project-types";
 import { CategoryMetricsCard } from "./documents/category-metrics-card";
 import { DocumentsTable } from "./documents/documents-table";
+import { Card } from "@/components";
 
 export default function ProjectDocuments() {
   const { project, access } = useProjectContext();
@@ -88,7 +95,7 @@ export default function ProjectDocuments() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Documents"
         description={
@@ -151,8 +158,7 @@ export default function ProjectDocuments() {
             {isPlans ? "Plans & Drawings" : "Recent Documents"}
           </h2>
           <p className="text-xs text-gray-500">
-            {visibleDocuments.length}{" "}
-            {isPlans ? "plan" : "document"}
+            {visibleDocuments.length} {isPlans ? "plan" : "document"}
             {visibleDocuments.length === 1 ? "" : "s"}
           </p>
         </div>
@@ -167,4 +173,3 @@ export default function ProjectDocuments() {
     </div>
   );
 }
-

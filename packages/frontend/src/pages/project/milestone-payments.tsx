@@ -56,7 +56,7 @@ export default function ProjectMilestonePayments() {
   }
 
   return (
-    <div className="w-full px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           isUnderSchedules
@@ -129,7 +129,7 @@ export default function ProjectMilestonePayments() {
           </div>
         </div>
 
-        <div className="bg-white rounded-[12px] h-full m-1 p-6">
+        <div className="bg-white rounded-[12px] h-full m-1 lg:p-6 p-2">
           <PaymentLedger
             entries={finances.ledger}
             currency={finances.currency}
@@ -226,7 +226,7 @@ export default function ProjectMilestonePayments() {
 function EscrowSummary({ finances }: { finances: ProjectFinances }) {
   return (
     <Card padding="lg" className="mt-8 border-primary border-[4px]">
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className='flex flex-col gap-2'>
           <p className="text-[13px] font-semibold text-black-300">Escrow Summary</p>
           <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.lockedInEscrow, finances.currency)}</p>
@@ -276,7 +276,8 @@ function PaymentLedger({
 }) {
   return (
     <section>
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="border-b border-[#EDEDED] bg-[#F6F6F6] text-xs uppercase tracking-wider text-gray-500">
             <tr>
               <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Date</th>
@@ -297,9 +298,7 @@ function PaymentLedger({
             ))}
           </tbody>
         </table>
-      <Card padding="none" className="overflow-hidden border-none">
-
-      </Card>
+      </div>
     </section>
   );
 }

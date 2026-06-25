@@ -90,12 +90,13 @@ export default function ForContractorsPage() {
             and finances effortlessly from a single dashboard.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
-            <ButtonLink href={site.appUrl} size="lg">
+            {/* <ButtonLink href={site.appUrl} size="lg">
               Get started
               <ArrowRightIcon className="h-5 w-5" />
-            </ButtonLink>
+            </ButtonLink> */}
             <ButtonLink href="/talk-to-us/" variant="outline" size="lg">
               Talk to us
+              <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink>
           </div>
         </Container>

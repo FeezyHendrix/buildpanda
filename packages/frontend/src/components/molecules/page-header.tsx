@@ -23,7 +23,7 @@ function PageHeader({
         className,
       )}
     >
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 order-2 lg:order-1">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-[22px] font-bold leading-tight text-black-900 text-balance">
             {title}
@@ -37,7 +37,11 @@ function PageHeader({
         )}
       </div>
       {badges}
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex shrink-0 items-center gap-2 order-1 self-end lg:order-2 lg:self-auto">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
