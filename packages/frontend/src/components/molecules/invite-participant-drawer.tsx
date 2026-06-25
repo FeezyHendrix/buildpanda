@@ -173,17 +173,20 @@ export function InviteParticipantDrawer({
           ))}
 
           {showCustomRole ? (
-            <input
-              autoFocus
-              type="text"
-              placeholder="e.g. Quantity Surveyor"
-              value={customRole}
-              onChange={(e) => handleCustomRoleChange(e.target.value)}
-              className={cn(
-                inputCls,
-                customRole.trim() && "border-brand/40 bg-white ring-2 ring-brand/10",
-              )}
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className={labelCls}>Role name</label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="e.g. Quantity Surveyor"
+                value={customRole}
+                onChange={(e) => handleCustomRoleChange(e.target.value)}
+                className={cn(
+                  inputCls,
+                  customRole.trim() && "border-brand/40 bg-white ring-2 ring-brand/10",
+                )}
+              />
+            </div>
           ) : (
             <button
               type="button"

@@ -63,7 +63,7 @@ export function analyzeMetrics(metrics: ProjectMetrics): AiInsightResult {
   if (metrics.failedInspectionCount > 0) {
     score -= clamp(metrics.failedInspectionCount * 5, 0, 20);
     suggestions.push({
-      title: `${metrics.failedInspectionCount} inspection${metrics.failedInspectionCount === 1 ? "" : "s"} need action`,
+      title: `${metrics.failedInspectionCount} inspection${metrics.failedInspectionCount === 1 ? " needs" : "s need"} action`,
       detail: `${metrics.failedInspectionCount} inspection${metrics.failedInspectionCount === 1 ? " is" : "s are"} marked "Action Required". Resolve the findings and re-inspect before they block downstream work.`,
       priority: "high",
       category: "Quality",
