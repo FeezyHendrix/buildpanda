@@ -8,9 +8,13 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
+  SortableContext as BaseSortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+
+// Workaround for React 19 type issue with dnd-kit
+const SortableContext = BaseSortableContext as any;
+
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
