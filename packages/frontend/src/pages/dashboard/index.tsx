@@ -32,6 +32,16 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { data: session } = useSession();
   const { data: projects, isPending } = useProjects();
+  const [fabOpen, setFabOpen] = useState(false);
+  const [fabClosing, setFabClosing] = useState(false);
+
+  function closeFab() {
+    setFabClosing(true);
+    setTimeout(() => {
+      setFabOpen(false);
+      setFabClosing(false);
+    }, 220);
+  }
 
   if (isPending) {
     return <LoadingSpinner />;
@@ -44,30 +54,24 @@ export default function Dashboard() {
   }
 
   return (
-    // <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:pt-20">
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 lg:max-w-7xl mx-auto w-full max-w-fit lg:px-3 px-4">
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 pb-36 lg:max-w-7xl mx-auto w-full max-w-full lg:px-3 px-4">
+      <div className="flex items-center justify-between mb-0">
         <div className="flex justify-center flex-1">
           <SuiteSwitcher variant="tabs" />
         </div>
       </div>
-      <Greeting name={session?.user.name ?? ""} />
 
       <section className="flex flex-col gap-4 mt-10">
-        <div className="mx-auto w-fit">
-          <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between mb-4 lg:gap-0 gap-4">
+        <div className="mx-auto w-full lg:w-fit flex flex-col gap-4">
+          <div className='flex flex-col !mb-6'>
+            <Greeting className='self-start !mb-2' name={session?.user.name ?? ""} />
+            <p className="text-[13px] font-medium text-black-300">Here’s what’s happening with your projects today</p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between !mb-0 lg:gap-0 gap-4">
             <div className="flex items-center gap-1">
               <ReactSVG src={icons.folder} />
               <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
-            </div>
-            <div className="flex items-center lg:items-start lg:gap-3 gap-3">
-              <OrgSwitcher />
-              <Link
-                to="/dashboard/settings/team"
-                className="text-[13px] font-medium text-primary hover:text-primary transition-colors"
-              >
-                Manage Team & Roles
-              </Link>
             </div>
           </div>
 
@@ -75,11 +79,66 @@ export default function Dashboard() {
             {list.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
-            <NewProjectCard />
-            <ImportProgrammeCard />
           </div>
         </div>
       </section>
+
+      {/* Desktop fixed footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-[#F0F0F0] bg-white px-4 py-4 lg:block lg:px-6">
+        <div className="mx-auto flex w-full max-w-fit gap-4 lg:max-w-4xl lg:px-3">
+          <NewProjectCard />
+          <ImportProgrammeCard />
+        </div>
+      </div>
+
+      {/* Mobile FAB */}
+      <button
+        type="button"
+        onClick={() => setFabOpen(true)}
+        aria-label="Create or import project"
+        className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full shadow-xl transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
+        style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
+      >
+        <PlusIcon className="size-7 text-white" />
+      </button>
+
+      {/* Mobile FAB popup */}
+      {fabOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            style={{
+              animation: fabClosing
+                ? "fab-backdrop-out 220ms ease-in forwards"
+                : "fab-backdrop-in 200ms ease-out",
+            }}
+            onClick={closeFab}
+          />
+          {/* Bottom sheet */}
+          <div
+            className="fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center gap-3 px-4 pb-8 pt-4 lg:hidden"
+            style={{
+              animation: fabClosing
+                ? "fab-sheet-out 220ms ease-in forwards"
+                : "fab-sheet-in 250ms cubic-bezier(0.32, 0.72, 0, 1)",
+            }}
+          >
+            <div className="flex w-full flex-col gap-4 bg-white rounded-2xl p-4">
+              <NewProjectCard onNavigate={closeFab} />
+              <ImportProgrammeCard onNavigate={closeFab} />
+            </div>
+            <button
+              type="button"
+              onClick={closeFab}
+              aria-label="Close"
+              className="mt-1 flex size-12 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow-md text-xl font-light"
+            >
+              ✕
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -92,9 +151,9 @@ function LoadingSpinner() {
   );
 }
 
-function Greeting({ name }: { name: string }) {
+function Greeting({ name, className }: { name: string, className?: string }) {
   return (
-    <h1 className="sm:text-[28px] text-center mb-6 text-[25px] font-semibold  text-black-300">
+    <h1 className={`sm:text-[28px] mb-6 text-[25px] font-semibold  text-black-300 ${className}`}>
       <span className="text-gray-500">Good {timeOfDay()}, </span>
       <span className="text-gray-900">{firstName(name)}.</span>
     </h1>
@@ -268,40 +327,44 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-function NewProjectCard() {
+function NewProjectCard({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <Link
       to="/project/create"
-      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
-    //   className="group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#BFD3FF] bg-[#F5F8FF] p-6 text-center transition-colors hover:bg-[#EBF2FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+      onClick={onNavigate}
+      className="flex flex-1 items-center gap-4 rounded-2xl p-4 transition-opacity hover:opacity-90"
+      style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
     >
-      <ReactSVG src={icons.addFolder} />
-      <p className='text-primary text-[16px] font-semibold'>New project</p>
-      <p className="text-[11px] text-black-300">Spin up a new construction project from scratch.</p>
-      {/* <div className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[0.5px] border-primary rounded-2xl p-8 w-[334.82px]'>
-          </div> */}
-      {/* <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-white text-[#004DE7] shadow-sm ring-1 ring-[#BFD3FF]">
-        <ReactSVG src={icons.addFolder} />
+      <div className="shrink-0">
+        <ReactSVG src={icons.folderWhite} />
       </div>
-      <p className="text-sm font-semibold text-[#004DE7]">New project</p>
-      <p className="text-xs text-gray-500">
-        Spin up a new construction project from scratch.
-      </p> */}
+      <div>
+        <p className="text-[16px] font-semibold text-white">New project</p>
+        <p className="text-[11px] text-white/75">
+          Spin up a new construction project from scratch.
+        </p>
+      </div>
     </Link>
   );
 }
 
-function ImportProgrammeCard() {
+function ImportProgrammeCard({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate();
   return (
     <button
       type="button"
-      onClick={() => navigate("/import")}
-      className='flex flex-col items-center cursor-pointer justify-center gap-1 border-[1.5px] border-primary rounded-2xl p-8 w-[334.82px] border-dashed'
+      onClick={() => { onNavigate?.(); navigate("/import"); }}
+      className="flex flex-1 items-center gap-4 rounded-2xl border border-primary bg-white p-4 transition-colors hover:bg-gray-50"
     >
-      <ReactSVG src={icons.upload} />
-      <p className='text-primary text-[16px] font-semibold'>Set up a project</p>
-      <p className="text-[11px] text-black-300 text-center">Import a programme, BoQ, drawings or BIM models and we'll build the project for you.</p>
+      <div className="shrink-0">
+        <ReactSVG src={icons.folderArrow} />
+      </div>
+      <div className="text-left">
+        <p className="text-[16px] font-semibold text-primary">Set up a project</p>
+        <p className="text-[11px] text-black-300">
+          Import a programme, BoQ, drawings or BIM models and we'll build the project for you.
+        </p>
+      </div>
     </button>
   );
 }

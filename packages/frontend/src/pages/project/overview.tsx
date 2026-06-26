@@ -47,7 +47,7 @@ export default function ProjectOverview() {
         title={`Welcome back, ${firstName}`}
         description="Stay in control with real-time updates on progress, payments, and site activity."
         badges={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
             <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
               <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
                 <ReactSVG src={icons.love} />

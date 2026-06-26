@@ -25,7 +25,7 @@ export default function ProjectSettings() {
     : formatCurrency(project.budgetTotal, project.currency, { compact: true });
 
   return (
-    <div className="flex w-full flex-col px-6 py-8 sm:px-10">
+    <div className="flex w-full flex-col gap-5 lg:gap-4 px-6 py-8 sm:px-10">
       <PageHeader
         title="Settings"
         description="Configure project preferences, notification rules, and team access."

@@ -245,9 +245,9 @@ function DayCard({
 
   return (
     <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8] p-0">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EDEDED] px-6 py-4">
-        <div className="flex items-center gap-3">
-          <CalendarIcon className="size-4 text-black-300" />
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-3 border-b border-[#EDEDED] px-4 sm:px-6 py-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <CalendarIcon className="size-4 text-black-300 hidden sm:block" />
           <p className="text-[15px] font-semibold text-black-500">
             {dateLabel}
           </p>
@@ -256,11 +256,11 @@ function DayCard({
               {day.weatherCondition}
             </Badge>
           )}
-          <span className="text-[12px] text-black-300">
+          <span className="text-[12px] text-black-300 w-full sm:w-auto">
             Crew {day.workersPresent}/{day.workersExpected} · {day.totalHours}h
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {canManage && (
             <Button
               type="button"
@@ -360,9 +360,9 @@ function EntryRow({
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
 
   return (
-    <div className={cn("px-6 py-4", entry.voided && "opacity-70")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
+    <div className={cn("px-4 sm:px-6 py-4", entry.voided && "opacity-70")}>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <p
             className={cn(
               "text-[14px] font-semibold text-black-500",
@@ -371,7 +371,7 @@ function EntryRow({
           >
             {entry.authorName}
           </p>
-          <Badge tone="neutral" size="sm">
+          <Badge tone="neutral" size="sm" className='capitalize'>
             {entry.authorRole}
           </Badge>
           {entry.voided && (
@@ -380,7 +380,7 @@ function EntryRow({
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2">
           <span className="text-[11px] text-black-200">
             Added {formatTime(entry.createdAt)}
           </span>
