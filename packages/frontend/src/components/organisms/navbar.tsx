@@ -89,7 +89,7 @@ function Navbar({
                 aria-expanded={notificationsOpen}
               />
               {notificationsOpen && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <div className="absolute -right-15 lg:-right-10 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
                   <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">Notifications</p>
