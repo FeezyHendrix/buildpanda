@@ -69,6 +69,8 @@ const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
+const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
+const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
@@ -241,6 +243,8 @@ export const router = createBrowserRouter([
       { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
       { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
       { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
+      { path: "finances/payment-claims", element: pf("commercial.paymentClaims", <ProjectPaymentClaims />) },
+      { path: "finances/purchase-orders", element: pf("commercial.purchaseOrders", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
