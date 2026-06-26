@@ -34,6 +34,7 @@ import { NewDmModal } from "./chat/new-dm-modal";
 import { NewGroupDialog } from "./chat/new-group-dialog";
 import { MessageSearch } from "./chat/message-search";
 import { DmChannelRow } from "./chat/dm-channel-row";
+import { DmHeaderTitle } from "./chat/dm-header-title";
 
 export default function ProjectChat() {
   const { project } = useProjectContext();
@@ -251,7 +252,11 @@ export default function ProjectChat() {
                 </svg>
               </button>
                 <h3 className="text-[15px] font-semibold text-black-900">
-                  {activeChannel.type === "dm" ? "Direct Message" : <><span className="text-gray-400">#</span> {activeChannel.name || "general"}</>}
+                  {activeChannel.type === "dm" ? (
+                    <DmHeaderTitle channel={activeChannel} currentUserId={currentUserId} />
+                  ) : (
+                    <><span className="text-gray-400">#</span> {activeChannel.name || "general"}</>
+                  )}
                 </h3>
                 {activeChannel.type !== "dm" && <StarIcon className="size-4 text-gray-300" />}
               </div>

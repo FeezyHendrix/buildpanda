@@ -952,6 +952,9 @@ export interface ChatMessage {
   attachments: { fileId: string; url: string; name: string; mime?: string; size?: number }[];
   reactions?: { emoji: string; count: number; mine: boolean }[];
   replyCount?: number;
+  readAt?: string | null;
+  readBy?: number;
+  recipientCount?: number;
   editedAt: string | null;
   deletedAt: string | null;
   createdAt: string;
