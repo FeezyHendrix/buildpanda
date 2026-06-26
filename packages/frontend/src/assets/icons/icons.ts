@@ -57,6 +57,10 @@ import Bill from "./bill.icon.svg";
 import NoteSpread from "./note.spread.icon.svg";
 import HourglassLine from "./hourglass.line.icon.svg";
 import VerifyLine from "./verify.line.icon.svg";
+import FolderArrow from './folder.arrow.icon.svg';
+import FolderWhite from './folder.white.icon.svg';
+import SwitchProfile from './switch.profile.icon.svg';
+import Teams from './teams.icon.svg';
 
 export const icons = {
   lock: Lock,
@@ -117,5 +121,9 @@ export const icons = {
   bill: Bill,
   noteSpread: NoteSpread,
   hourglassLine: HourglassLine,
-  verifyLine: VerifyLine
+  verifyLine: VerifyLine,
+  folderArrow: FolderArrow,
+  folderWhite: FolderWhite,
+  switchProfile: SwitchProfile,
+  teams: Teams,
 };

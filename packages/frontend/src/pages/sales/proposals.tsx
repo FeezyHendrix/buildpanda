@@ -17,6 +17,7 @@ import {
 } from "@/lib/project-meta";
 import { Can } from "@/components/atoms/can";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components";
 
 function ProposalRow({ row }: { row: ProposalListItem }) {
   const navigate = useNavigate();
@@ -247,19 +248,22 @@ export default function ProposalsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Proposals</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Pre-construction proposals and estimates for your clients.
-          </p>
-        </div>
-        <Can do="create" on="proposals">
-          <Button variant="primary" onClick={() => setDrawerOpen(true)}>
-            New proposal
-          </Button>
-        </Can>
-      </div>
+      <PageHeader
+        title="Proposals"
+        description="Pre-construction proposals and estimates for your clients."
+        actions={
+          <Can do="create" on="proposals">
+            <Button
+              variant="primary"
+              size="md"
+                  data-tour="sales-new"
+                  onClick={() => setDrawerOpen(true)}
+            >
+              New Proposal
+            </Button>
+          </Can>
+        }
+      />
 
       <div className="flex items-center gap-3">
         <select
