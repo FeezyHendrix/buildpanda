@@ -18,10 +18,20 @@ import type {
   NotifyLevel,
 } from "./types.ts";
 
+export interface ChatEmailReminder {
+  userId: string;
+  channelId: string;
+  messageCreatedAt: string;
+  type: "chat_dm" | "chat_mention";
+  title: string;
+  projectId: string | null;
+}
+
 export interface MessagingDeps {
   notifications?: NotificationsService;
   realtime?: RealtimeHub;
   references?: ReferenceResolver;
+  enqueueChatEmail?: (reminder: ChatEmailReminder) => Promise<void>;
   createActionItem?: (
     projectId: string,
     input: { title: string; description?: string | null },
@@ -106,6 +116,27 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     return membership;
   }
 
+  async function attachReadReceipts(messages: Message[], channelId: string, viewerId: string): Promise<void> {
+    const own = messages.filter((m) => m.authorId === viewerId && !m.deletedAt);
+    if (own.length === 0) return;
+    const states = await repository.memberReadStates(channelId);
+    const others = states.filter((s) => s.user_id !== viewerId);
+    const recipientCount = others.length;
+    // A recipient has read a message when they marked the channel read at or
+    // after the message was created (last_read_at is wall-clock; created_at is
+    // time-ordered, so this is the reliable comparison — message ids are uuids).
+    for (const message of own) {
+      const readers = others.filter(
+        (s) => s.last_read_at !== null && s.last_read_at >= message.createdAt,
+      );
+      message.recipientCount = recipientCount;
+      message.readBy = readers.length;
+      message.readAt = readers.length > 0
+        ? readers.reduce((min, s) => (s.last_read_at! < min ? s.last_read_at! : min), readers[0]!.last_read_at!)
+        : null;
+    }
+  }
+
   async function attachQuotedPreviews(messages: Message[]): Promise<void> {
     const quotedIds = [...new Set(messages.map((m) => m.quotedMessageId).filter((id): id is string => Boolean(id)))];
     if (quotedIds.length === 0) return;
@@ -124,6 +155,8 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
   }
 
   async function notifyMentions(
+    channelId: string,
+    messageCreatedAt: string,
     mentions: MessageMention[],
     memberIds: Set<string>,
     mutedUsers: Set<string>,
@@ -158,43 +191,58 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
     }
     for (const userId of targets) {
       if (mutedUsers.has(userId)) continue;
-      if (recentlyActive.has(userId)) continue;
       const title = `${actorName} mentioned you in ${channelName}`;
-      // Online users get a live desktop notification instead of the in-app +
-      // email path, so a mention reaches them even when they're on another page.
+      // Online users get a live desktop notification instead of the in-app
+      // record, so a mention reaches them even when they're on another page.
       if (deps.realtime?.isOnline(userId)) {
         deps.realtime.publish({
           event: "notification.created",
           userId,
           data: { type: "chat_mention", title, projectId, channelName },
         });
-        continue;
+      } else {
+        void deps.notifications
+          .notify(userId, "chat_mention", {
+            title,
+            body: "",
+            projectId: projectId ?? undefined,
+            emailMode: "skip",
+          })
+          .catch(() => undefined);
       }
-      void deps.notifications
-        .notify(userId, "chat_mention", {
+      if (recentlyActive.has(userId)) continue;
+      void deps
+        .enqueueChatEmail?.({
+          userId,
+          channelId,
+          messageCreatedAt,
+          type: "chat_mention",
           title,
-          body: "",
-          projectId: projectId ?? undefined,
+          projectId,
         })
         .catch(() => undefined);
     }
   }
 
   function notifyDm(
+    channelId: string,
+    messageCreatedAt: string,
     memberIds: string[],
     recentlyActive: Set<string>,
+    mutedUsers: Set<string>,
     actorId: string,
     actorName: string,
   ): void {
-    if (!deps.notifications) return;
     for (const userId of memberIds) {
       if (userId === actorId) continue;
-      if (recentlyActive.has(userId)) continue;
+      if (mutedUsers.has(userId)) continue;
+      const title = `New message from ${actorName}`;
       void deps.notifications
-        .notify(userId, "chat_dm", {
-          title: `New message from ${actorName}`,
-          body: "",
-        })
+        ?.notify(userId, "chat_dm", { title, body: "", emailMode: "skip" })
+        .catch(() => undefined);
+      if (recentlyActive.has(userId)) continue;
+      void deps
+        .enqueueChatEmail?.({ userId, channelId, messageCreatedAt, type: "chat_dm", title, projectId: null })
         .catch(() => undefined);
     }
   }
@@ -344,6 +392,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         if (count) message.replyCount = count;
       }
       await attachQuotedPreviews(messages);
+      await attachReadReceipts(messages, channelId, userId);
       return messages;
     },
 
@@ -418,6 +467,8 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       }
 
       await notifyMentions(
+        channelId,
+        message.createdAt,
         input.mentions ?? [],
         new Set(memberIds),
         mutedUsers,
@@ -429,7 +480,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
         actor.name,
       );
       if (channelRow.type === "dm" || channelRow.type === "group_dm") {
-        notifyDm(memberIds, recentlyActive, actor.id, actor.name);
+        notifyDm(channelId, message.createdAt, memberIds, recentlyActive, mutedUsers, actor.id, actor.name);
       }
 
       return message;

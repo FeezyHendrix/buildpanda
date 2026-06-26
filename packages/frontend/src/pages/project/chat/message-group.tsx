@@ -6,6 +6,7 @@ import { ReferenceChip } from "./reference-chip";
 import { AttachmentChip } from "./attachment-chip";
 import { LinkText, LinkPreviewCard } from "./message-content";
 import { QuotedBlock } from "./quoted-block";
+import { ReadReceipt } from "./read-receipt";
 import { ReplyIcon } from "@/components/atoms/chat-icons";
 import type { ChatMessage } from "@/lib/project-types";
 
@@ -69,6 +70,12 @@ export function MessageItem({
       </div>
 
       <LinkPreviewCard text={message.body} />
+
+      {isOwn && (
+        <div className="mt-0.5">
+          <ReadReceipt message={message} />
+        </div>
+      )}
 
       {message.resolvedReferences && message.resolvedReferences.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-2">
@@ -239,12 +246,14 @@ export function MessageGroup({
   const first = messages[0];
   if (!first) return null;
 
+  const isOwnGroup = first.authorId === currentUserId;
+
   return (
-    <div className="flex gap-3 px-4 lg:px-6 py-2">
+    <div className={cn("flex gap-3 px-4 lg:px-6 py-2", isOwnGroup && "flex-row-reverse")}>
       <div className="shrink-0">
         <Avatar name={first.authorName ?? "?"} size="md" />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className={cn("flex min-w-0 flex-1 flex-col", isOwnGroup && "items-end")}>
         <div className="flex items-baseline gap-2">
           <span className="text-[13px] font-medium text-black-500">
             {first.authorName ?? "Unknown User"}
@@ -253,7 +262,7 @@ export function MessageGroup({
             {formatTimeAgo(first.createdAt)}
           </span>
         </div>
-        <div className="mt-0.5 flex flex-col">
+        <div className={cn("mt-0.5 flex flex-col", isOwnGroup && "items-end")}>
           {messages.map((m) => (
             <MessageItem
               key={m.id}

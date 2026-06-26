@@ -24,6 +24,9 @@ export interface NotifyInput {
   body: string;
   projectId?: string | null;
   ctaUrl?: string | null;
+  // "skip" creates the in-app notification without sending an email — used by
+  // chat, where the email is deferred and only sent if the message stays unread.
+  emailMode?: "send" | "skip";
 }
 
 export interface PreferencePatch {
@@ -91,7 +94,7 @@ export function notificationsService(
         });
       }
 
-      if (emailOn && queue) {
+      if (emailOn && queue && input.emailMode !== "skip") {
         const jobData: NotificationEmailJobData = {
           userId,
           type,
