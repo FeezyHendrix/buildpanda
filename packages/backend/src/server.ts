@@ -30,6 +30,7 @@ import activityRoutes from "./modules/activities/routes.ts";
 import dailyLogRoutes from "./modules/daily-logs/routes.ts";
 import teamMemberRoutes from "./modules/team-members/routes.ts";
 import invoiceRoutes from "./modules/invoices/routes.ts";
+import publicInvoiceRoutes from "./modules/invoices/public-routes.ts";
 import paymentClaimRoutes from "./modules/payment-claims/routes.ts";
 import purchaseOrderRoutes from "./modules/purchase-orders/routes.ts";
 import budgetRoutes from "./modules/budget/routes.ts";
@@ -142,6 +143,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(dailyLogRoutes);
   await app.register(teamMemberRoutes);
   await app.register(invoiceRoutes);
+  await app.register(publicInvoiceRoutes);
   await app.register(paymentClaimRoutes);
   await app.register(purchaseOrderRoutes);
   await app.register(budgetRoutes);

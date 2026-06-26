@@ -7,6 +7,7 @@ import { registerPandaAiPeriodicScheduler } from "../modules/panda-ai/periodic-s
 import { registerNotificationEmailWorker } from "../modules/notifications/email-job.ts";
 import { registerChatEmailWorker } from "../modules/messaging/chat-email-job.ts";
 import { registerInvoiceOverdueWorker } from "../modules/invoices/overdue-job.ts";
+import { registerInvoiceEmailWorker } from "../modules/invoices/invoice-send-job.ts";
 import { registerPermitExpiryWorker } from "../modules/permits/expiry-job.ts";
 import { registerKeyDateReminderWorker } from "../modules/key-dates/reminder-job.ts";
 import { registerLifecycleEmailWorker } from "../modules/lifecycle/index.ts";
@@ -48,6 +49,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerNotificationEmailWorker(fastify.db, manager);
     registerChatEmailWorker(fastify.db, manager);
     registerInvoiceOverdueWorker(fastify.db, manager);
+    registerInvoiceEmailWorker(fastify.db, manager);
     registerPermitExpiryWorker(fastify.db, manager);
     registerKeyDateReminderWorker(fastify.db, manager);
     registerLifecycleEmailWorker(fastify.db, manager);
