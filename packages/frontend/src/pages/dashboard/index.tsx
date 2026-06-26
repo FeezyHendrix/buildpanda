@@ -25,8 +25,6 @@ import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
 import { SuiteSwitcher } from "@/components/molecules/suite-switcher";
-import { OrgSwitcher } from "@/components/molecules/org-switcher";
-// import { Link } from "react-router-dom";
 
 export default function Dashboard() {
   const navigate = useNavigate();
