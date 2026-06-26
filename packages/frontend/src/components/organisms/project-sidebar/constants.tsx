@@ -165,6 +165,20 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
+    label: "Budget",
+    slug: "finances/budget",
+    Icon: FinancesIcon,
+    helper: "Planning & allocation",
+    flag: "commercial.budget",
+  },
+  {
+    label: "Milestone Payments",
+    slug: "finances/milestone-payments",
+    Icon: FinancesIcon,
+    helper: "Drawdown schedule",
+    flag: "commercial.finances",
+  },
+  {
     label: "Payment Claims",
     slug: "finances/payment-claims",
     Icon: DocumentsIcon,
