@@ -121,9 +121,19 @@ export class QueueManager {
     queueName: string,
     jobName: string,
     data: TData,
+    opts?: { delayMs?: number; jobId?: string },
   ): Promise<void> {
     if (this.connection) {
-      await this.getQueue(queueName).add(jobName, data, DEFAULT_JOB_OPTS);
+      // A stable jobId lets a newer job replace a still-pending one (used to
+      // coalesce chat-email reminders into one per channel/recipient window).
+      if (opts?.jobId) {
+        await this.getQueue(queueName).remove(opts.jobId).catch(() => undefined);
+      }
+      await this.getQueue(queueName).add(jobName, data, {
+        ...DEFAULT_JOB_OPTS,
+        ...(opts?.delayMs ? { delay: opts.delayMs } : {}),
+        ...(opts?.jobId ? { jobId: opts.jobId } : {}),
+      });
       return;
     }
 
@@ -131,7 +141,7 @@ export class QueueManager {
     if (!processor) {
       throw new Error(`No processor registered for queue "${queueName}"`);
     }
-    setImmediate(() => {
+    const run = () => {
       void processor(data).catch((err) => {
         this.logger.error(
           { err, queue: queueName },
@@ -139,7 +149,12 @@ export class QueueManager {
         );
         captureBug(err, { tags: { area: "background_job", queue: queueName, mode: "inline" } });
       });
-    });
+    };
+    if (opts?.delayMs) {
+      setTimeout(run, opts.delayMs);
+    } else {
+      setImmediate(run);
+    }
   }
 
   /**

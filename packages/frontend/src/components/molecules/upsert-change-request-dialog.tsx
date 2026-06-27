@@ -99,7 +99,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-desc">Details</Label>
-        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
+        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-reason">Reason</Label>

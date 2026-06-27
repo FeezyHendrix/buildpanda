@@ -7,6 +7,7 @@ import { notificationsService } from "../notifications/service.ts";
 import { messagingRepository } from "./repository.ts";
 import { messagingService } from "./service.ts";
 import { referenceResolver, referenceableTypes } from "./references.ts";
+import { CHAT_EMAIL_QUEUE, CHAT_EMAIL_DELAY_MS } from "./chat-email-job.ts";
 import { actionItemsRepository } from "../action-items/repository.ts";
 import { actionItemsService } from "../action-items/service.ts";
 import type { ReferenceContext } from "./references.ts";
@@ -142,6 +143,11 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
     realtime: fastify.realtime,
     references: referenceResolver(fastify.db),
+    enqueueChatEmail: (reminder) =>
+      fastify.queue.enqueue(CHAT_EMAIL_QUEUE, "send", reminder, {
+        delayMs: CHAT_EMAIL_DELAY_MS,
+        jobId: `${reminder.channelId}:${reminder.userId}`,
+      }),
     createActionItem: async (projectId, input, userId) => {
       const actionItems = actionItemsService(actionItemsRepository(fastify.db));
       const created = await actionItems.create(projectId, { title: input.title, description: input.description }, userId);

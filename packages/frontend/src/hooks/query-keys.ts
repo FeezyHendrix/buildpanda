@@ -54,6 +54,17 @@ export const equipmentRequestKeys = {
 export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
+  detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
+};
+
+export const paymentClaimKeys = {
+  all: (projectId: string) => ["projects", projectId, "payment-claims"] as const,
+  list: (projectId: string) => [...paymentClaimKeys.all(projectId), "list"] as const,
+};
+
+export const purchaseOrderKeys = {
+  all: (projectId: string) => ["projects", projectId, "purchase-orders"] as const,
+  list: (projectId: string) => [...purchaseOrderKeys.all(projectId), "list"] as const,
 };
 
 export const budgetKeys = {

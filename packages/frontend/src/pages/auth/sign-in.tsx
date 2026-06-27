@@ -19,24 +19,27 @@ export default function SignInForm() {
     setError(null);
     setLoading(true);
 
-    const { data, error: signInError } = await authClient.signIn.email({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (signInError) {
-      setError(signInError.message ?? "Invalid email or password.");
-      return;
-    }
-
-    if (redirectTo) {
-      navigate(redirectTo, { replace: true });
-      return;
-    }
-    const accountType = (data?.user as { accountType?: string } | undefined)?.accountType;
-    navigate(homePathFor(accountType));
+    await authClient.signIn.email(
+      { email, password },
+      {
+        // better-auth refreshes the session store before onSuccess fires, so
+        // route guards see the signed-in session. Navigating outside this
+        // callback races the refresh and the guard redirects back to sign-in.
+        onSuccess: (ctx) => {
+          setLoading(false);
+          if (redirectTo) {
+            navigate(redirectTo, { replace: true });
+            return;
+          }
+          const accountType = (ctx.data?.user as { accountType?: string } | undefined)?.accountType;
+          navigate(homePathFor(accountType));
+        },
+        onError: (ctx) => {
+          setLoading(false);
+          setError(ctx.error.message ?? "Invalid email or password.");
+        },
+      },
+    );
   }
 
   return (

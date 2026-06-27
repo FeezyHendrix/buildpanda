@@ -89,7 +89,7 @@ export default function ProjectFinances() {
 
       <section
         aria-label="Finance summary"
-        className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
+        className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-6"
       >
         <KpiCard
           title="Total Budget"
@@ -133,7 +133,7 @@ export default function ProjectFinances() {
       </section>
 
       {snapshot?.finance && (
-        <div className="mt-3 flex items-center justify-center gap-4 rounded-xl border border-[#EDEDED] bg-white p-4 text-sm font-medium text-gray-700 shadow-sm">
+        <div className="mt-3 flex flex-col lg:flex-row lg:items-center items-start justify-center gap-4 rounded-xl border border-[#EDEDED] bg-white p-4 text-sm font-medium text-gray-700 shadow-sm">
           <span className="flex items-center gap-2">
             Committed
             <span className="text-gray-900">
@@ -143,7 +143,7 @@ export default function ProjectFinances() {
               )}
             </span>
           </span>
-          <span className="text-gray-300">›</span>
+          <span className="hidden lg:block text-gray-300">›</span>
           <span className="flex items-center gap-2">
             Invoiced
             <span className="text-gray-900">
@@ -153,7 +153,7 @@ export default function ProjectFinances() {
               )}
             </span>
           </span>
-          <span className="text-gray-300">›</span>
+          <span className="hidden lg:block text-gray-300">›</span>
           <span className="flex items-center gap-2">
             Paid
             <span className="text-gray-900">

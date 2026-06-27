@@ -43,12 +43,12 @@ export function InvoiceBudgetAllocations({
         const first = budget?.categories?.[0];
         if (first) {
           setAllocationsState([
-            { categoryId: first.id, amount: String(invoice.amount) },
+            { categoryId: first.id, amount: String(invoice.totalInvoiced) },
           ]);
         }
       }
     }
-  }, [allocationsData, isPending, budget?.categories, invoice.amount]);
+  }, [allocationsData, isPending, budget?.categories, invoice.totalInvoiced]);
 
   if (isPending || !budget) return null;
 
@@ -56,7 +56,7 @@ export function InvoiceBudgetAllocations({
     (sum, a) => sum + (Number(a.amount) || 0),
     0,
   );
-  const isOver = totalAllocated > invoice.amount;
+  const isOver = totalAllocated > invoice.totalInvoiced;
 
   function handleSave() {
     setAllocations.mutate({
@@ -139,7 +139,7 @@ export function InvoiceBudgetAllocations({
             )}
           >
             Total: {formatCurrency(totalAllocated, currency)} /{" "}
-            {formatCurrency(invoice.amount, currency)}
+            {formatCurrency(invoice.totalInvoiced, currency)}
           </span>
           <Button
             variant="primary"

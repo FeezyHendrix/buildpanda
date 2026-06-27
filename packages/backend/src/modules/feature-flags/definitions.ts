@@ -154,6 +154,22 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/projects/:id/invoices"],
   },
   {
+    key: "commercial.paymentClaims",
+    label: "Payment claims",
+    group: "Commercial",
+    description: "Contractor progress claims / drawdowns against milestones, with an approval workflow.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/finances/payment-claims"],
+  },
+  {
+    key: "commercial.purchaseOrders",
+    label: "Purchase orders",
+    group: "Commercial",
+    description: "Vendor purchase orders with line items and committed-spend tracking.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/finances/purchase-orders"],
+  },
+  {
     key: "commercial.materialsEquipment",
     label: "Materials & equipment",
     group: "Commercial",

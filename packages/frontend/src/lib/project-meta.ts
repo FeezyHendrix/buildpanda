@@ -64,9 +64,11 @@ export const PARTICIPANT_STATUS_TONE: Record<ParticipantStatus, BadgeTone> = {
 
 export const INVOICE_STATUS_TONE: Record<InvoiceStatus, BadgeTone> = {
   Draft: "neutral",
-  Submitted: "info",
+  Sent: "info",
   Approved: "accent",
+  PartiallyPaid: "warning",
   Paid: "success",
+  Overdue: "danger",
 };
 
 export const ACTIVITY_STATUS_TONE: Record<ActivityStatus, BadgeTone> = {
