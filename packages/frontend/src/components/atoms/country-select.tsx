@@ -78,7 +78,7 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
               <Combobox.Input
                 placeholder="Search countries…"
                 className={cn(
-                  "h-9 w-full rounded-md bg-[#F6F6F6] px-3 text-sm text-gray-900",
+                  "h-9 w-full rounded-md bg-[#F6F6F6] px-3 text-base lg:text-sm text-gray-900",
                   "border-0 outline-none ring-0",
                   "placeholder:text-gray-400",
                   "focus-visible:ring-2 focus-visible:ring-gray-900/10",
