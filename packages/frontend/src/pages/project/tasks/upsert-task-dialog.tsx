@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -76,7 +76,7 @@ export function UpsertTaskDialog({
       .catch(() => toast("Could not copy link"));
   }
 
-  useMemo(() => {
+  useEffect(() => {
     if (open) {
       setTitle(task?.title ?? "");
       setDescription(task?.description ?? "");

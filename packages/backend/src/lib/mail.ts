@@ -29,6 +29,8 @@ export interface SendEmailOptions {
   to: string | string[];
   /** Display name — applied to the first recipient only. */
   toName?: string;
+  cc?: string[];
+  bcc?: string[];
   subject: string;
   html: string;
   text?: string;
@@ -70,7 +72,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     const links = options.html.match(/href="([^"]+)"/g) ?? [];
     const attached = options.attachments?.map((file) => file.name) ?? [];
     logger.warn(
-      { to: recipients, subject: options.subject, links, attachments: attached },
+      { to: recipients, cc: options.cc, bcc: options.bcc, subject: options.subject, links, attachments: attached },
       "[mail] ZEPTOMAIL_TOKEN not set — skipping send",
     );
     return;
@@ -93,6 +95,12 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
           name: (index === 0 && options.toName) || address,
         },
       })),
+      ...(options.cc && options.cc.length > 0
+        ? { cc: options.cc.map((address) => ({ email_address: { address } })) }
+        : {}),
+      ...(options.bcc && options.bcc.length > 0
+        ? { bcc: options.bcc.map((address) => ({ email_address: { address } })) }
+        : {}),
       subject: options.subject,
       htmlbody: options.html,
       textbody: text,

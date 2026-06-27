@@ -97,6 +97,12 @@ export const config = {
     orgId: optional("BUILDPANDA_CONSULTING_ORG_ID", ""),
   },
 
+  finance: {
+    vatPct: optionalNumber("FINANCE_DEFAULT_VAT_PCT", 7.5),
+    whtPct: optionalNumber("FINANCE_DEFAULT_WHT_PCT", 0),
+    retentionPct: optionalNumber("FINANCE_DEFAULT_RETENTION_PCT", 0),
+  },
+
   mail: {
     token: optional("ZEPTOMAIL_TOKEN", ""),
     fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),

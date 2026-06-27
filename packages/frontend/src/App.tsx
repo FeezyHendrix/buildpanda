@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
 import {
   HomeRedirect,
@@ -9,6 +9,22 @@ import {
 } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
 import { withMaintenanceMode } from "@/lib/with-maintenance-mode";
+import { ErrorFallback } from "@/components/atoms/error-fallback";
+
+function RouterErrorPage() {
+  const routeError = useRouteError();
+  const error =
+    routeError instanceof Error
+      ? routeError
+      : new Error(
+          typeof (routeError as { statusText?: string; message?: string })?.statusText === "string"
+            ? (routeError as { statusText: string }).statusText
+            : typeof (routeError as { message?: string })?.message === "string"
+              ? (routeError as { message: string }).message
+              : "An unexpected error occurred",
+        );
+  return <ErrorFallback error={error} reset={() => window.location.reload()} />;
+}
 
 // After a deploy, Vite emits new hashed chunk filenames. A browser holding a
 // stale index.html (or an open tab) requests an old chunk that no longer exists
@@ -69,6 +85,8 @@ const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
+const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
+const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
@@ -108,6 +126,9 @@ function sf(flag: string, el: ReactElement) {
 }
 
 export const router = createBrowserRouter([
+  {
+    errorElement: <RouterErrorPage />,
+    children: [
   {
     path: "/",
     element: <HomeRedirect />,
@@ -241,6 +262,8 @@ export const router = createBrowserRouter([
       { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
       { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
       { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
+      { path: "finances/payment-claims", element: pf("commercial.paymentClaims", <ProjectPaymentClaims />) },
+      { path: "finances/purchase-orders", element: pf("commercial.purchaseOrders", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
@@ -268,6 +291,8 @@ export const router = createBrowserRouter([
       { path: "stages", element: pf("projects.schedule", <ProjectStages />) },
     ],
   },
+  ], // children of root error-boundary route
+  }, // root error-boundary route
 ]);
 
 function App() {

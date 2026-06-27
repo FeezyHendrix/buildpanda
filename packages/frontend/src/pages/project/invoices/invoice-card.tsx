@@ -12,12 +12,19 @@ import {
   type UpsertInvoiceValues,
 } from "@/components/molecules/upsert-invoice-dialog";
 import {
+  SendInvoiceDialog,
+  type SendInvoiceValues,
+} from "@/components/molecules/send-invoice-dialog";
+import {
   useEditInvoice,
   useDeleteInvoice,
   useAddInvoicePayment,
   useDeleteInvoicePayment,
+  useSendInvoice,
+  useInvoicePdf,
   type Invoice,
 } from "@/hooks/use-invoices";
+import { toast } from "@/lib/toast";
 import { formatCurrency } from "@/lib/formatters";
 import { INVOICE_STATUS_TONE as STATUS_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
@@ -60,12 +67,45 @@ export function InvoiceCard({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
 
   const editInvoice = useEditInvoice();
   const deleteInvoice = useDeleteInvoice();
   const addPayment = useAddInvoicePayment();
   const deletePayment = useDeleteInvoicePayment();
+  const sendInvoice = useSendInvoice();
+  const invoicePdf = useInvoicePdf();
+
+  function handleSend(values: SendInvoiceValues): void {
+    sendInvoice.mutate(
+      { projectId, invoiceId: invoice.id, ...values },
+      {
+        onSuccess: () => {
+          setSendOpen(false);
+          toast("Invoice sent", "success");
+        },
+        onError: () => toast("Could not send invoice"),
+      },
+    );
+  }
+
+  function handleDownloadPdf(): void {
+    invoicePdf.mutate(
+      { projectId, invoiceId: invoice.id },
+      {
+        onSuccess: (blob) => {
+          const url = URL.createObjectURL(blob as Blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `invoice-${invoice.number || invoice.id}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
+        },
+        onError: () => toast("Could not generate PDF"),
+      },
+    );
+  }
 
   function handleEdit(values: UpsertInvoiceValues): void {
     editInvoice.mutate(
@@ -110,6 +150,21 @@ export function InvoiceCard({
           <Button
             variant="secondary"
             size="sm"
+            onClick={() => setSendOpen(true)}
+          >
+            Send
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={invoicePdf.isPending}
+          >
+            {invoicePdf.isPending ? "…" : "PDF"}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setPaymentOpen(true)}
           >
             Record payment
@@ -128,18 +183,18 @@ export function InvoiceCard({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Amount" value={formatCurrency(invoice.amount, currency)} />
+        <Metric label="Net payable" value={formatCurrency(invoice.netPayable, invoice.currency || currency)} />
         <Metric
-          label={`Retainage (${invoice.retainagePercentage}%)`}
-          value={formatCurrency(invoice.retainageAmount, currency)}
+          label={`Retention (${invoice.retentionRate}%)`}
+          value={formatCurrency(invoice.retentionAmount, invoice.currency || currency)}
         />
         <Metric
           label="Paid"
-          value={formatCurrency(invoice.amountPaid, currency)}
+          value={formatCurrency(invoice.amountPaid, invoice.currency || currency)}
         />
         <Metric
           label="Balance Due"
-          value={formatCurrency(invoice.balanceDue, currency)}
+          value={formatCurrency(invoice.balanceDue, invoice.currency || currency)}
           accent
         />
       </div>
@@ -190,6 +245,15 @@ export function InvoiceCard({
         onSubmit={handleEdit}
         isSubmitting={editInvoice.isPending}
         error={(editInvoice.error as Error | undefined)?.message ?? null}
+      />
+
+      <SendInvoiceDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        defaultRecipient={invoice.recipientEmail ?? invoice.toParty?.email ?? null}
+        onSubmit={handleSend}
+        isSubmitting={sendInvoice.isPending}
+        error={(sendInvoice.error as Error | undefined)?.message ?? null}
       />
 
       <RecordPaymentDialog

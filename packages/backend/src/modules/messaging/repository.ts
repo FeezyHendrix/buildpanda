@@ -224,6 +224,29 @@ export function messagingRepository(db: Knex) {
         .first();
     },
 
+    async hasReadSince(channelId: string, userId: string, sinceIso: string): Promise<boolean> {
+      const row = await db<{ last_read_at: Date | string | null }>("channel_members")
+        .where({ channel_id: channelId, user_id: userId })
+        .first("last_read_at");
+      if (!row?.last_read_at) return false;
+      const lastRead = typeof row.last_read_at === "string" ? row.last_read_at : row.last_read_at.toISOString();
+      return lastRead >= sinceIso;
+    },
+
+    async memberReadStates(channelId: string): Promise<{ user_id: string; last_read_at: string | null }[]> {
+      const rows = await db<{ user_id: string; last_read_at: Date | string | null }>("channel_members")
+        .where({ channel_id: channelId })
+        .select("user_id", "last_read_at");
+      return rows.map((r) => ({
+        user_id: r.user_id,
+        last_read_at: r.last_read_at
+          ? typeof r.last_read_at === "string"
+            ? new Date(r.last_read_at).toISOString()
+            : r.last_read_at.toISOString()
+          : null,
+      }));
+    },
+
     findQuotedPreviews(ids: string[]): Promise<QuotedPreviewRow[]> {
       if (ids.length === 0) return Promise.resolve([]);
       return db("messages as m")

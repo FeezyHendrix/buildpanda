@@ -34,8 +34,8 @@ export default function ProjectInvoices() {
   const summary = useMemo(() => {
     return invoices.reduce(
       (acc, inv) => {
-        acc.billed += inv.amount;
-        acc.retainage += inv.retainageAmount;
+        acc.billed += inv.totalInvoiced;
+        acc.retainage += inv.retentionAmount;
         acc.paid += inv.amountPaid;
         acc.balance += inv.balanceDue;
         return acc;
