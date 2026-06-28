@@ -132,7 +132,13 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       helper: "Requests for information",
       flag: "workflow.rfis",
     },
-    // { label: "BIM Models", slug: "bim", Icon: DocumentsIcon, helper: "3D model viewer" },
+    {
+      label: "BIM Models",
+      slug: "bim",
+      Icon: DocumentsIcon,
+      helper: "3D model viewer",
+      flag: "projects.bim",
+    },
     {
       label: "Approvals",
       slug: "approvals",
