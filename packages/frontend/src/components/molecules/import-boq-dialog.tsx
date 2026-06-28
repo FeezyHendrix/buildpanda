@@ -10,6 +10,7 @@ import {
 } from "@/hooks/use-materials-equipment";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { currencySymbol } from "@/lib/currency";
+import { UnitInput } from "@/components/atoms/unit-input";
 
 interface ImportBoqDialogProps {
   open: boolean;
@@ -172,11 +173,7 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                       />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input
-                        value={row.unit}
-                        onChange={(e) => updateRow(i, { unit: e.target.value })}
-                        className={CELL}
-                      />
+                      <UnitInput value={row.unit} onChange={(v) => updateRow(i, { unit: v })} className={CELL} />
                     </td>
                     <td className="px-2 py-1.5">
                       <div className="flex items-center rounded-md bg-[#F6F6F6] focus-within:ring-2 focus-within:ring-gray-900/10">

@@ -5,6 +5,7 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import { proposalsApi } from "@/api/proposals";
 import type { Estimate } from "@/api/proposals";
 import { cn } from "@/lib/utils";
+import { UnitInput } from "@/components/atoms/unit-input";
 
 interface ItemDraft {
   groupLabel: string;
@@ -136,12 +137,11 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 onChange={(e) => updateItem(i, "qty", e.target.value)}
                 disabled={!isDraft}
               />
-              <Input
-                className="h-9 text-xs"
+              <UnitInput
                 value={item.unit}
-                onChange={(e) => updateItem(i, "unit", e.target.value)}
-                placeholder="m², item…"
+                onChange={(v) => updateItem(i, "unit", v)}
                 disabled={!isDraft}
+                className="h-9 w-full rounded-lg bg-[#F6F6F6] px-2.5 text-xs text-gray-900 border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50"
               />
               <MoneyInput
                 className="h-9 text-xs"

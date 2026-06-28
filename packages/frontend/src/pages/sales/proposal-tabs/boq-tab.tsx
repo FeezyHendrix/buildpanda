@@ -5,6 +5,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useProposalBoq, useReplaceBoq } from "@/hooks/use-proposals";
 import { proposalsApi } from "@/api/proposals";
+import { UnitInput } from "@/components/atoms/unit-input";
 
 interface BoqDraft {
   groupLabel: string;
@@ -158,7 +159,11 @@ export function BoqTab({ proposalId, estimateId }: Props) {
                     <Input type="number" min={0} value={row.qty} onChange={(e) => update(idx, "qty", e.target.value)} className="text-right" />
                   </td>
                   <td className="px-3 py-2">
-                    <Input value={row.unit} onChange={(e) => update(idx, "unit", e.target.value)} placeholder="m², item, kg…" />
+                    <UnitInput
+                      value={row.unit}
+                      onChange={(v) => update(idx, "unit", v)}
+                      className="flex h-11 w-full rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900 border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                    />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
