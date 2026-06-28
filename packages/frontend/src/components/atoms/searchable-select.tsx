@@ -1,4 +1,4 @@
-import { Combobox } from "@base-ui-components/react/combobox";
+import { Combobox } from "@base-ui/react/combobox";
 import { cn } from "@/lib/utils";
 
 interface SearchableSelectProps {
@@ -9,6 +9,8 @@ interface SearchableSelectProps {
   searchPlaceholder?: string;
   emptyText?: string;
   className?: string;
+  disabled?: boolean;
+  id?: string;
 }
 
 function ChevronIcon(props: React.ComponentProps<"svg">) {
@@ -44,6 +46,8 @@ function SearchableSelect({
   searchPlaceholder = "Search…",
   emptyText = "No results found.",
   className,
+  disabled,
+  id,
 }: SearchableSelectProps) {
   return (
     <Combobox.Root
@@ -51,8 +55,10 @@ function SearchableSelect({
       value={value}
       onValueChange={onChange}
       itemToStringLabel={(item) => item ?? ""}
+      disabled={disabled}
     >
       <Combobox.Trigger
+        id={id}
         className={cn(
           "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
           "border-0 outline-none ring-0",

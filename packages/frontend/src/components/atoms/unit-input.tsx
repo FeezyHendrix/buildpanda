@@ -1,5 +1,5 @@
-import { useId } from "react";
 import { CONSTRUCTION_UNITS } from "@/lib/construction-units";
+import { SearchableSelect } from "@/components/atoms/searchable-select";
 
 interface UnitInputProps {
   value: string;
@@ -10,26 +10,19 @@ interface UnitInputProps {
   "aria-label"?: string;
 }
 
-export function UnitInput({ value, onChange, className, disabled, id, "aria-label": ariaLabel }: UnitInputProps) {
-  const listId = useId();
+export function UnitInput({ value, onChange, className, disabled, id }: UnitInputProps) {
   return (
-    <>
-      <input
-        id={id}
-        list={listId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="bags"
-        className={className}
-        disabled={disabled}
-        aria-label={ariaLabel}
-      />
-      <datalist id={listId}>
-        {CONSTRUCTION_UNITS.map((u) => (
-          <option key={u} value={u} />
-        ))}
-      </datalist>
-    </>
+    <SearchableSelect
+      id={id}
+      items={CONSTRUCTION_UNITS}
+      value={value || null}
+      onChange={(v) => onChange(v ?? "")}
+      placeholder="Select unit…"
+      searchPlaceholder="Search units…"
+      emptyText="No matching unit."
+      className={className}
+      disabled={disabled}
+    />
   );
 }
 
