@@ -208,3 +208,125 @@ export const dataPolicy: LegalDocument = {
     },
   ],
 };
+
+export const termsOfService: LegalDocument = {
+  title: "Terms of Service",
+  effectiveDate: EFFECTIVE_DATE,
+  intro: [
+    `These Terms of Service ("Terms") govern your access to and use of the ${COMPANY} construction management platform, including our websites, web and mobile applications and related services (together, the "Services"). They form a binding agreement between you and ${COMPANY} ("${COMPANY}", "we", "us" or "our").`,
+    `By creating an account, accepting an invitation to a project, or otherwise using the Services, you agree to these Terms. If you are using the Services on behalf of an organisation, you confirm that you have authority to bind that organisation, and "you" refers to that organisation. If you do not agree, do not use the Services.`,
+    `These Terms incorporate our Privacy Policy and Data Policy by reference. Our handling of personal data is described in those documents and is carried out in accordance with the Nigeria Data Protection Act 2023 (NDPA), the Nigeria Data Protection Regulation (NDPR), and, where it applies to you, the EU/UK General Data Protection Regulation (GDPR).`,
+  ],
+  sections: [
+    {
+      heading: "1. Who we are",
+      body: [
+        `${COMPANY} provides a construction management platform that helps owners, contractors and project teams plan, build and hand over construction projects. You can reach us at ${SUPPORT_EMAIL} for any questions about these Terms.`,
+      ],
+    },
+    {
+      heading: "2. Eligibility and accounts",
+      body: [
+        "The Services are intended for business and professional use by people aged 18 or over. By using the Services you confirm you meet this requirement.",
+        "You are responsible for the information you provide when registering, for keeping your login credentials confidential, and for all activity that happens under your account. Notify us promptly at the contact address above if you suspect unauthorised access.",
+      ],
+    },
+    {
+      heading: "3. Your organisation, roles and invited users",
+      body: [
+        "Projects on the platform are organised around an owning organisation. Whoever creates or administers a project controls who may join it and what each participant can see and do, through roles and permissions.",
+        "If you invite others to a project, you are responsible for ensuring you have the right to share the relevant data with them, and for managing their access. Invited users are also bound by these Terms when they use the Services.",
+      ],
+    },
+    {
+      heading: "4. Acceptable use",
+      body: [
+        "You agree to use the Services lawfully and only for legitimate construction and project-management purposes. You must not:",
+      ],
+      bullets: [
+        "Break any applicable law or regulation, or infringe anyone else's rights, including intellectual property and data protection rights.",
+        "Upload or share content that is unlawful, fraudulent, defamatory, or that you do not have the right to share.",
+        "Attempt to gain unauthorised access to the Services, other accounts, or our systems, or interfere with their normal operation.",
+        "Introduce malware, scrape the Services at scale, or reverse engineer the platform except to the extent the law expressly permits.",
+        "Use the Services to send spam or to process personal data in ways that breach the NDPA, NDPR or GDPR.",
+      ],
+    },
+    {
+      heading: "5. Your content and data",
+      body: [
+        `You and your organisation retain ownership of the project data and content you create or upload, including project records, schedules, finances, documents, drawings, daily logs, inspections and messages. ${COMPANY} does not claim ownership of your content.`,
+        `You grant us a limited licence to host, store, process and display your content solely to operate and improve the Services for you, and to comply with the law. We do not sell your project content and we do not use it for advertising. How we handle data is set out in our Data Policy and Privacy Policy.`,
+        "You are responsible for ensuring you have a lawful basis to upload personal data about third parties (for example site workers or clients) and for honouring their data-protection rights.",
+      ],
+    },
+    {
+      heading: "6. Data protection (NDPA, NDPR and GDPR)",
+      body: [
+        `Where ${COMPANY} processes personal data that you put into the platform, we act as a data processor and you (or your organisation) act as the data controller. We process that data on your documented instructions and in accordance with the NDPA, the NDPR and, where applicable, the GDPR.`,
+        "We maintain appropriate technical and organisational measures to protect personal data, restrict access through roles and permissions, and assist you, so far as reasonably possible, in meeting your own obligations — including responding to data-subject requests and reporting personal-data breaches.",
+        "Where we determine the purposes and means of processing (for example, account and billing information), we act as a controller and process that data as described in our Privacy Policy. Cross-border transfers, where they occur, are carried out with safeguards required by applicable data-protection law.",
+      ],
+    },
+    {
+      heading: "7. Intellectual property",
+      body: [
+        `The Services, including the platform software, design, and ${COMPANY} trademarks, are owned by ${COMPANY} or our licensors and are protected by intellectual-property laws. These Terms do not transfer any ${COMPANY} intellectual property to you; we grant only the right to use the Services as described here.`,
+      ],
+    },
+    {
+      heading: "8. Fees",
+      body: [
+        "Some features of the Services may be offered on a paid basis. Where fees apply, they will be made clear to you before you incur them, and you agree to pay them in accordance with the plan or order you accept. Unless stated otherwise, fees are exclusive of applicable taxes.",
+      ],
+    },
+    {
+      heading: "9. Availability and changes to the Services",
+      body: [
+        "We work to keep the Services available and reliable, but we do not guarantee uninterrupted access. We may update, add to, or remove features over time, and we may carry out maintenance that temporarily affects availability.",
+      ],
+    },
+    {
+      heading: "10. Suspension and termination",
+      body: [
+        "You may stop using the Services at any time. We may suspend or terminate your access if you materially breach these Terms, if required by law, or to protect the Services or other users.",
+        "On termination, your right to use the Services ends. We will handle any project data in line with our Data Policy and your lawful instructions, subject to retention obligations imposed by law.",
+      ],
+    },
+    {
+      heading: "11. Disclaimers",
+      body: [
+        `The Services support how you manage construction projects but do not replace professional engineering, legal, financial or safety judgement. To the fullest extent permitted by law, the Services are provided "as is" and "as available", and we disclaim implied warranties not expressly stated in these Terms.`,
+      ],
+    },
+    {
+      heading: "12. Limitation of liability",
+      body: [
+        `To the fullest extent permitted by applicable law, ${COMPANY} will not be liable for indirect, incidental, special or consequential losses, or for loss of profits, revenue or data, arising from your use of the Services. Nothing in these Terms excludes liability that cannot lawfully be excluded.`,
+      ],
+    },
+    {
+      heading: "13. Indemnity",
+      body: [
+        `You agree to indemnify and hold ${COMPANY} harmless from claims arising out of your unlawful use of the Services, your breach of these Terms, or your infringement of another party's rights, including data-protection and intellectual-property rights.`,
+      ],
+    },
+    {
+      heading: "14. Governing law",
+      body: [
+        "These Terms are governed by the laws of the Federal Republic of Nigeria, without regard to conflict-of-laws principles. Disputes will be subject to the jurisdiction of the competent courts of Nigeria, without affecting any mandatory data-protection rights you have under the NDPA, NDPR or GDPR.",
+      ],
+    },
+    {
+      heading: "15. Changes to these Terms",
+      body: [
+        "We may update these Terms from time to time. When we make material changes, we will update the effective date above and, where appropriate, provide additional notice. Your continued use of the Services after changes take effect means you accept the updated Terms.",
+      ],
+    },
+    {
+      heading: "16. Contact us",
+      body: [
+        `If you have questions about these Terms, contact us at ${SUPPORT_EMAIL}.`,
+      ],
+    },
+  ],
+};

@@ -1,7 +1,8 @@
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -9,27 +10,21 @@ import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
-import {
-  UpsertInvoiceDialog,
-  type UpsertInvoiceValues,
-} from "@/components/molecules/upsert-invoice-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInvoices, useCreateInvoice } from "@/hooks/use-invoices";
+import { useProjectInvoices } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
-import { toInput } from "./invoices/invoice-utils";
 import { InvoiceCard } from "./invoices/invoice-card";
 import { SummaryTile } from "./invoices/summary-tile";
 
 export default function ProjectInvoices() {
   const { project, access } = useProjectContext();
+  const navigate = useNavigate();
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
     project.id,
   );
-  const [createOpen, setCreateOpen] = useState(false);
-  const createInvoice = useCreateInvoice();
 
   const summary = useMemo(() => {
     return invoices.reduce(
@@ -44,11 +39,8 @@ export default function ProjectInvoices() {
     );
   }, [invoices]);
 
-  function handleCreate(values: UpsertInvoiceValues): void {
-    createInvoice.mutate(
-      { projectId: project.id, ...toInput(values) },
-      { onSuccess: () => setCreateOpen(false) },
-    );
+  function goToCreate(): void {
+    navigate(`/project/${project.id}/finances/invoices/new`);
   }
 
   return (
@@ -65,25 +57,12 @@ export default function ProjectInvoices() {
         description="Track vendor invoices, retainage withheld, and payments made across the project."
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setCreateOpen(true)}
-            >
+            <Button variant="primary" size="md" onClick={goToCreate}>
               <PlusIcon className="size-4" />
               New invoice
             </Button>
           ) : undefined
         }
-      />
-
-      <UpsertInvoiceDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        mode="create"
-        onSubmit={handleCreate}
-        isSubmitting={createInvoice.isPending}
-        error={(createInvoice.error as Error | undefined)?.message ?? null}
       />
 
       <section
@@ -134,11 +113,7 @@ export default function ProjectInvoices() {
               description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
               action={
                 canManage ? (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    onClick={() => setCreateOpen(true)}
-                  >
+                  <Button variant="primary" size="md" onClick={goToCreate}>
                     <PlusIcon className="size-4" />
                     New invoice
                   </Button>
