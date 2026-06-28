@@ -85,6 +85,7 @@ const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
+const ProjectInvoiceNew = lazy(() => import("@/pages/project/invoices/new"));
 const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
 const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
@@ -117,6 +118,7 @@ const PublicProposalPage = lazy(() => import("@/pages/public/proposal-page"));
 const SharePage = lazy(() => import("@/pages/public/share-page"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
+const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
 function pf(flag: string, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
@@ -180,6 +182,10 @@ export const router = createBrowserRouter([
   {
     path: "/share/:token",
     element: <SharePage />,
+  },
+  {
+    path: "/terms",
+    element: <TermsOfServicePage />,
   },
   {
     path: "/privacy",
@@ -262,6 +268,7 @@ export const router = createBrowserRouter([
       { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
       { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
       { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
+      { path: "finances/invoices/new", element: pf("commercial.invoices", <ProjectInvoiceNew />) },
       { path: "finances/payment-claims", element: pf("commercial.paymentClaims", <ProjectPaymentClaims />) },
       { path: "finances/purchase-orders", element: pf("commercial.purchaseOrders", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
