@@ -1,4 +1,4 @@
-import { Dialog } from "@base-ui-components/react/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";

@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Menu } from "@base-ui-components/react/menu";
+import { Menu } from "@base-ui/react/menu";
 import { cn } from "@/lib/utils";
 
 export interface KanbanColumn<S extends string> {

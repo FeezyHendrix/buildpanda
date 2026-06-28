@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { AlertDialog } from "@base-ui-components/react/alert-dialog";
+import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/atoms/spinner";
 
