@@ -5,6 +5,7 @@ import {
   lineAmount,
   type UpsertLineItem,
 } from "./invoice-form-model";
+import { UnitInput } from "@/components/atoms/unit-input";
 
 interface LineItemsListProps {
   items: UpsertLineItem[];
@@ -102,10 +103,9 @@ function Row({ index, line, canRemove, money, onChange, onRemove }: RowProps) {
           />
         </Cell>
         <Cell span="col-span-4 md:col-span-2" label="Unit">
-          <input
+          <UnitInput
             value={line.unit}
-            onChange={(e) => onChange({ unit: e.target.value })}
-            placeholder="m²"
+            onChange={(v) => onChange({ unit: v })}
             aria-label={`Line ${lineNum} unit`}
             className={inputClass}
           />

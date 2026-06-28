@@ -6,6 +6,7 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import { uploadFileRequest } from "@/hooks/use-files";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { UnitInput } from "@/components/atoms/unit-input";
 
 const FIELD =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
@@ -135,15 +136,9 @@ export function LogMaterialDrawer({
             className={FIELD}
           />
         </div>
-        <div className="flex w-32 flex-col gap-1.5">
+        <div className="flex w-36 flex-col gap-1.5">
           <Label htmlFor="mat-unit">Unit</Label>
-          <input
-            id="mat-unit"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            placeholder="bags"
-            className={FIELD}
-          />
+          <UnitInput id="mat-unit" value={unit} onChange={setUnit} className={FIELD} />
         </div>
       </div>
 
