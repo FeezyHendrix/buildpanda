@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import type { QueueManager } from "../../lib/queue/index.ts";
-import { generateInsights } from "../../lib/kimi.ts";
+import { generateInsights } from "../../lib/insight-engine.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { buildProjectMetrics } from "./context.ts";
