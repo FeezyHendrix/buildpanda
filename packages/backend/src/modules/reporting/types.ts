@@ -94,6 +94,7 @@ export interface OperationsReportingSlice {
   pendingApprovals: number;
   expiringPermits: number;
   upcomingKeyDates: number;
+  missedKeyDates: number;
 }
 
 export interface HealthPoint {

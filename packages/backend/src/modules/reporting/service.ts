@@ -108,6 +108,7 @@ export function reportingService(db: Knex) {
       pendingApprovals,
       expiringPermits,
       upcomingKeyDates,
+      missedKeyDates,
       riskOpen,
       riskHigh,
       latestInsight,
@@ -185,6 +186,17 @@ export function reportingService(db: Knex) {
       db("key_dates")
         .where({ project_id: projectId })
         .whereNot("status", "Met")
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("key_dates")
+        .where({ project_id: projectId })
+        .where((q) =>
+          q
+            .where("status", "Missed")
+            .orWhere((qq) =>
+              qq.where("status", "Upcoming").andWhere("target_date", "<", db.fn.now()),
+            ),
+        )
         .count<{ count: string }[]>("id as count")
         .first(),
       db("risk_factors")
@@ -396,6 +408,7 @@ export function reportingService(db: Knex) {
         pendingApprovals: toNumber(pendingApprovals?.count),
         expiringPermits: toNumber(expiringPermits?.count),
         upcomingKeyDates: toNumber(upcomingKeyDates?.count),
+        missedKeyDates: toNumber(missedKeyDates?.count),
       },
       health: {
         score: insight?.healthScore ?? null,
