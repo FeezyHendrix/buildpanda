@@ -47,7 +47,7 @@ export function TaskCard({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={cn(
-        "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow",
+        "touch-manipulation overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow",
         isDragging ? "opacity-50 shadow-md" : "hover:shadow-md",
         canManage && "cursor-grab active:cursor-grabbing",
       )}

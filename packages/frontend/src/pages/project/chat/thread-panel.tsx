@@ -36,7 +36,7 @@ export function ThreadPanel({
   }, [thread]);
 
   return (
-    <div className="relative z-10 flex w-full lg:w-[420px] shrink-0 flex-col border-l border-gray-200 bg-white">
+    <div className="absolute inset-0 z-20 flex w-full flex-col border-l border-gray-200 bg-white lg:relative lg:inset-auto lg:z-10 lg:w-[420px] lg:shrink-0">
       <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
         <h3 className="text-[15px] font-semibold text-black-900">Thread</h3>
         <button onClick={onClose} className="text-gray-500 transition-colors hover:text-gray-800" aria-label="Close thread">
@@ -76,7 +76,7 @@ export function ThreadPanel({
         <div ref={bottomRef} />
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 px-5 py-4">
+      <div className="shrink-0 border-t border-gray-200 px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <Composer channelId={rootMessage.channelId} projectId={projectId} parentMessageId={rootMessage.id} isThread />
       </div>
     </div>
