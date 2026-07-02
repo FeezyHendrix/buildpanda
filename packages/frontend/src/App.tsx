@@ -107,6 +107,7 @@ const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
+const ProjectSelections = lazy(() => import("@/pages/project/selections"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
@@ -259,6 +260,7 @@ export const router = createBrowserRouter([
       { path: "queries", element: pf("workflow.queries", <ProjectQueries />) },
       { path: "rfis", element: pf("workflow.rfis", <ProjectRfis />) },
       { path: "approvals", element: pf("workflow.approvals", <ProjectApprovals />) },
+      { path: "selections", element: pf("projects.selections", <ProjectSelections />) },
       { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
       { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
       { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
