@@ -148,6 +148,11 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         } else if (input.status === "Pending") {
           patch.reviewed_at = null;
           patch.reviewed_by_id = null;
+          if (existing.status !== "Pending") {
+            // Reopening restarts decision chasing from level one.
+            patch.reminder_level = null;
+            patch.last_reminded_at = null;
+          }
         }
       }
 
