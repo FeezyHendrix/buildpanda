@@ -34,6 +34,7 @@ export interface ProjectMetrics {
   recentUpdateCount: number;
   daysSinceLastUpdate: number | null;
   recentDailyLogCount: number;
+  missedKeyDateCount: number;
 }
 
 export interface AiInsightResult {

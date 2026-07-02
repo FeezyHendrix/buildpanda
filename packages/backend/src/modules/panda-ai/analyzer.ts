@@ -50,6 +50,16 @@ export function analyzeMetrics(metrics: ProjectMetrics): AiInsightResult {
     });
   }
 
+  if (metrics.missedKeyDateCount > 0) {
+    score -= clamp(metrics.missedKeyDateCount * 7, 0, 21);
+    suggestions.push({
+      title: `${metrics.missedKeyDateCount} key date${metrics.missedKeyDateCount === 1 ? " has" : "s have"} been missed`,
+      detail: `${metrics.missedKeyDateCount} contractual key date${metrics.missedKeyDateCount === 1 ? " is" : "s are"} missed or past ${metrics.missedKeyDateCount === 1 ? "its" : "their"} target date without being met. Reforecast the dates, notify affected stakeholders, and record the cause — missed key dates are the strongest early signal of programme slippage.`,
+      priority: "high",
+      category: "Schedule",
+    });
+  }
+
   if (metrics.highRiskCount > 0) {
     score -= clamp(metrics.highRiskCount * 6, 0, 24);
     suggestions.push({

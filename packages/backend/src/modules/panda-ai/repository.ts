@@ -25,6 +25,7 @@ const CREATED_AT_INPUT_TABLES = [
   "approvals",
   "daily_logs",
   "inspections",
+  "key_dates",
 ] as const;
 
 const UPDATED_AT_INPUT_TABLES = [
@@ -33,6 +34,7 @@ const UPDATED_AT_INPUT_TABLES = [
   "queries",
   "approvals",
   "daily_logs",
+  "key_dates",
 ] as const;
 
 const HEALTH_RETENTION_LIMIT = 30;
