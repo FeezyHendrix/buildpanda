@@ -1,5 +1,6 @@
 export const NOTIFICATION_TYPES = [
   { type: "update_posted", label: "Project updates posted", group: "Project" },
+  { type: "update_draft_ready", label: "Weekly client update draft ready to review", group: "Project" },
   { type: "update_action_required", label: "Action required on an update", group: "Project" },
   { type: "inspection_scheduled", label: "Inspection scheduled", group: "Project" },
   { type: "milestone_released", label: "Milestone payment released", group: "Payments" },
@@ -23,6 +24,10 @@ export const NOTIFICATION_TYPES = [
   { type: "change_request_decided", label: "A change request was approved or rejected", group: "Tasks" },
   { type: "approval_requested", label: "An approval needs your decision", group: "Approvals" },
   { type: "approval_decided", label: "An approval you submitted was decided", group: "Approvals" },
+  { type: "selection_created", label: "A selection needs your decision", group: "Approvals" },
+  { type: "selection_decided", label: "A selection was decided", group: "Approvals" },
+  { type: "decision_reminder", label: "A pending decision needs your attention", group: "Approvals" },
+  { type: "decision_escalated", label: "A client decision is overdue", group: "Approvals" },
   { type: "inspection_failed", label: "An inspection requires action", group: "Project" },
   { type: "invoice_submitted", label: "A vendor invoice was submitted", group: "Payments" },
   { type: "invoice_overdue", label: "An invoice is overdue", group: "Payments" },
@@ -83,4 +88,15 @@ export interface NotificationPreferenceRow {
   email_enabled: boolean;
   created_at: Date | string;
   updated_at: Date | string;
+}
+
+export interface PushSubscriptionRow {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  created_at: Date | string;
+  last_used_at: Date | string | null;
 }

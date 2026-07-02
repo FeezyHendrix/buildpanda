@@ -157,6 +157,43 @@ export function useEditUpdate() {
   });
 }
 
+export function useGenerateAiDraft() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId }: { projectId: string }) => {
+      const { data } = await api.post<ProjectUpdate>(
+        `/projects/${projectId}/updates/ai-draft`,
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
+    },
+  });
+}
+
+interface PublishUpdateVariables {
+  projectId: string;
+  updateId: string;
+}
+
+export function usePublishUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, updateId }: PublishUpdateVariables) => {
+      const { data } = await api.post<ProjectUpdate>(
+        `/projects/${projectId}/updates/${updateId}/publish`,
+      );
+      return data;
+    },
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
+    },
+  });
+}
+
 interface DeleteUpdateVariables {
   projectId: string;
   updateId: string;
