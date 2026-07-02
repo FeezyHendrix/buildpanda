@@ -46,6 +46,7 @@
     "tsx": "^4.19.0",
     "undici": "^8.5.0",
     "web-ifc": "0.0.77",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zeptomail": "^7.0.2"
   },
@@ -54,6 +55,7 @@
     "@types/node": "^22.0.0",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "tsup": "^8.3.0",
     "typescript": "~5.7.0"
