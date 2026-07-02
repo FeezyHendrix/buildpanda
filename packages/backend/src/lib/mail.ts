@@ -96,10 +96,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
         },
       })),
       ...(options.cc && options.cc.length > 0
-        ? { cc: options.cc.map((address) => ({ email_address: { address } })) }
+        ? { cc: options.cc.map((address) => ({ email_address: { address, name: address } })) }
         : {}),
       ...(options.bcc && options.bcc.length > 0
-        ? { bcc: options.bcc.map((address) => ({ email_address: { address } })) }
+        ? { bcc: options.bcc.map((address) => ({ email_address: { address, name: address } })) }
         : {}),
       subject: options.subject,
       htmlbody: options.html,
