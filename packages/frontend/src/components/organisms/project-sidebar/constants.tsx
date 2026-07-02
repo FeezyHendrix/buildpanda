@@ -147,6 +147,13 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "workflow.approvals",
     },
     {
+      label: "Selections",
+      slug: "selections",
+      Icon: InspectionsIcon,
+      helper: "Client choices & allowances",
+      flag: "projects.selections",
+    },
+    {
       label: "Change Requests",
       slug: "change-requests",
       Icon: FinancesIcon,
@@ -226,6 +233,12 @@ export const CLIENT_ENTRIES: readonly NavEntry[] = [
     slug: "queries",
     Icon: MessagesIcon,
     flag: "workflow.queries",
+  },
+  {
+    label: "Selections",
+    slug: "selections",
+    Icon: InspectionsIcon,
+    flag: "projects.selections",
   },
   {
     label: "Finances",

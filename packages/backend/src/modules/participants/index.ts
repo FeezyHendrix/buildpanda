@@ -148,6 +148,7 @@ function computeAccess(
       canViewAll: relationship !== "none",
       canManageParticipants: isCompanyManager,
       canDecideApprovals: isCompanyManager || isClient,
+      canDecideSelections: isCompanyManager || isClient,
       canRaiseQueries: isCompanyManager || isClient,
       canComment: relationship !== "none" && relationship !== "guest",
     },
