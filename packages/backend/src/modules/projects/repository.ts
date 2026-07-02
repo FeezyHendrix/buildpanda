@@ -52,6 +52,46 @@ export interface NewFinancesRecord {
   remaining_balance: number;
 }
 
+/**
+ * Template-seeded task board created alongside the project. Mirrors the shape
+ * the tasks module's ensureDefaultBoard produces so it is picked up as the
+ * project's default board.
+ */
+export interface TaskSeed {
+  board: {
+    id: string;
+    project_id: string;
+    name: string;
+    is_default: boolean;
+    created_by_id: string | null;
+  };
+  columns: Array<{
+    id: string;
+    board_id: string;
+    name: string;
+    status: string | null;
+    position: number;
+  }>;
+  tasks: Array<{
+    id: string;
+    project_id: string;
+    board_id: string;
+    column_id: string;
+    title: string;
+    description: string | null;
+    description_html: string | null;
+    assignee_id: string | null;
+    assignee_team_member_id: string | null;
+    due_date: string | null;
+    priority: string;
+    labels: string;
+    position: number;
+    source_type: string | null;
+    source_id: string | null;
+    created_by_id: string | null;
+  }>;
+}
+
 export function projectsRepository(db: Knex) {
   return {
     // Lists projects the user can see: ones they own, seed rows, projects in the
@@ -116,6 +156,7 @@ export function projectsRepository(db: Knex) {
       project: NewProjectRecord,
       phases: NewPhaseRecord[],
       finances: NewFinancesRecord,
+      taskSeed?: TaskSeed,
     ): Promise<void> {
       return db.transaction(async (trx) => {
         await trx("projects").insert({
@@ -124,6 +165,11 @@ export function projectsRepository(db: Knex) {
         });
         if (phases.length) await trx("project_phases").insert(phases);
         await trx("project_finances").insert(finances);
+        if (taskSeed) {
+          await trx("task_boards").insert(taskSeed.board);
+          if (taskSeed.columns.length) await trx("task_columns").insert(taskSeed.columns);
+          if (taskSeed.tasks.length) await trx("tasks").insert(taskSeed.tasks);
+        }
       });
     },
   };
