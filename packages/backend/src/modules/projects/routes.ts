@@ -5,7 +5,36 @@ import { generateId } from "../../lib/ids.ts";
 import { sendFirstProjectEmail } from "../lifecycle/index.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
+import { PROJECT_TEMPLATES, PROJECT_TEMPLATE_IDS, toTemplateSummary } from "./templates.ts";
 import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
+
+const listTemplatesResponse = {
+  200: {
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        name: { type: "string" },
+        description: { type: "string" },
+        stageCount: { type: "integer" },
+        taskCount: { type: "integer" },
+        totalWeeks: { type: "integer" },
+        stages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              durationWeeks: { type: "integer" },
+              dateRange: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
 
 const updateCurrencyBody = {
   type: "object",
@@ -30,6 +59,7 @@ const createProjectBody = {
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
     projectType: { type: "string", minLength: 1, maxLength: 100 },
+    templateId: { type: "string", enum: PROJECT_TEMPLATE_IDS },
     location: {
       type: "object",
       required: ["state", "city", "ownsLand"],
@@ -89,6 +119,15 @@ const updateBudgetBody = {
 
 const projectRoutes: FastifyPluginAsync = async (fastify) => {
   const service = projectsService(projectsRepository(fastify.db));
+
+  fastify.get(
+    "/project-templates",
+    { schema: { response: listTemplatesResponse } },
+    async (request) => {
+      request.requireAuth();
+      return PROJECT_TEMPLATES.map(toTemplateSummary);
+    },
+  );
 
   fastify.get("/projects", async (request) => {
     const user = request.requireAuth();

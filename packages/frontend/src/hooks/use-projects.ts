@@ -1,11 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { projectKeys } from "./query-keys";
+import { projectKeys, projectTemplateKeys } from "./query-keys";
 import type { Currency, Project } from "@/lib/project-types";
+
+export interface ProjectTemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  stageCount: number;
+  taskCount: number;
+  totalWeeks: number;
+  stages: Array<{ name: string; durationWeeks: number; dateRange: string }>;
+}
 
 export interface CreateProjectInput {
   title: string;
   projectType: string;
+  templateId?: string;
   location: {
     state: string;
     city: string;
@@ -49,6 +60,17 @@ export function useProject(id: string | undefined) {
       return data;
     },
     enabled: Boolean(id),
+  });
+}
+
+export function useProjectTemplates() {
+  return useQuery({
+    queryKey: projectTemplateKeys.list(),
+    queryFn: async () => {
+      const { data } = await api.get<ProjectTemplateSummary[]>("/project-templates");
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // static definitions; no need to refetch per step change
   });
 }
 
