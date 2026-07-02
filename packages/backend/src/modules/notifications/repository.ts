@@ -1,5 +1,10 @@
 import type { Knex } from "knex";
-import type { NotificationPreferenceRow, NotificationRow, NotificationType } from "./types.ts";
+import type {
+  NotificationPreferenceRow,
+  NotificationRow,
+  NotificationType,
+  PushSubscriptionRow,
+} from "./types.ts";
 
 export interface NewNotificationRecord {
   id: string;
@@ -21,6 +26,15 @@ export interface NewNotificationPreferenceRecord {
 export interface ListFilters {
   unreadOnly?: boolean;
   limit?: number;
+}
+
+export interface NewPushSubscriptionRecord {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
 }
 
 export function notificationsRepository(db: Knex) {
@@ -91,6 +105,31 @@ export function notificationsRepository(db: Knex) {
           email_enabled: record.email_enabled,
           updated_at: new Date(),
         });
+    },
+
+    // A push endpoint is globally unique per browser registration, so the
+    // upsert keys on it — re-subscribing (or another account signing in on the
+    // same device) takes over the endpoint instead of duplicating it.
+    async upsertPushSubscription(record: NewPushSubscriptionRecord): Promise<void> {
+      await db("push_subscriptions")
+        .insert(record)
+        .onConflict("endpoint")
+        .merge({
+          user_id: record.user_id,
+          p256dh: record.p256dh,
+          auth: record.auth,
+          user_agent: record.user_agent,
+        });
+    },
+
+    deletePushSubscription(userId: string, endpoint: string): Promise<number> {
+      return db<PushSubscriptionRow>("push_subscriptions")
+        .where({ user_id: userId, endpoint })
+        .delete();
+    },
+
+    listPushSubscriptions(userId: string): Promise<PushSubscriptionRow[]> {
+      return db<PushSubscriptionRow>("push_subscriptions").where({ user_id: userId });
     },
   };
 }
