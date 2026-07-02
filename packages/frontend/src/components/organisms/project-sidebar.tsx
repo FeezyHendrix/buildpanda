@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
@@ -44,8 +44,35 @@ interface ProjectSidebarProps {
   onOpen?: () => void;
 }
 
+// Desktop-only preference: hide the sidebar entirely to give the main pane
+// full width. The mobile slide-over is a separate mechanism (`open` prop).
+const COLLAPSE_PREF_KEY = "prefs:v1:project-sidebar-collapsed";
+
+function readCollapsedPref(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_PREF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsedPref(collapsed: boolean) {
+  try {
+    localStorage.setItem(COLLAPSE_PREF_KEY, collapsed ? "1" : "0");
+  } catch {
+    // Private mode / quota — the toggle still works for the session.
+  }
+}
+
 function ProjectSidebar({ project, className, access, open = false, onClose, onOpen }: ProjectSidebarProps) {
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(readCollapsedPref);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      writeCollapsedPref(!prev);
+      return !prev;
+    });
+  };
   const isClient = access?.relationship !== "company";
   const { data: channels = [] } = useProjectChannels(project.id);
   const { data: allChannels = [] } = useAllChannels();
@@ -179,12 +206,30 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           <ChevronRightIcon className={cn("size-4 text-gray-400 transition-transform duration-300", open && "rotate-180")} />
         </button>
 
+        {/* Desktop pull-tab — hides/shows the whole sidebar for a full-width main pane */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+          className={cn(
+            "absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-full",
+            "hidden h-14 w-7 items-center justify-center lg:flex",
+            "rounded-r-xl border border-l-0 border-[#F0F0F0] bg-white shadow-sm",
+            "text-gray-400 hover:text-gray-600",
+          )}
+        >
+          <ChevronRightIcon className={cn("size-4 transition-transform duration-300", !collapsed && "rotate-180")} />
+        </button>
+
       <aside
         className={cn(
-          "flex h-full flex-col gap-6 overflow-hidden border-r border-[#F0F0F0] bg-white px-4 py-6 w-[260px]",
+          "flex h-full flex-col overflow-hidden border-r border-[#F0F0F0] bg-white w-[260px]",
+          "transition-[width] duration-300 ease-in-out",
+          collapsed && "lg:w-0 lg:border-r-0",
           className,
         )}
       >
+      <div className="flex h-full w-[260px] shrink-0 flex-col gap-6 px-4 py-6">
       <Link
         to={isClient ? "/my-build" : "/dashboard"}
         className={cn(
@@ -333,6 +378,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           />
         </nav>
       )}
+      </div>
       </aside>
       </div>
     </>
