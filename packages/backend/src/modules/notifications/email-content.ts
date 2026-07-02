@@ -22,6 +22,7 @@ interface TypePresentation {
 
 const PRESENTATION: Record<NotificationType, TypePresentation> = {
   update_posted: { eyebrow: "Project update", accent: "brand", ctaLabel: "View Update" },
+  update_draft_ready: { eyebrow: "Draft ready to review", accent: "brand", ctaLabel: "Review Draft" },
   update_action_required: { eyebrow: "Action required", accent: "warning", ctaLabel: "View Update" },
   inspection_scheduled: { eyebrow: "Inspection scheduled", accent: "brand", ctaLabel: "View Inspection" },
   milestone_released: { eyebrow: "Payment released", accent: "success", ctaLabel: "View Payment" },
@@ -45,6 +46,10 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   change_request_decided: { eyebrow: "Change request decided", accent: "brand", ctaLabel: "View Change Request" },
   approval_requested: { eyebrow: "Approval needed", accent: "warning", ctaLabel: "Review & Approve" },
   approval_decided: { eyebrow: "Approval decided", accent: "brand", ctaLabel: "View Approval" },
+  selection_created: { eyebrow: "Selection needed", accent: "warning", ctaLabel: "View Selection" },
+  selection_decided: { eyebrow: "Selection decided", accent: "brand", ctaLabel: "View Selection" },
+  decision_reminder: { eyebrow: "Decision needed", accent: "warning", ctaLabel: "Make a Decision" },
+  decision_escalated: { eyebrow: "Awaiting client decision", accent: "danger", ctaLabel: "View Item" },
   inspection_failed: { eyebrow: "Inspection — action required", accent: "danger", ctaLabel: "View Inspection" },
   invoice_submitted: { eyebrow: "Invoice submitted", accent: "brand", ctaLabel: "View Invoice" },
   invoice_overdue: { eyebrow: "Invoice overdue", accent: "danger", ctaLabel: "View Invoice" },
@@ -86,4 +91,28 @@ export function buildNotificationEmail(
       url: input.ctaUrl ?? fallbackUrl(input.projectId),
     },
   });
+}
+
+export interface NotificationPushPayload {
+  title: string;
+  body: string;
+  url: string;
+}
+
+/**
+ * Push reuses the email's presentation content: the same title/body the email
+ * renders as heading/message, and the same CTA/deep-link resolution (explicit
+ * ctaUrl, else the project overview / dashboard fallback).
+ */
+export function buildNotificationPush(input: {
+  title: string;
+  body: string;
+  projectId: string | null;
+  ctaUrl: string | null;
+}): NotificationPushPayload {
+  return {
+    title: input.title,
+    body: input.body,
+    url: input.ctaUrl ?? fallbackUrl(input.projectId),
+  };
 }

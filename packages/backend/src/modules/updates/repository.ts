@@ -33,6 +33,8 @@ export interface NewUpdateRecord {
   cta_label: string;
   cta_tone: CtaTone;
   status: UpdateStatus;
+  is_draft?: boolean;
+  generated_kind?: string | null;
   created_at: Date;
 }
 
@@ -54,10 +56,43 @@ export interface StatusTransition {
 
 export function updatesRepository(db: Knex) {
   return {
-    listByProject(projectId: string): Promise<UpdateRow[]> {
+    listByProject(
+      projectId: string,
+      options: { includeDrafts?: boolean } = {},
+    ): Promise<UpdateRow[]> {
       return db<UpdateRow>("project_updates")
         .where({ project_id: projectId })
+        .modify((query) => {
+          if (!options.includeDrafts) query.where({ is_draft: false });
+        })
         .orderBy("created_at", "desc");
+    },
+
+    findDraftByKind(
+      projectId: string,
+      generatedKind: string,
+      since: Date,
+    ): Promise<UpdateRow | undefined> {
+      return db<UpdateRow>("project_updates")
+        .where({
+          project_id: projectId,
+          generated_kind: generatedKind,
+          is_draft: true,
+        })
+        .where("created_at", ">=", since)
+        .orderBy("created_at", "desc")
+        .first();
+    },
+
+    async publishUpdate(updateId: string): Promise<UpdateRow> {
+      const [row] = await db<UpdateRow>("project_updates")
+        .where({ id: updateId })
+        // Publishing resets created_at so the update surfaces to the
+        // homeowner as of the moment it went live, not when it was drafted.
+        .update({ is_draft: false, created_at: new Date() })
+        .returning("*");
+      if (!row) throw new ConflictError("Update not found");
+      return row;
     },
 
     findById(updateId: string): Promise<UpdateRow | undefined> {
