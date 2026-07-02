@@ -15,6 +15,7 @@ import {
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
+import { canViewResource } from "@/lib/project-types";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -93,51 +94,51 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
 
   const items = useMemo<ProjectNavItem[]>(
     () =>
-      NAV_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const scheduleItems = useMemo<GroupNavItem[]>(
     () =>
-      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const materialsItems = useMemo<GroupNavItem[]>(
     () =>
-      MATERIALS_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const siteControlItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
-      FINANCE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const clientItems = useMemo<ProjectNavItem[]>(
     () =>
-      CLIENT_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
 
   const isScheduleActive = scheduleItems.some(
@@ -324,7 +325,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("projects.documents") && (
+          {isOn("projects.documents") && canViewResource(access, "documents") && (
             <ProjectNavLink
               item={{
                 label: "Documents",
@@ -335,7 +336,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("project.team") && (
+          {isOn("project.team") && canViewResource(access, "teamMembers") && (
             <ProjectNavLink
               item={{
                 label: "Team",
@@ -346,7 +347,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("collaboration.messaging") && (
+          {isOn("collaboration.messaging") && canViewResource(access, "messages") && (
             <ProjectNavLink
               item={{
                 label: "Messages",

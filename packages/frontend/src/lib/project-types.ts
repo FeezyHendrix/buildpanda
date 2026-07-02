@@ -437,6 +437,8 @@ export interface ProjectParticipant {
 export interface ProjectAccess {
   relationship: "company" | ParticipantRole | "none";
   orgRole: string | null;
+  /** Effective resource permissions (org role ∪ participant overlay), e.g. { finances: ["view"] }. */
+  permissions: Record<string, string[]>;
   capabilities: {
     canManage: boolean;
     canViewAll: boolean;
@@ -446,6 +448,19 @@ export interface ProjectAccess {
     canRaiseQueries: boolean;
     canComment: boolean;
   };
+}
+
+/**
+ * Whether the caller may view a permissioned resource. Entries without a
+ * resource are unrestricted; while access is still loading we show the entry
+ * (the backend enforces regardless — this only drives presentation).
+ */
+export function canViewResource(
+  access: ProjectAccess | undefined,
+  resource?: string,
+): boolean {
+  if (!resource || !access) return true;
+  return (access.permissions?.[resource] ?? []).includes("view");
 }
 
 export interface MyProjectCard {
