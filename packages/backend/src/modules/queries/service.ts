@@ -156,6 +156,11 @@ export function queriesService(repository: QueriesRepository, deps: QueriesDeps 
         ["Answered", "Closed"].includes(input.status) &&
         !["Answered", "Closed"].includes(existing.status);
       if (input.status !== undefined) patch.status = input.status;
+      if (input.status === "Open" && existing.status !== "Open") {
+        // Reopening restarts decision chasing from level one.
+        patch.reminder_level = null;
+        patch.last_reminded_at = null;
+      }
       if (becomingAnswered) {
         patch.answered_at = new Date().toISOString();
         patch.answered_by_id = userId;
