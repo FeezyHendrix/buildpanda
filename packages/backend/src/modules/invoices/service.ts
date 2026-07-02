@@ -64,6 +64,7 @@ export interface CreateInvoiceInput {
   milestonePaymentId?: string;
   contractReference?: string;
   paymentTerms?: string;
+  paymentInstructions?: string;
   coverNote?: string;
   headerText?: string;
   footerText?: string;
@@ -95,6 +96,7 @@ export interface EditInvoiceInput {
   milestonePaymentId?: string;
   contractReference?: string;
   paymentTerms?: string;
+  paymentInstructions?: string;
   coverNote?: string;
   headerText?: string;
   footerText?: string;
@@ -271,6 +273,7 @@ function toInvoice(
     milestonePaymentId: row.milestone_payment_id,
     contractReference: row.contract_reference,
     paymentTerms: row.payment_terms,
+    paymentInstructions: row.payment_instructions,
     coverNote: row.cover_note,
     headerText: row.header_text,
     footerText: row.footer_text,
@@ -463,6 +466,7 @@ export function invoicesService(repository: InvoicesRepository) {
           milestone_payment_id: optional(input.milestonePaymentId) ?? null,
           contract_reference: optional(input.contractReference) ?? null,
           payment_terms: optional(input.paymentTerms) ?? null,
+          payment_instructions: optional(input.paymentInstructions) ?? null,
           cover_note: optional(input.coverNote) ?? null,
           header_text: optional(input.headerText) ?? null,
           footer_text: optional(input.footerText) ?? null,
@@ -534,6 +538,7 @@ export function invoicesService(repository: InvoicesRepository) {
       if (input.milestonePaymentId !== undefined) patch.milestone_payment_id = optional(input.milestonePaymentId) ?? null;
       if (input.contractReference !== undefined) patch.contract_reference = optional(input.contractReference) ?? null;
       if (input.paymentTerms !== undefined) patch.payment_terms = optional(input.paymentTerms) ?? null;
+      if (input.paymentInstructions !== undefined) patch.payment_instructions = optional(input.paymentInstructions) ?? null;
       if (input.coverNote !== undefined) patch.cover_note = optional(input.coverNote) ?? null;
       if (input.headerText !== undefined) patch.header_text = optional(input.headerText) ?? null;
       if (input.footerText !== undefined) patch.footer_text = optional(input.footerText) ?? null;

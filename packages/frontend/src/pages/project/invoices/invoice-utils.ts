@@ -15,6 +15,7 @@ export function toInput(values: UpsertInvoiceValues): InvoiceInput {
     issueDate: values.issueDate || undefined,
     dueDate: values.dueDate || undefined,
     paymentTerms: values.paymentTerms || undefined,
+    paymentInstructions: values.paymentInstructions || undefined,
     recipientEmail: values.recipientEmail || undefined,
     notes: values.notes || undefined,
     lineItems: values.lineItems
@@ -42,6 +43,7 @@ export function toValues(invoice: Invoice): UpsertInvoiceValues {
     issueDate: invoice.issueDate ?? "",
     dueDate: invoice.dueDate ?? "",
     paymentTerms: invoice.paymentTerms ?? "",
+    paymentInstructions: invoice.paymentInstructions ?? "",
     recipientEmail: invoice.recipientEmail ?? "",
     notes: invoice.notes ?? "",
     lineItems:

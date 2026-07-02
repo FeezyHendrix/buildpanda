@@ -132,6 +132,7 @@ const createInvoiceBody = {
     milestonePaymentId: { type: "string", minLength: 1 },
     contractReference: { type: "string", maxLength: 200 },
     paymentTerms: { type: "string", maxLength: 1000 },
+    paymentInstructions: { type: "string", maxLength: 2000 },
     coverNote: { type: "string", maxLength: 4000 },
     headerText: { type: "string", maxLength: 2000 },
     footerText: { type: "string", maxLength: 2000 },

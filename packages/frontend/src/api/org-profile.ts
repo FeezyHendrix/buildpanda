@@ -10,6 +10,7 @@ export interface OrgProfile {
   defaultCurrency: string;
   defaultTaxLabel: string;
   defaultTaxPct: number;
+  paymentInstructions: string | null;
 }
 
 export interface UpdateOrgProfileInput {
@@ -21,6 +22,7 @@ export interface UpdateOrgProfileInput {
   defaultCurrency?: string;
   defaultTaxLabel?: string;
   defaultTaxPct?: number;
+  paymentInstructions?: string;
 }
 
 export const orgProfileApi = {
