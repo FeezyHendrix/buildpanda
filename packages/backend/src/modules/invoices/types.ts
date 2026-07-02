@@ -79,6 +79,7 @@ export interface Invoice {
   milestonePaymentId: string | null;
   contractReference: string | null;
   paymentTerms: string | null;
+  paymentInstructions: string | null;
   coverNote: string | null;
   headerText: string | null;
   footerText: string | null;
@@ -128,6 +129,7 @@ export interface InvoiceRow {
   milestone_payment_id: string | null;
   contract_reference: string | null;
   payment_terms: string | null;
+  payment_instructions: string | null;
   cover_note: string | null;
   header_text: string | null;
   footer_text: string | null;

@@ -1,9 +1,11 @@
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { Button } from "@/components/atoms/button";
 import { BackArrowIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateInvoice } from "@/hooks/use-invoices";
+import { useOrgProfile } from "@/hooks/use-org-profile";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { toInput } from "./invoice-utils";
@@ -19,6 +21,21 @@ export default function NewInvoicePage() {
   const listPath = `/project/${project.id}/finances/invoices`;
 
   const form = useInvoiceForm({ ...EMPTY_INVOICE, currency: project.currency });
+
+  // Prefill payment instructions from the org default once it loads;
+  // the field stays editable per invoice after that.
+  const { data: orgProfile } = useOrgProfile();
+  const prefilledInstructions = useRef(false);
+  const orgInstructions = orgProfile?.paymentInstructions ?? "";
+  useEffect(() => {
+    if (!orgInstructions || prefilledInstructions.current) return;
+    prefilledInstructions.current = true;
+    if (form.values.paymentInstructions === "") {
+      form.update("paymentInstructions", orgInstructions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgInstructions]);
+
   const money = (n: number): string =>
     formatCurrency(n, form.values.currency || project.currency);
   const error = (createInvoice.error as Error | undefined)?.message ?? null;
