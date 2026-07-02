@@ -17,13 +17,13 @@ export function UnitInput({ value, onChange, className, disabled, id }: UnitInpu
       items={CONSTRUCTION_UNITS}
       value={value || null}
       onChange={(v) => onChange(v ?? "")}
-      placeholder="Select unit…"
+      creatable
+      placeholder="Select or type unit…"
       searchPlaceholder="Search units…"
-      emptyText="No matching unit."
+      emptyText="Press to use a custom unit."
       className={className}
       disabled={disabled}
-    />
-  );
+    />  );
 }
 
 UnitInput.displayName = "UnitInput";

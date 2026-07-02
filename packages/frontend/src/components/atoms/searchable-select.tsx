@@ -1,4 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface SearchableSelectProps {
@@ -11,6 +12,8 @@ interface SearchableSelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  /** Allow free-text: typed values not in `items` are committed as the value. */
+  creatable?: boolean;
 }
 
 function ChevronIcon(props: React.ComponentProps<"svg">) {
@@ -48,7 +51,50 @@ function SearchableSelect({
   className,
   disabled,
   id,
+  creatable = false,
 }: SearchableSelectProps) {
+  const fallbackId = useId();
+  const inputId = id ?? fallbackId;
+
+  if (creatable) {
+    return (
+      <Combobox.Root
+        items={items as unknown as string[]}
+        value={value}
+        onValueChange={onChange}
+        inputValue={value ?? ""}
+        onInputValueChange={(next, { reason }) => {
+          if (reason === "item-press") return;
+          onChange(next === "" ? null : next);
+        }}
+        itemToStringLabel={(item) => item ?? ""}
+        disabled={disabled}
+      >
+        <div
+          className={cn(
+            "flex h-11 w-full items-center gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
+            "focus-within:ring-2 focus-within:ring-gray-900/10",
+            className,
+          )}
+        >
+          <Combobox.Input
+            id={inputId}
+            placeholder={placeholder}
+            className="h-full w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          />
+          <Combobox.Trigger
+            aria-label="Show units"
+            className="flex shrink-0 cursor-default text-gray-400"
+          >
+            <ChevronIcon />
+          </Combobox.Trigger>
+        </div>
+
+        <SearchableSelectPopup emptyText={emptyText} hideSearch />
+      </Combobox.Root>
+    );
+  }
+
   return (
     <Combobox.Root
       items={items as unknown as string[]}
@@ -58,7 +104,7 @@ function SearchableSelect({
       disabled={disabled}
     >
       <Combobox.Trigger
-        id={id}
+        id={inputId}
         className={cn(
           "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
           "border-0 outline-none ring-0",
@@ -81,15 +127,34 @@ function SearchableSelect({
         </Combobox.Icon>
       </Combobox.Trigger>
 
-      <Combobox.Portal>
-        <Combobox.Positioner align="start" sideOffset={4}>
-          <Combobox.Popup
-            className={cn(
-              "z-50 max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
-              "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
-              "outline outline-1 outline-gray-200",
-            )}
-          >
+      <SearchableSelectPopup
+        emptyText={emptyText}
+        searchPlaceholder={searchPlaceholder}
+      />
+    </Combobox.Root>
+  );
+}
+
+function SearchableSelectPopup({
+  emptyText,
+  searchPlaceholder,
+  hideSearch = false,
+}: {
+  emptyText: string;
+  searchPlaceholder?: string;
+  hideSearch?: boolean;
+}) {
+  return (
+    <Combobox.Portal>
+      <Combobox.Positioner align="start" sideOffset={4}>
+        <Combobox.Popup
+          className={cn(
+            "z-50 max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
+            "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
+            "outline outline-1 outline-gray-200",
+          )}
+        >
+          {hideSearch ? null : (
             <div className="p-2">
               <Combobox.Input
                 placeholder={searchPlaceholder}
@@ -101,32 +166,32 @@ function SearchableSelect({
                 )}
               />
             </div>
+          )}
 
-            <Combobox.Empty className="px-4 text-sm text-gray-400">
-              {emptyText}
-            </Combobox.Empty>
+          <Combobox.Empty className="px-4 py-2 text-sm text-gray-400">
+            {emptyText}
+          </Combobox.Empty>
 
-            <Combobox.List className="max-h-[min(16rem,calc(var(--available-height)-3.5rem))] overflow-y-auto overscroll-contain scroll-py-1 py-1">
-              {(item: string) => (
-                <Combobox.Item
-                  key={item}
-                  value={item}
-                  className={cn(
-                    "grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none select-none",
-                    "data-[highlighted]:bg-[#F6F6F6]",
-                  )}
-                >
-                  <Combobox.ItemIndicator className="col-start-1">
-                    <CheckIcon className="size-2.5" />
-                  </Combobox.ItemIndicator>
-                  <span className="col-start-2">{item}</span>
-                </Combobox.Item>
-              )}
-            </Combobox.List>
-          </Combobox.Popup>
-        </Combobox.Positioner>
-      </Combobox.Portal>
-    </Combobox.Root>
+          <Combobox.List className="max-h-[min(16rem,calc(var(--available-height)-3.5rem))] overflow-y-auto overscroll-contain scroll-py-1 py-1">
+            {(item: string) => (
+              <Combobox.Item
+                key={item}
+                value={item}
+                className={cn(
+                  "grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none select-none",
+                  "data-[highlighted]:bg-[#F6F6F6]",
+                )}
+              >
+                <Combobox.ItemIndicator className="col-start-1">
+                  <CheckIcon className="size-2.5" />
+                </Combobox.ItemIndicator>
+                <span className="col-start-2">{item}</span>
+              </Combobox.Item>
+            )}
+          </Combobox.List>
+        </Combobox.Popup>
+      </Combobox.Positioner>
+    </Combobox.Portal>
   );
 }
 
