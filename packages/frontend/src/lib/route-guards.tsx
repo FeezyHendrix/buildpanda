@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useProjectAccess } from "@/hooks/use-participants";
+import { canViewResource } from "@/lib/project-types";
 
 /**
  * Route guards for the owner/company split.
@@ -65,6 +67,26 @@ export function ProjectFeatureFlagGate({ flag, children }: { flag: string; child
   const { projectId } = useParams<{ projectId: string }>();
   const enabled = useFeatureFlag(flag);
   if (!enabled) return <Navigate to={`/project/${projectId}/overview`} replace />;
+  return <>{children}</>;
+}
+
+/**
+ * Redirects to project overview when the caller's role lacks `<resource>:view`.
+ * Presentation-level only — the backend enforces the same permission on the API.
+ */
+export function ProjectPermissionGate({
+  resource,
+  children,
+}: {
+  resource: string;
+  children: ReactNode;
+}) {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: access, isPending } = useProjectAccess(projectId);
+  if (isPending) return <FullScreenLoader />;
+  if (!canViewResource(access, resource)) {
+    return <Navigate to={`/project/${projectId}/overview`} replace />;
+  }
   return <>{children}</>;
 }
 

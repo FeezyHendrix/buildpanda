@@ -5,6 +5,7 @@ import {
   RequireAuth,
   RequireCompany,
   ProjectFeatureFlagGate,
+  ProjectPermissionGate,
   SalesFeatureFlagGate,
 } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
@@ -123,6 +124,14 @@ const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
 function pf(flag: string, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
+}
+/** Feature flag + resource permission (RBAC) gate for project routes. */
+function pfr(flag: string, resource: string, el: ReactElement) {
+  return (
+    <ProjectFeatureFlagGate flag={flag}>
+      <ProjectPermissionGate resource={resource}>{el}</ProjectPermissionGate>
+    </ProjectFeatureFlagGate>
+  );
 }
 function sf(flag: string, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
@@ -266,14 +275,14 @@ export const router = createBrowserRouter([
       { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "whats-next", element: <ProjectWhatsNext /> },
 
-      { path: "finances", element: pf("commercial.finances", <ProjectFinances />) },
-      { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
-      { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
-      { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
-      { path: "finances/invoices/new", element: pf("commercial.invoices", <ProjectInvoiceNew />) },
-      { path: "finances/payment-claims", element: pf("commercial.paymentClaims", <ProjectPaymentClaims />) },
-      { path: "finances/purchase-orders", element: pf("commercial.purchaseOrders", <ProjectPurchaseOrders />) },
-      { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
+      { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
+      { path: "finances/budget-allocation", element: pfr("commercial.budget", "finances", <ProjectBudgetAllocation />) },
+      { path: "finances/milestone-payments", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
+      { path: "finances/invoices", element: pfr("commercial.invoices", "finances", <ProjectInvoices />) },
+      { path: "finances/invoices/new", element: pfr("commercial.invoices", "finances", <ProjectInvoiceNew />) },
+      { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
+      { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
+      { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
@@ -284,7 +293,7 @@ export const router = createBrowserRouter([
 
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "schedules/milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "schedules/milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
       { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
@@ -294,7 +303,7 @@ export const router = createBrowserRouter([
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
       { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "stages", element: pf("projects.schedule", <ProjectStages />) },

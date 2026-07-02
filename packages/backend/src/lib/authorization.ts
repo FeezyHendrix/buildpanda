@@ -93,7 +93,7 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
 // ---------------------------------------------------------------------------
 
 /** Additive capabilities granted to project participants (external stakeholders). */
-const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
+export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
   client: {
     project: ["view"],
     finances: ["view", "dispute"],

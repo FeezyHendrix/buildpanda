@@ -59,7 +59,7 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/payment-claims",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.listByProject(project.id);
     },
   );
@@ -69,6 +69,12 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createPaymentClaimBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       if (requiresFinanceApproval(request.body.status)) {
         assertProjectPermission(
@@ -87,6 +93,12 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: claimParams, body: editPaymentClaimBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       if (requiresFinanceApproval(request.body.status)) {
         assertProjectPermission(
@@ -104,6 +116,12 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: claimParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.remove(project.id, request.params.claimId);
       return reply.status(204).send();
     },
