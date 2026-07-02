@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -129,12 +130,9 @@ export default function ProjectDailyLog() {
 
       <section className="mt-8 flex flex-col gap-4">
         {isPending ? (
-          <Card
-            padding="lg"
-            className="rounded-[16px] border-none bg-[#F8F8F8] text-center text-sm text-black-300"
-          >
-            Loading daily logs…
-          </Card>
+          <div className="flex justify-center py-16">
+            <Spinner size="md" />
+          </div>
         ) : days.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon className="size-8 text-gray-300" />}
@@ -266,7 +264,7 @@ function DayCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 px-2.5 text-xs text-black-300 hover:text-black-500"
+              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
               onClick={onEditHeader}
             >
               Conditions
@@ -276,7 +274,7 @@ function DayCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 px-2.5 text-xs text-black-300 hover:text-black-500"
+            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
             loading={downloadReport.isPending}
             onClick={() =>
               downloadReport.mutate(
@@ -291,7 +289,7 @@ function DayCard({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 px-2.5 text-xs text-black-300 hover:text-black-500"
+            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
             loading={emailReport.isPending}
             onClick={() =>
               emailReport.mutate(
@@ -309,7 +307,7 @@ function DayCard({
           <Button
             variant="primary"
             size="sm"
-            className="h-8 px-3 text-xs"
+            className="h-10 sm:h-8 px-3 text-xs"
             onClick={onAddEntry}
           >
             <PlusIcon className="size-3.5" />
@@ -392,7 +390,7 @@ function EntryRow({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-xs text-red-500 hover:text-red-600"
+              className="h-10 px-3 sm:h-7 sm:px-2 text-xs text-red-500 hover:text-red-600"
               onClick={() => setVoidOpen(true)}
             >
               Void
@@ -413,7 +411,7 @@ function EntryRow({
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-1 text-[12px] font-medium text-primary hover:underline"
+            className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
           >
             {expanded ? "Show less" : "Read more"}
           </button>

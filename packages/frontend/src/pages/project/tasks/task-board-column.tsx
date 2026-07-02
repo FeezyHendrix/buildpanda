@@ -51,7 +51,7 @@ export function BoardColumn({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors",
+        "flex w-[85vw] shrink-0 snap-start flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors sm:w-72",
         isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
         isDragging && "opacity-50",
       )}
