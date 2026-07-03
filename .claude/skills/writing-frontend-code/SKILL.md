@@ -24,6 +24,25 @@ is a client-rendered React Router SPA, so the playbook drops the Next.js/RSC/SSR
 rules that don't apply and maps the rest onto React Query, `React.lazy`, and the
 axios client.
 
+## Verify the UI actually works — not just that it renders
+
+Clean `lsp_diagnostics` and a nice-looking screenshot are NOT proof of done. A
+UI is only finished when it **performs the function it was built for**, verified
+by driving it. For every UI/UX change:
+
+- **Exercise the actual behaviour in a real browser** (Playwright): click the
+  button, submit the form, pick the option, trigger the empty/error/loading
+  states. Confirm the resulting action happens (navigation, mutation, toast,
+  data change) — don't just confirm the element is on screen.
+- **Test the interactive path end to end**: e.g. an account-chooser must
+  actually switch the account and let you proceed; a filter must actually filter
+  the list; a dialog's submit must actually persist and reflect immediately.
+- **Check the console** for errors/warnings during the interaction.
+- If the behaviour depends on data or auth state, set that state up for real and
+  observe the real outcome. "It should work" is not verification.
+
+Looks-right + compiles ≠ works. Prove it does the thing.
+
 ## Feature anatomy (the canonical slice)
 
 ```
