@@ -212,6 +212,8 @@ export const organizationKeys = {
     [...organizationKeys.all, organizationId, "invitations"] as const,
   roles: (organizationId: string) =>
     [...organizationKeys.all, organizationId, "roles"] as const,
+  permissions: (organizationId: string) =>
+    [...organizationKeys.all, organizationId, "permissions"] as const,
   userInvitations: () =>
     [...organizationKeys.all, "user-invitations"] as const,
 };

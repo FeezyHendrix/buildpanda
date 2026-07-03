@@ -6,6 +6,7 @@ import {
   RequireCompany,
   ProjectFeatureFlagGate,
   ProjectPermissionGate,
+  OrgPermissionGate,
   SalesFeatureFlagGate,
 } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
@@ -166,7 +167,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
-      { path: "settings/team", element: <TeamSettings /> },
+      {
+        path: "settings/team",
+        element: (
+          <OrgPermissionGate resource="teamMembers" action="manage">
+            <TeamSettings />
+          </OrgPermissionGate>
+        ),
+      },
       { path: "settings/notifications", element: <NotificationSettings /> },
     ],
   },

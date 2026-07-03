@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
+import { orgProfileApi } from "@/api/org-profile";
 import { organizationKeys, projectKeys } from "./query-keys";
 
 function unwrap<T>(result: { data: T; error: { message?: string } | null }): T {
@@ -21,6 +22,31 @@ type UpdateMemberRoleType = Parameters<
 export function useActiveOrganizationId(): string | undefined {
   const { data: session } = authClient.useSession();
   return session?.session.activeOrganizationId ?? undefined;
+}
+
+/**
+ * The caller's effective permission map for their active org (built-in role ∪
+ * admin-assigned custom roles), resolved server-side. Use useHasOrgPermission
+ * for a single check. Drives UI gating so members see only the actions they may
+ * actually perform (an employee sees create/invite ONLY if an admin granted it).
+ */
+export function useOrgPermissions() {
+  const orgId = useActiveOrganizationId();
+  return useQuery({
+    queryKey: organizationKeys.permissions(orgId ?? "__none__"),
+    queryFn: () => orgProfileApi.permissions(),
+    enabled: Boolean(orgId),
+  });
+}
+
+/**
+ * True if the caller may perform `action` on `resource` in their active org.
+ * While permissions are loading it returns false, so gated UI stays hidden
+ * until confirmed (fail-closed presentation; the backend enforces regardless).
+ */
+export function useHasOrgPermission(resource: string, action: string): boolean {
+  const { data } = useOrgPermissions();
+  return (data?.permissions?.[resource] ?? []).includes(action);
 }
 
 /**
