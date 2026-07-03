@@ -25,6 +25,7 @@ import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
 import { SuiteSwitcher } from "@/components/molecules/suite-switcher";
+import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -53,6 +54,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 pb-36 lg:max-w-7xl mx-auto w-full max-w-full lg:px-3 px-4">
+      <div className="mb-4">
+        <PendingInvitesBanner />
+      </div>
       <div className="flex items-center justify-between mb-0">
         <div className="flex justify-center flex-1">
           <SuiteSwitcher variant="tabs" />
@@ -160,7 +164,10 @@ function Greeting({ name, className }: { name: string, className?: string }) {
 
 function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-1 items-start justify-center pt-[150px]">
+    <div className="flex flex-1 flex-col items-center gap-6 pt-10">
+      <div className="w-full max-w-2xl px-4">
+        <PendingInvitesBanner />
+      </div>
       <EmptyState
         icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"

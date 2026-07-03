@@ -125,7 +125,8 @@ export default function AcceptInvitation() {
     acceptInvitation.mutate(invitationId, {
       onSuccess: () => {
         localStorage.removeItem(PENDING_ORG_INVITE_KEY);
-        navigate("/");
+        // Straight into the workspace they just joined (it is now active).
+        navigate("/dashboard");
       },
     });
   }
