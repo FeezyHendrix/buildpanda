@@ -67,7 +67,7 @@ async function ensureUserOrganization(
     name = user?.name ?? "My";
   }
 
-  const orgName = `${name}'s Company`;
+  const orgName = `${name}'s Workspace`;
   const orgId = generateId("org");
   const slug = await uniqueOrgSlug(slugify(orgName));
   const now = new Date();

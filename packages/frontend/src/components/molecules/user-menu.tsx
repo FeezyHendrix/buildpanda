@@ -152,7 +152,7 @@ function UserMenu({
   const mainStep = (
     <>
       <p className="px-3 pb-1 pt-2 text-xs font-medium text-gray-400">
-        Current company
+        Current workspace
       </p>
       <div className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-900">
         <IconBox>
@@ -202,7 +202,7 @@ function UserMenu({
         <p className="text-sm font-medium text-gray-700">Switch profile</p>
       </div>
 
-      <p className="px-3 pb-1 pt-2 text-xs font-medium text-gray-400">Your companies</p>
+      <p className="px-3 pb-1 pt-2 text-xs font-medium text-gray-400">Your workspaces</p>
 
       {orgs.map((org) => (
         <button
@@ -233,12 +233,12 @@ function UserMenu({
         }}
         className="mt-1 border-t border-gray-100 px-3 py-2"
       >
-        <p className="mb-1 text-xs font-medium text-gray-400">New company</p>
+        <p className="mb-1 text-xs font-medium text-gray-400">New workspace</p>
         <div className="flex gap-1.5">
           <input
             value={newOrgName}
             onChange={(e) => setNewOrgName(e.target.value)}
-            placeholder="Company name"
+            placeholder="Workspace name"
             className="h-8 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none"
           />
           <button

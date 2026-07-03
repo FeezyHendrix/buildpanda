@@ -66,7 +66,7 @@ export function useCreateOrganization() {
           slug: slugifyOrganizationName(name),
         }),
       );
-      if (!organization) throw new Error("Could not create company.");
+      if (!organization) throw new Error("Could not create workspace.");
       await authClient.organization.setActive({ organizationId: organization.id });
       return organization;
     },
@@ -333,15 +333,11 @@ export function useAcceptInvitation() {
 
 /** Pending invitations addressed to the signed-in user's email. */
 export function usePendingUserInvitations() {
-  return useQuery({
-    queryKey: [...organizationKeys.all, "user-invitations"] as const,
-    queryFn: async () => {
-      const invitations = unwrap(
-        await authClient.organization.listUserInvitations(),
-      );
-      return (invitations ?? []).filter((i) => i.status === "pending");
-    },
-  });
+  const query = useUserInvitations();
+  return {
+    ...query,
+    data: (query.data ?? []).filter((i) => i.status === "pending"),
+  };
 }
 
 export function useRejectInvitation() {
