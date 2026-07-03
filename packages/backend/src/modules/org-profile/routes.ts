@@ -33,6 +33,19 @@ interface OrgProfilePatch {
 }
 
 const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
+  // The caller's effective permission map for their active org (built-in role
+  // statements ∪ admin-assigned custom roles). Drives UI gating so the SPA
+  // shows only the actions the member may actually perform.
+  fastify.get("/org-permissions", async (request) => {
+    const orgId = request.requireOrgScope();
+    const perms = request.orgPermissions?.get(orgId);
+    const permissions: Record<string, string[]> = {};
+    if (perms) {
+      for (const [resource, actions] of perms) permissions[resource] = [...actions];
+    }
+    return { organizationId: orgId, role: request.orgRoles.get(orgId) ?? null, permissions };
+  });
+
   fastify.get("/org-profile", async (request) => {
     const orgId = request.requireOrgScope();
 
