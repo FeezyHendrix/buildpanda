@@ -60,6 +60,69 @@ export function analyzeMetrics(metrics: ProjectMetrics): AiInsightResult {
     });
   }
 
+  if (metrics.overdueActivityCount > 0) {
+    score -= clamp(metrics.overdueActivityCount * 3, 0, 18);
+    suggestions.push({
+      title: `${metrics.overdueActivityCount} scheduled ${metrics.overdueActivityCount === 1 ? "activity is" : "activities are"} past ${metrics.overdueActivityCount === 1 ? "its" : "their"} planned finish`,
+      detail: `${metrics.overdueActivityCount} activit${metrics.overdueActivityCount === 1 ? "y has" : "ies have"} passed the planned end date without being completed. Update actual progress or reforecast the programme so downstream trades aren't planning against stale dates.`,
+      priority: "high",
+      category: "Schedule",
+    });
+  }
+
+  if (metrics.blockedActionItemCount > 0) {
+    score -= clamp(metrics.blockedActionItemCount * 4, 0, 12);
+    suggestions.push({
+      title: `${metrics.blockedActionItemCount} action item${metrics.blockedActionItemCount === 1 ? " is" : "s are"} blocked`,
+      detail: `Blocked action items stall site work until someone clears the blocker. Review ${metrics.blockedActionItemCount === 1 ? "it" : "them"}, assign an owner, and unblock or escalate.`,
+      priority: "high",
+      category: "Site",
+    });
+  } else if (metrics.dueActionItemCount > 3) {
+    score -= clamp(metrics.dueActionItemCount, 0, 8);
+    suggestions.push({
+      title: `${metrics.dueActionItemCount} open action items are piling up`,
+      detail:
+        "A growing action-item backlog is an early sign of site coordination slipping. Triage the list and close or reassign stale items.",
+      priority: "medium",
+      category: "Site",
+    });
+  }
+
+  if (metrics.expiringPermitCount > 0) {
+    score -= clamp(metrics.expiringPermitCount * 5, 0, 15);
+    suggestions.push({
+      title: `${metrics.expiringPermitCount} permit${metrics.expiringPermitCount === 1 ? " needs" : "s need"} attention`,
+      detail: `${metrics.expiringPermitCount} permit${metrics.expiringPermitCount === 1 ? " is" : "s are"} pending or expired. Working without valid permits risks stop-work orders — chase the authority or renew before inspections are due.`,
+      priority: "high",
+      category: "Compliance",
+    });
+  }
+
+  if (metrics.pendingApprovalCount > 2) {
+    score -= clamp((metrics.pendingApprovalCount - 2) * 2, 0, 8);
+    suggestions.push({
+      title: `${metrics.pendingApprovalCount} approvals are waiting on a decision`,
+      detail:
+        "Pending approvals block the work behind them. Chase the decision-makers — most schedule slippage on residential builds traces back to slow sign-offs.",
+      priority: "medium",
+      category: "Decisions",
+    });
+  }
+
+  if (
+    metrics.budgetPlanned > 0 &&
+    metrics.pendingChangeRequestCostImpact > metrics.budgetPlanned * 0.05
+  ) {
+    score -= 6;
+    suggestions.push({
+      title: "Pending change requests carry significant cost exposure",
+      detail: `Unapproved change requests total ${formatMoney(metrics.pendingChangeRequestCostImpact, metrics.currency)} — over 5% of the planned budget. Resolve them so the committed budget reflects reality.`,
+      priority: "medium",
+      category: "Budget",
+    });
+  }
+
   if (metrics.highRiskCount > 0) {
     score -= clamp(metrics.highRiskCount * 6, 0, 24);
     suggestions.push({

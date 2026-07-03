@@ -107,6 +107,7 @@ export function reportingService(db: Knex) {
       openQueries,
       pendingApprovals,
       expiringPermits,
+      overdueActivities,
       upcomingKeyDates,
       missedKeyDates,
       riskOpen,
@@ -181,6 +182,12 @@ export function reportingService(db: Knex) {
       db("permits")
         .where({ project_id: projectId })
         .whereIn("status", ["Applied", "Expired"])
+        .count<{ count: string }[]>("id as count")
+        .first(),
+      db("activities")
+        .where({ project_id: projectId })
+        .whereIn("status", ["Planned", "InProgress"])
+        .where("planned_end_at", "<", db.fn.now())
         .count<{ count: string }[]>("id as count")
         .first(),
       db("key_dates")
@@ -407,6 +414,7 @@ export function reportingService(db: Knex) {
         openQueries: toNumber(openQueries?.count),
         pendingApprovals: toNumber(pendingApprovals?.count),
         expiringPermits: toNumber(expiringPermits?.count),
+        overdueActivities: toNumber(overdueActivities?.count),
         upcomingKeyDates: toNumber(upcomingKeyDates?.count),
         missedKeyDates: toNumber(missedKeyDates?.count),
       },

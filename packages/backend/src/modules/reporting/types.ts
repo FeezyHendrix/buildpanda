@@ -93,6 +93,7 @@ export interface OperationsReportingSlice {
   openQueries: number;
   pendingApprovals: number;
   expiringPermits: number;
+  overdueActivities: number;
   upcomingKeyDates: number;
   missedKeyDates: number;
 }
