@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useOrgPermissions } from "@/hooks/use-organization";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
 
@@ -87,6 +88,24 @@ export function ProjectPermissionGate({
   if (!canViewResource(access, resource)) {
     return <Navigate to={`/project/${projectId}/overview`} replace />;
   }
+  return <>{children}</>;
+}
+
+/** Redirects to /dashboard when the caller lacks `<resource>:<action>` in their
+ *  active org. Presentation-level only — the backend enforces the same. */
+export function OrgPermissionGate({
+  resource,
+  action,
+  children,
+}: {
+  resource: string;
+  action: string;
+  children: ReactNode;
+}) {
+  const { data, isPending } = useOrgPermissions();
+  if (isPending) return <FullScreenLoader />;
+  const allowed = (data?.permissions?.[resource] ?? []).includes(action);
+  if (!allowed) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
