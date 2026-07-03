@@ -107,7 +107,7 @@ export default function TeamSettings() {
       />
 
       <div className="mb-8 mt-6 rounded-xl border border-gray-200 p-5">
-        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Company name</Label>
+        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Workspace name</Label>
         <div className="mt-2 flex gap-3">
           <input
             id="org-name"
@@ -121,8 +121,8 @@ export default function TeamSettings() {
               updateOrgProfile.mutate(
                 { name: orgName.trim() },
                 {
-                  onSuccess: () => toast("Company name updated", "success"),
-                  onError: () => toast("Could not update company name"),
+                  onSuccess: () => toast("Workspace name updated", "success"),
+                  onError: () => toast("Could not update workspace name"),
                 },
               )
             }
@@ -190,7 +190,7 @@ export default function TeamSettings() {
         title="Remove member"
         description={
           memberToRemove
-            ? `Remove ${memberToRemove.user.name} from this company? They will lose access immediately.`
+            ? `Remove ${memberToRemove.user.name} from this workspace? They will lose access immediately.`
             : ""
         }
         confirmLabel="Remove"

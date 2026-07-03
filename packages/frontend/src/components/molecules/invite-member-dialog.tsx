@@ -44,7 +44,7 @@ function InviteMemberDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Invite a team member"
-      description="Send an email invitation to join this company. They will choose a password when they accept."
+      description="Send an email invitation to join this workspace. They will choose a password when they accept."
       submitLabel="Send invitation"
       submitDisabled={!isValid}
       submitting={isSubmitting}
