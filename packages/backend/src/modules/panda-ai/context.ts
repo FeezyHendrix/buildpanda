@@ -37,5 +37,12 @@ export async function buildProjectMetrics(
     daysSinceLastUpdate: activity.daysSinceLastUpdate,
     recentDailyLogCount: activity.recentDailyLogCount,
     missedKeyDateCount: operations.missedKeyDates,
+    overdueActivityCount: operations.overdueActivities,
+    dueActionItemCount: operations.dueActionItems,
+    blockedActionItemCount: operations.blockedActionItems,
+    openQueryCount: operations.openQueries,
+    pendingApprovalCount: operations.pendingApprovals,
+    expiringPermitCount: operations.expiringPermits,
+    pendingChangeRequestCostImpact: finance.changeRequests.pendingCostImpact,
   };
 }
