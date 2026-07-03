@@ -128,6 +128,15 @@ export const config = {
     maxFileBytes: optionalNumber("UPLOAD_MAX_BYTES", 25 * 1024 * 1024),
   },
 
+  // Web push (VAPID). When the key pair is empty the feature no-ops: the
+  // public-key endpoint returns "" (frontend hides the toggle) and delivery
+  // logs instead of sending — mirroring how mail degrades without a token.
+  push: {
+    vapidPublicKey: optional("WEB_PUSH_VAPID_PUBLIC_KEY", ""),
+    vapidPrivateKey: optional("WEB_PUSH_VAPID_PRIVATE_KEY", ""),
+    contact: optional("WEB_PUSH_CONTACT", ""),
+  },
+
   // Background jobs. When url is empty the queue runs in inline mode (see
   // QueueManager) so the app still functions without a Redis server.
   redis: {

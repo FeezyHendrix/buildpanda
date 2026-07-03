@@ -272,7 +272,7 @@ export default function ProjectChat() {
                     <span className="text-base">📌</span> {pins.length} Pinned
                   </button>
                   {showPins && (
-                    <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg z-20">
+                    <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 shadow-lg z-20">
                       {pins.map((p: ChatMessage) => (
                         <div key={p.id} className="mb-2 p-2 hover:bg-gray-50 rounded group border-b border-gray-100 last:border-0">
                           <div className="text-xs font-medium text-gray-900">{p.authorName}</div>

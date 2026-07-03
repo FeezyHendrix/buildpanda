@@ -3,7 +3,7 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { activitiesRepository } from "./repository.ts";
 import { activitiesService } from "./service.ts";
-import { PROGRESS_RECOMPUTE_QUEUE } from "./progress-job.ts";
+import { runProgressRecompute } from "./progress-job.ts";
 import type {
   CreateActivityInput,
   RaiseDelayInput,
@@ -119,7 +119,10 @@ const resolveDelayBody = {
 const activityRoutes: FastifyPluginAsync = async (fastify) => {
   const service = activitiesService(
     activitiesRepository(fastify.db),
-    (projectId) => fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
+    // Synchronous on purpose: interactive edits must see progress_percent
+    // updated before the response returns, or the UI refetch races the job.
+    // Bulk paths (programme import, daily logs) still go through the queue.
+    (projectId) => runProgressRecompute(fastify.db, { projectId }),
     { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
   );
 

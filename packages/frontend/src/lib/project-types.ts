@@ -275,6 +275,40 @@ export interface ApprovalDetail extends Approval {
   comments: ApprovalComment[];
 }
 
+export type SelectionStatus = "open" | "decided" | "cancelled";
+
+export interface SelectionOption {
+  id: string;
+  selectionId: string;
+  name: string;
+  description: string | null;
+  price: number | null;
+  sortOrder: number;
+}
+
+export interface Selection {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  allowanceAmount: number | null;
+  currency: string;
+  dueDate: string | null;
+  status: SelectionStatus;
+  chosenOptionId: string | null;
+  decidedById: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  changeRequestId: string | null;
+  createdById: string | null;
+  /** Chosen option price minus allowance when both are present (min 0). */
+  overage: number | null;
+  options: SelectionOption[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
 
 export interface ChangeRequest {
@@ -403,14 +437,45 @@ export interface ProjectParticipant {
 export interface ProjectAccess {
   relationship: "company" | ParticipantRole | "none";
   orgRole: string | null;
+  /** Effective resource permissions (org role ∪ participant overlay), e.g. { finances: ["view"] }. */
+  permissions: Record<string, string[]>;
   capabilities: {
     canManage: boolean;
     canViewAll: boolean;
     canManageParticipants: boolean;
     canDecideApprovals: boolean;
+    canDecideSelections: boolean;
     canRaiseQueries: boolean;
     canComment: boolean;
   };
+}
+
+/**
+ * Whether the caller may view a permissioned resource. Entries without a
+ * resource are unrestricted; while access is still loading we show the entry
+ * (the backend enforces regardless — this only drives presentation).
+ */
+export function canViewResource(
+  access: ProjectAccess | undefined,
+  resource?: string,
+): boolean {
+  if (!resource || !access) return true;
+  return (access.permissions?.[resource] ?? []).includes("view");
+}
+
+/**
+ * Whether the caller may perform an action on a resource. `manage` implies
+ * every other action on the same resource (mirrors the backend guards).
+ * Presentation only — the backend enforces regardless.
+ */
+export function canResourceAction(
+  access: ProjectAccess | undefined,
+  resource: string,
+  action: string,
+): boolean {
+  if (!access) return true;
+  const actions = access.permissions?.[resource] ?? [];
+  return actions.includes(action) || actions.includes("manage");
 }
 
 export interface MyProjectCard {
@@ -495,6 +560,8 @@ export interface ProjectUpdate {
   secondaryAction?: { label: string };
   status: UpdateStatus;
   action: UpdateAction;
+  isDraft: boolean;
+  generatedKind: string | null;
   createdAt: string;
 }
 

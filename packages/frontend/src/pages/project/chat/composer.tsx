@@ -169,7 +169,7 @@ export function Composer({
   };
 
   return (
-    <div className={cn("relative", isThread ? "" : "px-4 lg:px-6 pb-3 pt-1")}>
+    <div className={cn("relative", isThread ? "" : "px-4 lg:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-3 pt-1")}>
       {showMentions && (
         <MentionDropdown
           members={members}
@@ -292,7 +292,7 @@ export function Composer({
           </>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center gap-1 border-b border-gray-100 px-3 py-2">
+            <div className="hidden items-center gap-1 border-b border-gray-100 px-3 py-2 sm:flex">
               {[BoldIcon, ItalicIcon, LinkIcon, ListIcon, CodeIcon].map((Icon, idx) => (
                 <button
                   key={idx}
@@ -311,7 +311,7 @@ export function Composer({
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="max-h-56 min-h-[88px] w-full resize-none px-4 py-3 text-[13px] leading-relaxed text-black-500 outline-none placeholder:text-gray-400"
+              className="max-h-56 min-h-[56px] w-full resize-none px-4 py-3 text-[13px] leading-relaxed text-black-500 outline-none placeholder:text-gray-400 sm:min-h-[88px]"
               rows={3}
             />
 
@@ -374,7 +374,7 @@ export function Composer({
         )}
       </div>
       {!isThread && (
-        <p className="mt-2 text-center text-xs text-gray-500">
+        <p className="mt-2 hidden text-center text-xs text-gray-500 sm:block">
           <span className="font-semibold">Return</span> to send, <span className="font-semibold">Shift + Return</span> for new line
         </p>
       )}

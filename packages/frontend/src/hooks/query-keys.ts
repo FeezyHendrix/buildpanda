@@ -4,6 +4,11 @@ export const projectKeys = {
   detail: (id: string) => [...projectKeys.all, "detail", id] as const,
 };
 
+export const projectTemplateKeys = {
+  all: ["project-templates"] as const,
+  list: () => [...projectTemplateKeys.all, "list"] as const,
+};
+
 export const updateKeys = {
   all: (projectId: string) => ["projects", projectId, "updates"] as const,
   list: (projectId: string) => [...updateKeys.all(projectId), "list"] as const,
@@ -134,6 +139,14 @@ export const approvalKeys = {
     [...approvalKeys.all(projectId), "list", status ?? "all"] as const,
   detail: (projectId: string, approvalId: string) =>
     [...approvalKeys.all(projectId), "detail", approvalId] as const,
+};
+
+export const selectionKeys = {
+  all: (projectId: string) => ["projects", projectId, "selections"] as const,
+  list: (projectId: string, status?: string) =>
+    [...selectionKeys.all(projectId), "list", status ?? "all"] as const,
+  detail: (projectId: string, selectionId: string) =>
+    [...selectionKeys.all(projectId), "detail", selectionId] as const,
 };
 
 export const changeRequestKeys = {

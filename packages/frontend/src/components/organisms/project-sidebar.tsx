@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
@@ -15,6 +15,7 @@ import {
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
+import { canViewResource } from "@/lib/project-types";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -44,8 +45,35 @@ interface ProjectSidebarProps {
   onOpen?: () => void;
 }
 
+// Desktop-only preference: hide the sidebar entirely to give the main pane
+// full width. The mobile slide-over is a separate mechanism (`open` prop).
+const COLLAPSE_PREF_KEY = "prefs:v1:project-sidebar-collapsed";
+
+function readCollapsedPref(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSE_PREF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsedPref(collapsed: boolean) {
+  try {
+    localStorage.setItem(COLLAPSE_PREF_KEY, collapsed ? "1" : "0");
+  } catch {
+    // Private mode / quota — the toggle still works for the session.
+  }
+}
+
 function ProjectSidebar({ project, className, access, open = false, onClose, onOpen }: ProjectSidebarProps) {
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(readCollapsedPref);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      writeCollapsedPref(!prev);
+      return !prev;
+    });
+  };
   const isClient = access?.relationship !== "company";
   const { data: channels = [] } = useProjectChannels(project.id);
   const { data: allChannels = [] } = useAllChannels();
@@ -66,51 +94,51 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
 
   const items = useMemo<ProjectNavItem[]>(
     () =>
-      NAV_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      NAV_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const scheduleItems = useMemo<GroupNavItem[]>(
     () =>
-      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      SCHEDULE_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const materialsItems = useMemo<GroupNavItem[]>(
     () =>
-      MATERIALS_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      MATERIALS_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const siteControlItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const financeItems = useMemo<GroupNavItem[]>(
     () =>
-      FINANCE_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      FINANCE_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
   const clientItems = useMemo<ProjectNavItem[]>(
     () =>
-      CLIENT_ENTRIES.filter((e) => isOn(e.flag)).map((entry) => ({
+      CLIENT_ENTRIES.filter((e) => isOn(e.flag) && canViewResource(access, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
-    [project.id, enabledKeys],
+    [project.id, enabledKeys, access],
   );
 
   const isScheduleActive = scheduleItems.some(
@@ -161,7 +189,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           "relative",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full",
-          "lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:max-h-full lg:shrink-0",
+          "lg:relative lg:inset-auto lg:z-30 lg:translate-x-0 lg:max-h-full lg:shrink-0",
         )}
       >
         {/* Pull-tab — peeks from left edge of screen when sidebar is closed (mobile only) */}
@@ -179,22 +207,57 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           <ChevronRightIcon className={cn("size-4 text-gray-400 transition-transform duration-300", open && "rotate-180")} />
         </button>
 
+        {/* Desktop expand tab — peeks from the top-left screen edge while the sidebar is hidden */}
+        {collapsed && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Show sidebar"
+            className={cn(
+              "absolute right-0 top-5 z-20 translate-x-full",
+              "hidden h-9 w-7 items-center justify-center lg:flex",
+              "rounded-r-xl border border-l-0 border-[#F0F0F0] bg-white shadow-sm",
+              "text-gray-400 hover:text-gray-600",
+            )}
+          >
+            <ChevronRightIcon className="size-4" />
+          </button>
+        )}
+
       <aside
         className={cn(
-          "flex h-full flex-col gap-6 overflow-hidden border-r border-[#F0F0F0] bg-white px-4 py-6 w-[260px]",
+          "flex h-full flex-col overflow-hidden border-r border-[#F0F0F0] bg-white w-[260px]",
+          "transition-[width] duration-300 ease-in-out",
+          collapsed && "lg:w-0 lg:border-r-0",
           className,
         )}
       >
-      <Link
-        to={isClient ? "/my-build" : "/dashboard"}
-        className={cn(
-          "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
-          "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        )}
-      >
-        <BackArrowIcon className="size-4" />
-        Projects
-      </Link>
+      <div className="flex h-full w-[260px] shrink-0 flex-col gap-6 px-4 py-6">
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to={isClient ? "/my-build" : "/dashboard"}
+          className={cn(
+            "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
+            "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          )}
+        >
+          <BackArrowIcon className="size-4" />
+          Projects
+        </Link>
+        {/* Collapse control — top row, floated right of Projects (desktop only) */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="Hide sidebar"
+          className={cn(
+            "hidden size-7 shrink-0 items-center justify-center rounded-md lg:flex",
+            "text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700",
+            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          )}
+        >
+          <ChevronRightIcon className="size-4 rotate-180" />
+        </button>
+      </div>
 
       <div className="bg-white">
         <div className="flex items-start gap-3">
@@ -279,7 +342,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("projects.documents") && (
+          {isOn("projects.documents") && canViewResource(access, "documents") && (
             <ProjectNavLink
               item={{
                 label: "Documents",
@@ -290,7 +353,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("project.team") && (
+          {isOn("project.team") && canViewResource(access, "teamMembers") && (
             <ProjectNavLink
               item={{
                 label: "Team",
@@ -301,7 +364,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {isOn("collaboration.messaging") && (
+          {isOn("collaboration.messaging") && canViewResource(access, "messages") && (
             <ProjectNavLink
               item={{
                 label: "Messages",
@@ -333,6 +396,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           />
         </nav>
       )}
+      </div>
       </aside>
       </div>
     </>

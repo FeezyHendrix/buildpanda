@@ -25,6 +25,9 @@ export interface ApprovalUpdatePatch {
   requested_reviewer_id?: string | null;
   reviewed_by_id?: string | null;
   reviewed_at?: string | null;
+  // Decision-chasing reminder state (see lifecycle/decision-chasing-job.ts).
+  reminder_level?: number | null;
+  last_reminded_at?: string | null;
   updated_at?: string;
 }
 

@@ -33,21 +33,19 @@ function TimelineStep({
   const rightDone = phase.status === "Done";
 
   return (
-    <li className="flex flex-1 flex-col items-center">
-      {/* [left-line][dot][right-line] — dot centred in its column */}
+    <li className="flex basis-40 shrink-0 grow flex-col items-center">
       <div className="flex w-full items-center">
         <div className={cn("h-1 flex-1", leftDone  ? "bg-primary" : "bg-[#EDEDED]")} />
         <StepDot status={phase.status} />
         <div className={cn("h-1 flex-1", rightDone ? "bg-primary" : "bg-[#EDEDED]")} />
       </div>
 
-      {/* Labels centred below the dot */}
-      <div className="mt-3 w-full px-1 text-center">
+      <div className="mt-3 w-full px-2 text-center">
         <p className="text-[13px] font-semibold text-gray-900">{phase.name}</p>
         {phase.status === "InProgress" ? (
-          <p className="mt-0.5 text-[11px] font-medium text-primary">In Progress</p>
+          <p className="mt-1 text-[11px] font-medium text-primary">In Progress</p>
         ) : (
-          <p className="mt-0.5 text-[11px] text-gray-400">{phase.dateRange}</p>
+          <p className="mt-1 text-[11px] text-gray-400">{phase.dateRange}</p>
         )}
       </div>
     </li>

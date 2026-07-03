@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Dialog } from "@base-ui-components/react/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import { SearchInput } from "@/components/atoms/search-input";
 import { cn } from "@/lib/utils";
 import { NRM_WORK_SECTIONS, type NrmWorkItem } from "@/lib/nrm-work-items";

@@ -6,6 +6,27 @@ import { cn } from "@/lib/utils";
 import type { Task, TaskColumn } from "@/lib/project-types";
 import { TaskCard } from "./task-card";
 
+// Per-column collapse preference; column ids are stable so they key storage.
+function collapseKey(columnId: string): string {
+  return `prefs:v1:task-column-collapsed:${columnId}`;
+}
+
+function readCollapsedPref(columnId: string): boolean {
+  try {
+    return localStorage.getItem(collapseKey(columnId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsedPref(columnId: string, collapsed: boolean) {
+  try {
+    localStorage.setItem(collapseKey(columnId), collapsed ? "1" : "0");
+  } catch {
+    // Private mode / quota — the toggle still works for the session.
+  }
+}
+
 export function BoardColumn({
   column,
   tasks,
@@ -38,6 +59,14 @@ export function BoardColumn({
   });
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(column.name);
+  const [collapsed, setCollapsed] = useState(() => readCollapsedPref(column.id));
+
+  function toggleCollapsed(): void {
+    setCollapsed((prev) => {
+      writeCollapsedPref(column.id, !prev);
+      return !prev;
+    });
+  }
 
   function commitRename(): void {
     const trimmed = name.trim();
@@ -46,12 +75,44 @@ export function BoardColumn({
     else setName(column.name);
   }
 
+  if (collapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={{ transform: CSS.Translate.toString(transform), transition }}
+        onClick={toggleCollapsed}
+        className={cn(
+          "flex w-11 shrink-0 cursor-pointer snap-start flex-col items-center gap-2 rounded-2xl bg-[#FAFAFA] px-1 py-3 transition-colors hover:bg-gray-100",
+          isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
+          isDragging && "opacity-50",
+        )}
+      >
+        <button
+          type="button"
+          aria-label={`Expand ${column.name} column`}
+          aria-expanded={false}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+        >
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+        </button>
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-medium text-gray-600">
+          {tasks.length}
+        </span>
+        <span className="max-h-[45vh] truncate text-sm font-semibold text-gray-700 [writing-mode:vertical-rl]">
+          {column.name}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors",
+        "flex w-[85vw] shrink-0 snap-start flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors sm:w-72",
         isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
         isDragging && "opacity-50",
       )}
@@ -103,6 +164,17 @@ export function BoardColumn({
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1.5 text-xs font-medium text-gray-600">
             {tasks.length}
           </span>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={`Collapse ${column.name} column`}
+            aria-expanded
+            className="flex size-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600"
+          >
+            <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </button>
           {canManage && (
             <button
               type="button"

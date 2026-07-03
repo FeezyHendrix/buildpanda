@@ -42,6 +42,7 @@ export interface NewInvoiceRecord {
   milestone_payment_id: string | null;
   contract_reference: string | null;
   payment_terms: string | null;
+  payment_instructions: string | null;
   cover_note: string | null;
   header_text: string | null;
   footer_text: string | null;
@@ -78,6 +79,7 @@ export interface InvoiceUpdatePatch {
   milestone_payment_id?: string | null;
   contract_reference?: string | null;
   payment_terms?: string | null;
+  payment_instructions?: string | null;
   cover_note?: string | null;
   header_text?: string | null;
   footer_text?: string | null;

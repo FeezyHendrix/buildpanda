@@ -57,6 +57,9 @@ export function LegalPage({ doc }: { doc: LegalDocument }) {
         </div>
 
         <div className="mt-14 flex flex-wrap gap-x-6 gap-y-2 border-t border-[#EDEDED] pt-6 text-sm">
+          <Link to="/terms" className="text-gray-500 hover:text-gray-900">
+            Terms of Service
+          </Link>
           <Link to="/privacy" className="text-gray-500 hover:text-gray-900">
             Privacy Policy
           </Link>

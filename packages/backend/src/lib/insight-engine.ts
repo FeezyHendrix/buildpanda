@@ -1,4 +1,4 @@
-import { config } from "../config/index.ts";
+import { chatJson, isLlmConfigured, activeModelName, type LlmMessage } from "./llm.ts";
 import { analyzeMetrics } from "../modules/panda-ai/analyzer.ts";
 import type {
   AiInsightResult,
@@ -18,10 +18,6 @@ const SYSTEM_PROMPT = `You are Panda AI, a senior construction project advisor e
 Provide between 1 and 6 suggestions, ordered most important first.`;
 
 const PRIORITIES: ReadonlySet<string> = new Set(["high", "medium", "low"]);
-
-interface ChatCompletionResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-}
 
 function coerceSuggestions(value: unknown): AiSuggestion[] {
   if (!Array.isArray(value)) return [];
@@ -46,13 +42,7 @@ function coerceSuggestions(value: unknown): AiSuggestion[] {
   return result;
 }
 
-function parseResult(content: string): AiInsightResult | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return null;
-  }
+function parseResult(parsed: unknown): AiInsightResult | null {
   if (typeof parsed !== "object" || parsed === null) return null;
   const obj = parsed as Record<string, unknown>;
   const suggestions = coerceSuggestions(obj["suggestions"]);
@@ -60,67 +50,38 @@ function parseResult(content: string): AiInsightResult | null {
     return null;
   }
   const rawScore = Number(obj["healthScore"]);
-  const healthScore = Number.isFinite(rawScore)
-    ? Math.max(0, Math.min(100, Math.round(rawScore)))
-    : 70;
+  // An unusable score is a failed analysis, not a 70 — reject so the caller
+  // falls back to the deterministic analyzer instead of inventing a number.
+  if (!Number.isFinite(rawScore)) return null;
   return {
     summary: obj["summary"],
     suggestions,
-    healthScore,
-    model: config.ai.model,
+    healthScore: Math.max(0, Math.min(100, Math.round(rawScore))),
+    model: activeModelName() ?? "unknown",
   };
-}
-
-async function callMoonshot(
-  metrics: ProjectMetrics,
-): Promise<AiInsightResult | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.ai.timeoutMs);
-  try {
-    const response = await fetch(`${config.ai.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.ai.apiKey}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: config.ai.model,
-        temperature: 0.3,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: `Analyse this project and respond with the JSON object. Metrics:\n${JSON.stringify(metrics, null, 2)}`,
-          },
-        ],
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(
-        `Moonshot API returned ${response.status}: ${await response.text()}`,
-      );
-    }
-    const payload = (await response.json()) as ChatCompletionResponse;
-    const content = payload.choices?.[0]?.message?.content;
-    if (!content) return null;
-    return parseResult(content);
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 export interface InsightEngineOutcome extends AiInsightResult {
   usedFallback: boolean;
 }
 
+/**
+ * LLM-scored insights via the shared client (OpenAI preferred, Kimi otherwise
+ * — see activeProvider in lib/llm.ts); deterministic analyzer as fallback.
+ */
 export async function generateInsights(
   metrics: ProjectMetrics,
 ): Promise<InsightEngineOutcome> {
-  if (config.ai.apiKey) {
+  if (isLlmConfigured()) {
     try {
-      const result = await callMoonshot(metrics);
+      const messages: LlmMessage[] = [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Analyse this project and respond with the JSON object. Metrics:\n${JSON.stringify(metrics, null, 2)}`,
+        },
+      ];
+      const result = parseResult(await chatJson(messages));
       if (result) {
         return { ...result, usedFallback: false };
       }

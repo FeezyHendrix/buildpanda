@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog } from "@base-ui-components/react/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { Switcher, type SwitcherValue } from "@/components/atoms";

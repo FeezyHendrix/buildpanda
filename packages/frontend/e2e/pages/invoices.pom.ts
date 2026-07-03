@@ -1,20 +1,15 @@
 import { type Page, type Locator, expect } from "@playwright/test";
-import { FormDrawer } from "./base-drawer.pom";
 import { ProjectNav } from "./project-nav";
 
-// POM for Invoices (/project/:id/finances/invoices). Covers creating an invoice
-// via the upsert drawer ("New invoice" / "Add invoice"). Payment recording and
-// balance verification are asserted at the API/DB layer in the spec — the brief
-// requires financial integrity to be checked beyond the screen.
+// Create is a full page (finances/invoices/new), not a drawer. Payment + balance
+// integrity is asserted at the API/DB layer in the spec, not on screen.
 export class InvoicesPage {
-  readonly drawer: FormDrawer;
   private readonly nav: ProjectNav;
 
   constructor(
     private readonly page: Page,
-    projectId: string,
+    private readonly projectId: string,
   ) {
-    this.drawer = new FormDrawer(page);
     this.nav = new ProjectNav(page, projectId);
   }
 
@@ -32,15 +27,29 @@ export class InvoicesPage {
     return this.page.getByText(vendor, { exact: true });
   }
 
-  // Create an invoice and confirm it lands on the list after invalidation.
-  // Vendor, trade and amount are all required for the submit to enable.
+  // VAT is zeroed so balanceDue equals `amount` exactly — the reconciliation
+  // spec asserts amountPaid + balanceDue === amount after each payment.
   async createInvoice(vendor: string, amount: number, trade = "Electrical"): Promise<void> {
     await this.newButton().click();
-    await this.drawer.waitOpen(/new invoice/i);
-    await this.drawer.fillByLabel(/vendor name/i, vendor);
-    await this.drawer.fillByLabel(/^trade$/i, trade);
-    await this.drawer.fillByLabel(/^amount$/i, String(amount));
-    await this.drawer.saveAndClose(/add invoice/i);
+    await this.page.waitForURL(
+      `**/project/${this.projectId}/finances/invoices/new`,
+    );
+
+    await this.page.getByLabel(/vendor \/ payee/i).fill(vendor);
+    await this.page.getByLabel(/^trade$/i).fill(trade);
+    await this.page.getByLabel(/line 1 description/i).fill(trade);
+    await this.page.getByLabel(/line 1 quantity/i).fill("1");
+    await this.page.getByLabel(/line 1 rate/i).fill(String(amount));
+    await this.page.getByLabel(/^vat \(%\)$/i).fill("0");
+
+    await this.page
+      .getByRole("button", { name: /create invoice|^create$/i })
+      .first()
+      .click();
+
+    await this.page.waitForURL(
+      `**/project/${this.projectId}/finances/invoices`,
+    );
     await expect(this.row(vendor)).toBeVisible();
   }
 }

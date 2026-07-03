@@ -66,7 +66,7 @@ export function useCreateOrganization() {
           slug: slugifyOrganizationName(name),
         }),
       );
-      if (!organization) throw new Error("Could not create company.");
+      if (!organization) throw new Error("Could not create workspace.");
       await authClient.organization.setActive({ organizationId: organization.id });
       return organization;
     },
@@ -310,14 +310,34 @@ export function useSetActiveOrganization() {
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (invitationId: string) =>
-      unwrap(
+    mutationFn: async (invitationId: string) => {
+      const data = unwrap(
         await authClient.organization.acceptInvitation({ invitationId }),
-      ),
+      );
+      // Joining a workspace should land you IN it: make it the active org,
+      // otherwise the dashboard keeps showing the user's own (empty) org.
+      const organizationId =
+        data?.invitation?.organizationId ?? data?.member?.organizationId;
+      if (organizationId) {
+        await authClient.organization.setActive({ organizationId });
+      }
+      return data;
+    },
+    // Active org changed, so org-scoped data (projects list) is stale too.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
+}
+
+/** Pending invitations addressed to the signed-in user's email. */
+export function usePendingUserInvitations() {
+  const query = useUserInvitations();
+  return {
+    ...query,
+    data: (query.data ?? []).filter((i) => i.status === "pending"),
+  };
 }
 
 export function useRejectInvitation() {

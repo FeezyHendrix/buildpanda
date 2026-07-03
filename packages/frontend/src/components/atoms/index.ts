@@ -9,6 +9,7 @@ export {
 export { BudgetSlider, type BudgetSliderProps } from "./budget-slider";
 export { Button, type ButtonProps } from "./button";
 export { Card, type CardProps, type CardPadding } from "./card";
+export { ComboInput, type ComboInputProps } from "./combo-input";
 export { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";
 export { ErrorBoundary, type ErrorBoundaryProps } from "./error-boundary";
 export { ErrorFallback, type ErrorFallbackProps } from "./error-fallback";

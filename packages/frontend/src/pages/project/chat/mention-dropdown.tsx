@@ -20,7 +20,7 @@ export function MentionDropdown({
   const lowered = query.toLowerCase();
   const groupOptions: GroupMentionOption[] = [
     { kind: "here", label: "project-team", helper: "Notify everyone on this project" },
-    { kind: "channel", label: "company", helper: "Notify everyone in the company" },
+    { kind: "channel", label: "company", helper: "Notify everyone in the workspace" },
   ];
   const filteredGroups = groupOptions.filter((m) => m.label.includes(lowered));
   const filteredMembers = members
