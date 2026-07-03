@@ -189,7 +189,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           "relative",
           "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full",
-          "lg:relative lg:inset-auto lg:z-auto lg:translate-x-0 lg:max-h-full lg:shrink-0",
+          "lg:relative lg:inset-auto lg:z-30 lg:translate-x-0 lg:max-h-full lg:shrink-0",
         )}
       >
         {/* Pull-tab — peeks from left edge of screen when sidebar is closed (mobile only) */}
