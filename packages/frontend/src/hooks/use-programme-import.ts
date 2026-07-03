@@ -1,5 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { activityKeys, projectKeys, stageKeys } from "./query-keys";
 
 export type ProgrammeJobStatus = "pending" | "processing" | "completed" | "failed" | "applied";
 
@@ -103,6 +104,8 @@ export function useProgrammeImportJob(jobId: string | null) {
 }
 
 export function useApplyProgramme() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ jobId, input }: { jobId: string; input: ApplyProgrammeInput }) => {
       const { data } = await api.post<ApplyProgrammeResult>(
@@ -110,6 +113,11 @@ export function useApplyProgramme() {
         input,
       );
       return data;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: activityKeys.all(res.projectId) });
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(res.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(res.projectId) });
     },
   });
 }
