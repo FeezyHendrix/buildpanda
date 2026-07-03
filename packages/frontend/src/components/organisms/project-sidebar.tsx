@@ -207,20 +207,22 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           <ChevronRightIcon className={cn("size-4 text-gray-400 transition-transform duration-300", open && "rotate-180")} />
         </button>
 
-        {/* Desktop pull-tab — hides/shows the whole sidebar for a full-width main pane */}
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
-          className={cn(
-            "absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-full",
-            "hidden h-14 w-7 items-center justify-center lg:flex",
-            "rounded-r-xl border border-l-0 border-[#F0F0F0] bg-white shadow-sm",
-            "text-gray-400 hover:text-gray-600",
-          )}
-        >
-          <ChevronRightIcon className={cn("size-4 transition-transform duration-300", !collapsed && "rotate-180")} />
-        </button>
+        {/* Desktop expand tab — peeks from the top-left screen edge while the sidebar is hidden */}
+        {collapsed && (
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label="Show sidebar"
+            className={cn(
+              "absolute right-0 top-5 z-20 translate-x-full",
+              "hidden h-9 w-7 items-center justify-center lg:flex",
+              "rounded-r-xl border border-l-0 border-[#F0F0F0] bg-white shadow-sm",
+              "text-gray-400 hover:text-gray-600",
+            )}
+          >
+            <ChevronRightIcon className="size-4" />
+          </button>
+        )}
 
       <aside
         className={cn(
@@ -231,16 +233,31 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
         )}
       >
       <div className="flex h-full w-[260px] shrink-0 flex-col gap-6 px-4 py-6">
-      <Link
-        to={isClient ? "/my-build" : "/dashboard"}
-        className={cn(
-          "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
-          "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        )}
-      >
-        <BackArrowIcon className="size-4" />
-        Projects
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          to={isClient ? "/my-build" : "/dashboard"}
+          className={cn(
+            "inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-600",
+            "outline-none transition-colors hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          )}
+        >
+          <BackArrowIcon className="size-4" />
+          Projects
+        </Link>
+        {/* Collapse control — top row, floated right of Projects (desktop only) */}
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="Hide sidebar"
+          className={cn(
+            "hidden size-7 shrink-0 items-center justify-center rounded-md lg:flex",
+            "text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700",
+            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          )}
+        >
+          <ChevronRightIcon className="size-4 rotate-180" />
+        </button>
+      </div>
 
       <div className="bg-white">
         <div className="flex items-start gap-3">
