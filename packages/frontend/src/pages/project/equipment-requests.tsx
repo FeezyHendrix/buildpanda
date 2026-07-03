@@ -32,6 +32,7 @@ import type {
   EquipmentRequestStatus,
   RequestPriority,
 } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 
 const BUCKETS: Array<{
   bucket: EquipmentBucket;
@@ -102,6 +103,8 @@ function defaultUntil(): string {
 export default function ProjectEquipmentRequests() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
+  const canRequest = canManage && canResourceAction(access, "materials", "request");
+  const canApprove = canManage && canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
   const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
     ? params.bucket
@@ -162,7 +165,7 @@ export default function ProjectEquipmentRequests() {
               Materials
               <ChevronRightIcon className="size-4" />
             </Link>
-            {canManage && (
+            {canRequest && (
               <Button
                 variant="primary"
                 size="md"
@@ -252,6 +255,8 @@ export default function ProjectEquipmentRequests() {
               <EquipmentRow
                 key={request.id}
                 request={request}
+                canRequest={canRequest}
+                canApprove={canApprove}
                 onEdit={() => setEditTarget(request)}
                 onDelete={() => setDeleteTarget(request)}
                 onAdvance={(status) =>
@@ -329,13 +334,20 @@ function EquipmentRow({
   onEdit,
   onDelete,
   onAdvance,
+  canRequest,
+  canApprove,
 }: {
   request: EquipmentRequest;
   onEdit: () => void;
   onDelete: () => void;
   onAdvance: (status: EquipmentRequestStatus) => void;
+  canRequest: boolean;
+  canApprove: boolean;
 }) {
   const next = nextStatus(request.status);
+  // Approval-tier transitions mirror the backend guard.
+  const APPROVAL = ["Approved", "Scheduled", "OnHire", "Returned"];
+  const canAdvance = next !== null && (APPROVAL.includes(next) ? canApprove : canRequest);
   return (
     <article className="flex flex-col gap-4 py-4 xl:flex-row xl:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -380,17 +392,21 @@ function EquipmentRow({
         <p className="mr-2 text-sm font-semibold tabular-nums text-gray-900">
           {formatCurrency(request.estimatedCost, request.currency)}
         </p>
-        {next && (
+        {next && canAdvance ? (
           <Button size="sm" variant="secondary" onClick={() => onAdvance(next)}>
             Move to {STATUS_META[next].label}
           </Button>
-        )}
-        <Button size="sm" variant="ghost" onClick={onEdit}>
-          Edit
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onDelete}>
-          Delete
-        </Button>
+        ) : null}
+        {canRequest ? (
+          <Button size="sm" variant="ghost" onClick={onEdit}>
+            Edit
+          </Button>
+        ) : null}
+        {canApprove ? (
+          <Button size="sm" variant="ghost" onClick={onDelete}>
+            Delete
+          </Button>
+        ) : null}
       </div>
     </article>
   );
