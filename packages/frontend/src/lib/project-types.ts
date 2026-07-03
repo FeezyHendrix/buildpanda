@@ -463,6 +463,21 @@ export function canViewResource(
   return (access.permissions?.[resource] ?? []).includes("view");
 }
 
+/**
+ * Whether the caller may perform an action on a resource. `manage` implies
+ * every other action on the same resource (mirrors the backend guards).
+ * Presentation only — the backend enforces regardless.
+ */
+export function canResourceAction(
+  access: ProjectAccess | undefined,
+  resource: string,
+  action: string,
+): boolean {
+  if (!access) return true;
+  const actions = access.permissions?.[resource] ?? [];
+  return actions.includes(action) || actions.includes("manage");
+}
+
 export interface MyProjectCard {
   id: string;
   name: string;

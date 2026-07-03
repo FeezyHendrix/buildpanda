@@ -23,6 +23,7 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 import { MetricCard } from "./materials/metric-card";
 import { MaterialOrderRow } from "./materials/material-order-row";
 import { LifecyclePanel } from "./materials/lifecycle-panel";
@@ -32,6 +33,8 @@ import { STATUS_META, STATUS_FILTERS } from "./materials/shared";
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
+  const canRequest = canManage && canResourceAction(access, "materials", "request");
+  const canApprove = canManage && canResourceAction(access, "materials", "approve");
   const [filter, setFilter] = useState<MaterialOrderStatus | "all">("all");
   const { data: orders = [], isLoading } = useMaterialOrders(
     project.id,
@@ -81,7 +84,7 @@ export default function ProjectMaterials() {
               Equipment requests
               <ChevronRightIcon className="size-4" />
             </Link>
-            {canManage && (
+            {canRequest && (
               <Button
                 variant="secondary"
                 size="md"
@@ -90,7 +93,7 @@ export default function ProjectMaterials() {
                 Import from BoQ
               </Button>
             )}
-            {canManage && (
+            {canRequest && (
               <Button
                 variant="primary"
                 size="md"
@@ -190,6 +193,8 @@ export default function ProjectMaterials() {
                 <MaterialOrderRow
                   key={order.id}
                   order={order}
+                  canRequest={canRequest}
+                  canApprove={canApprove}
                   onEdit={() => setEditTarget(order)}
                   onDelete={() => setDeleteTarget(order)}
                   onAdvance={(status) =>
