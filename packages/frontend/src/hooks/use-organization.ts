@@ -310,12 +310,36 @@ export function useSetActiveOrganization() {
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (invitationId: string) =>
-      unwrap(
+    mutationFn: async (invitationId: string) => {
+      const data = unwrap(
         await authClient.organization.acceptInvitation({ invitationId }),
-      ),
+      );
+      // Joining a workspace should land you IN it: make it the active org,
+      // otherwise the dashboard keeps showing the user's own (empty) org.
+      const organizationId =
+        data?.invitation?.organizationId ?? data?.member?.organizationId;
+      if (organizationId) {
+        await authClient.organization.setActive({ organizationId });
+      }
+      return data;
+    },
+    // Active org changed, so org-scoped data (projects list) is stale too.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+    },
+  });
+}
+
+/** Pending invitations addressed to the signed-in user's email. */
+export function usePendingUserInvitations() {
+  return useQuery({
+    queryKey: [...organizationKeys.all, "user-invitations"] as const,
+    queryFn: async () => {
+      const invitations = unwrap(
+        await authClient.organization.listUserInvitations(),
+      );
+      return (invitations ?? []).filter((i) => i.status === "pending");
     },
   });
 }
