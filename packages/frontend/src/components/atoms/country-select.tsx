@@ -65,10 +65,10 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
       </Combobox.Trigger>
 
       <Combobox.Portal>
-        <Combobox.Positioner align="start" sideOffset={4}>
+        <Combobox.Positioner align="start" sideOffset={4} className="z-[60]">
           <Combobox.Popup
             className={cn(
-              "z-50 max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
+              "max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
               "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
               "outline outline-1 outline-gray-200",
             )}
