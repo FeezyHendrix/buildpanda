@@ -85,6 +85,8 @@ export interface ProjectSetup {
 export interface CreateProjectInput {
   title: string;
   projectType: string;
+  /** Optional project template that seeds stages and starter tasks. */
+  templateId?: string;
   location: {
     state: string;
     city: string;

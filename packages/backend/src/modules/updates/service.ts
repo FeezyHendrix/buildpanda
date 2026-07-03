@@ -22,7 +22,7 @@ const ALLOWED_TRANSITIONS: Record<string, UpdateStatus[]> = {
   Issues: ["Resolved", "Escalated"],
 };
 
-const CTA_DEFAULTS: Record<UpdateCategory, { label: string; tone: CtaTone }> = {
+export const CTA_DEFAULTS: Record<UpdateCategory, { label: string; tone: CtaTone }> = {
   Progress: { label: "Approve", tone: "primary" },
   "Material Delivery": { label: "Mark as Inspected", tone: "primary" },
   Inspections: { label: "Approve", tone: "primary" },
@@ -88,7 +88,7 @@ function toAction(row: UpdateRow): UpdateAction {
   };
 }
 
-function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate {
+export function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate {
   const result: ProjectUpdate = {
     id: row.id,
     projectId: row.project_id,
@@ -108,6 +108,8 @@ function toUpdate(row: UpdateRow, media: UpdateMediaRow[]): ProjectUpdate {
     cta: { label: row.cta_label, tone: row.cta_tone },
     status: row.status,
     action: toAction(row),
+    isDraft: row.is_draft,
+    generatedKind: row.generated_kind,
     createdAt: new Date(row.created_at).toISOString(),
   };
   if (row.secondary_action_label) {
@@ -137,8 +139,11 @@ export function updatesService(repository: UpdatesRepository) {
   }
 
   return {
-    async listByProject(projectId: string): Promise<ProjectUpdate[]> {
-      const rows = await repository.listByProject(projectId);
+    async listByProject(
+      projectId: string,
+      options: { includeDrafts?: boolean } = {},
+    ): Promise<ProjectUpdate[]> {
+      const rows = await repository.listByProject(projectId, options);
       if (rows.length === 0) return [];
       const media = await repository.mediaForUpdates(rows.map((r) => r.id));
       const grouped = new Map<string, UpdateMediaRow[]>();
@@ -158,6 +163,9 @@ export function updatesService(repository: UpdatesRepository) {
     ): Promise<ProjectUpdate> {
       const current = await loadUpdate(projectId, updateId);
 
+      if (current.is_draft) {
+        throw new BadRequestError("Publish the draft before taking action on it");
+      }
       const allowed = ALLOWED_TRANSITIONS[current.category];
       if (!allowed || !allowed.includes(input.status)) {
         throw new BadRequestError(
@@ -267,6 +275,16 @@ export function updatesService(repository: UpdatesRepository) {
         await repository.replaceMedia(updateId, buildMediaRows(updateId, input.media));
       }
 
+      const media = await repository.mediaForUpdates([updateId]);
+      return toUpdate(row, media);
+    },
+
+    async publish(projectId: string, updateId: string): Promise<ProjectUpdate> {
+      const current = await loadUpdate(projectId, updateId);
+      if (!current.is_draft) {
+        throw new BadRequestError("Update is already published");
+      }
+      const row = await repository.publishUpdate(updateId);
       const media = await repository.mediaForUpdates([updateId]);
       return toUpdate(row, media);
     },

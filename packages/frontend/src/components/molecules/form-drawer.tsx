@@ -1,4 +1,4 @@
-import { Dialog } from "@base-ui-components/react/dialog";
+import { Dialog } from "@base-ui/react/dialog";
 import { type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";

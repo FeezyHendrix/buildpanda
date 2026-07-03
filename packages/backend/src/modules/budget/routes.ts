@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { assertProjectPermission } from "../../lib/authorization.ts";
 import { budgetRepository } from "./repository.ts";
 import {
   budgetService,
@@ -104,7 +105,7 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/budget",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.getByProject(project.id);
     },
   );
@@ -114,6 +115,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createCategoryBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const category = await service.createCategory(project.id, request.body);
       return reply.status(201).send(category);
     },
@@ -130,6 +137,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: seedBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       return service.seedFromEstimateItems(
         project.id,
         request.body.items,
@@ -146,6 +159,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: categoryParams, body: updateCategoryBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       return service.updateCategory(
         project.id,
         request.params.categoryId,
@@ -159,6 +178,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: categoryParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.removeCategory(project.id, request.params.categoryId);
       return reply.status(204).send();
     },
@@ -169,6 +194,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createPeriodBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const period = await service.createPeriod(project.id, request.body);
       return reply.status(201).send(period);
     },
@@ -182,6 +213,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: periodParams, body: updatePeriodBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       return service.updatePeriod(
         project.id,
         request.params.periodId,
@@ -195,6 +232,12 @@ const budgetRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: periodParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.removePeriod(project.id, request.params.periodId);
       return reply.status(204).send();
     },

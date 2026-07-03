@@ -105,7 +105,7 @@ function Navbar({
                       </button>
                     )}
                   </div>
-                  <div className="max-h-96 overflow-y-auto p-1.5">
+                  <div className="max-h-96 space-y-1 overflow-y-auto p-2.5">
                     {(notificationsData?.notifications ?? []).length === 0 ? (
                       <div className="px-4 py-8 text-center text-sm text-gray-500">No notifications yet.</div>
                     ) : (

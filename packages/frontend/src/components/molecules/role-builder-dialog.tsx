@@ -20,7 +20,7 @@ interface RoleBuilderDialogProps {
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
-  organization: "Company settings",
+  organization: "Workspace settings",
   member: "Team members",
   invitation: "Invitations",
   ac: "Roles & permissions",
@@ -53,7 +53,7 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const RESOURCE_GROUPS: { label: string; resources: readonly string[] }[] = [
-  { label: "Company management", resources: ORG_MANAGEMENT_RESOURCES },
+  { label: "Workspace management", resources: ORG_MANAGEMENT_RESOURCES },
   { label: "Project workspace", resources: PROJECT_RESOURCES },
 ];
 

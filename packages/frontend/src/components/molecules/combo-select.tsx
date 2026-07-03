@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Combobox } from "@base-ui-components/react/combobox";
+import { Combobox } from "@base-ui/react/combobox";
 import { cn } from "@/lib/utils";
 
 export interface ComboItem {

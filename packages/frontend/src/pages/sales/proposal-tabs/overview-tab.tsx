@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals";
 import { useAbility } from "@/contexts/ability-context";
 import { formatDayMonth, formatShortDate } from "@/lib/formatters";
@@ -13,13 +15,19 @@ export function OverviewTab({ proposalId }: Props) {
   const convert = useConvertProposal(proposalId);
   const navigate = useNavigate();
   const ability = useAbility();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   if (!data) return null;
   const { proposal, events } = data;
 
-  async function handleConvert() {
-    const { projectId } = await convert.mutateAsync();
-    localStorage.setItem("buildpanda:last-suite", "construction");
-    navigate(`/project/${projectId}/overview`);
+  function handleConvert() {
+    convert.mutate(undefined, {
+      onSuccess: ({ projectId }) => {
+        setConfirmOpen(false);
+        localStorage.setItem("buildpanda:last-suite", "construction");
+        navigate(`/project/${projectId}/overview`);
+      },
+      onError: () => setConfirmOpen(false),
+    });
   }
 
   return (
@@ -124,9 +132,26 @@ export function OverviewTab({ proposalId }: Props) {
                   Conversion failed. Please try again.
                 </p>
               )}
-              <Button variant="primary" onClick={handleConvert} loading={convert.isPending}>
+              <Button
+                variant="primary"
+                onClick={() => setConfirmOpen(true)}
+                loading={convert.isPending}
+              >
                 Convert to project
               </Button>
+              <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                onConfirm={handleConvert}
+                loading={convert.isPending}
+                title="Convert to project?"
+                confirmLabel="Convert to project"
+                description={
+                  proposal.clientEmail
+                    ? `This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate, and invites ${proposal.clientName} (${proposal.clientEmail}) as the client.`
+                    : "This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate."
+                }
+              />
             </>
           ) : (
             <p className="text-xs text-gray-400">

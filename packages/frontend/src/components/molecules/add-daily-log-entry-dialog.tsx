@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Menu } from "@base-ui-components/react/menu";
+import { Menu } from "@base-ui/react/menu";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import type { RichTextEditorHandle } from "@/components/molecules/rich-text-editor";

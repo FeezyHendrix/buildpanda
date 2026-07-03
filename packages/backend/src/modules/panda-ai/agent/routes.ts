@@ -36,13 +36,14 @@ interface ChatBody {
 }
 
 const agentRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = agentService(fastify.db);
+  const service = agentService(fastify.db, fastify.queue);
 
   fastify.post<{ Params: { id: string }; Body: ChatBody }>(
     "/projects/:id/ai/chat",
     { schema: { params: projectIdParams, body: chatBody } },
     async (request, reply) => {
       const project = await request.requireProjectAccess(request.params.id);
+      const user = request.requireAuth();
 
       reply.hijack();
       const raw = reply.raw;
@@ -82,7 +83,23 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
 
       try {
         const result = await service.run(
-          { projectId: project.id, messages: request.body.messages },
+          {
+            projectId: project.id,
+            messages: request.body.messages,
+            // Snapshot of the caller's identity + roles (loaded by the auth
+            // plugin), so agent write tools enforce the same authorization
+            // the domain routes enforce.
+            caller: {
+              user: { id: user.id, name: user.name },
+              project: {
+                id: project.id,
+                ownerId: project.owner_id,
+                organizationId: project.organization_id,
+              },
+              orgRoles: request.orgRoles,
+              projectRoles: request.projectRoles,
+            },
+          },
           {
             onToken: (text) => send("token", { text }),
             onTool: (name) => send("tool", { name }),

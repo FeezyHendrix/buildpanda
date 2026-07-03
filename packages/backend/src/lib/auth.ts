@@ -67,7 +67,7 @@ async function ensureUserOrganization(
     name = user?.name ?? "My";
   }
 
-  const orgName = `${name}'s Company`;
+  const orgName = `${name}'s Workspace`;
   const orgId = generateId("org");
   const slug = await uniqueOrgSlug(slugify(orgName));
   const now = new Date();
@@ -88,6 +88,27 @@ async function ensureUserOrganization(
   });
 
   return orgId;
+}
+
+/**
+ * Resolves the active organization for a new session. Prefers the org the
+ * user last had active (so switching orgs or accepting an invitation sticks
+ * across sign-ins) as long as they are still a member; otherwise falls back
+ * to ensureUserOrganization's first-membership/auto-create behaviour.
+ */
+async function resolveActiveOrganization(userId: string): Promise<string> {
+  const last = await db("session")
+    .where({ userId })
+    .whereNotNull("activeOrganizationId")
+    .orderBy("createdAt", "desc")
+    .first<{ activeOrganizationId: string | null }>("activeOrganizationId");
+  if (last?.activeOrganizationId) {
+    const stillMember = await db("member")
+      .where({ userId, organizationId: last.activeOrganizationId })
+      .first("id");
+    if (stillMember) return last.activeOrganizationId;
+  }
+  return ensureUserOrganization(userId);
 }
 
 /**
@@ -256,7 +277,7 @@ export const auth = betterAuth({
     session: {
       create: {
         before: async (session) => {
-          const activeOrganizationId = await ensureUserOrganization(
+          const activeOrganizationId = await resolveActiveOrganization(
             session.userId,
           );
           await promoteIfAdminEmail(session.userId);

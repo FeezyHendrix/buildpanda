@@ -44,7 +44,8 @@ export function useConvertProposal(proposalId: string) {
   return useMutation({
     mutationFn: () => proposalsApi.convert(proposalId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+      // Conversion changes the proposal status, so lists go stale too.
+      qc.invalidateQueries({ queryKey: proposalKeys.all });
     },
   });
 }

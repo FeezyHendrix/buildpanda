@@ -132,6 +132,7 @@ const createInvoiceBody = {
     milestonePaymentId: { type: "string", minLength: 1 },
     contractReference: { type: "string", maxLength: 200 },
     paymentTerms: { type: "string", maxLength: 1000 },
+    paymentInstructions: { type: "string", maxLength: 2000 },
     coverNote: { type: "string", maxLength: 4000 },
     headerText: { type: "string", maxLength: 2000 },
     footerText: { type: "string", maxLength: 2000 },
@@ -180,7 +181,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.listByProject(project.id);
     },
   );
@@ -190,6 +191,12 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createInvoiceBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       const status = request.body.status;
       if (status === "Approved") {
@@ -209,6 +216,12 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: invoiceParams, body: editInvoiceBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       const status = request.body.status;
       if (status === "Approved") {
@@ -227,6 +240,12 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: invoiceParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.remove(project.id, request.params.invoiceId);
       return reply.status(204).send();
     },
@@ -236,7 +255,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId/pdf",
     { schema: { params: invoiceParams } },
     async (request, reply) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       const invoice = await service.get(project.id, request.params.invoiceId);
       const org = await repository.organizationForProject(project.id);
       const pdf = await renderInvoicePdf(invoice, org ?? null);
@@ -254,6 +273,12 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: invoiceParams, body: sendInvoiceBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const invoice = await service.markSent(project.id, request.params.invoiceId, request.body);
       await fastify.queue.enqueue<InvoiceEmailJobData>(INVOICE_EMAIL_QUEUE, "send", {
         invoiceId: invoice.id,
@@ -302,7 +327,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId/allocations",
     { schema: { params: invoiceParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.getAllocations(project.id, request.params.invoiceId);
     },
   );

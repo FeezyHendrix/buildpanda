@@ -2,6 +2,7 @@ import { Composition } from "remotion";
 import { Walkthrough } from "./Walkthrough";
 import { Demo, DEMO_DURATION } from "./Demo";
 import { Announcement } from "./Announcement";
+import { ProjectOne, PROJECT_ONE_DURATION } from "./ProjectOne";
 import { ANNOUNCEMENT_TOTAL_FRAMES } from "./announcement-timing.generated";
 import { SCENES, TITLE_DURATION, OUTRO_DURATION, TRANSITION_DURATION } from "./scenes";
 import { FPS, WIDTH, HEIGHT, UHD_WIDTH, UHD_HEIGHT } from "./theme";
@@ -37,6 +38,14 @@ export const RemotionRoot: React.FC = () => {
         fps={FPS}
         width={WIDTH}
         height={HEIGHT}
+      />
+      <Composition
+        id="ProjectOne"
+        component={ProjectOne}
+        durationInFrames={PROJECT_ONE_DURATION}
+        fps={FPS}
+        width={1080}
+        height={1920}
       />
     </>
   );

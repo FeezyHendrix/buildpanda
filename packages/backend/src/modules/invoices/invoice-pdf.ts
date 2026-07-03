@@ -175,6 +175,7 @@ function totals(doc: Doc, invoice: Invoice): void {
 
 function notes(doc: Doc, invoice: Invoice, org: InvoiceOrganizationRow | null): void {
   const blocks = [
+    ["Payment details", invoice.paymentInstructions],
     ["Bank details", [...bankDetails(org?.bank_details), ...(invoice.fromParty?.bank ? bankDetails(invoice.fromParty.bank) : [])].join("\n")],
     ["Payment terms", invoice.paymentTerms],
     ["Cover note", invoice.coverNote],

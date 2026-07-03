@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { assertCanModifyProject } from "../../lib/authorization.ts";
+import { aiDraftService } from "./ai-draft.ts";
 import { updatesRepository } from "./repository.ts";
 import {
   updatesService,
@@ -95,13 +97,50 @@ const editUpdateBody = {
 
 const updateRoutes: FastifyPluginAsync = async (fastify) => {
   const service = updatesService(updatesRepository(fastify.db));
+  const aiDraft = aiDraftService(fastify.db);
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/updates",
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectAccess(request.params.id);
-      return service.listByProject(project.id);
+      const user = request.requireAuth();
+      // Drafts are visible only to callers who could publish them (project
+      // owner / non-viewer org members) — homeowner participants see only
+      // published updates.
+      let includeDrafts = true;
+      try {
+        assertCanModifyProject(
+          { ownerId: project.owner_id, organizationId: project.organization_id },
+          { userId: user.id, orgRoles: request.orgRoles },
+        );
+      } catch {
+        includeDrafts = false;
+      }
+      return service.listByProject(project.id, { includeDrafts });
+    },
+  );
+
+  fastify.post<{ Params: { id: string } }>(
+    "/projects/:id/updates/ai-draft",
+    { schema: { params: projectIdParams } },
+    async (request, reply) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
+      const result = await aiDraft.generateClientUpdateDraft({
+        projectId: project.id,
+        requestedBy: { id: user.id, name: user.name },
+      });
+      return reply.status(result.created ? 201 : 200).send(result.update);
+    },
+  );
+
+  fastify.post<{ Params: { id: string; updateId: string } }>(
+    "/projects/:id/updates/:updateId/publish",
+    { schema: { params: updateIdParams } },
+    async (request) => {
+      const project = await request.requireProjectWrite(request.params.id);
+      return service.publish(project.id, request.params.updateId);
     },
   );
 

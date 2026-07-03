@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
-import { activityKeys } from "./query-keys";
+import { activityKeys, projectKeys, stageKeys } from "./query-keys";
 import type {
   Activity,
   ActivityDelay,
@@ -68,6 +68,8 @@ export function useCreateActivity() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: activityKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
   });
 }
@@ -109,6 +111,8 @@ export function useUpdateActivity() {
         queryKey: activityKeys.detail(projectId, activityId),
       });
       queryClient.invalidateQueries({ queryKey: activityKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
   });
 }
@@ -127,6 +131,8 @@ export function useDeleteActivity() {
     },
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: activityKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
   });
 }
