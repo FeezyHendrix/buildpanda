@@ -5,6 +5,7 @@ import type {
   LedgerEntry,
   LedgerEntryType,
   MaterialCatalogItem,
+  ReorderPolicyInput,
   StockLevel,
 } from "@/lib/project-types";
 
@@ -65,6 +66,20 @@ export function useMaterialCatalog(projectId: string) {
       return data;
     },
     enabled: Boolean(projectId),
+  });
+}
+
+export function useUpdateReorderPolicy(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ materialId, ...input }: ReorderPolicyInput & { materialId: string }) => {
+      const { data } = await api.put<MaterialCatalogItem>(
+        `/projects/${projectId}/materials/catalog/${materialId}/reorder-policy`,
+        input,
+      );
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
   });
 }
 

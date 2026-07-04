@@ -1,7 +1,7 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { toIso } from "../../lib/dates.ts";
-import type { MaterialsLedgerRepository } from "./repository.ts";
+import type { CatalogPolicyPatch, MaterialsLedgerRepository } from "./repository.ts";
 import type {
   LedgerEntry,
   LedgerEntryFileRow,
@@ -9,6 +9,7 @@ import type {
   LedgerEntryType,
   MaterialCatalogItem,
   MaterialCatalogRow,
+  ReorderPolicyInput,
   StockLevel,
   StockRow,
 } from "./types.ts";
@@ -47,6 +48,19 @@ export interface LedgerSideEffects {
     entryId: string;
     actorId: string | null;
   }) => void;
+  onLowStock?: (info: {
+    projectId: string;
+    materialId: string;
+    materialName: string;
+    unit: string;
+    onHandQty: number;
+    lowStockThreshold: number;
+    reorderQuantity: number | null;
+    leadTimeDays: number | null;
+    preferredSupplierId: string | null;
+    autoReorderEnabled: boolean;
+    actorId: string | null;
+  }) => void;
 }
 
 function fileUrl(fileId: string): string {
@@ -67,6 +81,11 @@ function toCatalog(row: MaterialCatalogRow): MaterialCatalogItem {
     unit: row.unit,
     lowStockThreshold: row.low_stock_threshold === null ? null : Number(row.low_stock_threshold),
     active: row.active,
+    reorderQuantity: row.reorder_quantity === null ? null : Number(row.reorder_quantity),
+    leadTimeDays: row.lead_time_days,
+    preferredSupplierId: row.preferred_supplier_id,
+    preferredSupplierName: row.preferred_supplier_name,
+    autoReorderEnabled: row.auto_reorder_enabled,
   };
 }
 
@@ -136,6 +155,38 @@ export function materialsLedgerService(
       return rows.map(toCatalog);
     },
 
+    async updateReorderPolicy(
+      projectId: string,
+      materialId: string,
+      input: ReorderPolicyInput,
+    ): Promise<MaterialCatalogItem> {
+      const existing = await repository.findCatalogById(materialId);
+      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Material");
+
+      const patch: CatalogPolicyPatch = {};
+      if (input.lowStockThreshold !== undefined) {
+        patch.low_stock_threshold = input.lowStockThreshold === null ? null : String(input.lowStockThreshold);
+      }
+      if (input.reorderQuantity !== undefined) {
+        if (input.reorderQuantity !== null && input.reorderQuantity <= 0) {
+          throw new BadRequestError("Reorder quantity must be greater than zero");
+        }
+        patch.reorder_quantity = input.reorderQuantity === null ? null : String(input.reorderQuantity);
+      }
+      if (input.leadTimeDays !== undefined) {
+        if (input.leadTimeDays !== null && input.leadTimeDays < 0) {
+          throw new BadRequestError("Lead time must be zero or more days");
+        }
+        patch.lead_time_days = input.leadTimeDays;
+      }
+      if (input.preferredSupplierId !== undefined) patch.preferred_supplier_id = input.preferredSupplierId;
+      if (input.autoReorderEnabled !== undefined) patch.auto_reorder_enabled = input.autoReorderEnabled;
+
+      const row = await repository.updateCatalogPolicy(materialId, patch);
+      if (!row) throw new NotFoundError("Material");
+      return toCatalog(row);
+    },
+
     async listLedger(
       projectId: string,
       filters: { materialId?: string; entryType?: LedgerEntryType; limit?: number; before?: string },
@@ -189,6 +240,23 @@ export function materialsLedgerService(
           materialName: catalog.name,
           onHandQty: result.onHandQty,
           entryId: result.entryId,
+          actorId,
+        });
+      }
+
+      const threshold = catalog.low_stock_threshold === null ? null : Number(catalog.low_stock_threshold);
+      if (!result.duplicate && threshold !== null && result.onHandQty <= threshold) {
+        sideEffects.onLowStock?.({
+          projectId,
+          materialId: catalog.id,
+          materialName: catalog.name,
+          unit: catalog.unit,
+          onHandQty: result.onHandQty,
+          lowStockThreshold: threshold,
+          reorderQuantity: catalog.reorder_quantity === null ? null : Number(catalog.reorder_quantity),
+          leadTimeDays: catalog.lead_time_days,
+          preferredSupplierId: catalog.preferred_supplier_id,
+          autoReorderEnabled: catalog.auto_reorder_enabled,
           actorId,
         });
       }

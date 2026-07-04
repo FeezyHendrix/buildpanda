@@ -56,6 +56,17 @@ export const equipmentRequestKeys = {
     [...equipmentRequestKeys.all(projectId), "list", bucket ?? "all"] as const,
 };
 
+export const supplierKeys = {
+  all: (projectId: string) => ["projects", projectId, "suppliers"] as const,
+  list: (projectId: string, includeInactive?: boolean) =>
+    [...supplierKeys.all(projectId), "list", includeInactive ?? false] as const,
+};
+
+export const lookAheadKeys = {
+  all: (projectId: string) => ["projects", projectId, "materials-look-ahead"] as const,
+  detail: (projectId: string, weeks: number) => [...lookAheadKeys.all(projectId), weeks] as const,
+};
+
 export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,

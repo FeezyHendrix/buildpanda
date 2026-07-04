@@ -149,6 +149,13 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    suppliers(projectId: string) {
+      return db("suppliers")
+        .where({ project_id: projectId, active: true })
+        .orderBy("name", "asc")
+        .select("name", "contact_name", "email", "phone", "address");
+    },
+
     documents(projectId: string) {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")

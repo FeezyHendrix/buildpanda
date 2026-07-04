@@ -351,6 +351,20 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_suppliers", "Get the project's supplier directory (name, contact person, email, phone, address). Use for questions about who supplies materials, supplier contact details, or which vendors are on file."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const suppliers = await repo.suppliers(ctx.projectId);
+      return {
+        output: suppliers.map((s) => ({
+          name: s.name,
+          contactName: s.contact_name,
+          email: s.email,
+          phone: s.phone,
+          address: s.address,
+        })),
+      };
+    }),
+
     tool(fn("get_tasks", "Get the project's task board (Kanban) with each task's column, assignee and due date. Use for questions about tasks, the board, what's in progress, what's assigned to someone, or what tasks are overdue."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();

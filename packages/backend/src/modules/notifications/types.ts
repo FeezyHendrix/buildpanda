@@ -41,6 +41,7 @@ export const NOTIFICATION_TYPES = [
   { type: "ai_health_drop", label: "Project health score dropped", group: "Project" },
   { type: "material_negative_stock", label: "Material stock went negative", group: "Materials" },
   { type: "material_low_stock", label: "Material is running low", group: "Materials" },
+  { type: "material_reorder_created", label: "An automatic reorder request was created", group: "Materials" },
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]["type"];
