@@ -35,6 +35,8 @@ export interface RfiCreateInput {
   costImpact?: boolean;
   scheduleImpact?: boolean;
   ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
 }
 
 export interface RfiUpdateInput {
@@ -45,6 +47,8 @@ export interface RfiUpdateInput {
   costImpact?: boolean;
   scheduleImpact?: boolean;
   ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
   assigneeRole?: string | null;
 }
 

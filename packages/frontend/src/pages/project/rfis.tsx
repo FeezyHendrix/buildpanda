@@ -15,6 +15,8 @@ import {
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateRfi, useProjectRfis } from "@/hooks/use-rfis";
 import { useParticipants } from "@/hooks/use-participants";
+import { useProjectTeam } from "@/hooks/use-team";
+import type { AssigneeOption } from "@/components/molecules/upsert-rfi-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import type { Rfi, RfiStatus } from "@/lib/project-types";
@@ -93,9 +95,23 @@ export default function ProjectRfis() {
   const createRfi = useCreateRfi();
 
   const { data: participants = [] } = useParticipants(project.id);
-  const assigneeOptions = participants
-    .filter((p) => p.userId)
-    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+  const { data: contacts = [] } = useProjectTeam(project.id);
+  const assigneeOptions: AssigneeOption[] = [
+    ...participants
+      .filter((p) => p.userId)
+      .map((p) => ({
+        id: p.userId as string,
+        name: p.name ?? p.email,
+        email: p.email,
+        isUser: true,
+      })),
+    ...contacts.map((c) => ({
+      id: c.id,
+      name: c.company ? `${c.name} (${c.company})` : c.name,
+      email: c.email,
+      isUser: false,
+    })),
+  ];
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
