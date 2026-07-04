@@ -12,11 +12,6 @@ import type { Country } from "@/lib/countries";
 
 const ACCOUNT_TYPES = [
   {
-    id: "project_owner",
-    title: "Project Owner",
-    description: "You own the project and oversee its delivery.",
-  },
-  {
     id: "construction_company",
     title: "Construction Company",
     description: "You are the construction team delivering the build.",
