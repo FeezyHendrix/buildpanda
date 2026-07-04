@@ -348,6 +348,8 @@ export interface ChangeRequestDetail extends ChangeRequest {
 
 export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
 
+export type PermitUrgency = "expired" | "expiringSoon" | "active" | "none";
+
 export interface Permit {
   id: string;
   projectId: string;
@@ -359,6 +361,8 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  urgency: PermitUrgency;
+  daysUntilExpiry: number | null;
   createdAt: string;
   updatedAt: string;
 }

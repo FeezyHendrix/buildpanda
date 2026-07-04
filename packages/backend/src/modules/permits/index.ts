@@ -6,6 +6,10 @@ import { idParams as projectIdParams } from "../../lib/schemas.ts";
 
 export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
 
+export type PermitUrgency = "expired" | "expiringSoon" | "active" | "none";
+
+const EXPIRING_WINDOW_DAYS = 30;
+
 export interface Permit {
   id: string;
   projectId: string;
@@ -17,8 +21,43 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  urgency: PermitUrgency;
+  daysUntilExpiry: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+function daysBetweenTodayAnd(dateIso: string): number {
+  const today = new Date(new Date().toISOString().slice(0, 10)).getTime();
+  const target = new Date(dateIso.slice(0, 10)).getTime();
+  return Math.round((target - today) / 86_400_000);
+}
+
+// Urgency is derived from the expiry date and status, so a permit's real-world
+// risk (expired / expiring within 30 days) is a single field consumers share.
+function computeUrgency(
+  status: PermitStatus,
+  expiryDate: string | null,
+): { urgency: PermitUrgency; daysUntilExpiry: number | null } {
+  if (!expiryDate) return { urgency: "none", daysUntilExpiry: null };
+  const days = daysBetweenTodayAnd(expiryDate);
+  if (status === "Rejected") return { urgency: "none", daysUntilExpiry: days };
+  if (days < 0) return { urgency: "expired", daysUntilExpiry: days };
+  if (days <= EXPIRING_WINDOW_DAYS) return { urgency: "expiringSoon", daysUntilExpiry: days };
+  return { urgency: "active", daysUntilExpiry: days };
+}
+
+// Status follows the dates unless the caller sends an explicit status. An expiry
+// in the past wins outright; otherwise the furthest-progressed date drives it.
+function inferStatus(
+  explicit: PermitStatus | undefined,
+  dates: { appliedDate: string | null; approvedDate: string | null; expiryDate: string | null },
+): PermitStatus {
+  if (explicit) return explicit;
+  if (dates.expiryDate && daysBetweenTodayAnd(dates.expiryDate) < 0) return "Expired";
+  if (dates.approvedDate) return "Approved";
+  if (dates.appliedDate) return "Applied";
+  return "NotStarted";
 }
 
 interface PermitRow {
@@ -37,6 +76,7 @@ interface PermitRow {
 }
 
 function toPermit(r: PermitRow): Permit {
+  const { urgency, daysUntilExpiry } = computeUrgency(r.status, r.expiry_date);
   return {
     id: r.id,
     projectId: r.project_id,
@@ -48,6 +88,8 @@ function toPermit(r: PermitRow): Permit {
     approvedDate: r.approved_date,
     expiryDate: r.expiry_date,
     notes: r.notes,
+    urgency,
+    daysUntilExpiry,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -122,8 +164,11 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectAccess(request.params.id);
+      // Permits with an expiry sort first (soonest first) so anything expired or
+      // expiring surfaces at the top; dateless permits fall to the bottom.
       const rows = await db<PermitRow>("permits")
         .where({ project_id: project.id })
+        .orderByRaw("expiry_date asc nulls last")
         .orderBy("created_at", "desc");
       return rows.map(toPermit);
     },
@@ -134,16 +179,19 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const appliedDate = request.body.appliedDate ?? null;
+      const approvedDate = request.body.approvedDate ?? null;
+      const expiryDate = request.body.expiryDate ?? null;
       const record = {
         id: generateId("permit"),
         project_id: project.id,
         title: request.body.title!,
         authority: request.body.authority ?? null,
         reference_no: request.body.referenceNo ?? null,
-        status: request.body.status ?? "NotStarted",
-        applied_date: request.body.appliedDate ?? null,
-        approved_date: request.body.approvedDate ?? null,
-        expiry_date: request.body.expiryDate ?? null,
+        status: inferStatus(request.body.status, { appliedDate, approvedDate, expiryDate }),
+        applied_date: appliedDate,
+        approved_date: approvedDate,
+        expiry_date: expiryDate,
         notes: request.body.notes ?? null,
       };
       await db("permits").insert(record);
@@ -161,9 +209,19 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
         .where({ id: request.params.permitId, project_id: project.id })
         .first();
       if (!existing) throw new NotFoundError("Permit");
+      const patch = toPatch(request.body);
+      // Re-derive status from the effective dates unless the caller set it
+      // explicitly, so date edits keep the status accurate.
+      if (request.body.status === undefined) {
+        patch.status = inferStatus(undefined, {
+          appliedDate: (patch.applied_date as string | null | undefined) ?? existing.applied_date,
+          approvedDate: (patch.approved_date as string | null | undefined) ?? existing.approved_date,
+          expiryDate: (patch.expiry_date as string | null | undefined) ?? existing.expiry_date,
+        });
+      }
       await db("permits")
         .where({ id: request.params.permitId })
-        .update({ ...toPatch(request.body), updated_at: new Date().toISOString() });
+        .update({ ...patch, updated_at: new Date().toISOString() });
       const row = await db<PermitRow>("permits").where({ id: request.params.permitId }).first();
       return toPermit(row!);
     },
