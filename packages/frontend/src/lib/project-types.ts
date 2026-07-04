@@ -154,6 +154,7 @@ export interface Rfi {
   visibility: "internal" | "shared";
   ballInCourtId: string | null;
   ballInCourtName: string | null;
+  ballInCourtEmail: string | null;
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
