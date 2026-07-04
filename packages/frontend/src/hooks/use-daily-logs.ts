@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { dailyLogKeys } from "./query-keys";
-import type { DailyLog, DailyLogDay, DailyLogEntry, WeatherCondition } from "@/lib/project-types";
+import type {
+  DailyLog,
+  DailyLogDay,
+  DailyLogEntry,
+  ReportPeriod,
+  WeatherCondition,
+} from "@/lib/project-types";
 
 export function useProjectDailyDays(
   projectId: string | undefined,
@@ -241,6 +247,33 @@ export function useEmailDailyReport() {
         email ? { email } : {},
       );
       return data;
+    },
+  });
+}
+
+export function useDownloadPeriodReport() {
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      period,
+      date,
+    }: {
+      projectId: string;
+      period: ReportPeriod;
+      date: string;
+    }) => {
+      const response = await api.get<Blob>(`/projects/${projectId}/daily-logs/period-report`, {
+        params: { period, date },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${period}-report-${date}.docx`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
     },
   });
 }
