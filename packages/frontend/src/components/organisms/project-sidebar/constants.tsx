@@ -132,10 +132,10 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "projects.bim",
     },
     {
-      label: "Approvals",
+      label: "Client Approvals",
       slug: "approvals",
       Icon: InspectionsIcon,
-      helper: "Owner sign-offs",
+      helper: "Client sign-offs",
       flag: "workflow.approvals",
     },
     {
@@ -153,10 +153,10 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "workflow.changeRequests",
     },
     {
-      label: "Permits",
+      label: "Permits & Compliance",
       slug: "permits",
       Icon: DocumentsIcon,
-      helper: "Authority records",
+      helper: "Regulatory permits & expiry",
       flag: "compliance.permits",
     },
   ] as const;
