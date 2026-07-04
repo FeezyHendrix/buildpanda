@@ -96,14 +96,6 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Daily Log",
-    slug: "schedules/daily-log",
-    resource: "dailyLog",
-    Icon: CalendarIcon,
-    helper: "Field reports",
-    flag: "quality.dailyLogs",
-  },
-  {
     label: "Project Chart",
     slug: "schedules/project-chart",
     resource: "schedule",
@@ -116,26 +108,12 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
   [
     {
-      label: "Inspections",
-      slug: "inspections",
-    resource: "inspections",
-      Icon: InspectionsIcon,
-      helper: "Quality checks",
-      flag: "quality.inspections",
-    },
-    {
-      label: "Action Items",
-      slug: "action-items",
-      Icon: TrendingUpIcon,
-      helper: "Open blockers",
-      flag: "workflow.actionItems",
-    },
-    {
-      label: "Queries",
-      slug: "queries",
-      Icon: MessagesIcon,
-      helper: "Field questions",
-      flag: "workflow.queries",
+      label: "Daily Log",
+      slug: "schedules/daily-log",
+      resource: "dailyLog",
+      Icon: CalendarIcon,
+      helper: "Field reports",
+      flag: "quality.dailyLogs",
     },
     {
       label: "RFIs",

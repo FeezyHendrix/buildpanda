@@ -50,12 +50,6 @@ export default function ProjectOverview() {
           <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
             <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
               <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
-                <ReactSVG src={icons.love} />
-            </div>
-            <p className='text-[13px] font-semibold text-black-200'><span className='text-primary'>{project.healthScore}</span>/100</p>
-            </Badge>
-            <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
-              <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
                 <ReactSVG src={icons.shield} />
             </div>
               <p className='text-[13px] font-semibold text-black-200'>{project.risk}</p>
