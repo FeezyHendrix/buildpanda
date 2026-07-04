@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Label } from "@/components/atoms/label";
 import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
@@ -20,11 +21,15 @@ import {
   useVoidDailyLogEntry,
   useDownloadDailyReport,
   useEmailDailyReport,
+  useDownloadPeriodReport,
 } from "@/hooks/use-daily-logs";
-import type {
-  DailyLogDay,
-  DailyLogEntry,
-  WeatherCondition,
+import {
+  REPORT_PERIOD_OPTIONS,
+  canResourceAction,
+  type DailyLogDay,
+  type DailyLogEntry,
+  type ReportPeriod,
+  type WeatherCondition,
 } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -67,6 +72,11 @@ export default function ProjectDailyLog() {
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);
+  const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
+  const [periodDate, setPeriodDate] = useState(todayIso());
+
+  const canGenerateReport = canResourceAction(access, "dailyLog", "report");
+  const downloadPeriodReport = useDownloadPeriodReport();
 
   const upsert = useUpsertDailyLog();
   const addEntry = useAddDailyLogEntry();
@@ -127,6 +137,53 @@ export default function ProjectDailyLog() {
           />
         </div>
       </section>
+
+      {canGenerateReport && (
+        <section
+          aria-label="Generate report"
+          className="mt-6 flex flex-col gap-3 rounded-[16px] border-none bg-[#F8F8F8] p-5 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
+            <Label htmlFor="report-period">Report period</Label>
+            <select
+              id="report-period"
+              value={periodType}
+              onChange={(e) => setPeriodType(e.target.value as ReportPeriod)}
+              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            >
+              {REPORT_PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
+            <Label htmlFor="report-date">Any date in period</Label>
+            <input
+              id="report-date"
+              type="date"
+              value={periodDate}
+              onChange={(e) => setPeriodDate(e.target.value)}
+              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            loading={downloadPeriodReport.isPending}
+            onClick={() =>
+              downloadPeriodReport.mutate(
+                { projectId: project.id, period: periodType, date: periodDate },
+                { onError: () => toast("Could not download report") },
+              )
+            }
+          >
+            Download report
+          </Button>
+        </section>
+      )}
 
       <section className="mt-8 flex flex-col gap-4">
         {isPending ? (

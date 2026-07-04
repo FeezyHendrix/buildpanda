@@ -906,6 +906,16 @@ export interface DailyLogDay {
   entries: DailyLogEntry[];
 }
 
+export type ReportPeriod = "weekly" | "monthly" | "quarterly" | "semiAnnual" | "annual";
+
+export const REPORT_PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "semiAnnual", label: "Semi-Annual" },
+  { value: "annual", label: "Annual" },
+];
+
 export interface Notification {
   id: string;
   type: NotificationType;
