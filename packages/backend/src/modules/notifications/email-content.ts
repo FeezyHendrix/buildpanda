@@ -63,6 +63,7 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   ai_health_drop: { eyebrow: "Project health dropped", accent: "warning", ctaLabel: "View Insights" },
   material_negative_stock: { eyebrow: "Negative stock", accent: "warning", ctaLabel: "View Materials" },
   material_low_stock: { eyebrow: "Low stock", accent: "warning", ctaLabel: "View Materials" },
+  material_reorder_created: { eyebrow: "Reorder created", accent: "brand", ctaLabel: "View Materials" },
 };
 
 const GENERIC: TypePresentation = {

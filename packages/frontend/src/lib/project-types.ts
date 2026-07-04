@@ -1155,6 +1155,19 @@ export interface MaterialCatalogItem {
   unit: string;
   lowStockThreshold: number | null;
   active: boolean;
+  reorderQuantity: number | null;
+  leadTimeDays: number | null;
+  preferredSupplierId: string | null;
+  preferredSupplierName: string | null;
+  autoReorderEnabled: boolean;
+}
+
+export interface ReorderPolicyInput {
+  lowStockThreshold?: number | null;
+  reorderQuantity?: number | null;
+  leadTimeDays?: number | null;
+  preferredSupplierId?: string | null;
+  autoReorderEnabled?: boolean;
 }
 
 export interface LedgerEntryFile {
@@ -1197,4 +1210,47 @@ export interface StockLevel {
   onHandQty: number;
   lowStockThreshold: number | null;
   lowStock: boolean;
+}
+
+export interface Supplier {
+  id: string;
+  projectId: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LookAheadMaterialOrder {
+  id: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  supplier: string | null;
+  status: MaterialOrderStatus;
+  neededBy: string;
+}
+
+export interface LookAheadActivity {
+  activityId: string;
+  activityName: string;
+  phaseName: string | null;
+  status: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  workerCountPlanned: number;
+  materialOrders: LookAheadMaterialOrder[];
+  hasMaterialCoverage: boolean;
+}
+
+export interface LookAheadResult {
+  weeks: number;
+  from: string;
+  to: string;
+  activities: LookAheadActivity[];
 }

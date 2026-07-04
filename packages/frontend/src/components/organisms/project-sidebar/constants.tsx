@@ -68,6 +68,22 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Rental workflow",
     flag: "commercial.materialsEquipment",
   },
+  {
+    label: "Suppliers",
+    slug: "suppliers",
+    resource: "materials",
+    Icon: MaterialsIcon,
+    helper: "Supplier directory",
+    flag: "commercial.materialsEquipment",
+  },
+  {
+    label: "Look-ahead Planning",
+    slug: "look-ahead-planning",
+    resource: "materials",
+    Icon: MaterialsIcon,
+    helper: "4-week schedule view",
+    flag: "commercial.materialsEquipment",
+  },
 ] as const;
 
 export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
