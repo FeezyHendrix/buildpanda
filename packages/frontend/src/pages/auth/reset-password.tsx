@@ -129,7 +129,7 @@ export default function ResetPasswordForm() {
         required
       />
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full h-[48px]" disabled={loading}>
         {loading ? "Resetting..." : "Reset Password"}
       </Button>
     </form>

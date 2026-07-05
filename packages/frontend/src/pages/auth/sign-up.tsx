@@ -243,7 +243,7 @@ export default function SignUpForm() {
         </p>
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading || !personaComplete}>
+      <Button type="submit" className="w-full h-[48px]" disabled={loading || !personaComplete}>
         {loading ? "Creating account..." : "Create Account"}
       </Button>
     </form>

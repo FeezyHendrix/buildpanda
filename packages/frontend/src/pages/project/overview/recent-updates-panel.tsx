@@ -8,6 +8,7 @@ import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { formatTimeAgo } from "@/lib/formatters";
 import { UPDATE_CATEGORY_LABEL, UPDATE_CATEGORY_TONE } from "@/lib/project-meta";
 import type { ProjectUpdate } from "@/lib/project-types";
+import { EmptyState } from "@/components";
 
 interface RecentUpdatesPanelProps {
   updates: ProjectUpdate[];
@@ -40,7 +41,12 @@ export function RecentUpdatesPanel({
       <div className="bg-white rounded-[12px] h-full m-1 p-6">
         <div className="flex flex-col gap-6">
           {updates.length === 0 ? (
-            <p className="py-8 text-center text-sm text-gray-500">No updates yet</p>
+            <EmptyState
+              title="No active updates"
+              icon={(<ReactSVG src={icons.updateEmpty} />)}
+              description="Add a risk factor to track and mitigate issues on this project."
+              className="py-6"
+            />
           ) : (
             <ul className="flex flex-col gap-4">
               {updates.map((update) => (

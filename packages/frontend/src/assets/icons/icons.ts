@@ -61,6 +61,9 @@ import FolderArrow from './folder.arrow.icon.svg';
 import FolderWhite from './folder.white.icon.svg';
 import SwitchProfile from './switch.profile.icon.svg';
 import Teams from './teams.icon.svg';
+import RiskShield from './risk.shield.icon.svg';
+import Globe from './globe.icon.svg';
+import UpdateEmpty from './update.empty.icon.svg';
 
 export const icons = {
   lock: Lock,
@@ -126,4 +129,7 @@ export const icons = {
   folderWhite: FolderWhite,
   switchProfile: SwitchProfile,
   teams: Teams,
+  riskShield: RiskShield,
+  globe: Globe,
+  updateEmpty: UpdateEmpty,
 };
