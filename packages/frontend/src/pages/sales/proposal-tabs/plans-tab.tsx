@@ -9,7 +9,8 @@ import {
   useProposalTakeoffs,
   useStartProposalTakeoff,
 } from "@/hooks/use-proposals";
-import api from "@/api/client";
+import { useUploadFile } from "@/hooks/use-files";
+import { filesApi } from "@/api/files";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
 import { proposalKeys } from "@/hooks/query-keys";
@@ -34,6 +35,7 @@ export function PlansTab({ proposalId }: Props) {
   const addPlan = useAddPlan(proposalId);
   const deletePlan = useDeletePlan(proposalId);
   const startTakeoff = useStartProposalTakeoff(proposalId);
+  const uploadFile = useUploadFile();
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +51,7 @@ export function PlansTab({ proposalId }: Props) {
     setError(null);
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      // `undefined` lets the browser set multipart/form-data WITH a boundary;
-      // a hardcoded value omits it and the upload fails server-side.
-      const { data: uploaded } = await api.post<{ id: string }>("/files", form, {
-        headers: { "Content-Type": undefined },
-      });
+      const uploaded = await uploadFile.mutateAsync({ file });
       const nextPlans = await addPlan.mutateAsync({ fileId: uploaded.id });
       const added = nextPlans.find((plan) => plan.fileId === uploaded.id) ?? nextPlans[nextPlans.length - 1];
       if (added && /\.dwg$/i.test(added.fileName)) {
@@ -108,7 +104,7 @@ export function PlansTab({ proposalId }: Props) {
       ) : (
         <ul className="flex flex-col divide-y divide-gray-100 rounded-xl border border-gray-200">
           {plans.map((plan) => {
-            const downloadUrl = `${api.defaults.baseURL ?? ""}/files/${plan.fileId}/download`;
+            const downloadUrl = filesApi.downloadUrl(plan.fileId);
             return (
               <li key={plan.id} className="flex items-center justify-between gap-3 px-4 py-3">
                 <div className="flex items-center gap-3">

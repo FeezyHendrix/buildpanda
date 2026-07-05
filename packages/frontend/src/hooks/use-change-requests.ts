@@ -1,22 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  changeRequestsApi,
+  type ChangeRequestBudgetLink,
+  type ChangeRequestInput,
+} from "@/api/change-requests";
 import { changeRequestKeys } from "./query-keys";
-import type {
-  ChangeComment,
-  ChangeRequest,
-  ChangeRequestDetail,
-  ChangeStatus,
-} from "@/lib/project-types";
+import type { ChangeStatus } from "@/lib/project-types";
+
+export type { ChangeRequestInput, ChangeRequestBudgetLink };
 
 export function useChangeRequests(projectId: string | undefined, status?: ChangeStatus) {
   return useQuery({
     queryKey: changeRequestKeys.list(projectId ?? "__none__", status),
-    queryFn: async () => {
-      const { data } = await api.get<ChangeRequest[]>(`/projects/${projectId!}/change-requests`, {
-        params: status ? { status } : undefined,
-      });
-      return data;
-    },
+    queryFn: () => changeRequestsApi.list(projectId!, status),
     enabled: Boolean(projectId),
   });
 }
@@ -24,34 +20,16 @@ export function useChangeRequests(projectId: string | undefined, status?: Change
 export function useChangeRequest(projectId: string | undefined, changeId: string | undefined) {
   return useQuery({
     queryKey: changeRequestKeys.detail(projectId ?? "__none__", changeId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ChangeRequestDetail>(
-        `/projects/${projectId!}/change-requests/${changeId!}`,
-      );
-      return data;
-    },
+    queryFn: () => changeRequestsApi.detail(projectId!, changeId!),
     enabled: Boolean(projectId && changeId),
   });
-}
-
-export interface ChangeRequestInput {
-  title: string;
-  description?: string | null;
-  reason?: string | null;
-  status?: ChangeStatus;
-  costImpact?: number;
-  timeImpactDays?: number;
-  currency?: "NGN" | "USD";
-  assigneeId?: string | null;
 }
 
 export function useCreateChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: ChangeRequestInput & { projectId: string }) => {
-      const { data } = await api.post<ChangeRequest>(`/projects/${projectId}/change-requests`, body);
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: ChangeRequestInput & { projectId: string }) =>
+      changeRequestsApi.create(projectId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: changeRequestKeys.all(projectId) }),
   });
@@ -60,17 +38,12 @@ export function useCreateChangeRequest() {
 export function useUpdateChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       changeId,
       ...body
-    }: Partial<ChangeRequestInput> & { projectId: string; changeId: string }) => {
-      const { data } = await api.patch<ChangeRequest>(
-        `/projects/${projectId}/change-requests/${changeId}`,
-        body,
-      );
-      return data;
-    },
+    }: Partial<ChangeRequestInput> & { projectId: string; changeId: string }) =>
+      changeRequestsApi.update(projectId, changeId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: changeRequestKeys.all(projectId) }),
   });
@@ -79,9 +52,8 @@ export function useUpdateChangeRequest() {
 export function useDeleteChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, changeId }: { projectId: string; changeId: string }) => {
-      await api.delete(`/projects/${projectId}/change-requests/${changeId}`);
-    },
+    mutationFn: ({ projectId, changeId }: { projectId: string; changeId: string }) =>
+      changeRequestsApi.remove(projectId, changeId),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: changeRequestKeys.all(projectId) }),
   });
@@ -90,7 +62,7 @@ export function useDeleteChangeRequest() {
 export function useAddChangeComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       changeId,
       body,
@@ -98,33 +70,22 @@ export function useAddChangeComment() {
       projectId: string;
       changeId: string;
       body: { content: string; internalOnly?: boolean };
-    }) => {
-      const { data } = await api.post<ChangeComment>(
-        `/projects/${projectId}/change-requests/${changeId}/comments`,
-        body,
-      );
-      return data;
-    },
+    }) => changeRequestsApi.addComment(projectId, changeId, body),
     onSuccess: (_d, { projectId, changeId }) =>
       qc.invalidateQueries({ queryKey: changeRequestKeys.detail(projectId, changeId) }),
   });
 }
 
-export interface ChangeRequestBudgetLink {
-  budgetCategoryId: string;
-  amount: number;
-  committed?: boolean;
-}
-
-export function useChangeRequestBudgetLinks(projectId: string | undefined, changeId: string | undefined) {
+export function useChangeRequestBudgetLinks(
+  projectId: string | undefined,
+  changeId: string | undefined,
+) {
   return useQuery({
-    queryKey: [...changeRequestKeys.detail(projectId ?? "__none__", changeId ?? "__none__"), "budget-links"],
-    queryFn: async () => {
-      const { data } = await api.get<{ links: ChangeRequestBudgetLink[] }>(
-        `/projects/${projectId!}/change-requests/${changeId!}/budget-links`,
-      );
-      return data.links;
-    },
+    queryKey: [
+      ...changeRequestKeys.detail(projectId ?? "__none__", changeId ?? "__none__"),
+      "budget-links",
+    ],
+    queryFn: () => changeRequestsApi.listBudgetLinks(projectId!, changeId!),
     enabled: Boolean(projectId && changeId),
   });
 }
@@ -132,7 +93,7 @@ export function useChangeRequestBudgetLinks(projectId: string | undefined, chang
 export function useSetChangeRequestBudgetLinks() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       changeId,
       links,
@@ -140,17 +101,10 @@ export function useSetChangeRequestBudgetLinks() {
       projectId: string;
       changeId: string;
       links: ChangeRequestBudgetLink[];
-    }) => {
-      const { data } = await api.put<{ links: ChangeRequestBudgetLink[] }>(
-        `/projects/${projectId}/change-requests/${changeId}/budget-links`,
-        { links },
-      );
-      return data.links;
-    },
+    }) => changeRequestsApi.setBudgetLinks(projectId, changeId, links),
     onSuccess: (_d, { projectId, changeId }) => {
       qc.invalidateQueries({ queryKey: changeRequestKeys.detail(projectId, changeId) });
       qc.invalidateQueries({ queryKey: ["projects", projectId, "budget"] });
     },
   });
 }
-

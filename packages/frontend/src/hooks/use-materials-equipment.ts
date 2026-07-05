@@ -1,59 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { materialsEquipmentApi, type MaterialOrderInput, type EquipmentRequestInput, type ParsedBoqMaterial } from "@/api/materials-equipment";
+
+export type {
+  MaterialOrderInput,
+  EquipmentRequestInput,
+  ParsedBoqMaterial,
+  BoqJobStatus,
+  BoqImportJob,
+} from "@/api/materials-equipment";
 import { equipmentRequestKeys, financeKeys, materialKeys } from "./query-keys";
 import type {
   EquipmentBucket,
-  EquipmentRequest,
-  EquipmentRequestStatus,
-  MaterialOrder,
   MaterialOrderStatus,
-  RequestPriority,
 } from "@/lib/project-types";
-
-export interface MaterialOrderInput {
-  title: string;
-  materialName: string;
-  quantity: number;
-  unit: string;
-  supplier?: string | null;
-  status?: MaterialOrderStatus;
-  priority?: RequestPriority;
-  phaseId?: string | null;
-  activityId?: string | null;
-  documentId?: string | null;
-  neededBy: string;
-  orderedAt?: string | null;
-  expectedDeliveryAt?: string | null;
-  deliveredAt?: string | null;
-  estimatedCost?: number;
-  actualCost?: number;
-  currency?: "NGN" | "USD";
-  deliveryLocation?: string | null;
-  notes?: string | null;
-}
-
-export interface EquipmentRequestInput {
-  title: string;
-  equipmentName: string;
-  equipmentType: string;
-  quantity?: number;
-  supplier?: string | null;
-  status?: EquipmentRequestStatus;
-  priority?: RequestPriority;
-  phaseId?: string | null;
-  activityId?: string | null;
-  documentId?: string | null;
-  neededFrom: string;
-  neededUntil: string;
-  mobilizedAt?: string | null;
-  returnedAt?: string | null;
-  estimatedCost?: number;
-  actualCost?: number;
-  currency?: "NGN" | "USD";
-  deliveryLocation?: string | null;
-  operatorRequired?: boolean;
-  notes?: string | null;
-}
 
 export function useMaterialOrders(
   projectId: string | undefined,
@@ -61,13 +20,7 @@ export function useMaterialOrders(
 ) {
   return useQuery({
     queryKey: materialKeys.orders(projectId ?? "__none__", status),
-    queryFn: async () => {
-      const { data } = await api.get<MaterialOrder[]>(
-        `/projects/${projectId!}/materials/orders`,
-        { params: status ? { status } : undefined },
-      );
-      return data;
-    },
+    queryFn: () => materialsEquipmentApi.listMaterialOrders(projectId!, status),
     enabled: Boolean(projectId),
   });
 }
@@ -75,10 +28,7 @@ export function useMaterialOrders(
 export function useCreateMaterialOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: MaterialOrderInput & { projectId: string }) => {
-      const { data } = await api.post<MaterialOrder>(`/projects/${projectId}/materials/orders`, body);
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: MaterialOrderInput & { projectId: string }) => materialsEquipmentApi.createMaterialOrder(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
@@ -86,38 +36,9 @@ export function useCreateMaterialOrder() {
   });
 }
 
-export interface ParsedBoqMaterial {
-  materialName: string;
-  quantity: number;
-  unit: string;
-  estimatedCost: number;
-  supplier: string | null;
-}
-
-export type BoqJobStatus = "pending" | "processing" | "completed" | "failed";
-
-export interface BoqImportJob {
-  id: string;
-  status: BoqJobStatus;
-  fileName: string;
-  materials: ParsedBoqMaterial[];
-  materialCount: number;
-  usedAi: boolean;
-  error: string | null;
-}
-
 export function useStartBoqImport() {
   return useMutation({
-    mutationFn: async ({ projectId, file }: { projectId: string; file: File }) => {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await api.post<BoqImportJob>(
-        `/projects/${projectId}/materials/import`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, file }: { projectId: string; file: File }) => materialsEquipmentApi.startBoqImport(projectId, file),
   });
 }
 
@@ -127,12 +48,7 @@ export function useBoqImportJob(
 ) {
   return useQuery({
     queryKey: ["projects", projectId ?? "__none__", "boq-import", jobId ?? "__none__"],
-    queryFn: async () => {
-      const { data } = await api.get<BoqImportJob>(
-        `/projects/${projectId!}/materials/import/${jobId!}`,
-      );
-      return data;
-    },
+    queryFn: () => materialsEquipmentApi.getBoqImportJob(projectId!, jobId!),
     enabled: Boolean(projectId && jobId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
@@ -144,22 +60,7 @@ export function useBoqImportJob(
 export function useBulkCreateMaterials() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      materials,
-    }: {
-      projectId: string;
-      materials: ParsedBoqMaterial[];
-    }) => {
-      const { data } = await api.post<{
-        created: number;
-        budgetCategories?: { created: number; skipped: number };
-      }>(
-        `/projects/${projectId}/materials/bulk`,
-        { materials },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, materials }: { projectId: string; materials: ParsedBoqMaterial[] }) => materialsEquipmentApi.bulkCreateMaterials(projectId, materials),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
@@ -170,17 +71,7 @@ export function useBulkCreateMaterials() {
 export function useUpdateMaterialOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      orderId,
-      ...body
-    }: Partial<MaterialOrderInput> & { projectId: string; orderId: string }) => {
-      const { data } = await api.patch<MaterialOrder>(
-        `/projects/${projectId}/materials/orders/${orderId}`,
-        body,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, orderId, ...body }: Partial<MaterialOrderInput> & { projectId: string; orderId: string }) => materialsEquipmentApi.updateMaterialOrder(projectId, orderId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
@@ -191,9 +82,7 @@ export function useUpdateMaterialOrder() {
 export function useDeleteMaterialOrder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, orderId }: { projectId: string; orderId: string }) => {
-      await api.delete(`/projects/${projectId}/materials/orders/${orderId}`);
-    },
+    mutationFn: ({ projectId, orderId }: { projectId: string; orderId: string }) => materialsEquipmentApi.deleteMaterialOrder(projectId, orderId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: materialKeys.all(projectId) });
     },
@@ -206,13 +95,7 @@ export function useEquipmentRequests(
 ) {
   return useQuery({
     queryKey: equipmentRequestKeys.list(projectId ?? "__none__", bucket),
-    queryFn: async () => {
-      const { data } = await api.get<EquipmentRequest[]>(
-        `/projects/${projectId!}/equipment-requests`,
-        { params: bucket ? { bucket } : undefined },
-      );
-      return data;
-    },
+    queryFn: () => materialsEquipmentApi.listEquipmentRequests(projectId!, bucket),
     enabled: Boolean(projectId),
   });
 }
@@ -220,10 +103,7 @@ export function useEquipmentRequests(
 export function useCreateEquipmentRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: EquipmentRequestInput & { projectId: string }) => {
-      const { data } = await api.post<EquipmentRequest>(`/projects/${projectId}/equipment-requests`, body);
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: EquipmentRequestInput & { projectId: string }) => materialsEquipmentApi.createEquipmentRequest(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: equipmentRequestKeys.all(projectId) });
     },
@@ -233,17 +113,7 @@ export function useCreateEquipmentRequest() {
 export function useUpdateEquipmentRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      requestId,
-      ...body
-    }: Partial<EquipmentRequestInput> & { projectId: string; requestId: string }) => {
-      const { data } = await api.patch<EquipmentRequest>(
-        `/projects/${projectId}/equipment-requests/${requestId}`,
-        body,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, requestId, ...body }: Partial<EquipmentRequestInput> & { projectId: string; requestId: string }) => materialsEquipmentApi.updateEquipmentRequest(projectId, requestId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: equipmentRequestKeys.all(projectId) });
     },
@@ -253,9 +123,7 @@ export function useUpdateEquipmentRequest() {
 export function useDeleteEquipmentRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, requestId }: { projectId: string; requestId: string }) => {
-      await api.delete(`/projects/${projectId}/equipment-requests/${requestId}`);
-    },
+    mutationFn: ({ projectId, requestId }: { projectId: string; requestId: string }) => materialsEquipmentApi.deleteEquipmentRequest(projectId, requestId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: equipmentRequestKeys.all(projectId) });
     },
