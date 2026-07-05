@@ -14,6 +14,7 @@ import { Card } from "@/components/atoms/card";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { BudgetPhase, ProjectFinances as ProjectFinancesData } from "@/lib/project-types";
+import { EmptyState } from "@/components";
 
 const VARIANCE_TABLE_LIMIT = 2;
 
@@ -68,11 +69,12 @@ export function BudgetAllocationCard({
 
       <div className="bg-white rounded-[12px] h-full m-1 p-6">
         {chartData.length === 0 ? (
-          <div className="flex h-[200px] items-center justify-center text-center">
-            <p className="text-sm text-gray-500">
-              No budget allocation yet. Add budget categories to see planned vs actual by phase.
-            </p>
-          </div>
+          <EmptyState
+            title="No budget allocation yet"
+            // icon={(<ReactSVG src={icons.riskShield} />)}
+            description="Add budget categories to see planned vs actual by phase."
+            className="py-6"
+          />
         ) : (
           <>
             <ChartLegend />
