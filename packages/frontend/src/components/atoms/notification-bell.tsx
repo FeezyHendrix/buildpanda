@@ -36,7 +36,14 @@ const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellProps>(
     >
       <BellIcon />
       {count > 0 && (
-        <span className="absolute right-0 top-0 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white tabular-nums">
+        <span
+          className={cn(
+            "absolute right-0 top-0 flex items-center justify-center rounded-full bg-red-500 font-semibold leading-none text-white tabular-nums",
+            count > 9
+              ? "h-4 min-w-4 px-1 text-[8px]"
+              : "size-4 text-[10px]",
+          )}
+        >
           {count > 9 ? "9+" : count}
         </span>
       )}

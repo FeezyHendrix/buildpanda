@@ -5,16 +5,18 @@ import type { PhaseStatus, ProjectPhase } from "@/lib/project-types";
 
 export function TimelineStepper({ phases }: { phases: ProjectPhase[] }) {
   return (
-    <ol className="flex flex-row">
-      {phases.map((phase, idx) => (
-        <TimelineStep
-          key={phase.id}
-          phase={phase}
-          prevPhase={idx > 0 ? phases[idx - 1] : undefined}
-          isFirst={idx === 0}
-        />
-      ))}
-    </ol>
+    <div className="overflow-x-auto pb-2 no-scrollbar">
+      <ol className="flex min-w-max flex-row">
+        {phases.map((phase, idx) => (
+          <TimelineStep
+            key={phase.id}
+            phase={phase}
+            prevPhase={idx > 0 ? phases[idx - 1] : undefined}
+            isFirst={idx === 0}
+          />
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -33,7 +35,7 @@ function TimelineStep({
   const rightDone = phase.status === "Done";
 
   return (
-    <li className="flex flex-1 flex-col items-center">
+    <li className="flex w-[160px] shrink-0 flex-col items-center">
       {/* [left-line][dot][right-line] — dot centred in its column */}
       <div className="flex w-full items-center">
         <div className={cn("h-1 flex-1", leftDone  ? "bg-primary" : "bg-[#EDEDED]")} />
@@ -57,7 +59,7 @@ function TimelineStep({
 function StepDot({ status }: { status: PhaseStatus }) {
   if (status === "Done") {
     return (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#004DE7]">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
         <ReactSVG
           src={icons.verifiedCheck}
           className="[&_circle]:fill-white [&_path]:fill-white [&_path]:stroke-white [&_svg]:size-4"
@@ -66,17 +68,21 @@ function StepDot({ status }: { status: PhaseStatus }) {
     );
   } else if (status === "InProgress") {
     return (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#004DE7]">
-        <ReactSVG src={icons.verifyLine} />
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
+        <ReactSVG 
+        src={icons.verifyLine}
+        className='[&_svg]:size-10' 
+      />
       </div>
     )
   }
   // Pending
   return (
-    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F4F4F4]">
+    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
       <ReactSVG
-        src={icons.pending}
-        className="[&_path]:fill-[#C0C0C0] [&_circle]:fill-[#C0C0C0] [&_circle]:stroke-[#C0C0C0] [&_svg]:size-4"
+        src={icons.verifiedCheck}
+        className='[&_svg]:size-10 [&_path]:fill-black-100'
+        // className="[&_path]:fill-[#C0C0C0] [&_circle]:fill-[#C0C0C0] [&_circle]:stroke-[#C0C0C0] [&_svg]:size-4"
       />
     </div>
   );

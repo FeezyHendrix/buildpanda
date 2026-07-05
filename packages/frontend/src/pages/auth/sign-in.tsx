@@ -93,7 +93,7 @@ export default function SignInForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full h-[48px]" disabled={loading}>
           {loading ? "Signing in..." : "Sign In"}
         </Button>
 
