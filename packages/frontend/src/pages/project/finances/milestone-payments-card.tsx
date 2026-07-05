@@ -5,7 +5,6 @@ import { Card } from "@/components/atoms/card";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import type { MilestonePayment, ProjectFinances as ProjectFinancesData } from "@/lib/project-types";
 import { EmptyState } from "@/components";
-import { div } from "three/src/nodes/TSL.js";
 
 export interface MilestonePaymentsCardProps {
   projectId: string;
