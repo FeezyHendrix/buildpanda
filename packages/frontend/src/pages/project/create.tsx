@@ -17,14 +17,16 @@ import {
   type RiskOption,
   RISK_OPTIONS_CONFIG,
 } from "@/components/molecules/management-step";
+import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
 import { ProjectTitleStep } from "@/components/molecules/project-title-step";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
 import { useCreateProject } from "@/hooks/use-projects";
-import { api } from "@/api/client";
+import { useUploadBimModel } from "@/hooks/use-bim";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 
-const TOTAL_STEPS = 5;
+// 1 type · 2 template · 3 location · 4 details · 5 management · 6 title
+const TOTAL_STEPS = 6;
 
 const DEFAULT_RISK_OPTIONS: RiskOption[] = RISK_OPTIONS_CONFIG.map((opt) => ({
   id: opt.id,
@@ -60,9 +62,13 @@ export default function CreateProject() {
   const navigate = useNavigate();
   const [step, isReview, setStep] = useWizardStep();
   const createProject = useCreateProject();
+  const uploadBimModel = useUploadBimModel();
   const [submitting, setSubmitting] = useState(false);
 
   const [projectType, setProjectType] = useState<ProjectType | null>(null);
+
+  // null = "Start blank"; templates seed stages + starter tasks server-side.
+  const [templateId, setTemplateId] = useState<string | null>(null);
 
   const [locationState, setLocationState] = useState<string | null>(null);
   const [city, setCity] = useState("");
@@ -107,13 +113,13 @@ export default function CreateProject() {
 
   // Contractors and project managers skip the management step entirely, so the
   // wizard runs on the active step ids rather than a fixed 1..N range.
-  const steps = skipInvolvementStep ? [1, 2, 3, 5] : [1, 2, 3, 4, 5];
+  const steps = skipInvolvementStep ? [1, 2, 3, 4, 6] : [1, 2, 3, 4, 5, 6];
   const stepIndex = steps.indexOf(step);
   const displayStep = stepIndex === -1 ? steps.length : stepIndex + 1;
   const isLastStep = step === steps[steps.length - 1];
 
   useEffect(() => {
-    if (!isReview && stepIndex === -1) setStep(3);
+    if (!isReview && stepIndex === -1) setStep(4);
   }, [isReview, stepIndex, setStep]);
 
   const [projectTitle, setProjectTitle] = useState("");
@@ -129,36 +135,22 @@ export default function CreateProject() {
   const canContinue = () => {
     if (isReview) return true;
     if (step === 1) return !!projectType;
-    if (step === 2) return !!locationState && city.trim() !== "";
-    if (step === 3) return !!buildingType && !!timeline && !!fundingMethod;
-    if (step === 4) return skipInvolvementStep || !!involvementLevel;
-    if (step === 5) return !!projectTitle.trim();
+    if (step === 2) return true; // template is optional — blank is a valid choice
+    if (step === 3) return !!locationState && city.trim() !== "";
+    if (step === 4) return !!buildingType && !!timeline && !!fundingMethod;
+    if (step === 5) return skipInvolvementStep || !!involvementLevel;
+    if (step === 6) return !!projectTitle.trim();
     return false;
   };
 
   async function seedBimModel(projectId: string, files: FileList): Promise<void> {
+    const file = files[0];
+    if (!file || !/\.ifc$/i.test(file.name)) return;
     try {
-      const file = files[0];
-      if (!file || !/\.ifc$/i.test(file.name)) return;
-      const { data: ticket } = await api.post<{
-        mode: string;
-        storagePath: string;
-        url?: string;
-      }>(`/projects/${projectId}/bim/upload-url`, {
-        fileName: file.name,
-        sizeBytes: file.size,
-      });
-      if (ticket.mode !== "single" || !ticket.url) return;
-      await fetch(ticket.url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: file,
-      });
-      await api.post(`/projects/${projectId}/bim/models`, {
+      await uploadBimModel.mutateAsync({
+        projectId,
         name: file.name.replace(/\.ifc$/i, ""),
-        fileName: file.name,
-        storagePath: ticket.storagePath,
-        sizeBytes: file.size,
+        file,
       });
     } catch {
       void 0;
@@ -181,6 +173,7 @@ export default function CreateProject() {
       const project = await createProject.mutateAsync({
         title: projectTitle.trim(),
         projectType,
+        templateId: templateId ?? undefined,
         location: {
           state: locationState,
           city: city.trim(),
@@ -250,6 +243,9 @@ export default function CreateProject() {
         <ProjectTypeStep selected={projectType} onSelect={setProjectType} />
       )}
       {!isReview && step === 2 && (
+        <ProjectTemplateStep selected={templateId} onSelect={setTemplateId} />
+      )}
+      {!isReview && step === 3 && (
         <LocationStep
           state={locationState}
           city={city}
@@ -259,7 +255,7 @@ export default function CreateProject() {
           showBim={bimEnabled}
         />
       )}
-      {!isReview && step === 3 && (
+      {!isReview && step === 4 && (
         <ProjectDetailsStep
           projectType={projectType}
           buildingType={buildingType}
@@ -277,7 +273,7 @@ export default function CreateProject() {
           onFundingMethodChange={setFundingMethod}
         />
       )}
-      {!isReview && step === 4 && (
+      {!isReview && step === 5 && (
         <ManagementStep
           involvementLevel={involvementLevel}
           riskOptions={riskOptions}
@@ -285,7 +281,7 @@ export default function CreateProject() {
           onRiskOptionToggle={handleRiskToggle}
         />
       )}
-      {!isReview && step === 5 && (
+      {!isReview && step === 6 && (
         <ProjectTitleStep
           title={projectTitle}
           onTitleChange={setProjectTitle}

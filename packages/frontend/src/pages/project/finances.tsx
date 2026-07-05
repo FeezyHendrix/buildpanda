@@ -23,6 +23,7 @@ import { icons } from "@/assets/icons/icons";
 import { BudgetAllocationCard } from "./finances/budget-allocation-card";
 import { MaterialsProcurementCard } from "./finances/materials-procurement-card";
 import { MilestonePaymentsCard } from "./finances/milestone-payments-card";
+import { BillingAuditCard } from "./finances/billing-audit-card";
 
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
@@ -194,6 +195,8 @@ export default function ProjectFinances() {
           className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
         />
       </div>
+
+      <BillingAuditCard />
 
       <FundProjectDialog
         open={fundOpen}

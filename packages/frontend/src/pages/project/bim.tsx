@@ -11,8 +11,10 @@ import {
   useBimModelFileUrl,
   useBimModelXktUrl,
   useBimModels,
+  useBimModelIssues,
   useCreateBimIssue,
 } from "@/hooks/use-bim";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import { useParticipants } from "@/hooks/use-participants";
 import type { BimModel } from "@/lib/project-types";
 
@@ -72,9 +74,16 @@ function ModelCard({
   );
 }
 
+const BimIssueDashboard = lazy(() =>
+  import("@/components/molecules/bim-issue-dashboard").then((m) => ({
+    default: m.BimIssueDashboard,
+  })),
+);
+
 export default function ProjectBim() {
   const { project } = useProjectContext();
   // const canUpload = access?.capabilities?.canManage ?? false;
+  const dashboardPreview = useFeatureFlag("projects.bimDashboard");
 
   const { data: models = [], isLoading } = useBimModels(project.id);
   const fileUrl = useBimModelFileUrl();
@@ -92,6 +101,11 @@ export default function ProjectBim() {
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const [issueTitle, setIssueTitle] = useState("");
   const [issueAssignee, setIssueAssignee] = useState("");
+
+  const { data: activeIssues = [] } = useBimModelIssues(
+    project.id,
+    active?.id,
+  );
 
   function openViewer(model: BimModel): void {
     setActive(model);
@@ -196,97 +210,120 @@ export default function ProjectBim() {
             )}
           </div>
 
-          <aside className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
-            {selected?.guid ? (
-              <div className="flex flex-col">
-                <div className="border-b border-gray-100 px-5 py-4">
-                  {selected.ifcType && (
-                    <span className="inline-block rounded-md bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#004DE7]">
-                      {selected.ifcType.replace(/^Ifc/, "")}
-                    </span>
-                  )}
-                  <p className="mt-2 text-sm font-semibold text-gray-900">
-                    {selected.name ?? "Unnamed element"}
-                  </p>
-                  <p className="mt-1 break-all text-[11px] text-gray-400">
-                    {selected.guid}
-                  </p>
-                </div>
-
-                <div className="px-5 py-4">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    Properties
-                  </p>
-                  {selected.properties.length > 0 ? (
-                    <dl className="flex flex-col gap-1.5">
-                      {selected.properties.map((p) => (
-                        <div
-                          key={p.label}
-                          className="flex justify-between gap-3 text-xs"
-                        >
-                          <dt className="shrink-0 text-gray-500">{p.label}</dt>
-                          <dd
-                            className="truncate text-right font-medium text-gray-900"
-                            title={p.value}
-                          >
-                            {p.value}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <p className="text-xs text-gray-400">
-                      No extra properties on this element.
+          {dashboardPreview ? (
+            <Suspense
+              fallback={
+                <aside className="flex w-[360px] shrink-0 items-center justify-center border-l border-[#F0F0F0] bg-[#FAFAFA] text-sm text-gray-400">
+                  Loading panel…
+                </aside>
+              }
+            >
+              <BimIssueDashboard
+                modelName={active.name}
+                selected={selected}
+                issues={activeIssues}
+                assigneeOptions={assigneeOptions}
+                issueTitle={issueTitle}
+                onIssueTitleChange={setIssueTitle}
+                issueAssignee={issueAssignee}
+                onIssueAssigneeChange={setIssueAssignee}
+                onCreateIssue={addIssue}
+                creating={createIssue.isPending}
+              />
+            </Suspense>
+          ) : (
+            <aside className="flex w-[340px] shrink-0 flex-col overflow-y-auto border-l border-gray-200 bg-white">
+              {selected?.guid ? (
+                <div className="flex flex-col">
+                  <div className="border-b border-gray-100 px-5 py-4">
+                    {selected.ifcType && (
+                      <span className="inline-block rounded-md bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#004DE7]">
+                        {selected.ifcType.replace(/^Ifc/, "")}
+                      </span>
+                    )}
+                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                      {selected.name ?? "Unnamed element"}
                     </p>
-                  )}
-                </div>
+                    <p className="mt-1 break-all text-[11px] text-gray-400">
+                      {selected.guid}
+                    </p>
+                  </div>
 
-                <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                    Assign this element
-                  </p>
-                  <input
-                    value={issueTitle}
-                    onChange={(e) => setIssueTitle(e.target.value)}
-                    placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
-                    className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
-                  />
-                  <select
-                    value={issueAssignee}
-                    onChange={(e) => setIssueAssignee(e.target.value)}
-                    className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
-                  >
-                    <option value="">Select a person…</option>
-                    {assigneeOptions.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full"
-                    onClick={addIssue}
-                    loading={createIssue.isPending}
-                    disabled={issueTitle.trim() === ""}
-                  >
-                    Assign element
-                  </Button>
+                  <div className="px-5 py-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Properties
+                    </p>
+                    {selected.properties.length > 0 ? (
+                      <dl className="flex flex-col gap-1.5">
+                        {selected.properties.map((p) => (
+                          <div
+                            key={p.label}
+                            className="flex justify-between gap-3 text-xs"
+                          >
+                            <dt className="shrink-0 text-gray-500">{p.label}</dt>
+                            <dd
+                              className="truncate text-right font-medium text-gray-900"
+                              title={p.value}
+                            >
+                              {p.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        No extra properties on this element.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                      Assign this element
+                    </p>
+                    <input
+                      value={issueTitle}
+                      onChange={(e) => setIssueTitle(e.target.value)}
+                      placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
+                      className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                    />
+                    <select
+                      value={issueAssignee}
+                      onChange={(e) => setIssueAssignee(e.target.value)}
+                      className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                    >
+                      <option value="">Select a person…</option>
+                      {assigneeOptions.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
+                      onClick={addIssue}
+                      loading={createIssue.isPending}
+                      disabled={issueTitle.trim() === ""}
+                    >
+                      Assign element
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                <p className="text-sm font-medium text-gray-700">
-                  No element selected
-                </p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Click a wall, beam, duct or any part of the model to see its
-                  details and assign it to a person.
-                </p>
-              </div>
-            )}
-          </aside>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+                  <p className="text-sm font-medium text-gray-700">
+                    No element selected
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Click a wall, beam, duct or any part of the model to see its
+                    details and assign it to a person.
+                  </p>
+                </div>
+              )}
+            </aside>
+          )}
         </div>
       </div>
     );

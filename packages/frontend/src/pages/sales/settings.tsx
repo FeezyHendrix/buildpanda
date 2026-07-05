@@ -32,6 +32,7 @@ export default function SalesSettings() {
   const [defaultCurrency, setDefaultCurrency] = useState("NGN");
   const [defaultTaxLabel, setDefaultTaxLabel] = useState("VAT");
   const [defaultTaxPct, setDefaultTaxPct] = useState("7.5");
+  const [paymentInstructions, setPaymentInstructions] = useState("");
 
   useEffect(() => {
     if (profile) {
@@ -42,6 +43,7 @@ export default function SalesSettings() {
       setDefaultCurrency(profile.defaultCurrency);
       setDefaultTaxLabel(profile.defaultTaxLabel);
       setDefaultTaxPct(String(profile.defaultTaxPct));
+      setPaymentInstructions(profile.paymentInstructions ?? "");
     }
   }, [profile]);
 
@@ -54,6 +56,7 @@ export default function SalesSettings() {
       defaultCurrency,
       defaultTaxLabel: defaultTaxLabel.trim(),
       defaultTaxPct: parseFloat(defaultTaxPct) || 0,
+      paymentInstructions: paymentInstructions.trim(),
     });
   }
 
@@ -159,6 +162,29 @@ export default function SalesSettings() {
             />
           </FieldRow>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-gray-900">Payment Instructions</h2>
+        <p className="text-xs text-gray-500">
+          Shown on every invoice so clients know how to pay you. Pre-fills new
+          invoices; you can edit it per invoice.
+        </p>
+
+        <FieldRow label="Payment instructions">
+          <textarea
+            value={paymentInstructions}
+            onChange={(e) => setPaymentInstructions(e.target.value)}
+            rows={4}
+            maxLength={2000}
+            placeholder={"Bank: GTBank\nAccount name: Acme Builders Ltd\nAccount number: 0123456789\nReference: invoice number"}
+            className={cn(
+              "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
+              "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+              "resize-none placeholder:text-gray-400",
+            )}
+          />
+        </FieldRow>
       </section>
 
       {update.isError && (

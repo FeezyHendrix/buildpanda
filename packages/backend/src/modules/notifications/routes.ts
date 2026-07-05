@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
+import { config } from "../../config/index.ts";
 import { notificationsRepository } from "./repository.ts";
-import { notificationsService } from "./service.ts";
+import { notificationsService, type PushSubscriptionInput } from "./service.ts";
+import { isPushConfigured } from "./push-job.ts";
 import { NOTIFICATION_TYPE_VALUES, type NotificationType } from "./types.ts";
 
 const listQuery = {
@@ -18,6 +20,51 @@ const notificationIdParams = {
   additionalProperties: false,
   properties: {
     id: { type: "string", minLength: 1 },
+  },
+} as const;
+
+const pushPublicKeyResponse = {
+  200: {
+    type: "object",
+    properties: {
+      publicKey: { type: "string" },
+    },
+  },
+} as const;
+
+const pushSubscribeBody = {
+  type: "object",
+  required: ["endpoint", "keys"],
+  additionalProperties: false,
+  properties: {
+    endpoint: { type: "string", minLength: 1 },
+    keys: {
+      type: "object",
+      required: ["p256dh", "auth"],
+      additionalProperties: false,
+      properties: {
+        p256dh: { type: "string", minLength: 1 },
+        auth: { type: "string", minLength: 1 },
+      },
+    },
+  },
+} as const;
+
+const pushUnsubscribeBody = {
+  type: "object",
+  required: ["endpoint"],
+  additionalProperties: false,
+  properties: {
+    endpoint: { type: "string", minLength: 1 },
+  },
+} as const;
+
+const okResponse = {
+  200: {
+    type: "object",
+    properties: {
+      ok: { type: "boolean" },
+    },
   },
 } as const;
 
@@ -85,6 +132,41 @@ const notificationRoutes: FastifyPluginAsync = async (fastify) => {
         ...(inAppEnabled !== undefined ? { inAppEnabled } : {}),
         ...(emailEnabled !== undefined ? { emailEnabled } : {}),
       });
+    },
+  );
+
+  // Empty string when VAPID keys are unconfigured — the frontend hides the
+  // push toggle in that case.
+  fastify.get(
+    "/push/public-key",
+    { schema: { response: pushPublicKeyResponse } },
+    async (request) => {
+      request.requireAuth();
+      return { publicKey: isPushConfigured() ? config.push.vapidPublicKey : "" };
+    },
+  );
+
+  fastify.post<{ Body: PushSubscriptionInput }>(
+    "/push/subscriptions",
+    { schema: { body: pushSubscribeBody, response: okResponse } },
+    async (request) => {
+      const user = request.requireAuth();
+      await service.subscribePush(
+        user.id,
+        request.body,
+        request.headers["user-agent"] ?? null,
+      );
+      return { ok: true };
+    },
+  );
+
+  fastify.delete<{ Body: { endpoint: string } }>(
+    "/push/subscriptions",
+    { schema: { body: pushUnsubscribeBody, response: okResponse } },
+    async (request) => {
+      const user = request.requireAuth();
+      await service.unsubscribePush(user.id, request.body.endpoint);
+      return { ok: true };
     },
   );
 };

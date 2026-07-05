@@ -3,6 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
+import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -10,11 +11,14 @@ import { useProjectContext } from "@/layouts/project-layout";
 import {
   useMaterialStock,
   useMaterialLedger,
+  useMaterialCatalog,
   useLogMaterialEntry,
   useVoidMaterialEntry,
   useDownloadMaterialReport,
   useEmailMaterialReport,
+  useUpdateReorderPolicy,
 } from "@/hooks/use-materials-ledger";
+import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { LedgerEntry } from "@/lib/project-types";
@@ -28,13 +32,29 @@ export default function ProjectMaterialLog() {
   const canManage = access?.capabilities?.canManage ?? false;
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
+  const { data: catalog = [] } = useMaterialCatalog(project.id);
+  const { data: orders = [] } = useMaterialOrders(project.id);
   const logEntry = useLogMaterialEntry(project.id);
   const voidEntry = useVoidMaterialEntry(project.id);
   const downloadReport = useDownloadMaterialReport(project.id);
   const emailReport = useEmailMaterialReport(project.id);
+  const updatePolicy = useUpdateReorderPolicy(project.id);
 
   const [logOpen, setLogOpen] = useState(false);
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
+  const [policyMaterialId, setPolicyMaterialId] = useState<string | null>(null);
+  const policyMaterial = catalog.find((c) => c.id === policyMaterialId) ?? null;
+
+  const materialOptions = useMemo(() => {
+    const byName = new Map<string, { name: string; unit: string }>();
+    const add = (name: string, unit: string) => {
+      const key = name.trim().toLowerCase().replace(/\s+/g, " ");
+      if (key && !byName.has(key)) byName.set(key, { name: name.trim(), unit });
+    };
+    for (const c of catalog) add(c.name, c.unit);
+    for (const o of orders) add(o.materialName, o.unit);
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [catalog, orders]);
 
   const totals = useMemo(() => {
     let received = 0;
@@ -57,7 +77,7 @@ export default function ProjectMaterialLog() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8">
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:max-w-none">
       <Breadcrumbs
         items={[
           { label: "Materials", to: `/project/${project.id}/materials` },
@@ -145,7 +165,12 @@ export default function ProjectMaterialLog() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {stock.map((s) => (
-              <StockCard key={`${s.materialId}-${s.locationKey}`} stock={s} />
+              <StockCard
+                key={`${s.materialId}-${s.locationKey}`}
+                stock={s}
+                canManage={canManage}
+                onEditPolicy={() => setPolicyMaterialId(s.materialId)}
+              />
             ))}
           </div>
         )}
@@ -172,6 +197,7 @@ export default function ProjectMaterialLog() {
       <LogMaterialDrawer
         open={logOpen}
         onOpenChange={setLogOpen}
+        materials={materialOptions}
         submitting={logEntry.isPending}
         onSubmit={(input) =>
           logEntry.mutate(input, {
@@ -211,6 +237,28 @@ export default function ProjectMaterialLog() {
               },
             );
           }
+        }}
+      />
+
+      <ReorderPolicyDialog
+        open={policyMaterialId !== null}
+        onOpenChange={(open) => { if (!open) setPolicyMaterialId(null); }}
+        projectId={project.id}
+        material={policyMaterial}
+        isSubmitting={updatePolicy.isPending}
+        error={updatePolicy.error ? (updatePolicy.error as Error).message : null}
+        onSubmit={(values) => {
+          if (!policyMaterialId) return;
+          updatePolicy.mutate(
+            { materialId: policyMaterialId, ...values },
+            {
+              onSuccess: () => {
+                setPolicyMaterialId(null);
+                toast("Reorder policy saved", "success");
+              },
+              onError: () => toast("Could not save reorder policy"),
+            },
+          );
         }}
       />
     </div>

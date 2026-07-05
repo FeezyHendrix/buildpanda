@@ -1,54 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import { projectKeys } from "./query-keys";
-import type { Currency, Project } from "@/lib/project-types";
+import { projectKeys, projectTemplateKeys } from "./query-keys";
+import { projectsApi } from "@/api/projects";
+import type { ProjectTemplateSummary, CreateProjectInput, UpdateProjectBudgetInput } from "@/api/projects";
 
-export interface CreateProjectInput {
-  title: string;
-  projectType: string;
-  location: {
-    state: string;
-    city: string;
-    ownsLand: boolean;
-  };
-  details: {
-    buildingType: string;
-    currency: Currency;
-    budgetMin: number;
-    budgetMax: number;
-    timeline: string;
-    fundingMethod: string;
-  };
-  management: {
-    involvementLevel: string;
-    riskOptions: string[];
-  };
-}
-
-export interface UpdateProjectBudgetInput {
-  budgetMin: number;
-  budgetMax: number;
-  currency?: Currency;
-}
+export type { ProjectTemplateSummary, CreateProjectInput, UpdateProjectBudgetInput };
 
 export function useProjects() {
   return useQuery({
     queryKey: projectKeys.list(),
-    queryFn: async () => {
-      const { data } = await api.get<Project[]>("/projects");
-      return data;
-    },
+    queryFn: () => projectsApi.list(),
   });
 }
 
 export function useProject(id: string | undefined) {
   return useQuery({
     queryKey: id ? projectKeys.detail(id) : projectKeys.detail("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<Project>(`/projects/${id!}`);
-      return data;
-    },
+    queryFn: () => projectsApi.detail(id!),
     enabled: Boolean(id),
+  });
+}
+
+export function useProjectTemplates() {
+  return useQuery({
+    queryKey: projectTemplateKeys.list(),
+    queryFn: () => projectsApi.templates(),
+    staleTime: 5 * 60 * 1000, // static definitions; no need to refetch per step change
   });
 }
 
@@ -56,10 +32,7 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateProjectInput) => {
-      const { data } = await api.post<Project>("/projects", input);
-      return data;
-    },
+    mutationFn: (input: CreateProjectInput) => projectsApi.create(input),
     // Caller owns navigation so it can finish post-create work (e.g. uploading
     // land documents) before leaving the page.
     onSuccess: (project) => {
@@ -73,9 +46,7 @@ export function useDeleteProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (projectId: string) => {
-      await api.delete(`/projects/${projectId}`);
-    },
+    mutationFn: (projectId: string) => projectsApi.delete(projectId),
     onSuccess: (_data, projectId) => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
@@ -87,13 +58,7 @@ export function useUpdateProjectBudget(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: UpdateProjectBudgetInput) => {
-      const { data } = await api.patch<Project>(
-        `/projects/${projectId}/budget`,
-        input,
-      );
-      return data;
-    },
+    mutationFn: (input: UpdateProjectBudgetInput) => projectsApi.updateBudget(projectId, input),
     onSuccess: (project) => {
       queryClient.setQueryData(projectKeys.detail(project.id), project);
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
@@ -105,13 +70,7 @@ export function useUpdateProjectCurrency(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (currency: string) => {
-      const { data } = await api.patch<Project>(
-        `/projects/${projectId}/currency`,
-        { currency },
-      );
-      return data;
-    },
+    mutationFn: (currency: string) => projectsApi.updateCurrency(projectId, currency),
     onSuccess: (project) => {
       queryClient.setQueryData(projectKeys.detail(project.id), project);
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });

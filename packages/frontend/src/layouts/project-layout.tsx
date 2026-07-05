@@ -15,6 +15,7 @@ import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { PandaAiPane } from "@/components/organisms/panda-ai-pane";
+import { QuickCapture } from "@/components/molecules/quick-capture-sheet";
 import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
@@ -95,6 +96,12 @@ export default function ProjectLayout() {
         {!location.pathname.endsWith("/chat") && (
           <PandaAiPane projectId={project.id} />
         )}
+        {access &&
+          access.relationship !== "none" &&
+          access.capabilities.canComment &&
+          !location.pathname.endsWith("/chat") && (
+            <QuickCapture projectId={project.id} />
+          )}
       </div>
     </AppShell>
   );

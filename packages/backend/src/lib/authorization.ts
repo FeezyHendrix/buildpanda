@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { mapAllows, type PermissionMap } from "./permissions.ts";
+import { isEmployeeRole, mapAllows, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -22,8 +22,12 @@ export interface EnrichedAccessContext extends AccessContext {
   orgPermissions: ReadonlyMap<string, PermissionMap>;
 }
 
-function isMemberOf(orgId: string | null, ctx: AccessContext): boolean {
-  return orgId !== null && ctx.orgRoles.has(orgId);
+// Org membership grants access to every project in the org — except for
+// employee-role members, who are scoped to their assigned projects only.
+function hasOrgWideProjectAccess(orgId: string | null, ctx: AccessContext): boolean {
+  if (orgId === null) return false;
+  const role = ctx.orgRoles.get(orgId);
+  return role !== undefined && !isEmployeeRole(role);
 }
 
 /** The caller's participant role on this project, if any (e.g. "client"). */
@@ -39,8 +43,8 @@ function isParticipant(project: ProjectScope, ctx: AccessContext): boolean {
 // no org) are world-readable, so an org row whose owner was deleted stays gated.
 export function assertCanAccessProject(project: ProjectScope, ctx: AccessContext): void {
   if (project.ownerId === ctx.userId) return;
-  if (isMemberOf(project.organizationId, ctx)) return;
-  if (isParticipant(project, ctx)) return; // homeowner / external stakeholder
+  if (hasOrgWideProjectAccess(project.organizationId, ctx)) return;
+  if (isParticipant(project, ctx)) return; // homeowner / external stakeholder / employee
   if (project.ownerId === null && project.organizationId === null) return;
   throw new ForbiddenError("You do not have access to this resource");
 }
@@ -93,11 +97,12 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
 // ---------------------------------------------------------------------------
 
 /** Additive capabilities granted to project participants (external stakeholders). */
-const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
+export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
   client: {
     project: ["view"],
     finances: ["view", "dispute"],
     approvals: ["view", "decide"],
+    selections: ["view", "decide"],
     queries: ["view", "raise"],
     "change-requests": ["view"],
     "action-items": ["view"],
@@ -121,6 +126,7 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     project: ["view"],
     finances: ["view"],
     approvals: ["view"],
+    selections: ["view"],
     queries: ["view", "raise"],
     "change-requests": ["view"],
     "action-items": ["view"],
@@ -144,6 +150,7 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     project: ["view"],
     finances: ["view"],
     approvals: ["view"],
+    selections: ["view"],
     queries: ["view"],
     "action-items": ["view"],
     stages: ["view"],
@@ -164,6 +171,7 @@ const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>>
     project: ["view"],
     finances: ["view"],
     approvals: ["view"],
+    selections: ["view"],
     updates: ["view"],
     documents: ["view"],
     inspections: ["view"],

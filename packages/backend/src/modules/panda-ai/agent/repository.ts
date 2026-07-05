@@ -149,6 +149,13 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    suppliers(projectId: string) {
+      return db("suppliers")
+        .where({ project_id: projectId, active: true })
+        .orderBy("name", "asc")
+        .select("name", "contact_name", "email", "phone", "address");
+    },
+
     documents(projectId: string) {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")
@@ -277,6 +284,100 @@ export function agentRepository(db: Knex) {
           "applied_date",
           "approved_date",
           "expiry_date",
+        );
+    },
+
+    invoices(projectId: string, status?: string) {
+      // One query: invoices with their paid total aggregated via the payments join.
+      return db("project_invoices as i")
+        .leftJoin("invoice_payments as p", "p.invoice_id", "i.id")
+        .where("i.project_id", projectId)
+        .modify((q) => {
+          if (status) q.where("i.status", status);
+        })
+        .groupBy("i.id")
+        .orderBy("i.created_at", "desc")
+        .limit(100)
+        .select(
+          "i.id",
+          "i.number",
+          "i.vendor_name",
+          "i.invoice_type",
+          "i.status",
+          "i.currency",
+          "i.issue_date",
+          "i.due_date",
+          "i.total_invoiced",
+          "i.net_payable",
+          "i.to_party",
+        )
+        .sum({ amount_paid: "p.amount" });
+    },
+
+    budgetCategories(projectId: string) {
+      return db("project_budget_categories")
+        .where({ project_id: projectId })
+        .orderBy("sort_order", "asc")
+        .select("id", "name", "cost_code", "planned", "committed", "actual");
+    },
+
+    purchaseOrders(projectId: string) {
+      // One query: POs with their total aggregated from line items.
+      return db("purchase_orders as po")
+        .leftJoin("purchase_order_items as it", "it.purchase_order_id", "po.id")
+        .where("po.project_id", projectId)
+        .groupBy("po.id")
+        .orderBy("po.created_at", "desc")
+        .limit(100)
+        .select(
+          "po.id",
+          "po.po_number",
+          "po.vendor_name",
+          "po.status",
+          "po.order_date",
+          "po.expected_date",
+          db.raw("coalesce(sum(it.quantity * it.unit_price), 0) as total"),
+        );
+    },
+
+    paymentClaims(projectId: string) {
+      return db("payment_claims as pc")
+        .leftJoin("milestone_payments as mp", "mp.id", "pc.milestone_payment_id")
+        .where("pc.project_id", projectId)
+        .orderBy("pc.created_at", "desc")
+        .limit(100)
+        .select(
+          "pc.id",
+          "pc.claim_number",
+          "pc.status",
+          "pc.amount",
+          "pc.period_start",
+          "pc.period_end",
+          "pc.submitted_at",
+          "pc.approved_at",
+          "mp.name as milestone_name",
+        );
+    },
+
+    selections(projectId: string) {
+      // One query: selections with their chosen option joined in.
+      return db("project_selections as s")
+        .leftJoin("project_selection_options as o", "o.id", "s.chosen_option_id")
+        .where("s.project_id", projectId)
+        .orderBy("s.created_at", "desc")
+        .limit(100)
+        .select(
+          "s.id",
+          "s.title",
+          "s.category",
+          "s.status",
+          "s.allowance_amount",
+          "s.currency",
+          "s.due_date",
+          "s.decided_at",
+          "s.change_request_id",
+          "o.name as chosen_option_name",
+          "o.price as chosen_option_price",
         );
     },
 

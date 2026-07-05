@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
@@ -118,7 +119,18 @@ function ImportProgrammeDialog({ open, onOpenChange, projectId }: ImportProgramm
                 onApply={(input) =>
                   applyMutation.mutate(
                     { jobId: job.id, input: { ...input, projectId } },
-                    { onSuccess: (res) => navigate(`/project/${res.projectId}/project-chart`) },
+                    {
+                      onSuccess: (res) => {
+                        toast(
+                          `Programme imported · ${res.activityCount} activities, ${res.phaseCount} phases`,
+                          "success",
+                        );
+                        handleOpenChange(false);
+                        if (res.projectId !== projectId) {
+                          navigate(`/project/${res.projectId}/project-chart`);
+                        }
+                      },
+                    },
                   )
                 }
               />

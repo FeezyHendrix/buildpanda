@@ -16,6 +16,7 @@ const patchBody = {
     defaultCurrency: currencyCodeSchema,
     defaultTaxLabel: { type: "string", maxLength: 50 },
     defaultTaxPct: { type: "number", minimum: 0, maximum: 100 },
+    paymentInstructions: { type: "string", maxLength: 2000 },
   },
 } as const;
 
@@ -28,9 +29,23 @@ interface OrgProfilePatch {
   defaultCurrency?: string;
   defaultTaxLabel?: string;
   defaultTaxPct?: number;
+  paymentInstructions?: string;
 }
 
 const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
+  // The caller's effective permission map for their active org (built-in role
+  // statements ∪ admin-assigned custom roles). Drives UI gating so the SPA
+  // shows only the actions the member may actually perform.
+  fastify.get("/org-permissions", async (request) => {
+    const orgId = request.requireOrgScope();
+    const perms = request.orgPermissions?.get(orgId);
+    const permissions: Record<string, string[]> = {};
+    if (perms) {
+      for (const [resource, actions] of perms) permissions[resource] = [...actions];
+    }
+    return { organizationId: orgId, role: request.orgRoles.get(orgId) ?? null, permissions };
+  });
+
   fastify.get("/org-profile", async (request) => {
     const orgId = request.requireOrgScope();
 
@@ -40,6 +55,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
         "id", "name", "slug", "logo",
         "phone", "address", "contact_email", "website",
         "default_currency", "default_tax_label", "default_tax_pct",
+        "payment_instructions",
       )
       .first();
     if (!org) throw new NotFoundError("Organization");
@@ -56,6 +72,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
       defaultCurrency: org.default_currency ?? "NGN",
       defaultTaxLabel: org.default_tax_label ?? "VAT",
       defaultTaxPct: Number(org.default_tax_pct ?? 7.5),
+      paymentInstructions: org.payment_instructions ?? null,
     };
   });
 
@@ -65,7 +82,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const orgId = request.requireOrgPermission("orgProfile", "manage");
 
-      const { name, phone, address, contactEmail, website, defaultCurrency, defaultTaxLabel, defaultTaxPct } =
+      const { name, phone, address, contactEmail, website, defaultCurrency, defaultTaxLabel, defaultTaxPct, paymentInstructions } =
         request.body;
 
       const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
@@ -77,6 +94,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
       if (defaultCurrency !== undefined) patch["default_currency"] = defaultCurrency;
       if (defaultTaxLabel !== undefined) patch["default_tax_label"] = defaultTaxLabel;
       if (defaultTaxPct !== undefined) patch["default_tax_pct"] = defaultTaxPct;
+      if (paymentInstructions !== undefined) patch["payment_instructions"] = paymentInstructions.trim() || null;
 
       await fastify.db("organization").where({ id: orgId }).update(patch);
 
@@ -88,6 +106,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
           "id", "name", "slug", "logo",
           "phone", "address", "contact_email", "website",
           "default_currency", "default_tax_label", "default_tax_pct",
+          "payment_instructions",
         )
         .first();
 
@@ -103,6 +122,7 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
         defaultCurrency: org.default_currency ?? "NGN",
         defaultTaxLabel: org.default_tax_label ?? "VAT",
         defaultTaxPct: Number(org.default_tax_pct ?? 7.5),
+        paymentInstructions: org.payment_instructions ?? null,
       };
     },
   );

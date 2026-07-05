@@ -68,7 +68,7 @@ const purchaseOrderRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/purchase-orders",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.listByProject(project.id);
     },
   );
@@ -78,6 +78,12 @@ const purchaseOrderRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createPurchaseOrderBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       if (requiresFinanceApproval(request.body.status)) {
         assertProjectPermission(
@@ -99,6 +105,12 @@ const purchaseOrderRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: purchaseOrderParams, body: editPurchaseOrderBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const user = request.requireAuth();
       if (requiresFinanceApproval(request.body.status)) {
         assertProjectPermission(
@@ -116,6 +128,12 @@ const purchaseOrderRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: purchaseOrderParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.remove(project.id, request.params.purchaseOrderId);
       return reply.status(204).send();
     },

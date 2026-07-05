@@ -13,6 +13,7 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useSession } from "@/stores/auth";
 import { useProjects, useDeleteProject } from "@/hooks/use-projects";
+import { useHasOrgPermission } from "@/hooks/use-organization";
 import { toast } from "@/lib/toast";
 import {
   firstName,
@@ -25,11 +26,13 @@ import emptyIcon from "@/assets/images/empty-icon.svg";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
 import { SuiteSwitcher } from "@/components/molecules/suite-switcher";
+import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data: session } = useSession();
   const { data: projects, isPending } = useProjects();
+  const canCreateProject = useHasOrgPermission("project", "create");
   const [fabOpen, setFabOpen] = useState(false);
   const [fabClosing, setFabClosing] = useState(false);
 
@@ -48,11 +51,18 @@ export default function Dashboard() {
   const list = projects ?? [];
 
   if (list.length === 0) {
-    return <DashboardEmptyState onCreate={() => navigate("/project/create")} />;
+    return canCreateProject ? (
+      <DashboardEmptyState onCreate={() => navigate("/project/create")} />
+    ) : (
+      <NoAssignedProjectsState />
+    );
   }
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 pb-36 lg:max-w-7xl mx-auto w-full max-w-full lg:px-3 px-4">
+      <div className="mb-4">
+        <PendingInvitesBanner />
+      </div>
       <div className="flex items-center justify-between mb-0">
         <div className="flex justify-center flex-1">
           <SuiteSwitcher variant="tabs" />
@@ -82,23 +92,27 @@ export default function Dashboard() {
       </section>
 
       {/* Desktop fixed footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-[#F0F0F0] bg-white px-4 py-4 lg:block lg:px-6">
-        <div className="mx-auto flex w-full max-w-fit gap-4 lg:max-w-4xl lg:px-3">
-          <NewProjectCard />
-          <ImportProgrammeCard />
+      {canCreateProject && (
+        <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-[#F0F0F0] bg-white px-4 py-4 lg:block lg:px-6">
+          <div className="mx-auto flex w-full max-w-fit gap-4 lg:max-w-4xl lg:px-3">
+            <NewProjectCard />
+            <ImportProgrammeCard />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile FAB */}
-      <button
-        type="button"
-        onClick={() => setFabOpen(true)}
-        aria-label="Create or import project"
-        className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full shadow-xl transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
-        style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
-      >
-        <PlusIcon className="size-7 text-white" />
-      </button>
+      {canCreateProject && (
+        <button
+          type="button"
+          onClick={() => setFabOpen(true)}
+          aria-label="Create or import project"
+          className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full shadow-xl transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
+          style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
+        >
+          <PlusIcon className="size-7 text-white" />
+        </button>
+      )}
 
       {/* Mobile FAB popup */}
       {fabOpen && (
@@ -160,7 +174,10 @@ function Greeting({ name, className }: { name: string, className?: string }) {
 
 function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-1 items-start justify-center pt-[150px]">
+    <div className="flex flex-1 flex-col items-center gap-6 pt-10">
+      <div className="w-full max-w-2xl px-4">
+        <PendingInvitesBanner />
+      </div>
       <EmptyState
         icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"
@@ -176,6 +193,21 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
             Create your first project
           </Button>
         }
+      />
+    </div>
+  );
+}
+
+function NoAssignedProjectsState() {
+  return (
+    <div className="flex flex-1 flex-col items-center gap-6 pt-10">
+      <div className="w-full max-w-2xl px-4">
+        <PendingInvitesBanner />
+      </div>
+      <EmptyState
+        icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
+        title="No projects yet"
+        description="You'll see a project here as soon as your team adds you to one. Check back shortly or ask your workspace admin for access."
       />
     </div>
   );

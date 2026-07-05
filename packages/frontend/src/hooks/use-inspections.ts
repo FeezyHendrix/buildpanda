@@ -1,91 +1,47 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { inspectionsApi, type RequestInspectionVariables, type EditInspectionVariables, type DeleteInspectionVariables } from "@/api/inspections";
 import { inspectionKeys } from "./query-keys";
-import type {
-  InspectionReport,
-  InspectionCategory,
-} from "@/lib/project-types";
 
 export function useProjectInspections(projectId: string | undefined) {
   return useQuery({
     queryKey: projectId
       ? inspectionKeys.list(projectId)
       : inspectionKeys.list("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<InspectionReport[]>(
-        `/projects/${projectId!}/inspections`,
-      );
-      return data;
-    },
+    queryFn: () => inspectionsApi.list(projectId!),
     enabled: Boolean(projectId),
   });
-}
-
-interface RequestInspectionVariables {
-  projectId: string;
-  title: string;
-  category: Exclude<InspectionCategory, "All Reports">;
-  description: string;
-  scheduledAt: string;
 }
 
 export function useRequestInspection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: RequestInspectionVariables) => {
-      const { data } = await api.post<InspectionReport>(
-        `/projects/${projectId}/inspections`,
-        body,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: RequestInspectionVariables) => 
+      inspectionsApi.request(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
     },
   });
-}
-
-interface EditInspectionVariables {
-  projectId: string;
-  inspectionId: string;
-  title?: string;
-  category?: Exclude<InspectionCategory, "All Reports">;
-  description?: string;
-  scheduledAt?: string;
-  status?: "Scheduled" | "Action Required" | "Completed";
-  riskLevel?: "Low" | "Medium" | "High";
 }
 
 export function useEditInspection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, inspectionId, ...patch }: EditInspectionVariables) => {
-      const { data } = await api.put<InspectionReport>(
-        `/projects/${projectId}/inspections/${inspectionId}`,
-        patch,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, inspectionId, ...patch }: EditInspectionVariables) => 
+      inspectionsApi.edit(projectId, inspectionId, patch),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
     },
   });
 }
 
-interface DeleteInspectionVariables {
-  projectId: string;
-  inspectionId: string;
-}
-
 export function useDeleteInspection() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, inspectionId }: DeleteInspectionVariables) => {
-      await api.delete(`/projects/${projectId}/inspections/${inspectionId}`);
-    },
+    mutationFn: ({ projectId, inspectionId }: DeleteInspectionVariables) => 
+      inspectionsApi.delete(projectId, inspectionId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: inspectionKeys.list(projectId) });
     },

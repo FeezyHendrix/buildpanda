@@ -7,14 +7,10 @@ import { SearchableSelect } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { Label } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
+import { PENDING_ORG_INVITE_KEY } from "@/lib/route-guards";
 import type { Country } from "@/lib/countries";
 
 const ACCOUNT_TYPES = [
-  {
-    id: "project_owner",
-    title: "Project Owner",
-    description: "You own the project and oversee its delivery.",
-  },
   {
     id: "construction_company",
     title: "Construction Company",
@@ -52,10 +48,15 @@ export default function SignUpForm() {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const invitedEmail = searchParams.get("email");
+  const invitedViaOrg =
+    (redirectTo?.startsWith("/accept-invitation/") ?? false) ||
+    (typeof window !== "undefined" &&
+      Boolean(window.localStorage.getItem(PENDING_ORG_INVITE_KEY)));
 
   const isProjectManager = accountType === "project_manager";
   const personaComplete =
-    accountType !== null && (!isProjectManager || profession !== null);
+    invitedViaOrg ||
+    (accountType !== null && (!isProjectManager || profession !== null));
 
   function selectAccountType(value: AccountType) {
     setAccountType(value);
@@ -72,11 +73,19 @@ export default function SignUpForm() {
     e.preventDefault();
     setError(null);
 
-    if (!accountType) {
+    const effectiveAccountType = invitedViaOrg
+      ? "construction_company"
+      : accountType;
+
+    if (!effectiveAccountType) {
       setError("Please select who is creating this account.");
       return;
     }
-    if (isProjectManager && !profession) {
+    if (
+      !invitedViaOrg &&
+      effectiveAccountType === "project_manager" &&
+      !profession
+    ) {
       setError("Please select your profession.");
       return;
     }
@@ -89,8 +98,11 @@ export default function SignUpForm() {
       password,
       country: country?.code ?? "",
       phone,
-      accountType,
-      profession: isProjectManager ? (profession ?? "") : "",
+      accountType: effectiveAccountType,
+      profession:
+        !invitedViaOrg && effectiveAccountType === "project_manager"
+          ? (profession ?? "")
+          : "",
     });
 
     setLoading(false);
@@ -121,33 +133,35 @@ export default function SignUpForm() {
       )}
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3">
-          <Label>Who is creating this account?</Label>
+        {!invitedViaOrg && (
           <div className="flex flex-col gap-3">
-            {ACCOUNT_TYPES.map((type) => (
-              <RadioCard
-                key={type.id}
-                title={type.title}
-                description={type.description}
-                selected={accountType === type.id}
-                onClick={() => selectAccountType(type.id)}
-              />
-            ))}
-          </div>
-
-          {isProjectManager && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Your profession</Label>
-              <SearchableSelect
-                items={PROFESSIONS}
-                value={profession}
-                onChange={setProfession}
-                placeholder="Select your profession"
-                searchPlaceholder="Search professions…"
-              />
+            <Label>Who is creating this account?</Label>
+            <div className="flex flex-col gap-3">
+              {ACCOUNT_TYPES.map((type) => (
+                <RadioCard
+                  key={type.id}
+                  title={type.title}
+                  description={type.description}
+                  selected={accountType === type.id}
+                  onClick={() => selectAccountType(type.id)}
+                />
+              ))}
             </div>
-          )}
-        </div>
+
+            {isProjectManager && (
+              <div className="flex flex-col gap-1.5">
+                <Label>Your profession</Label>
+                <SearchableSelect
+                  items={PROFESSIONS}
+                  value={profession}
+                  onChange={setProfession}
+                  placeholder="Select your profession"
+                  searchPlaceholder="Search professions…"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <FormField
           label="Full name"

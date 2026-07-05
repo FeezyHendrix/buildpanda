@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { participantRole } from "../../lib/authorization.ts";
+import { participantRole, PARTICIPANT_PERMISSIONS } from "../../lib/authorization.ts";
+import { statement } from "../../lib/permissions.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
@@ -140,14 +141,39 @@ function computeAccess(
   const isCompanyManager = relationship === "company" && orgRole !== "viewer";
   const isClient = relationship === "client";
 
+  // Effective resource permissions — the same inputs assertProjectPermission
+  // composes, exposed so the UI can hide surfaces the caller cannot view.
+  const permissions: Record<string, string[]> = {};
+  if (project.owner_id === request.user!.id) {
+    // Personal project owners have full access (mirrors assertProjectPermission).
+    for (const [res, actions] of Object.entries(statement)) {
+      permissions[res] = [...actions];
+    }
+  } else {
+    const orgPerms = project.organization_id
+      ? request.orgPermissions.get(project.organization_id)
+      : undefined;
+    if (orgPerms) {
+      for (const [res, actions] of orgPerms) permissions[res] = [...actions];
+    }
+    const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+    if (pPerms) {
+      for (const [res, actions] of Object.entries(pPerms)) {
+        permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
+      }
+    }
+  }
+
   return {
     relationship,
     orgRole: orgRole ?? null,
+    permissions,
     capabilities: {
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
       canManageParticipants: isCompanyManager,
       canDecideApprovals: isCompanyManager || isClient,
+      canDecideSelections: isCompanyManager || isClient,
       canRaiseQueries: isCompanyManager || isClient,
       canComment: relationship !== "none" && relationship !== "guest",
     },

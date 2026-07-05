@@ -82,6 +82,23 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/projects/:id/bim"],
   },
   {
+    key: "projects.bimDashboard",
+    label: "BIM issue dashboard (preview)",
+    group: "Project controls",
+    description:
+      "Experimental issue-detail dashboard inside the BIM viewer: a flagged element opens a coordination panel with status, due date and location. Future concept.",
+    enabledByDefault: false,
+    routePrefixes: ["/projects/:id/bim"],
+  },
+  {
+    key: "projects.selections",
+    label: "Selections & allowances",
+    group: "Project controls",
+    description: "Homeowner finish/fixture selections with allowances, decisions and overage change requests.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/selections", "/project/:id/selections"],
+  },
+  {
     key: "projects.reporting",
     label: "Reporting",
     group: "Project controls",

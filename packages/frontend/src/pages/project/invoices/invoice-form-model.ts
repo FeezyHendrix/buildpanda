@@ -20,6 +20,7 @@ export interface UpsertInvoiceValues {
   issueDate: string;
   dueDate: string;
   paymentTerms: string;
+  paymentInstructions: string;
   recipientEmail: string;
   notes: string;
   lineItems: UpsertLineItem[];
@@ -71,6 +72,7 @@ export const EMPTY_INVOICE: UpsertInvoiceValues = {
   issueDate: "",
   dueDate: "",
   paymentTerms: "",
+  paymentInstructions: "",
   recipientEmail: "",
   notes: "",
   lineItems: [emptyLine()],

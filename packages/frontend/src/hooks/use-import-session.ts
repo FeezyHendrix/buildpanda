@@ -1,37 +1,25 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  importSessionApi,
+  type ImportSession,
+  type SessionDocument,
+  type SessionDocumentKind,
+  type SessionDocumentStatus,
+  type ImportSessionStatus,
+} from "@/api/import-session";
 
-export type SessionDocumentKind = "programme" | "boq" | "drawing" | "ifc" | "project_file";
-export type SessionDocumentStatus = "pending" | "processing" | "ready" | "applied" | "skipped" | "failed";
-export type ImportSessionStatus = "active" | "completed";
-
-export interface SessionDocument {
-  id: string;
-  sessionId: string;
-  kind: SessionDocumentKind;
-  jobId: string | null;
-  fileName: string | null;
-  status: SessionDocumentStatus;
-  error: string | null;
-  appliedAt: string | null;
-  createdAt: string;
-}
-
-export interface ImportSession {
-  id: string;
-  projectId: string | null;
-  status: ImportSessionStatus;
-  documents: SessionDocument[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type {
+  SessionDocumentKind,
+  SessionDocumentStatus,
+  ImportSessionStatus,
+  SessionDocument,
+  ImportSession,
+};
 
 export function useCreateImportSession() {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<ImportSession>("/import-sessions");
-      return data;
+      return importSessionApi.create();
     },
   });
 }
@@ -40,8 +28,7 @@ export function useImportSession(sessionId: string | null) {
   return useQuery({
     queryKey: ["import-sessions", sessionId ?? "__none__"],
     queryFn: async () => {
-      const { data } = await api.get<ImportSession>(`/import-sessions/${sessionId!}`);
-      return data;
+      return importSessionApi.get(sessionId!);
     },
     enabled: Boolean(sessionId),
     refetchInterval: (query) => {
@@ -53,8 +40,7 @@ export function useImportSession(sessionId: string | null) {
 export function useLinkSessionProject() {
   return useMutation({
     mutationFn: async ({ sessionId, projectId }: { sessionId: string; projectId: string }) => {
-      const { data } = await api.post<void>(`/import-sessions/${sessionId}/project`, { projectId });
-      return data;
+      return importSessionApi.linkProject(sessionId, projectId);
     },
   });
 }
@@ -74,13 +60,7 @@ export function useAttachSessionDocument() {
       fileName?: string;
       status?: SessionDocumentStatus;
     }) => {
-      const { data } = await api.post<SessionDocument>(`/import-sessions/${sessionId}/documents`, {
-        kind,
-        jobId,
-        fileName,
-        status,
-      });
-      return data;
+      return importSessionApi.attachDocument(sessionId, { kind, jobId, fileName, status });
     },
   });
 }
@@ -102,16 +82,12 @@ export function useUpdateSessionDocument() {
       status?: SessionDocumentStatus;
       error?: string | null;
     }) => {
-      const { data } = await api.patch<SessionDocument>(
-        `/import-sessions/${sessionId}/documents/${documentId}`,
-        {
-          jobId,
-          fileName,
-          status,
-          error,
-        },
-      );
-      return data;
+      return importSessionApi.updateDocument(sessionId, documentId, {
+        jobId,
+        fileName,
+        status,
+        error,
+      });
     },
   });
 }
