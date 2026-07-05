@@ -53,6 +53,7 @@ export function RiskFactorsPanel({
         {risks.length === 0 ? (
           <EmptyState
             title="No active risks"
+            icon={(<ReactSVG src={icons.riskShield} />)}
             description="Add a risk factor to track and mitigate issues on this project."
             className="py-6"
           />

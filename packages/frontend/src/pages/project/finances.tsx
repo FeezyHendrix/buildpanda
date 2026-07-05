@@ -89,13 +89,13 @@ export default function ProjectFinances() {
 
       <section
         aria-label="Finance summary"
-        className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-6"
+        className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-3"
       >
         <KpiCard
           title="Total Budget"
           icon={icons.moneyBag}
           value={formatCurrency(finances.totalBudget, finances.currency)}
-          className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px]"
+          className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px]"
         />
         <KpiCard
           title="Funds Deposited"
@@ -106,11 +106,13 @@ export default function ProjectFinances() {
           title="Funds Released"
           icon={icons.hand}
           value={formatCurrency(finances.fundsReleased, finances.currency)}
+          className='rounded-tr-[16px]'
         />
         <KpiCard
           title="Locked In Escrow"
           icon={icons.safeSquare}
           value={formatCurrency(finances.lockedInEscrow, finances.currency)}
+          className='rounded-bl-[16px]'
         />
         <KpiCard
           title="Remaining Balance"
@@ -125,7 +127,7 @@ export default function ProjectFinances() {
               snapshot.finance.invoices.retentionHeld,
               finances.currency,
             )}
-            className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
+            className="rounded-tl-[1px] rounded-br-[16px] rounded-bl-[1px]"
           />
         ) : (
           <div className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]" />

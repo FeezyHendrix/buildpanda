@@ -205,7 +205,7 @@ export default function VerifyEmailPage() {
         </p>
 
         <Link to={continueAfterVerifyPath(redirectTo)}>
-          <Button type="button" className="w-full">
+          <Button type="button" className="w-full h-[48px]">
             Continue
           </Button>
         </Link>
@@ -229,7 +229,7 @@ export default function VerifyEmailPage() {
       </p>
 
       <Link to="/auth/sign-in">
-        <Button type="button" variant="secondary" className="w-full">
+        <Button type="button" variant="secondary" className="w-full h-[48px]">
           Back to sign in
         </Button>
       </Link>

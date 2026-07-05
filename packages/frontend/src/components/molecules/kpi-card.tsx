@@ -16,6 +16,9 @@ interface KpiCardProps {
   progress?: number;
   required?: boolean;
   children?: ReactNode;
+  stages?: boolean;
+  complete?: number;
+  total?: number;
 }
 
 function KpiCard({
@@ -29,6 +32,9 @@ function KpiCard({
   progress,
   required,
   children,
+  stages = false,
+  complete = 0,
+  total,
 }: KpiCardProps) {
   const heading = title ?? label;
   return (
@@ -85,7 +91,13 @@ function KpiCard({
         <div className='flex flex-col gap-2'>
           <div className="flex justify-between items-center">
             <p className='text-[25px] text-black-500 font-bold'>{progress}%</p>
-            <Badge tone='success' className={cn("py-[2px] px-[8px] rounded-[12px] bg-success-500 text-[11px] hover:bg-success-500 text-white")}>On Track</Badge>
+            {stages ? (
+              <p className="mt-1 text-[12px] text-black-300">
+                {complete} of {total} stages complete
+              </p>
+            ) : (
+              <Badge tone='success' className={cn("py-[2px] px-[8px] rounded-[12px] bg-success-500 text-[11px] hover:bg-success-500 text-white")}>On Track</Badge>
+            )}
           </div>
 
           <ProgressBar tone='success' value={progress} className={cn("bg-success-100 h-1.5")} />
