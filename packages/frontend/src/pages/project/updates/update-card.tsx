@@ -14,6 +14,7 @@ import {
   useAddComment,
   useDeleteUpdate,
   useEditUpdate,
+  usePublishUpdate,
   useTransitionUpdate,
   useUpdateComments,
 } from "@/hooks/use-updates";
@@ -57,6 +58,7 @@ export function UpdateCard({
   const addComment = useAddComment();
   const editUpdate = useEditUpdate();
   const deleteUpdate = useDeleteUpdate();
+  const publishUpdate = usePublishUpdate();
   const commentsQuery = useUpdateComments(
     commentsOpen ? projectId : undefined,
     commentsOpen ? update.id : undefined,
@@ -109,7 +111,12 @@ export function UpdateCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {update.status !== "Open" && (
+          {update.isDraft && (
+            <Badge tone="warning" size="md" dot>
+              {update.generatedKind ? "Draft · Panda AI" : "Draft"}
+            </Badge>
+          )}
+          {!update.isDraft && update.status !== "Open" && (
             <Badge tone={STATUS_BADGE_TONE[update.status]} size="md" dot>
               {update.status}
             </Badge>
@@ -179,7 +186,19 @@ export function UpdateCard({
             </button>
           )}
         </div>
-        {canManage && (
+        {canManage && update.isDraft && (
+          <Button
+            size="sm"
+            variant="primary"
+            loading={publishUpdate.isPending}
+            onClick={() =>
+              publishUpdate.mutate({ projectId, updateId: update.id })
+            }
+          >
+            Publish
+          </Button>
+        )}
+        {canManage && !update.isDraft && (
           <Button
             size="sm"
             variant={update.cta.tone === "primary" ? "primary" : "secondary"}

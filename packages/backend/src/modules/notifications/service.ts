@@ -7,6 +7,11 @@ import {
   type NotificationEmailJobData,
 } from "./email-job.ts";
 import {
+  NOTIFICATION_PUSH_QUEUE,
+  isPushConfigured,
+  type NotificationPushJobData,
+} from "./push-job.ts";
+import {
   NOTIFICATION_TYPES,
   type Notification,
   type NotificationPreference,
@@ -32,6 +37,11 @@ export interface NotifyInput {
 export interface PreferencePatch {
   inAppEnabled?: boolean;
   emailEnabled?: boolean;
+}
+
+export interface PushSubscriptionInput {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
 }
 
 function toNotification(row: NotificationRow): Notification {
@@ -106,6 +116,16 @@ export function notificationsService(
         await queue
           .enqueue(NOTIFICATION_EMAIL_QUEUE, "send", jobData)
           .catch(() => undefined);
+
+        // Web push rides the same fan-out as email: preferences have no push
+        // channel, so the email preference gates both, and "skip" (deferred
+        // chat email) suppresses both. No-op when VAPID keys are unset.
+        if (isPushConfigured()) {
+          const pushData: NotificationPushJobData = jobData;
+          await queue
+            .enqueue(NOTIFICATION_PUSH_QUEUE, "send", pushData)
+            .catch(() => undefined);
+        }
       }
     },
 
@@ -142,6 +162,25 @@ export function notificationsService(
       const meta = NOTIFICATION_TYPES.find((t) => t.type === type);
       if (!meta) throw new NotFoundError("Notification type");
       return { type, label: meta.label, group: meta.group, inAppEnabled, emailEnabled };
+    },
+
+    async subscribePush(
+      userId: string,
+      input: PushSubscriptionInput,
+      userAgent: string | null,
+    ): Promise<void> {
+      await repository.upsertPushSubscription({
+        id: generateId("psub"),
+        user_id: userId,
+        endpoint: input.endpoint,
+        p256dh: input.keys.p256dh,
+        auth: input.keys.auth,
+        user_agent: userAgent,
+      });
+    },
+
+    async unsubscribePush(userId: string, endpoint: string): Promise<void> {
+      await repository.deletePushSubscription(userId, endpoint);
     },
   };
 }

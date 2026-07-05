@@ -1,6 +1,7 @@
 import { SendMailClient } from "zeptomail";
 import { config } from "../config/index.ts";
 import { logger } from "./logger.ts";
+import { captureBug } from "./sentry.ts";
 
 /**
  * ZeptoMail transactional email client.
@@ -96,10 +97,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
         },
       })),
       ...(options.cc && options.cc.length > 0
-        ? { cc: options.cc.map((address) => ({ email_address: { address } })) }
+        ? { cc: options.cc.map((address) => ({ email_address: { address, name: address } })) }
         : {}),
       ...(options.bcc && options.bcc.length > 0
-        ? { bcc: options.bcc.map((address) => ({ email_address: { address } })) }
+        ? { bcc: options.bcc.map((address) => ({ email_address: { address, name: address } })) }
         : {}),
       subject: options.subject,
       htmlbody: options.html,
@@ -117,10 +118,22 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     // surface them as real Errors so callers/loggers get a useful message.
     const detail =
       error instanceof Error ? error.message : JSON.stringify(error);
-    logger.error(
-      { to: options.to, subject: options.subject, detail },
-      "[mail] Failed to send",
-    );
+    // Trial-plan / daily-quota exhaustion (TM_3601 / SM_133 / SMI_115) silently
+    // takes down sign-up verification and invites — page ops, don't just log.
+    if (/TM_3601|SM_133|SMI_115|limit/i.test(detail)) {
+      captureBug(new Error(`ZeptoMail quota exhausted: ${detail}`), {
+        extra: { subject: options.subject },
+      });
+      logger.error(
+        { to: options.to, subject: options.subject, detail },
+        "[mail] SEND QUOTA EXHAUSTED — verification/invite emails are failing",
+      );
+    } else {
+      logger.error(
+        { to: options.to, subject: options.subject, detail },
+        "[mail] Failed to send",
+      );
+    }
     throw new Error(`Failed to send email: ${detail}`);
   }
 }

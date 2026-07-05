@@ -42,6 +42,7 @@ import rfiRoutes from "./modules/rfis/routes.ts";
 import publicRfiRoutes from "./modules/rfis/public-routes.ts";
 import bimRoutes from "./modules/bim/routes.ts";
 import approvalRoutes from "./modules/approvals/routes.ts";
+import selectionRoutes from "./modules/selections/routes.ts";
 import changeRequestRoutes from "./modules/change-requests/routes.ts";
 import permitRoutes from "./modules/permits/index.ts";
 import keyDateRoutes from "./modules/key-dates/index.ts";
@@ -66,6 +67,8 @@ import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
 import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
+import suppliersRoutes from "./modules/suppliers/routes.ts";
+import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -155,6 +158,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicRfiRoutes);
   await app.register(bimRoutes);
   await app.register(approvalRoutes);
+  await app.register(selectionRoutes);
   await app.register(changeRequestRoutes);
   await app.register(permitRoutes);
   await app.register(keyDateRoutes);
@@ -179,6 +183,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicFileShareRoutes);
   await app.register(taskRoutes);
   await app.register(materialsLedgerRoutes);
+  await app.register(suppliersRoutes);
+  await app.register(lookAheadRoutes);
 
   return app;
 }

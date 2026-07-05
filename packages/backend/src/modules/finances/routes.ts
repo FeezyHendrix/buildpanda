@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { assertProjectPermission } from "../../lib/authorization.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { financesRepository } from "./repository.ts";
@@ -76,7 +77,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.getByProject(project.id);
     },
   );
@@ -86,6 +87,12 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: depositBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const finances = await service.deposit(project.id, request.body);
       return reply.status(201).send(finances);
     },
@@ -96,6 +103,12 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: milestoneBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       const milestone = await service.createMilestone(project.id, request.body);
       return reply.status(201).send(milestone);
     },
@@ -109,6 +122,12 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: milestoneParams, body: milestonePatchBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       return service.updateMilestone(
         project.id,
         request.params.milestoneId,
@@ -122,6 +141,12 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: milestoneParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "view",
+      );
       await service.deleteMilestone(project.id, request.params.milestoneId);
       return reply.status(204).send();
     },
@@ -146,7 +171,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId/disputes",
     { schema: { params: milestoneParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.listDisputes(project.id, request.params.milestoneId);
     },
   );

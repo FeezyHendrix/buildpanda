@@ -3,6 +3,16 @@ import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
 import { chatVision, type LlmTool } from "../../../lib/llm.ts";
+import { assertCanActAsClient, assertCanModifyProject } from "../../../lib/authorization.ts";
+import type { QueueManager } from "../../../lib/queue/index.ts";
+import { tasksRepository } from "../../tasks/repository.ts";
+import { tasksService } from "../../tasks/service.ts";
+import { queriesRepository } from "../../queries/repository.ts";
+import { queriesService } from "../../queries/service.ts";
+import { rfisRepository } from "../../rfis/repository.ts";
+import { rfisService } from "../../rfis/service.ts";
+import { notificationsRepository } from "../../notifications/repository.ts";
+import { notificationsService } from "../../notifications/service.ts";
 import { agentRepository } from "./repository.ts";
 
 export interface ToolResult {
@@ -10,9 +20,24 @@ export interface ToolResult {
   navigate?: string;
 }
 
+/**
+ * The calling user's identity and authorization inputs, captured from the
+ * request that started the chat turn (same data the auth plugin loads).
+ * Write tools re-run the exact assertions the domain routes run, so the
+ * agent can never do more than the user could do themselves.
+ */
+export interface AgentCaller {
+  user: { id: string; name: string };
+  project: { id: string; ownerId: string | null; organizationId: string | null };
+  orgRoles: ReadonlyMap<string, string>;
+  projectRoles: ReadonlyMap<string, string>;
+}
+
 export interface ToolContext {
   db: Knex;
   projectId: string;
+  caller: AgentCaller;
+  queue?: QueueManager;
 }
 
 interface AgentTool {
@@ -32,6 +57,8 @@ const NAV_TARGETS: Record<string, string> = {
   "site-activity": "activities",
   "daily-log": "daily-log",
   "daily-logs": "daily-log",
+  "look-aheads": "look-aheads",
+  "look-ahead": "look-aheads",
   "key-dates": "key-dates",
   milestones: "milestones",
   stages: "stages",
@@ -46,6 +73,10 @@ const NAV_TARGETS: Record<string, string> = {
   budget: "finances/budget",
   invoices: "finances/invoices",
   "milestone-payments": "finances/milestone-payments",
+  "purchase-orders": "finances/purchase-orders",
+  "payment-claims": "finances/payment-claims",
+  tasks: "tasks",
+  rfis: "rfis",
   documents: "documents",
   team: "team",
   settings: "settings",
@@ -67,6 +98,26 @@ function fn(name: string, description: string, properties: Record<string, unknow
 }
 
 const MAX_DOC_TEXT_CHARS = 16000;
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function optionalString(value: unknown, maxLength: number): string | null {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  return s ? s.slice(0, maxLength) : null;
+}
+
+function requiredString(value: unknown, maxLength: number, field: string): string {
+  const s = optionalString(value, maxLength);
+  if (!s) throw new Error(`${field} is required`);
+  return s;
+}
+
+// The stored invoice workflow statuses; payment state (paid/overdue) is derived
+// from payments + due date, so it is exposed as amountPaid/outstanding/isOverdue.
+const INVOICE_WORKFLOW_STATUSES = ["Draft", "Sent", "Approved", "Submitted"] as const;
 
 export function buildTools(): AgentTool[] {
   return [
@@ -134,6 +185,125 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_invoices", "Get the project's invoices in detail: number, vendor, billed-to party, workflow status, issue/due dates, total, amount paid, outstanding balance and an isOverdue flag. Use for questions about specific invoices, what is unpaid, or what is overdue. get_finances is only the high-level budget summary.", { status: { type: "string", enum: [...INVOICE_WORKFLOW_STATUSES], description: "Optional workflow status filter" } }), async (ctx, args) => {
+      const repo = agentRepository(ctx.db);
+      const status = optionalString(args.status, 20) ?? undefined;
+      const invoices = (await repo.invoices(ctx.projectId, status)) as Array<{
+        id: string;
+        number: string | null;
+        vendor_name: string;
+        invoice_type: string;
+        status: string;
+        currency: string;
+        issue_date: string | null;
+        due_date: string | null;
+        total_invoiced: string | null;
+        net_payable: string | null;
+        to_party: unknown;
+        amount_paid: string | null;
+      }>;
+      const now = Date.now();
+      return {
+        output: invoices.map((i) => {
+          const paid = round2(Number(i.amount_paid ?? 0));
+          const netPayable = Number(i.net_payable ?? 0);
+          const outstanding = round2(netPayable - paid);
+          const toParty = i.to_party as { name?: string | null } | null;
+          return {
+            id: i.id,
+            number: i.number,
+            vendor: i.vendor_name,
+            billedTo: toParty?.name ?? null,
+            type: i.invoice_type,
+            status: i.status,
+            currency: i.currency,
+            issueDate: i.issue_date,
+            dueDate: i.due_date,
+            total: Number(i.total_invoiced ?? 0),
+            amountPaid: paid,
+            outstanding,
+            isOverdue:
+              Boolean(i.due_date) &&
+              new Date(String(i.due_date)).getTime() < now &&
+              outstanding > 0 &&
+              i.status !== "Draft",
+          };
+        }),
+      };
+    }),
+
+    tool(fn("get_budget", "Get the project's budget categories with allocated (planned), committed and actual/spent amounts plus variance and remaining per category, and overall totals. Use for questions about budget lines, cost codes, where money is over/under budget. get_finances is only the high-level summary."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.budgetCategories(ctx.projectId);
+      const categories = rows.map((c) => {
+        const allocated = Number(c.planned ?? 0);
+        const committed = Number(c.committed ?? 0);
+        const spent = Number(c.actual ?? 0);
+        return {
+          name: c.name,
+          costCode: c.cost_code,
+          allocated,
+          committed,
+          spent,
+          variance: round2(allocated - spent),
+          remaining: round2(allocated - committed - spent),
+          overBudget: spent > allocated,
+        };
+      });
+      const sum = (pick: (c: (typeof categories)[number]) => number): number =>
+        round2(categories.reduce((total, c) => total + pick(c), 0));
+      return {
+        output: {
+          categories,
+          totals: {
+            allocated: sum((c) => c.allocated),
+            committed: sum((c) => c.committed),
+            spent: sum((c) => c.spent),
+            variance: sum((c) => c.variance),
+          },
+        },
+      };
+    }),
+
+    tool(fn("get_purchase_orders", "Get the project's purchase orders with vendor, status, committed total and expected delivery date. Use for questions about POs, what has been ordered from vendors, committed procurement spend, or expected deliveries."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const orders = await repo.purchaseOrders(ctx.projectId);
+      return {
+        output: orders.map((po) => ({
+          id: po.id,
+          poNumber: po.po_number,
+          vendor: po.vendor_name,
+          status: po.status,
+          total: round2(Number(po.total ?? 0)),
+          orderDate: po.order_date,
+          expectedDelivery: po.expected_date,
+        })),
+      };
+    }),
+
+    tool(fn("get_payment_claims", "Get the project's payment claims (progress claims): claim number, workflow status (Draft/Submitted/Approved/Rejected/Paid), claimed and approved amounts, claim period and linked milestone. Use for questions about progress claims, what has been claimed or approved for payment."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const claims = await repo.paymentClaims(ctx.projectId);
+      return {
+        output: claims.map((c) => {
+          const amount = Number(c.amount ?? 0);
+          const approved = c.status === "Approved" || c.status === "Paid";
+          return {
+            id: c.id,
+            claimNumber: c.claim_number,
+            status: c.status,
+            claimedAmount: amount,
+            approvedAmount: approved ? amount : null,
+            periodStart: c.period_start,
+            periodEnd: c.period_end,
+            submittedAt: c.submitted_at,
+            approvedAt: c.approved_at,
+            milestone: c.milestone_name ?? null,
+          };
+        }),
+      };
+    }),
+
     tool(fn("get_daily_logs", "Get recent daily site logs (weather, workers present, hours, summary). Use for questions about site activity, what happened on site, or recent progress.", { limit: { type: "number", description: "How many recent logs (default 10)" } }), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const limit = Math.min(Math.max(Number(args.limit ?? 10), 1), 30);
@@ -179,6 +349,20 @@ export function buildTools(): AgentTool[] {
           onHand: Number(s.on_hand_qty),
           lowStockThreshold: s.low_stock_threshold === null ? null : Number(s.low_stock_threshold),
           lowStock: s.low_stock_threshold !== null && Number(s.on_hand_qty) <= Number(s.low_stock_threshold),
+        })),
+      };
+    }),
+
+    tool(fn("get_suppliers", "Get the project's supplier directory (name, contact person, email, phone, address). Use for questions about who supplies materials, supplier contact details, or which vendors are on file."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const suppliers = await repo.suppliers(ctx.projectId);
+      return {
+        output: suppliers.map((s) => ({
+          name: s.name,
+          contactName: s.contact_name,
+          email: s.email,
+          phone: s.phone,
+          address: s.address,
         })),
       };
     }),
@@ -246,6 +430,51 @@ export function buildTools(): AgentTool[] {
           decidedAt: c.decided_at,
           submittedBy: c.submittedBy,
         })),
+      };
+    }),
+
+    tool(fn("get_selections", "Get the homeowner's finish/fixture selections (tile, taps, lighting…) with their allowance budget, deadline, decision status, the chosen option and its price, and any overage above the allowance. Use for questions about client selections, allowances, what the homeowner has chosen or still needs to choose, and selection overages."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const now = Date.now();
+      const selections = (await repo.selections(ctx.projectId)) as Array<{
+        id: string;
+        title: string;
+        category: string | null;
+        status: string;
+        allowance_amount: string | null;
+        currency: string;
+        due_date: string | null;
+        decided_at: string | null;
+        change_request_id: string | null;
+        chosen_option_name: string | null;
+        chosen_option_price: string | null;
+      }>;
+      return {
+        output: selections.map((s) => {
+          const allowance = s.allowance_amount === null ? null : Number(s.allowance_amount);
+          const chosenPrice = s.chosen_option_price === null ? null : Number(s.chosen_option_price);
+          const overage =
+            allowance !== null && chosenPrice !== null
+              ? Math.max(0, round2(chosenPrice - allowance))
+              : null;
+          return {
+            title: s.title,
+            category: s.category,
+            status: s.status,
+            allowance,
+            currency: s.currency,
+            chosenOption: s.chosen_option_name,
+            chosenPrice,
+            overage,
+            dueDate: s.due_date,
+            isOverdue:
+              Boolean(s.due_date) &&
+              new Date(String(s.due_date)).getTime() < now &&
+              s.status === "open",
+            decidedAt: s.decided_at,
+            hasChangeRequest: s.change_request_id !== null,
+          };
+        }),
       };
     }),
 
@@ -329,6 +558,110 @@ export function buildTools(): AgentTool[] {
       } catch (error) {
         return { output: { error: error instanceof Error ? error.message : "Could not analyze this drawing." } };
       }
+    }),
+
+    tool(fn("create_task", "Create a task on the project's task board (it goes to the first column, e.g. 'To Do'). ONLY call this when the user explicitly asks to create/add a task, and confirm the title and details with them first — never invent details they did not give. Returns the created task's id.", {
+      title: { type: "string", description: "Short task title (required)" },
+      description: { type: "string", description: "Optional longer description" },
+      assigneeId: { type: "string", description: "Optional user id to assign — only if a user id is known; do not guess" },
+      dueDate: { type: "string", description: "Optional due date, YYYY-MM-DD" },
+    }, ["title"]), async (ctx, args) => {
+      // Same check as POST /projects/:id/tasks (requireProjectWrite).
+      assertCanModifyProject(ctx.caller.project, {
+        userId: ctx.caller.user.id,
+        orgRoles: ctx.caller.orgRoles,
+      });
+      const service = tasksService(tasksRepository(ctx.db), {
+        notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
+      });
+      const task = await service.createTask(
+        ctx.projectId,
+        {
+          title: requiredString(args.title, 200, "title"),
+          description: optionalString(args.description, 50000),
+          assigneeId: optionalString(args.assigneeId, 100),
+          dueDate: optionalString(args.dueDate, 40),
+        },
+        ctx.caller.user.id,
+      );
+      return {
+        output: {
+          created: true,
+          id: task.id,
+          title: task.title,
+          assignee: task.assigneeName,
+          dueDate: task.dueDate,
+          page: `/project/${ctx.projectId}/tasks`,
+        },
+      };
+    }),
+
+    tool(fn("raise_query", "Raise a site query on the project on behalf of the user. ONLY call this when the user explicitly asks to raise/log a query, and confirm the subject and question with them first — never invent content. Returns the created query's id.", {
+      subject: { type: "string", description: "Short query subject (required)" },
+      question: { type: "string", description: "The question body (required)" },
+    }, ["subject", "question"]), async (ctx, args) => {
+      // Same check as POST /projects/:id/queries (staff with write access or client participant).
+      assertCanActAsClient(ctx.caller.project, {
+        userId: ctx.caller.user.id,
+        orgRoles: ctx.caller.orgRoles,
+        projectRoles: ctx.caller.projectRoles,
+      });
+      const service = queriesService(queriesRepository(ctx.db), {
+        notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
+      });
+      const query = await service.create(
+        ctx.projectId,
+        {
+          subject: requiredString(args.subject, 200, "subject"),
+          question: requiredString(args.question, 4000, "question"),
+        },
+        ctx.caller.user.id,
+      );
+      return {
+        output: {
+          created: true,
+          id: query.id,
+          subject: query.subject,
+          status: query.status,
+          page: `/project/${ctx.projectId}/queries`,
+        },
+      };
+    }),
+
+    tool(fn("create_rfi", "Draft an RFI (request for information) on the project, created in Draft status and attributed to the user, so they can review, assign and send it from the RFIs page. ONLY call this when the user explicitly asks to create/raise an RFI, and confirm the subject and question with them first — never invent content. Returns the created RFI's id and number.", {
+      subject: { type: "string", description: "Short RFI subject (required)" },
+      question: { type: "string", description: "The full question being asked (required)" },
+    }, ["subject", "question"]), async (ctx, args) => {
+      // Same check as POST /projects/:id/rfis (staff with write access or client participant).
+      assertCanActAsClient(ctx.caller.project, {
+        userId: ctx.caller.user.id,
+        orgRoles: ctx.caller.orgRoles,
+        projectRoles: ctx.caller.projectRoles,
+      });
+      const service = rfisService(rfisRepository(ctx.db), {
+        notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
+      });
+      const isClient = ctx.caller.projectRoles.get(ctx.projectId) === "client";
+      // No ballInCourtId => the RFI starts in Draft (the earliest status).
+      const rfi = await service.create(
+        ctx.projectId,
+        {
+          subject: requiredString(args.subject, 200, "subject"),
+          question: requiredString(args.question, 8000, "question"),
+        },
+        { id: ctx.caller.user.id, name: ctx.caller.user.name },
+        isClient ? "shared" : "internal",
+      );
+      return {
+        output: {
+          created: true,
+          id: rfi.id,
+          number: rfi.number,
+          subject: rfi.subject,
+          status: rfi.status,
+          page: `/project/${ctx.projectId}/rfis`,
+        },
+      };
     }),
 
     tool(fn("navigate", "Point the user to a page in the app. Returns a navigation target the UI shows as a button. Use when the user asks to go somewhere or you reference a page they should open.", { target: { type: "string", description: `One of: ${Object.keys(NAV_TARGETS).join(", ")}` } }, ["target"]), async (ctx, args) => {

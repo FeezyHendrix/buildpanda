@@ -224,7 +224,9 @@ export const proposalsApi = {
     api.post<ProposalComment>(`/proposals/${proposalId}/comments`, { body }).then((r) => r.data),
 
   convert: (proposalId: string) =>
-    api.post<{ projectId: string }>(`/proposals/${proposalId}/convert`).then((r) => r.data),
+    api
+      .post<{ projectId: string; clientInvited?: boolean }>(`/proposals/${proposalId}/convert`)
+      .then((r) => r.data),
 
   listPlans: (proposalId: string) =>
     api.get<ProposalPlan[]>(`/proposals/${proposalId}/plans`).then((r) => r.data),

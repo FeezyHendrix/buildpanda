@@ -166,7 +166,7 @@ export default function ProjectStages() {
             title="Completed Stages"
             value={complete}
             icon={icons.verified}
-            className="lg:col-span-2 rounded-tr-[16px] rounded-br-[16px"
+            className="lg:col-span-2 rounded-tr-[16px] rounded-br-[16px]"
           />
         </div>
       )}

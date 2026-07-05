@@ -11,13 +11,20 @@ export function MaterialOrderRow({
   onEdit,
   onDelete,
   onAdvance,
+  canRequest,
+  canApprove,
 }: {
   order: MaterialOrder;
   onEdit: () => void;
   onDelete: () => void;
   onAdvance: (status: MaterialOrderStatus) => void;
+  canRequest: boolean;
+  canApprove: boolean;
 }) {
   const next = nextStatus(order.status);
+  // Approval-tier transitions mirror the backend guard.
+  const APPROVAL = ["Approved", "Ordered", "PartiallyDelivered", "Delivered"];
+  const canAdvance = next !== null && (APPROVAL.includes(next) ? canApprove : canRequest);
   return (
     <article className="flex flex-col gap-4 py-4 xl:flex-row xl:items-center">
       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -41,9 +48,9 @@ export function MaterialOrderRow({
       </div>
       <div className="flex flex-wrap items-center gap-2 xl:justify-end">
         <p className="mr-2 text-sm font-semibold tabular-nums text-gray-900">{formatCurrency(order.estimatedCost, order.currency)}</p>
-        {next && <Button size="sm" variant="secondary" onClick={() => onAdvance(next)}>Move to {STATUS_META[next].label}</Button>}
-        <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button>
-        <Button size="sm" variant="ghost" onClick={onDelete}>Delete</Button>
+        {next && canAdvance ? <Button size="sm" variant="secondary" onClick={() => onAdvance(next)}>Move to {STATUS_META[next].label}</Button> : null}
+        {canRequest ? <Button size="sm" variant="ghost" onClick={onEdit}>Edit</Button> : null}
+        {canApprove ? <Button size="sm" variant="ghost" onClick={onDelete}>Delete</Button> : null}
       </div>
     </article>
   );

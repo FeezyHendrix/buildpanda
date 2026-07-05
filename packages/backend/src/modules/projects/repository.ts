@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { isEmployeeRole } from "../../lib/permissions.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   ProjectPhaseRow,
@@ -52,13 +53,59 @@ export interface NewFinancesRecord {
   remaining_balance: number;
 }
 
+/**
+ * Template-seeded task board created alongside the project. Mirrors the shape
+ * the tasks module's ensureDefaultBoard produces so it is picked up as the
+ * project's default board.
+ */
+export interface TaskSeed {
+  board: {
+    id: string;
+    project_id: string;
+    name: string;
+    is_default: boolean;
+    created_by_id: string | null;
+  };
+  columns: Array<{
+    id: string;
+    board_id: string;
+    name: string;
+    status: string | null;
+    position: number;
+  }>;
+  tasks: Array<{
+    id: string;
+    project_id: string;
+    board_id: string;
+    column_id: string;
+    title: string;
+    description: string | null;
+    description_html: string | null;
+    assignee_id: string | null;
+    assignee_team_member_id: string | null;
+    due_date: string | null;
+    priority: string;
+    labels: string;
+    position: number;
+    source_type: string | null;
+    source_id: string | null;
+    created_by_id: string | null;
+  }>;
+}
+
 export function projectsRepository(db: Knex) {
   return {
     // Lists projects the user can see: ones they own, seed rows, projects in the
-    // given orgs (the dashboard passes only the active org so switching company
-    // changes the list; cross-org views pass all orgs), and projects they are an
-    // active participant on regardless of org.
-    async listForUser(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
+    // given orgs where they have org-wide access (owner/admin/member/viewer —
+    // NOT employee), and projects they are an active participant on regardless
+    // of org. Employees only see their participant projects.
+    async listForUser(
+      ownerId: string,
+      orgRoles: ReadonlyMap<string, string>,
+    ): Promise<ProjectRow[]> {
+      const orgWideProjectOrgIds = [...orgRoles.entries()]
+        .filter(([, role]) => !isEmployeeRole(role))
+        .map(([orgId]) => orgId);
       const participantProjectIds = await db("project_participants")
         .where({ user_id: ownerId })
         .whereNot("status", "revoked")
@@ -69,7 +116,7 @@ export function projectsRepository(db: Knex) {
             .orWhere(function () {
               this.whereNull("owner_id").whereNull("organization_id");
             });
-          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
+          if (orgWideProjectOrgIds.length) this.orWhereIn("organization_id", orgWideProjectOrgIds);
           if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
         })
         .orderBy("updated_at", "desc");
@@ -116,6 +163,7 @@ export function projectsRepository(db: Knex) {
       project: NewProjectRecord,
       phases: NewPhaseRecord[],
       finances: NewFinancesRecord,
+      taskSeed?: TaskSeed,
     ): Promise<void> {
       return db.transaction(async (trx) => {
         await trx("projects").insert({
@@ -124,6 +172,11 @@ export function projectsRepository(db: Knex) {
         });
         if (phases.length) await trx("project_phases").insert(phases);
         await trx("project_finances").insert(finances);
+        if (taskSeed) {
+          await trx("task_boards").insert(taskSeed.board);
+          if (taskSeed.columns.length) await trx("task_columns").insert(taskSeed.columns);
+          if (taskSeed.tasks.length) await trx("tasks").insert(taskSeed.tasks);
+        }
       });
     },
   };

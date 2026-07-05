@@ -203,6 +203,17 @@ export function InvoiceCard({
         <p className="text-sm text-gray-600 text-pretty">{invoice.notes}</p>
       )}
 
+      {invoice.paymentInstructions ? (
+        <div className="flex flex-col gap-1 border-t border-[#F0F0F0] pt-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Payment details
+          </p>
+          <p className="whitespace-pre-line text-sm text-gray-600">
+            {invoice.paymentInstructions}
+          </p>
+        </div>
+      ) : null}
+
       <InvoiceBudgetAllocations projectId={projectId} invoice={invoice} currency={currency} />
 
       {invoice.payments.length > 0 && (

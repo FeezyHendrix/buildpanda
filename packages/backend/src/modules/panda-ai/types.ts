@@ -34,6 +34,14 @@ export interface ProjectMetrics {
   recentUpdateCount: number;
   daysSinceLastUpdate: number | null;
   recentDailyLogCount: number;
+  missedKeyDateCount: number;
+  overdueActivityCount: number;
+  dueActionItemCount: number;
+  blockedActionItemCount: number;
+  openQueryCount: number;
+  pendingApprovalCount: number;
+  expiringPermitCount: number;
+  pendingChangeRequestCostImpact: number;
 }
 
 export interface AiInsightResult {

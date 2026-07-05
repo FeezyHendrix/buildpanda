@@ -1,25 +1,14 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import api from "@/api/client";
+import { featureFlagsApi } from "@/api/feature-flags";
+import type { FeatureFlag, FeatureFlagsSettings } from "@/api/feature-flags";
 
-export interface FeatureFlag {
-  key: string;
-  label: string;
-  group: string;
-  description: string;
-  enabledByDefault: boolean;
-  routePrefixes: string[];
-  enabled: boolean;
-}
-
-interface FeatureFlagsSettings {
-  flags: FeatureFlag[];
-}
+export type { FeatureFlag, FeatureFlagsSettings };
 
 export function useFeatureFlags() {
   return useQuery({
     queryKey: ["feature-flags"],
-    queryFn: () => api.get<FeatureFlagsSettings>("/feature-flags").then((r) => r.data),
+    queryFn: () => featureFlagsApi.get(),
     staleTime: 60_000,
   });
 }

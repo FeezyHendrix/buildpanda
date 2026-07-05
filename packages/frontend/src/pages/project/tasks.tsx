@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -109,8 +110,13 @@ export default function ProjectTasks() {
     [assignable],
   );
 
+  // MouseSensor + TouchSensor (not PointerSensor): on touch devices a
+  // long-press starts a drag while a plain swipe keeps scrolling the board.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
+    }),
   );
 
   if (isLoading || !board) {
@@ -282,7 +288,7 @@ export default function ProjectTasks() {
       />
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="mt-6 flex items-start gap-4 overflow-x-auto pb-4">
+        <div className="mt-6 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto scroll-px-4 pb-4 lg:snap-none">
           <SortableContext
             items={board.columns.map((c) => c.id)}
             strategy={horizontalListSortingStrategy}
@@ -302,7 +308,7 @@ export default function ProjectTasks() {
           </SortableContext>
 
           {canManage && (
-            <div className="w-72 shrink-0">
+            <div className="w-[85vw] shrink-0 snap-start sm:w-72">
               {addingColumn ? (
                 <div className="flex flex-col gap-2 rounded-2xl bg-[#FAFAFA] p-3">
                   <input

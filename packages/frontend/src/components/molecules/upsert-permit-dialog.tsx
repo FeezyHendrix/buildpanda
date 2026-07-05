@@ -7,7 +7,7 @@ export interface UpsertPermitValues {
   title: string;
   authority: string | null;
   referenceNo: string | null;
-  status: PermitStatus;
+  status?: PermitStatus;
   appliedDate: string | null;
   approvedDate: string | null;
   expiryDate: string | null;
@@ -24,20 +24,12 @@ interface Props {
   error?: string | null;
 }
 
-const STATUS: { value: PermitStatus; label: string }[] = [
-  { value: "NotStarted", label: "Not started" },
-  { value: "Applied", label: "Applied" },
-  { value: "Approved", label: "Approved" },
-  { value: "Rejected", label: "Rejected" },
-  { value: "Expired", label: "Expired" },
-];
-
 const field =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSubmitting = false, error }: Props) {
   const [v, setV] = useState<UpsertPermitValues>({
-    title: "", authority: "", referenceNo: "", status: "NotStarted", appliedDate: "", approvedDate: "", expiryDate: "", notes: "",
+    title: "", authority: "", referenceNo: "", appliedDate: "", approvedDate: "", expiryDate: "", notes: "",
   });
 
   useEffect(() => {
@@ -46,7 +38,6 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
         title: initial?.title ?? "",
         authority: initial?.authority ?? "",
         referenceNo: initial?.referenceNo ?? "",
-        status: initial?.status ?? "NotStarted",
         appliedDate: initial?.appliedDate ?? "",
         approvedDate: initial?.approvedDate ?? "",
         expiryDate: initial?.expiryDate ?? "",
@@ -65,7 +56,6 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
       title: v.title.trim(),
       authority: (v.authority || "").trim() || null,
       referenceNo: (v.referenceNo || "").trim() || null,
-      status: v.status,
       appliedDate: v.appliedDate || null,
       approvedDate: v.approvedDate || null,
       expiryDate: v.expiryDate || null,
@@ -85,11 +75,12 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
       error={error ?? null}
       onSubmit={handleSubmit}
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="pm-title">Title</Label>
-        <input id="pm-title" value={v.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Building permit" className={field} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-4">
+        <h4 className="text-sm font-semibold text-gray-900">Permit</h4>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="pm-title">Title *</Label>
+          <input id="pm-title" value={v.title} onChange={(e) => set("title", e.target.value)} placeholder="e.g. Foundation Permit" className={field} autoFocus />
+        </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="pm-auth">Authority</Label>
           <input id="pm-auth" value={v.authority ?? ""} onChange={(e) => set("authority", e.target.value)} placeholder="e.g. LASBCA" className={field} />
@@ -99,29 +90,37 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
           <input id="pm-ref" value={v.referenceNo ?? ""} onChange={(e) => set("referenceNo", e.target.value)} className={field} />
         </div>
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="pm-status">Status</Label>
-        <select id="pm-status" value={v.status} onChange={(e) => set("status", e.target.value as PermitStatus)} className={field}>
-          {STATUS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
-        </select>
+
+      <hr className="my-6 border-gray-100" />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h4 className="text-sm font-semibold text-gray-900">Dates</h4>
+          <p className="text-xs text-gray-500">Status is set automatically from these dates.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pm-applied">Applied</Label>
+            <input id="pm-applied" type="date" value={v.appliedDate ?? ""} onChange={(e) => set("appliedDate", e.target.value)} className={field} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pm-approved">Approved</Label>
+            <input id="pm-approved" type="date" value={v.approvedDate ?? ""} onChange={(e) => set("approvedDate", e.target.value)} className={field} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="pm-expiry">Expires</Label>
+            <input id="pm-expiry" type="date" value={v.expiryDate ?? ""} onChange={(e) => set("expiryDate", e.target.value)} className={field} />
+          </div>
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+
+      <hr className="my-6 border-gray-100" />
+
+      <div className="flex flex-col gap-4">
+        <h4 className="text-sm font-semibold text-gray-900">Notes</h4>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pm-applied">Applied</Label>
-          <input id="pm-applied" type="date" value={v.appliedDate ?? ""} onChange={(e) => set("appliedDate", e.target.value)} className={field} />
+          <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" placeholder="Add any additional details here..." />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pm-approved">Approved</Label>
-          <input id="pm-approved" type="date" value={v.approvedDate ?? ""} onChange={(e) => set("approvedDate", e.target.value)} className={field} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pm-expiry">Expires</Label>
-          <input id="pm-expiry" type="date" value={v.expiryDate ?? ""} onChange={(e) => set("expiryDate", e.target.value)} className={field} />
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="pm-notes">Notes</Label>
-        <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={2} className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
     </FormDrawer>
   );

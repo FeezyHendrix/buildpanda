@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { searchApi } from "@/api/search";
 import { searchKeys } from "./query-keys";
-import type { SearchResults } from "@/lib/project-types";
 
 const DEBOUNCED_STALE_MS = 30_000;
 
@@ -10,12 +9,7 @@ export function useSearch(query: string) {
 
   return useQuery({
     queryKey: searchKeys.query(trimmed),
-    queryFn: async () => {
-      const { data } = await api.get<SearchResults>("/search", {
-        params: { q: trimmed },
-      });
-      return data;
-    },
+    queryFn: () => searchApi.search(trimmed),
     enabled: trimmed.length > 0,
     staleTime: DEBOUNCED_STALE_MS,
   });

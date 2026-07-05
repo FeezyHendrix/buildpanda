@@ -1,13 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import api from "@/api/client";
+import { usersApi } from "@/api/users";
+import type { User } from "@/api/users";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { User };
 
 export const userKeys = {
   all: ["users"] as const,
@@ -18,19 +13,13 @@ export const userKeys = {
 export function useMe() {
   return useQuery({
     queryKey: userKeys.me,
-    queryFn: async () => {
-      const { data } = await api.get<User>("/users/me");
-      return data;
-    },
+    queryFn: () => usersApi.me(),
   });
 }
 
 export function useUsers() {
   return useQuery({
     queryKey: userKeys.all,
-    queryFn: async () => {
-      const { data } = await api.get<User[]>("/users");
-      return data;
-    },
+    queryFn: () => usersApi.list(),
   });
 }

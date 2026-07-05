@@ -67,7 +67,7 @@ async function ensureUserOrganization(
     name = user?.name ?? "My";
   }
 
-  const orgName = `${name}'s Company`;
+  const orgName = `${name}'s Workspace`;
   const orgId = generateId("org");
   const slug = await uniqueOrgSlug(slugify(orgName));
   const now = new Date();
@@ -88,6 +88,95 @@ async function ensureUserOrganization(
   });
 
   return orgId;
+}
+
+/**
+ * True if there is a pending, non-expired org invitation for this email.
+ * Used at sign-up to skip creating a personal workspace for someone who is
+ * about to join an existing org once they verify their email.
+ */
+async function hasPendingInvitation(email: string): Promise<boolean> {
+  const now = new Date();
+  const row = await db("invitation")
+    .whereRaw("lower(email) = ?", [email.toLowerCase()])
+    .andWhere({ status: "pending" })
+    .andWhere((q) => q.whereNull("expiresAt").orWhere("expiresAt", ">", now))
+    .first("id");
+  return Boolean(row);
+}
+
+/**
+ * Accepts every pending, non-expired invitation matching the user's (now
+ * verified) email: inserts the membership with the invitation's role and marks
+ * the invitation accepted. Runs only AFTER email verification so an unverified
+ * sign-up with someone else's invited address never gains membership. If any
+ * accepted invitation is an employee role, stamps user.accountType="employee"
+ * (presentation only). Returns true if at least one invitation was accepted.
+ */
+async function acceptPendingInvitationsForEmail(
+  userId: string,
+  email: string,
+): Promise<boolean> {
+  const now = new Date();
+  const normalizedEmail = email.toLowerCase();
+  const pending = await db("invitation")
+    .whereRaw("lower(email) = ?", [normalizedEmail])
+    .andWhere({ status: "pending" })
+    .andWhere((q) => q.whereNull("expiresAt").orWhere("expiresAt", ">", now))
+    .select<{ id: string; organizationId: string; role: string | null }[]>(
+      "id",
+      "organizationId",
+      "role",
+    );
+  if (pending.length === 0) return false;
+
+  let joinedAsEmployee = false;
+  await db.transaction(async (trx) => {
+    for (const invite of pending) {
+      const role = invite.role ?? "member";
+      if (isEmployeeRole(role)) joinedAsEmployee = true;
+      const alreadyMember = await trx("member")
+        .where({ userId, organizationId: invite.organizationId })
+        .first("id");
+      if (!alreadyMember) {
+        await trx("member").insert({
+          id: generateId("mem"),
+          organizationId: invite.organizationId,
+          userId,
+          role,
+          createdAt: now,
+        });
+      }
+      await trx("invitation").where({ id: invite.id }).update({ status: "accepted" });
+    }
+  });
+
+  if (joinedAsEmployee) {
+    await db("user").where({ id: userId }).update({ accountType: "employee" });
+  }
+
+  return true;
+}
+
+/**
+ * Resolves the active organization for a new session. Prefers the org the
+ * user last had active (so switching orgs or accepting an invitation sticks
+ * across sign-ins) as long as they are still a member; otherwise falls back
+ * to ensureUserOrganization's first-membership/auto-create behaviour.
+ */
+async function resolveActiveOrganization(userId: string): Promise<string> {
+  const last = await db("session")
+    .where({ userId })
+    .whereNotNull("activeOrganizationId")
+    .orderBy("createdAt", "desc")
+    .first<{ activeOrganizationId: string | null }>("activeOrganizationId");
+  if (last?.activeOrganizationId) {
+    const stillMember = await db("member")
+      .where({ userId, organizationId: last.activeOrganizationId })
+      .first("id");
+    if (stillMember) return last.activeOrganizationId;
+  }
+  return ensureUserOrganization(userId);
 }
 
 /**
@@ -169,6 +258,15 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     expiresIn: 3600,
     afterEmailVerification: async (user) => {
+      // Email is now proven: accept any pending invitations (joins the inviting
+      // workspace, stamps accountType=employee for employee invites). If the
+      // invite was cancelled between sign-up and verification the user may still
+      // have no org, so fall back to a personal workspace.
+      const joinedViaInvite = await acceptPendingInvitationsForEmail(user.id, user.email);
+      if (joinedViaInvite) {
+        const membership = await db("member").where({ userId: user.id }).first("id");
+        if (!membership) await ensureUserOrganization(user.id, user.name);
+      }
       void sendWelcomeEmail(db, user.id).catch(() => undefined);
     },
   },
@@ -242,7 +340,14 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          await ensureUserOrganization(user.id, user.name);
+          // Defer invitation acceptance to afterEmailVerification (an unverified
+          // sign-up with someone else's invited email must not gain membership).
+          // Only auto-create a personal workspace for users with NO pending
+          // invite, so an invited employee never lands in their own empty org.
+          const invited = await hasPendingInvitation(user.email);
+          if (!invited) {
+            await ensureUserOrganization(user.id, user.name);
+          }
           const ctx = getRequestContext();
           if (ctx && (ctx.ip || ctx.country)) {
             await db("user")
@@ -256,7 +361,7 @@ export const auth = betterAuth({
     session: {
       create: {
         before: async (session) => {
-          const activeOrganizationId = await ensureUserOrganization(
+          const activeOrganizationId = await resolveActiveOrganization(
             session.userId,
           );
           await promoteIfAdminEmail(session.userId);

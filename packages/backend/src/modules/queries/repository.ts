@@ -21,6 +21,9 @@ export interface QueryUpdatePatch {
   answered_by_id?: string | null;
   answered_at?: string | null;
   assignee_id?: string | null;
+  // Decision-chasing reminder state (see lifecycle/decision-chasing-job.ts).
+  reminder_level?: number | null;
+  last_reminded_at?: string | null;
   updated_at?: string;
 }
 

@@ -39,9 +39,35 @@ export interface PostEntryResult {
   onHandQty: number;
 }
 
+export interface CatalogPolicyPatch {
+  low_stock_threshold?: string | null;
+  reorder_quantity?: string | null;
+  lead_time_days?: number | null;
+  preferred_supplier_id?: string | null;
+  auto_reorder_enabled?: boolean;
+}
+
 function normalize(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
+
+const CATALOG_SELECT = [
+  "materials_catalog.id",
+  "materials_catalog.project_id",
+  "materials_catalog.name",
+  "materials_catalog.normalized_name",
+  "materials_catalog.unit",
+  "materials_catalog.low_stock_threshold",
+  "materials_catalog.active",
+  "materials_catalog.created_by_id",
+  "materials_catalog.created_at",
+  "materials_catalog.updated_at",
+  "materials_catalog.reorder_quantity",
+  "materials_catalog.lead_time_days",
+  "materials_catalog.preferred_supplier_id",
+  "sup.name as preferred_supplier_name",
+  "materials_catalog.auto_reorder_enabled",
+] as const;
 
 const ENTRY_SELECT = [
   "e.id",
@@ -71,6 +97,12 @@ const ENTRY_SELECT = [
 export function materialsLedgerRepository(db: Knex) {
   function entryBase() {
     return db("material_ledger_entries as e").leftJoin("user as u", "u.id", "e.logged_by_id");
+  }
+
+  function catalogBase() {
+    return db("materials_catalog")
+      .leftJoin("suppliers as sup", "sup.id", "materials_catalog.preferred_supplier_id")
+      .select(...CATALOG_SELECT);
   }
 
   async function findOrCreateCatalogTrx(
@@ -107,13 +139,19 @@ export function materialsLedgerRepository(db: Knex) {
 
   return {
     listCatalog(projectId: string): Promise<MaterialCatalogRow[]> {
-      return db<MaterialCatalogRow>("materials_catalog")
-        .where({ project_id: projectId, active: true })
-        .orderBy("name", "asc");
+      return catalogBase().where({ "materials_catalog.project_id": projectId, "materials_catalog.active": true }).orderBy("materials_catalog.name", "asc");
     },
 
     findCatalogById(id: string): Promise<MaterialCatalogRow | undefined> {
-      return db<MaterialCatalogRow>("materials_catalog").where({ id }).first();
+      return catalogBase().where({ "materials_catalog.id": id }).first();
+    },
+
+    async updateCatalogPolicy(id: string, patch: CatalogPolicyPatch): Promise<MaterialCatalogRow | undefined> {
+      const updated = await db("materials_catalog")
+        .where({ id })
+        .update({ ...patch, updated_at: new Date() });
+      if (!updated) return undefined;
+      return catalogBase().where({ "materials_catalog.id": id }).first();
     },
 
     findEntryById(id: string): Promise<LedgerEntryRow | undefined> {

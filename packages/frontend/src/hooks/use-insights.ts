@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { insightKeys } from "./query-keys";
-import type { ProjectInsights, WhatsNext, GlobalWhatsNext } from "@/lib/project-types";
+import { insightsApi } from "@/api/insights";
 
 export function useProjectInsights(projectId: string | undefined) {
   return useQuery({
     queryKey: insightKeys.insights(projectId ?? "__none__"),
     queryFn: async () => {
-      const { data } = await api.get<ProjectInsights>(`/projects/${projectId!}/insights`);
-      return data;
+      return insightsApi.getInsights(projectId!);
     },
     enabled: Boolean(projectId),
   });
@@ -18,21 +16,16 @@ export function useGlobalWhatsNext(days = 14) {
   return useQuery({
     queryKey: ["whats-next", "global", days],
     queryFn: async () => {
-      const { data } = await api.get<GlobalWhatsNext>("/whats-next", { params: { days } });
-      return data;
+      return insightsApi.getGlobalWhatsNext(days);
     },
   });
 }
 
 export function useWhatsNext(projectId: string | undefined, days = 14) {
-
   return useQuery({
     queryKey: [...insightKeys.whatsNext(projectId ?? "__none__"), days],
     queryFn: async () => {
-      const { data } = await api.get<WhatsNext>(`/projects/${projectId!}/whats-next`, {
-        params: { days },
-      });
-      return data;
+      return insightsApi.getWhatsNext(projectId!, days);
     },
     enabled: Boolean(projectId),
   });

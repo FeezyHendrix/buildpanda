@@ -13,7 +13,7 @@ export const statement = {
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
-  materials: ["view", "manage", "report"],
+  materials: ["view", "manage", "report", "request", "approve"],
   contractors: ["view", "manage"],
   dailyLog: ["view", "create", "void", "report"],
   updates: ["view", "post"],
@@ -32,7 +32,7 @@ const constructionFull = {
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
-  materials: ["view", "manage", "report"],
+  materials: ["view", "manage", "report", "request", "approve"],
   contractors: ["view", "manage"],
   dailyLog: ["view", "create", "void", "report"],
   updates: ["view", "post"],
@@ -49,7 +49,7 @@ const constructionContributor = {
   schedule: ["view"],
   documents: ["view", "upload"],
   inspections: ["view", "request"],
-  materials: ["view", "report"],
+  materials: ["view", "report", "request", "approve"],
   contractors: ["view"],
   dailyLog: ["view", "create", "void", "report"],
   updates: ["view", "post"],
@@ -101,15 +101,50 @@ export const viewer = ac.newRole({
   ...constructionReadOnly,
 });
 
-export const roles = { owner, admin, member, viewer };
+// Mirror of the backend `employee` floor: minimal, project-scoped, no
+// team-management. Real capabilities are admin-assigned via custom roles.
+const constructionEmployeeBase = {
+  project: ["view"],
+  schedule: ["view"],
+  documents: ["view"],
+  updates: ["view"],
+  messages: ["view"],
+  comments: ["view"],
+  dailyLog: ["view"],
+  materials: ["view"],
+} as const;
+
+export const employee = ac.newRole({
+  organization: [],
+  member: [],
+  invitation: [],
+  team: [],
+  ac: [],
+  ...constructionEmployeeBase,
+});
+
+export const roles = { owner, admin, member, viewer, employee };
 
 export type AppRoleName = keyof typeof roles;
+
+// Presentation mirror of the backend rule: an employee is scoped to assigned
+// projects and cannot manage the team. Backend enforces this; the UI hides
+// team-management for these members. Role may be comma-joined with a custom
+// role (e.g. "employee,foreman"), so match by token.
+export function isEmployeeRole(role: string | null | undefined): boolean {
+  return (role ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .includes("employee");
+}
 
 export const STATIC_ROLE_NAMES: AppRoleName[] = [
   "owner",
   "admin",
   "member",
   "viewer",
+  "employee",
 ];
 
 export const ORG_MANAGEMENT_RESOURCES = [

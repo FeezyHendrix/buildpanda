@@ -3,7 +3,15 @@ import { Badge } from "@/components/atoms/badge";
 import { cn } from "@/lib/utils";
 import type { StockLevel } from "@/lib/project-types";
 
-export function StockCard({ stock }: { stock: StockLevel }) {
+export function StockCard({
+  stock,
+  canManage,
+  onEditPolicy,
+}: {
+  stock: StockLevel;
+  canManage?: boolean;
+  onEditPolicy?: () => void;
+}) {
   return (
     <Card padding="md" className="flex flex-col gap-1">
       <span className="truncate text-sm font-medium text-gray-900">{stock.materialName}</span>
@@ -16,6 +24,15 @@ export function StockCard({ stock }: { stock: StockLevel }) {
       ) : stock.lowStock ? (
         <Badge tone="warning" size="sm">Low stock</Badge>
       ) : null}
+      {canManage && onEditPolicy && (
+        <button
+          type="button"
+          onClick={onEditPolicy}
+          className="mt-1 self-start text-xs font-medium text-primary hover:underline"
+        >
+          Reorder policy
+        </button>
+      )}
     </Card>
   );
 }

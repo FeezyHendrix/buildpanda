@@ -163,6 +163,22 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
       </Section>
 
       <Section
+        title="Payment details"
+        description="How the client should pay — shown on the invoice PDF."
+      >
+        <TextareaField
+          id="payment-instructions"
+          label="Payment instructions"
+          hideLabel
+          value={values.paymentInstructions}
+          onChange={(v) => update("paymentInstructions", v)}
+          placeholder={"Bank: GTBank\nAccount name: Acme Builders Ltd\nAccount number: 0123456789\nReference: invoice number"}
+          maxLength={2000}
+          rows={4}
+        />
+      </Section>
+
+      <Section
         title="Notes"
         description="Visible to the recipient on the issued invoice."
       >

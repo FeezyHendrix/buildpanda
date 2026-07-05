@@ -1,11 +1,11 @@
 import { randomBytes } from "crypto";
 import * as XLSX from "xlsx";
-import type { CurrencyCode } from "../../lib/currencies.ts";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
+import { convertProposalToProject } from "./convert-to-project.ts";
 import { PROPOSAL_STATUSES } from "./types.ts";
-import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalSentEmail } from "../../lib/email-templates.ts";
@@ -16,16 +16,6 @@ import type {
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
 } from "./types.ts";
-
-const DEFAULT_PHASES = [
-  { name: "Site Survey & Soil Testing", date_range: "Weeks 1 – 2" },
-  { name: "Permitting & Approvals", date_range: "Weeks 3 – 8" },
-  { name: "Foundation & Substructure", date_range: "Weeks 9 – 16" },
-  { name: "Superstructure & MEP", date_range: "Weeks 17 – 32" },
-  { name: "Finishing", date_range: "Weeks 33 – 42" },
-  { name: "External Works", date_range: "Weeks 43 – 46" },
-  { name: "Testing & Handover", date_range: "Weeks 47 – 48" },
-] as const;
 
 const proposalEstimateParams = {
   type: "object",
@@ -601,121 +591,13 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       const orgId = request.requireOrgPermission("proposals", "convert");
       const user = request.requireAuth();
 
-      const proposalRow = await repo.getById(request.params.id, orgId);
-      if (!proposalRow) throw new NotFoundError("Proposal");
-      if (proposalRow.status !== "Accepted") {
-        throw new BadRequestError("Only Accepted proposals can be converted.");
-      }
-      if (proposalRow.project_id) {
-        // Already converted — return the existing project id
-        return reply.send({ projectId: proposalRow.project_id });
-      }
-
-      const estimate = await repo.getActiveEstimate(request.params.id);
-      const schedule = estimate ? await repo.getSchedule(estimate.id) : [];
-
-      // projects.currency only accepts NGN | USD
-      const currency: CurrencyCode =
-        proposalRow.currency === "USD" ? "USD" : "NGN";
-
-      const projectId = generateId("prj");
-      const now = new Date().toISOString();
-
-      await fastify.db.transaction(async (trx) => {
-        await trx("projects").insert({
-          id: projectId,
-          owner_id: user.id,
-          organization_id: orgId,
-          name: proposalRow.title,
-          address: proposalRow.location ?? "To be confirmed",
-          status: "On Track",
-          health_score: 0,
-          risk: "Low",
-          progress_percent: 0,
-          budget_total: estimate?.total ?? 0,
-          budget_used: 0,
-          currency,
-          pending_approvals: 0,
-          folder_tone: "orange",
-          budget_min: estimate?.total ?? 0,
-          budget_max: estimate?.total ?? 0,
-          setup: {
-            projectType: "Residential",
-            location: { state: "", city: proposalRow.location ?? "", ownsLand: false },
-            buildingType: "House",
-            timeline: "12 months",
-            fundingMethod: "Self",
-            involvementLevel: "Hands-on",
-            riskOptions: [],
-          },
-        });
-
-        await trx("project_phases").insert(
-          DEFAULT_PHASES.map((phase, idx) => ({
-            id: generateId("phase"),
-            project_id: projectId,
-            name: phase.name,
-            status: "Pending",
-            date_range: phase.date_range,
-            sort_order: idx,
-          })),
-        );
-
-        await trx("project_finances").insert({
-          project_id: projectId,
-          currency,
-          total_budget: estimate?.total ?? 0,
-          funds_deposited: 0,
-          funds_released: 0,
-          locked_in_escrow: 0,
-          remaining_balance: estimate?.total ?? 0,
-        });
-
-        if (schedule.length > 0 && estimate) {
-          await trx("milestone_payments").insert(
-            schedule.map((s, idx) => ({
-              id: generateId("mlst"),
-              project_id: projectId,
-              name: s.label,
-              phase: "General",
-              status: "Pending",
-              percent_complete: 0,
-              amount: Math.round((estimate.total * s.percent) / 100 * 100) / 100,
-              proof_file_name: null,
-              proof_verified: false,
-              inspector_sign_off: "Pending",
-              sort_order: idx,
-            })),
-          );
-        }
-
-        await trx("project_documents").insert({
-          id: generateId("doc"),
-          project_id: projectId,
-          category_id: "cat_proposal",
-          file_id: null,
-          file_name: `Proposal BP-${String(proposalRow.number).padStart(4, "0")} — snapshot`,
-          size: "—",
-          size_bytes: null,
-          status: "Verified",
-          uploaded_at: now,
-        });
-
-        await trx("proposals")
-          .where({ id: request.params.id })
-          .update({ project_id: projectId, status: "Converted", updated_at: now });
-
-        await trx("proposal_events").insert({
-          id: generateId("evt"),
-          proposal_id: request.params.id,
-          type: "converted",
-          actor: user.id,
-          metadata: { projectId },
-          created_at: now,
-        });
-      });
-
-      return reply.status(201).send({ projectId });
+      const result = await convertProposalToProject(
+        { db: fastify.db, repo, log: request.log },
+        { proposalId: request.params.id, orgId, user },
+      );
+      return reply
+        .status(result.created ? 201 : 200)
+        .send({ projectId: result.projectId, clientInvited: result.clientInvited });
     },
   );
 };

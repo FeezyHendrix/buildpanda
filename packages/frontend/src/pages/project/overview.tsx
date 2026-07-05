@@ -8,6 +8,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useTour } from "@/hooks/use-tour";
 import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
+import { useAutoWindow } from "@/hooks/use-look-aheads";
 import {
   useProjectRiskFactors,
 } from "@/hooks/use-risks";
@@ -31,9 +32,12 @@ export default function ProjectOverview() {
   const { data: session } = useSession();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
+  const { data: autoWindow } = useAutoWindow(project.id, 4);
 
   const firstName = (session?.user?.name ?? "").trim().split(" ")[0] || "there";
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
+  const upcomingCount = autoWindow?.activities.length ?? 0;
+  const uncoveredCount = autoWindow?.activities.filter((a) => !a.hasMaterialCoverage).length ?? 0;
 
   const tour = useTour({
     tourKey: CONSTRUCTION_TOUR_KEY,
@@ -48,12 +52,6 @@ export default function ProjectOverview() {
         description="Stay in control with real-time updates on progress, payments, and site activity."
         badges={
           <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
-            <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
-              <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
-                <ReactSVG src={icons.love} />
-            </div>
-            <p className='text-[13px] font-semibold text-black-200'><span className='text-primary'>{project.healthScore}</span>/100</p>
-            </Badge>
             <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
               <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
                 <ReactSVG src={icons.shield} />
@@ -98,9 +96,16 @@ export default function ProjectOverview() {
           />
         </div>
         <KpiCard
-          title="Next Inspection"
-          value={project.nextInspection.date || "None scheduled"}
-          subValue={project.nextInspection.type || undefined}
+          title="Upcoming Look Aheads"
+          value={upcomingCount > 0 ? upcomingCount : "None scheduled"}
+          subValue={
+            upcomingCount === 0
+              ? undefined
+              : uncoveredCount > 0
+                ? `${uncoveredCount} without materials ordered`
+                : "All materials ordered"
+          }
+          warn={uncoveredCount > 0}
           icon={icons.calendarSearch}
           className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />

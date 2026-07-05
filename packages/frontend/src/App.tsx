@@ -5,6 +5,8 @@ import {
   RequireAuth,
   RequireCompany,
   ProjectFeatureFlagGate,
+  ProjectPermissionGate,
+  OrgPermissionGate,
   SalesFeatureFlagGate,
 } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
@@ -93,6 +95,8 @@ const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
+const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
+const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
@@ -107,6 +111,7 @@ const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
+const ProjectSelections = lazy(() => import("@/pages/project/selections"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
@@ -122,6 +127,14 @@ const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
 function pf(flag: string, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
+}
+/** Feature flag + resource permission (RBAC) gate for project routes. */
+function pfr(flag: string, resource: string, el: ReactElement) {
+  return (
+    <ProjectFeatureFlagGate flag={flag}>
+      <ProjectPermissionGate resource={resource}>{el}</ProjectPermissionGate>
+    </ProjectFeatureFlagGate>
+  );
 }
 function sf(flag: string, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
@@ -156,7 +169,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
-      { path: "settings/team", element: <TeamSettings /> },
+      {
+        path: "settings/team",
+        element: (
+          <OrgPermissionGate resource="teamMembers" action="manage">
+            <TeamSettings />
+          </OrgPermissionGate>
+        ),
+      },
       { path: "settings/notifications", element: <NotificationSettings /> },
     ],
   },
@@ -252,6 +272,7 @@ export const router = createBrowserRouter([
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
       { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "look-aheads", element: pf("projects.schedule", <ProjectLookAheads />) },
       { path: "bim", element: pf("projects.bim", <ProjectBim />) },
 
       { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
@@ -259,19 +280,20 @@ export const router = createBrowserRouter([
       { path: "queries", element: pf("workflow.queries", <ProjectQueries />) },
       { path: "rfis", element: pf("workflow.rfis", <ProjectRfis />) },
       { path: "approvals", element: pf("workflow.approvals", <ProjectApprovals />) },
+      { path: "selections", element: pf("projects.selections", <ProjectSelections />) },
       { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
       { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
       { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "whats-next", element: <ProjectWhatsNext /> },
 
-      { path: "finances", element: pf("commercial.finances", <ProjectFinances />) },
-      { path: "finances/budget-allocation", element: pf("commercial.budget", <ProjectBudgetAllocation />) },
-      { path: "finances/milestone-payments", element: pf("commercial.finances", <ProjectMilestonePayments />) },
-      { path: "finances/invoices", element: pf("commercial.invoices", <ProjectInvoices />) },
-      { path: "finances/invoices/new", element: pf("commercial.invoices", <ProjectInvoiceNew />) },
-      { path: "finances/payment-claims", element: pf("commercial.paymentClaims", <ProjectPaymentClaims />) },
-      { path: "finances/purchase-orders", element: pf("commercial.purchaseOrders", <ProjectPurchaseOrders />) },
-      { path: "finances/budget", element: pf("commercial.budget", <ProjectBudget />) },
+      { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
+      { path: "finances/budget-allocation", element: pfr("commercial.budget", "finances", <ProjectBudgetAllocation />) },
+      { path: "finances/milestone-payments", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
+      { path: "finances/invoices", element: pfr("commercial.invoices", "finances", <ProjectInvoices />) },
+      { path: "finances/invoices/new", element: pfr("commercial.invoices", "finances", <ProjectInvoiceNew />) },
+      { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
+      { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
+      { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
@@ -279,10 +301,11 @@ export const router = createBrowserRouter([
       { path: "materials/requests", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
+      { path: "suppliers", element: pf("commercial.materialsEquipment", <ProjectSuppliers />) },
 
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "schedules/milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "schedules/milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
       { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
@@ -292,7 +315,7 @@ export const router = createBrowserRouter([
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "milestones", element: pf("commercial.finances", <ProjectMilestonePayments />) },
+      { path: "milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
       { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "stages", element: pf("projects.schedule", <ProjectStages />) },

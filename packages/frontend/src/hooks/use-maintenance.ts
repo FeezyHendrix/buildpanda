@@ -1,21 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { maintenanceApi } from "@/api/maintenance";
+import type { MaintenanceStatus } from "@/api/maintenance";
 
-export interface MaintenanceStatus {
-  enabled: boolean;
-  message: string | null;
-  allowed: boolean;
-}
+export type { MaintenanceStatus };
 
 const FALLBACK: MaintenanceStatus = { enabled: false, message: null, allowed: true };
 
 export function useMaintenanceStatus() {
   return useQuery({
     queryKey: ["maintenance-status"],
-    queryFn: async (): Promise<MaintenanceStatus> => {
-      const res = await api.get<MaintenanceStatus>("/maintenance");
-      return res.data;
-    },
+    queryFn: () => maintenanceApi.getStatus(),
     placeholderData: FALLBACK,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,

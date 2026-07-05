@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
+import { orgProfileApi } from "@/api/org-profile";
 import { organizationKeys, projectKeys } from "./query-keys";
 
 function unwrap<T>(result: { data: T; error: { message?: string } | null }): T {
@@ -21,6 +22,31 @@ type UpdateMemberRoleType = Parameters<
 export function useActiveOrganizationId(): string | undefined {
   const { data: session } = authClient.useSession();
   return session?.session.activeOrganizationId ?? undefined;
+}
+
+/**
+ * The caller's effective permission map for their active org (built-in role ∪
+ * admin-assigned custom roles), resolved server-side. Use useHasOrgPermission
+ * for a single check. Drives UI gating so members see only the actions they may
+ * actually perform (an employee sees create/invite ONLY if an admin granted it).
+ */
+export function useOrgPermissions() {
+  const orgId = useActiveOrganizationId();
+  return useQuery({
+    queryKey: organizationKeys.permissions(orgId ?? "__none__"),
+    queryFn: () => orgProfileApi.permissions(),
+    enabled: Boolean(orgId),
+  });
+}
+
+/**
+ * True if the caller may perform `action` on `resource` in their active org.
+ * While permissions are loading it returns false, so gated UI stays hidden
+ * until confirmed (fail-closed presentation; the backend enforces regardless).
+ */
+export function useHasOrgPermission(resource: string, action: string): boolean {
+  const { data } = useOrgPermissions();
+  return (data?.permissions?.[resource] ?? []).includes(action);
 }
 
 /**
@@ -66,7 +92,7 @@ export function useCreateOrganization() {
           slug: slugifyOrganizationName(name),
         }),
       );
-      if (!organization) throw new Error("Could not create company.");
+      if (!organization) throw new Error("Could not create workspace.");
       await authClient.organization.setActive({ organizationId: organization.id });
       return organization;
     },
@@ -310,14 +336,34 @@ export function useSetActiveOrganization() {
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (invitationId: string) =>
-      unwrap(
+    mutationFn: async (invitationId: string) => {
+      const data = unwrap(
         await authClient.organization.acceptInvitation({ invitationId }),
-      ),
+      );
+      // Joining a workspace should land you IN it: make it the active org,
+      // otherwise the dashboard keeps showing the user's own (empty) org.
+      const organizationId =
+        data?.invitation?.organizationId ?? data?.member?.organizationId;
+      if (organizationId) {
+        await authClient.organization.setActive({ organizationId });
+      }
+      return data;
+    },
+    // Active org changed, so org-scoped data (projects list) is stale too.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
+}
+
+/** Pending invitations addressed to the signed-in user's email. */
+export function usePendingUserInvitations() {
+  const query = useUserInvitations();
+  return {
+    ...query,
+    data: (query.data ?? []).filter((i) => i.status === "pending"),
+  };
 }
 
 export function useRejectInvitation() {

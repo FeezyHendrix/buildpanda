@@ -1,5 +1,5 @@
 import { CONSTRUCTION_UNITS } from "@/lib/construction-units";
-import { SearchableSelect } from "@/components/atoms/searchable-select";
+import { ComboInput } from "@/components/atoms/combo-input";
 
 interface UnitInputProps {
   value: string;
@@ -12,14 +12,13 @@ interface UnitInputProps {
 
 export function UnitInput({ value, onChange, className, disabled, id }: UnitInputProps) {
   return (
-    <SearchableSelect
+    <ComboInput
       id={id}
       items={CONSTRUCTION_UNITS}
       value={value || null}
       onChange={(v) => onChange(v ?? "")}
-      placeholder="Select unit…"
-      searchPlaceholder="Search units…"
-      emptyText="No matching unit."
+      placeholder="Select or type unit…"
+      emptyText="Press to use a custom unit."
       className={className}
       disabled={disabled}
     />

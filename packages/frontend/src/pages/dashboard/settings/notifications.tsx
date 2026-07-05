@@ -1,10 +1,13 @@
 import { useMemo } from "react";
 import { PageHeader } from "@/components/molecules/page-header";
 import { ToggleRow } from "@/components/atoms/toggle-row";
+import { Switcher } from "@/components/atoms/switcher";
+import { Spinner } from "@/components/atoms/spinner";
 import {
   useNotificationPreferences,
   useSetNotificationPreference,
 } from "@/hooks/use-notification-preferences";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import type { NotificationPreference } from "@/lib/project-types";
 
 function groupPreferences(
@@ -25,6 +28,51 @@ function statusDescription(pref: NotificationPreference): string {
     : "Off, you will not be notified";
 }
 
+function pushStatusText(push: ReturnType<typeof usePushNotifications>): string {
+  if (push.permissionDenied && !push.enabled) {
+    return "Notifications are blocked for this site in your browser settings.";
+  }
+  return push.enabled
+    ? "On, this device will receive notifications even when the app is closed"
+    : "Off, this device will not receive push notifications";
+}
+
+// Hidden entirely when the browser lacks push support or the server has no
+// VAPID keys configured (public key comes back empty).
+function PushNotificationsSection() {
+  const push = usePushNotifications();
+
+  if (!push.supported || push.isLoading || !push.configured) return null;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold text-gray-900">This device</h2>
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <p className="text-sm font-medium text-gray-900">
+            Push notifications on this device
+          </p>
+          <p className="text-xs text-gray-500">{pushStatusText(push)}</p>
+          {push.error !== null ? (
+            <p className="text-xs text-red-600">{push.error}</p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {push.isPending ? <Spinner size="xs" /> : null}
+          <Switcher
+            value={push.enabled ? "yes" : "no"}
+            onChange={(value) => {
+              if (push.isPending) return;
+              if (value === "yes") push.enable();
+              else push.disable();
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function NotificationSettings() {
   const { data: preferences = [], isLoading } = useNotificationPreferences();
   const setPreference = useSetNotificationPreference();
@@ -41,6 +89,7 @@ export default function NotificationSettings() {
         <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
       ) : (
         <div className="mt-6 flex flex-col gap-8">
+          <PushNotificationsSection />
           {groups.map(([group, list]) => (
             <section key={group} className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold text-gray-900">{group}</h2>

@@ -7,7 +7,7 @@ export async function buildProjectMetrics(
   projectId: string,
 ): Promise<ProjectMetrics> {
   const snapshot = await reportingService(db).buildSnapshot(projectId);
-  const { finance, schedule, risks, inspections, activity } = snapshot;
+  const { finance, schedule, risks, inspections, activity, operations } = snapshot;
   const budgetActual = finance.budget.totalActual;
   const budgetPlanned = finance.budget.totalPlanned;
 
@@ -36,5 +36,13 @@ export async function buildProjectMetrics(
     recentUpdateCount: activity.recentUpdateCount,
     daysSinceLastUpdate: activity.daysSinceLastUpdate,
     recentDailyLogCount: activity.recentDailyLogCount,
+    missedKeyDateCount: operations.missedKeyDates,
+    overdueActivityCount: operations.overdueActivities,
+    dueActionItemCount: operations.dueActionItems,
+    blockedActionItemCount: operations.blockedActionItems,
+    openQueryCount: operations.openQueries,
+    pendingApprovalCount: operations.pendingApprovals,
+    expiringPermitCount: operations.expiringPermits,
+    pendingChangeRequestCostImpact: finance.changeRequests.pendingCostImpact,
   };
 }

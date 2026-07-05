@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { authClient } from "@/lib/auth-client";
+import { useSession } from "@/stores/auth";
 import { homePathFor } from "@/lib/route-guards";
 
 export default function SignInForm() {
@@ -10,9 +11,17 @@ export default function SignInForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect");
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (pendingRedirect && session?.user) {
+      navigate(pendingRedirect, { replace: true });
+    }
+  }, [pendingRedirect, session, navigate]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,17 +31,9 @@ export default function SignInForm() {
     await authClient.signIn.email(
       { email, password },
       {
-        // better-auth refreshes the session store before onSuccess fires, so
-        // route guards see the signed-in session. Navigating outside this
-        // callback races the refresh and the guard redirects back to sign-in.
         onSuccess: (ctx) => {
-          setLoading(false);
-          if (redirectTo) {
-            navigate(redirectTo, { replace: true });
-            return;
-          }
           const accountType = (ctx.data?.user as { accountType?: string } | undefined)?.accountType;
-          navigate(homePathFor(accountType));
+          setPendingRedirect(redirectTo ?? homePathFor(accountType));
         },
         onError: (ctx) => {
           setLoading(false);

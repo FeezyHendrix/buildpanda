@@ -39,6 +39,8 @@ export interface ProjectUpdate {
   secondaryAction?: { label: string };
   status: UpdateStatus;
   action: UpdateAction;
+  isDraft: boolean;
+  generatedKind: string | null;
   createdAt: string;
 }
 
@@ -62,6 +64,8 @@ export interface UpdateRow {
   action_taken_by_id: string | null;
   action_taken_by_name: string | null;
   activity_id: string | null;
+  is_draft: boolean;
+  generated_kind: string | null;
   created_at: Date | string;
 }
 

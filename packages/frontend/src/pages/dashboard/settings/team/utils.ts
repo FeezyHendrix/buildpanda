@@ -5,6 +5,7 @@ const ROLE_TONES: Record<string, BadgeTone> = {
   admin: "info",
   member: "neutral",
   viewer: "neutral",
+  employee: "info",
 };
 
 export function roleTone(role: string): BadgeTone {

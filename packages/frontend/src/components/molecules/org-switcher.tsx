@@ -96,10 +96,10 @@ function OrgSwitcher() {
           "inline-flex max-w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700",
           "outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
         )}
-        aria-label="Switch company"
+        aria-label="Switch workspace"
       >
         <span className="truncate text-primary">
-          {activeOrg?.name ?? "Select company"}
+          {activeOrg?.name ?? "Select workspace"}
         </span>
         <ChevronDownIcon />
       </Menu.Trigger>
@@ -119,7 +119,7 @@ function OrgSwitcher() {
             )}
           >
             <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Your companies
+              Your workspaces
             </p>
 
             {orgs.map((org) => (
@@ -142,14 +142,14 @@ function OrgSwitcher() {
 
             <form onSubmit={handleCreate} className="mt-1 border-t border-gray-100 px-2 py-2">
               <label className="text-xs font-medium text-gray-500" htmlFor="new-company-name">
-                New company
+                New workspace
               </label>
               <div className="mt-1 flex gap-1.5">
                 <input
                   id="new-company-name"
                   value={newCompanyName}
                   onChange={(event) => setNewCompanyName(event.target.value)}
-                  placeholder="Company name"
+                  placeholder="Workspace name"
                   className="h-8 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                 />
                 <button
