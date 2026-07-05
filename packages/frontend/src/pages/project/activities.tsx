@@ -67,13 +67,13 @@ export default function ProjectActivities() {
           canManage ? (
             <Button variant="primary" size="md" onClick={startNewActivity}>
               <PlusIcon className="size-4" />
-              New activity
+              Add New Activity
             </Button>
           ) : undefined
         }
       />
 
-      <section className="mt-8 flex flex-col gap-4">
+      <section className="mt-8 flex flex-col gap-1 bg-[#F8F8F8] rounded-[16px] p-1">
         {isPending ? (
           <Card padding="lg" className="text-center text-sm text-gray-500">
             Loading activities…
