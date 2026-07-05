@@ -62,9 +62,15 @@ export const supplierKeys = {
     [...supplierKeys.all(projectId), "list", includeInactive ?? false] as const,
 };
 
+export const autoWindowKeys = {
+  all: (projectId: string) => ["projects", projectId, "look-aheads-auto-window"] as const,
+  detail: (projectId: string, weeks: number) => [...autoWindowKeys.all(projectId), weeks] as const,
+};
+
 export const lookAheadKeys = {
-  all: (projectId: string) => ["projects", projectId, "materials-look-ahead"] as const,
-  detail: (projectId: string, weeks: number) => [...lookAheadKeys.all(projectId), weeks] as const,
+  all: (projectId: string) => ["projects", projectId, "look-aheads"] as const,
+  list: (projectId: string, filterKey: string) => [...lookAheadKeys.all(projectId), "list", filterKey] as const,
+  detail: (projectId: string, lookAheadId: string) => [...lookAheadKeys.all(projectId), "detail", lookAheadId] as const,
 };
 
 export const invoiceKeys = {

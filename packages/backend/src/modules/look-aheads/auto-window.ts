@@ -1,11 +1,11 @@
 import type { Knex } from "knex";
 import { activitiesRepository } from "../activities/repository.ts";
 import type { ActivityStatus } from "../activities/types.ts";
-import { materialsEquipmentRepository } from "./repository.ts";
-import { materialsEquipmentService } from "./service.ts";
-import type { MaterialOrder } from "./types.ts";
+import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
+import { materialsEquipmentService } from "../materials-equipment/service.ts";
+import type { MaterialOrder } from "../materials-equipment/types.ts";
 
-export interface LookAheadMaterialOrder {
+export interface AutoWindowMaterialOrder {
   id: string;
   materialName: string;
   quantity: number;
@@ -15,7 +15,7 @@ export interface LookAheadMaterialOrder {
   neededBy: string;
 }
 
-export interface LookAheadActivity {
+export interface AutoWindowActivity {
   activityId: string;
   activityName: string;
   phaseName: string | null;
@@ -23,15 +23,16 @@ export interface LookAheadActivity {
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned: number;
-  materialOrders: LookAheadMaterialOrder[];
+  fromProgramme: boolean;
+  materialOrders: AutoWindowMaterialOrder[];
   hasMaterialCoverage: boolean;
 }
 
-export interface LookAheadResult {
+export interface AutoWindowResult {
   weeks: number;
   from: string;
   to: string;
-  activities: LookAheadActivity[];
+  activities: AutoWindowActivity[];
 }
 
 function toDateOnly(value: Date | string): string {
@@ -39,7 +40,7 @@ function toDateOnly(value: Date | string): string {
   return iso.slice(0, 10);
 }
 
-function toOrder(row: MaterialOrder): LookAheadMaterialOrder {
+function toOrder(row: MaterialOrder): AutoWindowMaterialOrder {
   return {
     id: row.id,
     materialName: row.materialName,
@@ -51,12 +52,18 @@ function toOrder(row: MaterialOrder): LookAheadMaterialOrder {
   };
 }
 
-export function lookAheadService(db: Knex) {
+/**
+ * Zero-setup preview: activities already on the project chart / imported
+ * programme whose planned start falls in the next `weeks` weeks, cross
+ * referenced with any material orders linked to them. Complements the
+ * user-curated look-aheads below rather than replacing them.
+ */
+export function autoWindowService(db: Knex) {
   const activities = activitiesRepository(db);
   const orders = materialsEquipmentService(materialsEquipmentRepository(db));
 
   return {
-    async build(projectId: string, weeks: number): Promise<LookAheadResult> {
+    async build(projectId: string, weeks: number): Promise<AutoWindowResult> {
       const from = toDateOnly(new Date());
       const to = toDateOnly(new Date(Date.now() + weeks * 7 * 24 * 60 * 60 * 1000));
 
@@ -81,7 +88,7 @@ export function lookAheadService(db: Knex) {
         .filter(({ startDate }) => startDate >= from && startDate <= to)
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-      const result: LookAheadActivity[] = windowed.map(({ row }) => {
+      const result: AutoWindowActivity[] = windowed.map(({ row }) => {
         const linkedOrders = (ordersByActivity.get(row.id) ?? []).map(toOrder);
         return {
           activityId: row.id,
@@ -91,6 +98,7 @@ export function lookAheadService(db: Knex) {
           plannedStartAt: toDateOnly(row.planned_start_at),
           plannedEndAt: toDateOnly(row.planned_end_at),
           workerCountPlanned: row.worker_count_planned,
+          fromProgramme: row.source === "programme-import",
           materialOrders: linkedOrders,
           hasMaterialCoverage: linkedOrders.some((o) => o.status !== "Cancelled"),
         };
@@ -101,4 +109,4 @@ export function lookAheadService(db: Knex) {
   };
 }
 
-export type LookAheadService = ReturnType<typeof lookAheadService>;
+export type AutoWindowService = ReturnType<typeof autoWindowService>;

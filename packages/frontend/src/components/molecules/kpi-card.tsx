@@ -15,6 +15,8 @@ interface KpiCardProps {
   icon?: string;
   progress?: number;
   required?: boolean;
+  /** Show the subValue with a warning icon (e.g. a count that needs attention). */
+  warn?: boolean;
   children?: ReactNode;
 }
 
@@ -28,6 +30,7 @@ function KpiCard({
   icon,
   progress,
   required,
+  warn,
   children,
 }: KpiCardProps) {
   const heading = title ?? label;
@@ -53,7 +56,7 @@ function KpiCard({
           <p className="text-[20px] font-semibold text-black-500 leading-tight [overflow-wrap:anywhere]">{value}</p>
           {subValue && (
             <div>
-              {subValue && title === 'Next Inspection' ? (
+              {warn ? (
                 <div className='flex gap-2 items-center'>
                   <ReactSVG src={icons.warningCircle} />
                   <p className="text-[13px] text-black-300 font-medium">{subValue}</p>
