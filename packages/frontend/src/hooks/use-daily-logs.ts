@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  dailyLogsApi,
+  type AddDailyLogEntryInput,
+  type VoidDailyLogEntryInput,
+  type UpsertDailyLogInput,
+  type LinkDailyLogActivityInput,
+  type VoidDailyLogInput,
+} from "@/api/daily-logs";
 import { dailyLogKeys } from "./query-keys";
-import type {
-  DailyLog,
-  DailyLogDay,
-  DailyLogEntry,
-  ReportPeriod,
-  WeatherCondition,
-} from "@/lib/project-types";
+import type { ReportPeriod } from "@/lib/project-types";
 
 export function useProjectDailyDays(
   projectId: string | undefined,
@@ -17,13 +18,7 @@ export function useProjectDailyDays(
     queryKey: projectId
       ? dailyLogKeys.list(projectId, range)
       : dailyLogKeys.list("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<DailyLogDay[]>(
-        `/projects/${projectId!}/daily-logs`,
-        range ? { params: range } : undefined,
-      );
-      return data;
-    },
+    queryFn: () => dailyLogsApi.list(projectId!, range),
     enabled: Boolean(projectId),
   });
 }
@@ -36,57 +31,27 @@ export function useProjectDailyLogs(
     queryKey: projectId
       ? dailyLogKeys.list(projectId, range)
       : dailyLogKeys.list("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<DailyLogDay[]>(
-        `/projects/${projectId!}/daily-logs`,
-        range ? { params: range } : undefined,
-      );
-      return data;
-    },
+    queryFn: () => dailyLogsApi.list(projectId!, range),
     enabled: Boolean(projectId),
   });
-}
-
-export interface AddDailyLogEntryInput {
-  projectId: string;
-  logDate: string;
-  bodyHtml: string;
-  bodyText?: string | null;
 }
 
 export function useAddDailyLogEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, logDate, bodyHtml, bodyText }: AddDailyLogEntryInput) => {
-      const { data } = await api.post<DailyLogEntry>(
-        `/projects/${projectId}/daily-logs/${logDate}/entries`,
-        { bodyHtml, bodyText: bodyText ?? null },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, logDate, bodyHtml, bodyText }: AddDailyLogEntryInput) => 
+      dailyLogsApi.addEntry(projectId, logDate, { bodyHtml, bodyText: bodyText ?? null }),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: dailyLogKeys.all(projectId) });
     },
   });
 }
 
-export interface VoidDailyLogEntryInput {
-  projectId: string;
-  logDate: string;
-  entryId: string;
-  reason: string;
-}
-
 export function useVoidDailyLogEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, logDate, entryId, reason }: VoidDailyLogEntryInput) => {
-      const { data } = await api.post<DailyLogEntry>(
-        `/projects/${projectId}/daily-logs/${logDate}/entries/${entryId}/void`,
-        { reason },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, logDate, entryId, reason }: VoidDailyLogEntryInput) => 
+      dailyLogsApi.voidEntry(projectId, logDate, entryId, { reason }),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: dailyLogKeys.all(projectId) });
     },
@@ -102,45 +67,21 @@ export function useProjectDailyLog(
       projectId && date
         ? dailyLogKeys.detail(projectId, date)
         : dailyLogKeys.detail("__none__", "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<DailyLogDay>(
-        `/projects/${projectId!}/daily-logs/${date!}/day`,
-      );
-      return data;
-    },
+    queryFn: () => dailyLogsApi.detail(projectId!, date!),
     enabled: Boolean(projectId && date),
   });
-}
-
-export interface UpsertDailyLogInput {
-  projectId: string;
-  logDate: string;
-  weatherCondition?: WeatherCondition | null;
-  temperatureC?: number | null;
-  precipitationMm?: number | null;
-  windKph?: number | null;
-  workersExpected?: number;
-  workersPresent?: number;
-  totalHours?: number;
-  summary?: string | null;
-  summaryHtml?: string | null;
 }
 
 export function useUpsertDailyLog() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       logDate,
       ...body
-    }: UpsertDailyLogInput) => {
-      const { data } = await api.put<DailyLog>(
-        `/projects/${projectId}/daily-logs/${logDate}`,
-        body,
-      );
-      return data;
-    },
+    }: UpsertDailyLogInput) => 
+      dailyLogsApi.upsert(projectId, logDate, body),
     onSuccess: (_data, { projectId, logDate }) => {
       queryClient.invalidateQueries({
         queryKey: dailyLogKeys.detail(projectId, logDate),
@@ -150,34 +91,20 @@ export function useUpsertDailyLog() {
   });
 }
 
-export interface LinkDailyLogActivityInput {
-  projectId: string;
-  logDate: string;
-  activityId: string;
-  hoursLogged: number;
-}
-
 export function useLinkDailyLogActivity() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       logDate,
       activityId,
       hoursLogged,
-    }: LinkDailyLogActivityInput) => {
-      const { data } = await api.post<{
-        projectId: string;
-        logDate: string;
-        activityId: string;
-        hoursLogged: number;
-      }>(`/projects/${projectId}/daily-logs/${logDate}/activities`, {
+    }: LinkDailyLogActivityInput) => 
+      dailyLogsApi.linkActivity(projectId, logDate, {
         activityId,
         hoursLogged,
-      });
-      return data;
-    },
+      }),
     onSuccess: (_data, { projectId, logDate }) => {
       queryClient.invalidateQueries({
         queryKey: dailyLogKeys.detail(projectId, logDate),
@@ -186,23 +113,12 @@ export function useLinkDailyLogActivity() {
   });
 }
 
-export interface VoidDailyLogInput {
-  projectId: string;
-  logDate: string;
-  reason: string;
-}
-
 export function useVoidDailyLog() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, logDate, reason }: VoidDailyLogInput) => {
-      const { data } = await api.post<DailyLog>(
-        `/projects/${projectId}/daily-logs/${logDate}/void`,
-        { reason },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, logDate, reason }: VoidDailyLogInput) => 
+      dailyLogsApi.voidLog(projectId, logDate, { reason }),
     onSuccess: (_data, { projectId, logDate }) => {
       queryClient.invalidateQueries({
         queryKey: dailyLogKeys.detail(projectId, logDate),
@@ -215,11 +131,8 @@ export function useVoidDailyLog() {
 export function useDownloadDailyReport() {
   return useMutation({
     mutationFn: async ({ projectId, logDate }: { projectId: string; logDate: string }) => {
-      const response = await api.get<Blob>(
-        `/projects/${projectId}/daily-logs/${logDate}/report`,
-        { responseType: "blob" },
-      );
-      const url = URL.createObjectURL(response.data);
+      const data = await dailyLogsApi.downloadReport(projectId, logDate);
+      const url = URL.createObjectURL(data);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = `daily-report-${logDate}.pdf`;
@@ -233,7 +146,7 @@ export function useDownloadDailyReport() {
 
 export function useEmailDailyReport() {
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       logDate,
       email,
@@ -241,13 +154,7 @@ export function useEmailDailyReport() {
       projectId: string;
       logDate: string;
       email?: string;
-    }) => {
-      const { data } = await api.post<{ sentTo: string; logDate: string }>(
-        `/projects/${projectId}/daily-logs/${logDate}/report/email`,
-        email ? { email } : {},
-      );
-      return data;
-    },
+    }) => dailyLogsApi.emailReport(projectId, logDate, email),
   });
 }
 
@@ -262,11 +169,8 @@ export function useDownloadPeriodReport() {
       period: ReportPeriod;
       date: string;
     }) => {
-      const response = await api.get<Blob>(`/projects/${projectId}/daily-logs/period-report`, {
-        params: { period, date },
-        responseType: "blob",
-      });
-      const url = URL.createObjectURL(response.data);
+      const data = await dailyLogsApi.downloadPeriodReport(projectId, period, date);
+      const url = URL.createObjectURL(data);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = `${period}-report-${date}.docx`;

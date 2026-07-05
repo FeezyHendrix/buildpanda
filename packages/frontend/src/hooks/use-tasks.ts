@@ -1,38 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { taskKeys } from "./query-keys";
-import type { Subtask, Task, TaskBoard, TaskColumn, TaskDetail, TaskLink, TaskLinkType, TaskPriority, AssignableUser, TaskEntityLink, TaskEntityType } from "@/lib/project-types";
-
-export interface CreateTaskInput {
-  title: string;
-  description?: string | null;
-  descriptionHtml?: string | null;
-  assigneeId?: string | null;
-  assigneeTeamMemberId?: string | null;
-  dueDate?: string | null;
-  priority?: TaskPriority;
-  labels?: string[];
-  columnId?: string | null;
-}
-
-export interface UpdateTaskInput {
-  title?: string;
-  description?: string | null;
-  descriptionHtml?: string | null;
-  assigneeId?: string | null;
-  assigneeTeamMemberId?: string | null;
-  dueDate?: string | null;
-  priority?: TaskPriority;
-  labels?: string[];
-}
+import type { TaskBoard, TaskColumn } from "@/lib/project-types";
+import {
+  taskApi,
+  type CreateTaskInput,
+  type UpdateTaskInput,
+} from "@/api/tasks";
+import type { TaskLinkType, TaskEntityType } from "@/lib/project-types";
 
 export function useTaskBoard(projectId: string) {
   return useQuery({
     queryKey: taskKeys.board(projectId),
-    queryFn: async () => {
-      const { data } = await api.get<TaskBoard>(`/projects/${projectId}/tasks/board`);
-      return data;
-    },
+    queryFn: () => taskApi.board(projectId),
     enabled: Boolean(projectId),
   });
 }
@@ -40,10 +19,7 @@ export function useTaskBoard(projectId: string) {
 export function useAssignableUsers(projectId: string) {
   return useQuery({
     queryKey: taskKeys.assignable(projectId),
-    queryFn: async () => {
-      const { data } = await api.get<AssignableUser[]>(`/projects/${projectId}/tasks/assignable`);
-      return data;
-    },
+    queryFn: () => taskApi.assignableUsers(projectId),
     enabled: Boolean(projectId),
   });
 }
@@ -51,10 +27,7 @@ export function useAssignableUsers(projectId: string) {
 export function useCreateTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateTaskInput) => {
-      const { data } = await api.post<Task>(`/projects/${projectId}/tasks`, input);
-      return data;
-    },
+    mutationFn: (input: CreateTaskInput) => taskApi.create(projectId, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -62,10 +35,8 @@ export function useCreateTask(projectId: string) {
 export function useUpdateTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ taskId, input }: { taskId: string; input: UpdateTaskInput }) => {
-      const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}`, input);
-      return data;
-    },
+    mutationFn: ({ taskId, input }: { taskId: string; input: UpdateTaskInput }) =>
+      taskApi.update(projectId, taskId, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -73,7 +44,7 @@ export function useUpdateTask(projectId: string) {
 export function useMoveTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       taskId,
       columnId,
       position,
@@ -81,13 +52,7 @@ export function useMoveTask(projectId: string) {
       taskId: string;
       columnId: string;
       position: number;
-    }) => {
-      const { data } = await api.patch<Task>(`/projects/${projectId}/tasks/${taskId}/move`, {
-        columnId,
-        position,
-      });
-      return data;
-    },
+    }) => taskApi.move(projectId, taskId, columnId, position),
     onMutate: async ({ taskId, columnId, position }) => {
       await qc.cancelQueries({ queryKey: taskKeys.board(projectId) });
       const previous = qc.getQueryData<TaskBoard>(taskKeys.board(projectId));
@@ -113,9 +78,7 @@ export function useMoveTask(projectId: string) {
 export function useDeleteTask(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (taskId: string) => {
-      await api.delete(`/projects/${projectId}/tasks/${taskId}`);
-    },
+    mutationFn: (taskId: string) => taskApi.delete(projectId, taskId),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -123,10 +86,7 @@ export function useDeleteTask(projectId: string) {
 export function useAddColumn(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string) => {
-      const { data } = await api.post<TaskColumn>(`/projects/${projectId}/tasks/columns`, { name });
-      return data;
-    },
+    mutationFn: (name: string) => taskApi.addColumn(projectId, name),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -134,13 +94,8 @@ export function useAddColumn(projectId: string) {
 export function useRenameColumn(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ columnId, name }: { columnId: string; name: string }) => {
-      const { data } = await api.patch<TaskColumn>(
-        `/projects/${projectId}/tasks/columns/${columnId}`,
-        { name },
-      );
-      return data;
-    },
+    mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
+      taskApi.renameColumn(projectId, columnId, name),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -148,9 +103,7 @@ export function useRenameColumn(projectId: string) {
 export function useDeleteColumn(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (columnId: string) => {
-      await api.delete(`/projects/${projectId}/tasks/columns/${columnId}`);
-    },
+    mutationFn: (columnId: string) => taskApi.deleteColumn(projectId, columnId),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.board(projectId) }),
   });
 }
@@ -158,13 +111,7 @@ export function useDeleteColumn(projectId: string) {
 export function useReorderColumns(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (columnIds: string[]) => {
-      const { data } = await api.patch<TaskColumn[]>(
-        `/projects/${projectId}/tasks/columns/reorder`,
-        { columnIds },
-      );
-      return data;
-    },
+    mutationFn: (columnIds: string[]) => taskApi.reorderColumns(projectId, columnIds),
     onMutate: async (columnIds: string[]) => {
       await qc.cancelQueries({ queryKey: taskKeys.board(projectId) });
       const previous = qc.getQueryData<TaskBoard>(taskKeys.board(projectId));
@@ -195,10 +142,7 @@ export function useReorderColumns(projectId: string) {
 export function useTaskDetail(projectId: string, taskId: string | null) {
   return useQuery({
     queryKey: taskKeys.detail(projectId, taskId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<TaskDetail>(`/projects/${projectId}/tasks/${taskId}`);
-      return data;
-    },
+    queryFn: () => taskApi.detail(projectId, taskId!),
     enabled: Boolean(projectId && taskId),
   });
 }
@@ -216,7 +160,7 @@ function useTaskChildMutation<TVars>(projectId: string, taskId: string, fn: (var
 
 export function useAddSubtask(projectId: string, taskId: string) {
   return useTaskChildMutation<string>(projectId, taskId, (title) =>
-    api.post<Subtask>(`/projects/${projectId}/tasks/${taskId}/subtasks`, { title }).then((r) => r.data),
+    taskApi.addSubtask(projectId, taskId, title),
   );
 }
 
@@ -225,13 +169,13 @@ export function useUpdateSubtask(projectId: string, taskId: string) {
     projectId,
     taskId,
     ({ subtaskId, ...patch }) =>
-      api.patch<Subtask>(`/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}`, patch).then((r) => r.data),
+      taskApi.updateSubtask(projectId, taskId, subtaskId, patch),
   );
 }
 
 export function useDeleteSubtask(projectId: string, taskId: string) {
   return useTaskChildMutation<string>(projectId, taskId, (subtaskId) =>
-    api.delete(`/projects/${projectId}/tasks/${taskId}/subtasks/${subtaskId}`),
+    taskApi.deleteSubtask(projectId, taskId, subtaskId),
   );
 }
 
@@ -239,13 +183,13 @@ export function useAddLink(projectId: string, taskId: string) {
   return useTaskChildMutation<{ targetTaskId: string; linkType: TaskLinkType }>(
     projectId,
     taskId,
-    (body) => api.post<TaskLink>(`/projects/${projectId}/tasks/${taskId}/links`, body).then((r) => r.data),
+    (body) => taskApi.addLink(projectId, taskId, body),
   );
 }
 
 export function useDeleteLink(projectId: string, taskId: string) {
   return useTaskChildMutation<string>(projectId, taskId, (linkId) =>
-    api.delete(`/projects/${projectId}/tasks/${taskId}/links/${linkId}`),
+    taskApi.deleteLink(projectId, taskId, linkId),
   );
 }
 
@@ -253,13 +197,12 @@ export function useAddEntityLink(projectId: string, taskId: string) {
   return useTaskChildMutation<{ entityType: TaskEntityType; entityId: string }>(
     projectId,
     taskId,
-    (body) =>
-      api.post<TaskEntityLink>(`/projects/${projectId}/tasks/${taskId}/entity-links`, body).then((r) => r.data),
+    (body) => taskApi.addEntityLink(projectId, taskId, body),
   );
 }
 
 export function useDeleteEntityLink(projectId: string, taskId: string) {
   return useTaskChildMutation<string>(projectId, taskId, (linkId) =>
-    api.delete(`/projects/${projectId}/tasks/${taskId}/entity-links/${linkId}`),
+    taskApi.deleteEntityLink(projectId, taskId, linkId),
   );
 }

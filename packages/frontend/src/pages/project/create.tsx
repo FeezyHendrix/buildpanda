@@ -21,7 +21,7 @@ import { ProjectTemplateStep } from "@/components/molecules/project-template-ste
 import { ProjectTitleStep } from "@/components/molecules/project-title-step";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
 import { useCreateProject } from "@/hooks/use-projects";
-import { api } from "@/api/client";
+import { useUploadBimModel } from "@/hooks/use-bim";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 
@@ -62,6 +62,7 @@ export default function CreateProject() {
   const navigate = useNavigate();
   const [step, isReview, setStep] = useWizardStep();
   const createProject = useCreateProject();
+  const uploadBimModel = useUploadBimModel();
   const [submitting, setSubmitting] = useState(false);
 
   const [projectType, setProjectType] = useState<ProjectType | null>(null);
@@ -143,28 +144,13 @@ export default function CreateProject() {
   };
 
   async function seedBimModel(projectId: string, files: FileList): Promise<void> {
+    const file = files[0];
+    if (!file || !/\.ifc$/i.test(file.name)) return;
     try {
-      const file = files[0];
-      if (!file || !/\.ifc$/i.test(file.name)) return;
-      const { data: ticket } = await api.post<{
-        mode: string;
-        storagePath: string;
-        url?: string;
-      }>(`/projects/${projectId}/bim/upload-url`, {
-        fileName: file.name,
-        sizeBytes: file.size,
-      });
-      if (ticket.mode !== "single" || !ticket.url) return;
-      await fetch(ticket.url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: file,
-      });
-      await api.post(`/projects/${projectId}/bim/models`, {
+      await uploadBimModel.mutateAsync({
+        projectId,
         name: file.name.replace(/\.ifc$/i, ""),
-        fileName: file.name,
-        storagePath: ticket.storagePath,
-        sizeBytes: file.size,
+        file,
       });
     } catch {
       void 0;

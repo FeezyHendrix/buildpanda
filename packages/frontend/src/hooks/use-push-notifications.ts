@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { pushNotificationsApi } from "@/api/push-notifications";
 
 // Keys live here (not in query-keys.ts) to keep this feature's footprint to
 // the files it owns; both derive from the shared "notifications" root.
@@ -59,7 +59,7 @@ export function usePushNotifications(): PushNotificationsState {
   const publicKeyQuery = useQuery({
     queryKey: pushKeys.publicKey,
     queryFn: async () => {
-      const { data } = await api.get<{ publicKey: string }>("/push/public-key");
+      const data = await pushNotificationsApi.publicKey();
       return data.publicKey;
     },
     enabled: supported,
@@ -83,7 +83,7 @@ export function usePushNotifications(): PushNotificationsState {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         throw new Error(
-          "Notifications are blocked for this site. Allow them in your browser settings, then try again.",
+          "Notifications are blocked for this site. Allow them in your browser settings, then try again."
         );
       }
 
@@ -97,7 +97,7 @@ export function usePushNotifications(): PushNotificationsState {
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
         throw new Error("The browser returned an incomplete push subscription.");
       }
-      await api.post("/push/subscriptions", {
+      await pushNotificationsApi.subscribe({
         endpoint: json.endpoint,
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
       });
@@ -113,7 +113,7 @@ export function usePushNotifications(): PushNotificationsState {
       if (!subscription) return;
       const endpoint = subscription.endpoint;
       await subscription.unsubscribe();
-      await api.delete("/push/subscriptions", { data: { endpoint } });
+      await pushNotificationsApi.unsubscribe({ endpoint });
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: pushKeys.subscription });

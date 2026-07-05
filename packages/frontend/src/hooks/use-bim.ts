@@ -1,19 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { bimKeys } from "./query-keys";
-import type {
-  BimCoordinationIssue,
-  BimModel,
-  BimUploadTicket,
-} from "@/lib/project-types";
+import {
+  bimApi,
+  uploadSingle,
+  uploadMultipart,
+} from "@/api/bim";
+import type { BimModel } from "@/lib/project-types";
+
+export interface UploadModelInput {
+  projectId: string;
+  name: string;
+  discipline?: string | null;
+  file: File;
+}
+
+
 
 export function useBimModels(projectId: string | undefined) {
   return useQuery({
     queryKey: bimKeys.models(projectId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<BimModel[]>(`/projects/${projectId!}/bim/models`);
-      return data;
-    },
+    queryFn: () => bimApi.getModels(projectId!),
     enabled: Boolean(projectId),
     refetchInterval: (query) => {
       const models = query.state.data as BimModel[] | undefined;
@@ -25,10 +31,7 @@ export function useBimModels(projectId: string | undefined) {
 export function useBimModel(projectId: string | undefined, modelId: string | undefined) {
   return useQuery({
     queryKey: bimKeys.model(projectId ?? "__none__", modelId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<BimModel>(`/projects/${projectId!}/bim/models/${modelId!}`);
-      return data;
-    },
+    queryFn: () => bimApi.getModel(projectId!, modelId!),
     enabled: Boolean(projectId && modelId),
   });
 }
@@ -36,70 +39,29 @@ export function useBimModel(projectId: string | undefined, modelId: string | und
 export function useBimModelIssues(projectId: string | undefined, modelId: string | undefined) {
   return useQuery({
     queryKey: bimKeys.issues(projectId ?? "__none__", modelId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<BimCoordinationIssue[]>(
-        `/projects/${projectId!}/bim/models/${modelId!}/issues`,
-      );
-      return data;
-    },
+    queryFn: () => bimApi.getIssues(projectId!, modelId!),
     enabled: Boolean(projectId && modelId),
   });
-}
-
-async function uploadSingle(url: string, file: File): Promise<void> {
-  const res = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": "application/octet-stream" },
-    body: file,
-  });
-  if (!res.ok) throw new Error(`Upload failed (${res.status})`);
-}
-
-async function uploadMultipart(
-  parts: { partNumber: number; url: string }[],
-  partSize: number,
-  file: File,
-): Promise<{ partNumber: number; etag: string }[]> {
-  const results: { partNumber: number; etag: string }[] = [];
-  for (const part of parts) {
-    const start = (part.partNumber - 1) * partSize;
-    const chunk = file.slice(start, Math.min(start + partSize, file.size));
-    const res = await fetch(part.url, { method: "PUT", body: chunk });
-    if (!res.ok) throw new Error(`Part ${part.partNumber} upload failed (${res.status})`);
-    const etag = res.headers.get("ETag") ?? res.headers.get("etag") ?? "";
-    results.push({ partNumber: part.partNumber, etag: etag.replace(/"/g, "") });
-  }
-  return results;
-}
-
-export interface UploadModelInput {
-  projectId: string;
-  name: string;
-  discipline?: string | null;
-  file: File;
 }
 
 export function useUploadBimModel() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ projectId, name, discipline, file }: UploadModelInput) => {
-      const { data: ticket } = await api.post<BimUploadTicket>(
-        `/projects/${projectId}/bim/upload-url`,
-        { fileName: file.name, sizeBytes: file.size },
-      );
+      const ticket = await bimApi.getUploadUrl(projectId, file.name, file.size);
 
       if (ticket.mode === "single") {
         await uploadSingle(ticket.url, file);
       } else {
         const parts = await uploadMultipart(ticket.parts, ticket.partSize, file);
-        await api.post(`/projects/${projectId}/bim/complete-upload`, {
+        await bimApi.completeUpload(projectId, {
           storagePath: ticket.storagePath,
           uploadId: ticket.uploadId,
           parts,
         });
       }
 
-      const { data: model } = await api.post<BimModel>(`/projects/${projectId}/bim/models`, {
+      const model = await bimApi.createModel(projectId, {
         name,
         discipline: discipline ?? null,
         fileName: file.name,
@@ -115,36 +77,25 @@ export function useUploadBimModel() {
 
 export function useBimModelFileUrl() {
   return useMutation({
-    mutationFn: async ({ projectId, modelId }: { projectId: string; modelId: string }) => {
-      const { data } = await api.get<{ url: string; fileName: string }>(
-        `/projects/${projectId}/bim/models/${modelId}/file-url`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, modelId }: { projectId: string; modelId: string }) =>
+      bimApi.getFileUrl(projectId, modelId),
   });
 }
 
 export function useBimModelXktUrl() {
   return useMutation({
-    mutationFn: async ({ projectId, modelId }: { projectId: string; modelId: string }) => {
-      const { data } = await api.get<{ url: string | null; status: string }>(
-        `/projects/${projectId}/bim/models/${modelId}/xkt-url`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, modelId }: { projectId: string; modelId: string }) =>
+      bimApi.getXktUrl(projectId, modelId),
   });
 }
 
 export function useCreateBimIssue() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       modelId,
-      title,
-      description,
-      elementGuid,
-      assigneeId,
+      ...body
     }: {
       projectId: string;
       modelId: string;
@@ -152,13 +103,7 @@ export function useCreateBimIssue() {
       description?: string | null;
       elementGuid?: string | null;
       assigneeId?: string | null;
-    }) => {
-      const { data } = await api.post<BimCoordinationIssue>(
-        `/projects/${projectId}/bim/models/${modelId}/issues`,
-        { title, description, elementGuid, assigneeId },
-      );
-      return data;
-    },
+    }) => bimApi.createIssue(projectId, modelId, body),
     onSuccess: (_d, { projectId, modelId }) =>
       qc.invalidateQueries({ queryKey: bimKeys.issues(projectId, modelId) }),
   });
@@ -167,7 +112,7 @@ export function useCreateBimIssue() {
 export function usePromoteIssueToRfi() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       modelId,
       issueId,
@@ -175,12 +120,7 @@ export function usePromoteIssueToRfi() {
       projectId: string;
       modelId: string;
       issueId: string;
-    }) => {
-      const { data } = await api.post<BimCoordinationIssue>(
-        `/projects/${projectId}/bim/models/${modelId}/issues/${issueId}/promote-to-rfi`,
-      );
-      return data;
-    },
+    }) => bimApi.promoteIssueToRfi(projectId, modelId, issueId),
     onSuccess: (_d, { projectId, modelId }) =>
       qc.invalidateQueries({ queryKey: bimKeys.issues(projectId, modelId) }),
   });
