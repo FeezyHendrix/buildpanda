@@ -39,11 +39,11 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
       items={countries}
       value={value}
       onValueChange={onChange}
-      itemToStringLabel={(c) => c ? `${c.flag} ${c.name}` : ""}
+      itemToStringLabel={(c) => (c ? `${c.flag} ${c.name}` : "")}
     >
       <Combobox.Trigger
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
+          "flex h-14 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
           "border-0 outline-none ring-0",
           "focus-visible:ring-2 focus-visible:ring-gray-900/10",
           "cursor-default select-none",
@@ -53,7 +53,9 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
         <Combobox.Value>
           {(selected: Country | null) =>
             selected ? (
-              <span>{selected.flag} {selected.name}</span>
+              <span>
+                {selected.flag} {selected.name}
+              </span>
             ) : (
               <span className="text-gray-400">Select country</span>
             )
@@ -86,7 +88,7 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
               />
             </div>
 
-            <Combobox.Empty className="px-4 py-3 text-sm text-gray-400">
+            <Combobox.Empty className="px-4 py-1 text-sm text-gray-400">
               No countries found.
             </Combobox.Empty>
 
