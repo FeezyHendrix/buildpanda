@@ -57,6 +57,8 @@ const NAV_TARGETS: Record<string, string> = {
   "site-activity": "activities",
   "daily-log": "daily-log",
   "daily-logs": "daily-log",
+  "look-aheads": "look-aheads",
+  "look-ahead": "look-aheads",
   "key-dates": "key-dates",
   milestones: "milestones",
   stages: "stages",

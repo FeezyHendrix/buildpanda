@@ -76,14 +76,6 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Supplier directory",
     flag: "commercial.materialsEquipment",
   },
-  {
-    label: "Look-ahead Planning",
-    slug: "look-ahead-planning",
-    resource: "materials",
-    Icon: MaterialsIcon,
-    helper: "4-week schedule view",
-    flag: "commercial.materialsEquipment",
-  },
 ] as const;
 
 export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -130,6 +122,14 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       Icon: CalendarIcon,
       helper: "Field reports",
       flag: "quality.dailyLogs",
+    },
+    {
+      label: "Look Aheads",
+      slug: "look-aheads",
+      resource: "schedule",
+      Icon: CalendarIcon,
+      helper: "Rolling look-ahead planning",
+      flag: "projects.schedule",
     },
     {
       label: "RFIs",

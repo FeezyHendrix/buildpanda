@@ -68,6 +68,7 @@ import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
 import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
+import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -183,6 +184,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(taskRoutes);
   await app.register(materialsLedgerRoutes);
   await app.register(suppliersRoutes);
+  await app.register(lookAheadRoutes);
 
   return app;
 }

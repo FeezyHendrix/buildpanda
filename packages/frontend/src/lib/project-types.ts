@@ -1226,7 +1226,7 @@ export interface Supplier {
   updatedAt: string;
 }
 
-export interface LookAheadMaterialOrder {
+export interface AutoWindowMaterialOrder {
   id: string;
   materialName: string;
   quantity: number;
@@ -1236,7 +1236,7 @@ export interface LookAheadMaterialOrder {
   neededBy: string;
 }
 
-export interface LookAheadActivity {
+export interface AutoWindowActivity {
   activityId: string;
   activityName: string;
   phaseName: string | null;
@@ -1244,13 +1244,62 @@ export interface LookAheadActivity {
   plannedStartAt: string;
   plannedEndAt: string;
   workerCountPlanned: number;
-  materialOrders: LookAheadMaterialOrder[];
+  fromProgramme: boolean;
+  materialOrders: AutoWindowMaterialOrder[];
   hasMaterialCoverage: boolean;
 }
 
-export interface LookAheadResult {
+export interface AutoWindowResult {
   weeks: number;
   from: string;
   to: string;
-  activities: LookAheadActivity[];
+  activities: AutoWindowActivity[];
+}
+
+export const LOOK_AHEAD_STATUSES = ["Draft", "UnderReview", "Approved"] as const;
+export type LookAheadStatus = (typeof LOOK_AHEAD_STATUSES)[number];
+export type LookAheadTimeline = "past" | "current" | "future";
+
+export interface LookAheadActivitySummary {
+  activityId: string;
+  name: string;
+  status: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  workerCountPlanned: number;
+}
+
+export interface LookAhead {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  status: LookAheadStatus;
+  startDate: string;
+  endDate: string;
+  totalWorkers: number | null;
+  activities: LookAheadActivitySummary[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLookAheadInput {
+  name: string;
+  description?: string | null;
+  status?: LookAheadStatus;
+  startDate: string;
+  endDate: string;
+  totalWorkers?: number | null;
+  activityIds?: string[];
+}
+
+export interface UpdateLookAheadInput {
+  name?: string;
+  description?: string | null;
+  status?: LookAheadStatus;
+  startDate?: string;
+  endDate?: string;
+  totalWorkers?: number | null;
+  assignActivityIds?: string[];
+  unassignActivityIds?: string[];
 }

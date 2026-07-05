@@ -96,7 +96,7 @@ const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
-const ProjectLookAheadPlanning = lazy(() => import("@/pages/project/look-ahead-planning"));
+const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
@@ -272,6 +272,7 @@ export const router = createBrowserRouter([
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
       { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "look-aheads", element: pf("projects.schedule", <ProjectLookAheads />) },
       { path: "bim", element: pf("projects.bim", <ProjectBim />) },
 
       { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
@@ -301,7 +302,6 @@ export const router = createBrowserRouter([
       { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "suppliers", element: pf("commercial.materialsEquipment", <ProjectSuppliers />) },
-      { path: "look-ahead-planning", element: pf("commercial.materialsEquipment", <ProjectLookAheadPlanning />) },
 
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },

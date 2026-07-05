@@ -10,8 +10,9 @@ description: Use when writing, extending or reviewing frontend code in packages/
 Tao-of-React principles adapted to this repo: **small named functional
 components, state owned by whoever is responsible for it, server state in
 React Query, presentation kept dumb.** Styling is Tailwind (not CSS-in-JS).
-When in doubt, copy the proven slice: `pages/project/action-items.tsx` +
-`hooks/use-action-items.ts` + `components/molecules/upsert-action-item-dialog.tsx`.
+When in doubt, copy the proven slice: `api/proposals.ts` (service file) +
+`pages/project/action-items.tsx` + `hooks/use-action-items.ts` +
+`components/molecules/upsert-action-item-dialog.tsx`.
 The examples below thread that one feature (`action-items`) through every
 layer — it mirrors the backend's `action-items` module, so the DTO shapes line
 up across the stack.
@@ -46,6 +47,7 @@ Looks-right + compiles ≠ works. Prove it does the thing.
 ## Feature anatomy (the canonical slice)
 
 ```
+api/action-items.ts                             # DTO types + actionItemsApi call object (the service file)
 pages/project/action-items.tsx                 # default export, lazy-routed in App.tsx
 hooks/use-action-items.ts                       # useActionItems / useCreate.. / useUpdate.. / useDelete..
 hooks/query-keys.ts                             # actionItemKeys factory: all/list/detail per project
@@ -53,11 +55,39 @@ components/molecules/upsert-action-item-dialog.tsx  # create+edit in one FormDra
 components/molecules/action-item-detail-dialog.tsx  # detail + comments
 ```
 
-The factory is the single source of truth for keys; every hook derives from it,
-and mutations invalidate through it. This is the React Query equivalent of the
-backend's `repository`/`service` seam.
+Two seams, each with one job:
+
+- **`api/<feature>.ts` (service file)** owns the wire contract: the DTO
+  interfaces/status unions for the feature and a single exported
+  `<feature>Api` object whose methods wrap `api/client.ts` calls
+  (`api.get<T>(...).then(r => r.data)`). This is the only place URLs, axios
+  generics and response unwrapping live. See `api/proposals.ts` for the
+  full-size reference.
+- **`hooks/use-<feature>.ts`** owns React Query: keys from the factory,
+  `enabled` guards, invalidation. Hooks import the service object and types —
+  they never build URLs or call axios directly.
+
+The key factory is the single source of truth for keys; every hook derives from
+it, and mutations invalidate through it. Service file + hooks are the React
+Query equivalent of the backend's `repository`/`service` seam.
 
 ```ts
+// api/action-items.ts — types + one call object; no React, no query keys
+import api from "./client"
+
+export const ACTION_ITEM_STATUSES = ["open", "in_progress", "done"] as const
+export type Status = (typeof ACTION_ITEM_STATUSES)[number]
+
+export interface ActionItem { id: string; title: string; status: Status; /* ... */ }
+export interface UpsertActionItemInput { title: string; status?: Status }
+
+export const actionItemsApi = {
+  list: (projectId: string, args?: { status?: Status }) =>
+    api.get<ActionItem[]>(`/projects/${projectId}/action-items`, { params: args }).then(r => r.data),
+  create: (projectId: string, body: UpsertActionItemInput) =>
+    api.post<ActionItem>(`/projects/${projectId}/action-items`, body).then(r => r.data),
+}
+
 // hooks/query-keys.ts — one home for every key shape (DRY)
 export const actionItemKeys = {
   all:    (projectId: string) => ["action-items", projectId] as const,
@@ -65,20 +95,19 @@ export const actionItemKeys = {
   detail: (id: string) => ["action-items", "detail", id] as const,
 }
 
-// hooks/use-action-items.ts — all HTTP via api/client.ts; never fetch() in a component
-import { api } from "@/api/client"
+// hooks/use-action-items.ts — React Query only; HTTP lives in the service file
+import { actionItemsApi, type Status, type UpsertActionItemInput } from "@/api/action-items"
 export function useActionItems(projectId: string, status?: Status) {
   return useQuery({
     queryKey: actionItemKeys.list(projectId, status),
-    queryFn: () => api.get(`/projects/${projectId}/action-items`, { params: { status } }).then(r => r.data),
+    queryFn: () => actionItemsApi.list(projectId, { status }),
     enabled: Boolean(projectId),            // dependent query guard
   })
 }
 export function useCreateActionItem(projectId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: UpsertActionItem) =>
-      api.post(`/projects/${projectId}/action-items`, input).then(r => r.data),
+    mutationFn: (input: UpsertActionItemInput) => actionItemsApi.create(projectId, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: actionItemKeys.all(projectId) }),
   })
 }
@@ -143,8 +172,9 @@ surface (the default-exported page) small. Splitting is also a render win — a
 Server state lives in React Query, nothing else: `useQuery` keyed from the
 factory, `enabled: Boolean(...)` for dependent queries, mutations invalidate
 `actionItemKeys.all(projectId)` in `onSuccess` (see Feature anatomy). All HTTP
-goes through `api/client.ts` (axios, `withCredentials`, 401 → sign-in
-redirect). Local UI state (open dialogs, filters, form fields) is `useState` in
+goes through an `api/<feature>.ts` service file (types + `<feature>Api` object)
+built on `api/client.ts` (axios, `withCredentials`, 401 → sign-in redirect);
+hooks call the service object, never axios or `fetch()` directly. Local UI state (open dialogs, filters, form fields) is `useState` in
 the owning page; `useReducer` when several pieces move together. Presentational
 components stay stateless — the page owns state and passes it down.
 
@@ -323,7 +353,8 @@ correctness rules vs measure-first optimizations.
 
 | Need | Use |
 |---|---|
-| Fetch a list | `useQuery({ queryKey: actionItemKeys.list(...), queryFn })` in `hooks/use-x.ts` |
+| API types + endpoint calls | `api/<feature>.ts` — DTO types + `<feature>Api` object (e.g. `api/proposals.ts`) |
+| Fetch a list | `useQuery({ queryKey: actionItemKeys.list(...), queryFn: () => xApi.list(...) })` in `hooks/use-x.ts` |
 | Create/update/delete | `useMutation` + invalidate `actionItemKeys.all(projectId)` |
 | New page | lazy import + route in App.tsx (+ guard wrapper) |
 | New nav item | config array in `project-sidebar.tsx` / `sidebar.tsx` |
@@ -337,6 +368,9 @@ correctness rules vs measure-first optimizations.
 ## Common mistakes
 
 - Calling axios/fetch inside a component instead of a hook in `hooks/`.
+- Building URLs / calling axios inside hooks instead of the `api/<feature>.ts`
+  service file — the hook should call `<feature>Api.method(...)`; DTO types live
+  in the service file too, not scattered across hooks/components.
 - Inventing ad-hoc query keys — always extend the factory in `query-keys.ts`.
 - Forgetting invalidation after a mutation (stale lists).
 - `&&` rendering that can leak `0`; use ternaries (perf rule D-5).

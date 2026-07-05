@@ -8,7 +8,6 @@ import { saveStream } from "../../lib/file-storage.ts";
 import { boqJobsRepository, type BoqJobRow } from "./boq-jobs-repository.ts";
 import { BOQ_IMPORT_QUEUE, type BoqImportJobData } from "./boq-job.ts";
 import { materialsEquipmentRepository } from "./repository.ts";
-import { lookAheadService } from "./look-ahead.ts";
 import { budgetRepository } from "../budget/repository.ts";
 import { budgetService } from "../budget/service.ts";
 import {
@@ -90,12 +89,6 @@ const equipmentQuery = {
   type: "object",
   additionalProperties: false,
   properties: { bucket: { type: "string", enum: BUCKETS } },
-} as const;
-
-const lookAheadQuery = {
-  type: "object",
-  additionalProperties: false,
-  properties: { weeks: { type: "integer", minimum: 1, maximum: 12 } },
 } as const;
 
 const materialBody = {
@@ -212,7 +205,6 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
   const service = materialsEquipmentService(materialsEquipmentRepository(fastify.db));
   const boqJobs = boqJobsRepository(fastify.db);
   const budget = budgetService(budgetRepository(fastify.db));
-  const lookAhead = lookAheadService(fastify.db);
 
   function toJobDto(job: BoqJobRow) {
     const materials =
@@ -236,15 +228,6 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       await request.requireProjectAccess(request.params.id);
       return service.listMaterialOrders(request.params.id, request.query.status);
-    },
-  );
-
-  fastify.get<{ Params: { id: string }; Querystring: { weeks?: number } }>(
-    "/projects/:id/materials/look-ahead",
-    { schema: { params: projectIdParams, querystring: lookAheadQuery } },
-    async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
-      return lookAhead.build(project.id, request.query.weeks ?? 4);
     },
   );
 
