@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { activityKeys, projectKeys, stageKeys } from "./query-keys";
+import { participantKeys } from "./use-participants";
 import { activitiesApi, type CreateActivityInput, type UpdateActivityInput, type DeleteActivityInput, type RaiseDelayInput, type ResolveDelayInput } from "@/api/activities";
 
 export function useProjectActivities(projectId: string | undefined) {
@@ -34,7 +35,9 @@ export function useCreateActivity() {
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: activityKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: participantKeys.myProjects() });
     },
   });
 }
@@ -50,7 +53,9 @@ export function useUpdateActivity() {
       });
       queryClient.invalidateQueries({ queryKey: activityKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: participantKeys.myProjects() });
     },
   });
 }
@@ -63,7 +68,9 @@ export function useDeleteActivity() {
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: activityKeys.all(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.list() });
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+      queryClient.invalidateQueries({ queryKey: participantKeys.myProjects() });
     },
   });
 }
