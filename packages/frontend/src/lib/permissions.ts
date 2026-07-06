@@ -9,6 +9,7 @@ import {
 export const statement = {
   ...defaultStatements,
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -28,6 +29,7 @@ export const ac = createAccessControl(statement);
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -45,6 +47,7 @@ const constructionFull = {
 
 const constructionContributor = {
   project: ["view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view", "upload"],
@@ -62,6 +65,7 @@ const constructionContributor = {
 
 const constructionReadOnly = {
   project: ["view"],
+  tasks: ["view"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view"],
@@ -105,6 +109,7 @@ export const viewer = ac.newRole({
 // team-management. Real capabilities are admin-assigned via custom roles.
 const constructionEmployeeBase = {
   project: ["view"],
+  tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
   updates: ["view"],
@@ -156,6 +161,7 @@ export const ORG_MANAGEMENT_RESOURCES = [
 
 export const PROJECT_RESOURCES = [
   "project",
+  "tasks",
   "finances",
   "schedule",
   "documents",

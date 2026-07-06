@@ -17,6 +17,7 @@ interface RoleBuilderDialogProps {
   onSubmit: (input: { role: string; permission: Permission }) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  initial?: { role: string; permission: Permission } | null;
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -25,6 +26,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   invitation: "Invitations",
   ac: "Roles & permissions",
   project: "Projects",
+  tasks: "Tasks",
   finances: "Finances",
   schedule: "Schedule & Gantt",
   documents: "Documents",
@@ -42,6 +44,8 @@ const ACTION_LABELS: Record<string, string> = {
   update: "Update",
   delete: "Delete",
   view: "View",
+  add: "Add",
+  remove: "Remove",
   manage: "Manage",
   approve: "Approve",
   upload: "Upload",
@@ -68,21 +72,27 @@ function RoleBuilderDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  initial,
 }: RoleBuilderDialogProps) {
+  const isEditing = initial != null;
   const [roleName, setRoleName] = useState("");
   const [permission, setPermission] = useState<Permission>({});
 
   useEffect(() => {
-    if (!open) {
-      setRoleName("");
-      setPermission({});
-    }
-  }, [open]);
+    if (!open) return;
+    setRoleName(initial?.role ?? "");
+    setPermission(initial?.permission ?? {});
+  }, [open, initial]);
 
   const normalized = slugifyRoleName(roleName);
   const reservedNames = useMemo(
-    () => new Set(existingRoleNames.map((name) => name.toLowerCase())),
-    [existingRoleNames],
+    () =>
+      new Set(
+        existingRoleNames
+          .filter((name) => name.toLowerCase() !== initial?.role.toLowerCase())
+          .map((name) => name.toLowerCase()),
+      ),
+    [existingRoleNames, initial],
   );
 
   const selectedCount = useMemo(
@@ -116,16 +126,20 @@ function RoleBuilderDialog({
 
   function handleSubmit(): void {
     if (!isValid) return;
-    onSubmit({ role: normalized, permission });
+    onSubmit({ role: isEditing ? initial.role : normalized, permission });
   }
 
   return (
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Create a custom role"
-      description="Name the role and choose exactly which actions members with this role can perform."
-      submitLabel="Create role"
+      title={isEditing ? "Edit role access" : "Create a custom role"}
+      description={
+        isEditing
+          ? "Change exactly which actions members with this role can perform."
+          : "Name the role and choose exactly which actions members with this role can perform."
+      }
+      submitLabel={isEditing ? "Save changes" : "Create role"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? nameError}
@@ -136,15 +150,24 @@ function RoleBuilderDialog({
         <Label htmlFor="role-name">Role name</Label>
         <input
           id="role-name"
-          value={roleName}
+          value={isEditing ? initial.role : roleName}
           onChange={(e) => setRoleName(e.target.value)}
-          autoFocus
+          disabled={isEditing}
+          autoFocus={!isEditing}
           maxLength={50}
           placeholder="e.g. Site supervisor"
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(
+            "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            isEditing && "cursor-not-allowed text-gray-500",
+          )}
         />
-        {normalized.length > 0 && !nameError && (
-          <p className="text-xs text-gray-400">Saved as &ldquo;{normalized}&rdquo;</p>
+        {isEditing ? (
+          <p className="text-xs text-gray-400">Role name can&rsquo;t be changed.</p>
+        ) : (
+          normalized.length > 0 &&
+          !nameError && (
+            <p className="text-xs text-gray-400">Saved as &ldquo;{normalized}&rdquo;</p>
+          )
         )}
       </div>
 
