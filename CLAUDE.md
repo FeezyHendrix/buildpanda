@@ -9,6 +9,8 @@ writing code — the skills hold the real conventions; this file is just the map
 |---|---|
 | `packages/backend` — modules, routes, services, repositories, migrations, auth, config, errors, email, tests | **`writing-backend-code`** |
 | `packages/frontend` — pages, components, hooks, React Query, dialogs/forms, routing, styling, performance | **`writing-frontend-code`** |
+| `packages/frontend` — React/Next performance: rerenders, bundle size, data fetching, memoization | **`vercel-react-best-practices`** |
+| `packages/frontend` — animations, page transitions, gestures, scroll effects, micro-interactions | **`framer-motion-animator`** |
 
 Invoke with the `skill` tool (e.g. `skill(name="writing-backend-code")`). The skills
 auto-trigger from their descriptions, but load them explicitly when in doubt — the

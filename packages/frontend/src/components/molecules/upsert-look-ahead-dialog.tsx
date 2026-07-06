@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
 import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
@@ -206,22 +207,59 @@ function UpsertLookAheadDialog({
               No activities on the project chart yet.
             </p>
           ) : (
-            filteredActivities.map((activity) => (
-              <label
-                key={activity.id}
-                className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2 text-sm last:border-b-0 hover:bg-[#FAFAFA]"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedActivityIds.has(activity.id)}
-                  onChange={() => toggleActivity(activity.id)}
-                />
-                <span className="flex-1 truncate text-gray-900">{activity.name}</span>
-                <span className="shrink-0 text-xs text-gray-400">
-                  {activity.plannedStartAt.slice(0, 10)}
-                </span>
-              </label>
-            ))
+            filteredActivities.map((activity) => {
+              const selected = selectedActivityIds.has(activity.id);
+              return (
+                <label
+                  key={activity.id}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2 text-sm transition-colors last:border-b-0",
+                    selected ? "bg-primary-50" : "hover:bg-[#FAFAFA]",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={selected}
+                    onChange={() => toggleActivity(activity.id)}
+                  />
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors",
+                      selected ? "border-primary-500 bg-primary-500" : "border-gray-300 bg-white",
+                    )}
+                  >
+                    {selected && (
+                      <svg viewBox="0 0 6 5" fill="none" className="h-2 w-2">
+                        <path
+                          d="M0.5 2.5l2 2 3-4"
+                          stroke="white"
+                          strokeWidth={1.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "flex-1 truncate",
+                      selected ? "font-medium text-primary-700" : "text-gray-900",
+                    )}
+                  >
+                    {activity.name}
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 text-xs",
+                      selected ? "text-primary-400" : "text-gray-400",
+                    )}
+                  >
+                    {activity.plannedStartAt.slice(0, 10)}
+                  </span>
+                </label>
+              );
+            })
           )}
         </div>
       </div>
