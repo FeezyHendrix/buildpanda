@@ -35,7 +35,7 @@ import {
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
-import type { Task, TaskPriority } from "@/lib/project-types";
+import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption, FIELD } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
@@ -43,6 +43,8 @@ import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
+  const canAddTasks = canResourceAction(access, "tasks", "add");
+  const canRemoveTasks = canResourceAction(access, "tasks", "remove");
   const { data: board, isLoading } = useTaskBoard(project.id);
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
@@ -274,7 +276,7 @@ export default function ProjectTasks() {
         title="Tasks"
         description="Plan and track work across the team. Drag cards between columns."
         actions={
-          canManage && board.columns[0] ? (
+          canAddTasks && board.columns[0] ? (
             <Button
               variant="primary"
               size="md"
@@ -299,6 +301,7 @@ export default function ProjectTasks() {
                 column={column}
                 tasks={tasksByColumn.get(column.id) ?? []}
                 canManage={canManage}
+                canAddCard={canAddTasks}
                 onAddCard={() => openCreate(column.id)}
                 onOpenTask={openEdit}
                 onRename={(name) => handleRenameColumn(column.id, name)}
@@ -373,7 +376,7 @@ export default function ProjectTasks() {
         submitting={createTask.isPending || updateTask.isPending}
         onSubmit={handleSubmit}
         onRequestDelete={
-          editing
+          editing && canRemoveTasks
             ? () => {
                 setDeleting(editing);
                 setDialogOpen(false);
