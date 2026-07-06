@@ -10,6 +10,7 @@ export const statement = {
   ...defaultStatements,
   // Construction suite
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -36,6 +37,7 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -55,6 +57,7 @@ const constructionFull = {
 
 const constructionContributor = {
   project: ["view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view", "upload"],
@@ -74,6 +77,7 @@ const constructionContributor = {
 
 const constructionReadOnly = {
   project: ["view"],
+  tasks: ["view"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view"],
@@ -130,6 +134,7 @@ export const viewer = ac.newRole({
 // so this preset must stay minimal, never a rich set.
 const constructionEmployeeBase = {
   project: ["view"],
+  tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
   updates: ["view"],
