@@ -167,6 +167,8 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                       <input
                         type="number"
                         min={0}
+                        step="any"
+                        inputMode="decimal"
                         value={row.quantity}
                         onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
                         className={CELL}
