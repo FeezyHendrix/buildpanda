@@ -8,10 +8,11 @@ interface RoleRowProps {
   role: CustomRole;
   canManage: boolean;
   isDeleting: boolean;
+  onEdit: (role: CustomRole) => void;
   onDelete: (role: CustomRole) => void;
 }
 
-export function RoleRow({ role, canManage, isDeleting, onDelete }: RoleRowProps) {
+export function RoleRow({ role, canManage, isDeleting, onEdit, onDelete }: RoleRowProps) {
   const resourceCount = Object.keys(role.permission ?? {}).length;
   return (
     <div className="flex items-center gap-4 px-5 py-4">
@@ -24,15 +25,20 @@ export function RoleRow({ role, canManage, isDeleting, onDelete }: RoleRowProps)
         </p>
       </div>
       {canManage && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(role)}
-          disabled={isDeleting}
-          className="text-red-600 hover:bg-red-50"
-        >
-          Delete
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(role)}>
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(role)}
+            disabled={isDeleting}
+            className="text-red-600 hover:bg-red-50"
+          >
+            Delete
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -43,6 +49,7 @@ interface RolesSectionProps {
   canManage: boolean;
   isDeleting: boolean;
   onCreate: () => void;
+  onEdit: (role: CustomRole) => void;
   onDelete: (role: CustomRole) => void;
 }
 
@@ -51,6 +58,7 @@ export function RolesSection({
   canManage,
   isDeleting,
   onCreate,
+  onEdit,
   onDelete,
 }: RolesSectionProps) {
   const action = canManage ? (
@@ -80,6 +88,7 @@ export function RolesSection({
           role={role}
           canManage={canManage}
           isDeleting={isDeleting}
+          onEdit={onEdit}
           onDelete={onDelete}
         />
       ))}
