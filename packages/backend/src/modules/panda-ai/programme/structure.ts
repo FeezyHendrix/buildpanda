@@ -16,10 +16,12 @@ export interface StructuredActivity {
   phaseKey: string;
   wbsCode: string | null;
   outlineLevel: number;
+  parentRefId: string | null;
   startAt: string;
   endAt: string;
   durationDays: number | null;
   percentComplete: number;
+  isSummary: boolean;
   isMilestone: boolean;
   predecessors: Array<{ refId: string; type: DependencyType; lagDays: number }>;
   cost: number;
@@ -35,6 +37,9 @@ export interface StructuredProgramme {
   projectName: string;
   startAt: string | null;
   endAt: string | null;
+  sourceTaskCount: number;
+  skippedTaskCount: number;
+  summaryActivityCount: number;
   phases: StructuredPhase[];
   activities: StructuredActivity[];
   usedAi: boolean;
@@ -62,7 +67,7 @@ function structureFromHierarchy(parsed: ParsedProgramme, projectName: string): S
   const phases: StructuredPhase[] = [];
   const phaseByKey = new Map<string, StructuredPhase>();
   const activities: StructuredActivity[] = [];
-  const summaryRefs = new Set(parsed.tasks.filter((t) => t.isSummary).map((t) => t.refId));
+  const taskByWbs = new Map(parsed.tasks.filter((t) => t.wbs).map((t) => [t.wbs, t]));
 
   function wbsTopKey(wbs: string): string {
     return wbs.split(".")[0] ?? wbs;
@@ -86,11 +91,14 @@ function structureFromHierarchy(parsed: ParsedProgramme, projectName: string): S
     return key;
   }
 
+  function parentRefId(task: ProgrammeTask): string | null {
+    const wbs = task.wbs;
+    const lastDot = wbs.lastIndexOf(".");
+    if (lastDot <= 0) return null;
+    return taskByWbs.get(wbs.slice(0, lastDot))?.refId ?? null;
+  }
+
   for (const task of parsed.tasks) {
-    if (summaryRefs.has(task.refId) && task.outlineLevel === 1) continue;
-    if (task.isSummary && parsed.tasks.some((c) => c.wbs.startsWith(`${task.wbs}.`) && !c.isSummary)) {
-      continue;
-    }
     const phaseKey = ensurePhase(task);
     const { startAt, endAt } = resolveDates(task);
     activities.push({
@@ -99,10 +107,12 @@ function structureFromHierarchy(parsed: ParsedProgramme, projectName: string): S
       phaseKey,
       wbsCode: task.wbs || null,
       outlineLevel: task.outlineLevel,
+      parentRefId: parentRefId(task),
       startAt,
       endAt,
       durationDays: task.durationDays,
       percentComplete: task.percentComplete,
+      isSummary: task.isSummary,
       isMilestone: task.isMilestone,
       predecessors: task.predecessors,
       cost: task.cost,
@@ -118,6 +128,9 @@ function structureFromHierarchy(parsed: ParsedProgramme, projectName: string): S
     projectName,
     startAt: parsed.start,
     endAt: parsed.finish,
+    sourceTaskCount: parsed.sourceTaskCount,
+    skippedTaskCount: parsed.skippedTaskCount,
+    summaryActivityCount: activities.filter((activity) => activity.isSummary).length,
     phases,
     activities,
     usedAi: false,
@@ -177,10 +190,12 @@ async function structureWithAi(
       phaseKey: assigned?.phaseKey ?? fallbackKey,
       wbsCode: task.wbs || null,
       outlineLevel: task.outlineLevel,
+      parentRefId: null,
       startAt,
       endAt,
       durationDays: task.durationDays,
       percentComplete: task.percentComplete,
+      isSummary: task.isSummary,
       isMilestone: task.isMilestone || Boolean(assigned?.isMilestone),
       predecessors: task.predecessors,
       cost: task.cost,
@@ -191,6 +206,9 @@ async function structureWithAi(
     projectName: (ai.projectName ?? parsed.projectName ?? fallbackName).trim() || fallbackName,
     startAt: parsed.start,
     endAt: parsed.finish,
+    sourceTaskCount: parsed.sourceTaskCount,
+    skippedTaskCount: parsed.skippedTaskCount,
+    summaryActivityCount: activities.filter((activity) => activity.isSummary).length,
     phases,
     activities,
     usedAi: true,
@@ -206,10 +224,12 @@ function structureFlatFallback(parsed: ParsedProgramme, fallbackName: string): S
       phaseKey: "general",
       wbsCode: task.wbs || null,
       outlineLevel: task.outlineLevel,
+      parentRefId: null,
       startAt,
       endAt,
       durationDays: task.durationDays,
       percentComplete: task.percentComplete,
+      isSummary: task.isSummary,
       isMilestone: task.isMilestone,
       predecessors: task.predecessors,
       cost: task.cost,
@@ -219,6 +239,9 @@ function structureFlatFallback(parsed: ParsedProgramme, fallbackName: string): S
     projectName: parsed.projectName ?? fallbackName,
     startAt: parsed.start,
     endAt: parsed.finish,
+    sourceTaskCount: parsed.sourceTaskCount,
+    skippedTaskCount: parsed.skippedTaskCount,
+    summaryActivityCount: activities.filter((activity) => activity.isSummary).length,
     phases: [{ key: "general", name: "General", sort: 0 }],
     activities,
     usedAi: false,
@@ -234,6 +257,9 @@ export async function structureProgramme(
       projectName: parsed.projectName ?? fallbackName,
       startAt: null,
       endAt: null,
+      sourceTaskCount: parsed.sourceTaskCount,
+      skippedTaskCount: parsed.skippedTaskCount,
+      summaryActivityCount: 0,
       phases: [],
       activities: [],
       usedAi: false,

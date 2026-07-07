@@ -36,6 +36,7 @@ export interface Activity {
   activityType: string;
   location: string | null;
   status: ActivityStatus;
+  isSummary: boolean;
   isDelayed: boolean;
   plannedStartAt: string;
   plannedEndAt: string;
