@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   ORG_MANAGEMENT_RESOURCES,
   PROJECT_RESOURCES,
+  SALES_RESOURCES,
   statement,
 } from "@/lib/permissions";
 
@@ -36,6 +37,22 @@ const RESOURCE_LABELS: Record<string, string> = {
   dailyLog: "Daily log",
   updates: "Updates",
   messages: "Messages",
+  comments: "Comments",
+  participants: "Project participants",
+  teamMembers: "Workspace team",
+  orgProfile: "Organization profile",
+  rfis: "RFIs",
+  bim: "BIM models",
+  approvals: "Client approvals",
+  selections: "Selections",
+  queries: "Queries",
+  "change-requests": "Change requests",
+  "action-items": "Action items",
+  "key-dates": "Key dates",
+  permits: "Permits & compliance",
+  risks: "Risks",
+  proposals: "Proposals",
+  leads: "Leads",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -50,8 +67,10 @@ const ACTION_LABELS: Record<string, string> = {
   approve: "Approve",
   upload: "Upload",
   request: "Request",
+  respond: "Respond",
   post: "Post",
   send: "Send",
+  convert: "Convert",
   void: "Void",
   report: "Generate report",
 };
@@ -59,6 +78,7 @@ const ACTION_LABELS: Record<string, string> = {
 const RESOURCE_GROUPS: { label: string; resources: readonly string[] }[] = [
   { label: "Workspace management", resources: ORG_MANAGEMENT_RESOURCES },
   { label: "Project workspace", resources: PROJECT_RESOURCES },
+  { label: "Pre-construction", resources: SALES_RESOURCES },
 ];
 
 function slugifyRoleName(value: string): string {
