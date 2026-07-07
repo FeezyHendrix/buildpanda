@@ -450,6 +450,12 @@ export interface ProjectAccess {
   orgRole: string | null;
   /** Effective resource permissions (org role ∪ participant overlay), e.g. { finances: ["view"] }. */
   permissions: Record<string, string[]>;
+  /**
+   * Per-participant page-access matrix (dotted section key -> hidden|view|edit),
+   * or null when the participant has no explicit matrix (falls back to role
+   * defaults). When present it is the source of truth for per-page visibility.
+   */
+  sections: Record<string, "hidden" | "view" | "edit"> | null;
   capabilities: {
     canManage: boolean;
     canViewAll: boolean;
@@ -459,6 +465,27 @@ export interface ProjectAccess {
     canRaiseQueries: boolean;
     canComment: boolean;
   };
+}
+
+/**
+ * Whether a nav entry / page (identified by its dotted section key) is visible.
+ * If the participant has an explicit section matrix, it is authoritative:
+ * view/edit shows, hidden/absent hides. Without a matrix (company members,
+ * owners, or role-only participants) we fall back to the resource check so
+ * existing behaviour is unchanged. Presentation only — backend enforces.
+ */
+export function canViewSection(
+  access: ProjectAccess | undefined,
+  sectionKey: string | undefined,
+  resource?: string,
+): boolean {
+  if (!access) return true;
+  if (access.sections) {
+    if (!sectionKey) return canViewResource(access, resource);
+    const value = access.sections[sectionKey];
+    return value === "view" || value === "edit";
+  }
+  return canViewResource(access, resource);
 }
 
 /**
@@ -763,6 +790,24 @@ export interface ProjectFinances {
   materialsProcured: MaterialProcurement[];
   milestones: MilestonePayment[];
   ledger: PaymentLedgerEntry[];
+}
+
+export type FinanceEventType =
+  | "deposit"
+  | "milestone_released"
+  | "milestone_created"
+  | "milestone_updated"
+  | "milestone_deleted"
+  | "dispute_raised";
+
+export interface FinanceEvent {
+  id: string;
+  type: FinanceEventType;
+  actor: { id: string | null; name: string };
+  summary: string;
+  amount: number | null;
+  entityId: string | null;
+  createdAt: string;
 }
 
 export interface MilestoneDispute {
