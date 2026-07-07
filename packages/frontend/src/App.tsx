@@ -67,6 +67,7 @@ const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspa
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
+const SettingsPage = lazy(() => import("@/pages/dashboard/settings"));
 const TeamSettings = lazy(() => import("@/pages/dashboard/settings/team"));
 const NotificationSettings = lazy(() => import("@/pages/dashboard/settings/notifications"));
 const AcceptInvitation = lazy(
@@ -169,6 +170,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
+      { path: "settings", element: <SettingsPage /> },
       {
         path: "settings/team",
         element: (

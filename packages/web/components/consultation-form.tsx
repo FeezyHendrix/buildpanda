@@ -119,7 +119,7 @@ export function ConsultationForm() {
 
       {status === "error" ? (
         <p className="rounded-lg bg-[#FDECEC] px-4 py-3 text-sm text-danger">
-          Something went wrong. Please try again or email hello@buildpanda.io.
+          Something went wrong. Please try again or email hello@buildpanda.ai.
         </p>
       ) : null}
 

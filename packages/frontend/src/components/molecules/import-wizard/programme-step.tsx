@@ -150,7 +150,12 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
         <div className="flex flex-col gap-6">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Review & Create</h2>
-            <p className="text-gray-500">We extracted {job.activityCount} activities across {job.phaseCount} phases. Add details to create the project.</p>
+            <p className="text-gray-500">
+              We extracted {job.activityCount} schedule rows across {job.phaseCount} phases
+              {job.summaryActivityCount > 0 ? `, including ${job.summaryActivityCount} summary rows` : ""}.
+              {job.skippedTaskCount > 0 ? ` ${job.skippedTaskCount} blank project row was skipped.` : ""}
+              Add details to create the project.
+            </p>
           </div>
           
           <div className="grid grid-cols-1 gap-4">

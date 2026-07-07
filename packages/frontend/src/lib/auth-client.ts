@@ -21,6 +21,7 @@ export const authClient = createAuthClient({
         phone: { type: "string", required: false },
         accountType: { type: "string", required: false },
         profession: { type: "string", required: false },
+        companyName: { type: "string", required: false },
       },
     }),
     organizationClient({

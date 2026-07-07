@@ -28,6 +28,7 @@ export function ActivityCard({
   const variance = actualDays !== null ? actualDays - plannedDays : null;
   const openDelays = activity.delays.filter((d) => d.resolvedAt === null);
   const totalCost = activity.delays.reduce((sum, d) => sum + d.costImpact, 0);
+  const titlePrefix = activity.wbsCode ? `${activity.wbsCode} ` : "";
 
   return (
     <>
@@ -36,10 +37,10 @@ export function ActivityCard({
         <div className="flex items-start justify-between px-5 pt-5 pb-4">
           <div className="min-w-0">
             <p className="text-[15px] font-semibold text-gray-900 leading-snug">
-              {activity.name}
+              {titlePrefix}{activity.name}
             </p>
             <p className="mt-0.5 text-[12px] text-gray-400">
-              {activity.activityType}
+              {activity.isSummary ? "Programme summary" : activity.activityType}
               {activity.phaseName ? ` · ${activity.phaseName}` : ""}
               {activity.location ? ` · ${activity.location}` : ""}
             </p>

@@ -12,7 +12,7 @@ import {
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
 import { generateId } from "./ids.ts";
-import { ac, roles } from "./permissions.ts";
+import { ac, isEmployeeRole, roles } from "./permissions.ts";
 
 const pool =
   "connectionString" in config.db
@@ -53,21 +53,29 @@ async function uniqueOrgSlug(base: string): Promise<string> {
 async function ensureUserOrganization(
   userId: string,
   knownName?: string,
+  companyName?: string | null,
 ): Promise<string> {
   const existing = await db("member")
     .where({ userId })
     .first<{ organizationId: string }>();
   if (existing) return existing.organizationId;
 
-  let name = knownName;
-  if (!name) {
-    const user = await db("user")
-      .where({ id: userId })
-      .first<{ name: string }>();
-    name = user?.name ?? "My";
+  // A construction firm's own company name becomes the workspace name verbatim
+  // (e.g. "Acme Construction"). Otherwise fall back to "<person>'s Workspace".
+  const trimmedCompany = companyName?.trim();
+  let orgName: string;
+  if (trimmedCompany) {
+    orgName = trimmedCompany;
+  } else {
+    let name = knownName;
+    if (!name) {
+      const user = await db("user")
+        .where({ id: userId })
+        .first<{ name: string }>();
+      name = user?.name ?? "My";
+    }
+    orgName = `${name}'s Workspace`;
   }
-
-  const orgName = `${name}'s Workspace`;
   const orgId = generateId("org");
   const slug = await uniqueOrgSlug(slugify(orgName));
   const now = new Date();
@@ -300,6 +308,11 @@ export const auth = betterAuth({
         required: false,
         input: true,
       },
+      companyName: {
+        type: "string",
+        required: false,
+        input: true,
+      },
     },
   },
 
@@ -346,7 +359,8 @@ export const auth = betterAuth({
           // invite, so an invited employee never lands in their own empty org.
           const invited = await hasPendingInvitation(user.email);
           if (!invited) {
-            await ensureUserOrganization(user.id, user.name);
+            const companyName = (user as { companyName?: string | null }).companyName ?? null;
+            await ensureUserOrganization(user.id, user.name, companyName);
           }
           const ctx = getRequestContext();
           if (ctx && (ctx.ip || ctx.country)) {

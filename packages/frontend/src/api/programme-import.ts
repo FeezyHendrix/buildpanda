@@ -16,10 +16,12 @@ export interface ProgrammeActivity {
   phaseKey: string;
   wbsCode: string | null;
   outlineLevel: number;
+  parentRefId: string | null;
   startAt: string;
   endAt: string;
   durationDays: number | null;
   percentComplete: number;
+  isSummary: boolean;
   isMilestone: boolean;
   predecessors: ProgrammeDependency[];
   cost: number;
@@ -35,6 +37,9 @@ export interface StructuredProgramme {
   projectName: string;
   startAt: string | null;
   endAt: string | null;
+  sourceTaskCount: number;
+  skippedTaskCount: number;
+  summaryActivityCount: number;
   phases: ProgrammePhase[];
   activities: ProgrammeActivity[];
   usedAi: boolean;
@@ -46,6 +51,9 @@ export interface ProgrammeImportJob {
   fileName: string;
   activityCount: number;
   phaseCount: number;
+  sourceTaskCount: number;
+  skippedTaskCount: number;
+  summaryActivityCount: number;
   usedAi: boolean;
   createdProjectId: string | null;
   error: string | null;
@@ -70,14 +78,15 @@ export interface ApplyProgrammeResult {
 }
 
 export const programmeImportApi = {
-  startImport: (file: File) => {
+  async startImport(file: File) {
     const form = new FormData();
     form.append("file", file);
-    return api.post<ProgrammeImportJob>(
+    const response = await api.post<ProgrammeImportJob>(
       "/projects/import/programme",
       form,
       { headers: { "Content-Type": "multipart/form-data" } }
-    ).then((r) => r.data);
+    );
+    return response.data;
   },
 
   getJob: (jobId: string) =>
