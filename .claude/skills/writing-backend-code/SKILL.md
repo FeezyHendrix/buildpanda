@@ -229,6 +229,29 @@ export default fp(async function dbPlugin(app) {
 }, { name: "db" })
 ```
 
+### Finance: money is logged, not transacted
+
+BuildPanda is a construction **bookkeeping** system — money never passes through
+it. There is no payment processor, gateway, webhook, escrow provider, or bank
+integration anywhere, and none may be added. Every financial action is a **record
+of a real-world money movement a human made off-platform**, not a transaction the
+system performs.
+
+- `modules/finances` is the reference: `deposit` and `releaseMilestone` are **pure
+  Knex writes** — they update stored figures (`funds_deposited`, `funds_released`,
+  `locked_in_escrow`, `remaining_balance`) with `trx.raw("col + ?")` arithmetic and
+  append a `payment_ledger` row. No external call. `.forUpdate()` locks guard record
+  consistency, not fund safety.
+- `locked_in_escrow` is a **computed/stored number**, not a real escrow account.
+  `payment_ledger` (Deposit/Release/Hold) and `finance_events` are **append-only audit
+  trails**. Invoices/payment-claims `paid`/`approved` are **recorded statuses**, not
+  charges. "Record payment" / "Release" **log**; they never move money.
+- When building finance features: model as append-only logs or recorded figures with
+  an **actor + timestamp**; treat the record as the source of truth for what a human
+  did elsewhere. Never call or import a payment/banking SDK, never add `PAYMENT_*`
+  config, never write copy or events implying the system moved money (say "Funded",
+  "Recorded", "Logged" — not "Charged", "Paid out", "Transferred").
+
 ### Data & migrations
 
 Knex query builder, no ORM. Type rows generically with `db<XRow>("table")`. One
