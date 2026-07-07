@@ -13,6 +13,7 @@ import {
   assertCanAccessProject,
   assertCanModifyProject,
   assertProjectPermission,
+  type ProjectSectionPermissions,
 } from "../lib/authorization.ts";
 import type { ProjectRow } from "../modules/projects/types.ts";
 
@@ -31,6 +32,7 @@ declare module "fastify" {
     orgRoles: ReadonlyMap<string, string>;
     orgPermissions: ReadonlyMap<string, PermissionMap>;
     projectRoles: ReadonlyMap<string, string>;
+    projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
     activeOrganizationId: string | null;
     requireAuth(): AuthUser;
     requireAdmin(): AuthUser;
@@ -54,6 +56,7 @@ interface MemberRoleRow {
 interface ParticipantRoleRow {
   project_id: string;
   role: string;
+  permissions: Record<string, string> | null;
 }
 
 interface OrgRoleRow {
@@ -171,6 +174,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     request.orgRoles = new Map<string, string>();
     request.orgPermissions = new Map<string, PermissionMap>();
     request.projectRoles = new Map<string, string>();
+    request.projectSectionPermissions = new Map<string, ProjectSectionPermissions>();
     if (request.url.startsWith("/api/auth/")) return;
 
     try {
@@ -227,8 +231,13 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
 
         const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
           .where({ user_id: session.user.id, status: "active" })
-          .select("project_id", "role");
+          .select("project_id", "role", "permissions");
         request.projectRoles = new Map(participantRows.map((row) => [row.project_id, row.role]));
+        request.projectSectionPermissions = new Map(
+          participantRows
+            .filter((row) => row.permissions && Object.keys(row.permissions).length > 0)
+            .map((row) => [row.project_id, row.permissions as ProjectSectionPermissions]),
+        );
       }
     } catch (error) {
       request.log.warn({ err: error }, "Failed to resolve auth session");

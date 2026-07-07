@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { participantRole, PARTICIPANT_PERMISSIONS } from "../../lib/authorization.ts";
+import { participantRole, PARTICIPANT_PERMISSIONS, sectionsToPermissions } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
@@ -132,6 +132,7 @@ function computeAccess(
   const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
   const orgRole = project.organization_id ? request.orgRoles.get(project.organization_id) : undefined;
   const pRole = participantRole(scope, ctx);
+  const sections = request.projectSectionPermissions.get(project.id);
 
   let relationship: "company" | ParticipantRole | "none" = "none";
   if (orgRole) relationship = "company";
@@ -162,12 +163,20 @@ function computeAccess(
         permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
       }
     }
+    // Per-participant matrix overrides/extends the role default: fold its granted
+    // sections into the effective resource permissions so granted pages load.
+    if (sections) {
+      for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
+        permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
+      }
+    }
   }
 
   return {
     relationship,
     orgRole: orgRole ?? null,
     permissions,
+    sections: sections ?? null,
     capabilities: {
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
