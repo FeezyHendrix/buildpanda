@@ -115,7 +115,7 @@ export function TourGuide({
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
 
     let frame = 0;
-    let settleUntil = performance.now() + 450;
+    let settleUntil = performance.now() + 1200;
 
     const sync = () => {
       const next = readRect(target);
@@ -134,19 +134,30 @@ export function TourGuide({
     frame = window.requestAnimationFrame(loop);
 
     const restart = () => {
-      settleUntil = performance.now() + 200;
+      settleUntil = performance.now() + 300;
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(loop);
     };
 
-    const observer = el ? new ResizeObserver(restart) : null;
-    if (el) observer?.observe(el);
+    const resizeObserver = el ? new ResizeObserver(restart) : null;
+    if (el) resizeObserver?.observe(el);
     window.addEventListener("resize", restart);
     window.addEventListener("scroll", restart, true);
 
+    // Re-measure when async content above the target causes layout shifts
+    // (e.g. WeatherDashboard loading and expanding before the tour has settled)
+    const mutationObserver = new MutationObserver(restart);
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+
     return () => {
       window.cancelAnimationFrame(frame);
-      observer?.disconnect();
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
       window.removeEventListener("resize", restart);
       window.removeEventListener("scroll", restart, true);
     };
