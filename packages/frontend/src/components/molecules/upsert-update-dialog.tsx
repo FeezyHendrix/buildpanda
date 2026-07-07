@@ -20,6 +20,7 @@ interface UpsertUpdateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
+  projectId: string;
   initial?: UpsertUpdateValues;
   onSubmit: (values: UpsertUpdateValues) => void;
   isSubmitting?: boolean;
@@ -42,6 +43,7 @@ function UpsertUpdateDialog({
   open,
   onOpenChange,
   mode,
+  projectId,
   initial,
   onSubmit,
   isSubmitting = false,
@@ -69,7 +71,7 @@ function UpsertUpdateDialog({
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || files.length === 0) return;
     for (const file of Array.from(files)) {
-      const uploaded = await uploadFile.mutateAsync({ file });
+      const uploaded = await uploadFile.mutateAsync({ file, projectId });
       const type: MediaType = file.type.startsWith("video") ? "video" : "photo";
       setMedia((prev) => [
         ...prev,

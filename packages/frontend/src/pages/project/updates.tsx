@@ -103,6 +103,7 @@ export default function ProjectUpdates() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        projectId={project.id}
         onSubmit={handleCreate}
         isSubmitting={createUpdate.isPending}
         error={(createUpdate.error as Error | undefined)?.message ?? null}
