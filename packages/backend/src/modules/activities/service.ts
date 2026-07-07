@@ -62,6 +62,7 @@ function buildActivity(
     activityType: row.activity_type,
     location: row.location,
     status: row.status,
+    isSummary: row.activity_type === "Summary",
     isDelayed: hasOpenDelay,
     plannedStartAt: toIso(row.planned_start_at),
     plannedEndAt: toIso(row.planned_end_at),
