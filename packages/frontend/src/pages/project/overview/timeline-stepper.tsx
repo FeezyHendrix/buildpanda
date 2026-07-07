@@ -60,7 +60,7 @@ function StepDot({ status }: { status: PhaseStatus }) {
       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white">
         <ReactSVG
           src={icons.verifiedCheck}
-          className="[&_circle]:fill-white [&_path]:fill-white [&_path]:stroke-white [&_svg]:size-4"
+          className="[&_svg]:size-10"
         />
       </div>
     );
