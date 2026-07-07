@@ -89,7 +89,7 @@ function UpdatePreview({ update }: { update: ProjectUpdate }) {
         <h1 className="text-[#131B2E] text-[16px] font-semibold">
           {update.title}
         </h1>
-        <p className="text-[#606060] text-[13px]">
+        <p className="text-[#606060] text-[13px] line-clamp-4">
           {update.description}
         </p>
         <p className="text-black-300 text-[11px] font-medium">
