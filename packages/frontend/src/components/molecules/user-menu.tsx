@@ -170,7 +170,7 @@ function UserMenu({
         <Row
           icon={<ReactSVG src={icons.teams} />}
           label="Manage team roles"
-          asLink="/dashboard/settings/team"
+          asLink="/dashboard/settings"
           onClick={close}
         />
       )}
