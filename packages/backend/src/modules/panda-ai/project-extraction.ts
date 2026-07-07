@@ -1,6 +1,9 @@
 import * as XLSX from "xlsx";
+import { z } from "zod";
 import { extractDocumentText } from "../../lib/document-text.ts";
 import { pandaAiJson } from "./engine.ts";
+
+const extractionSchema = z.looseObject({});
 
 export interface ExtractedMetadata {
   projectName: string | null;
@@ -426,7 +429,7 @@ export async function extractProjectFromText(
   fileName: string,
 ): Promise<ProjectExtraction> {
   const trimmed = text.slice(0, 24000);
-  const parsed = await pandaAiJson(LLM_SYSTEM_PROMPT, `Document: ${fileName}\n\n${trimmed}`);
+  const parsed = await pandaAiJson(LLM_SYSTEM_PROMPT, `Document: ${fileName}\n\n${trimmed}`, extractionSchema);
   return normalizeLlmExtraction(parsed);
 }
 
