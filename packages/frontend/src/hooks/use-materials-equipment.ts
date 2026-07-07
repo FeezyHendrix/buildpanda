@@ -5,6 +5,7 @@ export type {
   MaterialOrderInput,
   EquipmentRequestInput,
   ParsedBoqMaterial,
+  BoqMaterialOption,
   BoqJobStatus,
   BoqImportJob,
 } from "@/api/materials-equipment";
@@ -22,6 +23,15 @@ export function useMaterialOrders(
     queryKey: materialKeys.orders(projectId ?? "__none__", status),
     queryFn: () => materialsEquipmentApi.listMaterialOrders(projectId!, status),
     enabled: Boolean(projectId),
+  });
+}
+
+export function useProjectBoqMaterials(projectId: string | undefined) {
+  return useQuery({
+    queryKey: materialKeys.boqMaterials(projectId ?? "__none__"),
+    queryFn: () => materialsEquipmentApi.listBoqMaterials(projectId!),
+    enabled: Boolean(projectId),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

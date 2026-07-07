@@ -61,6 +61,13 @@ export interface ParsedBoqMaterial {
   supplier: string | null;
 }
 
+export interface BoqMaterialOption {
+  materialName: string;
+  unit: string;
+  estimatedCost: number;
+  supplier: string | null;
+}
+
 export type BoqJobStatus = "pending" | "processing" | "completed" | "failed";
 
 export interface BoqImportJob {
@@ -88,6 +95,9 @@ export const materialsEquipmentApi = {
   
   getBoqImportJob: (projectId: string, jobId: string) =>
     api.get<BoqImportJob>(`/projects/${projectId}/materials/import/${jobId}`).then(r => r.data),
+
+  listBoqMaterials: (projectId: string) =>
+    api.get<BoqMaterialOption[]>(`/projects/${projectId}/materials/boq-materials`).then(r => r.data),
     
   bulkCreateMaterials: (projectId: string, materials: ParsedBoqMaterial[]) =>
     api.post<{ created: number; budgetCategories?: { created: number; skipped: number } }>(`/projects/${projectId}/materials/bulk`, { materials }).then(r => r.data),
