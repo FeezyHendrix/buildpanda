@@ -48,6 +48,7 @@ export const materialKeys = {
   all: (projectId: string) => ["projects", projectId, "materials"] as const,
   orders: (projectId: string, status?: string) =>
     [...materialKeys.all(projectId), "orders", status ?? "all"] as const,
+  boqMaterials: (projectId: string) => [...materialKeys.all(projectId), "boq-materials"] as const,
 };
 
 export const equipmentRequestKeys = {
