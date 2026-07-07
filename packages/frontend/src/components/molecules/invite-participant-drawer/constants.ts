@@ -1,6 +1,13 @@
 import type { KnownParticipantRole, ParticipantPermissions } from "@/lib/project-types";
 
-export const KNOWN_ROLES: KnownParticipantRole[] = ["client", "architect", "inspector", "guest"];
+export const KNOWN_ROLES: KnownParticipantRole[] = [
+  "client",
+  "architect",
+  "inspector",
+  "guest",
+  "materials_requester",
+  "materials_approver",
+];
 
 export const ROLE_META: Record<KnownParticipantRole, { label: string; description: string }> = {
   client: {
@@ -22,6 +29,16 @@ export const ROLE_META: Record<KnownParticipantRole, { label: string; descriptio
     label: "Guest",
     description:
       "View-only access to updates, schedule and documents. Cannot take actions.",
+  },
+  materials_requester: {
+    label: "Materials Requester",
+    description:
+      "On-site role that can raise material and equipment requests, but cannot approve them.",
+  },
+  materials_approver: {
+    label: "Materials Approver",
+    description:
+      "Can raise material and equipment requests and approve them.",
   },
 };
 
@@ -168,5 +185,49 @@ export const ROLE_DEFAULTS: Record<KnownParticipantRole, ParticipantPermissions>
     "compliance.keyDates": "view",
     "project.updates": "view",
     "collaboration.messaging": "hidden",
+  },
+  materials_requester: {
+    "projects.documents": "view",
+    "projects.schedule": "view",
+    "projects.bim": "hidden",
+    "quality.inspections": "view",
+    "quality.dailyLogs": "edit",
+    "quality.risks": "hidden",
+    "commercial.finances": "hidden",
+    "commercial.budget": "hidden",
+    "commercial.invoices": "hidden",
+    "commercial.materialsEquipment": "edit",
+    "commercial.materialsLedger": "view",
+    "workflow.rfis": "view",
+    "workflow.queries": "edit",
+    "workflow.approvals": "hidden",
+    "workflow.changeRequests": "view",
+    "workflow.actionItems": "view",
+    "compliance.permits": "hidden",
+    "compliance.keyDates": "view",
+    "project.updates": "view",
+    "collaboration.messaging": "edit",
+  },
+  materials_approver: {
+    "projects.documents": "view",
+    "projects.schedule": "view",
+    "projects.bim": "hidden",
+    "quality.inspections": "view",
+    "quality.dailyLogs": "edit",
+    "quality.risks": "hidden",
+    "commercial.finances": "hidden",
+    "commercial.budget": "hidden",
+    "commercial.invoices": "hidden",
+    "commercial.materialsEquipment": "edit",
+    "commercial.materialsLedger": "view",
+    "workflow.rfis": "view",
+    "workflow.queries": "edit",
+    "workflow.approvals": "hidden",
+    "workflow.changeRequests": "view",
+    "workflow.actionItems": "view",
+    "compliance.permits": "hidden",
+    "compliance.keyDates": "view",
+    "project.updates": "view",
+    "collaboration.messaging": "edit",
   },
 };

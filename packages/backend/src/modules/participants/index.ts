@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { participantRole, PARTICIPANT_PERMISSIONS } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { captureBug } from "../../lib/sentry.ts";
@@ -225,6 +225,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.email",
           "p.role",
           "p.status",
+          "p.permissions",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",
@@ -260,11 +261,22 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
 
       const email = request.body.email.trim().toLowerCase();
       const role = request.body.role?.trim() || "client";
+
+      if (email === user.email.toLowerCase()) {
+        throw new ConflictError("You already have access to this project — no need to invite yourself.");
+      }
+
       const existing = await db<ParticipantRow>("project_participants")
         .where({ project_id: project.id, email })
         .whereNot("status", "revoked")
         .first();
-      if (existing) throw new BadRequestError("That person is already invited to this project.");
+      if (existing) {
+        throw new ConflictError(
+          existing.status === "invited"
+            ? "That person already has a pending invite to this project."
+            : "That person is already on this project.",
+        );
+      }
 
       const token = generateId("pinv");
       const name = request.body.name?.trim() || null;
@@ -331,6 +343,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.email",
           "p.role",
           "p.status",
+          "p.permissions",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",
