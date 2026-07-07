@@ -12,6 +12,15 @@ function seenKey(tourKey: string, userId: string): string {
   return `buildpanda:tour:${tourKey}:${userId}`;
 }
 
+export function clearTourSeen(tourKey: string, userId: string | undefined): void {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(seenKey(tourKey, userId));
+  } catch {
+    // ignore
+  }
+}
+
 export function hasSeenTour(tourKey: string, userId: string | undefined): boolean {
   if (!userId) return true;
   try {

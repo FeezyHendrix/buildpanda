@@ -118,16 +118,16 @@ export function TaskCard({
           </div>
         )}
         {(task.assigneeName || due || task.subtaskTotal > 0) && (
-          <div className="mt-2.5 flex items-center justify-between">
+          <div className="mt-2.5 flex items-center gap-2">
             {task.assigneeName ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <Avatar name={task.assigneeName} size="sm" />
-                <span className="text-xs text-gray-600">{task.assigneeName}</span>
+                <span className="truncate text-xs text-gray-600">{task.assigneeName}</span>
               </div>
             ) : (
-              <span />
+              <span className="flex-1" />
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5">
               {task.subtaskTotal > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
                   <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -138,7 +138,7 @@ export function TaskCard({
                 </span>
               )}
               {due && (
-                <span className="rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                <span className="whitespace-nowrap rounded-full bg-[#F6F6F6] px-2 py-0.5 text-[11px] font-medium text-gray-500">
                   {due}
                 </span>
               )}
