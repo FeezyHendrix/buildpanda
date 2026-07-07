@@ -16,6 +16,7 @@ import {
 } from "@/hooks/use-organization";
 import { toast } from "@/lib/toast";
 
+import { Button } from "@/components/atoms/button";
 import { MembersSection } from "../team/members-section";
 import { InvitationsSection } from "../team/invitations-section";
 import { RolesSection } from "../team/roles-section";
@@ -101,6 +102,12 @@ export function MembersTab() {
 
   return (
     <div className="flex flex-col gap-8">
+      {canManage && (
+        <div className="flex justify-end">
+          <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+        </div>
+      )}
+
       <MembersSection
         members={members}
         isLoading={membersQuery.isPending}
