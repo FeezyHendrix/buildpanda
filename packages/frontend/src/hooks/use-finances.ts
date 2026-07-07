@@ -19,6 +19,14 @@ export function useProjectFinances(projectId: string | undefined) {
   });
 }
 
+export function useFinanceEvents(projectId: string | undefined) {
+  return useQuery({
+    queryKey: financeKeys.events(projectId ?? "__none__"),
+    queryFn: () => financesApi.events(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
 export function useMilestoneDisputes(
   projectId: string | undefined,
   milestoneId: string | undefined,
@@ -40,7 +48,7 @@ export function useFundProject() {
     mutationFn: ({ projectId, amount, description }: DepositVariables) => 
       financesApi.deposit(projectId, { amount, ...(description ? { description } : {}) }),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }
@@ -56,7 +64,7 @@ export function useUpsertMilestone() {
     }: UpsertMilestoneInput) => 
       financesApi.upsertMilestone(projectId, milestoneId, body),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }
@@ -68,7 +76,7 @@ export function useDeleteMilestone() {
     mutationFn: ({ projectId, milestoneId }: DeleteMilestoneInput) => 
       financesApi.deleteMilestone(projectId, milestoneId),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }
@@ -80,7 +88,7 @@ export function useReleaseMilestone() {
     mutationFn: ({ projectId, milestoneId }: ReleaseVariables) => 
       financesApi.releaseMilestone(projectId, milestoneId),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
 }
@@ -99,6 +107,7 @@ export function useRaiseDispute() {
       queryClient.invalidateQueries({
         queryKey: financeKeys.milestoneDisputes(projectId, milestoneId),
       });
+      queryClient.invalidateQueries({ queryKey: financeKeys.events(projectId) });
     },
   });
 }

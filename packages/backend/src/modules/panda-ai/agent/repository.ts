@@ -81,6 +81,14 @@ export function agentRepository(db: Knex) {
       return db("project_finances").where({ project_id: projectId }).first();
     },
 
+    financeEvents(projectId: string) {
+      return db("finance_events")
+        .where({ project_id: projectId })
+        .orderBy("created_at", "desc")
+        .limit(100)
+        .select("type", "actor_name", "summary", "amount", "created_at");
+    },
+
     milestonePayments(projectId: string) {
       return db("milestone_payments")
         .where({ project_id: projectId })
