@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   { type: "action_item_due", label: "Action item due or overdue", group: "Tasks" },
   { type: "action_item_assigned", label: "Action item assigned to you", group: "Tasks" },
   { type: "task_assigned", label: "Task assigned to you", group: "Tasks" },
+  { type: "task_high_priority", label: "A high-priority task needs your attention", group: "Tasks" },
   { type: "rfi_assigned", label: "RFI assigned to you (ball in court)", group: "RFIs" },
   { type: "rfi_answered", label: "RFI answered", group: "RFIs" },
   { type: "rfi_due", label: "RFI due or overdue", group: "RFIs" },

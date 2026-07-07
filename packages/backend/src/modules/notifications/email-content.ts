@@ -31,6 +31,7 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   action_item_due: { eyebrow: "Action item due", accent: "warning", ctaLabel: "View Action Item" },
   action_item_assigned: { eyebrow: "Action item assigned", accent: "brand", ctaLabel: "View Action Item" },
   task_assigned: { eyebrow: "Task assigned", accent: "brand", ctaLabel: "View Task" },
+  task_high_priority: { eyebrow: "High priority", accent: "danger", ctaLabel: "View Task" },
   rfi_assigned: { eyebrow: "RFI — ball in your court", accent: "brand", ctaLabel: "View RFI" },
   rfi_answered: { eyebrow: "RFI answered", accent: "success", ctaLabel: "View RFI" },
   rfi_due: { eyebrow: "RFI due", accent: "warning", ctaLabel: "View RFI" },

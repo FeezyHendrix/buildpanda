@@ -164,13 +164,14 @@ export function tasksRepository(db: Knex) {
     },
 
     listTasksByBoard(boardId: string): Promise<TaskRow[]> {
+      // Within each column, high-priority tasks float to the top; manual drag
+      // order (position) breaks ties within the same priority.
       return taskBase()
         .where("t.board_id", boardId)
         .select(...TASK_SELECT)
-        .orderBy([
-          { column: "t.column_id", order: "asc" },
-          { column: "t.position", order: "asc" },
-        ]);
+        .orderBy("t.column_id", "asc")
+        .orderByRaw("case t.priority when 'High' then 0 when 'Medium' then 1 else 2 end asc")
+        .orderBy("t.position", "asc");
     },
 
     findTaskById(id: string): Promise<TaskRow | undefined> {
