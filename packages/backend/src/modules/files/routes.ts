@@ -76,7 +76,17 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: fileIdParams } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const handle = await service.download(user.id, request.params.id);
+      // Same access rule as /files/:id/url: project-linked files are readable
+      // by anyone with project access (update photos are viewed by the whole
+      // project team, not just the uploader); unlinked files stay owner-only.
+      const row = await service.findRow(request.params.id);
+      if (!row) throw new NotFoundError("File");
+      if (row.project_id) {
+        await request.requireProjectAccess(row.project_id);
+      } else if (row.owner_id !== user.id) {
+        throw new ForbiddenError();
+      }
+      const handle = await service.open(row);
       reply.header("Content-Type", handle.mimeType);
       reply.header("Content-Length", handle.sizeBytes);
       reply.header(

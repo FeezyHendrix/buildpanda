@@ -71,10 +71,7 @@ export function filesService(repository: FilesRepository) {
       return getDownloadUrl(row.storage_path);
     },
 
-    async download(ownerId: string, id: string): Promise<DownloadHandle> {
-      const row = await repository.findById(id);
-      if (!row) throw new NotFoundError("File");
-      if (row.owner_id !== ownerId) throw new ForbiddenError();
+    async open(row: UploadedFileRow): Promise<DownloadHandle> {
       const stream = await openStoredFile(row.storage_path);
       return {
         fileName: row.file_name,
