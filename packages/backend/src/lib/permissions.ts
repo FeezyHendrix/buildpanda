@@ -26,6 +26,14 @@ export const statement = {
   orgProfile: ["view", "manage"],
   rfis: ["view", "create", "respond", "manage"],
   bim: ["view", "upload", "manage"],
+  approvals: ["view", "decide"],
+  selections: ["view", "decide"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
@@ -53,6 +61,14 @@ const constructionFull = {
   orgProfile: ["view", "manage"],
   rfis: ["view", "create", "respond", "manage"],
   bim: ["view", "upload", "manage"],
+  approvals: ["view", "decide"],
+  selections: ["view", "decide"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const satisfies PresetShape;
 
 const constructionContributor = {
@@ -73,6 +89,14 @@ const constructionContributor = {
   orgProfile: ["view"],
   rfis: ["view", "create", "respond"],
   bim: ["view", "upload"],
+  approvals: ["view"],
+  selections: ["view"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const satisfies PresetShape;
 
 const constructionReadOnly = {
@@ -93,6 +117,14 @@ const constructionReadOnly = {
   orgProfile: ["view"],
   rfis: ["view", "create"],
   bim: ["view"],
+  approvals: ["view"],
+  selections: ["view"],
+  queries: ["view"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const satisfies PresetShape;
 
 export const owner = ac.newRole({
