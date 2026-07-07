@@ -218,6 +218,10 @@ export const router = createBrowserRouter([
     element: <DataPolicyPage />,
   },
   {
+    path: "/dpa",
+    element: <DataPolicyPage />,
+  },
+  {
     path: "/accept-invitation/:invitationId",
     element: <AcceptInvitation />,
   },
