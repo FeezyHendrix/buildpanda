@@ -1,4 +1,13 @@
+import type { ZodType } from "zod";
 import { config } from "../config/index.ts";
+import { AppError } from "./errors.ts";
+
+// 502: a schema violation is an upstream (model) contract failure, not the caller's.
+export class LLMValidationError extends AppError {
+  constructor(message: string, details: { rawOutput: string | null; issues: unknown; retryCount: number }) {
+    super(message, { statusCode: 502, code: "llm_validation_failed", details });
+  }
+}
 
 export interface LlmTextContent {
   type: "text";
@@ -60,7 +69,43 @@ export function activeModelName(): string | null {
   return activeProvider()?.model ?? null;
 }
 
-export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> {
+export type LlmValidationStatus = "valid" | "repaired" | "failed" | "unvalidated";
+
+export interface LlmCallRecord {
+  promptId?: string | null;
+  promptVersion?: string | null;
+  modelVersion: string | null;
+  seed?: string | null;
+  latencyMs: number;
+  validationStatus: LlmValidationStatus;
+  retryCount: number;
+}
+
+export type LlmCallSink = (record: LlmCallRecord) => void;
+
+let callSink: LlmCallSink | null = null;
+
+// Wired at app startup to persist call records (audit + eval substrate). Kept
+// pluggable so lib/llm.ts stays DB-agnostic; unset in unit tests and CLIs.
+export function setLlmCallSink(sink: LlmCallSink | null): void {
+  callSink = sink;
+}
+
+function emitCallRecord(record: LlmCallRecord): void {
+  if (!callSink) return;
+  try {
+    callSink(record);
+  } catch {
+    // Telemetry must never break a live LLM call.
+    void 0;
+  }
+}
+
+// Extracted so validated and unvalidated callers share one transport, and so
+// tests can exercise the envelope without a live provider.
+export type JsonCompletionTransport = (messages: LlmMessage[]) => Promise<string | null>;
+
+const defaultJsonTransport: JsonCompletionTransport = async (messages) => {
   const provider = activeProvider();
   if (!provider) return null;
 
@@ -85,12 +130,105 @@ export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> 
       throw new Error(`LLM API ${response.status}: ${await response.text()}`);
     }
     const payload = (await response.json()) as ChatResponse;
-    const content = payload.choices?.[0]?.message?.content;
-    if (!content) return null;
-    return JSON.parse(content);
+    return payload.choices?.[0]?.message?.content ?? null;
   } finally {
     clearTimeout(timer);
   }
+};
+
+let jsonTransport: JsonCompletionTransport = defaultJsonTransport;
+
+// Test seam: override the JSON transport so envelope behaviour (validation,
+// repair-retry, error) is exercised without a live provider. Returns a restore fn.
+export function setJsonTransportForTests(transport: JsonCompletionTransport): () => void {
+  const previous = jsonTransport;
+  jsonTransport = transport;
+  return () => {
+    jsonTransport = previous;
+  };
+}
+
+export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> {
+  const content = await jsonTransport(messages);
+  if (!content) return null;
+  return JSON.parse(content);
+}
+
+export interface ValidatedJsonResult<T> {
+  data: T;
+  retryCount: number;
+}
+
+// Schema-validated JSON completion with one repair retry. On the first schema
+// failure the model is re-prompted with its own output + the validation issues
+// and asked to correct them; a second failure throws LLMValidationError so a
+// hallucinated shape never reaches the caller as a blind cast.
+export async function chatJsonValidated<T>(
+  messages: LlmMessage[],
+  schema: ZodType<T>,
+): Promise<ValidatedJsonResult<T> | null> {
+  const start = Date.now();
+  const record = (validationStatus: LlmValidationStatus, retryCount: number): void => {
+    emitCallRecord({
+      modelVersion: activeModelName(),
+      latencyMs: Date.now() - start,
+      validationStatus,
+      retryCount,
+    });
+  };
+
+  const first = await jsonTransport(messages);
+  if (first === null) return null;
+
+  const attempt = (raw: string): { ok: true; value: T } | { ok: false; issues: unknown } => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      return { ok: false, issues: [{ message: error instanceof Error ? error.message : "invalid JSON" }] };
+    }
+    const result = schema.safeParse(parsed);
+    return result.success ? { ok: true, value: result.data } : { ok: false, issues: result.error.issues };
+  };
+
+  const firstResult = attempt(first);
+  if (firstResult.ok) {
+    record("valid", 0);
+    return { data: firstResult.value, retryCount: 0 };
+  }
+
+  const repairMessages: LlmMessage[] = [
+    ...messages,
+    { role: "assistant", content: first },
+    {
+      role: "user",
+      content:
+        "Your previous response failed schema validation with these issues:\n" +
+        `${JSON.stringify(firstResult.issues)}\n` +
+        "Return ONLY corrected JSON that satisfies the schema. No prose.",
+    },
+  ];
+  const second = await jsonTransport(repairMessages);
+  if (second === null) {
+    record("failed", 1);
+    throw new LLMValidationError("LLM produced no output on repair retry", {
+      rawOutput: first,
+      issues: firstResult.issues,
+      retryCount: 1,
+    });
+  }
+  const secondResult = attempt(second);
+  if (secondResult.ok) {
+    record("repaired", 1);
+    return { data: secondResult.value, retryCount: 1 };
+  }
+
+  record("failed", 1);
+  throw new LLMValidationError("LLM output failed schema validation after repair retry", {
+    rawOutput: second,
+    issues: secondResult.issues,
+    retryCount: 1,
+  });
 }
 
 export interface ChatTurnResult {

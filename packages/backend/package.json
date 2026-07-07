@@ -12,6 +12,7 @@
     "db:seed": "tsx ./node_modules/knex/bin/cli.js seed:run --knexfile knexfile.ts",
     "db:make-migration": "tsx ./node_modules/knex/bin/cli.js migrate:make --knexfile knexfile.ts -x ts",
     "db:make-seed": "tsx ./node_modules/knex/bin/cli.js seed:make --knexfile knexfile.ts -x ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "lint": "eslint src/"
   },
   "dependencies": {
@@ -49,7 +50,8 @@
     "web-ifc": "0.0.77",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
-    "zeptomail": "^7.0.2"
+    "zeptomail": "^7.0.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/geoip-lite": "^1.4.4",
