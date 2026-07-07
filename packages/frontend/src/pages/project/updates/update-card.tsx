@@ -226,6 +226,7 @@ export function UpdateCard({
         open={editOpen}
         onOpenChange={setEditOpen}
         mode="edit"
+        projectId={projectId}
         initial={{
           category: update.category,
           title: update.title,
