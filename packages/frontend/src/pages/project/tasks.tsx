@@ -135,8 +135,11 @@ export default function ProjectTasks() {
     const list = tasksByColumn.get(task.columnId);
     if (list) list.push(task);
   }
+  const PRIORITY_RANK: Record<TaskPriority, number> = { High: 0, Medium: 1, Low: 2 };
   for (const list of tasksByColumn.values())
-    list.sort((a, b) => a.position - b.position);
+    list.sort(
+      (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.position - b.position,
+    );
 
   function openCreate(columnId: string): void {
     setEditing(null);

@@ -181,6 +181,23 @@ function notifyAssignee(
     .catch(() => undefined);
 }
 
+function notifyHighPriority(
+  deps: TasksDeps,
+  row: TaskRow,
+  actorId: string | null,
+): void {
+  if (!deps.notifications || row.priority !== "High" || !row.assignee_id || row.assignee_id === actorId) {
+    return;
+  }
+  void deps.notifications
+    .notify(row.assignee_id, "task_high_priority", {
+      title: "A high-priority task needs your attention",
+      body: row.title,
+      projectId: row.project_id,
+    })
+    .catch(() => undefined);
+}
+
 export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) {
   async function ensureDefaultBoard(projectId: string, userId: string | null): Promise<TaskBoardRow> {
     const existing = await repository.findDefaultBoard(projectId);
@@ -392,6 +409,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const row = await repository.findTaskById(id);
       if (!row) throw new NotFoundError("Task");
       notifyAssignee(deps, row, userId);
+      notifyHighPriority(deps, row, userId);
       return toTask(row);
     },
 
@@ -427,6 +445,12 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const row = await repository.findTaskById(taskId);
       if (!row) throw new NotFoundError("Task");
       if (userAssigneeChanged) notifyAssignee(deps, row, actorId);
+      // Fire only on the transition INTO High (or when a High task is reassigned),
+      // so re-saving an already-High task doesn't re-spam the assignee.
+      const becameHigh = row.priority === "High" && existing.priority !== "High";
+      if (becameHigh || (row.priority === "High" && userAssigneeChanged)) {
+        notifyHighPriority(deps, row, actorId);
+      }
       return toTask(row);
     },
 
