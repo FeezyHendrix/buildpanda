@@ -12,7 +12,7 @@ import {
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
 import { generateId } from "./ids.ts";
-import { ac, roles } from "./permissions.ts";
+import { ac, isEmployeeRole, roles } from "./permissions.ts";
 
 const pool =
   "connectionString" in config.db
