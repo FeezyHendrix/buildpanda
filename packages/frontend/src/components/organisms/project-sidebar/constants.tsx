@@ -68,6 +68,14 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Rental workflow",
     flag: "commercial.materialsEquipment",
   },
+  {
+    label: "Suppliers",
+    slug: "suppliers",
+    resource: "materials",
+    Icon: MaterialsIcon,
+    helper: "Supplier directory",
+    flag: "commercial.materialsEquipment",
+  },
 ] as const;
 
 export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -96,14 +104,6 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Daily Log",
-    slug: "schedules/daily-log",
-    resource: "dailyLog",
-    Icon: CalendarIcon,
-    helper: "Field reports",
-    flag: "quality.dailyLogs",
-  },
-  {
     label: "Project Chart",
     slug: "schedules/project-chart",
     resource: "schedule",
@@ -116,26 +116,20 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
   [
     {
-      label: "Inspections",
-      slug: "inspections",
-    resource: "inspections",
-      Icon: InspectionsIcon,
-      helper: "Quality checks",
-      flag: "quality.inspections",
+      label: "Daily Log",
+      slug: "schedules/daily-log",
+      resource: "dailyLog",
+      Icon: CalendarIcon,
+      helper: "Field reports",
+      flag: "quality.dailyLogs",
     },
     {
-      label: "Action Items",
-      slug: "action-items",
-      Icon: TrendingUpIcon,
-      helper: "Open blockers",
-      flag: "workflow.actionItems",
-    },
-    {
-      label: "Queries",
-      slug: "queries",
-      Icon: MessagesIcon,
-      helper: "Field questions",
-      flag: "workflow.queries",
+      label: "Look Aheads",
+      slug: "look-aheads",
+      resource: "schedule",
+      Icon: CalendarIcon,
+      helper: "Rolling look-ahead planning",
+      flag: "projects.schedule",
     },
     {
       label: "RFIs",
@@ -154,10 +148,10 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "projects.bim",
     },
     {
-      label: "Approvals",
+      label: "Client Approvals",
       slug: "approvals",
       Icon: InspectionsIcon,
-      helper: "Owner sign-offs",
+      helper: "Client sign-offs",
       flag: "workflow.approvals",
     },
     {
@@ -175,10 +169,10 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "workflow.changeRequests",
     },
     {
-      label: "Permits",
+      label: "Permits & Compliance",
       slug: "permits",
       Icon: DocumentsIcon,
-      helper: "Authority records",
+      helper: "Regulatory permits & expiry",
       flag: "compliance.permits",
     },
   ] as const;

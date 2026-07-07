@@ -154,6 +154,7 @@ export interface Rfi {
   visibility: "internal" | "shared";
   ballInCourtId: string | null;
   ballInCourtName: string | null;
+  ballInCourtEmail: string | null;
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
@@ -347,6 +348,8 @@ export interface ChangeRequestDetail extends ChangeRequest {
 
 export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
 
+export type PermitUrgency = "expired" | "expiringSoon" | "active" | "none";
+
 export interface Permit {
   id: string;
   projectId: string;
@@ -358,6 +361,8 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  urgency: PermitUrgency;
+  daysUntilExpiry: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -416,7 +421,13 @@ export interface WhatsNext {
 
 export type StageStatus = PhaseStatus;
 
-export type KnownParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type KnownParticipantRole =
+  | "client"
+  | "architect"
+  | "inspector"
+  | "guest"
+  | "materials_requester"
+  | "materials_approver";
 export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
 export type SectionPermission = "hidden" | "view" | "edit";
@@ -439,6 +450,12 @@ export interface ProjectAccess {
   orgRole: string | null;
   /** Effective resource permissions (org role ∪ participant overlay), e.g. { finances: ["view"] }. */
   permissions: Record<string, string[]>;
+  /**
+   * Per-participant page-access matrix (dotted section key -> hidden|view|edit),
+   * or null when the participant has no explicit matrix (falls back to role
+   * defaults). When present it is the source of truth for per-page visibility.
+   */
+  sections: Record<string, "hidden" | "view" | "edit"> | null;
   capabilities: {
     canManage: boolean;
     canViewAll: boolean;
@@ -448,6 +465,27 @@ export interface ProjectAccess {
     canRaiseQueries: boolean;
     canComment: boolean;
   };
+}
+
+/**
+ * Whether a nav entry / page (identified by its dotted section key) is visible.
+ * If the participant has an explicit section matrix, it is authoritative:
+ * view/edit shows, hidden/absent hides. Without a matrix (company members,
+ * owners, or role-only participants) we fall back to the resource check so
+ * existing behaviour is unchanged. Presentation only — backend enforces.
+ */
+export function canViewSection(
+  access: ProjectAccess | undefined,
+  sectionKey: string | undefined,
+  resource?: string,
+): boolean {
+  if (!access) return true;
+  if (access.sections) {
+    if (!sectionKey) return canViewResource(access, resource);
+    const value = access.sections[sectionKey];
+    return value === "view" || value === "edit";
+  }
+  return canViewResource(access, resource);
 }
 
 /**
@@ -754,6 +792,24 @@ export interface ProjectFinances {
   ledger: PaymentLedgerEntry[];
 }
 
+export type FinanceEventType =
+  | "deposit"
+  | "milestone_released"
+  | "milestone_created"
+  | "milestone_updated"
+  | "milestone_deleted"
+  | "dispute_raised";
+
+export interface FinanceEvent {
+  id: string;
+  type: FinanceEventType;
+  actor: { id: string | null; name: string };
+  summary: string;
+  amount: number | null;
+  entityId: string | null;
+  createdAt: string;
+}
+
 export interface MilestoneDispute {
   id: string;
   milestoneId: string;
@@ -900,6 +956,16 @@ export interface DailyLogDay {
   activities: DailyLogActivityLink[];
   entries: DailyLogEntry[];
 }
+
+export type ReportPeriod = "weekly" | "monthly" | "quarterly" | "semiAnnual" | "annual";
+
+export const REPORT_PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "semiAnnual", label: "Semi-Annual" },
+  { value: "annual", label: "Annual" },
+];
 
 export interface Notification {
   id: string;
@@ -1115,10 +1181,20 @@ export interface TaskEntityLink {
   status: string | null;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
   entityLinks: TaskEntityLink[];
+  comments: TaskComment[];
 }
 
 export interface TaskBoard {
@@ -1140,6 +1216,19 @@ export interface MaterialCatalogItem {
   unit: string;
   lowStockThreshold: number | null;
   active: boolean;
+  reorderQuantity: number | null;
+  leadTimeDays: number | null;
+  preferredSupplierId: string | null;
+  preferredSupplierName: string | null;
+  autoReorderEnabled: boolean;
+}
+
+export interface ReorderPolicyInput {
+  lowStockThreshold?: number | null;
+  reorderQuantity?: number | null;
+  leadTimeDays?: number | null;
+  preferredSupplierId?: string | null;
+  autoReorderEnabled?: boolean;
 }
 
 export interface LedgerEntryFile {
@@ -1182,4 +1271,96 @@ export interface StockLevel {
   onHandQty: number;
   lowStockThreshold: number | null;
   lowStock: boolean;
+}
+
+export interface Supplier {
+  id: string;
+  projectId: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutoWindowMaterialOrder {
+  id: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  supplier: string | null;
+  status: MaterialOrderStatus;
+  neededBy: string;
+}
+
+export interface AutoWindowActivity {
+  activityId: string;
+  activityName: string;
+  phaseName: string | null;
+  status: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  workerCountPlanned: number;
+  fromProgramme: boolean;
+  materialOrders: AutoWindowMaterialOrder[];
+  hasMaterialCoverage: boolean;
+}
+
+export interface AutoWindowResult {
+  weeks: number;
+  from: string;
+  to: string;
+  activities: AutoWindowActivity[];
+}
+
+export const LOOK_AHEAD_STATUSES = ["Draft", "UnderReview", "Approved"] as const;
+export type LookAheadStatus = (typeof LOOK_AHEAD_STATUSES)[number];
+export type LookAheadTimeline = "past" | "current" | "future";
+
+export interface LookAheadActivitySummary {
+  activityId: string;
+  name: string;
+  status: string;
+  plannedStartAt: string;
+  plannedEndAt: string;
+  workerCountPlanned: number;
+}
+
+export interface LookAhead {
+  id: string;
+  projectId: string;
+  name: string;
+  description: string | null;
+  status: LookAheadStatus;
+  startDate: string;
+  endDate: string;
+  totalWorkers: number | null;
+  activities: LookAheadActivitySummary[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLookAheadInput {
+  name: string;
+  description?: string | null;
+  status?: LookAheadStatus;
+  startDate: string;
+  endDate: string;
+  totalWorkers?: number | null;
+  activityIds?: string[];
+}
+
+export interface UpdateLookAheadInput {
+  name?: string;
+  description?: string | null;
+  status?: LookAheadStatus;
+  startDate?: string;
+  endDate?: string;
+  totalWorkers?: number | null;
+  assignActivityIds?: string[];
+  unassignActivityIds?: string[];
 }

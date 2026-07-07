@@ -3,6 +3,7 @@ import type {
   SubtaskRow,
   TaskBoardRow,
   TaskColumnRow,
+  TaskCommentRow,
   TaskEntityLinkRow,
   TaskEntityType,
   TaskLinkRow,
@@ -163,13 +164,14 @@ export function tasksRepository(db: Knex) {
     },
 
     listTasksByBoard(boardId: string): Promise<TaskRow[]> {
+      // Within each column, high-priority tasks float to the top; manual drag
+      // order (position) breaks ties within the same priority.
       return taskBase()
         .where("t.board_id", boardId)
         .select(...TASK_SELECT)
-        .orderBy([
-          { column: "t.column_id", order: "asc" },
-          { column: "t.position", order: "asc" },
-        ]);
+        .orderBy("t.column_id", "asc")
+        .orderByRaw("case t.priority when 'High' then 0 when 'Medium' then 1 else 2 end asc")
+        .orderBy("t.position", "asc");
     },
 
     findTaskById(id: string): Promise<TaskRow | undefined> {
@@ -401,6 +403,18 @@ export function tasksRepository(db: Knex) {
         .whereNot("status", "removed")
         .orderBy("name", "asc")
         .select("id", "name", "role");
+    },
+
+    listComments(taskId: string): Promise<TaskCommentRow[]> {
+      return db<TaskCommentRow>("task_comments")
+        .where({ task_id: taskId })
+        .orderBy("created_at", "asc");
+    },
+
+    async addComment(record: TaskCommentRow): Promise<TaskCommentRow> {
+      const [row] = await db("task_comments").insert(record).returning("*");
+      if (!row) throw new Error("Failed to insert task comment");
+      return row as TaskCommentRow;
     },
   };
 }

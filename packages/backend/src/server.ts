@@ -5,6 +5,8 @@ import cors from "@fastify/cors";
 import { config } from "./config/index.ts";
 import { isSupportedCurrency } from "./lib/currencies.ts";
 import { setLogger } from "./lib/logger.ts";
+import { setLlmCallSink } from "./lib/llm.ts";
+import { llmCallsRepository } from "./modules/llm-calls/repository.ts";
 import databasePlugin from "./plugins/database.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
@@ -67,6 +69,8 @@ import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
 import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
+import suppliersRoutes from "./modules/suppliers/routes.ts";
+import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -120,6 +124,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(securityPlugin);
 
   await app.register(databasePlugin);
+
+  // Persist every validated LLM call for audit + offline evaluation. Fire-and-
+  // forget: a logging failure must never break the live request.
+  const llmCalls = llmCallsRepository(app.db);
+  setLlmCallSink((rec) => {
+    void llmCalls.insert(rec).catch((err) => app.log.warn({ err }, "llm_calls insert failed"));
+  });
+
   await app.register(errorHandlerPlugin);
   await app.register(authContextPlugin);
   await app.register(featureFlagsPlugin);
@@ -181,6 +193,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicFileShareRoutes);
   await app.register(taskRoutes);
   await app.register(materialsLedgerRoutes);
+  await app.register(suppliersRoutes);
+  await app.register(lookAheadRoutes);
 
   return app;
 }

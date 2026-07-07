@@ -1,4 +1,7 @@
+import { z } from "zod";
 import { pandaAiJson } from "./engine.ts";
+
+const phaseDetectionSchema = z.object({ phases: z.unknown().optional() });
 
 export interface DetectedPhase {
   name: string;
@@ -63,7 +66,7 @@ export async function detectPhases(
   const sample = materialNames.slice(0, 120);
   const userPrompt = `Project: ${projectName}\n\nMaterials and work items:\n${sample.map((m) => `- ${m}`).join("\n")}`;
   try {
-    const parsed = await pandaAiJson<{ phases?: unknown }>(SYSTEM_PROMPT, userPrompt);
+    const parsed = await pandaAiJson(SYSTEM_PROMPT, userPrompt, phaseDetectionSchema);
     const phases = normalizePhases(parsed);
     if (phases.length > 0) return { phases, usedAi: true };
   } catch {

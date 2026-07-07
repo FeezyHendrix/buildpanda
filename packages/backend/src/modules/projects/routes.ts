@@ -135,7 +135,11 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
       request.activeOrganizationId !== null && request.orgRoles.has(request.activeOrganizationId)
         ? request.activeOrganizationId
         : null;
-    return service.listForUser(user.id, activeOrg ? [activeOrg] : []);
+    const activeOrgRoles =
+      activeOrg !== null
+        ? new Map([[activeOrg, request.orgRoles.get(activeOrg)!]])
+        : new Map<string, string>();
+    return service.listForUser(user.id, activeOrgRoles);
   });
 
   fastify.post<{ Body: CreateProjectInput }>(

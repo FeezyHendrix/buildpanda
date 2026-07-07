@@ -1,12 +1,11 @@
 import { useState, useRef, type DragEvent } from "react";
 import { useAttachSessionDocument } from "@/hooks/use-import-session";
 import { uploadFileRequest } from "@/hooks/use-files";
+import { documentsApi } from "@/api/documents";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
-import { api } from "@/api/client";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
-import type { DocumentCategory } from "@/lib/project-types";
 
 const ACCEPT = ".dwg,.dxf,.pdf,application/pdf,application/acad,image/vnd.dwg,image/vnd.dxf";
 
@@ -33,9 +32,7 @@ export function DrawingsStep({ sessionId, projectId, onNext }: DrawingsStepProps
     let count = 0;
 
     try {
-      const { data: categories } = await api.get<DocumentCategory[]>(
-        `/projects/${projectId}/documents/categories`
-      );
+      const categories = await documentsApi.categories(projectId);
       let targetCat = categories.find((c) => c.name === "Drawings");
       if (!targetCat) {
         targetCat = categories[0];
@@ -45,7 +42,7 @@ export function DrawingsStep({ sessionId, projectId, onNext }: DrawingsStepProps
 
       for (const file of fileArray) {
         const uploaded = await uploadFileRequest(file);
-        await api.post(`/projects/${projectId}/documents`, {
+        await documentsApi.create(projectId, {
           categoryId: targetCat.id,
           fileId: uploaded.id,
         });

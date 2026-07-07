@@ -8,6 +8,19 @@ export interface MaterialCatalogItem {
   unit: string;
   lowStockThreshold: number | null;
   active: boolean;
+  reorderQuantity: number | null;
+  leadTimeDays: number | null;
+  preferredSupplierId: string | null;
+  preferredSupplierName: string | null;
+  autoReorderEnabled: boolean;
+}
+
+export interface ReorderPolicyInput {
+  lowStockThreshold?: number | null;
+  reorderQuantity?: number | null;
+  leadTimeDays?: number | null;
+  preferredSupplierId?: string | null;
+  autoReorderEnabled?: boolean;
 }
 
 export interface LedgerEntryFile {
@@ -63,6 +76,11 @@ export interface MaterialCatalogRow {
   created_by_id: string | null;
   created_at: string;
   updated_at: string;
+  reorder_quantity: string | null;
+  lead_time_days: number | null;
+  preferred_supplier_id: string | null;
+  preferred_supplier_name: string | null;
+  auto_reorder_enabled: boolean;
 }
 
 export interface LedgerEntryRow {

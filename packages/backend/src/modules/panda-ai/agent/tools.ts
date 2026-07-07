@@ -57,6 +57,8 @@ const NAV_TARGETS: Record<string, string> = {
   "site-activity": "activities",
   "daily-log": "daily-log",
   "daily-logs": "daily-log",
+  "look-aheads": "look-aheads",
+  "look-ahead": "look-aheads",
   "key-dates": "key-dates",
   milestones: "milestones",
   stages: "stages",
@@ -180,6 +182,25 @@ export function buildTools(): AgentTool[] {
             verified: Boolean(m.proof_verified),
           })),
         },
+      };
+    }),
+
+    tool(fn("get_finance_events", "Get the funding trail — a chronological log of who did what on this project's finances (funded the project, released a milestone from escrow, created/updated/removed a milestone, raised a dispute), with the actor and when. Use for questions about finance activity, history, or who recorded a funding action. Note: BuildPanda only LOGS these actions; it does not move money."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = (await repo.financeEvents(ctx.projectId)) as {
+        type: string;
+        actor_name: string;
+        summary: string;
+        amount: string | null;
+        created_at: string;
+      }[];
+      return {
+        output: rows.map((r) => ({
+          action: r.summary,
+          by: r.actor_name,
+          amount: r.amount === null ? null : Number(r.amount),
+          at: r.created_at,
+        })),
       };
     }),
 
@@ -351,6 +372,20 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_suppliers", "Get the project's supplier directory (name, contact person, email, phone, address). Use for questions about who supplies materials, supplier contact details, or which vendors are on file."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const suppliers = await repo.suppliers(ctx.projectId);
+      return {
+        output: suppliers.map((s) => ({
+          name: s.name,
+          contactName: s.contact_name,
+          email: s.email,
+          phone: s.phone,
+          address: s.address,
+        })),
+      };
+    }),
+
     tool(fn("get_tasks", "Get the project's task board (Kanban) with each task's column, assignee and due date. Use for questions about tasks, the board, what's in progress, what's assigned to someone, or what tasks are overdue."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
@@ -377,6 +412,25 @@ export function buildTools(): AgentTool[] {
       }
       return {
         output: [...byTask.entries()].map(([task, links]) => ({ task, linkedItems: links })),
+      };
+    }),
+
+    tool(fn("get_task_comments", "Get the discussion/comments left on tasks — who said what and when. Use when asked about the conversation, notes, updates or discussion on a task, or what has been said about a specific piece of work."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = (await repo.taskComments(ctx.projectId)) as {
+        taskTitle: string;
+        authorName: string;
+        body: string;
+        created_at: string;
+      }[];
+      const byTask = new Map<string, { author: string; body: string; at: string }[]>();
+      for (const row of rows) {
+        const list = byTask.get(row.taskTitle) ?? [];
+        list.push({ author: row.authorName, body: row.body, at: row.created_at });
+        byTask.set(row.taskTitle, list);
+      }
+      return {
+        output: [...byTask.entries()].map(([task, comments]) => ({ task, comments })),
       };
     }),
 

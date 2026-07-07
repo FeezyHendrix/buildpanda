@@ -1,25 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  financesApi,
+  type DepositVariables,
+  type UpsertMilestoneInput,
+  type DeleteMilestoneInput,
+  type ReleaseVariables,
+  type RaiseDisputeVariables,
+} from "@/api/finances";
 import { financeKeys } from "./query-keys";
-import type {
-  MilestoneStatus,
-  MilestoneDispute,
-  MilestonePayment,
-  ProjectFinances,
-  SignOffStatus,
-} from "@/lib/project-types";
 
 export function useProjectFinances(projectId: string | undefined) {
   return useQuery({
     queryKey: projectId
       ? financeKeys.summary(projectId)
       : financeKeys.summary("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ProjectFinances>(
-        `/projects/${projectId!}/finances`,
-      );
-      return data;
-    },
+    queryFn: () => financesApi.summary(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useFinanceEvents(projectId: string | undefined) {
+  return useQuery({
+    queryKey: financeKeys.events(projectId ?? "__none__"),
+    queryFn: () => financesApi.events(projectId!),
     enabled: Boolean(projectId),
   });
 }
@@ -33,140 +36,78 @@ export function useMilestoneDisputes(
       projectId && milestoneId
         ? financeKeys.milestoneDisputes(projectId, milestoneId)
         : financeKeys.milestoneDisputes("__none__", "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<MilestoneDispute[]>(
-        `/projects/${projectId!}/finances/milestones/${milestoneId!}/disputes`,
-      );
-      return data;
-    },
+    queryFn: () => financesApi.milestoneDisputes(projectId!, milestoneId!),
     enabled: Boolean(projectId && milestoneId),
   });
-}
-
-interface DepositVariables {
-  projectId: string;
-  amount: number;
-  description?: string;
 }
 
 export function useFundProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, amount, description }: DepositVariables) => {
-      const { data } = await api.post<ProjectFinances>(
-        `/projects/${projectId}/finances/deposits`,
-        { amount, ...(description ? { description } : {}) },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, amount, description }: DepositVariables) => 
+      financesApi.deposit(projectId, { amount, ...(description ? { description } : {}) }),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
-}
-
-export interface UpsertMilestoneInput {
-  projectId: string;
-  milestoneId?: string;
-  name: string;
-  phase: string;
-  amount: number;
-  percentComplete?: number;
-  status?: MilestoneStatus;
-  inspectorSignOff?: SignOffStatus;
 }
 
 export function useUpsertMilestone() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       milestoneId,
       ...body
-    }: UpsertMilestoneInput) => {
-      const { data } = milestoneId
-        ? await api.patch<MilestonePayment>(
-            `/projects/${projectId}/finances/milestones/${milestoneId}`,
-            body,
-          )
-        : await api.post<MilestonePayment>(
-            `/projects/${projectId}/finances/milestones`,
-            body,
-          );
-      return data;
-    },
+    }: UpsertMilestoneInput) => 
+      financesApi.upsertMilestone(projectId, milestoneId, body),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
-}
-
-export interface DeleteMilestoneInput {
-  projectId: string;
-  milestoneId: string;
 }
 
 export function useDeleteMilestone() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, milestoneId }: DeleteMilestoneInput) => {
-      await api.delete(`/projects/${projectId}/finances/milestones/${milestoneId}`);
-    },
+    mutationFn: ({ projectId, milestoneId }: DeleteMilestoneInput) => 
+      financesApi.deleteMilestone(projectId, milestoneId),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
-}
-
-interface ReleaseVariables {
-  projectId: string;
-  milestoneId: string;
 }
 
 export function useReleaseMilestone() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, milestoneId }: ReleaseVariables) => {
-      const { data } = await api.post<MilestonePayment>(
-        `/projects/${projectId}/finances/milestones/${milestoneId}/release`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, milestoneId }: ReleaseVariables) => 
+      financesApi.releaseMilestone(projectId, milestoneId),
     onSuccess: (_data, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: financeKeys.summary(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },
   });
-}
-
-interface RaiseDisputeVariables {
-  projectId: string;
-  milestoneId: string;
-  reason: string;
 }
 
 export function useRaiseDispute() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       milestoneId,
       reason,
-    }: RaiseDisputeVariables) => {
-      const { data } = await api.post<MilestoneDispute>(
-        `/projects/${projectId}/finances/milestones/${milestoneId}/disputes`,
-        { reason },
-      );
-      return data;
-    },
+    }: RaiseDisputeVariables) => 
+      financesApi.raiseDispute(projectId, milestoneId, { reason }),
     onSuccess: (_data, { projectId, milestoneId }) => {
       queryClient.invalidateQueries({
         queryKey: financeKeys.milestoneDisputes(projectId, milestoneId),
       });
+      queryClient.invalidateQueries({ queryKey: financeKeys.events(projectId) });
     },
   });
 }

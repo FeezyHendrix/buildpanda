@@ -30,6 +30,8 @@ export interface CreateRfiInput {
   question: string;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
   assigneeRole?: string | null;
   dueDate?: string | null;
   costImpact?: boolean;
@@ -41,6 +43,8 @@ export interface UpdateRfiInput {
   question?: string;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
+  ballInCourtName?: string | null;
+  ballInCourtEmail?: string | null;
   assigneeRole?: string | null;
   dueDate?: string | null;
   costImpact?: boolean;
@@ -72,6 +76,7 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     visibility: row.visibility,
     ballInCourtId: row.ball_in_court_id,
     ballInCourtName: row.ball_in_court_name,
+    ballInCourtEmail: row.ball_in_court_email,
     assigneeRole: row.assignee_role,
     dueDate: row.due_date,
     officialResponse: row.official_response,
@@ -240,7 +245,7 @@ export function rfisService(
       actor: Actor,
       visibility: RfiVisibility,
     ): Promise<Rfi> {
-      const hasAssignee = Boolean(input.ballInCourtId);
+      const hasAssignee = Boolean(input.ballInCourtId) || Boolean(input.ballInCourtEmail);
       const row = await repository.create({
         id: generateId("rfi"),
         project_id: projectId,
@@ -249,7 +254,9 @@ export function rfisService(
         status: hasAssignee ? "Open" : "Draft",
         priority: input.priority ?? "Normal",
         visibility,
-        ball_in_court_id: input.ballInCourtId ?? actor.id,
+        ball_in_court_id: input.ballInCourtId ?? null,
+        ball_in_court_name: input.ballInCourtName ?? null,
+        ball_in_court_email: input.ballInCourtEmail ?? null,
         assignee_role: input.assigneeRole ?? null,
         due_date: input.dueDate ?? null,
         cost_impact: input.costImpact ?? false,
@@ -258,7 +265,10 @@ export function rfisService(
       });
       await logEvent(row.id, "created", actor, { number: row.number });
       if (hasAssignee) {
-        await logEvent(row.id, "opened", actor, { ballInCourtId: input.ballInCourtId });
+        await logEvent(row.id, "opened", actor, {
+          ballInCourtId: input.ballInCourtId ?? null,
+          ballInCourtEmail: input.ballInCourtEmail ?? null,
+        });
         notifyRfiAssignee(input.ballInCourtId, projectId, row.subject, actor.id);
       }
       return toRfi(row, 0);
@@ -280,18 +290,37 @@ export function rfisService(
       if (input.costImpact !== undefined) patch.cost_impact = input.costImpact;
       if (input.scheduleImpact !== undefined) patch.schedule_impact = input.scheduleImpact;
 
-      if (input.ballInCourtId !== undefined && input.ballInCourtId !== current.ball_in_court_id) {
+      const nextBallInCourtId = input.ballInCourtId !== undefined
+        ? input.ballInCourtId
+        : current.ball_in_court_id;
+      const nextBallInCourtEmail = input.ballInCourtEmail !== undefined
+        ? input.ballInCourtEmail
+        : input.ballInCourtId !== undefined
+          ? null
+        : current.ball_in_court_email;
+      const ballInCourtChanged =
+        (input.ballInCourtId !== undefined && input.ballInCourtId !== current.ball_in_court_id) ||
+        (input.ballInCourtEmail !== undefined && input.ballInCourtEmail !== current.ball_in_court_email);
+
+      if (input.ballInCourtId !== undefined) {
         patch.ball_in_court_id = input.ballInCourtId;
-        if (current.status === "Draft" && input.ballInCourtId) patch.status = "Open";
+        if (input.ballInCourtName === undefined) patch.ball_in_court_name = null;
+        if (input.ballInCourtEmail === undefined) patch.ball_in_court_email = null;
+      }
+      if (input.ballInCourtName !== undefined) patch.ball_in_court_name = input.ballInCourtName;
+      if (input.ballInCourtEmail !== undefined) patch.ball_in_court_email = input.ballInCourtEmail;
+      if (current.status === "Draft" && (nextBallInCourtId || nextBallInCourtEmail)) {
+        patch.status = "Open";
       }
 
       const row = await repository.update(rfiId, patch);
       if (!row) throw new NotFoundError("RFI");
-      if (patch.ball_in_court_id !== undefined) {
+      if (ballInCourtChanged) {
         await logEvent(rfiId, "ball_in_court_changed", actor, {
-          ballInCourtId: patch.ball_in_court_id,
+          ballInCourtId: nextBallInCourtId,
+          ballInCourtEmail: nextBallInCourtEmail,
         });
-        notifyRfiAssignee(patch.ball_in_court_id, projectId, row.subject, actor.id);
+        notifyRfiAssignee(nextBallInCourtId, projectId, row.subject, actor.id);
       }
       const counts = await repository.commentCounts([rfiId]);
       return toRfi(row, counts.get(rfiId) ?? 0);
@@ -334,6 +363,8 @@ export function rfisService(
           official_responded_by_id: actor.id,
           official_responded_at: now,
           ball_in_court_id: current.created_by_id,
+          ball_in_court_name: null,
+          ball_in_court_email: null,
           updated_at: now,
         });
         await logEvent(rfiId, "answered", actor);

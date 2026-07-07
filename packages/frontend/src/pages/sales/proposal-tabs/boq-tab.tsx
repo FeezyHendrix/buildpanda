@@ -156,7 +156,7 @@ export function BoqTab({ proposalId, estimateId }: Props) {
                     <Input value={row.description} onChange={(e) => update(idx, "description", e.target.value)} placeholder="Description" />
                   </td>
                   <td className="px-3 py-2">
-                    <Input type="number" min={0} value={row.qty} onChange={(e) => update(idx, "qty", e.target.value)} className="text-right" />
+                    <Input type="number" min={0} step="any" inputMode="decimal" value={row.qty} onChange={(e) => update(idx, "qty", e.target.value)} className="text-right" />
                   </td>
                   <td className="px-3 py-2">
                     <UnitInput

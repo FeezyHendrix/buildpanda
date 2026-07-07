@@ -27,6 +27,36 @@ export interface NewBoqJobRecord {
   requested_by: string | null;
 }
 
+export interface BoqMaterialOption {
+  materialName: string;
+  unit: string;
+  estimatedCost: number;
+  supplier: string | null;
+}
+
+// Flatten materials across a project's completed BoQ imports into a deduped,
+// name-sorted option list. Keeps the first occurrence per lowercased name so the
+// most recent import wins (rows arrive newest-first).
+export function dedupeBoqMaterials(rows: Pick<BoqJobRow, "materials">[]): BoqMaterialOption[] {
+  const seen = new Map<string, BoqMaterialOption>();
+  for (const row of rows) {
+    const list: ParsedMaterial[] = typeof row.materials === "string" ? JSON.parse(row.materials) : row.materials;
+    for (const m of list ?? []) {
+      const name = (m.materialName ?? "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.set(key, {
+        materialName: name,
+        unit: m.unit ?? "",
+        estimatedCost: Number(m.estimatedCost ?? 0),
+        supplier: m.supplier ?? null,
+      });
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.materialName.localeCompare(b.materialName));
+}
+
 export function boqJobsRepository(db: Knex) {
   return {
     async create(record: NewBoqJobRecord): Promise<BoqJobRow> {
@@ -37,6 +67,13 @@ export function boqJobsRepository(db: Knex) {
 
     findById(id: string, projectId: string): Promise<BoqJobRow | undefined> {
       return db<BoqJobRow>("boq_import_jobs").where({ id, project_id: projectId }).first();
+    },
+
+    listCompletedMaterials(projectId: string): Promise<Pick<BoqJobRow, "materials">[]> {
+      return db<BoqJobRow>("boq_import_jobs")
+        .where({ project_id: projectId, status: "completed" })
+        .orderBy("created_at", "desc")
+        .select("materials");
     },
 
     rawById(id: string): Promise<BoqJobRow | undefined> {

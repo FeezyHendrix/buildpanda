@@ -25,8 +25,16 @@ export interface UpdateOrgProfileInput {
   paymentInstructions?: string;
 }
 
+export interface OrgPermissions {
+  organizationId: string;
+  role: string | null;
+  permissions: Record<string, string[]>;
+}
+
 export const orgProfileApi = {
   get: () => api.get<OrgProfile>("/org-profile").then((r) => r.data),
   patch: (body: UpdateOrgProfileInput) =>
     api.patch<OrgProfile>("/org-profile", body).then((r) => r.data),
+  permissions: () =>
+    api.get<OrgPermissions>("/org-permissions").then((r) => r.data),
 };

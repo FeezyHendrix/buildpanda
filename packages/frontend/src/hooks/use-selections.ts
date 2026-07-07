@@ -1,53 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  selectionsApi,
+  type SelectionOptionInput,
+  type SelectionCreateInput,
+  type SelectionUpdateInput,
+} from "@/api/selections";
 import { changeRequestKeys, selectionKeys } from "./query-keys";
-import type { Selection, SelectionStatus } from "@/lib/project-types";
+import type { SelectionStatus } from "@/lib/project-types";
+
+export type { SelectionOptionInput, SelectionCreateInput, SelectionUpdateInput };
 
 export function useSelections(projectId: string | undefined, status?: SelectionStatus) {
   return useQuery({
     queryKey: selectionKeys.list(projectId ?? "__none__", status),
-    queryFn: async () => {
-      const { data } = await api.get<Selection[]>(`/projects/${projectId!}/selections`, {
-        params: status ? { status } : undefined,
-      });
-      return data;
-    },
+    queryFn: () => selectionsApi.list(projectId!, status),
     enabled: Boolean(projectId),
   });
-}
-
-export interface SelectionOptionInput {
-  name: string;
-  description?: string | null;
-  price?: number | null;
-}
-
-export interface SelectionCreateInput {
-  title: string;
-  description?: string | null;
-  category?: string | null;
-  allowanceAmount?: number | null;
-  dueDate?: string | null;
-  options?: SelectionOptionInput[];
-}
-
-export interface SelectionUpdateInput {
-  title?: string;
-  description?: string | null;
-  category?: string | null;
-  allowanceAmount?: number | null;
-  dueDate?: string | null;
-  status?: "open" | "cancelled";
-  options?: SelectionOptionInput[];
 }
 
 export function useCreateSelection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: SelectionCreateInput & { projectId: string }) => {
-      const { data } = await api.post<Selection>(`/projects/${projectId}/selections`, body);
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: SelectionCreateInput & { projectId: string }) =>
+      selectionsApi.create(projectId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: selectionKeys.all(projectId) }),
   });
@@ -56,17 +31,12 @@ export function useCreateSelection() {
 export function useUpdateSelection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       selectionId,
       ...body
-    }: SelectionUpdateInput & { projectId: string; selectionId: string }) => {
-      const { data } = await api.patch<Selection>(
-        `/projects/${projectId}/selections/${selectionId}`,
-        body,
-      );
-      return data;
-    },
+    }: SelectionUpdateInput & { projectId: string; selectionId: string }) =>
+      selectionsApi.update(projectId, selectionId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: selectionKeys.all(projectId) }),
   });
@@ -75,9 +45,8 @@ export function useUpdateSelection() {
 export function useDeleteSelection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, selectionId }: { projectId: string; selectionId: string }) => {
-      await api.delete(`/projects/${projectId}/selections/${selectionId}`);
-    },
+    mutationFn: ({ projectId, selectionId }: { projectId: string; selectionId: string }) =>
+      selectionsApi.remove(projectId, selectionId),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: selectionKeys.all(projectId) }),
   });
@@ -86,7 +55,7 @@ export function useDeleteSelection() {
 export function useDecideSelection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       selectionId,
       optionId,
@@ -94,13 +63,8 @@ export function useDecideSelection() {
       projectId: string;
       selectionId: string;
       optionId: string;
-    }) => {
-      const { data } = await api.post<Selection>(
-        `/projects/${projectId}/selections/${selectionId}/decide`,
-        { optionId },
-      );
-      return data;
-    },
+    }) =>
+      selectionsApi.decide(projectId, selectionId, optionId),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: selectionKeys.all(projectId) }),
   });
@@ -109,12 +73,8 @@ export function useDecideSelection() {
 export function useCreateSelectionChangeRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, selectionId }: { projectId: string; selectionId: string }) => {
-      const { data } = await api.post<Selection>(
-        `/projects/${projectId}/selections/${selectionId}/create-change-request`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, selectionId }: { projectId: string; selectionId: string }) =>
+      selectionsApi.createChangeRequest(projectId, selectionId),
     onSuccess: (_d, { projectId }) => {
       qc.invalidateQueries({ queryKey: selectionKeys.all(projectId) });
       qc.invalidateQueries({ queryKey: changeRequestKeys.all(projectId) });

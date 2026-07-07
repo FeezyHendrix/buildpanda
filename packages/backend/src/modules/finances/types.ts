@@ -131,3 +131,45 @@ export interface MilestoneDisputeRow {
   created_at: Date | string;
   resolved_at: Date | string | null;
 }
+
+export const FINANCE_EVENT_TYPES = [
+  "deposit",
+  "milestone_released",
+  "milestone_created",
+  "milestone_updated",
+  "milestone_deleted",
+  "dispute_raised",
+] as const;
+export type FinanceEventType = (typeof FINANCE_EVENT_TYPES)[number];
+
+export interface FinanceEvent {
+  id: string;
+  type: FinanceEventType;
+  actor: { id: string | null; name: string };
+  summary: string;
+  amount: number | null;
+  entityId: string | null;
+  createdAt: string;
+}
+
+export interface FinanceEventRow {
+  id: string;
+  project_id: string;
+  type: FinanceEventType;
+  actor_id: string | null;
+  actor_name: string;
+  summary: string;
+  amount: string | null;
+  entity_id: string | null;
+  created_at: Date | string;
+}
+
+export interface NewFinanceEventRecord {
+  project_id: string;
+  type: FinanceEventType;
+  actor_id: string | null;
+  actor_name: string;
+  summary: string;
+  amount?: number | null;
+  entity_id?: string | null;
+}

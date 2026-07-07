@@ -16,6 +16,9 @@
   --color-primary-800: #002A7F;
   --color-primary-900: #002061;
 
+  /* brand — alias of primary-500 (BuildPanda blue) */
+  --color-brand: #004DE7;
+
   /* success */
   --color-success-50:  #E8FCF4;
   --color-success-100: #B8F7DD;

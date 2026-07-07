@@ -1,7 +1,10 @@
 import type { Knex } from "knex";
+import { z } from "zod";
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { isPandaAiConfigured, pandaAiJson } from "../panda-ai/engine.ts";
+
+const aiDraftBodySchema = z.object({ body: z.unknown().optional() });
 import { updatesRepository } from "./repository.ts";
 import { CTA_DEFAULTS, toUpdate } from "./service.ts";
 import type { ProjectUpdate, UpdateMediaRow } from "./types.ts";
@@ -186,9 +189,10 @@ export function buildFallbackBody(context: WeeklyDraftContext): string {
 
 async function generateBody(context: WeeklyDraftContext): Promise<string> {
   if (isPandaAiConfigured()) {
-    const result = await pandaAiJson<{ body?: unknown }>(
+    const result = await pandaAiJson(
       SYSTEM_PROMPT,
       JSON.stringify(context),
+      aiDraftBodySchema,
     );
     const body = result?.body;
     if (typeof body === "string" && body.trim().length > 0) {

@@ -1,30 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
 import { updateKeys } from "./query-keys";
+import {
+  updatesApi,
+  type UpdateMediaInput,
+} from "@/api/updates";
 import type {
-  MediaType,
-  ProjectUpdate,
   UpdateCategory,
-  UpdateComment,
   UpdateStatus,
 } from "@/lib/project-types";
 
-interface UpdateMediaInput {
-  type: MediaType;
-  url: string;
-}
+export type { UpdateMediaInput };
 
 export function useProjectUpdates(projectId: string | undefined) {
   return useQuery({
     queryKey: projectId
       ? updateKeys.list(projectId)
       : updateKeys.list("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ProjectUpdate[]>(
-        `/projects/${projectId!}/updates`,
-      );
-      return data;
-    },
+    queryFn: () => updatesApi.list(projectId!),
     enabled: Boolean(projectId),
   });
 }
@@ -38,12 +30,7 @@ export function useUpdateComments(
       projectId && updateId
         ? updateKeys.comments(projectId, updateId)
         : updateKeys.comments("__none__", "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<UpdateComment[]>(
-        `/projects/${projectId!}/updates/${updateId!}/comments`,
-      );
-      return data;
-    },
+    queryFn: () => updatesApi.getComments(projectId!, updateId!),
     enabled: Boolean(projectId && updateId),
   });
 }
@@ -58,13 +45,8 @@ export function useTransitionUpdate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, updateId, status }: TransitionVariables) => {
-      const { data } = await api.patch<ProjectUpdate>(
-        `/projects/${projectId}/updates/${updateId}`,
-        { status },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, updateId, status }: TransitionVariables) =>
+      updatesApi.transition(projectId, updateId, status),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
@@ -81,13 +63,8 @@ export function useAddComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, updateId, body }: AddCommentVariables) => {
-      const { data } = await api.post<UpdateComment>(
-        `/projects/${projectId}/updates/${updateId}/comments`,
-        { body },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, updateId, body }: AddCommentVariables) =>
+      updatesApi.addComment(projectId, updateId, body),
     onSuccess: (_data, { projectId, updateId }) => {
       queryClient.invalidateQueries({
         queryKey: updateKeys.comments(projectId, updateId),
@@ -108,19 +85,8 @@ export function useCreateUpdate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      category,
-      title,
-      description,
-      media,
-    }: CreateUpdateVariables) => {
-      const { data } = await api.post<ProjectUpdate>(
-        `/projects/${projectId}/updates`,
-        { category, title, description, media },
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: CreateUpdateVariables) =>
+      updatesApi.create(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
@@ -140,17 +106,8 @@ export function useEditUpdate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      projectId,
-      updateId,
-      ...patch
-    }: EditUpdateVariables) => {
-      const { data } = await api.put<ProjectUpdate>(
-        `/projects/${projectId}/updates/${updateId}`,
-        patch,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, updateId, ...patch }: EditUpdateVariables) =>
+      updatesApi.edit(projectId, updateId, patch),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
@@ -161,12 +118,8 @@ export function useGenerateAiDraft() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId }: { projectId: string }) => {
-      const { data } = await api.post<ProjectUpdate>(
-        `/projects/${projectId}/updates/ai-draft`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId }: { projectId: string }) =>
+      updatesApi.generateAiDraft(projectId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
@@ -182,12 +135,8 @@ export function usePublishUpdate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, updateId }: PublishUpdateVariables) => {
-      const { data } = await api.post<ProjectUpdate>(
-        `/projects/${projectId}/updates/${updateId}/publish`,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, updateId }: PublishUpdateVariables) =>
+      updatesApi.publish(projectId, updateId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },
@@ -203,9 +152,8 @@ export function useDeleteUpdate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, updateId }: DeleteUpdateVariables) => {
-      await api.delete(`/projects/${projectId}/updates/${updateId}`);
-    },
+    mutationFn: ({ projectId, updateId }: DeleteUpdateVariables) =>
+      updatesApi.delete(projectId, updateId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
     },

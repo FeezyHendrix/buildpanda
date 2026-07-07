@@ -17,6 +17,7 @@ import {
   useRemoveMember,
   useRoles,
   useUpdateMemberRole,
+  useUpdateRole,
 } from "@/hooks/use-organization";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
 import { Label } from "@/components/atoms/label";
@@ -42,10 +43,12 @@ export default function TeamSettings() {
   const updateMemberRole = useUpdateMemberRole(organizationId ?? "");
   const removeMember = useRemoveMember(organizationId ?? "");
   const createRole = useCreateRole(organizationId ?? "");
+  const updateRole = useUpdateRole(organizationId ?? "");
   const deleteRole = useDeleteRole(organizationId ?? "");
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [roleBuilderOpen, setRoleBuilderOpen] = useState(false);
+  const [roleToEdit, setRoleToEdit] = useState<CustomRole | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<CustomRole | null>(null);
 
@@ -87,11 +90,29 @@ export default function TeamSettings() {
     inviteMember.mutate(input, { onSuccess: () => setInviteOpen(false) });
   }
 
-  function handleCreateRole(input: {
+  function handleSubmitRole(input: {
     role: string;
     permission: Record<string, string[]>;
   }): void {
+    if (roleToEdit) {
+      updateRole.mutate(
+        { roleName: roleToEdit.role, permission: input.permission },
+        {
+          onSuccess: () => {
+            setRoleBuilderOpen(false);
+            setRoleToEdit(null);
+            toast("Role access updated", "success");
+          },
+        },
+      );
+      return;
+    }
     createRole.mutate(input, { onSuccess: () => setRoleBuilderOpen(false) });
+  }
+
+  function handleEditRole(role: CustomRole): void {
+    setRoleToEdit(role);
+    setRoleBuilderOpen(true);
   }
 
   return (
@@ -160,6 +181,7 @@ export default function TeamSettings() {
         canManage={canManage}
         isDeleting={deleteRole.isPending}
         onCreate={() => setRoleBuilderOpen(true)}
+        onEdit={handleEditRole}
         onDelete={setRoleToDelete}
       />
 
@@ -177,11 +199,22 @@ export default function TeamSettings() {
 
       <RoleBuilderDialog
         open={roleBuilderOpen}
-        onOpenChange={setRoleBuilderOpen}
+        onOpenChange={(open) => {
+          setRoleBuilderOpen(open);
+          if (!open) setRoleToEdit(null);
+        }}
         existingRoleNames={[...STATIC_ROLE_NAMES, ...customRoleNames]}
-        isSubmitting={createRole.isPending}
-        error={createRole.error?.message ?? null}
-        onSubmit={handleCreateRole}
+        initial={
+          roleToEdit
+            ? { role: roleToEdit.role, permission: roleToEdit.permission ?? {} }
+            : null
+        }
+        isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
+        error={
+          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
+          null
+        }
+        onSubmit={handleSubmitRole}
       />
 
       <ConfirmDialog

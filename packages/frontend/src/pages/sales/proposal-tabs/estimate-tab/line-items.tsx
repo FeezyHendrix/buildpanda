@@ -133,6 +133,8 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 className="h-9 text-xs"
                 type="number"
                 min="0"
+                step="any"
+                inputMode="decimal"
                 value={item.qty}
                 onChange={(e) => updateItem(i, "qty", e.target.value)}
                 disabled={!isDraft}

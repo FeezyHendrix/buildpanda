@@ -30,6 +30,8 @@ export interface NewRfiRecord {
   priority: RfiPriority;
   visibility: RfiVisibility;
   ball_in_court_id: string | null;
+  ball_in_court_name: string | null;
+  ball_in_court_email: string | null;
   assignee_role: string | null;
   due_date: string | null;
   cost_impact: boolean;
@@ -44,6 +46,8 @@ export interface RfiUpdatePatch {
   priority?: RfiPriority;
   visibility?: RfiVisibility;
   ball_in_court_id?: string | null;
+  ball_in_court_name?: string | null;
+  ball_in_court_email?: string | null;
   assignee_role?: string | null;
   due_date?: string | null;
   official_response?: string | null;
@@ -56,33 +60,34 @@ export interface RfiUpdatePatch {
   updated_at?: string;
 }
 
-const SELECT = [
-  "r.id",
-  "r.project_id",
-  "r.number",
-  "r.subject",
-  "r.question",
-  "r.status",
-  "r.priority",
-  "r.visibility",
-  "r.ball_in_court_id",
-  "bic.name as ball_in_court_name",
-  "r.assignee_role",
-  "r.due_date",
-  "r.official_response",
-  "r.official_responded_by_id",
-  "resp.name as official_responded_by_name",
-  "r.official_responded_at",
-  "r.cost_impact",
-  "r.schedule_impact",
-  "r.change_request_id",
-  "r.reopened_count",
-  "r.created_by_id",
-  "r.created_at",
-  "r.updated_at",
-] as const;
-
 export function rfisRepository(db: Knex) {
+  const select = [
+    "r.id",
+    "r.project_id",
+    "r.number",
+    "r.subject",
+    "r.question",
+    "r.status",
+    "r.priority",
+    "r.visibility",
+    "r.ball_in_court_id",
+    db.raw("COALESCE(r.ball_in_court_name, bic.name) as ball_in_court_name"),
+    "r.ball_in_court_email",
+    "r.assignee_role",
+    "r.due_date",
+    "r.official_response",
+    "r.official_responded_by_id",
+    "resp.name as official_responded_by_name",
+    "r.official_responded_at",
+    "r.cost_impact",
+    "r.schedule_impact",
+    "r.change_request_id",
+    "r.reopened_count",
+    "r.created_by_id",
+    "r.created_at",
+    "r.updated_at",
+  ];
+
   function base() {
     return db("rfis as r")
       .leftJoin("user as bic", "bic.id", "r.ball_in_court_id")
@@ -98,11 +103,11 @@ export function rfisRepository(db: Knex) {
       if (filter.status) q.andWhere("r.status", filter.status);
       if (filter.ballInCourtId) q.andWhere("r.ball_in_court_id", filter.ballInCourtId);
       if (filter.sharedOnly) q.andWhere("r.visibility", "shared");
-      return q.select(...SELECT).orderBy("r.number", "desc");
+      return q.select(...select).orderBy("r.number", "desc");
     },
 
     findById(id: string): Promise<RfiRow | undefined> {
-      return base().where("r.id", id).select(...SELECT).first();
+      return base().where("r.id", id).select(...select).first();
     },
 
     async commentCounts(rfiIds: string[]): Promise<Map<string, number>> {
@@ -225,7 +230,7 @@ export function rfisRepository(db: Knex) {
         .whereNotNull("r.due_date")
         .andWhere("r.due_date", "<=", today)
         .andWhere((b) => b.whereNull("r.last_reminded_on").orWhere("r.last_reminded_on", "<", today))
-        .select(...SELECT);
+        .select(...select);
     },
 
     async markReminded(id: string, today: string): Promise<void> {

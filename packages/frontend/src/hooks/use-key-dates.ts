@@ -1,34 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { keyDatesApi, type KeyDateInput } from "@/api/key-dates";
 import { keyDateKeys } from "./query-keys";
-import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
 
 export function useKeyDates(projectId: string | undefined) {
   return useQuery({
     queryKey: keyDateKeys.list(projectId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<KeyDate[]>(`/projects/${projectId!}/key-dates`);
-      return data;
-    },
+    queryFn: () => keyDatesApi.list(projectId!),
     enabled: Boolean(projectId),
   });
-}
-
-export interface KeyDateInput {
-  label: string;
-  targetDate?: string | null;
-  actualDate?: string | null;
-  status?: KeyDateStatus;
-  notes?: string | null;
 }
 
 export function useCreateKeyDate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: KeyDateInput & { projectId: string }) => {
-      const { data } = await api.post<KeyDate>(`/projects/${projectId}/key-dates`, body);
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: KeyDateInput & { projectId: string }) => 
+      keyDatesApi.create(projectId, body),
     onSuccess: (_d, { projectId }) => qc.invalidateQueries({ queryKey: keyDateKeys.all(projectId) }),
   });
 }
@@ -36,14 +22,12 @@ export function useCreateKeyDate() {
 export function useUpdateKeyDate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       keyDateId,
       ...body
-    }: Partial<KeyDateInput> & { projectId: string; keyDateId: string }) => {
-      const { data } = await api.patch<KeyDate>(`/projects/${projectId}/key-dates/${keyDateId}`, body);
-      return data;
-    },
+    }: Partial<KeyDateInput> & { projectId: string; keyDateId: string }) => 
+      keyDatesApi.update(projectId, keyDateId, body),
     onSuccess: (_d, { projectId }) => qc.invalidateQueries({ queryKey: keyDateKeys.all(projectId) }),
   });
 }
@@ -51,9 +35,8 @@ export function useUpdateKeyDate() {
 export function useDeleteKeyDate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, keyDateId }: { projectId: string; keyDateId: string }) => {
-      await api.delete(`/projects/${projectId}/key-dates/${keyDateId}`);
-    },
+    mutationFn: ({ projectId, keyDateId }: { projectId: string; keyDateId: string }) => 
+      keyDatesApi.delete(projectId, keyDateId),
     onSuccess: (_d, { projectId }) => qc.invalidateQueries({ queryKey: keyDateKeys.all(projectId) }),
   });
 }

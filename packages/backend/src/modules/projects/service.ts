@@ -224,8 +224,11 @@ function buildCreate(
 
 export function projectsService(repository: ProjectsRepository) {
   return {
-    async listForUser(ownerId: string, orgIds: string[]): Promise<Project[]> {
-      const rows = await repository.listForUser(ownerId, orgIds);
+    async listForUser(
+      ownerId: string,
+      orgRoles: ReadonlyMap<string, string>,
+    ): Promise<Project[]> {
+      const rows = await repository.listForUser(ownerId, orgRoles);
       if (rows.length === 0) return [];
       const phases = await repository.findPhasesByProjects(rows.map((r) => r.id));
       const grouped = new Map<string, ProjectPhaseRow[]>();

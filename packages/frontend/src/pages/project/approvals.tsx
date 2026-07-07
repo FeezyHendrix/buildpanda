@@ -3,7 +3,6 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertApprovalDialog,
@@ -13,12 +12,6 @@ import {
   ApprovalDetailDialog,
   APPROVAL_STATUS_META,
 } from "@/components/molecules/approval-detail-dialog";
-import { KanbanBoard } from "@/components/molecules/kanban-board";
-import {
-  APPROVAL_COLUMNS,
-  assigneeFooter,
-  textMeta,
-} from "@/components/molecules/kanban-configs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useSession } from "@/stores/auth";
 import { useAssignableUsers } from "@/hooks/use-tasks";
@@ -30,7 +23,9 @@ import {
 } from "@/hooks/use-approvals";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
+import { toast } from "@/lib/toast";
 import type { Approval, ApprovalStatus } from "@/lib/project-types";
+import { MessagesIcon } from "@/components/atoms/project-nav-icons";
 
 const FILTERS: { value: ApprovalStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -52,7 +47,6 @@ export default function ProjectApprovals() {
   const currentUserId = session?.user?.id ?? "";
   const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
   const [filter, setFilter] = useState<ApprovalStatus | "all">("all");
-  const [view, setView] = useState<"list" | "board">("list");
   const { data: approvals = [], isLoading } = useApprovals(
     project.id,
     filter === "all" ? undefined : filter,
@@ -66,25 +60,12 @@ export default function ProjectApprovals() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const pendingCount = approvals.filter((a) => a.status === "Pending").length;
-
-  // Whether the current user may record a decision on THIS approval: they must
-  // be an approver (canDecide), and if a specific reviewer was requested it must
-  // be them. Mirrors the backend gate so the UI never offers a blocked action.
-  function canDecideApproval(a: Approval): boolean {
+  function canDecideApproval(approval: Approval): boolean {
     if (!canDecide) return false;
-    if (a.requestedReviewerId && a.requestedReviewerId !== currentUserId)
+    if (approval.requestedReviewerId && approval.requestedReviewerId !== currentUserId) {
       return false;
+    }
     return true;
-  }
-
-  function handleMove(approval: Approval, status: ApprovalStatus): void {
-    if (approval.status === status) return;
-    updateApproval.mutate({
-      projectId: project.id,
-      approvalId: approval.id,
-      status,
-    });
   }
 
   function handleCreate(values: UpsertApprovalValues): void {
@@ -102,222 +83,276 @@ export default function ProjectApprovals() {
     );
   }
 
+  function handleDecision(approvalId: string, status: ApprovalStatus) {
+    updateApproval.mutate(
+      { projectId: project.id, approvalId, status },
+      {
+        onSuccess: () => {
+          const msg =
+            status === "Approved" ? "Approval approved" :
+            status === "Rejected" ? "Approval rejected" :
+            status === "Resubmit" ? "Resubmission requested" :
+            "Status updated";
+          toast(msg, status === "Approved" ? "success" : status === "Rejected" ? "error" : "info");
+        }
+      }
+    );
+  }
+
+  const awaitingDecision = approvals.filter(a => a.status === "Pending");
+  const resubmitRequested = approvals.filter(a => a.status === "Resubmit");
+  const decided = approvals.filter(a => a.status === "Approved" || a.status === "Rejected");
+
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
-        title="Approvals"
-        description="Submit selections and specs for sign-off, and track what's awaiting a decision."
+        title="Client Approvals"
+        description="Selections and specs awaiting the client's sign-off."
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setCreateOpen(true)}
-            >
-              <PlusIcon className="size-4" />
+            <Button variant="primary" onClick={() => setCreateOpen(true)}>
               Submit for approval
             </Button>
-          ) : undefined
+          ) : null
         }
       />
 
-      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center justify-end lg:justify-start gap-3 self-end lg:self-auto">
-          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
-            {(["list", "board"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900",
-                )}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500">
-            {pendingCount} awaiting sign-off
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center gap-2 mb-8">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={cn(
+              "rounded-full px-3 py-1 text-sm font-medium transition-colors",
+              filter === f.value ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
-      {view === "board" ? (
-        <div className="mt-5">
-          {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
-          ) : (
-            <KanbanBoard
-              items={approvals}
-              columns={APPROVAL_COLUMNS}
-              canManage={canManage}
-              getId={(a) => a.id}
-              getStatus={(a) => a.status}
-              getTitle={(a) => a.title}
-              renderMeta={(a) => textMeta(a.category)}
-              renderFooter={(a) => assigneeFooter(a.reviewedByName, a.dueDate)}
-              onMove={handleMove}
-              onOpen={setDetailId}
-            />
+      {isLoading ? (
+        <div>Loading approvals...</div>
+      ) : approvals.length === 0 && filter === "all" ? (
+        <Card className="p-8 text-center mt-8">
+          <h3 className="text-lg font-medium text-gray-900">No approvals</h3>
+          <p className="mt-2 text-gray-500">Submit a selection or spec to get sign-off.</p>
+          {canManage && (
+            <Button variant="primary" className="mt-4" onClick={() => setCreateOpen(true)}>
+              Submit for approval
+            </Button>
           )}
-        </div>
+        </Card>
       ) : (
-        <div className="mt-5 flex flex-col gap-3">
-          {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
-          ) : approvals.length === 0 ? (
-            <Card padding="lg" className="text-center">
-              <p className="text-sm font-medium text-gray-900">No approvals</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Submit a selection or spec to get sign-off.
-              </p>
-            </Card>
-          ) : (
-            approvals.map((a) => (
-              <Card
-                key={a.id}
-                padding="md"
-                interactive
-                className="flex items-center gap-4"
-              >
-                <button
-                  type="button"
-                  onClick={() => setDetailId(a.id)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-gray-900">
-                      {a.title}
-                    </p>
-                    <Badge tone={APPROVAL_STATUS_META[a.status].tone} size="sm">
-                      {APPROVAL_STATUS_META[a.status].label}
-                    </Badge>
-                    {a.category && (
-                      <Badge tone="neutral" size="sm">
-                        {a.category}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                    {formatDue(a.dueDate) && (
-                      <span>Needed by {formatDue(a.dueDate)}</span>
-                    )}
-                    {a.commentCount > 0 && (
-                      <span>
-                        {a.commentCount} comment
-                        {a.commentCount === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                </button>
-                <div className="flex items-center gap-3">
-                  {a.status === "Pending" && canDecideApproval(a) && (
-                    <button
-                      type="button"
-                      onClick={() => setDetailId(a.id)}
-                      className="rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-600"
-                    >
-                      Review
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setEditApproval(a)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteId(a.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </Card>
-            ))
+        <div className="flex flex-col gap-8">
+          {awaitingDecision.length > 0 && (
+            <section>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                Awaiting decision
+                <Badge tone="neutral">{awaitingDecision.length}</Badge>
+              </h3>
+              <div className="flex flex-col gap-3">
+                {awaitingDecision.map((a) => (
+                  <ApprovalCard
+                    key={a.id}
+                    approval={a}
+                    canManage={canManage}
+                    canDecide={canDecideApproval(a)}
+                    onEdit={() => setEditApproval(a)}
+                    onDelete={() => setDeleteId(a.id)}
+                    onClick={() => setDetailId(a.id)}
+                    onDecide={handleDecision}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {resubmitRequested.length > 0 && (
+            <section>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                Resubmit requested
+                <Badge tone="warning">{resubmitRequested.length}</Badge>
+              </h3>
+              <div className="flex flex-col gap-3">
+                {resubmitRequested.map((a) => (
+                  <ApprovalCard
+                    key={a.id}
+                    approval={a}
+                    canManage={canManage}
+                    canDecide={canDecideApproval(a)}
+                    onEdit={() => setEditApproval(a)}
+                    onDelete={() => setDeleteId(a.id)}
+                    onClick={() => setDetailId(a.id)}
+                    onDecide={handleDecision}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {decided.length > 0 && (
+            <section>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2 opacity-70">
+                Decided
+                <Badge tone="neutral">{decided.length}</Badge>
+              </h3>
+              <div className="flex flex-col gap-3 opacity-80 transition-opacity hover:opacity-100">
+                {decided.map((a) => (
+                  <ApprovalCard
+                    key={a.id}
+                    approval={a}
+                    canManage={canManage}
+                    canDecide={false}
+                    onEdit={() => setEditApproval(a)}
+                    onDelete={() => setDeleteId(a.id)}
+                    onClick={() => setDetailId(a.id)}
+                    onDecide={handleDecision}
+                  />
+                ))}
+              </div>
+            </section>
           )}
         </div>
       )}
 
-      <UpsertApprovalDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        mode="create"
-        reviewerOptions={reviewerOptions}
-        onSubmit={handleCreate}
-        isSubmitting={createApproval.isPending}
-        error={(createApproval.error as Error | undefined)?.message ?? null}
-      />
+      {createOpen && (
+        <UpsertApprovalDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          mode="create"
+          reviewerOptions={reviewerOptions}
+          onSubmit={handleCreate}
+          isSubmitting={createApproval.isPending}
+          error={createApproval.error?.message}
+        />
+      )}
 
-      <UpsertApprovalDialog
-        open={editApproval !== null}
-        onOpenChange={(o) => !o && setEditApproval(null)}
-        mode="edit"
-        reviewerOptions={reviewerOptions}
-        initial={
-          editApproval
-            ? {
-                title: editApproval.title,
-                category: editApproval.category,
-                description: editApproval.description,
-                dueDate: editApproval.dueDate,
-                requestedReviewerId: editApproval.requestedReviewerId,
-              }
-            : undefined
-        }
-        onSubmit={handleEdit}
-        isSubmitting={updateApproval.isPending}
-        error={(updateApproval.error as Error | undefined)?.message ?? null}
-      />
-
-      <ApprovalDetailDialog
-        open={detailId !== null}
-        onOpenChange={(o) => !o && setDetailId(null)}
-        projectId={project.id}
-        approvalId={detailId}
-        canDecide={canDecide}
-        currentUserId={currentUserId}
-      />
+      {editApproval && (
+        <UpsertApprovalDialog
+          open={Boolean(editApproval)}
+          onOpenChange={(o) => !o && setEditApproval(null)}
+          mode="edit"
+          initial={editApproval}
+          reviewerOptions={reviewerOptions}
+          onSubmit={handleEdit}
+          isSubmitting={updateApproval.isPending}
+          error={updateApproval.error?.message}
+        />
+      )}
 
       <ConfirmDialog
-        open={deleteId !== null}
+        open={Boolean(deleteId)}
         onOpenChange={(o) => !o && setDeleteId(null)}
-        onConfirm={() => {
-          if (deleteId)
-            deleteApproval.mutate({
-              projectId: project.id,
-              approvalId: deleteId,
-            });
-          setDeleteId(null);
-        }}
         title="Delete approval"
-        description="This permanently removes the approval and its discussion."
-        confirmLabel="Delete"
+        description="Are you sure you want to delete this approval?"
         variant="danger"
+        confirmLabel="Delete"
+        loading={deleteApproval.isPending}
+        onConfirm={() =>
+          deleteId &&
+          deleteApproval.mutate(
+            { projectId: project.id, approvalId: deleteId },
+            { onSuccess: () => setDeleteId(null) }
+          )
+        }
       />
+
+      {detailId && (
+        <ApprovalDetailDialog
+          open={Boolean(detailId)}
+          onOpenChange={(o) => !o && setDetailId(null)}
+          projectId={project.id}
+          approvalId={detailId}
+          canDecide={
+            approvals.find((a) => a.id === detailId)
+              ? canDecideApproval(approvals.find((a) => a.id === detailId)!)
+              : false
+          }
+        />
+      )}
     </div>
+  );
+}
+
+function ApprovalCard({
+  approval,
+  canManage,
+  canDecide,
+  onClick,
+  onEdit,
+  onDelete,
+  onDecide,
+}: {
+  approval: Approval;
+  canManage: boolean;
+  canDecide: boolean;
+  onClick: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onDecide: (id: string, status: ApprovalStatus) => void;
+}) {
+  const statusMeta = APPROVAL_STATUS_META[approval.status];
+  const due = formatDue(approval.dueDate);
+
+  return (
+    <Card className="overflow-hidden hover:border-gray-300 transition-colors group">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between p-4 gap-4" onClick={onClick} role="button" tabIndex={0}>
+        <div className="flex flex-col gap-2 flex-grow">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-gray-900">{approval.title}</span>
+            <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
+            {approval.commentCount > 0 && (
+              <span className="flex items-center gap-1 text-xs text-gray-500 font-medium ml-1">
+                <MessagesIcon className="w-3.5 h-3.5" />
+                {approval.commentCount}
+              </span>
+            )}
+          </div>
+
+          <div className="text-sm text-gray-500 flex flex-wrap items-center gap-2">
+            <span>{approval.category}</span>
+            {due && (
+              <>
+                <span>·</span>
+                <span>due {due}</span>
+              </>
+            )}
+            {approval.requestedReviewerName && (
+              <>
+                <span>·</span>
+                <span>reviewer: {approval.requestedReviewerName}</span>
+              </>
+            )}
+          </div>
+
+          {canDecide && (approval.status === "Pending" || approval.status === "Resubmit") && (
+            <div className="flex flex-wrap items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+              <Button size="sm" variant="secondary" className="text-green-700 hover:text-green-800 hover:bg-green-50 border-green-200 border" onClick={() => onDecide(approval.id, "Approved")}>
+                Approve
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => onDecide(approval.id, "Resubmit")}>
+                Request changes
+              </Button>
+              <Button size="sm" variant="secondary" className="text-red-700 hover:text-red-800 hover:bg-red-50 border-red-200 border" onClick={() => onDecide(approval.id, "Rejected")}>
+                Reject
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {canManage && (
+          <div className="flex items-center gap-2 self-start opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" onClick={onEdit}>
+              Edit
+            </Button>
+            <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={onDelete}>
+              Delete
+            </Button>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

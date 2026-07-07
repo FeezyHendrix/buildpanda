@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { mapAllows, type PermissionMap } from "./permissions.ts";
+import { isEmployeeRole, mapAllows, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -16,14 +16,22 @@ export interface AccessContext {
   // Participant roles keyed by project id (e.g. "client"). Populated per-request
   // from project_participants for external stakeholders (homeowners, etc.).
   projectRoles?: ReadonlyMap<string, string>;
+  // Per-participant page-access matrix keyed by project id. When present it is
+  // the source of truth for that participant (overrides role defaults); absent
+  // means fall back to the role default.
+  projectSectionPermissions?: ReadonlyMap<string, ProjectSectionPermissions>;
 }
 
 export interface EnrichedAccessContext extends AccessContext {
   orgPermissions: ReadonlyMap<string, PermissionMap>;
 }
 
-function isMemberOf(orgId: string | null, ctx: AccessContext): boolean {
-  return orgId !== null && ctx.orgRoles.has(orgId);
+// Org membership grants access to every project in the org — except for
+// employee-role members, who are scoped to their assigned projects only.
+function hasOrgWideProjectAccess(orgId: string | null, ctx: AccessContext): boolean {
+  if (orgId === null) return false;
+  const role = ctx.orgRoles.get(orgId);
+  return role !== undefined && !isEmployeeRole(role);
 }
 
 /** The caller's participant role on this project, if any (e.g. "client"). */
@@ -39,8 +47,8 @@ function isParticipant(project: ProjectScope, ctx: AccessContext): boolean {
 // no org) are world-readable, so an org row whose owner was deleted stays gated.
 export function assertCanAccessProject(project: ProjectScope, ctx: AccessContext): void {
   if (project.ownerId === ctx.userId) return;
-  if (isMemberOf(project.organizationId, ctx)) return;
-  if (isParticipant(project, ctx)) return; // homeowner / external stakeholder
+  if (hasOrgWideProjectAccess(project.organizationId, ctx)) return;
+  if (isParticipant(project, ctx)) return; // homeowner / external stakeholder / employee
   if (project.ownerId === null && project.organizationId === null) return;
   throw new ForbiddenError("You do not have access to this resource");
 }
@@ -96,6 +104,7 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
 export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
   client: {
     project: ["view"],
+    tasks: ["view"],
     finances: ["view", "dispute"],
     approvals: ["view", "decide"],
     selections: ["view", "decide"],
@@ -120,6 +129,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
   },
   architect: {
     project: ["view"],
+    tasks: ["view"],
     finances: ["view"],
     approvals: ["view"],
     selections: ["view"],
@@ -144,6 +154,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
   },
   inspector: {
     project: ["view"],
+    tasks: ["view"],
     finances: ["view"],
     approvals: ["view"],
     selections: ["view"],
@@ -165,6 +176,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
   },
   guest: {
     project: ["view"],
+    tasks: ["view"],
     finances: ["view"],
     approvals: ["view"],
     selections: ["view"],
@@ -179,7 +191,116 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     stages: ["view"],
     "key-dates": ["view"],
   },
+  materials_requester: {
+    project: ["view"],
+    tasks: ["view"],
+    approvals: ["view"],
+    selections: ["view"],
+    queries: ["view", "raise"],
+    "action-items": ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+    comments: ["view", "post"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view"],
+    materials: ["view", "report", "request"],
+    contractors: ["view"],
+    dailyLog: ["view", "create", "report"],
+    messages: ["view", "send"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    schedule: ["view"],
+    rfis: ["view", "create"],
+    bim: ["view"],
+  },
+  materials_approver: {
+    project: ["view"],
+    tasks: ["view"],
+    approvals: ["view"],
+    selections: ["view"],
+    queries: ["view", "raise"],
+    "action-items": ["view"],
+    stages: ["view"],
+    "key-dates": ["view"],
+    comments: ["view", "post"],
+    updates: ["view"],
+    documents: ["view"],
+    inspections: ["view"],
+    materials: ["view", "report", "request", "approve"],
+    contractors: ["view"],
+    dailyLog: ["view", "create", "report"],
+    messages: ["view", "send"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    schedule: ["view"],
+    rfis: ["view", "create"],
+    bim: ["view"],
+  },
 };
+
+export type SectionValue = "hidden" | "view" | "edit";
+export type ProjectSectionPermissions = Record<string, SectionValue>;
+
+// The per-participant permission matrix (invite/edit drawer) uses dotted
+// per-PAGE keys; backend auth uses resource+action. This is the single canonical
+// bridge. `view`/`edit` grant only safe read/author actions — never manage,
+// approve, decide or delete (those stay privileged, off the UI matrix).
+const SECTION_MAP: Record<string, { resource: string; view: string[]; edit: string[] }> = {
+  "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
+  "projects.schedule": { resource: "schedule", view: ["view"], edit: ["view", "manage"] },
+  "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
+  "quality.inspections": { resource: "inspections", view: ["view"], edit: ["view", "request"] },
+  "quality.dailyLogs": { resource: "dailyLog", view: ["view", "report"], edit: ["view", "create", "report"] },
+  "quality.risks": { resource: "risks", view: ["view"], edit: ["view"] },
+  "commercial.finances": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.budget": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.invoices": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.paymentClaims": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.purchaseOrders": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.materialsEquipment": { resource: "materials", view: ["view"], edit: ["view", "request"] },
+  "commercial.materialsLedger": { resource: "materials", view: ["view", "report"], edit: ["view", "report"] },
+  "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"] },
+  "workflow.queries": { resource: "queries", view: ["view"], edit: ["view", "raise"] },
+  "workflow.approvals": { resource: "approvals", view: ["view"], edit: ["view", "decide"] },
+  "workflow.changeRequests": { resource: "change-requests", view: ["view"], edit: ["view"] },
+  "workflow.actionItems": { resource: "action-items", view: ["view"], edit: ["view"] },
+  "compliance.permits": { resource: "permits", view: ["view"], edit: ["view"] },
+  "compliance.keyDates": { resource: "key-dates", view: ["view"], edit: ["view"] },
+  "project.updates": { resource: "updates", view: ["view"], edit: ["view", "post"] },
+  "collaboration.messaging": { resource: "messages", view: ["view"], edit: ["view", "send"] },
+  "projects.selections": { resource: "selections", view: ["view"], edit: ["view", "decide"] },
+};
+
+// Fold a participant's section matrix into a resource->actions map. Sections
+// sharing a resource union their actions; "hidden" contributes nothing. Only
+// resources named by the matrix are affected — untouched resources fall through
+// to the caller's precedence (role default).
+export function sectionsToPermissions(
+  sections: ProjectSectionPermissions,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(sections)) {
+    const entry = SECTION_MAP[key];
+    if (!entry || value === "hidden") continue;
+    const actions = value === "edit" ? entry.edit : entry.view;
+    out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
+  }
+  return out;
+}
+
+// True when the participant matrix explicitly grants (view or edit) the section
+// whose resource+action is being checked. Used to overlay per-participant grants
+// on top of role defaults inside canProjectPermission.
+function matrixAllows(
+  sections: ProjectSectionPermissions | undefined,
+  resource: string,
+  action: string,
+): boolean {
+  if (!sections) return false;
+  const perms = sectionsToPermissions(sections);
+  return (perms[resource] ?? []).includes(action);
+}
 
 /**
  * Unified resource-action guard that composes org role + participant overlay.
@@ -224,6 +345,9 @@ export function canProjectPermission(
   const orgId = project.organizationId;
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
+
+  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
+  if (matrixAllows(sections, resource, action)) return true;
 
   const pRole = participantRole(project, ctx);
   const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;

@@ -5,6 +5,9 @@ import type { FinancesRepository } from "./repository.ts";
 import type {
   BudgetPhase,
   BudgetPhaseRow,
+  FinanceEvent,
+  FinanceEventRow,
+  FinanceEventType,
   FinancesRow,
   MaterialProcurement,
   MaterialProcurementRow,
@@ -16,6 +19,11 @@ import type {
   PaymentLedgerRow,
   ProjectFinances,
 } from "./types.ts";
+
+export interface FinanceActor {
+  id: string;
+  name: string;
+}
 
 export interface DepositInput {
   amount: number;
@@ -146,6 +154,18 @@ function toLedgerEntry(row: PaymentLedgerRow): PaymentLedgerEntry {
   };
 }
 
+function toEvent(row: FinanceEventRow): FinanceEvent {
+  return {
+    id: row.id,
+    type: row.type,
+    actor: { id: row.actor_id, name: row.actor_name },
+    summary: row.summary,
+    amount: row.amount === null ? null : num(row.amount),
+    entityId: row.entity_id,
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
+
 function toFinances(
   summary: FinancesRow,
   budgetPhases: BudgetPhaseRow[],
@@ -169,7 +189,37 @@ function toFinances(
 }
 
 export function financesService(repository: FinancesRepository, deps: FinancesDeps = {}) {
+  // Best-effort audit trail: a logging failure must never break the finance
+  // action that triggered it, so the insert is awaited-and-swallowed.
+  async function recordEvent(
+    projectId: string,
+    type: FinanceEventType,
+    actor: FinanceActor | null,
+    summary: string,
+    amount?: number | null,
+    entityId?: string | null,
+  ): Promise<void> {
+    try {
+      await repository.insertEvent({
+        project_id: projectId,
+        type,
+        actor_id: actor?.id ?? null,
+        actor_name: actor?.name ?? "System",
+        summary,
+        amount: amount ?? null,
+        entity_id: entityId ?? null,
+      });
+    } catch {
+      void 0;
+    }
+  }
+
   return {
+    async listEvents(projectId: string): Promise<FinanceEvent[]> {
+      const rows = await repository.listEvents(projectId);
+      return rows.map(toEvent);
+    },
+
     async getByProject(projectId: string): Promise<ProjectFinances> {
       const [summary, budgetPhases, materials, milestones, ledger] = await Promise.all([
         repository.findSummary(projectId),
@@ -184,7 +234,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       return toFinances(summary, budgetPhases, materials, milestones, ledger);
     },
 
-    async deposit(projectId: string, input: DepositInput): Promise<ProjectFinances> {
+    async deposit(projectId: string, input: DepositInput, actor?: FinanceActor): Promise<ProjectFinances> {
       if (input.amount <= 0) {
         throw new BadRequestError("Deposit amount must be positive");
       }
@@ -195,12 +245,14 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
         entryDate: input.entryDate ?? new Date().toISOString().slice(0, 10),
         ledgerId: generateId("ledger"),
       });
+      await recordEvent(projectId, "deposit", actor ?? null, "Funded project", input.amount);
       return this.getByProject(projectId);
     },
 
     async createMilestone(
       projectId: string,
       input: CreateMilestoneInput,
+      actor?: FinanceActor,
     ): Promise<MilestonePayment> {
       if (input.amount < 0) throw new BadRequestError("Milestone amount cannot be negative");
       const row = await repository.createMilestone({
@@ -215,6 +267,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
         proof_verified: false,
         inspector_sign_off: input.inspectorSignOff ?? "Pending",
       });
+      await recordEvent(projectId, "milestone_created", actor ?? null, `Added milestone · ${row.name}`, input.amount, row.id);
       return toMilestone(row);
     },
 
@@ -222,6 +275,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       projectId: string,
       milestoneId: string,
       input: UpdateMilestoneInput,
+      actor?: FinanceActor,
     ): Promise<MilestonePayment> {
       if (input.amount !== undefined && input.amount < 0) {
         throw new BadRequestError("Milestone amount cannot be negative");
@@ -239,18 +293,28 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
           : {}),
       });
       if (!row) throw new NotFoundError("Milestone");
+      await recordEvent(projectId, "milestone_updated", actor ?? null, `Updated milestone · ${row.name}`, num(row.amount), row.id);
       return toMilestone(row);
     },
 
-    async deleteMilestone(projectId: string, milestoneId: string): Promise<void> {
+    async deleteMilestone(projectId: string, milestoneId: string, actor?: FinanceActor): Promise<void> {
+      const existing = await repository.findMilestone(milestoneId);
       const deleted = await repository.deleteMilestone(projectId, milestoneId);
       if (deleted === 0) throw new NotFoundError("Milestone");
+      await recordEvent(
+        projectId,
+        "milestone_deleted",
+        actor ?? null,
+        `Removed milestone · ${existing?.name ?? milestoneId}`,
+        existing ? num(existing.amount) : null,
+        milestoneId,
+      );
     },
 
     async releaseMilestone(
       projectId: string,
       milestoneId: string,
-      userId: string,
+      actor: FinanceActor,
     ): Promise<MilestonePayment> {
       const milestone = await repository.findMilestone(milestoneId);
       if (!milestone) throw new NotFoundError("Milestone");
@@ -265,7 +329,8 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
         ledgerId: generateId("ledger"),
       });
       const projectOwnerId = await repository.projectOwnerId(projectId);
-      notifyMilestoneReleased(deps, projectOwnerId, projectId, updated.name, userId);
+      notifyMilestoneReleased(deps, projectOwnerId, projectId, updated.name, actor.id);
+      await recordEvent(projectId, "milestone_released", actor, `Released milestone from escrow · ${updated.name}`, num(updated.amount), milestoneId);
       return toMilestone(updated);
     },
 
@@ -300,6 +365,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       });
       const projectOwnerId = await repository.projectOwnerId(projectId);
       notifyMilestoneDisputed(deps, projectOwnerId, projectId, milestone.name, input.reason, actor.id);
+      await recordEvent(projectId, "dispute_raised", actor, `Raised dispute · ${milestone.name}`, num(milestone.amount), milestoneId);
       return toDispute(row);
     },
   };

@@ -100,7 +100,7 @@ function ErrorFallback({ error, reset }: ErrorFallbackProps) {
           Something broke on site
         </h1>
         <p className="mt-2 text-[14px] leading-relaxed text-[#606060]">
-          An unexpected error stopped this page from loading. Try reloading —
+          An unexpected error stopped this page from loading. Try reloading
           if it keeps happening, head back to your dashboard.
         </p>
       </div>
