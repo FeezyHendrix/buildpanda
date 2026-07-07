@@ -168,7 +168,7 @@ export default function ProjectLookAheads() {
       </section>
 
       <section className="mt-10 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 lg:gap-0 lg:flex-row items-start lg:items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Your look aheads</h2>
           <div className="flex gap-1">
             {STATUS_FILTERS.map((s) => (

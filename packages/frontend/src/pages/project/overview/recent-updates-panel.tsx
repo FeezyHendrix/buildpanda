@@ -67,18 +67,17 @@ function UpdatePreview({ update }: { update: ProjectUpdate }) {
   const preview = update.media[0];
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-      <div className="rounded-[8px] w-full sm:w-[50%] relative">
-      {/* <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#F6F6F6]"> */}
+      <div className="rounded-[8px] w-full sm:w-[50%] relative min-h-[160px]">
         {preview ? (
           <img
             src={preview.url}
             alt=""
-            className='rounded-[8px] w-full h-full'
+            className='rounded-[8px] w-full h-full object-cover'
             loading="lazy"
           />
         ) : (
-          <div className="flex size-full items-center justify-center text-gray-300">
-            <CalendarIcon className="size-5" />
+          <div className="absolute inset-0 flex items-center justify-center rounded-[8px] bg-[#F0F2F5] text-gray-300">
+            <CalendarIcon className="size-8" />
           </div>
         )}
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#00000000_0%,#00000066_40%)] rounded-[8px]" />

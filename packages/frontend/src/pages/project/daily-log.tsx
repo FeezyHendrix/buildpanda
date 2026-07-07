@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -410,7 +410,19 @@ function EntryRow({
 }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const voidEntry = useVoidDailyLogEntry();
+
+  useLayoutEffect(() => {
+    if (expanded) return;
+    const el = contentRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      setIsClamped(el.scrollHeight > el.clientHeight);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [entry.bodyHtml, expanded]);
   const canVoid = !entry.voided && (entry.authorId === userId || canManage);
   const lastVoid =
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
@@ -459,19 +471,22 @@ function EntryRow({
       {hasBody && (
         <div className="mt-2">
           <div
+            ref={contentRef}
             className={cn(
               "prose prose-sm max-w-none text-[13px] text-black-400 [&_img]:max-h-56 [&_img]:rounded-lg [&_p]:my-1",
               !expanded && "line-clamp-4",
             )}
             dangerouslySetInnerHTML={{ __html: entry.bodyHtml! }}
           />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
-          >
-            {expanded ? "Show less" : "Read more"}
-          </button>
+          {(isClamped || expanded) && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
+            >
+              {expanded ? "Show less" : "Read more"}
+            </button>
+          )}
         </div>
       )}
 

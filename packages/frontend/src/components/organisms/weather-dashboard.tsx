@@ -145,7 +145,7 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
         )}
 
         {forecast.isLoading ? (
-          <div className="flex h-24 items-center justify-center">
+          <div className="flex min-h-[260px] items-center justify-center">
             <Spinner size="sm" />
           </div>
         ) : (
@@ -181,7 +181,7 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
         </div>
         <div className="bg-white rounded-[12px] h-full m-1 p-6 flex items-center">
           {analysis.isLoading ? (
-            <div className="flex h-28 items-center justify-center w-full">
+            <div className="flex min-h-[200px] items-center justify-center w-full">
               <Spinner size="sm" />
             </div>
           ) : analysis.data?.available ? (
