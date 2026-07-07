@@ -23,6 +23,18 @@ export const statement = {
   participants: ["view", "manage"],
   teamMembers: ["view", "manage"],
   orgProfile: ["view", "manage"],
+  rfis: ["view", "create", "respond", "manage"],
+  bim: ["view", "upload", "manage"],
+  approvals: ["view", "decide"],
+  selections: ["view", "decide"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -43,6 +55,16 @@ const constructionFull = {
   participants: ["view", "manage"],
   teamMembers: ["view", "manage"],
   orgProfile: ["view", "manage"],
+  rfis: ["view", "create", "respond", "manage"],
+  bim: ["view", "upload", "manage"],
+  approvals: ["view", "decide"],
+  selections: ["view", "decide"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const;
 
 const constructionContributor = {
@@ -61,6 +83,16 @@ const constructionContributor = {
   participants: ["view"],
   teamMembers: ["view"],
   orgProfile: ["view"],
+  rfis: ["view", "create", "respond"],
+  bim: ["view", "upload"],
+  approvals: ["view"],
+  selections: ["view"],
+  queries: ["view", "raise"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const;
 
 const constructionReadOnly = {
@@ -79,6 +111,16 @@ const constructionReadOnly = {
   participants: ["view"],
   teamMembers: ["view"],
   orgProfile: ["view"],
+  rfis: ["view", "create"],
+  bim: ["view"],
+  approvals: ["view"],
+  selections: ["view"],
+  queries: ["view"],
+  "change-requests": ["view"],
+  "action-items": ["view"],
+  "key-dates": ["view"],
+  permits: ["view"],
+  risks: ["view"],
 } as const;
 
 export const owner = ac.newRole({
@@ -175,6 +217,16 @@ export const PROJECT_RESOURCES = [
   "participants",
   "teamMembers",
   "orgProfile",
+  "rfis",
+  "bim",
+  "approvals",
+  "selections",
+  "queries",
+  "change-requests",
+  "action-items",
+  "key-dates",
+  "permits",
+  "risks",
 ] as const;
 
 export const SALES_RESOURCES = ["proposals", "leads"] as const;

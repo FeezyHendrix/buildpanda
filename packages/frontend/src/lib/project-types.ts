@@ -483,7 +483,13 @@ export function canViewSection(
   if (access.sections) {
     if (!sectionKey) return canViewResource(access, resource);
     const value = access.sections[sectionKey];
-    return value === "view" || value === "edit";
+    if (value === "view" || value === "edit") return true;
+    // Org/company permissions are additive across the project. A user can be an
+    // employee participant on a specific project AND have an org custom role
+    // (e.g. COO) granting broader project access; the participant matrix must
+    // not hide what the org role grants. For external participants, the matrix
+    // remains the source of truth.
+    return access.relationship === "company" && canViewResource(access, resource);
   }
   return canViewResource(access, resource);
 }

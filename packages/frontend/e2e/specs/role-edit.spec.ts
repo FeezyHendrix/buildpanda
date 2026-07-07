@@ -31,7 +31,7 @@ test.describe("Custom role editing @regression @roles", () => {
     // Abc De"), so match the row by the run's unique hex token, not the raw name.
     const rowToken = roleName.split("-").slice(2).join(" ");
 
-    await page.goto("/dashboard/settings/team");
+    await page.goto("/dashboard/settings?tab=members");
 
     // Create the role with a single Documents permission.
     await page.getByRole("button", { name: /create role/i }).click();
