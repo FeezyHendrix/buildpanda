@@ -11,6 +11,7 @@ import type {
   AssignableUser,
   TaskEntityLink,
   TaskEntityType,
+  TaskComment,
 } from "@/lib/project-types";
 
 export interface CreateTaskInput {
@@ -90,4 +91,7 @@ export const taskApi = {
 
   deleteEntityLink: (projectId: string, taskId: string, linkId: string) =>
     api.delete(`/projects/${projectId}/tasks/${taskId}/entity-links/${linkId}`).then((r) => r.data),
+
+  addComment: (projectId: string, taskId: string, body: string) =>
+    api.post<TaskComment>(`/projects/${projectId}/tasks/${taskId}/comments`, { body }).then((r) => r.data),
 };

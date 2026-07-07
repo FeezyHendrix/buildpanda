@@ -396,6 +396,25 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_task_comments", "Get the discussion/comments left on tasks — who said what and when. Use when asked about the conversation, notes, updates or discussion on a task, or what has been said about a specific piece of work."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = (await repo.taskComments(ctx.projectId)) as {
+        taskTitle: string;
+        authorName: string;
+        body: string;
+        created_at: string;
+      }[];
+      const byTask = new Map<string, { author: string; body: string; at: string }[]>();
+      for (const row of rows) {
+        const list = byTask.get(row.taskTitle) ?? [];
+        list.push({ author: row.authorName, body: row.body, at: row.created_at });
+        byTask.set(row.taskTitle, list);
+      }
+      return {
+        output: [...byTask.entries()].map(([task, comments]) => ({ task, comments })),
+      };
+    }),
+
     tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
