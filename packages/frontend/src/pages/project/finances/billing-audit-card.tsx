@@ -48,7 +48,7 @@ export function BillingAuditCard() {
             ))}
           </ul>
           <a
-            href="mailto:hello@buildpanda.co?subject=Billing Audit Request"
+            href="mailto:hello@buildpanda.ai?subject=Billing Audit Request"
             className="mt-2 inline-flex h-10 items-center justify-center rounded-lg bg-[#004DE7] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#003cc4]"
           >
             Request a Billing Audit
