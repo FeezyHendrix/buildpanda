@@ -56,16 +56,20 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
   const jobs = programmeJobsRepository(fastify.db);
 
   function toJobDto(job: ProgrammeJobRow) {
+    const result = parseResult(job);
     return {
       id: job.id,
       status: job.status,
       fileName: job.file_name,
       activityCount: job.activity_count,
       phaseCount: job.phase_count,
+      sourceTaskCount: result?.sourceTaskCount ?? job.activity_count,
+      skippedTaskCount: result?.skippedTaskCount ?? 0,
+      summaryActivityCount: result?.summaryActivityCount ?? 0,
       usedAi: job.used_ai,
       createdProjectId: job.created_project_id,
       error: job.error,
-      result: parseResult(job),
+      result,
     };
   }
 

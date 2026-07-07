@@ -28,6 +28,8 @@ export interface ParsedProgramme {
   start: string | null;
   finish: string | null;
   tasks: ProgrammeTask[];
+  sourceTaskCount: number;
+  skippedTaskCount: number;
 }
 
 function toIso(value: unknown): string | null {
@@ -111,8 +113,8 @@ async function parseMspdiXml(xml: string): Promise<ParsedProgramme> {
   const project = DProject.parse(xml) as { name?: string; title?: string; tasks?: DProjectTask[] };
   const rawTasks = project.tasks ?? [];
 
-  const tasks: ProgrammeTask[] = rawTasks
-    .filter((t) => (t.name ?? "").trim() && (t.outlineLevel ?? 0) >= 1)
+  const importableTasks = rawTasks.filter((t) => (t.name ?? "").trim() && (t.outlineLevel ?? 0) >= 1);
+  const tasks: ProgrammeTask[] = importableTasks
     .map((t) => {
       const refId = String(t.uid ?? t.id ?? t.wbs ?? "");
       const start = toIso(t.start);
@@ -143,6 +145,8 @@ async function parseMspdiXml(xml: string): Promise<ParsedProgramme> {
     start: tasks.reduce<string | null>((min, t) => (t.start && (!min || t.start < min) ? t.start : min), null),
     finish: tasks.reduce<string | null>((max, t) => (t.finish && (!max || t.finish > max) ? t.finish : max), null),
     tasks,
+    sourceTaskCount: rawTasks.length,
+    skippedTaskCount: rawTasks.length - importableTasks.length,
   };
 }
 
@@ -206,5 +210,7 @@ export function parseXlsBuffer(buffer: Buffer): ParsedProgramme {
     start: tasks.reduce<string | null>((min, t) => (t.start && (!min || t.start < min) ? t.start : min), null),
     finish: tasks.reduce<string | null>((max, t) => (t.finish && (!max || t.finish > max) ? t.finish : max), null),
     tasks,
+    sourceTaskCount: tasks.length,
+    skippedTaskCount: 0,
   };
 }

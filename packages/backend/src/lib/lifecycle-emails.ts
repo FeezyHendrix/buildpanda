@@ -15,7 +15,7 @@ interface RenderedEmail {
 }
 
 const MICHAEL = { address: "michael@buildpanda.io", name: "Michael from BuildPanda" };
-const HELLO = { address: "hello@buildpanda.io", name: "David from BuildPanda" };
+const HELLO = { address: "hello@buildpanda.ai", name: "David from BuildPanda" };
 
 function escapeHtml(value: string): string {
   return value

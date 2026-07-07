@@ -24,11 +24,19 @@ export function PhasePreview({
 }
 
 function ActivityPreview({ activity }: { activity: ProgrammeActivity }) {
+  const indent = Math.max(0, activity.outlineLevel - 1) * 12;
   return (
-    <div className="flex items-center justify-between rounded-lg bg-[#FAFAFA] px-3 py-2 text-sm">
-      <span className="truncate text-gray-900">{activity.name}</span>
+    <div className="flex items-center justify-between rounded-lg bg-[#FAFAFA] px-3 py-2 text-sm" style={{ paddingLeft: 12 + indent }}>
+      <span className={activity.isSummary ? "truncate font-semibold text-gray-900" : "truncate text-gray-900"}>
+        {activity.wbsCode ? `${activity.wbsCode} ` : ""}{activity.name}
+      </span>
       <span className="ml-3 flex shrink-0 items-center gap-2 text-xs text-gray-500">
         {formatRange(activity.startAt, activity.endAt)}
+        {activity.isSummary ? (
+          <Badge tone="neutral" size="sm">
+            Summary
+          </Badge>
+        ) : null}
         {activity.isMilestone ? (
           <Badge tone="warning" size="sm">
             Milestone

@@ -5,6 +5,7 @@ import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import { useOrgPermissions } from "@/hooks/use-organization";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
+import { DataCommitmentGate } from "@/components/molecules/data-commitment-gate";
 
 /**
  * Route guards for the owner/company split.
@@ -49,7 +50,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { isPending, signedIn } = useGuardSession();
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <DataCommitmentGate />
+    </>
+  );
 }
 
 /** Company-only routes (dashboard, project creation). Owners → their portal. */

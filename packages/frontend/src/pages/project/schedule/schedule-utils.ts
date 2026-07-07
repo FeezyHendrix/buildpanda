@@ -145,6 +145,7 @@ export function buildGanttData(
   timeline: { id: string; name: string }[]
 ) {
   const phaseById = new Map(timeline.map((phase) => [phase.id, phase]));
+  const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
 
   const usedPhaseIds = new Set<string>();
   const validTaskIds = new Set<string>();
@@ -178,8 +179,10 @@ export function buildGanttData(
     if (!start) continue;
     if (!activity.isMilestone && !end) continue;
 
-    const parent =
-      activity.phaseId && usedPhaseIds.has(activity.phaseId)
+    const parentActivity = activity.parentActivityId ? activitiesById.get(activity.parentActivityId) : undefined;
+    const parent = parentActivity
+      ? parentActivity.id
+      : activity.phaseId && usedPhaseIds.has(activity.phaseId)
         ? activity.phaseId
         : ROOT_PARENT;
 
@@ -189,8 +192,9 @@ export function buildGanttData(
     taskRows.push({
       id: activity.id,
       text: activity.isDelayed ? `${activity.name} · delayed` : activity.name,
-      type: activity.isMilestone ? "milestone" : "task",
+      type: activity.isSummary ? "summary" : activity.isMilestone ? "milestone" : "task",
       parent,
+      open: activity.isSummary ? true : undefined,
       start,
       end: activity.isMilestone ? start : end!,
       progress: Math.round(activity.percentComplete),

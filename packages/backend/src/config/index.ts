@@ -107,7 +107,7 @@ export const config = {
     token: optional("ZEPTOMAIL_TOKEN", ""),
     fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
     fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
-    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.io"),
+    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.ai"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),

@@ -34,6 +34,7 @@ function phaseCostByMonth(
 ): Map<string, number> {
   const byMonth = new Map<string, number>();
   for (const a of activities) {
+    if (a.isSummary) continue;
     if (!a.cost || a.cost <= 0 || !a.startAt || !a.endAt) continue;
     const start = new Date(a.startAt);
     const end = new Date(a.endAt);
@@ -91,10 +92,12 @@ export async function applyProgramme(
   const isNewProject = !options.existingProjectId;
   const name = (options.projectName ?? programme.projectName ?? "Imported Project").trim();
   const address = `${options.city}, ${options.state}`;
-  const totalCost = programme.activities.reduce((sum, a) => sum + (a.cost || 0), 0);
-  const completed = programme.activities.filter((a) => a.percentComplete >= 100).length;
+  const workActivities = programme.activities.filter((a) => !a.isSummary);
+  const progressActivities = workActivities.length > 0 ? workActivities : programme.activities;
+  const totalCost = workActivities.reduce((sum, a) => sum + (a.cost || 0), 0);
+  const completed = progressActivities.filter((a) => a.percentComplete >= 100).length;
   const progressPercent =
-    programme.activities.length > 0 ? Math.round((completed / programme.activities.length) * 100) : 0;
+    progressActivities.length > 0 ? Math.round((completed / progressActivities.length) * 100) : 0;
 
   const phaseIdByKey = new Map<string, string>();
   for (const phase of programme.phases) phaseIdByKey.set(phase.key, generateId("phase"));
@@ -102,6 +105,10 @@ export async function applyProgramme(
   const activityIdByRef = new Map<string, string>();
   for (const activity of programme.activities) {
     activityIdByRef.set(activity.refId, generateId("act"));
+  }
+
+  function parentActivityId(activity: StructuredActivity): string | null {
+    return activity.parentRefId ? (activityIdByRef.get(activity.parentRefId) ?? null) : null;
   }
 
   function rewriteDeps(activity: StructuredActivity): StoredDependency[] {
@@ -199,7 +206,7 @@ export async function applyProgramme(
           project_id: projectId,
           phase_id: phaseIdByKey.get(activity.phaseKey) ?? null,
           name: activity.name,
-          activity_type: "Construction",
+          activity_type: activity.isSummary ? "Summary" : "Construction",
           location: null,
           status: activityStatus(activity.percentComplete),
           planned_start_at: activity.startAt,
@@ -208,7 +215,7 @@ export async function applyProgramme(
           notes: null,
           wbs_code: activity.wbsCode,
           outline_level: activity.outlineLevel,
-          parent_activity_id: null,
+          parent_activity_id: parentActivityId(activity),
           predecessors: JSON.stringify(rewriteDeps(activity)),
           percent_complete: activity.percentComplete,
           duration_days: activity.durationDays,
