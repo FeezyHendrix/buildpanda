@@ -15,22 +15,22 @@ import {
   useDeleteUpdate,
   useEditUpdate,
   usePublishUpdate,
-  useTransitionUpdate,
+  // useTransitionUpdate,
   useUpdateComments,
 } from "@/hooks/use-updates";
 import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
 import { UPDATE_CATEGORY_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
-import type { ProjectUpdate, UpdateCategory, UpdateStatus } from "@/lib/project-types";
+import type { ProjectUpdate, UpdateStatus } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
-const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
-  Progress: "Approved",
-  "Material Delivery": "Inspected",
-  Inspections: "Approved",
-  Issues: "Resolved",
-};
+// const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
+//   Progress: "Approved",
+//   "Material Delivery": "Inspected",
+//   Inspections: "Approved",
+//   Issues: "Resolved",
+// };
 
 const STATUS_BADGE_TONE: Record<
   Exclude<UpdateStatus, "Open">,
@@ -54,7 +54,7 @@ export function UpdateCard({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const transition = useTransitionUpdate();
+  // const transition = useTransitionUpdate();
   const addComment = useAddComment();
   const editUpdate = useEditUpdate();
   const deleteUpdate = useDeleteUpdate();
@@ -65,16 +65,16 @@ export function UpdateCard({
   );
 
   const isOpen = update.status === "Open";
-  const targetStatus = CATEGORY_TARGET_STATUS[update.category];
+  // const targetStatus = CATEGORY_TARGET_STATUS[update.category];
 
-  function handleTransition(): void {
-    if (!isOpen || transition.isPending) return;
-    transition.mutate({
-      projectId,
-      updateId: update.id,
-      status: targetStatus,
-    });
-  }
+  // function handleTransition(): void {
+  //   if (!isOpen || transition.isPending) return;
+  //   transition.mutate({
+  //     projectId,
+  //     updateId: update.id,
+  //     status: targetStatus,
+  //   });
+  // }
 
   function handlePostComment(body: string): void {
     addComment.mutate({ projectId, updateId: update.id, body });
@@ -198,7 +198,7 @@ export function UpdateCard({
             Publish
           </Button>
         )}
-        {canManage && !update.isDraft && (
+        {/* {canManage && !update.isDraft && (
           <Button
             size="sm"
             variant={update.cta.tone === "primary" ? "primary" : "secondary"}
@@ -210,7 +210,7 @@ export function UpdateCard({
               ? update.status
               : update.cta.label}
           </Button>
-        )}
+        )} */}
       </footer>
 
       {commentsOpen && (
