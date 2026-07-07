@@ -185,6 +185,25 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_finance_events", "Get the funding trail — a chronological log of who did what on this project's finances (funded the project, released a milestone from escrow, created/updated/removed a milestone, raised a dispute), with the actor and when. Use for questions about finance activity, history, or who recorded a funding action. Note: BuildPanda only LOGS these actions; it does not move money."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = (await repo.financeEvents(ctx.projectId)) as {
+        type: string;
+        actor_name: string;
+        summary: string;
+        amount: string | null;
+        created_at: string;
+      }[];
+      return {
+        output: rows.map((r) => ({
+          action: r.summary,
+          by: r.actor_name,
+          amount: r.amount === null ? null : Number(r.amount),
+          at: r.created_at,
+        })),
+      };
+    }),
+
     tool(fn("get_invoices", "Get the project's invoices in detail: number, vendor, billed-to party, workflow status, issue/due dates, total, amount paid, outstanding balance and an isOverdue flag. Use for questions about specific invoices, what is unpaid, or what is overdue. get_finances is only the high-level budget summary.", { status: { type: "string", enum: [...INVOICE_WORKFLOW_STATUSES], description: "Optional workflow status filter" } }), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const status = optionalString(args.status, 20) ?? undefined;

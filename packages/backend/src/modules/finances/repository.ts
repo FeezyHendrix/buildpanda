@@ -1,12 +1,15 @@
 import type { Knex } from "knex";
 import { ConflictError } from "../../lib/errors.ts";
+import { generateId } from "../../lib/ids.ts";
 import type {
   BudgetPhaseRow,
+  FinanceEventRow,
   FinancesRow,
   LedgerType,
   MaterialProcurementRow,
   MilestoneDisputeRow,
   MilestonePaymentRow,
+  NewFinanceEventRecord,
   PaymentLedgerRow,
 } from "./types.ts";
 
@@ -225,6 +228,26 @@ export function financesRepository(db: Knex) {
           .first();
         if (!updated) throw new ConflictError("Milestone disappeared after update");
         return updated;
+      });
+    },
+
+    listEvents(projectId: string, limit = 100): Promise<FinanceEventRow[]> {
+      return db<FinanceEventRow>("finance_events")
+        .where({ project_id: projectId })
+        .orderBy("created_at", "desc")
+        .limit(limit);
+    },
+
+    async insertEvent(record: NewFinanceEventRecord): Promise<void> {
+      await db("finance_events").insert({
+        id: generateId("finev"),
+        project_id: record.project_id,
+        type: record.type,
+        actor_id: record.actor_id,
+        actor_name: record.actor_name,
+        summary: record.summary,
+        amount: record.amount ?? null,
+        entity_id: record.entity_id ?? null,
       });
     },
   };

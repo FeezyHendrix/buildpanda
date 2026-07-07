@@ -1,5 +1,6 @@
 import api from "./client";
 import type {
+  FinanceEvent,
   MilestoneStatus,
   MilestoneDispute,
   MilestonePayment,
@@ -43,6 +44,9 @@ export interface RaiseDisputeVariables {
 export const financesApi = {
   summary: (projectId: string) =>
     api.get<ProjectFinances>(`/projects/${projectId}/finances`).then((r) => r.data),
+
+  events: (projectId: string) =>
+    api.get<FinanceEvent[]>(`/projects/${projectId}/finances/events`).then((r) => r.data),
 
   milestoneDisputes: (projectId: string, milestoneId: string) =>
     api.get<MilestoneDispute[]>(`/projects/${projectId}/finances/milestones/${milestoneId}/disputes`).then((r) => r.data),

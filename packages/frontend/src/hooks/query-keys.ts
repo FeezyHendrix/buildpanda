@@ -35,6 +35,8 @@ export const financeKeys = {
   all: (projectId: string) => ["projects", projectId, "finances"] as const,
   summary: (projectId: string) =>
     [...financeKeys.all(projectId), "summary"] as const,
+  events: (projectId: string) =>
+    [...financeKeys.all(projectId), "events"] as const,
   milestoneDisputes: (projectId: string, milestoneId: string) =>
     [
       ...financeKeys.all(projectId),
