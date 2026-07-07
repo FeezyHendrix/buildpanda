@@ -15,7 +15,12 @@ interface KpiCardProps {
   icon?: string;
   progress?: number;
   required?: boolean;
+  /** Show the subValue with a warning icon (e.g. a count that needs attention). */
+  warn?: boolean;
   children?: ReactNode;
+  stages?: boolean;
+  complete?: number;
+  total?: number;
 }
 
 function KpiCard({
@@ -28,7 +33,11 @@ function KpiCard({
   icon,
   progress,
   required,
+  warn,
   children,
+  stages = false,
+  complete = 0,
+  total,
 }: KpiCardProps) {
   const heading = title ?? label;
   return (
@@ -53,7 +62,7 @@ function KpiCard({
           <p className="text-[20px] font-semibold text-black-500 leading-tight [overflow-wrap:anywhere]">{value}</p>
           {subValue && (
             <div>
-              {subValue && title === 'Next Inspection' ? (
+              {warn ? (
                 <div className='flex gap-2 items-center'>
                   <ReactSVG src={icons.warningCircle} />
                   <p className="text-[13px] text-black-300 font-medium">{subValue}</p>
@@ -85,7 +94,13 @@ function KpiCard({
         <div className='flex flex-col gap-2'>
           <div className="flex justify-between items-center">
             <p className='text-[25px] text-black-500 font-bold'>{progress}%</p>
-            <Badge tone='success' className={cn("py-[2px] px-[8px] rounded-[12px] bg-success-500 text-[11px] hover:bg-success-500 text-white")}>On Track</Badge>
+            {stages ? (
+              <p className="mt-1 text-[12px] text-black-300">
+                {complete} of {total} stages complete
+              </p>
+            ) : (
+              <Badge tone='success' className={cn("py-[2px] px-[8px] rounded-[12px] bg-success-500 text-[11px] hover:bg-success-500 text-white")}>On Track</Badge>
+            )}
           </div>
 
           <ProgressBar tone='success' value={progress} className={cn("bg-success-100 h-1.5")} />

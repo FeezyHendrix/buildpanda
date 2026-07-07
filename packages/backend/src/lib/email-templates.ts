@@ -485,6 +485,34 @@ export function rfiDistributionEmail(options: {
   };
 }
 
+export function rfiBallInCourtEmail(options: {
+  recipientName: string;
+  projectName: string;
+  rfiNumber: number;
+  rfiSubject: string;
+  question: string;
+  url: string;
+}): { subject: string; html: string } {
+  const recipient = escapeHtml(options.recipientName);
+  const project = escapeHtml(options.projectName);
+  const subjectText = escapeHtml(options.rfiSubject);
+  const question = escapeHtml(options.question);
+  return {
+    subject: `You've been set as the ball-in-court owner for RFI-${options.rfiNumber} on ${options.projectName}.`,
+    html: renderEmail({
+      preview: `You've been set as the ball-in-court owner for RFI-${options.rfiNumber} on ${options.projectName}.`,
+      heading: `RFI-${options.rfiNumber}: ${subjectText}`,
+      bodyHtml: `<p style="margin:0;">Hi ${recipient},</p>
+                 <p style="margin:12px 0 0 0;">You've been set as the ball-in-court owner for RFI-${options.rfiNumber} on <strong style="color:${BRAND.heading};">${project}</strong>.</p>
+                 <p style="margin:12px 0 0 0;color:${BRAND.heading};"><strong>Question</strong></p>
+                 <p style="margin:4px 0 0 0;">${question}</p>
+                 <p style="margin:12px 0 0 0;">Open the RFI in BuildPanda to review the details and keep the response moving.</p>`,
+      cta: { label: "View RFI", url: options.url },
+      footnote: "You're receiving this because you were assigned as the ball-in-court owner on BuildPanda.",
+    }),
+  };
+}
+
 export interface NotificationEmailOptions {
   recipientName: string;
   eyebrow: string;

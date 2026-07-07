@@ -1,8 +1,8 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { participantRole, PARTICIPANT_PERMISSIONS } from "../../lib/authorization.ts";
+import { participantRole, PARTICIPANT_PERMISSIONS, sectionsToPermissions } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { captureBug } from "../../lib/sentry.ts";
@@ -132,6 +132,7 @@ function computeAccess(
   const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
   const orgRole = project.organization_id ? request.orgRoles.get(project.organization_id) : undefined;
   const pRole = participantRole(scope, ctx);
+  const sections = request.projectSectionPermissions.get(project.id);
 
   let relationship: "company" | ParticipantRole | "none" = "none";
   if (orgRole) relationship = "company";
@@ -162,12 +163,20 @@ function computeAccess(
         permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
       }
     }
+    // Per-participant matrix overrides/extends the role default: fold its granted
+    // sections into the effective resource permissions so granted pages load.
+    if (sections) {
+      for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
+        permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
+      }
+    }
   }
 
   return {
     relationship,
     orgRole: orgRole ?? null,
     permissions,
+    sections: sections ?? null,
     capabilities: {
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
@@ -225,6 +234,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.email",
           "p.role",
           "p.status",
+          "p.permissions",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",
@@ -260,11 +270,22 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
 
       const email = request.body.email.trim().toLowerCase();
       const role = request.body.role?.trim() || "client";
+
+      if (email === user.email.toLowerCase()) {
+        throw new ConflictError("You already have access to this project — no need to invite yourself.");
+      }
+
       const existing = await db<ParticipantRow>("project_participants")
         .where({ project_id: project.id, email })
         .whereNot("status", "revoked")
         .first();
-      if (existing) throw new BadRequestError("That person is already invited to this project.");
+      if (existing) {
+        throw new ConflictError(
+          existing.status === "invited"
+            ? "That person already has a pending invite to this project."
+            : "That person is already on this project.",
+        );
+      }
 
       const token = generateId("pinv");
       const name = request.body.name?.trim() || null;
@@ -331,6 +352,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.email",
           "p.role",
           "p.status",
+          "p.permissions",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",

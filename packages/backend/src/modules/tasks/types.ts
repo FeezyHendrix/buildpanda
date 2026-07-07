@@ -81,10 +81,29 @@ export interface TaskEntityLinkRow {
   created_at: string;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface TaskCommentRow {
+  id: string;
+  task_id: string;
+  author_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
   entityLinks: TaskEntityLink[];
+  comments: TaskComment[];
 }
 
 export interface TaskBoard {

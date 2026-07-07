@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { dailyLogsRepository } from "./repository.ts";
 import { dailyLogsService } from "./service.ts";
 import { dailyReportService } from "./report.ts";
+import { periodReportService } from "./period-report.ts";
+import { REPORT_PERIODS, type ReportPeriod } from "../../lib/report-period.ts";
 import { updatesRepository } from "../updates/repository.ts";
 import { updatesService } from "../updates/service.ts";
 import { activitiesRepository } from "../activities/repository.ts";
@@ -75,6 +77,20 @@ const voidBody = {
   },
 } as const;
 
+const periodReportQuery = {
+  type: "object",
+  required: ["period"],
+  additionalProperties: false,
+  properties: {
+    period: { type: "string", enum: [...REPORT_PERIODS] },
+    date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+  },
+} as const;
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const reportEmailBody = {
   type: "object",
   additionalProperties: false,
@@ -126,6 +142,8 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     logs: service,
     files: filesService(filesRepository(fastify.db)),
   });
+
+  const periodReports = periodReportService(fastify.db, { logs: service });
 
   fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string } }>(
     "/projects/:id/daily-logs",
@@ -272,6 +290,27 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         name: user.name,
       });
       return { sentTo: request.body.email ?? user.email, logDate: result.day.logDate };
+    },
+  );
+
+  fastify.get<{ Params: { id: string }; Querystring: { period: ReportPeriod; date?: string } }>(
+    "/projects/:id/daily-logs/period-report",
+    { schema: { params: projectIdParams, querystring: periodReportQuery } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(
+        request.params.id,
+        "dailyLog",
+        "report",
+      );
+      const referenceDate = request.query.date ?? todayIso();
+      const report = await periodReports.build(project.id, request.query.period, referenceDate);
+      return reply
+        .header(
+          "content-type",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        .header("content-disposition", `attachment; filename="${report.fileName}"`)
+        .send(report.docx);
     },
   );
 };

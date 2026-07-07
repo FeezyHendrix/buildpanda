@@ -63,14 +63,49 @@ No classes — factory functions everywhere. That DI seam (`service(repo)`,
 `repository(db)`) is also the test seam: swap a real repo for a fake one with
 no mocking framework (see **Testing**).
 
+**One concern per file — nothing else.** Each file in the slice owns exactly
+one concern; anything outside that concern belongs in its sibling:
+
+| File | Owns (exclusively) | Must NOT contain |
+|---|---|---|
+| `types.ts` | Every `interface`, `type` alias, shared `as const` enum array | Runtime logic |
+| `repository.ts` | All SQL/Knex — the **only** file that touches `db` | Business rules, DTO mapping, HTTP, email |
+| `service.ts` | Business rules, `toX` DTO mapping, side-effect orchestration (email, notifications, cross-module service calls) | `db`/Knex, `request`/`reply`, schemas |
+| `routes.ts` | Inline `as const` JSON schemas, `requireAuth()`/`assertCan*`, param plumbing, calling the service | Type declarations, `db`/Knex queries, `sendEmail`, business rules |
+
+A request-body or query shape is still a type — declare it in `types.ts` and
+import it, even if only one route uses it. The inline JSON *schemas* are the
+one thing that looks like a type but isn't: they're runtime validation values
+and stay next to the route.
+
+```ts
+// Bad — routes.ts declaring its own type, querying db, sending email
+interface UpdateBody { name: string; status: Status }
+app.patch("/action-items/:id", { schema }, async (req) => {
+  const row = await app.db("action_items").where({ id: req.params.id }).first()  // repository's job
+  await sendEmail(row.assignee_email, assignedEmail(row))                        // service's job
+})
+
+// Good — routes.ts imports types, delegates everything past auth to the service
+import type { UpdateBody } from "./types.ts"
+app.patch("/action-items/:id", { schema: updateSchema }, async (req) => {
+  req.requireAuth()
+  assertCanModifyProject(req.projectRoles, req.params.projectId)
+  return service.update(req.params.id, req.body)   // service queries via repo and sends the email
+})
+```
+
 ## Rules
 
 ### Layering
 
 HTTP concerns stop at `routes.ts`. Services never see `request`/`reply`;
-repositories never hold business rules. Cross-module calls go through the other
-module's *service*, never its tables. Map rows to DTOs at the service boundary
-with a `toX` function; never return a raw row from a route.
+repositories never hold business rules. `db` is touched by `repository.ts`
+only — a `db(...)` call in a route or service is a layering bug, not a
+shortcut. Side effects like `sendEmail` fire from the service, never from a
+route handler. Cross-module calls go through the other module's *service*,
+never its tables. Map rows to DTOs at the service boundary with a `toX`
+function; never return a raw row from a route.
 
 ```ts
 // types.ts — the row is snake_case, the DTO is camelCase
@@ -193,6 +228,29 @@ export default fp(async function dbPlugin(app) {
   app.addHook("onClose", async () => { await db.destroy() })   // closed on shutdown, not in handlers
 }, { name: "db" })
 ```
+
+### Finance: money is logged, not transacted
+
+BuildPanda is a construction **bookkeeping** system — money never passes through
+it. There is no payment processor, gateway, webhook, escrow provider, or bank
+integration anywhere, and none may be added. Every financial action is a **record
+of a real-world money movement a human made off-platform**, not a transaction the
+system performs.
+
+- `modules/finances` is the reference: `deposit` and `releaseMilestone` are **pure
+  Knex writes** — they update stored figures (`funds_deposited`, `funds_released`,
+  `locked_in_escrow`, `remaining_balance`) with `trx.raw("col + ?")` arithmetic and
+  append a `payment_ledger` row. No external call. `.forUpdate()` locks guard record
+  consistency, not fund safety.
+- `locked_in_escrow` is a **computed/stored number**, not a real escrow account.
+  `payment_ledger` (Deposit/Release/Hold) and `finance_events` are **append-only audit
+  trails**. Invoices/payment-claims `paid`/`approved` are **recorded statuses**, not
+  charges. "Record payment" / "Release" **log**; they never move money.
+- When building finance features: model as append-only logs or recorded figures with
+  an **actor + timestamp**; treat the record as the source of truth for what a human
+  did elsewhere. Never call or import a payment/banking SDK, never add `PAYMENT_*`
+  config, never write copy or events implying the system moved money (say "Funded",
+  "Recorded", "Logged" — not "Charged", "Paid out", "Transferred").
 
 ### Data & migrations
 
@@ -398,6 +456,7 @@ req.log.info({ projectId, count: items.length }, "listed action items")
 | Need | Use |
 |---|---|
 | New endpoint group | New module folder + `app.register` in server.ts |
+| Declare a type/interface/enum array | `types.ts` only — other files import it |
 | Reject bad input | Inline `as const` schema, `additionalProperties: false` |
 | Shape the response | `response` schema on the route (allowlist + fast serialize) |
 | 4xx/5xx | `throw new BadRequestError/NotFoundError/ForbiddenError(...)` |
@@ -414,6 +473,13 @@ req.log.info({ projectId, count: items.length }, "listed action items")
 
 - Business logic in `routes.ts` "because it's short" — move it to the service
   from the first line (Layering).
+- Declaring an `interface` or `type` in `routes.ts`/`service.ts`/`repository.ts`
+  "because only this file uses it" — types live in `types.ts`, full stop; the
+  other files import them.
+- Querying `db` from `routes.ts` or `service.ts` "for a quick lookup" — every
+  query goes through `repository.ts`, even one-liners.
+- Calling `sendEmail` from a route handler — side effects are orchestrated by
+  the service.
 - Reaching into another module's tables instead of calling its service.
 - N+1 queries — a query per row in a loop instead of one batched `whereIn` (or
   `Promise.all` for independent reads); repository collection methods should take

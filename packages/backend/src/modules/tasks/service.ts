@@ -10,6 +10,8 @@ import type {
   TaskBoardRow,
   TaskColumn,
   TaskColumnRow,
+  TaskComment,
+  TaskCommentRow,
   TaskDetail,
   TaskEntityLink,
   TaskEntityLinkRow,
@@ -153,6 +155,17 @@ function toLink(row: TaskLinkRow): TaskLink {
   };
 }
 
+function toComment(row: TaskCommentRow): TaskComment {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    authorId: row.author_id,
+    authorName: row.author_name,
+    body: row.body,
+    createdAt: row.created_at,
+  };
+}
+
 function notifyAssignee(
   deps: TasksDeps,
   row: TaskRow,
@@ -162,6 +175,23 @@ function notifyAssignee(
   void deps.notifications
     .notify(row.assignee_id, "task_assigned", {
       title: "A task was assigned to you",
+      body: row.title,
+      projectId: row.project_id,
+    })
+    .catch(() => undefined);
+}
+
+function notifyHighPriority(
+  deps: TasksDeps,
+  row: TaskRow,
+  actorId: string | null,
+): void {
+  if (!deps.notifications || row.priority !== "High" || !row.assignee_id || row.assignee_id === actorId) {
+    return;
+  }
+  void deps.notifications
+    .notify(row.assignee_id, "task_high_priority", {
+      title: "A high-priority task needs your attention",
       body: row.title,
       projectId: row.project_id,
     })
@@ -379,6 +409,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const row = await repository.findTaskById(id);
       if (!row) throw new NotFoundError("Task");
       notifyAssignee(deps, row, userId);
+      notifyHighPriority(deps, row, userId);
       return toTask(row);
     },
 
@@ -414,6 +445,12 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const row = await repository.findTaskById(taskId);
       if (!row) throw new NotFoundError("Task");
       if (userAssigneeChanged) notifyAssignee(deps, row, actorId);
+      // Fire only on the transition INTO High (or when a High task is reassigned),
+      // so re-saving an already-High task doesn't re-spam the assignee.
+      const becameHigh = row.priority === "High" && existing.priority !== "High";
+      if (becameHigh || (row.priority === "High" && userAssigneeChanged)) {
+        notifyHighPriority(deps, row, actorId);
+      }
       return toTask(row);
     },
 
@@ -444,10 +481,11 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     async getTaskDetail(projectId: string, taskId: string): Promise<TaskDetail> {
       const row = await repository.findTaskById(taskId);
       if (!row || row.project_id !== projectId) throw new NotFoundError("Task");
-      const [subtaskRows, linkRows, entityLinkRows, counts] = await Promise.all([
+      const [subtaskRows, linkRows, entityLinkRows, commentRows, counts] = await Promise.all([
         repository.listSubtasks(taskId),
         repository.listLinks(taskId),
         repository.listEntityLinks(taskId),
+        repository.listComments(taskId),
         repository.subtaskCounts([taskId]),
       ]);
       return {
@@ -455,7 +493,34 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         subtasks: subtaskRows.map(toSubtask),
         links: linkRows.map(toLink),
         entityLinks: await resolveEntityLinks(entityLinkRows),
+        comments: commentRows.map(toComment),
       };
+    },
+
+    async listComments(projectId: string, taskId: string): Promise<TaskComment[]> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const rows = await repository.listComments(taskId);
+      return rows.map(toComment);
+    },
+
+    async addComment(
+      projectId: string,
+      taskId: string,
+      body: string,
+      author: { id: string; name: string },
+    ): Promise<TaskComment> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const row = await repository.addComment({
+        id: generateId("tc"),
+        task_id: taskId,
+        author_id: author.id,
+        author_name: author.name,
+        body,
+        created_at: new Date().toISOString(),
+      });
+      return toComment(row);
     },
 
     async addSubtask(projectId: string, taskId: string, title: string): Promise<Subtask> {

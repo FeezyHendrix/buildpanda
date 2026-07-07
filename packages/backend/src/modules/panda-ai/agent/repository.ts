@@ -81,6 +81,14 @@ export function agentRepository(db: Knex) {
       return db("project_finances").where({ project_id: projectId }).first();
     },
 
+    financeEvents(projectId: string) {
+      return db("finance_events")
+        .where({ project_id: projectId })
+        .orderBy("created_at", "desc")
+        .limit(100)
+        .select("type", "actor_name", "summary", "amount", "created_at");
+    },
+
     milestonePayments(projectId: string) {
       return db("milestone_payments")
         .where({ project_id: projectId })
@@ -149,6 +157,13 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    suppliers(projectId: string) {
+      return db("suppliers")
+        .where({ project_id: projectId, active: true })
+        .orderBy("name", "asc")
+        .select("name", "contact_name", "email", "phone", "address");
+    },
+
     documents(projectId: string) {
       return db("project_documents as d")
         .leftJoin("document_categories as c", "c.id", "d.category_id")
@@ -203,6 +218,15 @@ export function agentRepository(db: Knex) {
           "u.name as assigneeUserName",
           "tm.name as assigneeTeamName",
         );
+    },
+
+    taskComments(projectId: string) {
+      return db("task_comments as c")
+        .join("tasks as t", "t.id", "c.task_id")
+        .where("t.project_id", projectId)
+        .orderBy("c.created_at", "asc")
+        .limit(200)
+        .select("t.title as taskTitle", "c.author_name as authorName", "c.body", "c.created_at");
     },
 
     rfisOpen(projectId: string) {

@@ -1,42 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { materialsLedgerApi, type LogEntryInput } from "@/api/materials-ledger";
 import { materialLedgerKeys } from "./query-keys";
 import type {
-  LedgerEntry,
   LedgerEntryType,
-  MaterialCatalogItem,
-  StockLevel,
+  ReorderPolicyInput,
 } from "@/lib/project-types";
-
-export interface LogEntryInput {
-  entryType: "IN" | "USED";
-  materialName: string;
-  unit: string;
-  quantity: number;
-  locationKey?: string | null;
-  occurredAt?: string | null;
-  materialOrderId?: string | null;
-  taskId?: string | null;
-  activityId?: string | null;
-  fileIds?: string[];
-  reason?: string | null;
-  notesHtml?: string | null;
-}
-
-interface LogEntryResult {
-  entry: LedgerEntry;
-  duplicate: boolean;
-  negativeStock: boolean;
-  onHandQty: number;
-}
 
 export function useMaterialStock(projectId: string) {
   return useQuery({
     queryKey: materialLedgerKeys.stock(projectId),
-    queryFn: async () => {
-      const { data } = await api.get<StockLevel[]>(`/projects/${projectId}/materials/stock`);
-      return data;
-    },
+    queryFn: () => materialsLedgerApi.getStock(projectId),
     enabled: Boolean(projectId),
   });
 }
@@ -47,12 +20,7 @@ export function useMaterialLedger(
 ) {
   return useQuery({
     queryKey: materialLedgerKeys.ledger(projectId, filters.materialId, filters.entryType),
-    queryFn: async () => {
-      const { data } = await api.get<LedgerEntry[]>(`/projects/${projectId}/materials/ledger`, {
-        params: filters,
-      });
-      return data;
-    },
+    queryFn: () => materialsLedgerApi.getLedger(projectId, filters),
     enabled: Boolean(projectId),
   });
 }
@@ -60,21 +28,23 @@ export function useMaterialLedger(
 export function useMaterialCatalog(projectId: string) {
   return useQuery({
     queryKey: materialLedgerKeys.catalog(projectId),
-    queryFn: async () => {
-      const { data } = await api.get<MaterialCatalogItem[]>(`/projects/${projectId}/materials/catalog`);
-      return data;
-    },
+    queryFn: () => materialsLedgerApi.getCatalog(projectId),
     enabled: Boolean(projectId),
+  });
+}
+
+export function useUpdateReorderPolicy(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ materialId, ...input }: ReorderPolicyInput & { materialId: string }) => materialsLedgerApi.updateReorderPolicy(projectId, materialId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
   });
 }
 
 export function useLogMaterialEntry(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: LogEntryInput) => {
-      const { data } = await api.post<LogEntryResult>(`/projects/${projectId}/materials/ledger`, input);
-      return data;
-    },
+    mutationFn: (input: LogEntryInput) => materialsLedgerApi.logEntry(projectId, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
   });
 }
@@ -82,13 +52,7 @@ export function useLogMaterialEntry(projectId: string) {
 export function useVoidMaterialEntry(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ entryId, reason }: { entryId: string; reason?: string | null }) => {
-      const { data } = await api.post<LedgerEntry>(
-        `/projects/${projectId}/materials/ledger/${entryId}/void`,
-        { reason },
-      );
-      return data;
-    },
+    mutationFn: ({ entryId, reason }: { entryId: string; reason?: string | null }) => materialsLedgerApi.voidEntry(projectId, entryId, reason),
     onSuccess: () => qc.invalidateQueries({ queryKey: materialLedgerKeys.all(projectId) }),
   });
 }
@@ -96,9 +60,7 @@ export function useVoidMaterialEntry(projectId: string) {
 export function useDownloadMaterialReport(projectId: string) {
   return useMutation({
     mutationFn: async () => {
-      const response = await api.get<Blob>(`/projects/${projectId}/materials/report`, {
-        responseType: "blob",
-      });
+      const response = await materialsLedgerApi.downloadReport(projectId);
       const url = URL.createObjectURL(response.data);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -113,12 +75,6 @@ export function useDownloadMaterialReport(projectId: string) {
 
 export function useEmailMaterialReport(projectId: string) {
   return useMutation({
-    mutationFn: async (email?: string) => {
-      const { data } = await api.post<{ sentTo: string }>(
-        `/projects/${projectId}/materials/report/email`,
-        email ? { email } : {},
-      );
-      return data;
-    },
+    mutationFn: (email?: string) => materialsLedgerApi.emailReport(projectId, email),
   });
 }

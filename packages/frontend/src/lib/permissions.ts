@@ -9,6 +9,7 @@ import {
 export const statement = {
   ...defaultStatements,
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -28,6 +29,7 @@ export const ac = createAccessControl(statement);
 
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
@@ -45,6 +47,7 @@ const constructionFull = {
 
 const constructionContributor = {
   project: ["view"],
+  tasks: ["view", "add", "remove"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view", "upload"],
@@ -62,6 +65,7 @@ const constructionContributor = {
 
 const constructionReadOnly = {
   project: ["view"],
+  tasks: ["view"],
   finances: ["view"],
   schedule: ["view"],
   documents: ["view"],
@@ -101,15 +105,51 @@ export const viewer = ac.newRole({
   ...constructionReadOnly,
 });
 
-export const roles = { owner, admin, member, viewer };
+// Mirror of the backend `employee` floor: minimal, project-scoped, no
+// team-management. Real capabilities are admin-assigned via custom roles.
+const constructionEmployeeBase = {
+  project: ["view"],
+  tasks: ["view"],
+  schedule: ["view"],
+  documents: ["view"],
+  updates: ["view"],
+  messages: ["view"],
+  comments: ["view"],
+  dailyLog: ["view"],
+  materials: ["view"],
+} as const;
+
+export const employee = ac.newRole({
+  organization: [],
+  member: [],
+  invitation: [],
+  team: [],
+  ac: [],
+  ...constructionEmployeeBase,
+});
+
+export const roles = { owner, admin, member, viewer, employee };
 
 export type AppRoleName = keyof typeof roles;
+
+// Presentation mirror of the backend rule: an employee is scoped to assigned
+// projects and cannot manage the team. Backend enforces this; the UI hides
+// team-management for these members. Role may be comma-joined with a custom
+// role (e.g. "employee,foreman"), so match by token.
+export function isEmployeeRole(role: string | null | undefined): boolean {
+  return (role ?? "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .includes("employee");
+}
 
 export const STATIC_ROLE_NAMES: AppRoleName[] = [
   "owner",
   "admin",
   "member",
   "viewer",
+  "employee",
 ];
 
 export const ORG_MANAGEMENT_RESOURCES = [
@@ -121,6 +161,7 @@ export const ORG_MANAGEMENT_RESOURCES = [
 
 export const PROJECT_RESOURCES = [
   "project",
+  "tasks",
   "finances",
   "schedule",
   "documents",

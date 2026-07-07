@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Label } from "@/components/atoms/label";
 import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
@@ -20,11 +21,15 @@ import {
   useVoidDailyLogEntry,
   useDownloadDailyReport,
   useEmailDailyReport,
+  useDownloadPeriodReport,
 } from "@/hooks/use-daily-logs";
-import type {
-  DailyLogDay,
-  DailyLogEntry,
-  WeatherCondition,
+import {
+  REPORT_PERIOD_OPTIONS,
+  canResourceAction,
+  type DailyLogDay,
+  type DailyLogEntry,
+  type ReportPeriod,
+  type WeatherCondition,
 } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -67,6 +72,11 @@ export default function ProjectDailyLog() {
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);
+  const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
+  const [periodDate, setPeriodDate] = useState(todayIso());
+
+  const canGenerateReport = canResourceAction(access, "dailyLog", "report");
+  const downloadPeriodReport = useDownloadPeriodReport();
 
   const upsert = useUpsertDailyLog();
   const addEntry = useAddDailyLogEntry();
@@ -127,6 +137,53 @@ export default function ProjectDailyLog() {
           />
         </div>
       </section>
+
+      {canGenerateReport && (
+        <section
+          aria-label="Generate report"
+          className="mt-6 flex flex-col gap-3 rounded-[16px] border-none bg-[#F8F8F8] p-5 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
+            <Label htmlFor="report-period">Report period</Label>
+            <select
+              id="report-period"
+              value={periodType}
+              onChange={(e) => setPeriodType(e.target.value as ReportPeriod)}
+              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            >
+              {REPORT_PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
+            <Label htmlFor="report-date">Any date in period</Label>
+            <input
+              id="report-date"
+              type="date"
+              value={periodDate}
+              onChange={(e) => setPeriodDate(e.target.value)}
+              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            loading={downloadPeriodReport.isPending}
+            onClick={() =>
+              downloadPeriodReport.mutate(
+                { projectId: project.id, period: periodType, date: periodDate },
+                { onError: () => toast("Could not download report") },
+              )
+            }
+          >
+            Download report
+          </Button>
+        </section>
+      )}
 
       <section className="mt-8 flex flex-col gap-4">
         {isPending ? (
@@ -353,7 +410,19 @@ function EntryRow({
 }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const voidEntry = useVoidDailyLogEntry();
+
+  useLayoutEffect(() => {
+    if (expanded) return;
+    const el = contentRef.current;
+    if (!el) return;
+    const id = requestAnimationFrame(() => {
+      setIsClamped(el.scrollHeight > el.clientHeight);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [entry.bodyHtml, expanded]);
   const canVoid = !entry.voided && (entry.authorId === userId || canManage);
   const lastVoid =
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
@@ -402,19 +471,22 @@ function EntryRow({
       {hasBody && (
         <div className="mt-2">
           <div
+            ref={contentRef}
             className={cn(
               "prose prose-sm max-w-none text-[13px] text-black-400 [&_img]:max-h-56 [&_img]:rounded-lg [&_p]:my-1",
               !expanded && "line-clamp-4",
             )}
             dangerouslySetInnerHTML={{ __html: entry.bodyHtml! }}
           />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
-          >
-            {expanded ? "Show less" : "Read more"}
-          </button>
+          {(isClamped || expanded) && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
+            >
+              {expanded ? "Show less" : "Read more"}
+            </button>
+          )}
         </div>
       )}
 

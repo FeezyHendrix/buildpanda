@@ -1,4 +1,5 @@
 import type { Knex } from "knex";
+import { isEmployeeRole } from "../../lib/permissions.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   ProjectPhaseRow,
@@ -95,10 +96,16 @@ export interface TaskSeed {
 export function projectsRepository(db: Knex) {
   return {
     // Lists projects the user can see: ones they own, seed rows, projects in the
-    // given orgs (the dashboard passes only the active org so switching company
-    // changes the list; cross-org views pass all orgs), and projects they are an
-    // active participant on regardless of org.
-    async listForUser(ownerId: string, orgIds: string[]): Promise<ProjectRow[]> {
+    // given orgs where they have org-wide access (owner/admin/member/viewer —
+    // NOT employee), and projects they are an active participant on regardless
+    // of org. Employees only see their participant projects.
+    async listForUser(
+      ownerId: string,
+      orgRoles: ReadonlyMap<string, string>,
+    ): Promise<ProjectRow[]> {
+      const orgWideProjectOrgIds = [...orgRoles.entries()]
+        .filter(([, role]) => !isEmployeeRole(role))
+        .map(([orgId]) => orgId);
       const participantProjectIds = await db("project_participants")
         .where({ user_id: ownerId })
         .whereNot("status", "revoked")
@@ -109,7 +116,7 @@ export function projectsRepository(db: Knex) {
             .orWhere(function () {
               this.whereNull("owner_id").whereNull("organization_id");
             });
-          if (orgIds.length) this.orWhereIn("organization_id", orgIds);
+          if (orgWideProjectOrgIds.length) this.orWhereIn("organization_id", orgWideProjectOrgIds);
           if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
         })
         .orderBy("updated_at", "desc");

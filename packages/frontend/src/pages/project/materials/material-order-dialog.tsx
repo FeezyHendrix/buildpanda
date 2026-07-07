@@ -4,13 +4,14 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { currencySymbol } from "@/lib/formatters";
 import type { MaterialOrder, RequestPriority } from "@/lib/project-types";
-import type { MaterialOrderInput } from "@/hooks/use-materials-equipment";
+import { useProjectBoqMaterials, type MaterialOrderInput } from "@/hooks/use-materials-equipment";
 import { FIELD, nextWeek, today } from "./shared";
 import { UnitInput } from "@/components/atoms/unit-input";
 
 export interface MaterialOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   initial: MaterialOrder | null;
   onSubmit: (values: MaterialOrderInput) => void;
   isSubmitting: boolean;
@@ -18,7 +19,8 @@ export interface MaterialOrderDialogProps {
   currency?: string;
 }
 
-export function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isSubmitting, error, currency = "NGN" }: MaterialOrderDialogProps) {
+export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, onSubmit, isSubmitting, error, currency = "NGN" }: MaterialOrderDialogProps) {
+  const { data: boqMaterials = [] } = useProjectBoqMaterials(open ? projectId : undefined);
   const [title, setTitle] = useState("");
   const symbol = currencySymbol(currency);
   const [materialName, setMaterialName] = useState("");
@@ -44,6 +46,16 @@ export function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isS
     setDeliveryLocation(initial?.deliveryLocation ?? "");
     setNotes(initial?.notes ?? "");
   }, [initial, open]);
+
+  function handleMaterialName(value: string) {
+    setMaterialName(value);
+    const match = boqMaterials.find((m) => m.materialName.toLowerCase() === value.trim().toLowerCase());
+    if (match) {
+      if (match.unit) setUnit(match.unit);
+      if (match.estimatedCost > 0) setEstimatedCost(String(match.estimatedCost));
+      if (match.supplier) setSupplier(match.supplier);
+    }
+  }
 
   const valid = title.trim() && materialName.trim() && Number(quantity) > 0 && unit.trim() && neededBy;
   return (
@@ -73,7 +85,26 @@ export function MaterialOrderDialog({ open, onOpenChange, initial, onSubmit, isS
       }}
     >
       <Field label="Title" id="mat-title" value={title} onChange={setTitle} placeholder="e.g. Cement for first-floor blockwork" />
-      <Field label="Material" id="mat-name" value={materialName} onChange={setMaterialName} placeholder="Dangote cement 42.5" />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="mat-name">Material</Label>
+        <input
+          id="mat-name"
+          value={materialName}
+          onChange={(e) => handleMaterialName(e.target.value)}
+          placeholder={boqMaterials.length > 0 ? "Pick from BoQ or type a material" : "Dangote cement 42.5"}
+          list="mat-boq-materials"
+          className={FIELD}
+          autoComplete="off"
+        />
+        <datalist id="mat-boq-materials">
+          {boqMaterials.map((m) => (
+            <option key={m.materialName} value={m.materialName} />
+          ))}
+        </datalist>
+        {boqMaterials.length > 0 && (
+          <p className="text-xs text-gray-400">{boqMaterials.length} materials from the project BoQ available.</p>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Quantity" id="mat-quantity" value={quantity} onChange={setQuantity} type="number" step="any" />
         <div className="flex flex-col gap-1.5">

@@ -4,7 +4,7 @@ import { NotFoundError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { config } from "../../config/index.ts";
 import { sendEmail } from "../../lib/mail.ts";
-import { rfiDistributionEmail } from "../../lib/email-templates.ts";
+import { rfiBallInCourtEmail, rfiDistributionEmail } from "../../lib/email-templates.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { changeRequestsRepository } from "../change-requests/repository.ts";
 import { changeRequestsService } from "../change-requests/service.ts";
@@ -18,7 +18,13 @@ import {
   type RespondInput,
   type UpdateRfiInput,
 } from "./service.ts";
-import { RFI_DISTRIBUTION_ROLES, RFI_PRIORITIES, RFI_STATUSES, type RfiStatus } from "./types.ts";
+import {
+  RFI_DISTRIBUTION_ROLES,
+  RFI_PRIORITIES,
+  RFI_STATUSES,
+  type Rfi,
+  type RfiStatus,
+} from "./types.ts";
 
 const TRANSITION_TARGETS = ["Closed", "Void", "Open"] as const;
 
@@ -52,6 +58,8 @@ const createBody = {
     question: { type: "string", minLength: 1, maxLength: 8000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
+    ballInCourtName: { type: ["string", "null"], maxLength: 200 },
+    ballInCourtEmail: { type: ["string", "null"], maxLength: 200, pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
     assigneeRole: { type: ["string", "null"], maxLength: 40 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     costImpact: { type: "boolean" },
@@ -68,6 +76,8 @@ const updateBody = {
     question: { type: "string", minLength: 1, maxLength: 8000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
+    ballInCourtName: { type: ["string", "null"], maxLength: 200 },
+    ballInCourtEmail: { type: ["string", "null"], maxLength: 200, pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
     assigneeRole: { type: ["string", "null"], maxLength: 40 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     costImpact: { type: "boolean" },
@@ -162,6 +172,27 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     return Boolean(project.organization_id && request.orgRoles.has(project.organization_id));
   }
 
+  async function sendBallInCourtEmail(rfi: Rfi, projectName: string, actorEmail: string): Promise<void> {
+    if (!rfi.ballInCourtEmail) return;
+    if (rfi.ballInCourtEmail.toLowerCase() === actorEmail.toLowerCase()) return;
+
+    const url = `${config.mail.appUrl.replace(/\/+$/, "")}/project/${rfi.projectId}/rfis`;
+    const { subject, html } = rfiBallInCourtEmail({
+      recipientName: rfi.ballInCourtName ?? rfi.ballInCourtEmail,
+      projectName,
+      rfiNumber: rfi.number,
+      rfiSubject: rfi.subject,
+      question: rfi.question,
+      url,
+    });
+    await sendEmail({
+      to: rfi.ballInCourtEmail,
+      toName: rfi.ballInCourtName ?? undefined,
+      subject,
+      html,
+    }).catch(() => undefined);
+  }
+
   fastify.get<{ Params: { id: string }; Querystring: { status?: RfiStatus; ballInCourt?: "mine" } }>(
     "/projects/:id/rfis",
     { schema: { params: projectIdParams, querystring: listQuery } },
@@ -193,6 +224,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
         { id: user.id, name: user.name },
         isClient ? "shared" : "internal",
       );
+      await sendBallInCourtEmail(created, project.name, user.email);
       return reply.status(201).send(created);
     },
   );
@@ -212,10 +244,19 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "rfis", "manage");
       const user = request.requireAuth();
-      return service.update(project.id, request.params.rfiId, request.body, {
+      const reassignmentRequested =
+        request.body.ballInCourtId !== undefined || request.body.ballInCourtEmail !== undefined;
+      const current = reassignmentRequested
+        ? await service.get(project.id, request.params.rfiId)
+        : null;
+      const updated = await service.update(project.id, request.params.rfiId, request.body, {
         id: user.id,
         name: user.name,
       });
+      if (reassignmentRequested && updated.ballInCourtEmail !== current?.ballInCourtEmail) {
+        await sendBallInCourtEmail(updated, project.name, user.email);
+      }
+      return updated;
     },
   );
 

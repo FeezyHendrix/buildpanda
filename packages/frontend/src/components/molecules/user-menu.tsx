@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   useActiveOrganizationId,
   useCreateOrganization,
+  useHasOrgPermission,
   useOrganizations,
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
@@ -83,6 +84,7 @@ function UserMenu({
   const activeOrgId = useActiveOrganizationId();
   const setActive = useSetActiveOrganization();
   const createOrg = useCreateOrganization();
+  const canManageTeam = useHasOrgPermission("teamMembers", "manage");
   const [newOrgName, setNewOrgName] = useState("");
 
   const orgs = organizations ?? [];
@@ -164,12 +166,14 @@ function UserMenu({
 
       <div className="my-1 h-px bg-gray-100" />
 
-      <Row
-        icon={<ReactSVG src={icons.teams} />}
-        label="Manage team roles"
-        asLink="/dashboard/settings/team"
-        onClick={close}
-      />
+      {canManageTeam && (
+        <Row
+          icon={<ReactSVG src={icons.teams} />}
+          label="Manage team roles"
+          asLink="/dashboard/settings/team"
+          onClick={close}
+        />
+      )}
       <Row
         icon={<ReactSVG src={icons.switchProfile} />}
         label="Switch profile"

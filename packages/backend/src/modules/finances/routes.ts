@@ -82,18 +82,28 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/finances/events",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
+      return service.listEvents(project.id);
+    },
+  );
+
   fastify.post<{ Params: { id: string }; Body: DepositInput }>(
     "/projects/:id/finances/deposits",
     { schema: { params: projectIdParams, body: depositBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
         "finances",
         "view",
       );
-      const finances = await service.deposit(project.id, request.body);
+      const finances = await service.deposit(project.id, request.body, { id: user.id, name: user.name });
       return reply.status(201).send(finances);
     },
   );
@@ -103,13 +113,14 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: milestoneBody } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
         "finances",
         "view",
       );
-      const milestone = await service.createMilestone(project.id, request.body);
+      const milestone = await service.createMilestone(project.id, request.body, { id: user.id, name: user.name });
       return reply.status(201).send(milestone);
     },
   );
@@ -122,9 +133,10 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: milestoneParams, body: milestonePatchBody } },
     async (request) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
         "finances",
         "view",
       );
@@ -132,6 +144,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
         project.id,
         request.params.milestoneId,
         request.body,
+        { id: user.id, name: user.name },
       );
     },
   );
@@ -141,13 +154,14 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: milestoneParams } },
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
+      const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
         "finances",
         "view",
       );
-      await service.deleteMilestone(project.id, request.params.milestoneId);
+      await service.deleteMilestone(project.id, request.params.milestoneId, { id: user.id, name: user.name });
       return reply.status(204).send();
     },
   );
@@ -161,7 +175,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const milestone = await service.releaseMilestone(
         project.id,
         request.params.milestoneId,
-        user.id,
+        { id: user.id, name: user.name },
       );
       return reply.status(200).send(milestone);
     },

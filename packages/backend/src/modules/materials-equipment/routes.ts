@@ -5,7 +5,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { generateId } from "../../lib/ids.ts";
 import { saveStream } from "../../lib/file-storage.ts";
-import { boqJobsRepository, type BoqJobRow } from "./boq-jobs-repository.ts";
+import { boqJobsRepository, dedupeBoqMaterials, type BoqJobRow } from "./boq-jobs-repository.ts";
 import { BOQ_IMPORT_QUEUE, type BoqImportJobData } from "./boq-job.ts";
 import { materialsEquipmentRepository } from "./repository.ts";
 import { budgetRepository } from "../budget/repository.ts";
@@ -289,6 +289,16 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
       const job = await boqJobs.findById(request.params.jobId, request.params.id);
       if (!job) throw new NotFoundError("Import job");
       return toJobDto(job);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/materials/boq-materials",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      await request.requireProjectAccess(request.params.id);
+      const rows = await boqJobs.listCompletedMaterials(request.params.id);
+      return dedupeBoqMaterials(rows);
     },
   );
 

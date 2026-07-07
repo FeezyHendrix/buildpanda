@@ -35,6 +35,8 @@ export const financeKeys = {
   all: (projectId: string) => ["projects", projectId, "finances"] as const,
   summary: (projectId: string) =>
     [...financeKeys.all(projectId), "summary"] as const,
+  events: (projectId: string) =>
+    [...financeKeys.all(projectId), "events"] as const,
   milestoneDisputes: (projectId: string, milestoneId: string) =>
     [
       ...financeKeys.all(projectId),
@@ -48,12 +50,30 @@ export const materialKeys = {
   all: (projectId: string) => ["projects", projectId, "materials"] as const,
   orders: (projectId: string, status?: string) =>
     [...materialKeys.all(projectId), "orders", status ?? "all"] as const,
+  boqMaterials: (projectId: string) => [...materialKeys.all(projectId), "boq-materials"] as const,
 };
 
 export const equipmentRequestKeys = {
   all: (projectId: string) => ["projects", projectId, "equipment-requests"] as const,
   list: (projectId: string, bucket?: string) =>
     [...equipmentRequestKeys.all(projectId), "list", bucket ?? "all"] as const,
+};
+
+export const supplierKeys = {
+  all: (projectId: string) => ["projects", projectId, "suppliers"] as const,
+  list: (projectId: string, includeInactive?: boolean) =>
+    [...supplierKeys.all(projectId), "list", includeInactive ?? false] as const,
+};
+
+export const autoWindowKeys = {
+  all: (projectId: string) => ["projects", projectId, "look-aheads-auto-window"] as const,
+  detail: (projectId: string, weeks: number) => [...autoWindowKeys.all(projectId), weeks] as const,
+};
+
+export const lookAheadKeys = {
+  all: (projectId: string) => ["projects", projectId, "look-aheads"] as const,
+  list: (projectId: string, filterKey: string) => [...lookAheadKeys.all(projectId), "list", filterKey] as const,
+  detail: (projectId: string, lookAheadId: string) => [...lookAheadKeys.all(projectId), "detail", lookAheadId] as const,
 };
 
 export const invoiceKeys = {
@@ -212,6 +232,8 @@ export const organizationKeys = {
     [...organizationKeys.all, organizationId, "invitations"] as const,
   roles: (organizationId: string) =>
     [...organizationKeys.all, organizationId, "roles"] as const,
+  permissions: (organizationId: string) =>
+    [...organizationKeys.all, organizationId, "permissions"] as const,
   userInvitations: () =>
     [...organizationKeys.all, "user-invitations"] as const,
 };

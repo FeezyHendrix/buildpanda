@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
-import type {
-  MyProjectCard,
-  ParticipantPermissions,
-  ParticipantRole,
-  ProjectAccess,
-  ProjectParticipant,
-} from "@/lib/project-types";
+import {
+  participantsApi,
+  type InviteParticipantInput,
+  type UpdateParticipantInput,
+  type ProjectInvitePreview,
+} from "@/api/participants";
+
+export type { ProjectInvitePreview };
 
 export const participantKeys = {
   list: (projectId: string) => ["projects", projectId, "participants"] as const,
@@ -19,10 +19,7 @@ export const participantKeys = {
 export function useProjectAccess(projectId: string | undefined) {
   return useQuery({
     queryKey: participantKeys.access(projectId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ProjectAccess>(`/projects/${projectId!}/access`);
-      return data;
-    },
+    queryFn: () => participantsApi.getAccess(projectId!),
     enabled: Boolean(projectId),
   });
 }
@@ -30,20 +27,14 @@ export function useProjectAccess(projectId: string | undefined) {
 export function useMyProjects() {
   return useQuery({
     queryKey: participantKeys.myProjects(),
-    queryFn: async () => {
-      const { data } = await api.get<MyProjectCard[]>("/me/projects");
-      return data;
-    },
+    queryFn: () => participantsApi.getMyProjects(),
   });
 }
 
 export function useParticipants(projectId: string | undefined) {
   return useQuery({
     queryKey: participantKeys.list(projectId ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ProjectParticipant[]>(`/projects/${projectId!}/participants`);
-      return data;
-    },
+    queryFn: () => participantsApi.list(projectId!),
     enabled: Boolean(projectId),
   });
 }
@@ -51,25 +42,10 @@ export function useParticipants(projectId: string | undefined) {
 export function useInviteParticipant() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
-      email,
-      name,
-      role,
-      permissions,
-    }: {
-      projectId: string;
-      email: string;
-      name?: string;
-      role?: string;
-      permissions?: ParticipantPermissions;
-    }) => {
-      const { data } = await api.post<ProjectParticipant>(
-        `/projects/${projectId}/participants/invite`,
-        { email, name, role, permissions },
-      );
-      return data;
-    },
+      ...body
+    }: InviteParticipantInput & { projectId: string }) => participantsApi.invite(projectId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
   });
@@ -78,23 +54,12 @@ export function useInviteParticipant() {
 export function useUpdateParticipant() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       projectId,
       participantId,
-      role,
-      permissions,
-    }: {
-      projectId: string;
-      participantId: string;
-      role?: string;
-      permissions?: ParticipantPermissions;
-    }) => {
-      const { data } = await api.patch<ProjectParticipant>(
-        `/projects/${projectId}/participants/${participantId}`,
-        { role, permissions },
-      );
-      return data;
-    },
+      ...body
+    }: UpdateParticipantInput & { projectId: string; participantId: string }) =>
+      participantsApi.update(projectId, participantId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
   });
@@ -103,29 +68,17 @@ export function useUpdateParticipant() {
 export function useRemoveParticipant() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ projectId, participantId }: { projectId: string; participantId: string }) => {
-      await api.delete(`/projects/${projectId}/participants/${participantId}`);
-    },
+    mutationFn: ({ projectId, participantId }: { projectId: string; participantId: string }) =>
+      participantsApi.remove(projectId, participantId),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
   });
 }
 
-export interface ProjectInvitePreview {
-  email: string;
-  role: ParticipantRole;
-  projectName: string;
-  inviterName: string | null;
-  expired: boolean;
-}
-
 export function useProjectInvite(token: string | undefined) {
   return useQuery({
     queryKey: participantKeys.invite(token ?? "__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<ProjectInvitePreview>(`/project-invites/${token!}`);
-      return data;
-    },
+    queryFn: () => participantsApi.getInvite(token!),
     enabled: Boolean(token),
     retry: false,
   });
@@ -134,12 +87,7 @@ export function useProjectInvite(token: string | undefined) {
 export function useAcceptProjectInvite() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (token: string) => {
-      const { data } = await api.post<{ projectId: string; role: string }>(
-        `/project-invites/${token}/accept`,
-      );
-      return data;
-    },
+    mutationFn: (token: string) => participantsApi.acceptInvite(token),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: participantKeys.myProjects() });
       qc.invalidateQueries({ queryKey: participantKeys.access(data.projectId) });

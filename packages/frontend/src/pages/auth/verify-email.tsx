@@ -2,12 +2,26 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
-import { PENDING_PROJECT_INVITE_KEY, homePathFor } from "@/lib/route-guards";
+import {
+  PENDING_ORG_INVITE_KEY,
+  PENDING_PROJECT_INVITE_KEY,
+  homePathFor,
+} from "@/lib/route-guards";
 
 function continueAfterVerifyPath(redirectTo?: string | null): string {
+  // Org invitations are auto-accepted at sign-up, so bouncing back to the
+  // accept-invitation page would just show "already handled". Send them home.
+  const pendingOrgInvite = localStorage.getItem(PENDING_ORG_INVITE_KEY);
+  if (pendingOrgInvite) {
+    localStorage.removeItem(PENDING_ORG_INVITE_KEY);
+    return "/";
+  }
+  if (redirectTo?.startsWith("/accept-invitation/")) return "/";
   if (redirectTo) return redirectTo;
-  const pendingInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
-  return pendingInvite ? `/accept-project-invite/${pendingInvite}` : "/";
+  const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
+  return pendingProjectInvite
+    ? `/accept-project-invite/${pendingProjectInvite}`
+    : "/";
 }
 
 const RESEND_COOLDOWN_S = 30;
@@ -91,7 +105,7 @@ export default function VerifyEmailPage() {
           const { data: session } = await authClient.getSession();
           if (isMounted && session?.user) {
             const accountType = (session.user as { accountType?: string }).accountType;
-            const target = redirectTo ?? continueAfterVerifyPath(null);
+            const target = continueAfterVerifyPath(redirectTo);
             navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
           }
         } else {
@@ -205,7 +219,7 @@ export default function VerifyEmailPage() {
         </p>
 
         <Link to={continueAfterVerifyPath(redirectTo)}>
-          <Button type="button" className="w-full">
+          <Button type="button" className="w-full h-[48px]">
             Continue
           </Button>
         </Link>
@@ -229,7 +243,7 @@ export default function VerifyEmailPage() {
       </p>
 
       <Link to="/auth/sign-in">
-        <Button type="button" variant="secondary" className="w-full">
+        <Button type="button" variant="secondary" className="w-full h-[48px]">
           Back to sign in
         </Button>
       </Link>

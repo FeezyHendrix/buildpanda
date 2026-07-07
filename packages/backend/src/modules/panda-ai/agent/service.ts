@@ -9,17 +9,18 @@ import type { QueueManager } from "../../../lib/queue/index.ts";
 import { agentRepository } from "./repository.ts";
 import { buildSnapshot, snapshotToPrompt } from "./context.ts";
 import { buildTools, type AgentCaller, type ToolContext } from "./tools.ts";
+import { applyGroundingGate, isSubstantiveToolResult } from "./grounding.ts";
 
 const MAX_TOOL_ROUNDS = 4;
 const TURN_TIMEOUT_MS = 90_000;
 
 const SYSTEM_PROMPT = [
   "You are Panda AI, an intelligent construction project assistant embedded in the BuildPanda app.",
-  "You have tools to read this project's live data: schedule/Gantt, delays, risks, finances, invoices, budget categories, purchase orders, payment claims, daily logs, key dates, inspections, planned material orders, on-hand material stock, tasks, open items (RFIs, approvals, action items, queries), change requests, homeowner selections & allowances, permits, and documents.",
+  "You have tools to read this project's live data: schedule/Gantt, delays, risks, finances, invoices, budget categories, purchase orders, payment claims, daily logs, key dates, inspections, planned material orders, on-hand material stock, the supplier directory, tasks, open items (RFIs, approvals, action items, queries), change requests, homeowner selections & allowances, permits, and documents.",
   "Always ground your answers in the data from the tools — never invent numbers, dates, or names.",
-  "For money questions, pick the right level: get_finances is the high-level budget/escrow/milestone-payment summary; get_budget is the per-category budget breakdown (allocated vs committed vs spent); get_invoices is individual invoices with paid/outstanding/overdue detail; get_purchase_orders is committed vendor orders; get_payment_claims is progress claims and their approval state.",
-  "For how much of a material is in stock, received, remaining, or running low, use get_material_stock (the live ledger). get_materials is only the planned procurement list.",
-  "For 'what needs attention', 'what is open', 'what is blocking us', or 'what is overdue', use get_open_items (RFIs, approvals, action items, queries). Use get_tasks for the Kanban board.",
+  "For money questions, pick the right level: get_finances is the high-level budget/escrow/milestone-payment summary; get_budget is the per-category budget breakdown (allocated vs committed vs spent); get_invoices is individual invoices with paid/outstanding/overdue detail; get_purchase_orders is committed vendor orders; get_payment_claims is progress claims and their approval state; get_finance_events is the funding trail / audit log of who recorded which funding action and when.",
+  "For how much of a material is in stock, received, remaining, or running low, use get_material_stock (the live ledger). get_materials is only the planned procurement list. For who supplies materials and their contact details, use get_suppliers.",
+  "For 'what needs attention', 'what is open', 'what is blocking us', or 'what is overdue', use get_open_items (RFIs, approvals, action items, queries). Use get_tasks for the Kanban board, and get_task_comments for the discussion/notes left on tasks.",
   "For what a task is linked or related to — action items, RFIs, change requests, materials, invoices or milestone payments — use get_task_links.",
   "For the homeowner's finish/fixture selections, allowances, what has been chosen or still needs choosing, and overages above allowance, use get_selections.",
   "You can also do small units of work for the user: create_task adds a task to the board, raise_query raises a site query, and create_rfi drafts an RFI. These act with the user's own permissions.",
@@ -72,6 +73,8 @@ export function agentService(db: Knex, queue?: QueueManager) {
       ];
 
       let navigatePath: string | null = null;
+      let madeToolCalls = false;
+      let hadSubstantiveData = false;
 
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -81,6 +84,8 @@ export function agentService(db: Knex, queue?: QueueManager) {
           if (turn.toolCalls.length === 0) {
             break;
           }
+
+          madeToolCalls = true;
 
           conversation.push({
             role: "assistant",
@@ -102,6 +107,9 @@ export function agentService(db: Knex, queue?: QueueManager) {
               try {
                 const out = await tool.run(toolCtx, args);
                 result = out.output;
+                if (isSubstantiveToolResult(result)) {
+                  hadSubstantiveData = true;
+                }
                 if (out.navigate) {
                   navigatePath = out.navigate;
                   events.onNavigate(out.navigate);
@@ -118,7 +126,8 @@ export function agentService(db: Knex, queue?: QueueManager) {
           }
         }
 
-        const finalText = await chatStream(conversation, {
+        const gated = applyGroundingGate(conversation, madeToolCalls, hadSubstantiveData);
+        const finalText = await chatStream(gated.conversation, {
           onToken: events.onToken,
           signal: controller.signal,
         });

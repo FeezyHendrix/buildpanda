@@ -1,5 +1,14 @@
+import { z } from "zod";
 import { pandaAiJson, isPandaAiConfigured } from "../engine.ts";
 import type { ParsedProgramme, ProgrammeTask, DependencyType } from "./parser.ts";
+
+const aiGroupingSchema = z.object({
+  projectName: z.string().optional(),
+  phases: z.array(z.object({ name: z.string().optional() })).optional(),
+  assignments: z
+    .array(z.object({ refId: z.string().optional(), phase: z.string().optional(), isMilestone: z.boolean().optional() }))
+    .optional(),
+});
 
 export interface StructuredActivity {
   refId: string;
@@ -115,12 +124,6 @@ function structureFromHierarchy(parsed: ParsedProgramme, projectName: string): S
   };
 }
 
-interface AiGrouping {
-  projectName?: string;
-  phases?: Array<{ name?: string }>;
-  assignments?: Array<{ refId?: string; phase?: string; isMilestone?: boolean }>;
-}
-
 const GROUPING_SYSTEM = [
   "You are Panda AI, a construction programme analyst.",
   "Given a flat list of construction schedule tasks, group them into a small set of logical project phases",
@@ -142,7 +145,7 @@ async function structureWithAi(
     finish: t.finish,
   }));
   const user = JSON.stringify({ projectName: parsed.projectName, tasks: taskLines });
-  const ai = await pandaAiJson<AiGrouping>(GROUPING_SYSTEM, user);
+  const ai = await pandaAiJson(GROUPING_SYSTEM, user, aiGroupingSchema);
 
   if (!ai?.phases?.length || !ai.assignments?.length) {
     return structureFlatFallback(parsed, fallbackName);

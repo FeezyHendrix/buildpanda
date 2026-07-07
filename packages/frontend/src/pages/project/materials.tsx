@@ -221,6 +221,7 @@ export default function ProjectMaterials() {
             setEditTarget(null);
           }
         }}
+        projectId={project.id}
         initial={editTarget}
         onSubmit={upsert}
         isSubmitting={createOrder.isPending || updateOrder.isPending}

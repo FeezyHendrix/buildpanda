@@ -6,6 +6,7 @@ import { Avatar } from "@/components/atoms/avatar";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialProcurement, ProjectFinances as ProjectFinancesData } from "@/lib/project-types";
+import { EmptyState } from "@/components";
 
 const MATERIALS_PREVIEW_LIMIT = 5;
 
@@ -40,15 +41,24 @@ export function MaterialsProcurementCard({
         </Link>
       </div>
       <div className="bg-white rounded-[12px] h-full m-1 px-6">
-        <ul className="flex flex-col">
-          {preview.map((material, idx) => (
-            <MaterialRow
-              key={`${material.id}-${idx}`}
-              material={material}
-              currency={currency}
-            />
-          ))}
-        </ul>
+        {preview.length === 0 ? (
+          <EmptyState
+            title="No materials purchased yet"
+            // icon={(<ReactSVG src={icons.riskShield} />)}
+            description="No materials have been purchased for this project yet."
+            className="py-6"
+          />
+        ) : (
+          <ul className="flex flex-col">
+            {preview.map((material, idx) => (
+              <MaterialRow
+                key={`${material.id}-${idx}`}
+                material={material}
+                currency={currency}
+              />
+            ))}
+          </ul>
+        )}
       </div>
     </Card>
   );

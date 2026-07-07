@@ -1,84 +1,52 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import {
+  risksApi,
+  type CreateRiskVariables,
+  type EditRiskVariables,
+  type DeleteRiskVariables,
+} from "@/api/risks";
 import { riskKeys } from "./query-keys";
-import type { RiskFactor, RiskLevel } from "@/lib/project-types";
+
+export type { CreateRiskVariables, EditRiskVariables, DeleteRiskVariables };
 
 export function useProjectRiskFactors(projectId: string | undefined) {
   return useQuery({
     queryKey: projectId ? riskKeys.all(projectId) : riskKeys.all("__none__"),
-    queryFn: async () => {
-      const { data } = await api.get<RiskFactor[]>(
-        `/projects/${projectId!}/risk-factors`,
-      );
-      return data;
-    },
+    queryFn: () => risksApi.list(projectId!),
     enabled: Boolean(projectId),
   });
-}
-
-interface CreateRiskVariables {
-  projectId: string;
-  title: string;
-  description: string;
-  descriptionHtml?: string | null;
-  severity: RiskLevel;
 }
 
 export function useCreateRiskFactor() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, ...body }: CreateRiskVariables) => {
-      const { data } = await api.post<RiskFactor>(
-        `/projects/${projectId}/risk-factors`,
-        body,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, ...body }: CreateRiskVariables) =>
+      risksApi.create(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: riskKeys.all(projectId) });
     },
   });
-}
-
-interface EditRiskVariables {
-  projectId: string;
-  riskId: string;
-  title?: string;
-  description?: string;
-  descriptionHtml?: string | null;
-  severity?: RiskLevel;
 }
 
 export function useEditRiskFactor() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, riskId, ...patch }: EditRiskVariables) => {
-      const { data } = await api.put<RiskFactor>(
-        `/projects/${projectId}/risk-factors/${riskId}`,
-        patch,
-      );
-      return data;
-    },
+    mutationFn: ({ projectId, riskId, ...patch }: EditRiskVariables) =>
+      risksApi.update(projectId, riskId, patch),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: riskKeys.all(projectId) });
     },
   });
 }
 
-interface DeleteRiskVariables {
-  projectId: string;
-  riskId: string;
-}
-
 export function useDeleteRiskFactor() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ projectId, riskId }: DeleteRiskVariables) => {
-      await api.delete(`/projects/${projectId}/risk-factors/${riskId}`);
-    },
+    mutationFn: ({ projectId, riskId }: DeleteRiskVariables) =>
+      risksApi.remove(projectId, riskId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: riskKeys.all(projectId) });
     },

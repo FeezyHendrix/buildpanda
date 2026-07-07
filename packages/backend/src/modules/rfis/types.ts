@@ -18,6 +18,7 @@ export interface Rfi {
   visibility: RfiVisibility;
   ballInCourtId: string | null;
   ballInCourtName: string | null;
+  ballInCourtEmail: string | null;
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
@@ -85,6 +86,7 @@ export interface RfiRow {
   visibility: RfiVisibility;
   ball_in_court_id: string | null;
   ball_in_court_name: string | null;
+  ball_in_court_email: string | null;
   assignee_role: string | null;
   due_date: string | null;
   official_response: string | null;

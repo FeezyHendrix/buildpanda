@@ -31,6 +31,7 @@ export function BoardColumn({
   column,
   tasks,
   canManage,
+  canAddCard,
   onAddCard,
   onOpenTask,
   onRename,
@@ -39,11 +40,13 @@ export function BoardColumn({
   column: TaskColumn;
   tasks: Task[];
   canManage: boolean;
+  canAddCard?: boolean;
   onAddCard: () => void;
   onOpenTask: (task: Task) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
 }) {
+  const showAddCard = canAddCard ?? canManage;
   const {
     setNodeRef,
     attributes,
@@ -202,7 +205,7 @@ export function BoardColumn({
         )}
       </div>
 
-      {canManage && (
+      {showAddCard && (
         <button
           type="button"
           onClick={onAddCard}

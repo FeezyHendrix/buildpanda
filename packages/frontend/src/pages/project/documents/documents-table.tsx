@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReactSVG } from "react-svg";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
@@ -194,52 +194,16 @@ function DocumentRow({
           </Badge>
         </TableCell>
         <TableCell className="pr-6">
-          <div className="flex items-center justify-end gap-3">
-            {doc.currentVersionId && (
-              <button
-                type="button"
-                onClick={() => setViewerOpen(true)}
-                className="text-xs font-medium text-[#004DE7] hover:text-[#0041c4]"
-              >
-                View
-              </button>
-            )}
-            {doc.currentVersionId && (
-              <button
-                type="button"
-                onClick={handleShare}
-                disabled={createShare.isPending}
-                className="text-xs font-medium text-gray-500 hover:text-gray-900 disabled:opacity-50"
-              >
-                {shareCopied ? "Copied!" : "Share"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setVersionsOpen(true)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900"
-            >
-              Versions{doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}
-            </button>
-            {canManage && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(true)}
-                  className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteOpen(true)}
-                  className="text-xs font-medium text-red-500 hover:text-red-600"
-                >
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
+          <RowMenu
+            doc={doc}
+            canManage={canManage}
+            shareCopied={shareCopied}
+            onView={() => setViewerOpen(true)}
+            onShare={handleShare}
+            onVersions={() => setVersionsOpen(true)}
+            onEdit={() => setEditOpen(true)}
+            onDelete={() => setDeleteOpen(true)}
+          />
         </TableCell>
       </tr>
 
@@ -284,6 +248,79 @@ function DocumentRow({
         />
       )}
     </>
+  );
+}
+
+function RowMenu({
+  doc,
+  canManage,
+  shareCopied,
+  onView,
+  onShare,
+  onVersions,
+  onEdit,
+  onDelete,
+}: {
+  doc: ProjectDocument;
+  canManage: boolean;
+  shareCopied: boolean;
+  onView: () => void;
+  onShare: () => void;
+  onVersions: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const itemCls = "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700 outline-none hover:bg-[#F6F6F6]";
+
+  return (
+    <div ref={ref} className="relative flex items-center justify-end">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        aria-label="Actions"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="8" cy="3" r="1.5" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="8" cy="13" r="1.5" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
+          {doc.currentVersionId && (
+            <button type="button" className={itemCls} onClick={() => { setOpen(false); onView(); }}>View</button>
+          )}
+          {doc.currentVersionId && (
+            <button type="button" className={itemCls} onClick={() => { setOpen(false); onShare(); }}>
+              {shareCopied ? "Copied!" : "Share"}
+            </button>
+          )}
+          <button type="button" className={itemCls} onClick={() => { setOpen(false); onVersions(); }}>
+            Versions{doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}
+          </button>
+          {canManage && (
+            <>
+              <button type="button" className={itemCls} onClick={() => { setOpen(false); onEdit(); }}>Edit</button>
+              <button type="button" className={cn(itemCls, "text-red-600 hover:bg-red-50")} onClick={() => { setOpen(false); onDelete(); }}>Delete</button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

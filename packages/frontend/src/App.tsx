@@ -6,6 +6,7 @@ import {
   RequireCompany,
   ProjectFeatureFlagGate,
   ProjectPermissionGate,
+  OrgPermissionGate,
   SalesFeatureFlagGate,
 } from "@/lib/route-guards";
 import { Toaster } from "@/components/atoms/toaster";
@@ -94,6 +95,8 @@ const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
+const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
+const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
@@ -166,7 +169,14 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Dashboard /> },
-      { path: "settings/team", element: <TeamSettings /> },
+      {
+        path: "settings/team",
+        element: (
+          <OrgPermissionGate resource="teamMembers" action="manage">
+            <TeamSettings />
+          </OrgPermissionGate>
+        ),
+      },
       { path: "settings/notifications", element: <NotificationSettings /> },
     ],
   },
@@ -262,6 +272,7 @@ export const router = createBrowserRouter([
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
       { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "look-aheads", element: pf("projects.schedule", <ProjectLookAheads />) },
       { path: "bim", element: pf("projects.bim", <ProjectBim />) },
 
       { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
@@ -290,6 +301,7 @@ export const router = createBrowserRouter([
       { path: "materials/requests", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
+      { path: "suppliers", element: pf("commercial.materialsEquipment", <ProjectSuppliers />) },
 
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
