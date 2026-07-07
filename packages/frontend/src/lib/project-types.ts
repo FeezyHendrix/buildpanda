@@ -421,7 +421,13 @@ export interface WhatsNext {
 
 export type StageStatus = PhaseStatus;
 
-export type KnownParticipantRole = "client" | "architect" | "inspector" | "guest";
+export type KnownParticipantRole =
+  | "client"
+  | "architect"
+  | "inspector"
+  | "guest"
+  | "materials_requester"
+  | "materials_approver";
 export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
 export type SectionPermission = "hidden" | "view" | "edit";
@@ -1130,10 +1136,20 @@ export interface TaskEntityLink {
   status: string | null;
 }
 
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+}
+
 export interface TaskDetail extends Task {
   subtasks: Subtask[];
   links: TaskLink[];
   entityLinks: TaskEntityLink[];
+  comments: TaskComment[];
 }
 
 export interface TaskBoard {
