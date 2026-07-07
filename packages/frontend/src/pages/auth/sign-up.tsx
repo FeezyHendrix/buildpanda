@@ -39,6 +39,7 @@ export default function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [companyName, setCompanyName] = useState("");
   const [profession, setProfession] = useState<string | null>(null);
   const [country, setCountry] = useState<Country | null>(null);
   const [phone, setPhone] = useState("");
@@ -54,6 +55,7 @@ export default function SignUpForm() {
       Boolean(window.localStorage.getItem(PENDING_ORG_INVITE_KEY)));
 
   const isProjectManager = accountType === "project_manager";
+  const isConstructionCompany = accountType === "construction_company";
   const personaComplete =
     invitedViaOrg ||
     (accountType !== null && (!isProjectManager || profession !== null));
@@ -102,6 +104,10 @@ export default function SignUpForm() {
       profession:
         !invitedViaOrg && effectiveAccountType === "project_manager"
           ? (profession ?? "")
+          : "",
+      companyName:
+        !invitedViaOrg && effectiveAccountType === "construction_company"
+          ? companyName.trim()
           : "",
     });
 
@@ -159,6 +165,17 @@ export default function SignUpForm() {
                   searchPlaceholder="Search professions…"
                 />
               </div>
+            )}
+
+            {isConstructionCompany && (
+              <FormField
+                label="Company name"
+                name="companyName"
+                placeholder="e.g. Acme Construction Ltd"
+                autoComplete="organization"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
             )}
           </div>
         )}
