@@ -150,6 +150,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
     {
       label: "Client Approvals",
       slug: "approvals",
+      resource: "approvals",
       Icon: InspectionsIcon,
       helper: "Client sign-offs",
       flag: "workflow.approvals",
@@ -157,6 +158,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
     {
       label: "Selections",
       slug: "selections",
+      resource: "selections",
       Icon: InspectionsIcon,
       helper: "Client choices & allowances",
       flag: "projects.selections",
@@ -164,6 +166,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
     {
       label: "Change Requests",
       slug: "change-requests",
+      resource: "change-requests",
       Icon: FinancesIcon,
       helper: "Scope changes",
       flag: "workflow.changeRequests",
@@ -171,6 +174,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
     {
       label: "Permits & Compliance",
       slug: "permits",
+      resource: "permits",
       Icon: DocumentsIcon,
       helper: "Regulatory permits & expiry",
       flag: "compliance.permits",
@@ -247,12 +251,14 @@ export const CLIENT_ENTRIES: readonly NavEntry[] = [
   {
     label: "Queries",
     slug: "queries",
+    resource: "queries",
     Icon: MessagesIcon,
     flag: "workflow.queries",
   },
   {
     label: "Selections",
     slug: "selections",
+    resource: "selections",
     Icon: InspectionsIcon,
     flag: "projects.selections",
   },
