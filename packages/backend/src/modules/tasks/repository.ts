@@ -3,6 +3,7 @@ import type {
   SubtaskRow,
   TaskBoardRow,
   TaskColumnRow,
+  TaskCommentRow,
   TaskEntityLinkRow,
   TaskEntityType,
   TaskLinkRow,
@@ -401,6 +402,18 @@ export function tasksRepository(db: Knex) {
         .whereNot("status", "removed")
         .orderBy("name", "asc")
         .select("id", "name", "role");
+    },
+
+    listComments(taskId: string): Promise<TaskCommentRow[]> {
+      return db<TaskCommentRow>("task_comments")
+        .where({ task_id: taskId })
+        .orderBy("created_at", "asc");
+    },
+
+    async addComment(record: TaskCommentRow): Promise<TaskCommentRow> {
+      const [row] = await db("task_comments").insert(record).returning("*");
+      if (!row) throw new Error("Failed to insert task comment");
+      return row as TaskCommentRow;
     },
   };
 }

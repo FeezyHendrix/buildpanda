@@ -91,6 +91,13 @@ const createColumnBody = {
   properties: { name: { type: "string", minLength: 1, maxLength: 60 } },
 } as const;
 
+const commentBody = {
+  type: "object",
+  required: ["body"],
+  additionalProperties: false,
+  properties: { body: { type: "string", minLength: 1, maxLength: 2000 } },
+} as const;
+
 const renameColumnBody = {
   type: "object",
   required: ["name"],
@@ -183,7 +190,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/board",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
       return service.getDefaultBoard(project.id, user.id);
     },
@@ -193,7 +200,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/assignable",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
       return service.listAssignable(
         project.id,
@@ -208,7 +215,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/columns",
     { schema: { params: projectIdParams, body: createColumnBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
       const column = await service.addColumn(project.id, request.body.name, user.id);
       return reply.status(201).send(column);
@@ -219,7 +226,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/columns/:columnId",
     { schema: { params: columnParams, body: renameColumnBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       return service.renameColumn(project.id, request.params.columnId, request.body.name);
     },
   );
@@ -228,7 +235,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/columns/:columnId",
     { schema: { params: columnParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await service.deleteColumn(project.id, request.params.columnId);
       return reply.status(204).send();
     },
@@ -238,7 +245,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/columns/reorder",
     { schema: { params: projectIdParams, body: reorderColumnsBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       return service.reorderColumns(project.id, request.body.columnIds);
     },
   );
@@ -247,7 +254,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
       const task = await service.createTask(project.id, request.body, user.id);
       return reply.status(201).send(task);
@@ -258,7 +265,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId",
     { schema: { params: taskParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
       return service.updateTask(project.id, request.params.taskId, request.body, user.id);
     },
@@ -268,7 +275,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/move",
     { schema: { params: taskParams, body: moveBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       return service.moveTask(project.id, request.params.taskId, request.body);
     },
   );
@@ -277,7 +284,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId",
     { schema: { params: taskParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "remove");
       await service.removeTask(project.id, request.params.taskId);
       return reply.status(204).send();
     },
@@ -287,7 +294,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId",
     { schema: { params: taskParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       return service.getTaskDetail(project.id, request.params.taskId);
     },
   );
@@ -296,7 +303,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/subtasks",
     { schema: { params: taskParams, body: createSubtaskBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const subtask = await service.addSubtask(project.id, request.params.taskId, request.body.title);
       return reply.status(201).send(subtask);
     },
@@ -306,7 +313,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/subtasks/:subtaskId",
     { schema: { params: subtaskParams, body: updateSubtaskBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       return service.updateSubtask(project.id, request.params.taskId, request.params.subtaskId, request.body);
     },
   );
@@ -315,7 +322,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/subtasks/:subtaskId",
     { schema: { params: subtaskParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await service.removeSubtask(project.id, request.params.taskId, request.params.subtaskId);
       return reply.status(204).send();
     },
@@ -325,7 +332,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/links",
     { schema: { params: taskParams, body: createLinkBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
       const link = await service.addLink(
         project.id,
@@ -342,7 +349,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/links/:linkId",
     { schema: { params: linkParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await service.removeLink(project.id, request.params.taskId, request.params.linkId);
       return reply.status(204).send();
     },
@@ -352,7 +359,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/entity-links",
     { schema: { params: taskParams, body: createEntityLinkBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       const user = request.requireAuth();
       const link = await service.addEntityLink(
         project.id,
@@ -369,9 +376,32 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/entity-links/:linkId",
     { schema: { params: linkParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
       await service.removeEntityLink(project.id, request.params.taskId, request.params.linkId);
       return reply.status(204).send();
+    },
+  );
+
+  fastify.get<{ Params: { id: string; taskId: string } }>(
+    "/projects/:id/tasks/:taskId/comments",
+    { schema: { params: taskParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
+      return service.listComments(project.id, request.params.taskId);
+    },
+  );
+
+  fastify.post<{ Params: { id: string; taskId: string }; Body: { body: string } }>(
+    "/projects/:id/tasks/:taskId/comments",
+    { schema: { params: taskParams, body: commentBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "comments", "post");
+      const user = request.requireAuth();
+      const comment = await service.addComment(project.id, request.params.taskId, request.body.body, {
+        id: user.id,
+        name: user.name,
+      });
+      return reply.status(201).send(comment);
     },
   );
 };

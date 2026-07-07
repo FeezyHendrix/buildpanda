@@ -10,6 +10,8 @@ import type {
   TaskBoardRow,
   TaskColumn,
   TaskColumnRow,
+  TaskComment,
+  TaskCommentRow,
   TaskDetail,
   TaskEntityLink,
   TaskEntityLinkRow,
@@ -150,6 +152,17 @@ function toLink(row: TaskLinkRow): TaskLink {
     linkType: row.link_type,
     targetTaskId: row.target_task_id,
     targetTaskTitle: row.target_task_title,
+  };
+}
+
+function toComment(row: TaskCommentRow): TaskComment {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    authorId: row.author_id,
+    authorName: row.author_name,
+    body: row.body,
+    createdAt: row.created_at,
   };
 }
 
@@ -444,10 +457,11 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     async getTaskDetail(projectId: string, taskId: string): Promise<TaskDetail> {
       const row = await repository.findTaskById(taskId);
       if (!row || row.project_id !== projectId) throw new NotFoundError("Task");
-      const [subtaskRows, linkRows, entityLinkRows, counts] = await Promise.all([
+      const [subtaskRows, linkRows, entityLinkRows, commentRows, counts] = await Promise.all([
         repository.listSubtasks(taskId),
         repository.listLinks(taskId),
         repository.listEntityLinks(taskId),
+        repository.listComments(taskId),
         repository.subtaskCounts([taskId]),
       ]);
       return {
@@ -455,7 +469,34 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         subtasks: subtaskRows.map(toSubtask),
         links: linkRows.map(toLink),
         entityLinks: await resolveEntityLinks(entityLinkRows),
+        comments: commentRows.map(toComment),
       };
+    },
+
+    async listComments(projectId: string, taskId: string): Promise<TaskComment[]> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const rows = await repository.listComments(taskId);
+      return rows.map(toComment);
+    },
+
+    async addComment(
+      projectId: string,
+      taskId: string,
+      body: string,
+      author: { id: string; name: string },
+    ): Promise<TaskComment> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      const row = await repository.addComment({
+        id: generateId("tc"),
+        task_id: taskId,
+        author_id: author.id,
+        author_name: author.name,
+        body,
+        created_at: new Date().toISOString(),
+      });
+      return toComment(row);
     },
 
     async addSubtask(projectId: string, taskId: string, title: string): Promise<Subtask> {

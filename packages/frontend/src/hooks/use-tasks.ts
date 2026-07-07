@@ -206,3 +206,9 @@ export function useDeleteEntityLink(projectId: string, taskId: string) {
     taskApi.deleteEntityLink(projectId, taskId, linkId),
   );
 }
+
+export function useAddTaskComment(projectId: string, taskId: string) {
+  return useTaskChildMutation<string>(projectId, taskId, (body) =>
+    taskApi.addComment(projectId, taskId, body),
+  );
+}

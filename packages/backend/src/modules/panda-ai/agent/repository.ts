@@ -212,6 +212,15 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    taskComments(projectId: string) {
+      return db("task_comments as c")
+        .join("tasks as t", "t.id", "c.task_id")
+        .where("t.project_id", projectId)
+        .orderBy("c.created_at", "asc")
+        .limit(200)
+        .select("t.title as taskTitle", "c.author_name as authorName", "c.body", "c.created_at");
+    },
+
     rfisOpen(projectId: string) {
       return db("rfis as r")
         .where("r.project_id", projectId)
