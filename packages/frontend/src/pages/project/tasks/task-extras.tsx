@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
-import { formatShortDate } from "@/lib/formatters";
 import {
   useTaskDetail,
   useAddSubtask,
@@ -10,13 +9,13 @@ import {
   useDeleteSubtask,
   useAddLink,
   useDeleteLink,
-  useAddTaskComment,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { Task, TaskLinkType } from "@/lib/project-types";
 import { FIELD, LINK_TYPE_LABELS, LINK_TYPE_ORDER, LINK_TYPE_TONE } from "./task-ui";
 import { TaskEntityLinks } from "./task-entity-links";
+import { TaskComments } from "./task-comments";
 
 export function TaskExtras({
   projectId,
@@ -35,10 +34,8 @@ export function TaskExtras({
   const deleteSubtask = useDeleteSubtask(projectId, taskId);
   const addLink = useAddLink(projectId, taskId);
   const deleteLink = useDeleteLink(projectId, taskId);
-  const addComment = useAddTaskComment(projectId, taskId);
 
   const [newSubtask, setNewSubtask] = useState("");
-  const [newComment, setNewComment] = useState("");
   const [linkTarget, setLinkTarget] = useState<string | null>(null);
   const [linkType, setLinkType] = useState<TaskLinkType>("relates_to");
 
@@ -82,15 +79,6 @@ export function TaskExtras({
         },
       },
     );
-  }
-
-  function submitComment(): void {
-    const body = newComment.trim();
-    if (!body) return;
-    addComment.mutate(body, {
-      onSuccess: () => setNewComment(""),
-      onError: () => toast("Could not add comment"),
-    });
   }
 
   return (
@@ -206,43 +194,7 @@ export function TaskExtras({
       </div>
       <TaskEntityLinks projectId={projectId} taskId={taskId} entityLinks={detail?.entityLinks ?? []} />
 
-      <div className="flex flex-col gap-3">
-        <Label>Comments{detail && detail.comments.length > 0 ? ` (${detail.comments.length})` : ""}</Label>
-
-        {!detail?.comments || detail.comments.length === 0 ? (
-          <p className="text-xs text-gray-400">No comments yet.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {detail.comments.map((c) => (
-              <div key={c.id} className="flex flex-col gap-1 rounded-xl bg-[#FAFAFA] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
-                  <span className="text-xs text-gray-400">{formatShortDate(c.createdAt)}</span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <input
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                submitComment();
-              }
-            }}
-            placeholder="Write a comment..."
-            className={cn(FIELD, "h-9 flex-1")}
-          />
-          <Button variant="ghost" size="sm" onClick={submitComment} disabled={!newComment.trim()}>
-            Comment
-          </Button>
-        </div>
-      </div>
+      <TaskComments projectId={projectId} taskId={taskId} />
     </>
   );
 }
