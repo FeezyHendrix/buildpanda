@@ -68,7 +68,7 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/payment-claims",
     { schema: { params: projectIdParams, body: createPaymentClaimBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
@@ -92,7 +92,7 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/payment-claims/:claimId",
     { schema: { params: claimParams, body: editPaymentClaimBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
@@ -115,7 +115,7 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/payment-claims/:claimId",
     { schema: { params: claimParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },

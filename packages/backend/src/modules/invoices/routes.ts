@@ -190,7 +190,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices",
     { schema: { params: projectIdParams, body: createInvoiceBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
@@ -215,7 +215,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId",
     { schema: { params: invoiceParams, body: editInvoiceBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
@@ -239,7 +239,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId",
     { schema: { params: invoiceParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
@@ -272,7 +272,7 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/invoices/:invoiceId/send",
     { schema: { params: invoiceParams, body: sendInvoiceBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
         { userId: request.user!.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
