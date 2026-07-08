@@ -8,11 +8,11 @@ import {
 } from "@/api/tasks";
 import type { TaskLinkType, TaskEntityType } from "@/lib/project-types";
 
-export function useTaskBoard(projectId: string, scope: "all" | "assigned" = "all") {
+export function useTaskBoard(projectId: string, scope: "all" | "assigned" = "all", enabled = true) {
   return useQuery({
     queryKey: taskKeys.board(projectId, scope),
     queryFn: () => taskApi.board(projectId, scope),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && enabled,
   });
 }
 
