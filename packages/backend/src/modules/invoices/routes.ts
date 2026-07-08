@@ -4,6 +4,7 @@ import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { INVOICE_EMAIL_QUEUE, type InvoiceEmailJobData } from "./invoice-send-job.ts";
 import { renderInvoicePdf } from "./invoice-pdf.ts";
 import { invoicesRepository } from "./repository.ts";
+import { invoicesScanService } from "./scan-service.ts";
 import {
   invoicesService,
   type AddPaymentInput,
@@ -136,6 +137,7 @@ const createInvoiceBody = {
     coverNote: { type: "string", maxLength: 4000 },
     headerText: { type: "string", maxLength: 2000 },
     footerText: { type: "string", maxLength: 2000 },
+    sourceFileId: { type: "string", maxLength: 100 },
     lineItems: { type: "array", items: lineItemSchema },
   },
 } as const;
@@ -173,9 +175,19 @@ const sendInvoiceBody = {
   },
 } as const;
 
+const scanInvoiceBody = {
+  type: "object",
+  required: ["fileId"],
+  additionalProperties: false,
+  properties: {
+    fileId: { type: "string", minLength: 1, maxLength: 100 },
+  },
+} as const;
+
 const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
   const service = invoicesService(invoicesRepository(fastify.db));
   const repository = invoicesRepository(fastify.db);
+  const scanService = invoicesScanService(fastify.db);
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/invoices",
@@ -208,6 +220,15 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
       }
       const invoice = await service.create(project.id, request.body);
       return reply.status(201).send(invoice);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: { fileId: string } }>(
+    "/projects/:id/invoices/scan",
+    { schema: { params: projectIdParams, body: scanInvoiceBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      return scanService.scanUploadedFile(project.id, request.body.fileId);
     },
   );
 
