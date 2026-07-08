@@ -10,6 +10,8 @@ export interface CreateActivityValues {
   location: string;
   plannedStartAt: string;
   plannedEndAt: string;
+  actualStartAt: string | null;
+  actualEndAt: string | null;
   workerCountPlanned: number;
   notes: string;
   assigneeId: string | null;
@@ -75,6 +77,8 @@ function CreateActivityDialog({
   const [location, setLocation] = useState("");
   const [plannedStartAt, setPlannedStartAt] = useState(toLocalInput(defaultStart()));
   const [plannedEndAt, setPlannedEndAt] = useState(toLocalInput(defaultEnd()));
+  const [actualStartAt, setActualStartAt] = useState("");
+  const [actualEndAt, setActualEndAt] = useState("");
   const [workerCountPlanned, setWorkerCountPlanned] = useState("8");
   const [notes, setNotes] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
@@ -91,17 +95,22 @@ function CreateActivityDialog({
     setPlannedEndAt(
       initial ? toLocalInput(new Date(initial.plannedEndAt)) : toLocalInput(defaultEnd()),
     );
+    setActualStartAt(initial?.actualStartAt ? toLocalInput(new Date(initial.actualStartAt)) : "");
+    setActualEndAt(initial?.actualEndAt ? toLocalInput(new Date(initial.actualEndAt)) : "");
     setWorkerCountPlanned(String(initial?.workerCountPlanned ?? 8));
     setNotes(initial?.notes ?? "");
     setAssigneeId(initial?.assigneeId ?? "");
   }, [open, initial, prefill]);
 
+  const actualRangeValid =
+    !actualStartAt || !actualEndAt || new Date(actualStartAt) <= new Date(actualEndAt);
   const isValid =
     name.trim().length > 0 &&
     activityType.trim().length > 0 &&
     plannedStartAt.length > 0 &&
     plannedEndAt.length > 0 &&
-    new Date(plannedStartAt) <= new Date(plannedEndAt);
+    new Date(plannedStartAt) <= new Date(plannedEndAt) &&
+    actualRangeValid;
 
   function handleSubmit(): void {
     if (!isValid) return;
@@ -112,6 +121,8 @@ function CreateActivityDialog({
       location: location.trim(),
       plannedStartAt: new Date(plannedStartAt).toISOString(),
       plannedEndAt: new Date(plannedEndAt).toISOString(),
+      actualStartAt: actualStartAt ? new Date(actualStartAt).toISOString() : null,
+      actualEndAt: actualEndAt ? new Date(actualEndAt).toISOString() : null,
       workerCountPlanned: Math.max(0, Number(workerCountPlanned) || 0),
       notes: notes.trim(),
       assigneeId: assigneeId || null,
@@ -221,6 +232,34 @@ function CreateActivityDialog({
         />
       </div>
     </div>
+
+    {initial && (
+      <div className="grid grid-cols-2 gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="activity-actual-start">Actual start</Label>
+          <input
+            id="activity-actual-start"
+            type="datetime-local"
+            value={actualStartAt}
+            onChange={(e) => setActualStartAt(e.target.value)}
+            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="activity-actual-end">Actual end</Label>
+          <input
+            id="activity-actual-end"
+            type="datetime-local"
+            value={actualEndAt}
+            onChange={(e) => setActualEndAt(e.target.value)}
+            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          />
+        </div>
+        {!actualRangeValid && (
+          <p className="col-span-2 text-xs text-red-500">Actual end must be after actual start.</p>
+        )}
+      </div>
+    )}
     
     <div className="grid grid-cols-2 gap-3">
       <div className="flex flex-col gap-1.5">

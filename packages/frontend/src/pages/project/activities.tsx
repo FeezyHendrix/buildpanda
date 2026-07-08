@@ -161,8 +161,9 @@ export default function ProjectActivities() {
             );
             return;
           }
+          const { actualStartAt: _as, actualEndAt: _ae, ...createValues } = values;
           createActivity.mutate(
-            { projectId: project.id, ...values },
+            { projectId: project.id, ...createValues },
             { onSuccess: () => setCreateOpen(false) },
           );
         }}
