@@ -45,6 +45,8 @@ function formatDue(value: string | null): string | null {
 export default function ProjectQueries() {
   const { project, access } = useProjectContext();
   const canRaiseQueries = access?.capabilities?.canRaiseQueries ?? false;
+  const canDeleteQueries = access?.capabilities?.canManage ?? false;
+  const canAssignQueries = access?.capabilities?.canManageParticipants ?? false;
   const [filter, setFilter] = useState<QueryStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: queries = [], isLoading } = useProjectQueries(
@@ -55,7 +57,7 @@ export default function ProjectQueries() {
   const updateQuery = useUpdateQuery();
   const deleteQuery = useDeleteQuery();
 
-  const { data: participants = [] } = useParticipants(project.id);
+  const { data: participants = [] } = useParticipants(project.id, canAssignQueries);
   const assigneeOptions = participants
     .filter((p) => p.userId)
     .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
@@ -176,9 +178,9 @@ export default function ProjectQueries() {
               renderFooter={(q) => assigneeFooter(q.assigneeName, q.dueDate)}
               onMove={handleMove}
               onOpen={setDetailId}
-              assigneeOptions={assigneeOptions}
-              getAssigneeId={(q) => q.assigneeId}
-              onAssign={handleAssign}
+              assigneeOptions={canAssignQueries ? assigneeOptions : undefined}
+              getAssigneeId={canAssignQueries ? (q) => q.assigneeId : undefined}
+              onAssign={canAssignQueries ? handleAssign : undefined}
             />
           )}
         </div>
@@ -226,22 +228,28 @@ export default function ProjectQueries() {
                     )}
                   </div>
                 </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditQuery(q)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteId(q.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
+                {(canRaiseQueries || canDeleteQueries) && (
+                  <div className="flex items-center gap-3">
+                    {canRaiseQueries && (
+                      <button
+                        type="button"
+                        onClick={() => setEditQuery(q)}
+                        className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {canDeleteQueries && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteId(q.id)}
+                        className="text-xs font-medium text-red-500 hover:text-red-600"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                )}
               </Card>
             ))
           )}
@@ -252,7 +260,7 @@ export default function ProjectQueries() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
-        assigneeOptions={assigneeOptions}
+        assigneeOptions={canAssignQueries ? assigneeOptions : []}
         onSubmit={handleCreate}
         isSubmitting={createQuery.isPending}
         error={(createQuery.error as Error | undefined)?.message ?? null}
@@ -262,7 +270,7 @@ export default function ProjectQueries() {
         open={editQuery !== null}
         onOpenChange={(o) => !o && setEditQuery(null)}
         mode="edit"
-        assigneeOptions={assigneeOptions}
+        assigneeOptions={canAssignQueries ? assigneeOptions : []}
         initial={
           editQuery
             ? {

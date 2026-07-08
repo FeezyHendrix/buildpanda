@@ -22,11 +22,11 @@ import {
   useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
-import type { Activity } from "@/lib/project-types";
+import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: activities = [], isPending } = useProjectActivities(project.id);
   const { data: reasons = [] } = useDelayReasons();
 
@@ -40,7 +40,7 @@ export default function ProjectActivities() {
   const updateActivity = useUpdateActivity();
   const raiseDelay = useRaiseDelay();
 
-  const { data: participants = [] } = useParticipants(project.id);
+  const { data: participants = [] } = useParticipants(project.id, canManage);
   const assigneeOptions = participants
     .filter((p) => p.userId)
     .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
