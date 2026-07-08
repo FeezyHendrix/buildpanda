@@ -30,6 +30,7 @@ export default function ProjectUpdates() {
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
   const [focusDraftId, setFocusDraftId] = useState<string | null>(null);
+  const [autoEditDraftId, setAutoEditDraftId] = useState<string | null>(null);
   const draftsRef = useRef<HTMLElement | null>(null);
   const createUpdate = useCreateUpdate();
   const generateDraft = useGenerateAiDraft();
@@ -65,7 +66,12 @@ export default function ProjectUpdates() {
   function handleGenerateDraft(): void {
     generateDraft.mutate(
       { projectId: project.id },
-      { onSuccess: (draft) => setFocusDraftId(draft.id) },
+      {
+        onSuccess: (draft) => {
+          setFocusDraftId(draft.id);
+          setAutoEditDraftId(draft.id);
+        },
+      },
     );
   }
 
@@ -126,6 +132,8 @@ export default function ProjectUpdates() {
                   projectId={project.id}
                   update={update}
                   canManage={canManage}
+                  autoEdit={update.id === autoEditDraftId}
+                  onAutoEditHandled={() => setAutoEditDraftId(null)}
                 />
               ))}
             </section>
