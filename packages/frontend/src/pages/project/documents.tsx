@@ -14,6 +14,7 @@ import { useUploadFile } from "@/hooks/use-files";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { canResourceAction } from "@/lib/project-types";
 import type {
   CategoryGroup,
 } from "@/lib/project-types";
@@ -22,7 +23,7 @@ import { DocumentsTable } from "./documents/documents-table";
 
 export default function ProjectDocuments() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "documents", "upload"));
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
 
