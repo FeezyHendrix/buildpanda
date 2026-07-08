@@ -130,7 +130,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
       return service.listByProject(project.id);
     },
   );
@@ -139,7 +139,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities",
     { schema: { params: projectIdParams, body: createActivityBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       const user = request.requireAuth();
       const activity = await service.create(project.id, request.body, {
         id: user.id,
@@ -153,7 +153,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities/:activityId",
     { schema: { params: activityParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
       return service.getById(project.id, request.params.activityId);
     },
   );
@@ -165,7 +165,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities/:activityId",
     { schema: { params: activityParams, body: updateActivityBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       const user = request.requireAuth();
       return service.update(project.id, request.params.activityId, request.body, user.id);
     },
@@ -175,7 +175,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities/:activityId",
     { schema: { params: activityParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       await service.remove(project.id, request.params.activityId);
       return reply.status(204).send();
     },
@@ -188,7 +188,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities/:activityId/delays",
     { schema: { params: activityParams, body: raiseDelayBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       const user = request.requireAuth();
       const delay = await service.raiseDelay(
         project.id,
@@ -207,7 +207,7 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/activities/:activityId/delays/:delayId",
     { schema: { params: delayParams, body: resolveDelayBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
       return service.resolveDelay(
         project.id,
         request.params.activityId,
