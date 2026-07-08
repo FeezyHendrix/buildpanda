@@ -84,7 +84,7 @@ export const programmeImportApi = {
     const response = await api.post<ProgrammeImportJob>(
       "/projects/import/programme",
       form,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 }
     );
     return response.data;
   },
