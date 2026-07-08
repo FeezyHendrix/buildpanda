@@ -191,7 +191,7 @@ export function InviteParticipantDrawer({
             <button
               type="button"
               onClick={() => setShowCustomRole(true)}
-              className="py-1 text-left text-xs font-medium text-gray-400 transition-colors hover:text-brand"
+              className="py-1 text-left text-xs font-medium text-gray-400 transition-colors hover:text-[#004DE7] hover:underline"
             >
               + Add custom role
             </button>
