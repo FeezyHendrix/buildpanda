@@ -34,7 +34,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
         : null;
     // Associating a file with a project both records ownership for later
     // access checks and asserts the uploader may write to that project.
-    if (projectId) await request.requireProjectPermission(projectId, "documents", "upload");
+    if (projectId) await request.requireProjectWrite(projectId);
 
     const uploaded = await service.upload(user.id, {
       fileName: part.filename,
@@ -53,7 +53,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       const row = await service.findRow(request.params.id);
       if (!row) throw new NotFoundError("File");
       if (row.project_id) {
-        await request.requireProjectPermission(row.project_id, "documents", "view");
+        await request.requireProjectAccess(row.project_id);
       } else if (row.owner_id !== user.id) {
         throw new ForbiddenError();
       }
@@ -82,7 +82,7 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       const row = await service.findRow(request.params.id);
       if (!row) throw new NotFoundError("File");
       if (row.project_id) {
-        await request.requireProjectPermission(row.project_id, "documents", "view");
+        await request.requireProjectAccess(row.project_id);
       } else if (row.owner_id !== user.id) {
         throw new ForbiddenError();
       }
