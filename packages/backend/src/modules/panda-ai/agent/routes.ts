@@ -42,7 +42,7 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/chat",
     { schema: { params: projectIdParams, body: chatBody } },
     async (request, reply) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const user = request.requireAuth();
 
       reply.hijack();

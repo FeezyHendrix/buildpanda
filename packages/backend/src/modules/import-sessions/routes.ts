@@ -70,7 +70,7 @@ const importSessionRoutes: FastifyPluginAsync = async (fastify) => {
   async function assertSessionAccess(sessionId: string, request: FastifyRequest) {
     const session = await service.detail(sessionId);
     if (session.projectId) {
-      await request.requireProjectAccess(session.projectId);
+      await request.requireProjectPermission(session.projectId, "project", "view");
     } else {
       request.requireAuth();
     }
@@ -96,7 +96,7 @@ const importSessionRoutes: FastifyPluginAsync = async (fastify) => {
     "/import-sessions/:sessionId/project",
     { schema: { params: sessionParams, body: linkProjectBody } },
     async (request) => {
-      await request.requireProjectWrite(request.body.projectId);
+      await request.requireProjectPermission(request.body.projectId, "documents", "upload");
       return service.linkProject(request.params.sessionId, request.body.projectId);
     },
   );

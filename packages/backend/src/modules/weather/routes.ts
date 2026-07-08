@@ -15,7 +15,7 @@ const weatherRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/weather/current",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       return { weather: await service.current(project.id) };
     },
   );
@@ -24,7 +24,7 @@ const weatherRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/weather/forecast",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       return (await service.forecast(project.id)) ?? { locationName: null, current: null, forecast: [] };
     },
   );
@@ -33,7 +33,7 @@ const weatherRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/weather/analysis",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       return service.getAnalysis(project.id);
     },
   );

@@ -146,7 +146,7 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
       const body = request.body;
 
       if (body.projectId) {
-        await request.requireProjectWrite(body.projectId);
+        await request.requireProjectPermission(body.projectId, "schedule", "manage");
       } else {
         if (organizationId !== null) {
           request.requireOrgPermission("project", "create");
