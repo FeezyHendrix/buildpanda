@@ -6,6 +6,8 @@ import {
   type CreateTaskInput,
   type UpdateTaskInput,
 } from "@/api/tasks";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import type { TaskLinkType, TaskEntityType } from "@/lib/project-types";
 
 export function useTaskBoard(projectId: string, scope: "all" | "assigned" = "all", enabled = true) {
@@ -69,12 +71,13 @@ export function useMoveTask(projectId: string) {
       }
       return { previousQueries };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previousQueries) {
         for (const [key, board] of context.previousQueries) {
           qc.setQueryData(key, board);
         }
       }
+      toast(getApiErrorMessage(err, "Couldn't move that task."));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.all(projectId) }),
   });
