@@ -57,17 +57,18 @@ export function useMoveTask(projectId: string) {
     }) => taskApi.move(projectId, taskId, columnId, position),
     onMutate: async ({ taskId, columnId, position }) => {
       await qc.cancelQueries({ queryKey: taskKeys.all(projectId) });
-      const previousQueries = qc.getQueriesData<TaskBoard>({ queryKey: taskKeys.all(projectId) });
-      if (previousQueries.length > 0) {
-        for (const [key, board] of previousQueries) {
-          if (!board) continue;
-          qc.setQueryData<TaskBoard>(key, {
-            ...board,
-            tasks: board.tasks.map((t) =>
-              t.id === taskId ? { ...t, columnId, position } : t,
-            ),
-          });
-        }
+      // Only the board queries hold a TaskBoard; the "tasks" prefix also covers
+      // the assignable-users list and task details, which have no `tasks` array.
+      const boardPrefix = [...taskKeys.all(projectId), "board"];
+      const previousQueries = qc.getQueriesData<TaskBoard>({ queryKey: boardPrefix });
+      for (const [key, board] of previousQueries) {
+        if (!board?.tasks) continue;
+        qc.setQueryData<TaskBoard>(key, {
+          ...board,
+          tasks: board.tasks.map((t) =>
+            t.id === taskId ? { ...t, columnId, position } : t,
+          ),
+        });
       }
       return { previousQueries };
     },
