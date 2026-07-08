@@ -116,7 +116,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "queries", "raise");
       const user = request.requireAuth();
       return service.update(project.id, request.params.queryId, request.body, user.id);
     },

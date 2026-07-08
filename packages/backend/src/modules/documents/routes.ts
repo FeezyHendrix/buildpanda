@@ -86,7 +86,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       return service.listByProject(project.id);
     },
   );
@@ -95,7 +95,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/categories",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       return service.categoriesForProject(project.id);
     },
   );
@@ -104,7 +104,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents",
     { schema: { params: projectIdParams, body: createDocumentBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "upload");
       const user = request.requireAuth();
       const doc = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(doc);
@@ -118,7 +118,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId",
     { schema: { params: documentParams, body: editDocumentBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "upload");
       return service.edit(project.id, request.params.documentId, request.body);
     },
   );
@@ -138,7 +138,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions",
     { schema: { params: documentParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       return service.listVersions(project.id, request.params.documentId);
     },
   );
@@ -147,7 +147,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions",
     { schema: { params: documentParams, body: addVersionBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "upload");
       const user = request.requireAuth();
       const version = await service.addVersion(
         project.id,
@@ -164,7 +164,7 @@ const documentRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/versions/:versionId/view",
     { schema: { params: versionViewParams } },
     async (request, reply) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "documents", "view");
       const file = await service.resolveVersionFile(
         project.id,
         request.params.documentId,
