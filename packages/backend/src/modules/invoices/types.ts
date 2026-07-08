@@ -133,6 +133,7 @@ export interface InvoiceRow {
   cover_note: string | null;
   header_text: string | null;
   footer_text: string | null;
+  source_file_id: string | null;
   sent_at: string | null;
   sent_to: unknown | null;
   public_token: string | null;

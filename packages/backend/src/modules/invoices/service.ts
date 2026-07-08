@@ -68,6 +68,7 @@ export interface CreateInvoiceInput {
   coverNote?: string;
   headerText?: string;
   footerText?: string;
+  sourceFileId?: string;
   lineItems?: InvoiceLineItemInput[];
 }
 
@@ -470,6 +471,7 @@ export function invoicesService(repository: InvoicesRepository) {
           cover_note: optional(input.coverNote) ?? null,
           header_text: optional(input.headerText) ?? null,
           footer_text: optional(input.footerText) ?? null,
+          source_file_id: optional(input.sourceFileId) ?? null,
         },
         itemRecords(id, lineItems),
       );
