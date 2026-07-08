@@ -96,7 +96,7 @@ const importSessionRoutes: FastifyPluginAsync = async (fastify) => {
     "/import-sessions/:sessionId/project",
     { schema: { params: sessionParams, body: linkProjectBody } },
     async (request) => {
-      await request.requireProjectPermission(request.body.projectId, "documents", "upload");
+      await request.requireProjectWrite(request.body.projectId);
       return service.linkProject(request.params.sessionId, request.body.projectId);
     },
   );
