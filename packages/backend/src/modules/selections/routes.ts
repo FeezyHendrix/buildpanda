@@ -138,7 +138,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections",
     { schema: { params: projectIdParams, querystring: listQuery, response: { 200: { type: "array", items: selectionSchema } } } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "view");
       return service.list(project.id, request.query.status);
     },
   );
@@ -147,7 +147,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections",
     { schema: { params: projectIdParams, body: createBody, response: { 201: selectionSchema } } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "manage");
       const user = request.requireAuth();
       const created = await service.create(project.id, request.body, user.id, project.currency);
       return reply.status(201).send(created);
@@ -158,7 +158,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections/:selectionId",
     { schema: { params: selectionParams, response: { 200: selectionSchema } } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "view");
       return service.get(project.id, request.params.selectionId);
     },
   );
@@ -167,7 +167,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections/:selectionId",
     { schema: { params: selectionParams, body: updateBody, response: { 200: selectionSchema } } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "manage");
       const user = request.requireAuth();
       return service.update(project.id, request.params.selectionId, request.body, user.id);
     },
@@ -177,7 +177,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections/:selectionId",
     { schema: { params: selectionParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "manage");
       await service.remove(project.id, request.params.selectionId);
       return reply.status(204).send();
     },
@@ -205,7 +205,7 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/selections/:selectionId/create-change-request",
     { schema: { params: selectionParams, response: { 200: selectionSchema } } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "selections", "manage");
       const user = request.requireAuth();
       return service.createChangeRequest(project.id, request.params.selectionId, user.id, changeRequests);
     },

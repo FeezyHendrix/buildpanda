@@ -103,7 +103,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "view");
       const user = request.requireAuth();
       // Drafts are visible only to callers who could publish them (project
       // owner / non-viewer org members) — homeowner participants see only
@@ -125,7 +125,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/ai-draft",
     { schema: { params: projectIdParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       const user = request.requireAuth();
       const result = await aiDraft.generateClientUpdateDraft({
         projectId: project.id,
@@ -139,7 +139,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId/publish",
     { schema: { params: updateIdParams } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       return service.publish(project.id, request.params.updateId);
     },
   );
@@ -148,7 +148,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates",
     { schema: { params: projectIdParams, body: createUpdateBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       const user = request.requireAuth();
       const update = await service.create(project.id, request.body, {
         id: user.id,
@@ -165,7 +165,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId",
     { schema: { params: updateIdParams, body: editUpdateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       return service.edit(project.id, request.params.updateId, request.body);
     },
   );
@@ -174,7 +174,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId",
     { schema: { params: updateIdParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       await service.remove(project.id, request.params.updateId);
       return reply.status(204).send();
     },
@@ -187,7 +187,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId",
     { schema: { params: updateIdParams, body: transitionBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       const user = request.requireAuth();
       return service.transition(
         project.id,
@@ -202,7 +202,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId/comments",
     { schema: { params: updateIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "view");
       return service.listComments(project.id, request.params.updateId);
     },
   );
@@ -214,7 +214,7 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/updates/:updateId/comments",
     { schema: { params: updateIdParams, body: commentBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
       const user = request.requireAuth();
       const comment = await service.addComment(
         project.id,

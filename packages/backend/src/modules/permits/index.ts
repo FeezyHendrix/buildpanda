@@ -163,7 +163,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "permits", "view");
       // Permits with an expiry sort first (soonest first) so anything expired or
       // expiring surfaces at the top; dateless permits fall to the bottom.
       const rows = await db<PermitRow>("permits")
@@ -178,7 +178,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "permits", "manage");
       const appliedDate = request.body.appliedDate ?? null;
       const approvedDate = request.body.approvedDate ?? null;
       const expiryDate = request.body.expiryDate ?? null;
@@ -204,7 +204,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits/:permitId",
     { schema: { params: permitParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "permits", "manage");
       const existing = await db<PermitRow>("permits")
         .where({ id: request.params.permitId, project_id: project.id })
         .first();
@@ -231,7 +231,7 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/permits/:permitId",
     { schema: { params: permitParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "permits", "manage");
       await db("permits").where({ id: request.params.permitId, project_id: project.id }).del();
       return reply.status(204).send();
     },

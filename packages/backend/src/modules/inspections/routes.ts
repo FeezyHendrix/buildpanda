@@ -79,7 +79,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "inspections", "view");
       return service.listByProject(project.id);
     },
   );
@@ -88,7 +88,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections",
     { schema: { params: projectIdParams, body: requestInspectionBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "inspections", "request");
       const inspection = await service.request(project.id, request.body);
       return reply.status(201).send(inspection);
     },
@@ -101,7 +101,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections/:inspectionId",
     { schema: { params: inspectionParams, body: editInspectionBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "inspections", "manage");
       const user = request.requireAuth();
       return service.edit(project.id, request.params.inspectionId, request.body, user.id);
     },
@@ -111,7 +111,7 @@ const inspectionRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/inspections/:inspectionId",
     { schema: { params: inspectionParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "inspections", "manage");
       await service.remove(project.id, request.params.inspectionId);
       return reply.status(204).send();
     },
