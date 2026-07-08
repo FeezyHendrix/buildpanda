@@ -34,7 +34,7 @@ function LocationStep({
       </p>
 
       <div className="mt-8 space-y-6">
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="flex flex-col gap-1.5">
             <Label>State in Nigeria</Label>
             <SearchableSelect
