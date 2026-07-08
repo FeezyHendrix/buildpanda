@@ -46,6 +46,20 @@ test("section-matrix 'edit' grants documents:upload through the backend guard", 
   assert.equal(allows(ctx, "documents", "view"), true);
 });
 
+test("section-matrix 'edit' on a workflow section grants comments:post (author parity)", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "workflow.queries": "edit" });
+  assert.equal(allows(ctx, "queries", "raise"), true);
+  assert.equal(allows(ctx, "comments", "post"), true);
+  // must stay author-level only — never the manage/delete action
+  assert.equal(allows(ctx, "queries", "manage"), false);
+});
+
+test("section-matrix 'view' on a workflow section does NOT grant comments:post", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "workflow.queries": "view" });
+  assert.equal(allows(ctx, "queries", "view"), true);
+  assert.equal(allows(ctx, "comments", "post"), false);
+});
+
 test("section-matrix never grants privileged actions it does not map (finances:manage)", () => {
   const ctx = ctxWithSectionMatrix("user_1", { "commercial.budget": "edit" });
   assert.equal(allows(ctx, "finances", "view"), true);
