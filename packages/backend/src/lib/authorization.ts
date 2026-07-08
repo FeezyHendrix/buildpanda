@@ -104,7 +104,6 @@ export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext):
 export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly string[]>> = {
   client: {
     project: ["view"],
-    tasks: ["view"],
     finances: ["view", "dispute"],
     approvals: ["view", "decide"],
     selections: ["view", "decide"],

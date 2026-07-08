@@ -35,17 +35,22 @@ import {
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption, FIELD } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
+
+type TaskBoardScope = "assigned" | "all";
 
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
   const canAddTasks = canResourceAction(access, "tasks", "add");
   const canRemoveTasks = canResourceAction(access, "tasks", "remove");
-  const { data: board, isLoading } = useTaskBoard(project.id);
+  const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
+  const requestedScope: TaskBoardScope = canRemoveTasks ? boardScope : "assigned";
+  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope);
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);
@@ -277,7 +282,11 @@ export default function ProjectTasks() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Tasks"
-        description="Plan and track work across the team. Drag cards between columns."
+        description={
+          board.scope === "assigned"
+            ? "Your personal task board shows only tasks assigned to you. Moving a card updates the shared team board."
+            : "Plan and track work across the team. Drag cards between columns."
+        }
         actions={
           canAddTasks && board.columns[0] ? (
             <Button
@@ -291,6 +300,38 @@ export default function ProjectTasks() {
           ) : null
         }
       />
+
+      <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
+        <button
+          type="button"
+          onClick={() => setBoardScope("assigned")}
+          className={cn(
+            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+          )}
+        >
+          My tasks
+        </button>
+        <button
+          type="button"
+          onClick={() => canRemoveTasks && setBoardScope("all")}
+          disabled={!canRemoveTasks}
+          title={canRemoveTasks ? undefined : "Only admins with full access can view all tasks"}
+          className={cn(
+            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+            !canRemoveTasks && "cursor-not-allowed opacity-50 hover:text-gray-500",
+          )}
+        >
+          All tasks
+        </button>
+      </div>
+
+      {board.scope === "assigned" ? (
+        <div className="mt-4 rounded-xl border border-[#C7D7FF] bg-[#F0F4FF] px-4 py-3 text-sm text-[#004DE7]">
+          Showing tasks assigned to you. Admins with full access can see the complete team board.
+        </div>
+      ) : null}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="mt-6 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto scroll-px-4 pb-4 lg:snap-none">

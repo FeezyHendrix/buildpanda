@@ -1209,6 +1209,7 @@ export interface TaskBoard {
   projectId: string;
   name: string;
   isDefault: boolean;
+  scope: "all" | "assigned";
   columns: TaskColumn[];
   tasks: Task[];
 }

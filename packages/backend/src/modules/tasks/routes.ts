@@ -1,4 +1,6 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { canProjectPermission } from "../../lib/authorization.ts";
+import { ForbiddenError } from "../../lib/errors.ts";
 import { tasksRepository } from "./repository.ts";
 import {
   tasksService,
@@ -9,6 +11,7 @@ import {
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import type { TaskEntityType } from "./types.ts";
+import type { ProjectRow } from "../projects/types.ts";
 
 const STATUS = ["Todo", "Doing", "Done"] as const;
 const PRIORITY = ["Low", "Medium", "High"] as const;
@@ -18,6 +21,14 @@ const projectIdParams = {
   properties: { id: { type: "string", minLength: 1 } },
   required: ["id"],
   additionalProperties: false,
+} as const;
+
+const boardQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    scope: { type: "string", enum: ["all", "assigned"] },
+  },
 } as const;
 
 const taskParams = {
@@ -186,13 +197,50 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
 
-  fastify.get<{ Params: { id: string } }>(
+  function canSeeFullTaskBoard(request: FastifyRequest, project: ProjectRow): boolean {
+    const user = request.requireAuth();
+    return canProjectPermission(
+      { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+      {
+        userId: user.id,
+        orgRoles: request.orgRoles,
+        projectRoles: request.projectRoles,
+        projectSectionPermissions: request.projectSectionPermissions,
+        orgPermissions: request.orgPermissions,
+      },
+      "tasks",
+      "remove",
+    );
+  }
+
+  function assertCompanyTaskAccess(request: FastifyRequest, project: ProjectRow): void {
+    const user = request.requireAuth();
+    if (project.owner_id === user.id) return;
+    if (project.organization_id && request.orgRoles.has(project.organization_id)) return;
+    throw new ForbiddenError("Only company team members can access the task board");
+  }
+
+  async function assertTaskVisibleToRequester(
+    request: FastifyRequest,
+    project: ProjectRow,
+    taskId: string,
+  ): Promise<void> {
+    if (canSeeFullTaskBoard(request, project)) return;
+    const user = request.requireAuth();
+    if (await service.isTaskAssignedToUser(project.id, taskId, user.id)) return;
+    throw new ForbiddenError("You can only access tasks assigned to you");
+  }
+
+  fastify.get<{ Params: { id: string }; Querystring: { scope?: "all" | "assigned" } }>(
     "/projects/:id/tasks/board",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: boardQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
-      return service.getDefaultBoard(project.id, user.id);
+      assertCompanyTaskAccess(request, project);
+      const fullBoard = canSeeFullTaskBoard(request, project);
+      const assigneeId = request.query.scope === "assigned" || !fullBoard ? user.id : undefined;
+      return service.getDefaultBoard(project.id, user.id, assigneeId);
     },
   );
 
@@ -202,6 +250,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
       const user = request.requireAuth();
+      assertCompanyTaskAccess(request, project);
       return service.listAssignable(
         project.id,
         project.organization_id,
@@ -275,7 +324,9 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/tasks/:taskId/move",
     { schema: { params: taskParams, body: moveBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "tasks", "add");
+      const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       return service.moveTask(project.id, request.params.taskId, request.body);
     },
   );
@@ -295,6 +346,8 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       return service.getTaskDetail(project.id, request.params.taskId);
     },
   );
@@ -387,6 +440,8 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "tasks", "view");
+      assertCompanyTaskAccess(request, project);
+      await assertTaskVisibleToRequester(request, project, request.params.taskId);
       return service.listComments(project.id, request.params.taskId);
     },
   );

@@ -294,7 +294,7 @@ export const messageKeys = {
 
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
-  board: (projectId: string) => [...taskKeys.all(projectId), "board"] as const,
+  board: (projectId: string, scope: "all" | "assigned" = "all") => [...taskKeys.all(projectId), "board", scope] as const,
   assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
