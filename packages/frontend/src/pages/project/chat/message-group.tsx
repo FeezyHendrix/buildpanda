@@ -62,10 +62,17 @@ export function MessageItem({
         </div>
       )}
 
-      <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-black-500">
+      <div
+        className={cn(
+          "inline-block max-w-full whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+          isOwn
+            ? "rounded-tr-sm bg-[#004DE7] text-white"
+            : "rounded-tl-sm bg-[#F1F3F5] text-black-500",
+        )}
+      >
         <LinkText text={message.body} />
         {message.editedAt && (
-          <span className="ml-2 text-[10px] text-black-300">(edited)</span>
+          <span className={cn("ml-2 text-[10px]", isOwn ? "text-white/70" : "text-black-300")}>(edited)</span>
         )}
       </div>
 
@@ -123,7 +130,12 @@ export function MessageItem({
         </div>
       )}
 
-      <div className="absolute right-4 -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex z-10">
+      <div
+        className={cn(
+          "absolute -top-2 hidden items-center gap-1 rounded-md border border-gray-200 bg-white p-1 shadow-sm group-hover:flex z-10",
+          isOwn ? "left-4" : "right-4",
+        )}
+      >
         <div className="relative">
           <button
             type="button"
