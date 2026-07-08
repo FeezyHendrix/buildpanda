@@ -82,7 +82,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "queries", "view");
       return service.list(project.id, request.query.status);
     },
   );
@@ -107,7 +107,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "queries", "view");
       return service.get(project.id, request.params.queryId);
     },
   );
@@ -126,7 +126,7 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/queries/:queryId",
     { schema: { params: queryParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "queries", "manage");
       await service.remove(project.id, request.params.queryId);
       return reply.status(204).send();
     },

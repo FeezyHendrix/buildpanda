@@ -65,7 +65,7 @@ const fileSharesRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/share",
     { schema: { params: docParams, body: createBody } },
     async (request, reply) => {
-      await request.requireProjectWrite(request.params.id);
+      await request.requireProjectPermission(request.params.id, "documents", "upload");
       const user = request.requireAuth();
       await assertDocument(request.params.id, request.params.documentId);
 
@@ -92,7 +92,7 @@ const fileSharesRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/documents/:documentId/shares",
     { schema: { params: docParams } },
     async (request) => {
-      await request.requireProjectAccess(request.params.id);
+      await request.requireProjectPermission(request.params.id, "documents", "view");
       const shares = await repo.listForDocument(request.params.documentId);
       return shares.map(toDto);
     },
@@ -102,7 +102,7 @@ const fileSharesRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/shares/:shareId",
     { schema: { params: shareParams } },
     async (request, reply) => {
-      await request.requireProjectWrite(request.params.id);
+      await request.requireProjectPermission(request.params.id, "documents", "upload");
       const share = await repo.findById(request.params.shareId, request.params.id);
       if (!share) throw new NotFoundError("Share");
       await repo.revoke(request.params.shareId, request.params.id);
