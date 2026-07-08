@@ -148,10 +148,8 @@ export function buildGanttData(
   const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
 
   const usedPhaseIds = new Set<string>();
-  const validTaskIds = new Set<string>();
 
   for (const activity of activities) {
-    validTaskIds.add(activity.id);
     if (activity.phaseId && phaseById.has(activity.phaseId)) {
       usedPhaseIds.add(activity.phaseId);
     }
@@ -223,6 +221,22 @@ export function buildGanttData(
     }
   }
 
+  // The Gantt library throws if a task references a parent — or a link
+  // references a source/target — that is not itself present in the dataset.
+  // Activities without a valid start date are skipped above, so any child that
+  // pointed at a skipped parent (e.g. a dateless imported summary row) or a link
+  // to a skipped activity would dangle. Reparent orphans to the root and drop
+  // links whose endpoints were not emitted.
+  const emittedIds = new Set<string>([
+    ...summaryRows.map((row) => String(row.id)),
+    ...taskRows.map((row) => String(row.id)),
+  ]);
+  for (const row of taskRows) {
+    if (row.parent !== ROOT_PARENT && !emittedIds.has(String(row.parent))) {
+      row.parent = ROOT_PARENT;
+    }
+  }
+
   const links: ILink[] = [];
   let linkIdCounter = 1;
   const linkTypeMap: Record<string, "e2s" | "s2s" | "e2e" | "s2e"> = {
@@ -234,7 +248,7 @@ export function buildGanttData(
 
   for (const activity of activities) {
     for (const pred of activity.predecessors) {
-      if (validTaskIds.has(pred.activityId)) {
+      if (emittedIds.has(pred.activityId) && emittedIds.has(activity.id)) {
         links.push({
           id: String(linkIdCounter++),
           source: pred.activityId,
