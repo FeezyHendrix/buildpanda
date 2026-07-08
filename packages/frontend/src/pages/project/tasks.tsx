@@ -46,11 +46,12 @@ type TaskBoardScope = "assigned" | "all";
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
-  const canAddTasks = canResourceAction(access, "tasks", "add");
-  const canRemoveTasks = canResourceAction(access, "tasks", "remove");
+  const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
+  const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
+  const canSeeAllTasks = canRemoveTasks;
   const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
-  const requestedScope: TaskBoardScope = canRemoveTasks ? boardScope : "assigned";
-  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope);
+  const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
+  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope, Boolean(access));
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);
@@ -301,35 +302,28 @@ export default function ProjectTasks() {
         }
       />
 
-      <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
-        <button
-          type="button"
-          onClick={() => setBoardScope("assigned")}
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-            requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-          )}
-        >
-          My tasks
-        </button>
-        <button
-          type="button"
-          onClick={() => canRemoveTasks && setBoardScope("all")}
-          disabled={!canRemoveTasks}
-          title={canRemoveTasks ? undefined : "Only admins with full access can view all tasks"}
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-            requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-            !canRemoveTasks && "cursor-not-allowed opacity-50 hover:text-gray-500",
-          )}
-        >
-          All tasks
-        </button>
-      </div>
-
-      {board.scope === "assigned" ? (
-        <div className="mt-4 rounded-xl border border-[#C7D7FF] bg-[#F0F4FF] px-4 py-3 text-sm text-[#004DE7]">
-          Showing tasks assigned to you. Admins with full access can see the complete team board.
+      {canSeeAllTasks ? (
+        <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
+          <button
+            type="button"
+            onClick={() => setBoardScope("assigned")}
+            className={cn(
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+            )}
+          >
+            My tasks
+          </button>
+          <button
+            type="button"
+            onClick={() => setBoardScope("all")}
+            className={cn(
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+            )}
+          >
+            All tasks
+          </button>
         </div>
       ) : null}
 
