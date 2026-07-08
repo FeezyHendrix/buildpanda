@@ -169,11 +169,17 @@ function UserMenu({
       {canManageTeam && (
         <Row
           icon={<ReactSVG src={icons.teams} />}
-          label="Manage team roles"
-          asLink="/dashboard/settings"
+          label="Manage team & roles"
+          asLink="/dashboard/settings?tab=members"
           onClick={close}
         />
       )}
+      <Row
+        icon={<ReactSVG src={icons.settings} />}
+        label="Settings"
+        asLink="/dashboard/settings"
+        onClick={close}
+      />
       <Row
         icon={<ReactSVG src={icons.switchProfile} />}
         label="Switch profile"

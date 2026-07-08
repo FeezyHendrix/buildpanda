@@ -1,5 +1,6 @@
 import { useSearchParams, Link } from "react-router-dom";
 import { PageHeader } from "@/components/molecules/page-header";
+import { BackArrowIcon } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
 
 import { OrgTab } from "./tabs/org-tab";
@@ -26,11 +27,20 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Settings"
-        description="Manage your account, organization, and preferences."
-      />
-
+      <div className="mb-4 flex items-start gap-3">
+        <Link
+          to="/dashboard"
+          aria-label="Back to dashboard"
+          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-gray-600 hover:bg-gray-200"
+        >
+          <BackArrowIcon className="size-4" />
+        </Link>
+        <PageHeader
+          title="Settings"
+          description="Manage your account, organization, and preferences."
+          className="flex-1"
+        />
+      </div>
       <div className="mt-6 flex flex-col">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
