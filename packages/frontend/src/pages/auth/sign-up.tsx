@@ -7,7 +7,7 @@ import { SearchableSelect } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { Label } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
-import { PENDING_ORG_INVITE_KEY } from "@/lib/route-guards";
+import { PENDING_ORG_INVITE_KEY, PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
 import type { Country } from "@/lib/countries";
 
 const ACCOUNT_TYPES = [
@@ -70,6 +70,17 @@ export default function SignUpForm() {
   useEffect(() => {
     if (invitedEmail) setEmail(invitedEmail);
   }, [invitedEmail]);
+
+  // Persist a project invite so the redirect survives the email-verification
+  // round trip: the verification link opens in a fresh page load with no router
+  // state, so verify-email falls back to this key to return the user to the
+  // invite instead of the generic home page.
+  useEffect(() => {
+    const match = redirectTo?.match(/^\/accept-project-invite\/([^/?]+)/);
+    if (match?.[1]) {
+      window.localStorage.setItem(PENDING_PROJECT_INVITE_KEY, match[1]);
+    }
+  }, [redirectTo]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
