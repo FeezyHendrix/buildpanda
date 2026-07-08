@@ -245,7 +245,10 @@ export type ProjectSectionPermissions = Record<string, SectionValue>;
 // per-PAGE keys; backend auth uses resource+action. This is the single canonical
 // bridge. `view`/`edit` grant only safe read/author actions — never manage,
 // approve, decide or delete (those stay privileged, off the UI matrix).
-const SECTION_MAP: Record<string, { resource: string; view: string[]; edit: string[] }> = {
+const SECTION_MAP: Record<
+  string,
+  { resource: string; view: string[]; edit: string[]; editExtra?: Record<string, string[]> }
+> = {
   "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
   "projects.schedule": { resource: "schedule", view: ["view"], edit: ["view", "manage"] },
   "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
@@ -259,11 +262,11 @@ const SECTION_MAP: Record<string, { resource: string; view: string[]; edit: stri
   "commercial.purchaseOrders": { resource: "finances", view: ["view"], edit: ["view"] },
   "commercial.materialsEquipment": { resource: "materials", view: ["view"], edit: ["view", "request"] },
   "commercial.materialsLedger": { resource: "materials", view: ["view", "report"], edit: ["view", "report"] },
-  "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"] },
-  "workflow.queries": { resource: "queries", view: ["view"], edit: ["view", "raise"] },
-  "workflow.approvals": { resource: "approvals", view: ["view"], edit: ["view", "decide"] },
-  "workflow.changeRequests": { resource: "change-requests", view: ["view"], edit: ["view"] },
-  "workflow.actionItems": { resource: "action-items", view: ["view"], edit: ["view"] },
+  "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"], editExtra: { comments: ["view", "post"] } },
+  "workflow.queries": { resource: "queries", view: ["view"], edit: ["view", "raise"], editExtra: { comments: ["view", "post"] } },
+  "workflow.approvals": { resource: "approvals", view: ["view"], edit: ["view", "decide"], editExtra: { comments: ["view", "post"] } },
+  "workflow.changeRequests": { resource: "change-requests", view: ["view"], edit: ["view"], editExtra: { comments: ["view", "post"] } },
+  "workflow.actionItems": { resource: "action-items", view: ["view"], edit: ["view"], editExtra: { comments: ["view", "post"] } },
   "compliance.permits": { resource: "permits", view: ["view"], edit: ["view"] },
   "compliance.keyDates": { resource: "key-dates", view: ["view"], edit: ["view"] },
   "project.updates": { resource: "updates", view: ["view"], edit: ["view", "post"] },
@@ -284,6 +287,11 @@ export function sectionsToPermissions(
     if (!entry || value === "hidden") continue;
     const actions = value === "edit" ? entry.edit : entry.view;
     out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
+    if (value === "edit" && entry.editExtra) {
+      for (const [res, extra] of Object.entries(entry.editExtra)) {
+        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
+      }
+    }
   }
   return out;
 }
