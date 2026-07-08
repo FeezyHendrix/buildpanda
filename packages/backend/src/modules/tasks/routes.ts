@@ -198,9 +198,14 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   function canSeeFullTaskBoard(request: FastifyRequest, project: ProjectRow): boolean {
+    const orgId = project.organization_id;
+    const role = orgId ? request.orgRoles.get(orgId) : undefined;
+    const roleTokens = role?.split(",").map((token) => token.trim()).filter(Boolean) ?? [];
+    if (roleTokens.includes("owner") || roleTokens.includes("admin")) return true;
+
     const user = request.requireAuth();
     return canProjectPermission(
-      { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+      { id: project.id, ownerId: project.owner_id, organizationId: orgId },
       {
         userId: user.id,
         orgRoles: request.orgRoles,
