@@ -34,18 +34,18 @@ function WizardFooter({
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-t border-[#F6F6F6] pt-6",
+        "flex flex-col lg:flex-row gap-4 lg:gap-0 items-center justify-between border-t border-[#F6F6F6] pt-6",
         className,
       )}
     >
       <div>{helpText}</div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 w-full lg:w-auto">
         <Button
           variant="ghost"
           size="md"
           onClick={onCancel}
-          className="text-[#004DE7] hover:bg-[#004DE7]/5 active:bg-[#004DE7]/10"
+          className="text-[#004DE7] hover:bg-[#004DE7]/5 active:bg-[#004DE7]/10 w-full lg:auto"
         >
           {cancelLabel}
         </Button>
@@ -54,6 +54,7 @@ function WizardFooter({
           size="md"
           onClick={onContinue}
           disabled={continueDisabled}
+          className='w-full lg:w-auto'
         >
           {continueLabel}
         </Button>
