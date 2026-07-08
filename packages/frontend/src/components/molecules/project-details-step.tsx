@@ -1,15 +1,36 @@
-import { useState } from "react";
-import {
-  RadioCard,
-  BudgetSlider,
-  TimelinePicker,
-  type TimelineOption,
-} from "@/components/atoms";
+import { RadioCard, TimelinePicker, type TimelineOption } from "@/components/atoms";
+import { cn } from "@/lib/utils";
 import type { ProjectType } from "./project-type-step";
 
-// Budgets are in Naira only. Beyond the slider ceiling, a custom amount is used.
-const CURRENCY = "NGN";
-const SLIDER_MAX = 10_000_000_000;
+const CURRENCIES = ["NGN", "USD", "CAD", "EUR", "GBP"] as const;
+type Currency = (typeof CURRENCIES)[number];
+
+const CURRENCY_SYMBOL: Record<Currency, string> = {
+  NGN: "₦",
+  USD: "$",
+  CAD: "CA$",
+  EUR: "€",
+  GBP: "£",
+};
+
+const BUDGET_PRESETS = [
+  { min: 0, max: 50_000 },
+  { min: 50_000, max: 100_000 },
+  { min: 100_000, max: 250_000 },
+  { min: 250_000, max: 500_000 },
+  { min: 500_000, max: 1_000_000 },
+  { min: 1_000_000, max: 0 },
+] as const;
+
+function formatK(n: number): string {
+  return n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1_000}K`;
+}
+
+function presetLabel(preset: (typeof BUDGET_PRESETS)[number], symbol: string): string {
+  if (preset.min === 0) return `<${symbol}${formatK(preset.max)}`;
+  if (preset.max === 0) return `${symbol}${formatK(preset.min)}+`;
+  return `${symbol}${formatK(preset.min)} - ${symbol}${formatK(preset.max)}`;
+}
 
 const BUILDING_TYPES = [
   {
@@ -107,10 +128,12 @@ interface ProjectDetailsStepProps {
 function ProjectDetailsStep({
   projectType,
   buildingType,
+  currency,
   budget,
   fundingMethod,
   timeline,
   onBuildingTypeChange,
+  onCurrencyChange,
   onBudgetChange,
   onFundingMethodChange,
   onTimelineChange,
@@ -118,11 +141,10 @@ function ProjectDetailsStep({
   const buildingTypes = buildingTypesForProjectType(projectType);
   const timelineOptions = timelineOptionsForProjectType(projectType);
   const isRenovation = projectType === "renovate";
-  // Default to custom entry when the budget is beyond the slider's range
-  // (e.g. a ₦45M house build doesn't fit the preset slider).
-  const [custom, setCustom] = useState(
-    () => budget[0] > SLIDER_MAX || budget[1] > SLIDER_MAX,
-  );
+  const symbol = CURRENCY_SYMBOL[currency as Currency] ?? currency;
+  const activePreset = BUDGET_PRESETS.find(
+    (p) => p.min === budget[0] && p.max === budget[1],
+  ) ?? null;
 
   function setBudgetField(index: 0 | 1, raw: string): void {
     const amount = Math.max(0, Math.round(Number(raw.replace(/[^0-9.]/g, "")) || 0));
@@ -160,42 +182,71 @@ function ProjectDetailsStep({
         </section>
 
         <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-900">
-              Estimated Budget
-            </h3>
-            <button
-              type="button"
-              onClick={() => setCustom((c) => !c)}
-              className="text-sm font-medium text-[#004DE7] hover:text-[#0041c4]"
-            >
-              {custom ? "Use the slider" : "Enter a custom amount"}
-            </button>
-          </div>
+          <h3 className="mb-4 text-base font-semibold text-gray-900">
+            Estimated Budget
+          </h3>
           <div className="space-y-4">
-            {custom ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+            {/* Currency tabs + Min/Max inputs on the same row */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full">
+              <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
+                {CURRENCIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => onCurrencyChange(c)}
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5 text-center text-[12px] font-medium transition-colors",
+                      currency === c
+                        ? "border-primary bg-primary-50 text-primary rounded-lg"
+                        : "border-none bg-[#F6F6F6] text-black-500 hover:bg-[#F6F6F6]",
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 lg:w-[40%] w-full">
                 <CustomBudgetInput
                   label="Minimum"
-                  currency={CURRENCY}
+                  symbol={symbol}
                   value={budget[0]}
                   onChange={(raw) => setBudgetField(0, raw)}
                 />
                 <CustomBudgetInput
                   label="Maximum"
-                  currency={CURRENCY}
+                  symbol={symbol}
                   value={budget[1]}
                   onChange={(raw) => setBudgetField(1, raw)}
                 />
               </div>
-            ) : (
-              <BudgetSlider
-                value={budget}
-                onChange={onBudgetChange}
-                currency={CURRENCY}
-              />
-            )}
-            {custom && budget[1] < budget[0] && (
+            </div>
+
+            {/* Preset range chips — equal width, full row */}
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-6 mt-8">
+              {BUDGET_PRESETS.map((preset) => {
+                const isActive =
+                  activePreset?.min === preset.min &&
+                  activePreset?.max === preset.max;
+                return (
+                  <button
+                    key={`${preset.min}-${preset.max}`}
+                    type="button"
+                    onClick={() => onBudgetChange([preset.min, preset.max])}
+                    className={cn(
+                      "rounded-lg border px-3 py-3 text-center text-[12px] font-medium transition-colors",
+                      isActive
+                        ? "border-primary bg-primary-50 text-primary rounded-lg"
+                        : "border-none bg-[#F6F6F6] text-black-500 hover:bg-[#F6F6F6]",
+                    )}
+                  >
+                    {presetLabel(preset, symbol)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {budget[1] > 0 && budget[1] < budget[0] && (
               <p className="text-xs text-[#C72525]">
                 Maximum budget should be greater than the minimum.
               </p>
@@ -237,20 +288,20 @@ function ProjectDetailsStep({
 
 function CustomBudgetInput({
   label,
-  currency,
+  symbol,
   value,
   onChange,
 }: {
   label: string;
-  currency: string;
+  symbol: string;
   value: number;
   onChange: (raw: string) => void;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-gray-900">{label}</span>
+      <span className="text-sm font-medium text-gray-500">{label}</span>
       <div className="flex h-12 items-center rounded-lg border border-[#EDEDED] bg-white px-3 focus-within:ring-2 focus-within:ring-gray-900/10">
-        <span className="mr-2 shrink-0 text-sm font-medium text-gray-500">{currency}</span>
+        <span className="mr-2 shrink-0 text-sm font-medium text-gray-400">{symbol}</span>
         <input
           type="text"
           inputMode="numeric"
