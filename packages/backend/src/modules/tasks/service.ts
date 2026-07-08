@@ -220,11 +220,17 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     return created;
   }
 
-  async function assembleBoard(boardRow: TaskBoardRow): Promise<TaskBoard> {
-    const [columns, tasks] = await Promise.all([
+  async function assembleBoard(
+    boardRow: TaskBoardRow,
+    assigneeId?: string,
+  ): Promise<TaskBoard> {
+    const [columns, allTasks] = await Promise.all([
       repository.listColumns(boardRow.id),
       repository.listTasksByBoard(boardRow.id),
     ]);
+    const tasks = assigneeId
+      ? allTasks.filter((task) => task.assignee_id === assigneeId)
+      : allTasks;
     const taskIds = tasks.map((t) => t.id);
     const [counts, linkTypes] = await Promise.all([
       repository.subtaskCounts(taskIds),
@@ -235,6 +241,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       projectId: boardRow.project_id,
       name: boardRow.name,
       isDefault: boardRow.is_default,
+      scope: assigneeId ? "assigned" : "all",
       columns: columns.map(toColumn),
       tasks: tasks.map((t) => toTask(t, counts.get(t.id), linkTypes.get(t.id))),
     };
@@ -280,9 +287,19 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
   }
 
   return {
-    async getDefaultBoard(projectId: string, userId: string | null): Promise<TaskBoard> {
+    async getDefaultBoard(
+      projectId: string,
+      userId: string | null,
+      assigneeId?: string,
+    ): Promise<TaskBoard> {
       const board = await ensureDefaultBoard(projectId, userId);
-      return assembleBoard(board);
+      return assembleBoard(board, assigneeId);
+    },
+
+    async isTaskAssignedToUser(projectId: string, taskId: string, userId: string): Promise<boolean> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      return task.assignee_id === userId;
     },
 
     async listAssignable(
