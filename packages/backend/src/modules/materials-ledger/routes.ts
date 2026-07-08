@@ -219,7 +219,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/stock",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "view");
       return service.getStock(project.id);
     },
   );
@@ -228,7 +228,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/catalog",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "view");
       return service.getCatalog(project.id);
     },
   );
@@ -246,7 +246,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/ledger",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "view");
       return service.listLedger(project.id, request.query);
     },
   );
@@ -255,7 +255,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/ledger",
     { schema: { params: projectIdParams, body: logBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
       const user = request.requireAuth();
       const result = await service.logEntry(project.id, request.body, user.id);
       return reply.status(result.duplicate ? 200 : 201).send(result);
@@ -266,7 +266,7 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/materials/ledger/:entryId/void",
     { schema: { params: entryParams, body: voidBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
       const user = request.requireAuth();
       const entry = await service.voidEntry(project.id, request.params.entryId, request.body.reason, user.id);
       return reply.status(201).send(entry);

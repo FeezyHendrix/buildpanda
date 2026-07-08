@@ -95,7 +95,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/deposits",
     { schema: { params: projectIdParams, body: depositBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
@@ -112,7 +112,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones",
     { schema: { params: projectIdParams, body: milestoneBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
@@ -132,7 +132,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId",
     { schema: { params: milestoneParams, body: milestonePatchBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
@@ -153,7 +153,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/milestones/:milestoneId",
     { schema: { params: milestoneParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       const user = request.requireAuth();
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },

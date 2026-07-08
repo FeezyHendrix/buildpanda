@@ -56,7 +56,7 @@ const suppliersRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/suppliers",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "view");
       return service.list(project.id, request.query.includeInactive ?? false);
     },
   );
@@ -65,7 +65,7 @@ const suppliersRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/suppliers/:supplierId",
     { schema: { params: supplierParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "view");
       return service.get(project.id, request.params.supplierId);
     },
   );
