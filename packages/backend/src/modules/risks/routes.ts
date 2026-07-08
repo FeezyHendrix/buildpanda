@@ -51,7 +51,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "risks", "view");
       return service.listByProject(project.id);
     },
   );
@@ -60,7 +60,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors",
     { schema: { params: projectIdParams, body: createRiskBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "risks", "manage");
       const risk = await service.create(project.id, request.body);
       return reply.status(201).send(risk);
     },
@@ -73,7 +73,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors/:riskId",
     { schema: { params: riskParams, body: editRiskBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "risks", "manage");
       return service.edit(project.id, request.params.riskId, request.body);
     },
   );
@@ -82,7 +82,7 @@ const riskRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/risk-factors/:riskId",
     { schema: { params: riskParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "risks", "manage");
       await service.remove(project.id, request.params.riskId);
       return reply.status(204).send();
     },

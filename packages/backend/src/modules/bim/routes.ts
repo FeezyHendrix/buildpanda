@@ -149,7 +149,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.list(project.id);
     },
   );
@@ -207,7 +207,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models/:modelId",
     { schema: { params: modelParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.get(project.id, request.params.modelId);
     },
   );
@@ -216,7 +216,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models/:modelId/file-url",
     { schema: { params: modelParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.modelFileUrl(project.id, request.params.modelId);
     },
   );
@@ -225,7 +225,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models/:modelId/xkt-url",
     { schema: { params: modelParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.modelXktUrl(project.id, request.params.modelId);
     },
   );
@@ -234,7 +234,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models/:modelId/issues",
     { schema: { params: modelParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.listIssues(project.id, request.params.modelId);
     },
   );
@@ -257,7 +257,7 @@ const bimRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/bim/models/:modelId/links",
     { schema: { params: modelParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "bim", "view");
       return service.listLinks(project.id, request.params.modelId);
     },
   );

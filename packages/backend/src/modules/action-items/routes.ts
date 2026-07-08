@@ -87,7 +87,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "action-items", "view");
       return service.list(project.id, request.query.status);
     },
   );
@@ -96,7 +96,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "action-items", "manage");
       const user = request.requireAuth();
       const item = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(item);
@@ -107,7 +107,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "action-items", "view");
       return service.get(project.id, request.params.itemId);
     },
   );
@@ -116,7 +116,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "action-items", "manage");
       const user = request.requireAuth();
       return service.update(project.id, request.params.itemId, request.body, user.id);
     },
@@ -126,7 +126,7 @@ const actionItemRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/action-items/:itemId",
     { schema: { params: itemParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "action-items", "manage");
       await service.remove(project.id, request.params.itemId);
       return reply.status(204).send();
     },

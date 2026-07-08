@@ -90,7 +90,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "approvals", "view");
       return service.list(project.id, request.query.status);
     },
   );
@@ -99,7 +99,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "approvals", "manage");
       const user = request.requireAuth();
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
@@ -110,7 +110,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals/:approvalId",
     { schema: { params: approvalParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "approvals", "view");
       return service.get(project.id, request.params.approvalId);
     },
   );
@@ -147,7 +147,7 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/approvals/:approvalId",
     { schema: { params: approvalParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "approvals", "manage");
       await service.remove(project.id, request.params.approvalId);
       return reply.status(204).send();
     },
