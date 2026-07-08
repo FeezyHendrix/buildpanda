@@ -1,0 +1,94 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  assertProjectPermission,
+  canProjectPermission,
+  type EnrichedAccessContext,
+  type ProjectSectionPermissions,
+} from "./authorization.ts";
+import { resolvePermissionMap } from "./permissions.ts";
+import { ForbiddenError } from "./errors.ts";
+
+const PROJECT = { id: "proj_1", ownerId: "owner_1", organizationId: "org_1" };
+
+function ctxWithSectionMatrix(
+  userId: string,
+  matrix: ProjectSectionPermissions,
+): EnrichedAccessContext {
+  return {
+    userId,
+    orgRoles: new Map(),
+    orgPermissions: new Map([["org_1", resolvePermissionMap("stakeholder-no-perms", [])]]),
+    projectRoles: new Map([["proj_1", "stakeholder-no-perms"]]),
+    projectSectionPermissions: new Map([["proj_1", matrix]]),
+  };
+}
+
+function allows(ctx: EnrichedAccessContext, resource: string, action: string): boolean {
+  try {
+    assertProjectPermission(PROJECT, ctx, resource, action);
+    return true;
+  } catch (err) {
+    assert.ok(err instanceof ForbiddenError);
+    return false;
+  }
+}
+
+test("section-matrix 'edit' grants schedule:manage through the backend guard", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "projects.schedule": "edit" });
+  assert.equal(allows(ctx, "schedule", "manage"), true);
+  assert.equal(allows(ctx, "schedule", "view"), true);
+});
+
+test("section-matrix 'edit' grants documents:upload through the backend guard", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "projects.documents": "edit" });
+  assert.equal(allows(ctx, "documents", "upload"), true);
+  assert.equal(allows(ctx, "documents", "view"), true);
+});
+
+test("section-matrix never grants privileged actions it does not map (finances:manage)", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "commercial.budget": "edit" });
+  assert.equal(allows(ctx, "finances", "view"), true);
+  assert.equal(allows(ctx, "finances", "manage"), false);
+  assert.equal(allows(ctx, "documents", "upload"), false);
+});
+
+test("section-matrix 'hidden' grants nothing for that resource", () => {
+  const ctx = ctxWithSectionMatrix("user_1", { "projects.schedule": "hidden" });
+  assert.equal(allows(ctx, "schedule", "view"), false);
+  assert.equal(allows(ctx, "schedule", "manage"), false);
+});
+
+test("assertProjectPermission and canProjectPermission stay in exact parity", () => {
+  const ctx = ctxWithSectionMatrix("user_1", {
+    "projects.schedule": "edit",
+    "projects.documents": "view",
+    "commercial.budget": "edit",
+    "workflow.queries": "edit",
+  });
+  const cases: Array<[string, string]> = [
+    ["schedule", "view"],
+    ["schedule", "manage"],
+    ["documents", "view"],
+    ["documents", "upload"],
+    ["documents", "delete"],
+    ["finances", "view"],
+    ["finances", "manage"],
+    ["queries", "view"],
+    ["queries", "raise"],
+    ["teamMembers", "manage"],
+  ];
+  for (const [resource, action] of cases) {
+    assert.equal(
+      allows(ctx, resource, action),
+      canProjectPermission(PROJECT, ctx, resource, action),
+      `parity mismatch for ${resource}:${action}`,
+    );
+  }
+});
+
+test("project owner bypasses all resource checks", () => {
+  const ctx = ctxWithSectionMatrix("owner_1", {});
+  assert.equal(allows(ctx, "finances", "manage"), true);
+  assert.equal(allows(ctx, "teamMembers", "manage"), true);
+});

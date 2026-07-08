@@ -323,12 +323,18 @@ export function assertProjectPermission(
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   const orgAllowed = orgPerms ? mapAllows(orgPerms, resource, action) : false;
 
+  // Per-participant section matrix: a trusted grant whose SECTION_MAP bridge only
+  // yields safe read/author actions (never manage/approve/decide/delete), so
+  // honoring it here keeps backend enforcement in parity with canProjectPermission.
+  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
+  const matrixAllowed = matrixAllows(sections, resource, action);
+
   // Participant-role overlay (additive)
   const pRole = participantRole(project, ctx);
   const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
   const participantAllowed = pPerms ? (pPerms[resource] ?? []).includes(action) : false;
 
-  if (!orgAllowed && !participantAllowed) {
+  if (!orgAllowed && !matrixAllowed && !participantAllowed) {
     throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
   }
 }
