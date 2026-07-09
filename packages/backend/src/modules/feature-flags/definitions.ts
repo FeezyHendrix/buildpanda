@@ -71,7 +71,12 @@ export const FEATURE_FLAGS = [
     group: "Project controls",
     description: "Stages, activities, tasks, schedule boards and progress recompute.",
     enabledByDefault: true,
-    routePrefixes: ["/projects/:id/stages", "/projects/:id/activities", "/projects/:id/tasks"],
+    routePrefixes: [
+      "/projects/:id/stages",
+      "/projects/:id/activities",
+      "/projects/:id/tasks",
+      "/projects/:id/look-aheads",
+    ],
   },
   {
     key: "projects.bim",
@@ -88,7 +93,7 @@ export const FEATURE_FLAGS = [
     description:
       "Experimental issue-detail dashboard inside the BIM viewer: a flagged element opens a coordination panel with status, due date and location. Future concept.",
     enabledByDefault: false,
-    routePrefixes: ["/projects/:id/bim"],
+    routePrefixes: [],
   },
   {
     key: "projects.selections",
@@ -192,7 +197,7 @@ export const FEATURE_FLAGS = [
     group: "Commercial",
     description: "Material orders, BoQ import, equipment requests and procurement tracking.",
     enabledByDefault: true,
-    routePrefixes: ["/projects/:id/materials", "/projects/:id/equipment-requests"],
+    routePrefixes: ["/projects/:id/materials", "/projects/:id/equipment-requests", "/projects/:id/suppliers"],
   },
   {
     key: "commercial.materialsLedger",
