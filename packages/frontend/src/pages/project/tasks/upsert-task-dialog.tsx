@@ -47,6 +47,7 @@ export function UpsertTaskDialog({
   const [description, setDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [assigneeValues, setAssigneeValues] = useState<string[]>([]);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [labels, setLabels] = useState<string[]>([]);
@@ -93,6 +94,7 @@ export function UpsertTaskDialog({
       setPriority(task?.priority ?? "Medium");
       setLabels(task?.labels ?? []);
       setLabelDraft("");
+      setAssigneePickerOpen(false);
     }
   }, [open, dialogKey]);
 
@@ -124,6 +126,10 @@ export function UpsertTaskDialog({
       const found = pool.find((o) => o.id === id);
       return found ? [found] : [];
     });
+  }
+
+  function assigneeLabel(value: string): string {
+    return assigneeItems.find((option) => option.id === value)?.label ?? value;
   }
 
   function handleSubmit(): void {
@@ -205,7 +211,10 @@ export function UpsertTaskDialog({
           {selfId && !assigneeValues.includes(`user:${selfId}`) && (
             <button
               type="button"
-              onClick={() => setAssigneeValues((prev) => [...prev, `user:${selfId}`])}
+              onClick={() => {
+                setAssigneeValues((prev) => [...prev, `user:${selfId}`]);
+                setAssigneePickerOpen(false);
+              }}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
             >
               Assign to me
@@ -213,28 +222,38 @@ export function UpsertTaskDialog({
           )}
         </div>
         <div className="rounded-lg bg-[#F6F6F6] p-2">
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {assigneeValues.length === 0 ? (
-              <span className="px-1 text-sm text-gray-400">Unassigned</span>
-            ) : (
-              assigneeValues.map((value) => {
-                const item = assigneeItems.find((option) => option.id === value);
-                if (!item) return null;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => toggleAssignee(value)}
-                    className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:text-gray-900"
-                  >
-                    {item.label}
-                    <span className="text-gray-400">×</span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-          <div className="max-h-44 overflow-y-auto rounded-md bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setAssigneePickerOpen((prev) => !prev)}
+            aria-expanded={assigneePickerOpen}
+            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-left text-sm text-gray-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          >
+            <span className="min-w-0 flex-1 truncate text-gray-400">
+              {assigneeValues.length === 0
+                ? "Select assignees"
+                : assigneeValues.length === 1
+                  ? assigneeLabel(assigneeValues[0]!)
+                  : `${assigneeLabel(assigneeValues[0]!)} +${assigneeValues.length - 1}`}
+            </span>
+            <span className="text-gray-400">▾</span>
+          </button>
+          {assigneeValues.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {assigneeValues.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleAssignee(value)}
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:text-gray-900"
+                >
+                  {assigneeLabel(value)}
+                  <span className="text-gray-400">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {assigneePickerOpen && (
+            <div className="mt-2 max-h-44 overflow-y-auto rounded-md bg-white p-1">
             {assigneeItems.map((item) => (
               <label
                 key={item.id}
@@ -251,7 +270,8 @@ export function UpsertTaskDialog({
               </label>
             ))}
             {assigneeItems.length === 0 && <p className="px-2 py-1.5 text-sm text-gray-400">No people found</p>}
-          </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-1.5">
