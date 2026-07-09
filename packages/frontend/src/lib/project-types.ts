@@ -1128,6 +1128,7 @@ export interface Task {
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
+  assignees: TaskAssignee[];
   dueDate: string | null;
   priority: TaskPriority;
   labels: string[];
@@ -1141,6 +1142,12 @@ export interface Task {
   entityLinkTypes: TaskEntityType[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskAssignee {
+  kind: "user" | "team";
+  id: string;
+  name: string;
 }
 
 export type TaskPriority = "Low" | "Medium" | "High";
