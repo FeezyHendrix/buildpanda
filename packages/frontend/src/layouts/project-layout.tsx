@@ -20,7 +20,7 @@ import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
-import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 
@@ -41,6 +41,9 @@ export default function ProjectLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: featureFlags } = useFeatureFlags();
+  const pandaAiChatEnabled =
+    featureFlags?.flags.some((flag) => flag.key === "ai.chatAgent" && flag.enabled) ?? false;
 
   if (projectId === "marbella") {
     return (
@@ -93,7 +96,7 @@ export default function ProjectLayout() {
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
-        {!location.pathname.endsWith("/chat") && (
+        {pandaAiChatEnabled && !location.pathname.endsWith("/chat") && (
           <PandaAiPane projectId={project.id} />
         )}
         {access &&
