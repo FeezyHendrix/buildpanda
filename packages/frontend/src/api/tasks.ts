@@ -12,6 +12,7 @@ import type {
   TaskEntityLink,
   TaskEntityType,
   TaskComment,
+  TaskAssignee,
 } from "@/lib/project-types";
 
 export interface CreateTaskInput {
@@ -20,6 +21,7 @@ export interface CreateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: Pick<TaskAssignee, "kind" | "id">[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];
@@ -32,6 +34,7 @@ export interface UpdateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: Pick<TaskAssignee, "kind" | "id">[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];

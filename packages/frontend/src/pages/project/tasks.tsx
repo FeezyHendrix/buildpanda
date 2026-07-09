@@ -230,16 +230,12 @@ export default function ProjectTasks() {
     title: string;
     description: string;
     descriptionHtml: string;
-    assignee: AssigneeOption | null;
+    assignees: AssigneeOption[];
     dueDate: string | null;
     priority: TaskPriority;
     labels: string[];
   }): void {
-    const assigneeFields = {
-      assigneeId: values.assignee?.kind === "user" ? values.assignee.id : null,
-      assigneeTeamMemberId:
-        values.assignee?.kind === "team" ? values.assignee.id : null,
-    };
+    const assigneeFields = { assignees: values.assignees.map(({ kind, id }) => ({ kind, id })) };
     if (editing) {
       updateTask.mutate(
         {
