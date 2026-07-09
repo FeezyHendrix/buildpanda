@@ -143,6 +143,24 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    boqItems(projectId: string) {
+      return db("proposal_boq_items as item")
+        .join("proposals as proposal", "proposal.id", "item.proposal_id")
+        .where("proposal.project_id", projectId)
+        .whereIn("proposal.status", ["Accepted", "Converted"])
+        .orderBy("item.sort", "asc")
+        .select(
+          "proposal.id as proposal_id",
+          "proposal.title as proposal_title",
+          "proposal.status as proposal_status",
+          "item.id",
+          "item.group_label",
+          "item.description",
+          "item.qty",
+          "item.unit",
+        );
+    },
+
     materialStock(projectId: string) {
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")

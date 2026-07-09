@@ -357,6 +357,22 @@ export function buildTools(): AgentTool[] {
       return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
     }),
 
+    tool(fn("get_boq_items", "Get Bill of Quantities (BoQ) line items from the accepted/converted proposal for this project, including description, group, quantity and unit. Use for BoQ quantity questions such as total doors, blocks, tiles, fixtures, or any 'how many/how much is in the BoQ' question. This is the planned BoQ, not procurement orders or live stock."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const items = await repo.boqItems(ctx.projectId);
+      return {
+        output: items.map((item) => ({
+          proposalId: item.proposal_id,
+          proposalTitle: item.proposal_title,
+          proposalStatus: item.proposal_status,
+          group: item.group_label,
+          description: item.description,
+          quantity: Number(item.qty ?? 0),
+          unit: item.unit,
+        })),
+      };
+    }),
+
     tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const stock = await repo.materialStock(ctx.projectId);
