@@ -22,6 +22,7 @@ export interface Task {
   assigneeId: string | null;
   assigneeTeamMemberId: string | null;
   assigneeName: string | null;
+  assignees: TaskAssignee[];
   dueDate: string | null;
   priority: TaskPriority;
   labels: string[];
@@ -35,6 +36,12 @@ export interface Task {
   entityLinkTypes: TaskEntityType[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskAssignee {
+  kind: "user" | "team";
+  id: string;
+  name: string;
 }
 
 export type TaskLinkType = "relates_to" | "blocks" | "blocked_by" | "duplicates";
@@ -133,9 +140,7 @@ export interface TaskRow {
   description: string | null;
   description_html: string | null;
   assignee_id: string | null;
-  assignee_name: string | null;
   assignee_team_member_id: string | null;
-  assignee_team_member_name: string | null;
   due_date: string | null;
   priority: TaskPriority;
   labels: string[] | string;
@@ -146,6 +151,14 @@ export interface TaskRow {
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskAssigneeRow {
+  task_id: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  assignee_team_member_id: string | null;
+  assignee_team_member_name: string | null;
 }
 
 export interface TaskBoardRow {

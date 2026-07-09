@@ -17,6 +17,20 @@ import type { ProjectRow } from "../projects/types.ts";
 const STATUS = ["Todo", "Doing", "Done"] as const;
 const PRIORITY = ["Low", "Medium", "High"] as const;
 
+const assigneesSchema = {
+  type: "array",
+  maxItems: 20,
+  items: {
+    type: "object",
+    required: ["kind", "id"],
+    additionalProperties: false,
+    properties: {
+      kind: { type: "string", enum: ["user", "team"] },
+      id: { type: "string", minLength: 1, maxLength: 100 },
+    },
+  },
+} as const;
+
 const projectIdParams = {
   type: "object",
   properties: { id: { type: "string", minLength: 1 } },
@@ -52,6 +66,7 @@ const createBody = {
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
+    assignees: assigneesSchema,
     dueDate: { type: ["string", "null"], maxLength: 40 },
     priority: { type: "string", enum: PRIORITY },
     labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
@@ -70,6 +85,7 @@ const updateBody = {
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
     assigneeTeamMemberId: { type: ["string", "null"], maxLength: 100 },
+    assignees: assigneesSchema,
     dueDate: { type: ["string", "null"], maxLength: 40 },
     priority: { type: "string", enum: PRIORITY },
     labels: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 } },
