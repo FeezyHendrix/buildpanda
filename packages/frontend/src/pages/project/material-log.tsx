@@ -129,9 +129,9 @@ export default function ProjectMaterialLog() {
         }
       />
 
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
         <Card padding="md" className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-gray-500">Total received</span>
+          <span className="text-xs font-medium text-gray-500">Total stocked received</span>
           <span className="text-2xl font-semibold tabular-nums text-gray-900">
             {totals.received.toLocaleString()}
           </span>
@@ -144,7 +144,7 @@ export default function ProjectMaterialLog() {
         </Card>
         <Card
           padding="md"
-          className="col-span-2 flex flex-col gap-1 bg-[#004DE7] text-white"
+          className="flex flex-col gap-1 bg-[#004DE7] text-white shadow-md shadow-blue-900/10"
         >
           <span className="text-xs font-medium text-white/80">Stock in hand</span>
           <span
@@ -264,4 +264,3 @@ export default function ProjectMaterialLog() {
     </div>
   );
 }
-
