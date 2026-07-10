@@ -5,6 +5,8 @@ import { toast } from "@/lib/toast";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
 import { Spinner } from "@/components/atoms/spinner";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function OrgTab() {
   const { data: orgProfile, isPending } = useOrgProfile();
   const updateOrgProfile = useUpdateOrgProfile();
@@ -43,10 +45,15 @@ export function OrgTab() {
   }
 
   function handleSaveDetails() {
+    const normalizedContactEmail = contactEmail.trim().toLowerCase();
+    if (normalizedContactEmail && !EMAIL_PATTERN.test(normalizedContactEmail)) {
+      toast("Enter a valid contact email");
+      return;
+    }
     updateOrgProfile.mutate(
       {
         name: name.trim(),
-        contactEmail: contactEmail.trim() || null,
+        contactEmail: normalizedContactEmail || null,
         phone: phone.trim() || null,
         website: website.trim() || null,
         address: address.trim() || null,
@@ -102,6 +109,7 @@ export function OrgTab() {
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
+                onBlur={(e) => setContactEmail(e.target.value.trim().toLowerCase())}
                 className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
               />
             </div>
