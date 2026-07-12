@@ -257,8 +257,8 @@ export function PreconSheetViewer({
             type="button"
             onClick={() => onSelectSheet(sheet.id)}
             className={cn(
-              "shrink-0 rounded px-2 py-1 text-xs",
-              sheet.id === activeSheet?.id ? "bg-primary-50 font-semibold text-primary-700" : "text-gray-600 hover:bg-gray-50",
+              "h-7 shrink-0 rounded-lg px-2.5 text-xs font-medium",
+              sheet.id === activeSheet?.id ? "bg-primary-50 font-semibold text-primary-700" : "text-gray-600 hover:bg-gray-100",
               sheet.status === "unmeasurable" && "opacity-50",
             )}
             title={sheet.title ?? sheet.fileName}
@@ -275,7 +275,7 @@ export function PreconSheetViewer({
               title={t.hint}
               onClick={() => onToolChange(t.key)}
               className={cn(
-                "rounded px-2 py-1 text-xs",
+                "h-7 rounded-lg px-2.5 text-xs font-medium",
                 tool === t.key ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
               )}
             >

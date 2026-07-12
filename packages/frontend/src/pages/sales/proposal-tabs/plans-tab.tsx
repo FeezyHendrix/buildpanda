@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
@@ -43,6 +44,7 @@ export function PlansTab({ proposalId }: Props) {
   const measurePlan = useCreatePreconSessionFromPlan(proposalId);
 
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [promptPlan, setPromptPlan] = useState<{ id: string; fileName: string } | null>(null);
 
@@ -80,20 +82,21 @@ export function PlansTab({ proposalId }: Props) {
           Upload architectural drawings, site plans, MEP schematics, or any reference
           artwork for this proposal. Panda AI can measure PDF and DWG drawings into a draft BoQ for review.
         </p>
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-medium text-white hover:bg-[#003fb8]">
-          <input
-            type="file"
-            accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleUpload(file);
-              e.target.value = "";
-            }}
-          />
-          {uploading ? "Uploading…" : "Choose file"}
-        </label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleUpload(file);
+            e.target.value = "";
+          }}
+        />
+        <Button className="w-fit" loading={uploading} onClick={() => fileInputRef.current?.click()}>
+          Choose file
+        </Button>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
@@ -132,28 +135,30 @@ export function PlansTab({ proposalId }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   {/\.pdf$/i.test(plan.fileName) ? (
-                    <button
-                      type="button"
-                      disabled={measurePlan.isPending}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-primary-700"
+                      loading={measurePlan.isPending}
                       onClick={() => {
                         void measurePlan
                           .mutateAsync(plan.id)
                           .then((session) => navigate(`/sales/preconstruction/${session.id}`))
                           .catch((err) => setError(getApiErrorMessage(err, "Could not start the takeoff.")));
                       }}
-                      className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
                     >
                       ✦ Measure with Panda AI
-                    </button>
+                    </Button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(plan.id)}
-                    className="rounded-lg px-2 py-1 text-xs text-red-500 hover:bg-red-50"
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-500 hover:bg-red-50"
                     disabled={deletePlan.isPending}
+                    onClick={() => void handleDelete(plan.id)}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </li>
             );
@@ -172,16 +177,12 @@ export function PlansTab({ proposalId }: Props) {
               </p>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPromptPlan(null)}
-                className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-white"
-              >
+              <Button size="sm" variant="ghost" className="text-blue-800" onClick={() => setPromptPlan(null)}>
                 Not now
-              </button>
-              <button
-                type="button"
-                disabled={startTakeoff.isPending || measurePlan.isPending}
+              </Button>
+              <Button
+                size="sm"
+                loading={startTakeoff.isPending || measurePlan.isPending}
                 onClick={() => {
                   if (/\.pdf$/i.test(promptPlan.fileName)) {
                     void measurePlan
@@ -195,10 +196,9 @@ export function PlansTab({ proposalId }: Props) {
                     void startTakeoff.mutateAsync(promptPlan.id).then(() => setPromptPlan(null));
                   }
                 }}
-                className="rounded-lg bg-[#004DE7] px-3 py-2 text-sm font-medium text-white hover:bg-[#003fb8] disabled:opacity-60"
               >
-                {startTakeoff.isPending || measurePlan.isPending ? "Starting…" : "Measure with Panda AI"}
-              </button>
+                Measure with Panda AI
+              </Button>
             </div>
           </div>
         </div>
@@ -213,13 +213,14 @@ export function PlansTab({ proposalId }: Props) {
                 <span className="truncate text-gray-700">{session.title}</span>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="text-xs font-medium text-gray-500">{session.status}</span>
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-primary-700"
                     onClick={() => navigate(`/sales/preconstruction/${session.id}`)}
-                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-primary-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-100"
                   >
                     {session.status === "reviewing" ? "Review" : "Open"}
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}

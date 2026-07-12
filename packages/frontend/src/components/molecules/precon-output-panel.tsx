@@ -73,7 +73,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
             <label key={key} className="text-xs text-gray-500">
               {label}
               <input
-                className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                className="mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
                 inputMode="decimal"
                 value={drafts[key] ?? settings[key]}
                 onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
@@ -90,9 +90,9 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
           <p className="text-xs text-gray-500">Export the BOQ workbook or apply the reviewed bill to the proposal.</p>
         </div>
         <div className="space-y-2">
-          <a href={preconApi.exportUrl(sessionId)} download>
-            <Button className="w-full">Download BOQ (Excel)</Button>
-          </a>
+          <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(sessionId), "_blank")}>
+            Download BOQ (Excel)
+          </Button>
           <Button
             variant="secondary"
             className="w-full"
