@@ -306,3 +306,11 @@ export const materialLedgerKeys = {
     [...materialLedgerKeys.all(projectId), "ledger", materialId ?? "all", entryType ?? "all"] as const,
   catalog: (projectId: string) => [...materialLedgerKeys.all(projectId), "catalog"] as const,
 };
+
+export const preconKeys = {
+  all: (projectId: string) => ["projects", projectId, "precon"] as const,
+  sessions: (projectId: string) => [...preconKeys.all(projectId), "sessions"] as const,
+  snapshot: (projectId: string, sessionId: string) => [...preconKeys.all(projectId), "snapshot", sessionId] as const,
+  progressFeed: (sessionId: string) => ["precon", "progress-feed", sessionId] as const,
+  snap: (projectId: string, sheetId: string) => [...preconKeys.all(projectId), "snap", sheetId] as const,
+};

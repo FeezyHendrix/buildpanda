@@ -63,6 +63,8 @@ const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
 const SalesDashboard = lazy(() => import("@/pages/sales/index"));
 const SalesLeads = lazy(() => import("@/pages/sales/leads"));
 const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
+const ProjectPreconstruction = lazy(() => import("@/pages/project/preconstruction"));
+const PreconSession = lazy(() => import("@/pages/project/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
@@ -269,6 +271,8 @@ export const router = createBrowserRouter([
       { path: "settings", element: <ProjectSettings /> },
 
       { path: "updates", element: pf("project.updates", <ProjectUpdates />) },
+      { path: "preconstruction", element: pf("ai.preconstruction", <ProjectPreconstruction />) },
+      { path: "preconstruction/:sessionId", element: pf("ai.preconstruction", <PreconSession />) },
       { path: "chat", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "messages", element: pf("collaboration.messaging", <ProjectChat />) },
       { path: "panda-ai", element: pf("ai.insights", <ProjectPandaAi />) },
