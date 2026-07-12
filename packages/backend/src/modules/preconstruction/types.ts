@@ -340,6 +340,7 @@ export interface MeasuredGeometry {
   vertices: number[][];
   quantity: number;
   unit: string;
+  pageNumber?: number;
 }
 
 export interface MeasuredBoqItem {

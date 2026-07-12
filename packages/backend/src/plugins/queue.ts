@@ -47,7 +47,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerBoqImportWorker(fastify.db, manager);
     registerProgrammeImportWorker(fastify.db, manager);
     registerTakeoffWorker(fastify.db, manager);
-    registerPreconWorker(fastify.db, manager);
+    registerPreconWorker(fastify.db, manager, (payload) => fastify.realtime.publish(payload));
     registerProjectFileImportWorker(fastify.db, manager);
     registerProgressRecomputeWorker(fastify.db, manager);
     registerPandaAiPeriodicScheduler(fastify.db, manager, fastify.log);

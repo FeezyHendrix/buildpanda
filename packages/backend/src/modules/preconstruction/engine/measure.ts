@@ -1,0 +1,305 @@
+import type {
+  Confidence,
+  Curve,
+  DrawingRegion,
+  MeasuredGeometry,
+  Segment,
+  TextRun,
+} from "../types.ts";
+
+export const WALL_GAP_MIN_MM = 120;
+export const WALL_GAP_MAX_MM = 280;
+const WALL_MIN_OVERLAP_M = 0.4;
+const WALL_SEG_MIN_M = 0.4;
+const WALL_SEG_MAX_M = 25;
+const DOOR_RADIUS_MIN_MM = 600;
+const DOOR_RADIUS_MAX_MM = 1200;
+const DOOR_DEDUPE_MM = 300;
+
+export interface WallMeasurement {
+  centrelineM: number;
+  pairs: { vertices: number[][]; lengthM: number; gapMm: number }[];
+}
+
+interface Span {
+  fixed: number; // the shared axis coordinate
+  lo: number;
+  hi: number;
+}
+
+function toSpansH(segments: Segment[]): Span[] {
+  return segments
+    .filter((s) => Math.abs(s.y1 - s.y2) < 0.3)
+    .map((s) => ({ fixed: s.y1, lo: Math.min(s.x1, s.x2), hi: Math.max(s.x1, s.x2) }));
+}
+
+function toSpansV(segments: Segment[]): Span[] {
+  return segments
+    .filter((s) => Math.abs(s.x1 - s.x2) < 0.3)
+    .map((s) => ({ fixed: s.x1, lo: Math.min(s.y1, s.y2), hi: Math.max(s.y1, s.y2) }));
+}
+
+function pairSpans(
+  spans: Span[],
+  mmPerPt: number,
+  horizontal: boolean,
+): { vertices: number[][]; lengthM: number; gapMm: number }[] {
+  const toM = mmPerPt / 1000;
+  const eligible = spans.filter((s) => {
+    const lenM = (s.hi - s.lo) * toM;
+    return lenM >= WALL_SEG_MIN_M && lenM <= WALL_SEG_MAX_M;
+  });
+  eligible.sort((a, b) => a.fixed - b.fixed);
+  const used = new Array<boolean>(eligible.length).fill(false);
+  const pairs: { vertices: number[][]; lengthM: number; gapMm: number }[] = [];
+  for (let i = 0; i < eligible.length; i++) {
+    if (used[i]) continue;
+    for (let j = i + 1; j < eligible.length; j++) {
+      if (used[j]) continue;
+      const a = eligible[i]!;
+      const b = eligible[j]!;
+      const gapMm = Math.abs(a.fixed - b.fixed) * mmPerPt;
+      if (gapMm > WALL_GAP_MAX_MM) break; // sorted by fixed axis: no closer partner further on
+      if (gapMm < WALL_GAP_MIN_MM) continue;
+      const lo = Math.max(a.lo, b.lo);
+      const hi = Math.min(a.hi, b.hi);
+      const overlapM = (hi - lo) * toM;
+      if (overlapM < WALL_MIN_OVERLAP_M) continue;
+      used[i] = true;
+      used[j] = true;
+      const centre = (a.fixed + b.fixed) / 2;
+      pairs.push({
+        vertices: horizontal
+          ? [
+              [lo, centre],
+              [hi, centre],
+            ]
+          : [
+              [centre, lo],
+              [centre, hi],
+            ],
+        lengthM: Math.round(overlapM * 100) / 100,
+        gapMm: Math.round(gapMm),
+      });
+      break;
+    }
+  }
+  return pairs;
+}
+
+// Walls read as two parallel heavy lines at block thickness. Each pair
+// contributes its overlap as centreline length — no halving needed because
+// pairing already collapses the double line.
+export function measureWalls(segments: Segment[], mmPerPt: number): WallMeasurement {
+  const heavy = segments.filter((s) => s.width >= 0.15);
+  const pairs = [...pairSpans(toSpansH(heavy), mmPerPt, true), ...pairSpans(toSpansV(heavy), mmPerPt, false)];
+  const centrelineM = Math.round(pairs.reduce((sum, p) => sum + p.lengthM, 0) * 100) / 100;
+  return { centrelineM, pairs };
+}
+
+function bezierPoint(t: number, c: Curve): [number, number] {
+  const u = 1 - t;
+  return [
+    u * u * u * c.sx + 3 * u * u * t * c.c1x + 3 * u * t * t * c.c2x + t * t * t * c.ex,
+    u * u * u * c.sy + 3 * u * u * t * c.c1y + 3 * u * t * t * c.c2y + t * t * t * c.ey,
+  ];
+}
+
+function circleThrough(
+  p1: [number, number],
+  p2: [number, number],
+  p3: [number, number],
+): { r: number; cx: number; cy: number } | null {
+  const [ax, ay] = p1;
+  const [bx, by] = p2;
+  const [cx, cy] = p3;
+  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(d) < 1e-9) return null;
+  const ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d;
+  const uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d;
+  return { r: Math.hypot(ax - ux, ay - uy), cx: ux, cy: uy };
+}
+
+// A door leaf sweeps a quarter-circle arc with radius = leaf width.
+export function countDoorArcs(curves: Curve[], mmPerPt: number): { count: number; centres: number[][] } {
+  const centres: number[][] = [];
+  for (const curve of curves) {
+    const fit = circleThrough([curve.sx, curve.sy], bezierPoint(0.5, curve), [curve.ex, curve.ey]);
+    if (!fit) continue;
+    const radiusMm = fit.r * mmPerPt;
+    if (radiusMm < DOOR_RADIUS_MIN_MM || radiusMm > DOOR_RADIUS_MAX_MM) continue;
+    const duplicate = centres.some(
+      (c) => Math.hypot(c[0]! - fit.cx, c[1]! - fit.cy) * mmPerPt < DOOR_DEDUPE_MM,
+    );
+    if (!duplicate) centres.push([fit.cx, fit.cy]);
+  }
+  return { count: centres.length, centres };
+}
+
+const TAG_PATTERN = /^([WD])[- ]?(\d{1,2})$/i;
+
+export function countTags(texts: TextRun[]): { windows: Map<string, TextRun[]>; doors: Map<string, TextRun[]> } {
+  const windows = new Map<string, TextRun[]>();
+  const doors = new Map<string, TextRun[]>();
+  for (const t of texts) {
+    const m = t.str.match(TAG_PATTERN);
+    if (!m) continue;
+    const key = `${m[1]!.toUpperCase()}${m[2]}`;
+    const bucket = m[1]!.toUpperCase() === "W" ? windows : doors;
+    const list = bucket.get(key);
+    if (list) list.push(t);
+    else bucket.set(key, [t]);
+  }
+  return { windows, doors };
+}
+
+export function textsInRegion(texts: TextRun[], region: DrawingRegion): TextRun[] {
+  return texts.filter((t) => t.x >= region.minX && t.x <= region.maxX && t.y >= region.minY && t.y <= region.maxY);
+}
+
+export function curvesInRegion(curves: Curve[], region: DrawingRegion): Curve[] {
+  return curves.filter(
+    (c) => c.sx >= region.minX && c.sx <= region.maxX && c.sy >= region.minY && c.sy <= region.maxY,
+  );
+}
+
+// ---------- floor areas: wall-mask flood fill seeded from room labels ----------
+
+const GRID_MM = 50;
+const ROOM_LABEL = /^[A-Z][A-Z .'/-]{2,}$/;
+const ROOM_LABEL_BLOCKLIST =
+  /PLAN|ELEVATION|SECTION|SCALE|DETAIL|NOTES|DRAWING|PROJECT|SHEET|LEVEL|GENERAL|LEGEND|SCHEDULE|TITLE/;
+
+export interface RoomArea {
+  name: string;
+  areaM2: number;
+  seed: number[];
+}
+
+export function measureRoomAreas(
+  segments: Segment[],
+  texts: TextRun[],
+  region: DrawingRegion,
+  mmPerPt: number,
+): RoomArea[] {
+  const toMm = mmPerPt;
+  const cellPt = GRID_MM / toMm;
+  const cols = Math.min(2000, Math.ceil((region.maxX - region.minX) / cellPt));
+  const rowsN = Math.min(2000, Math.ceil((region.maxY - region.minY) / cellPt));
+  if (cols < 10 || rowsN < 10) return [];
+
+  // 0 = open, 1 = wall
+  const grid = new Uint8Array(cols * rowsN);
+  const stamp = (x: number, y: number) => {
+    const cx = Math.floor((x - region.minX) / cellPt);
+    const cy = Math.floor((y - region.minY) / cellPt);
+    if (cx >= 0 && cx < cols && cy >= 0 && cy < rowsN) grid[cy * cols + cx] = 1;
+  };
+  for (const s of segments) {
+    if (s.width < 0.15) continue; // wall pens only
+    const steps = Math.max(1, Math.ceil(s.len / (cellPt / 2)));
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      stamp(s.x1 + (s.x2 - s.x1) * t, s.y1 + (s.y2 - s.y1) * t);
+    }
+  }
+
+  // Morphological closing (dilate N, erode N) seals door/window openings up
+  // to ~2N cells (10 passes x 50mm = ~1m) without permanently thickening
+  // walls — sealed bridges survive erosion, plain wall faces shrink back.
+  const CLOSING_PASSES = 10;
+  const neighborPass = (source: Uint8Array, match: number, set: number): Uint8Array => {
+    const out = new Uint8Array(source);
+    for (let y = 0; y < rowsN; y++) {
+      for (let x = 0; x < cols; x++) {
+        if (source[y * cols + x] !== match) continue;
+        let flip = false;
+        for (let dy = -1; dy <= 1 && !flip; dy++) {
+          for (let dx = -1; dx <= 1 && !flip; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx >= 0 && nx < cols && ny >= 0 && ny < rowsN && source[ny * cols + nx] !== match) flip = true;
+          }
+        }
+        if (flip) out[y * cols + x] = set;
+      }
+    }
+    return out;
+  };
+  let dilated = new Uint8Array(grid);
+  for (let pass = 0; pass < CLOSING_PASSES; pass++) dilated = neighborPass(dilated, 0, 1);
+  for (let pass = 0; pass < CLOSING_PASSES; pass++) dilated = neighborPass(dilated, 1, 0);
+  // keep original walls regardless of erosion rounding
+  for (let i = 0; i < grid.length; i++) if (grid[i]) dilated[i] = 1;
+
+  const labels = texts.filter(
+    (t) =>
+      !t.rotated &&
+      ROOM_LABEL.test(t.str) &&
+      !ROOM_LABEL_BLOCKLIST.test(t.str) &&
+      t.x >= region.minX &&
+      t.x <= region.maxX &&
+      t.y >= region.minY &&
+      t.y <= region.maxY,
+  );
+
+  const filled = new Uint8Array(cols * rowsN);
+  const results: RoomArea[] = [];
+  const cellAreaM2 = (GRID_MM / 1000) ** 2;
+
+  for (const label of labels) {
+    const sx = Math.floor((label.x + label.w / 2 - region.minX) / cellPt);
+    const sy = Math.floor((label.y - region.minY) / cellPt);
+    if (sx < 0 || sx >= cols || sy < 0 || sy >= rowsN) continue;
+    const startIdx = sy * cols + sx;
+    if (dilated[startIdx] || filled[startIdx]) continue;
+
+    const stack = [startIdx];
+    const cells: number[] = [];
+    filled[startIdx] = 1;
+    let leaked = false;
+    while (stack.length) {
+      const idx = stack.pop()!;
+      cells.push(idx);
+      if (cells.length > 200000) {
+        leaked = true;
+        break;
+      }
+      const x = idx % cols;
+      const y = Math.floor(idx / cols);
+      if (x === 0 || x === cols - 1 || y === 0 || y === rowsN - 1) leaked = true; // reached region edge: unbounded
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || nx >= cols || ny < 0 || ny >= rowsN) continue;
+        const nIdx = ny * cols + nx;
+        if (dilated[nIdx] || filled[nIdx]) continue;
+        filled[nIdx] = 1;
+        stack.push(nIdx);
+      }
+    }
+    if (leaked) continue;
+    const areaM2 = Math.round(cells.length * cellAreaM2 * 100) / 100;
+    if (areaM2 < 1 || areaM2 > 400) continue;
+    results.push({ name: label.str, areaM2, seed: [label.x, label.y] });
+  }
+  return results;
+}
+
+export function wallConfidence(pairs: number, calibrationConfidence: number): Confidence {
+  return pairs >= 8 && calibrationConfidence >= 0.7 ? "high" : "low";
+}
+
+export function geometryFromWallPairs(pairs: WallMeasurement["pairs"]): MeasuredGeometry[] {
+  return pairs.map((p) => ({
+    kind: "linear" as const,
+    vertices: p.vertices,
+    quantity: p.lengthM,
+    unit: "m",
+  }));
+}
