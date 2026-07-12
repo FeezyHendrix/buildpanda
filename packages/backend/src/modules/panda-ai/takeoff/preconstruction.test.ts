@@ -43,6 +43,7 @@ function fakeRepo(overrides: Partial<Record<keyof PreconRepository, unknown>> = 
       audits.push(e);
     },
     geometriesByRow: async () => [],
+    rowsBySession: async () => [],
     sheetById: async () => null,
     ...overrides,
   } as unknown as PreconRepository;
@@ -139,4 +140,39 @@ test("addDeduction recomputes net from gross server-side", async () => {
   // gross 52 - (5.8 + 1) = 45.2
   assert.equal(dto.qty, 45.2);
   assert.equal(inserted.length, 1);
+});
+
+test("editing an anchor row recomputes derived rows from their formulas", async () => {
+  const derivedRow = itemRow({
+    id: "pbr_derived",
+    code: "7.2.0",
+    description: "Plastering to Walls 12mm thick; over 600mm wide",
+    qty: 8085.5,
+    qty_gross: 8085.5,
+    rate: 100,
+    amount: 808550,
+    measurement_basis: "Derived: 2 * wall_area_m2 = 8085.5 (engine-evaluated over measured anchors)",
+  });
+  const anchorRow = itemRow({ id: "pbr_1", code: "F10/125", qty: 4042.75, deductions: [] });
+  const recomputes: { id: string; qty: number; amount: number | null }[] = [];
+  const svc = preconService(
+    fakeRepo({
+      rowById: (async () => anchorRow) as never,
+      rowsBySession: (async () => [{ ...anchorRow, qty: 1000 }, derivedRow]) as never,
+      updateRowVersioned: (async (_id: string, _v: number, patch: Partial<PreconBoqRowRow>) => ({
+        ...anchorRow,
+        ...patch,
+        version: 2,
+      })) as never,
+      applyDerivedRecompute: (async (id: string, qty: number, amount: number | null) => {
+        recomputes.push({ id, qty, amount });
+        return { ...derivedRow, qty, amount, version: derivedRow.version + 1 };
+      }) as never,
+    }),
+  );
+  await svc.updateRow("pbr_1", { version: 1, changes: { qty: 1000 } }, "u_qs");
+  assert.equal(recomputes.length, 1);
+  assert.equal(recomputes[0]!.id, "pbr_derived");
+  assert.equal(recomputes[0]!.qty, 2000); // 2 x corrected wall area
+  assert.equal(recomputes[0]!.amount, 200000);
 });

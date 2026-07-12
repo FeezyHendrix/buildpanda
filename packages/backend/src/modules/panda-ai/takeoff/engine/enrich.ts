@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { LlmMessage } from "../../../../lib/llm.ts";
-import type { Confidence, MeasuredBoqItem } from "../types.ts";
+import type { Confidence, MeasuredBoqItem, PreconBoqRowRow } from "../types.ts";
 import { BESMM_ELEMENT_BRIEFS, type ElementBrief } from "./besmm-reference.ts";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,35 @@ export function buildAnchors(items: MeasuredBoqItem[]): Anchors {
   }
   return anchors;
 }
+
+// Rebuild the anchor set from live bill rows so derived formulas can be
+// re-evaluated after a QS edits a measured quantity in review.
+export function anchorsFromRows(rows: PreconBoqRowRow[]): Anchors {
+  const anchors: Anchors = {};
+  for (const row of rows) {
+    if (row.status === "rejected" || row.qty === null) continue;
+    const qty = Number(row.qty);
+    if (row.code === "F10/125") {
+      anchors["wall_area_m2"] = (anchors["wall_area_m2"] ?? 0) + qty;
+    } else if (row.code === "M10") {
+      anchors["floor_area_m2"] = (anchors["floor_area_m2"] ?? 0) + qty;
+    } else if (row.code === "L20") {
+      const match = row.description.match(/Door type (D\d+)/i);
+      if (match) anchors[`door_${match[1]!.toUpperCase()}`] = qty;
+      anchors["door_total"] = (anchors["door_total"] ?? 0) + qty;
+    } else if (row.code === "L11") {
+      const match = row.description.match(/Window type (W\d+)/i);
+      if (match) anchors[`window_${match[1]!.toUpperCase()}`] = qty;
+      anchors["window_total"] = (anchors["window_total"] ?? 0) + qty;
+    }
+  }
+  if (anchors["wall_area_m2"] !== undefined) {
+    anchors["wall_centreline_m"] = Math.round((anchors["wall_area_m2"] / 2.7) * 100) / 100;
+  }
+  return anchors;
+}
+
+export const DERIVED_BASIS_PATTERN = /^Derived: (.+?) = [\d.]+ \(engine-evaluated/;
 
 // Tiny arithmetic evaluator: numbers, anchor identifiers, + - * / and
 // parentheses. No eval(), no functions — a formula is data, not code.

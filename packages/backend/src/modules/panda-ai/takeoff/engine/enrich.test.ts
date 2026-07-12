@@ -114,3 +114,17 @@ test("buildUpBill: failed agent degrades to empty, never throws", async () => {
   assert.equal(outcome.items.length, 0);
   assert.ok(outcome.agentResults.every((r) => r.failed));
 });
+
+test("anchorsFromRows rebuilds anchors from live bill rows, skipping rejected", async () => {
+  const { anchorsFromRows } = await import("./enrich.ts");
+  const rows = [
+    { code: "F10/125", description: "blockwork", qty: 270, status: "verified" },
+    { code: "L20", description: "Door type D5; as door schedule", qty: 19, status: "ai_generated" },
+    { code: "L11", description: "Window type W4; as window schedule", qty: 96, status: "rejected" },
+  ] as never[];
+  const anchors = anchorsFromRows(rows as never);
+  assert.equal(anchors["wall_area_m2"], 270);
+  assert.equal(anchors["wall_centreline_m"], 100);
+  assert.equal(anchors["door_D5"], 19);
+  assert.equal(anchors["window_W4"], undefined); // rejected excluded
+});

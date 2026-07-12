@@ -79,3 +79,11 @@ test("applySchedules leaves unmatched items untouched", () => {
   assert.equal(items[0]!.description, "blockwork");
   assert.equal(items[1]!.qty, 10);
 });
+
+test("inferScheduleScale: cm-looking schedules read x10, mm left alone", async () => {
+  const { inferScheduleScale } = await import("./schedule.ts");
+  const entry = (w: number, h: number) => ({ type: "W1", quantity: 1, widthMm: w, heightMm: h, material: null, remarks: null });
+  assert.equal(inferScheduleScale([entry(138, 140), entry(66, 210), entry(120, 120)]), 10);
+  assert.equal(inferScheduleScale([entry(1380, 1400), entry(660, 2100)]), 1);
+  assert.equal(inferScheduleScale([]), 1);
+});

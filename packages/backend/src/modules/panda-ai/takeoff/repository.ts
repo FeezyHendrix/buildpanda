@@ -138,6 +138,30 @@ export function preconRepository(db: Knex) {
       return (rows as PreconBoqRowRow[])[0] ?? null;
     },
 
+    // Engine-driven recompute of a derived row after an anchor edit: no client
+    // version involved, so bump the version unconditionally.
+    applyDerivedRecompute: async (
+      id: string,
+      qty: number,
+      amount: number | null,
+      measurementBasis: string,
+    ): Promise<PreconBoqRowRow | null> => {
+      const rows = await db<PreconBoqRowRow>("precon_boq_rows")
+        .where({ id })
+        .update(
+          {
+            qty_gross: qty,
+            qty,
+            amount,
+            measurement_basis: measurementBasis,
+            version: db.raw("version + 1") as never,
+            updated_at: db.fn.now(),
+          },
+          "*",
+        );
+      return (rows as PreconBoqRowRow[])[0] ?? null;
+    },
+
     // geometries
     insertGeometries: (rows: Omit<PreconGeometryRow, "created_at">[]) =>
       rows.length

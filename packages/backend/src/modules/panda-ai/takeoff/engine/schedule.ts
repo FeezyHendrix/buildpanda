@@ -94,12 +94,26 @@ export async function readSchedules(
   return { windows: clean(result.data.windows), doors: clean(result.data.doors) };
 }
 
+// Schedules frequently write sizes in cm without saying so. No opening on a
+// building is 138mm wide: when >=80% of sized entries have both dimensions
+// under 400, the whole schedule is read as cm (x10). One multiplier for the
+// entire schedule — never per row — and the inference is recorded in the
+// measurement basis for the reviewer.
+export function inferScheduleScale(entries: ScheduleEntry[]): number {
+  const sized = entries.filter((e) => e.widthMm !== null && e.heightMm !== null);
+  if (sized.length === 0) return 1;
+  const small = sized.filter((e) => Math.max(e.widthMm!, e.heightMm!) < 400);
+  return small.length / sized.length >= 0.8 ? 10 : 1;
+}
+
 // Merge schedule truth into the measured opening items. Schedule quantity wins
 // (the architect's count); the tag census stays in the basis as cross-check,
 // and disagreement forces needs_review via low confidence.
 export function applySchedules(items: MeasuredBoqItem[], schedules: DrawingSchedules): MeasuredBoqItem[] {
   const byType = new Map<string, ScheduleEntry>();
-  for (const entry of [...schedules.windows, ...schedules.doors]) byType.set(entry.type, entry);
+  const allEntries = [...schedules.windows, ...schedules.doors];
+  for (const entry of allEntries) byType.set(entry.type, entry);
+  const scale = inferScheduleScale(allEntries);
 
   return items.map((item) => {
     if (item.code !== "L11" && item.code !== "L20") return item;
@@ -107,16 +121,23 @@ export function applySchedules(items: MeasuredBoqItem[], schedules: DrawingSched
     const entry = match ? byType.get(match[1]!.toUpperCase()) : undefined;
     if (!entry) return item;
 
-    // schedules often omit units; print the figures as transcribed and let
-    // the schedule remain the authority rather than asserting mm
-    const size =
-      entry.widthMm && entry.heightMm ? `to fit opening size ${entry.widthMm} x ${entry.heightMm} as schedule; ` : "";
+    const hasSize = Boolean(entry.widthMm && entry.heightMm);
+    const size = hasSize
+      ? scale === 10
+        ? `to fit opening size ${entry.widthMm! * 10} x ${entry.heightMm! * 10}mm high; `
+        : `to fit opening size ${entry.widthMm} x ${entry.heightMm} as schedule; `
+      : "";
+    const unitNote = hasSize && scale === 10 ? "; schedule sizes read as cm (x10 to mm)" : "";
     const material = entry.material ? `${entry.material}; ` : "";
     const kind = item.code === "L11" ? "Window" : "Door";
     const description = `${kind} type ${entry.type}; ${size}${material}as ${kind.toLowerCase()} schedule`;
 
     if (entry.quantity === null) {
-      return { ...item, description, measurementBasis: `${item.measurementBasis}; schedule row found (no qty column)` };
+      return {
+        ...item,
+        description,
+        measurementBasis: `${item.measurementBasis}; schedule row found (no qty column)${unitNote}`,
+      };
     }
     const agrees = entry.quantity === item.qty;
     return {
@@ -126,8 +147,8 @@ export function applySchedules(items: MeasuredBoqItem[], schedules: DrawingSched
       qty: entry.quantity,
       confidence: agrees ? ("high" as const) : ("low" as const),
       measurementBasis: agrees
-        ? `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census agrees (${item.qty})`
-        : `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census found ${item.qty} — DISCREPANCY, verify against drawings`,
+        ? `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census agrees (${item.qty})${unitNote}`
+        : `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census found ${item.qty} — DISCREPANCY, verify against drawings${unitNote}`,
     };
   });
 }
