@@ -61,6 +61,7 @@ import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import automatedTakeoffRoutes from "./modules/panda-ai/automated-takeoff/routes.ts";
+import preconRoutes from "./modules/preconstruction/routes.ts";
 import importSessionRoutes from "./modules/import-sessions/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import dataCommitmentRoutes from "./modules/data-commitment/routes.ts";
@@ -186,6 +187,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(pandaAiAgentRoutes);
   await app.register(programmeImportRoutes);
   await app.register(automatedTakeoffRoutes);
+  await app.register(preconRoutes);
   await app.register(importSessionRoutes);
   await app.register(orgProfileRoutes);
   await app.register(dataCommitmentRoutes);

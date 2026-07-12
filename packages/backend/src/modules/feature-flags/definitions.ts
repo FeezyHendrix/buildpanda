@@ -18,6 +18,14 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/proposals"],
   },
   {
+    key: "ai.preconstruction",
+    label: "Preconstruction OS",
+    group: "Pre-construction AI",
+    description: "Drawings-to-BOQ takeoff, QS review workspace and bid pack output.",
+    enabledByDefault: false,
+    routePrefixes: ["/projects/:id/precon"],
+  },
+  {
     key: "ai.automatedTakeoff",
     label: "Automated take-off",
     group: "Pre-construction AI",
