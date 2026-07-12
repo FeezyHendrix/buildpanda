@@ -1,6 +1,8 @@
 import type { Knex } from "knex";
 import type {
   PreconAuditEventRow,
+  PreconRateCardRow,
+  PreconRateRow,
   PreconBillRow,
   PreconBoqRowRow,
   PreconGeometryRow,
@@ -173,6 +175,33 @@ export function preconRepository(db: Knex) {
         .count("* as count")) as unknown as { status: RowStatus | null; count: string }[];
       return rows.map((r) => ({ status: r.status, count: Number(r.count) }));
     },
+
+    // rates
+    orgIdForSession: async (sessionId: string): Promise<string | null> => {
+      const row = await db("precon_sessions")
+        .join("projects", "projects.id", "precon_sessions.project_id")
+        .where("precon_sessions.id", sessionId)
+        .select<{ organization_id: string | null }>("projects.organization_id")
+        .first();
+      return row?.organization_id ?? null;
+    },
+    rateCardsByOrg: (orgId: string) =>
+      db<PreconRateCardRow>("precon_rate_cards").where({ org_id: orgId }).orderBy("created_at", "desc"),
+    rateCardById: (id: string) => db<PreconRateCardRow>("precon_rate_cards").where({ id }).first(),
+    insertRateCard: async (row: Omit<PreconRateCardRow, "created_at">) => {
+      const [inserted] = await db<PreconRateCardRow>("precon_rate_cards").insert(row).returning("*");
+      return inserted!;
+    },
+    ratesByCard: (rateCardId: string) =>
+      db<PreconRateRow>("precon_rates").where({ rate_card_id: rateCardId }).orderBy("created_at", "asc"),
+    insertRate: async (row: Omit<PreconRateRow, "created_at">) => {
+      const [inserted] = await db<PreconRateRow>("precon_rates").insert(row).returning("*");
+      return inserted!;
+    },
+    deleteRate: (id: string, rateCardId: string) =>
+      db("precon_rates").where({ id, rate_card_id: rateCardId }).delete(),
+    updateRowPricing: (id: string, patch: { rate: number; amount: number | null; rate_source: string }) =>
+      db<PreconBoqRowRow>("precon_boq_rows").where({ id }).update({ ...patch, updated_at: db.fn.now() }),
 
     transaction: <T>(fn: (trx: Knex.Transaction) => Promise<T>) => db.transaction(fn),
   };

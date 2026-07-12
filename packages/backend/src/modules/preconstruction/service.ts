@@ -4,6 +4,8 @@ import type { PreconRepository } from "./repository.ts";
 import type {
   AddDeductionBody,
   Deduction,
+  PreconRateCardRow,
+  PreconRateRow,
   PreconAuditEventRow,
   PreconBill,
   PreconBillRow,
@@ -171,6 +173,21 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       before,
       after,
     } as Omit<PreconAuditEventRow, "created_at">);
+  }
+
+  function toRateCard(r: PreconRateCardRow) {
+    return { id: r.id, name: r.name, region: r.region, currency: r.currency };
+  }
+
+  function toRate(r: PreconRateRow) {
+    return {
+      id: r.id,
+      rateCardId: r.rate_card_id,
+      codePrefix: r.code_prefix,
+      descriptionPattern: r.description_pattern,
+      unit: r.unit,
+      rate: Number(r.rate),
+    };
   }
 
   async function requireRow(rowId: string): Promise<{ row: PreconBoqRowRow; sessionId: string }> {
@@ -425,6 +442,63 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         changes: { qty: net, deductions },
       });
       return toRow(updated);
+    },
+
+    async listRateCards(orgId: string) {
+      const cards = await repo.rateCardsByOrg(orgId);
+      const allRates = await Promise.all(cards.map((c) => repo.ratesByCard(c.id)));
+      return cards.map((c, i) => ({ ...toRateCard(c), rates: allRates[i]!.map(toRate) }));
+    },
+
+    async createRateCard(orgId: string, name: string, region: string | null) {
+      const card = await repo.insertRateCard({
+        id: generateId("prc"),
+        org_id: orgId,
+        name,
+        region,
+        currency: "NGN",
+      });
+      return { ...toRateCard(card), rates: [] };
+    },
+
+    async addRate(
+      orgId: string,
+      rateCardId: string,
+      input: { codePrefix: string | null; descriptionPattern: string | null; unit: string; rate: number },
+    ) {
+      const card = await repo.rateCardById(rateCardId);
+      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
+      const rate = await repo.insertRate({
+        id: generateId("prt"),
+        rate_card_id: rateCardId,
+        code_prefix: input.codePrefix,
+        description_pattern: input.descriptionPattern,
+        unit: input.unit,
+        rate: input.rate,
+      });
+      return toRate(rate);
+    },
+
+    async removeRate(orgId: string, rateCardId: string, rateId: string) {
+      const card = await repo.rateCardById(rateCardId);
+      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
+      await repo.deleteRate(rateId, rateCardId);
+      return { ok: true };
+    },
+
+    async updateSettings(sessionId: string, patch: Partial<PreconSummarySettings>, actor: string) {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
+      const current = await repo.settingsForSession(sessionId);
+      const next = {
+        session_id: sessionId,
+        prelims_pct: patch.prelimsPct ?? Number(current?.prelims_pct ?? 5),
+        contingency_pct: patch.contingencyPct ?? Number(current?.contingency_pct ?? 5),
+        vat_pct: patch.vatPct ?? Number(current?.vat_pct ?? 7.5),
+      };
+      await repo.upsertSettings(next);
+      await audit(sessionId, null, actor, "settings_updated", null, { ...patch });
+      return { prelimsPct: next.prelims_pct, contingencyPct: next.contingency_pct, vatPct: next.vat_pct };
     },
   };
 }
