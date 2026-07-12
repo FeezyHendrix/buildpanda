@@ -63,7 +63,6 @@ const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
 const SalesDashboard = lazy(() => import("@/pages/sales/index"));
 const SalesLeads = lazy(() => import("@/pages/sales/leads"));
 const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
-const SalesPreconstruction = lazy(() => import("@/pages/sales/preconstruction"));
 const SalesPreconSession = lazy(() => import("@/pages/sales/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
@@ -196,7 +195,6 @@ export const router = createBrowserRouter([
       { path: "leads", element: sf("sales.leads", <SalesLeads />) },
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
-      { path: "preconstruction", element: sf("ai.preconstruction", <SalesPreconstruction />) },
       { path: "preconstruction/:sessionId", element: sf("ai.preconstruction", <SalesPreconSession />) },
       { path: "settings", element: <SalesSettings /> },
     ],

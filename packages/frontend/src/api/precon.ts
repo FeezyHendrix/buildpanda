@@ -14,6 +14,7 @@ export interface PreconSession {
   id: string;
   orgId: string;
   projectId: string | null;
+  proposalId: string | null;
   status: PreconSessionStatus;
   title: string;
   error: string | null;
@@ -115,7 +116,13 @@ export interface UpdateRowInput {
 }
 
 export const preconApi = {
-  listSessions: () => api.get<PreconSession[]>(`/precon/sessions`).then((r) => r.data),
+  listSessions: (proposalId?: string) =>
+    api
+      .get<PreconSession[]>(`/precon/sessions`, { params: proposalId ? { proposalId } : undefined })
+      .then((r) => r.data),
+
+  createSessionFromPlan: (proposalId: string, planId: string) =>
+    api.post<PreconSession>(`/precon/sessions/from-plan`, { proposalId, planId }).then((r) => r.data),
 
   createSession: (files: File[], title?: string) => {
     const form = new FormData();
@@ -155,8 +162,8 @@ export const preconApi = {
 
   exportUrl: (sessionId: string) => `${api.defaults.baseURL ?? ""}/precon/sessions/${sessionId}/export.xlsx`,
 
-  sendToProposals: (sessionId: string) =>
+  applyToProposal: (sessionId: string) =>
     api
-      .post<{ proposalId: string; itemCount: number }>(`/precon/sessions/${sessionId}/send-to-proposals`)
+      .post<{ proposalId: string; itemCount: number }>(`/precon/sessions/${sessionId}/apply-to-proposal`)
       .then((r) => r.data),
 };

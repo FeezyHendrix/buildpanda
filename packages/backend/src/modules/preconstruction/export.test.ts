@@ -76,6 +76,7 @@ function makeSnapshot(): PreconSnapshot {
       id: "pcs_1",
       orgId: "org_1",
       projectId: null,
+      proposalId: null,
       status: "reviewing",
       title: "Renovation of Building A",
       error: null,

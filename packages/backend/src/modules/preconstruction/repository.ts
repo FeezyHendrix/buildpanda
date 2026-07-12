@@ -24,8 +24,17 @@ export function preconRepository(db: Knex) {
       return inserted!;
     },
     sessionById: (id: string) => db<PreconSessionRow>("precon_sessions").where({ id }).first(),
-    sessionsByOrg: (orgId: string) =>
-      db<PreconSessionRow>("precon_sessions").where({ org_id: orgId }).orderBy("created_at", "desc"),
+    sessionsByOrg: (orgId: string, proposalId?: string) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ org_id: orgId })
+        .modify((q) => {
+          if (proposalId) q.where({ proposal_id: proposalId });
+        })
+        .orderBy("created_at", "desc"),
+    linkSessionToProposal: (sessionId: string, proposalId: string) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id: sessionId })
+        .update({ proposal_id: proposalId, updated_at: db.fn.now() }),
     updateSessionStatus: (id: string, status: SessionStatus, error?: string | null) =>
       db<PreconSessionRow>("precon_sessions")
         .where({ id })

@@ -31,6 +31,7 @@ function toSession(r: PreconSessionRow): PreconSession {
     id: r.id,
     orgId: r.org_id,
     projectId: r.project_id,
+    proposalId: r.proposal_id,
     status: r.status,
     title: r.title,
     error: r.error,
@@ -198,11 +199,18 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
   }
 
   return {
-    async createSession(orgId: string, title: string, userId: string, files: { fileName: string; storagePath: string }[]) {
+    async createSession(
+      orgId: string,
+      title: string,
+      userId: string,
+      files: { fileName: string; storagePath: string }[],
+      proposalId: string | null = null,
+    ) {
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
         project_id: null,
+        proposal_id: proposalId,
         status: "uploading",
         title,
         error: null,
@@ -232,8 +240,12 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return toSession(session);
     },
 
-    async listSessions(orgId: string) {
-      return (await repo.sessionsByOrg(orgId)).map(toSession);
+    async listSessions(orgId: string, proposalId?: string) {
+      return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
+    },
+
+    async linkToProposal(sessionId: string, proposalId: string) {
+      await repo.linkSessionToProposal(sessionId, proposalId);
     },
 
     // Every sales-suite access path must prove the session belongs to the

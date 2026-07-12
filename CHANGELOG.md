@@ -21,8 +21,9 @@ Versions are kept in sync across all workspace packages (`@buildpanda/backend`,
   breakdowns, QS review workflow (row-scoped optimistic versioning with 409
   conflicts, verify/reject, server-side re-measurement, append-only audit
   trail, realtime `precon:` channels), org rates library with automatic
-  pricing, Moniepoint-format Excel export, send-to-proposals hand-off, and a
-  `get_precon_boq` Panda AI tool.
+  pricing, Moniepoint-format Excel export, and a `get_precon_boq` Panda AI tool.
+  Takeoffs are launched from the proposal workspace (Plans tab → "Measure
+  with Panda AI") and reviewed rows apply straight into that proposal's BoQ.
 - **RFI module** — Procore-style Requests for Information with a numbered,
   ball-in-court workflow: create/respond/close/void/reopen lifecycle,
   per-project sequential numbering (concurrency-safe), official vs proposed

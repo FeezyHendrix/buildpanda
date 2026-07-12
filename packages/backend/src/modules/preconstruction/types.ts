@@ -31,6 +31,7 @@ export interface PreconSessionRow {
   id: string;
   org_id: string;
   project_id: string | null;
+  proposal_id: string | null;
   status: SessionStatus;
   title: string;
   error: string | null;
@@ -163,6 +164,7 @@ export interface PreconSession {
   id: string;
   orgId: string;
   projectId: string | null;
+  proposalId: string | null;
   status: SessionStatus;
   title: string;
   error: string | null;
