@@ -41,6 +41,13 @@ export const NAV_ENTRIES: readonly NavEntry[] = [
     Icon: UpdatesIcon,
     flag: "project.updates",
   },
+  {
+    label: "Preconstruction",
+    slug: "preconstruction",
+    resource: "materials",
+    Icon: DocumentsIcon,
+    flag: "ai.preconstruction",
+  },
 ] as const;
 
 export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [

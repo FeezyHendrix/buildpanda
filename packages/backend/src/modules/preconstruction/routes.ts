@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
-import { BadRequestError } from "../../lib/errors.ts";
-import { saveStream } from "../../lib/file-storage.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { openStoredFile, saveStream } from "../../lib/file-storage.ts";
 import { preconRepository } from "./repository.ts";
 import { proposalsRepository } from "../proposals/repository.ts";
 import { proposalsService } from "../proposals/service.ts";
@@ -25,6 +25,16 @@ const sessionParams = {
   properties: {
     id: { type: "string", minLength: 1 },
     sessionId: { type: "string", minLength: 1 },
+  },
+} as const;
+
+const sheetParams = {
+  type: "object",
+  required: ["id", "sheetId"],
+  additionalProperties: false,
+  properties: {
+    id: { type: "string", minLength: 1 },
+    sheetId: { type: "string", minLength: 1 },
   },
 } as const;
 
@@ -261,6 +271,29 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
       await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
       return service.updateSettings(request.params.sessionId, request.body, user.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; sheetId: string } }>(
+    "/projects/:id/precon/sheets/:sheetId/file",
+    { schema: { params: sheetParams } },
+    async (request, reply) => {
+      await request.requireProjectPermission(request.params.id, "project", "view");
+      const sheet = await preconRepository(fastify.db).sheetById(request.params.sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      const stream = await openStoredFile(sheet.storage_path);
+      return reply.header("content-type", "application/pdf").send(stream);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; sheetId: string } }>(
+    "/projects/:id/precon/sheets/:sheetId/snap",
+    { schema: { params: sheetParams } },
+    async (request) => {
+      await request.requireProjectPermission(request.params.id, "project", "view");
+      const sheet = await preconRepository(fastify.db).sheetById(request.params.sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      return { points: sheet.snap_index ?? [] };
     },
   );
 
