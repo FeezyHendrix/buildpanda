@@ -59,28 +59,34 @@ test("buildUpBill: quantities come from the engine, never the model", async () =
     data: {
       workSections: [
         {
-          code: "M20",
-          title: "PLASTERED COATINGS",
-          items: [
+          sectionNumber: "1.28",
+          title: "FLOOR WALL CEILING AND ROOF FINISHINGS",
+          groups: [
             {
-              code: "M20/10",
-              description: "Cement and sand (1:4) smooth rendering; Plastering to walls 12mm thick",
-              unit: "m2" as const,
-              basis: "derived" as const,
-              formula: "2 * wall_area_m2",
-            },
-            {
-              code: "M20/11",
-              description: "Item quoting a made-up quantity that must be discarded",
-              unit: "m2" as const,
-              basis: "derived" as const,
-              formula: "made_up_anchor * 3",
-            },
-            {
-              code: "N10",
-              description: "Allow a provisional sum for electrical installations complete",
-              unit: "sum" as const,
-              basis: "provisional" as const,
+              preamble: "Cement and sand (1:4) smooth rendering",
+              heading: null,
+              items: [
+                {
+                  besmmRef: "7.2.0",
+                  particulars: "Plastering to Walls 12mm thick; over 600mm wide; internally",
+                  unit: "m2" as const,
+                  basis: "derived" as const,
+                  formula: "2 * wall_area_m2",
+                },
+                {
+                  besmmRef: "7.2.1",
+                  particulars: "Item with a made-up anchor that must be discarded",
+                  unit: "m2" as const,
+                  basis: "derived" as const,
+                  formula: "made_up_anchor * 3",
+                },
+                {
+                  besmmRef: null,
+                  particulars: "Electrical installations complete",
+                  unit: "sum" as const,
+                  basis: "provisional" as const,
+                },
+              ],
             },
           ],
         },
@@ -88,12 +94,13 @@ test("buildUpBill: quantities come from the engine, never the model", async () =
     },
   });
   const outcome = await buildUpBill(measured, "test context", fakeLlm as never);
-  const render = outcome.items.find((i) => i.code === "M20/10");
+  const render = outcome.items.find((i) => i.code === "7.2.0");
   assert.ok(render, "derived render item survives");
   assert.equal(render.qty, 8085.5); // 2 x 4042.75, computed by the engine
   assert.match(render.measurementBasis, /engine-evaluated/);
-  assert.equal(outcome.items.find((i) => i.code === "M20/11"), undefined); // unknown anchor discarded
-  const provisional = outcome.items.find((i) => i.code === "N10");
+  assert.equal(render.specNote, "Cement and sand (1:4) smooth rendering"); // preamble travels with first group item
+  assert.equal(outcome.items.find((i) => i.code === "7.2.1"), undefined); // unknown anchor discarded
+  const provisional = outcome.items.find((i) => i.description === "Electrical installations complete");
   assert.ok(provisional);
   assert.equal(provisional.provisional, true);
   assert.equal(provisional.qty, 0);

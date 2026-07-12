@@ -351,7 +351,8 @@ export interface MeasuredBoqItem {
   elementGroup: string;
   workSection: { code: string; title: string };
   specNote: string | null;
-  code: string;
+  groupHeading?: string | null;
+  code: string | null;
   description: string;
   unit: string;
   qtyGross: number;

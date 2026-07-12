@@ -45,7 +45,7 @@ function billRows(bill: PreconBill, rows: PreconBoqRowDto[]): { aoa: Cell[][]; t
 
   aoa.push([]);
   for (const [element, elementTotal] of elementTotals) {
-    aoa.push([null, `${element} to Summary`, null, null, null, Math.round(elementTotal * 100) / 100]);
+    aoa.push([null, `${element.toUpperCase()} CARRIED TO SUMMARY`, null, null, null, Math.round(elementTotal * 100) / 100]);
   }
   aoa.push([null, `${bill.title} — TOTAL`, null, null, null, Math.round(total * 100) / 100]);
   return { aoa, total: Math.round(total * 100) / 100 };
