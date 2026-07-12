@@ -444,6 +444,17 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return toRow(updated);
     },
 
+    async exportWorkbook(sessionId: string): Promise<{ fileName: string; buffer: Buffer }> {
+      const [snapshot, projectName] = await Promise.all([
+        this.getSnapshot(sessionId),
+        repo.projectNameForSession(sessionId),
+      ]);
+      const { buildBoqWorkbook, workbookBuffer } = await import("./export.ts");
+      const workbook = buildBoqWorkbook(snapshot, projectName ?? snapshot.session.title);
+      const safeTitle = snapshot.session.title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
+      return { fileName: `BOQ-${safeTitle}.xlsx`, buffer: workbookBuffer(workbook) };
+    },
+
     async listRateCards(orgId: string) {
       const cards = await repo.rateCardsByOrg(orgId);
       const allRates = await Promise.all(cards.map((c) => repo.ratesByCard(c.id)));

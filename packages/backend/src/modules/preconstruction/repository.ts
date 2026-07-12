@@ -176,6 +176,15 @@ export function preconRepository(db: Knex) {
       return rows.map((r) => ({ status: r.status, count: Number(r.count) }));
     },
 
+    projectNameForSession: async (sessionId: string): Promise<string | null> => {
+      const row = await db("precon_sessions")
+        .join("projects", "projects.id", "precon_sessions.project_id")
+        .where("precon_sessions.id", sessionId)
+        .select<{ name: string }>("projects.name")
+        .first();
+      return row?.name ?? null;
+    },
+
     // rates
     orgIdForSession: async (sessionId: string): Promise<string | null> => {
       const row = await db("precon_sessions")

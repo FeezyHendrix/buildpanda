@@ -143,6 +143,33 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    preconBoqRows(projectId: string) {
+      return db("precon_boq_rows as row")
+        .join("precon_bills as bill", "bill.id", "row.bill_id")
+        .join("precon_sessions as session", "session.id", "bill.session_id")
+        .where("session.project_id", projectId)
+        .whereIn("row.row_type", ["item", "provisional_sum"])
+        .where((q) => q.whereNot("row.status", "rejected").orWhereNull("row.status"))
+        .orderBy([
+          { column: "session.created_at", order: "asc" },
+          { column: "row.sort", order: "asc" },
+        ])
+        .select(
+          "session.id as session_id",
+          "session.title as session_title",
+          "session.status as session_status",
+          "row.element_group",
+          "row.code",
+          "row.description",
+          "row.qty",
+          "row.unit",
+          "row.rate",
+          "row.amount",
+          "row.status",
+          "row.confidence",
+        );
+    },
+
     boqItems(projectId: string) {
       return db("proposal_boq_items as item")
         .join("proposals as proposal", "proposal.id", "item.proposal_id")
