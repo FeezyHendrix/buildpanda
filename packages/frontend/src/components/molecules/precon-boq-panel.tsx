@@ -273,7 +273,7 @@ export function PreconBoqPanel({ projectId, sessionId, snapshot, selectedRowId, 
                       </span>
                     </button>
                     {selected ? (
-                      <div className="px-3 pb-3">
+                      <div className="px-3 pb-3" ref={(el) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" })}>
                         <BreakdownCard
                           row={row}
                           projectId={projectId}
