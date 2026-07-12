@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// Vite resolves ?url asset imports in both dev and production builds; the
+// bare-specifier new URL(...) form 404s in production bundles.
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
 import { preconApi, type PreconBoqRow, type PreconGeometry, type PreconSheet } from "@/api/precon";
@@ -94,10 +97,7 @@ export function PreconSheetViewer({
     setDraft([]);
     (async () => {
       const pdfjs = await import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/build/pdf.worker.min.mjs",
-        import.meta.url,
-      ).toString();
+      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
       const doc = await pdfjs.getDocument({
         url: preconApi.sheetFileUrl(activeSheet.id),
         withCredentials: true,
@@ -116,10 +116,11 @@ export function PreconSheetViewer({
       setPage({ widthPx: viewport.width, heightPx: viewport.height, heightPt: viewport.height / RENDER_SCALE });
       setView({ tx: 0, ty: 0, zoom: 1 });
       setRendering(false);
-    })().catch(() => {
+    })().catch((error: unknown) => {
       if (!cancelled) {
         setRendering(false);
-        setNote("Could not render this sheet");
+        const reason = error instanceof Error ? error.message : String(error);
+        setNote(`Could not render this sheet: ${reason.slice(0, 160)}`);
       }
     });
     return () => {
