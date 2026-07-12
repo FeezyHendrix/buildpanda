@@ -231,7 +231,9 @@ export async function buildUpBill(
   const results = await Promise.all(
     BESMM_ELEMENT_BRIEFS.map(async (brief) => {
       try {
-        const response = await callLlm(agentMessages(brief, anchors, sheetContext), buildupSchema);
+        // one retry: a single schema-validation flake should not cost an element
+        let response = await callLlm(agentMessages(brief, anchors, sheetContext), buildupSchema).catch(() => null);
+        if (!response) response = await callLlm(agentMessages(brief, anchors, sheetContext), buildupSchema);
         if (!response) return { brief, items: [] as EnrichedItem[], failed: true };
         const items = toItems(brief, response.data, anchors);
         onProgress(`Built up ${brief.element}: ${items.length} items`);

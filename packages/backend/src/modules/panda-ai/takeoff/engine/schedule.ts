@@ -107,8 +107,10 @@ export function applySchedules(items: MeasuredBoqItem[], schedules: DrawingSched
     const entry = match ? byType.get(match[1]!.toUpperCase()) : undefined;
     if (!entry) return item;
 
+    // schedules often omit units; print the figures as transcribed and let
+    // the schedule remain the authority rather than asserting mm
     const size =
-      entry.widthMm && entry.heightMm ? `to fit opening size ${entry.widthMm} x ${entry.heightMm}mm high; ` : "";
+      entry.widthMm && entry.heightMm ? `to fit opening size ${entry.widthMm} x ${entry.heightMm} as schedule; ` : "";
     const material = entry.material ? `${entry.material}; ` : "";
     const kind = item.code === "L11" ? "Window" : "Door";
     const description = `${kind} type ${entry.type}; ${size}${material}as ${kind.toLowerCase()} schedule`;
