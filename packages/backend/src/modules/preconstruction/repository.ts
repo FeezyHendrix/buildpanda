@@ -40,7 +40,16 @@ export function preconRepository(db: Knex) {
       patch: Partial<
         Pick<
           PreconSheetRow,
-          "code" | "title" | "kind" | "status" | "scale_mm_per_pt" | "scale_confidence" | "dim_unit" | "snap_index" | "error"
+          | "code"
+          | "title"
+          | "kind"
+          | "status"
+          | "page_number"
+          | "scale_mm_per_pt"
+          | "scale_confidence"
+          | "dim_unit"
+          | "snap_index"
+          | "error"
         >
       >,
     ) =>

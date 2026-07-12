@@ -26,6 +26,32 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorate("realtime", hub);
   const repo = messagingRepository(fastify.db);
 
+  // precon:<sessionId> channels authorize via the session's project: active
+  // participant or member of the org that owns the project.
+  const canJoinPreconChannel = async (sessionId: string, userId: string): Promise<boolean> => {
+    const session = await fastify
+      .db("precon_sessions")
+      .join("projects", "projects.id", "precon_sessions.project_id")
+      .where("precon_sessions.id", sessionId)
+      .select<{ project_id: string; organization_id: string | null }>(
+        "precon_sessions.project_id",
+        "projects.organization_id",
+      )
+      .first();
+    if (!session) return false;
+    const participant = await fastify
+      .db("project_participants")
+      .where({ project_id: session.project_id, user_id: userId, status: "active" })
+      .first();
+    if (participant) return true;
+    if (!session.organization_id) return false;
+    const member = await fastify
+      .db("member")
+      .where({ organizationId: session.organization_id, userId })
+      .first();
+    return Boolean(member);
+  };
+
   await fastify.register(websocket);
 
   fastify.get("/ws", { websocket: true }, (socket, request) => {
@@ -47,12 +73,14 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
       }
       if (msg.action === "subscribe" && msg.channelId) {
         const channelId = msg.channelId;
-        void repo
-          .isMember(channelId, userId)
+        const authorize = channelId.startsWith("precon:")
+          ? canJoinPreconChannel(channelId.slice("precon:".length), userId)
+          : repo.isMember(channelId, userId);
+        void authorize
           .then((member) => {
             if (member && conn) hub.subscribeChannel(conn, channelId);
           })
-          .catch((err) => fastify.log.error({ err }, "ws subscribe isMember failed"));
+          .catch((err) => fastify.log.error({ err }, "ws subscribe authorization failed"));
       } else if (msg.action === "unsubscribe" && msg.channelId && conn) {
         hub.unsubscribeChannel(conn, msg.channelId);
       }
