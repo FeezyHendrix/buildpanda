@@ -60,7 +60,7 @@ export default function PreconstructionPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6 p-6">
       <PageHeader
         title="Preconstruction"
         description="Upload drawings; Panda AI measures a draft Bill of Quantities for QS review."
