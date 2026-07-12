@@ -13,6 +13,16 @@ Versions are kept in sync across all workspace packages (`@buildpanda/backend`,
 
 ### Added
 
+- **Preconstruction OS (feature-flagged `ai.preconstruction`)** — drawings-to-BOQ
+  pipeline: vector PDF takeoff engine (pdfjs extraction, dimension-text
+  self-calibration with mm/cm/m unit inference, stroke-style pseudo-layers,
+  parallel-pair wall measurement, door-swing/tag detection, flood-fill room
+  areas), BESMM-style draft BOQ with geometry provenance and gross/deduction/net
+  breakdowns, QS review workflow (row-scoped optimistic versioning with 409
+  conflicts, verify/reject, server-side re-measurement, append-only audit
+  trail, realtime `precon:` channels), org rates library with automatic
+  pricing, Moniepoint-format Excel export, send-to-proposals hand-off, and a
+  `get_precon_boq` Panda AI tool.
 - **RFI module** — Procore-style Requests for Information with a numbered,
   ball-in-court workflow: create/respond/close/void/reopen lifecycle,
   per-project sequential numbering (concurrency-safe), official vs proposed

@@ -4,6 +4,8 @@ import { config } from "../../config/index.ts";
 import { BadRequestError } from "../../lib/errors.ts";
 import { saveStream } from "../../lib/file-storage.ts";
 import { preconRepository } from "./repository.ts";
+import { proposalsRepository } from "../proposals/repository.ts";
+import { proposalsService } from "../proposals/service.ts";
 import { preconService } from "./service.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
 import { GEOMETRY_KINDS } from "./types.ts";
@@ -259,6 +261,49 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
       await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
       return service.updateSettings(request.params.sessionId, request.body, user.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; sessionId: string } }>(
+    "/projects/:id/precon/sessions/:sessionId/export.xlsx",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      await request.requireProjectPermission(request.params.id, "project", "view");
+      const { fileName, buffer } = await service.exportWorkbook(request.params.sessionId);
+      return reply
+        .header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .header("content-disposition", `attachment; filename="${fileName}"`)
+        .send(buffer);
+    },
+  );
+
+  fastify.post<{ Params: { id: string; sessionId: string } }>(
+    "/projects/:id/precon/sessions/:sessionId/send-to-proposals",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "materials", "request");
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "create");
+      const snapshot = await service.getSnapshot(request.params.sessionId);
+      const proposals = proposalsService(proposalsRepository(fastify.db));
+      const proposal = await proposals.createProposal(orgId, user.id, {
+        title: snapshot.session.title,
+        clientName: (project as { name?: string }).name ?? snapshot.session.title,
+        brief: `Generated from preconstruction session ${snapshot.session.id}`,
+      });
+      // BOQ copy uses the proposals module's own repository method — the
+      // proposals service does not expose BOQ item writes yet.
+      const items = snapshot.rows
+        .filter((r) => (r.rowType === "item" || r.rowType === "provisional_sum") && r.status !== "rejected")
+        .map((r, idx) => ({
+          groupLabel: r.elementGroup ?? "General",
+          description: r.description,
+          qty: r.qty ?? 0,
+          unit: r.unit ?? "item",
+          sort: idx,
+        }));
+      await proposalsRepository(fastify.db).replaceBoqItems(proposal.id, items);
+      return reply.status(201).send({ proposalId: proposal.id, itemCount: items.length });
     },
   );
 
