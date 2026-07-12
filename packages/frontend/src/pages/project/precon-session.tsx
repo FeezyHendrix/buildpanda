@@ -112,7 +112,11 @@ export default function PreconSessionPage() {
     [snapshot?.sheets],
   );
   const activeSheet =
-    measurableSheets.find((s) => s.id === activeSheetId) ?? measurableSheets[0] ?? null;
+    measurableSheets.find((s) => s.id === activeSheetId) ??
+    measurableSheets.find((s) => s.status === "measured" && s.kind === "floor-plan") ??
+    measurableSheets.find((s) => s.status === "measured") ??
+    measurableSheets[0] ??
+    null;
 
   if (isPending || !snapshot) {
     return (

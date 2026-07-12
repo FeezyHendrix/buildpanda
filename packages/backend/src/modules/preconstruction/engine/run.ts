@@ -325,13 +325,20 @@ export async function generateForSession(
     const key = `${item.code}|${item.description}`;
     const existing = merged.get(key);
     if (!existing) {
-      merged.set(key, item);
+      merged.set(key, { ...item, mergedPages: [item.pageNumber] } as MeasuredBoqItem & { mergedPages: number[] });
     } else {
       existing.qtyGross = Math.round((existing.qtyGross + item.qtyGross) * 100) / 100;
       existing.qty = Math.round((existing.qty + item.qty) * 100) / 100;
-      existing.measurementBasis += `; plus ${item.measurementBasis}`;
+      (existing as MeasuredBoqItem & { mergedPages: number[] }).mergedPages.push(item.pageNumber);
       existing.geometries.push(...item.geometries.map((g) => ({ ...g, pageNumber: g.pageNumber ?? item.pageNumber })));
       if (item.confidence === "low") existing.confidence = "low";
+    }
+  }
+  for (const item of merged.values()) {
+    const pages = (item as MeasuredBoqItem & { mergedPages: number[] }).mergedPages;
+    if (pages.length > 1) {
+      item.measurementBasis = `${item.measurementBasis.split(" (")[0]} — summed across ${pages.length} sheets (pages ${pages.join(", ")}); repeated floor views may double-count, review per sheet`;
+      item.confidence = "low";
     }
   }
 
