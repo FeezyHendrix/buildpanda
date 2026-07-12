@@ -23,6 +23,7 @@ import {
   wallConfidence,
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { priceRow } from "./price.ts";
 
 const DEFAULT_WALL_HEIGHT_M = 2.7;
 
@@ -335,6 +336,28 @@ export async function generateForSession(
   }
 
   const { bills, rows, geometries } = draftBoq(sessionId, [...merged.values()], sheetIdByPage);
+
+  // price measured items against the org's most recent rate card
+  const orgId = await repo.orgIdForSession(sessionId);
+  if (orgId) {
+    const [card] = await repo.rateCardsByOrg(orgId);
+    if (card) {
+      const rates = await repo.ratesByCard(card.id);
+      let priced = 0;
+      for (const row of rows) {
+        if (row.row_type !== "item" && row.row_type !== "provisional_sum") continue;
+        const patch = priceRow(row, rates, card.name);
+        if (patch) {
+          row.rate = patch.rate;
+          row.amount = patch.amount;
+          row.rate_source = patch.rate_source;
+          priced++;
+        }
+      }
+      if (priced > 0) progress(`Priced ${priced} items against "${card.name}"`);
+    }
+  }
+
   await repo.insertBills(bills);
   await repo.insertBoqRows(rows);
   await repo.insertGeometries(geometries);

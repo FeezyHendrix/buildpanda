@@ -7,7 +7,7 @@ import { preconRepository } from "./repository.ts";
 import { preconService } from "./service.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
 import { GEOMETRY_KINDS } from "./types.ts";
-import type { AddDeductionBody, UpdateGeometryBody, UpdateRowBody } from "./types.ts";
+import type { AddDeductionBody, PreconSummarySettings, UpdateGeometryBody, UpdateRowBody } from "./types.ts";
 
 const idParams = {
   type: "object",
@@ -96,6 +96,56 @@ const createSessionQuery = {
   type: "object",
   additionalProperties: false,
   properties: { title: { type: "string", maxLength: 200 } },
+} as const;
+
+const settingsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    prelimsPct: { type: "number", minimum: 0, maximum: 100 },
+    contingencyPct: { type: "number", minimum: 0, maximum: 100 },
+    vatPct: { type: "number", minimum: 0, maximum: 100 },
+  },
+} as const;
+
+const rateCardBody = {
+  type: "object",
+  required: ["name"],
+  additionalProperties: false,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 120 },
+    region: { type: ["string", "null"], maxLength: 120 },
+  },
+} as const;
+
+const cardParams = {
+  type: "object",
+  required: ["cardId"],
+  additionalProperties: false,
+  properties: { cardId: { type: "string", minLength: 1 } },
+} as const;
+
+const rateParams = {
+  type: "object",
+  required: ["cardId", "rateId"],
+  additionalProperties: false,
+  properties: {
+    cardId: { type: "string", minLength: 1 },
+    rateId: { type: "string", minLength: 1 },
+  },
+} as const;
+
+const rateBody = {
+  type: "object",
+  required: ["unit", "rate"],
+  additionalProperties: false,
+  properties: {
+    codePrefix: { type: ["string", "null"], maxLength: 20 },
+    descriptionPattern: { type: ["string", "null"], maxLength: 400 },
+    unit: { type: "string", minLength: 1, maxLength: 20 },
+    rate: { type: "number", minimum: 0 },
+  },
 } as const;
 
 const preconRoutes: FastifyPluginAsync = async (fastify) => {
@@ -199,6 +249,64 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
       await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
       return service.addDeduction(request.params.rowId, request.body, user.id);
+    },
+  );
+
+  fastify.patch<{ Params: { id: string; sessionId: string }; Body: Partial<PreconSummarySettings> }>(
+    "/projects/:id/precon/sessions/:sessionId/settings",
+    { schema: { params: sessionParams, body: settingsBody } },
+    async (request) => {
+      await request.requireProjectPermission(request.params.id, "materials", "request");
+      const user = request.requireAuth();
+      return service.updateSettings(request.params.sessionId, request.body, user.id);
+    },
+  );
+
+  // ---- org-scoped rates library ----
+
+  fastify.get("/precon/rate-cards", async (request) => {
+    request.requireAuth();
+    const orgId = request.requireOrgScope();
+    return service.listRateCards(orgId);
+  });
+
+  fastify.post<{ Body: { name: string; region?: string | null } }>(
+    "/precon/rate-cards",
+    { schema: { body: rateCardBody } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "create");
+      const card = await service.createRateCard(orgId, request.body.name, request.body.region ?? null);
+      return reply.status(201).send(card);
+    },
+  );
+
+  fastify.post<{
+    Params: { cardId: string };
+    Body: { codePrefix?: string | null; descriptionPattern?: string | null; unit: string; rate: number };
+  }>(
+    "/precon/rate-cards/:cardId/rates",
+    { schema: { params: cardParams, body: rateBody } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      const rate = await service.addRate(orgId, request.params.cardId, {
+        codePrefix: request.body.codePrefix ?? null,
+        descriptionPattern: request.body.descriptionPattern ?? null,
+        unit: request.body.unit,
+        rate: request.body.rate,
+      });
+      return reply.status(201).send(rate);
+    },
+  );
+
+  fastify.delete<{ Params: { cardId: string; rateId: string } }>(
+    "/precon/rate-cards/:cardId/rates/:rateId",
+    { schema: { params: rateParams } },
+    async (request) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      return service.removeRate(orgId, request.params.cardId, request.params.rateId);
     },
   );
 };
