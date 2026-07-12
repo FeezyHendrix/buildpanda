@@ -4,29 +4,28 @@ import { preconApi, type PreconGeometryKind, type PreconSummarySettings, type Up
 import { preconKeys } from "@/hooks/query-keys";
 import { useRealtime } from "@/lib/realtime";
 
-export function usePreconSessions(projectId: string) {
+export function usePreconSessions() {
   return useQuery({
-    queryKey: preconKeys.sessions(projectId),
-    queryFn: () => preconApi.listSessions(projectId),
-    enabled: Boolean(projectId),
+    queryKey: preconKeys.sessions(),
+    queryFn: () => preconApi.listSessions(),
   });
 }
 
-export function usePreconSnapshot(projectId: string, sessionId: string) {
+export function usePreconSnapshot(sessionId: string) {
   return useQuery({
-    queryKey: preconKeys.snapshot(projectId, sessionId),
-    queryFn: () => preconApi.snapshot(projectId, sessionId),
-    enabled: Boolean(projectId && sessionId),
+    queryKey: preconKeys.snapshot(sessionId),
+    queryFn: () => preconApi.snapshot(sessionId),
+    enabled: Boolean(sessionId),
     // while the engine runs, poll as a fallback to the websocket feed
     refetchInterval: (query) => (query.state.data?.session.status === "generating" ? 4000 : false),
   });
 }
 
-export function usePreconSnapIndex(projectId: string, sheetId: string | null) {
+export function usePreconSnapIndex(sheetId: string | null) {
   return useQuery({
-    queryKey: preconKeys.snap(projectId, sheetId ?? "none"),
-    queryFn: () => preconApi.snapIndex(projectId, sheetId!),
-    enabled: Boolean(projectId && sheetId),
+    queryKey: preconKeys.snap(sheetId ?? "none"),
+    queryFn: () => preconApi.snapIndex(sheetId!),
+    enabled: Boolean(sheetId),
     staleTime: Infinity,
   });
 }
@@ -42,72 +41,65 @@ export function usePreconChannel(sessionId: string | null) {
   }, [sessionId, subscribe, unsubscribe]);
 }
 
-export function useCreatePreconSession(projectId: string) {
+export function useCreatePreconSession() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ files, title }: { files: File[]; title?: string }) =>
-      preconApi.createSession(projectId, files, title),
-    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions(projectId) }),
+    mutationFn: ({ files, title }: { files: File[]; title?: string }) => preconApi.createSession(files, title),
+    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
   });
 }
 
-function useRowMutation<TVariables>(
-  projectId: string,
-  sessionId: string,
-  mutationFn: (variables: TVariables) => Promise<unknown>,
-) {
+function useRowMutation<TVariables>(sessionId: string, mutationFn: (variables: TVariables) => Promise<unknown>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn,
-    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(projectId, sessionId) }),
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });
 }
 
-export function useUpdatePreconRow(projectId: string, sessionId: string) {
-  return useRowMutation(projectId, sessionId, ({ rowId, input }: { rowId: string; input: UpdateRowInput }) =>
-    preconApi.updateRow(projectId, rowId, input),
+export function useUpdatePreconRow(sessionId: string) {
+  return useRowMutation(sessionId, ({ rowId, input }: { rowId: string; input: UpdateRowInput }) =>
+    preconApi.updateRow(rowId, input),
   );
 }
 
-export function useVerifyPreconRow(projectId: string, sessionId: string) {
-  return useRowMutation(projectId, sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
-    preconApi.verifyRow(projectId, rowId, version),
+export function useVerifyPreconRow(sessionId: string) {
+  return useRowMutation(sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
+    preconApi.verifyRow(rowId, version),
   );
 }
 
-export function useRejectPreconRow(projectId: string, sessionId: string) {
-  return useRowMutation(projectId, sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
-    preconApi.rejectRow(projectId, rowId, version),
+export function useRejectPreconRow(sessionId: string) {
+  return useRowMutation(sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
+    preconApi.rejectRow(rowId, version),
   );
 }
 
-export function useUpdatePreconGeometry(projectId: string, sessionId: string) {
+export function useUpdatePreconGeometry(sessionId: string) {
   return useRowMutation(
-    projectId,
     sessionId,
     ({ rowId, version, kind, vertices }: { rowId: string; version: number; kind: PreconGeometryKind; vertices: number[][] }) =>
-      preconApi.updateGeometry(projectId, rowId, { version, kind, vertices }),
+      preconApi.updateGeometry(rowId, { version, kind, vertices }),
   );
 }
 
-export function useAddPreconDeduction(projectId: string, sessionId: string) {
+export function useAddPreconDeduction(sessionId: string) {
   return useRowMutation(
-    projectId,
     sessionId,
     ({ rowId, version, label, vertices }: { rowId: string; version: number; label: string; vertices: number[][] }) =>
-      preconApi.addDeduction(projectId, rowId, { version, label, vertices }),
+      preconApi.addDeduction(rowId, { version, label, vertices }),
   );
 }
 
-export function useUpdatePreconSettings(projectId: string, sessionId: string) {
-  return useRowMutation(projectId, sessionId, (patch: Partial<PreconSummarySettings>) =>
-    preconApi.updateSettings(projectId, sessionId, patch),
+export function useUpdatePreconSettings(sessionId: string) {
+  return useRowMutation(sessionId, (patch: Partial<PreconSummarySettings>) =>
+    preconApi.updateSettings(sessionId, patch),
   );
 }
 
-export function useSendPreconToProposals(projectId: string, sessionId: string) {
+export function useSendPreconToProposals(sessionId: string) {
   return useMutation({
-    mutationFn: () => preconApi.sendToProposals(projectId, sessionId),
+    mutationFn: () => preconApi.sendToProposals(sessionId),
   });
 }
 

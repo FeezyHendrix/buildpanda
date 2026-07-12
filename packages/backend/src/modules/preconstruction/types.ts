@@ -29,7 +29,8 @@ export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 
 export interface PreconSessionRow {
   id: string;
-  project_id: string;
+  org_id: string;
+  project_id: string | null;
   status: SessionStatus;
   title: string;
   error: string | null;
@@ -160,7 +161,8 @@ export interface PreconComplianceDocRow {
 
 export interface PreconSession {
   id: string;
-  projectId: string;
+  orgId: string;
+  projectId: string | null;
   status: SessionStatus;
   title: string;
   error: string | null;

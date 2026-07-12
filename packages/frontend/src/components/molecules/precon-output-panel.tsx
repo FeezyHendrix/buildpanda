@@ -14,15 +14,14 @@ const SETTING_FIELDS: { key: keyof PreconSummarySettings; label: string }[] = [
 ];
 
 interface OutputProps {
-  projectId: string;
   snapshot: PreconSnapshot;
 }
 
-export function PreconOutputPanel({ projectId, snapshot }: OutputProps) {
+export function PreconOutputPanel({ snapshot }: OutputProps) {
   const navigate = useNavigate();
   const sessionId = snapshot.session.id;
-  const updateSettings = useUpdatePreconSettings(projectId, sessionId);
-  const sendToProposals = useSendPreconToProposals(projectId, sessionId);
+  const updateSettings = useUpdatePreconSettings(sessionId);
+  const sendToProposals = useSendPreconToProposals(sessionId);
   const [sendResult, setSendResult] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Partial<Record<keyof PreconSummarySettings, string>>>({});
 
@@ -91,7 +90,7 @@ export function PreconOutputPanel({ projectId, snapshot }: OutputProps) {
           <p className="text-xs text-gray-500">Export the BOQ workbook or hand the bill to a proposal.</p>
         </div>
         <div className="space-y-2">
-          <a href={preconApi.exportUrl(projectId, sessionId)} download>
+          <a href={preconApi.exportUrl(sessionId)} download>
             <Button className="w-full">Download BOQ (Excel)</Button>
           </a>
           <Button

@@ -74,7 +74,8 @@ function makeSnapshot(): PreconSnapshot {
   return {
     session: {
       id: "pcs_1",
-      projectId: "p_1",
+      orgId: "org_1",
+      projectId: null,
       status: "reviewing",
       title: "Renovation of Building A",
       error: null,
