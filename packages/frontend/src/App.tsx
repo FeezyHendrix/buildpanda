@@ -195,7 +195,7 @@ export const router = createBrowserRouter([
       { path: "leads", element: sf("sales.leads", <SalesLeads />) },
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
-      { path: "preconstruction/:sessionId", element: sf("ai.preconstruction", <SalesPreconSession />) },
+      { path: "takeoff/:sessionId", element: sf("ai.preconstruction", <SalesPreconSession />) },
       { path: "settings", element: <SalesSettings /> },
     ],
   },

@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
-import { buildBoqWorkbook, workbookBuffer } from "./export.ts";
+import ExcelJS from "exceljs";
+import { buildBoqWorkbookBuffer } from "./export.ts";
 import { computeSummary } from "./service.ts";
 import type { PreconBoqRowDto, PreconSnapshot } from "./types.ts";
 
@@ -96,14 +97,13 @@ function makeSnapshot(): PreconSnapshot {
   };
 }
 
-test("export: workbook reconciles with snapshot totals, drops rejected rows", () => {
+test("export: workbook reconciles with snapshot totals, drops rejected rows", async () => {
   const snapshot = makeSnapshot();
-  const workbook = buildBoqWorkbook(snapshot, "Test Project");
-  assert.deepEqual(workbook.SheetNames.slice(0, 1), ["Cover Page"]);
-  assert.ok(workbook.SheetNames.includes("General Summary"));
-  assert.equal(workbook.SheetNames.length, 4); // cover + 2 bills + summary
-
-  const reparsed = XLSX.read(workbookBuffer(workbook), { type: "buffer" });
+  const buffer = await buildBoqWorkbookBuffer(snapshot, "Test Project");
+  const reparsed = XLSX.read(buffer, { type: "buffer" });
+  assert.deepEqual(reparsed.SheetNames.slice(0, 1), ["Cover Page"]);
+  assert.ok(reparsed.SheetNames.includes("General Summary"));
+  assert.equal(reparsed.SheetNames.length, 4); // cover + 2 bills + summary
 
   // bill sheet: rejected row absent, letters restart, total matches
   const bill2 = XLSX.utils.sheet_to_json<Record<string, unknown>>(
@@ -127,4 +127,17 @@ test("export: workbook reconciles with snapshot totals, drops rejected rows", ()
   assert.equal(grand![5], snapshot.summary.grandTotal);
   const vatRow = summarySheet.find((r) => typeof r[1] === "string" && (r[1] as string).startsWith("ADD VAT"));
   assert.equal(vatRow![5], snapshot.summary.vat);
+
+  // presentation: header row bold, grand total bold with double bottom border
+  const styled = new ExcelJS.Workbook();
+  await styled.xlsx.load(buffer as never);
+  const summaryWs = styled.getWorksheet("General Summary")!;
+  assert.equal(summaryWs.getRow(1).font?.bold, true);
+  const grandRows: ExcelJS.Row[] = [];
+  summaryWs.eachRow((row) => {
+    if (row.getCell(2).value === "GRAND TOTAL") grandRows.push(row);
+  });
+  assert.equal(grandRows.length, 1, "grand total row present");
+  assert.equal(grandRows[0]!.font?.bold, true);
+  assert.equal(grandRows[0]!.getCell(6).border?.bottom?.style, "double");
 });

@@ -5,8 +5,8 @@ import * as path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
-import { openStoredFile } from "../../../lib/file-storage.ts";
-import { generateId } from "../../../lib/ids.ts";
+import { openStoredFile } from "../../../../lib/file-storage.ts";
+import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
 import type { MeasuredBoqItem, PreconSheetRow, SheetKind } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
@@ -24,7 +24,8 @@ import {
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
 import { buildUpBill } from "./enrich.ts";
-import { chatJsonValidated, isLlmConfigured } from "../../../lib/llm.ts";
+import { applySchedules, looksLikeScheduleSheet, readSchedules, readingOrderLines } from "./schedule.ts";
+import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
 const DEFAULT_WALL_HEIGHT_M = 2.7;
@@ -218,6 +219,7 @@ export async function generateForSession(
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   const allItems: MeasuredBoqItem[] = [];
+  const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
   const sheetIdByPage = new Map<number, string>();
   let nextPageNumber = 1;
 
@@ -268,6 +270,9 @@ export async function generateForSession(
                 page_number: globalPage,
               });
               continue;
+            }
+            if (looksLikeScheduleSheet(extracted.texts)) {
+              scheduleSheets.push({ pageNumber: globalPage, lines: readingOrderLines(extracted.texts) });
             }
             const calibration = calibrate(extracted.texts, extracted.segments);
             const doorProbe = countDoorArcs(extracted.curves, calibration?.mmPerPt ?? 17.68);
@@ -346,12 +351,36 @@ export async function generateForSession(
 
   let billItems: MeasuredBoqItem[] = [...merged.values()];
 
+  // Schedule pass: the architect's door/window schedule tables are the
+  // authoritative counts and carry sizes/materials; the tag census becomes
+  // the cross-check and disagreements are flagged for review.
+  let scheduleSummary = "";
+  if (isLlmConfigured() && scheduleSheets.length > 0) {
+    progress(`Reading ${scheduleSheets.length} schedule sheet(s)`);
+    try {
+      const schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
+        chatJsonValidated(messages, schema),
+      );
+      if (schedules) {
+        billItems = applySchedules(billItems, schedules);
+        const specs = [...schedules.windows, ...schedules.doors]
+          .filter((e) => e.material || e.remarks)
+          .map((e) => `${e.type}: ${[e.material, e.remarks].filter(Boolean).join(", ")}`)
+          .slice(0, 20);
+        scheduleSummary = specs.length > 0 ? ` Schedule specs: ${specs.join("; ")}.` : "";
+        progress(`Applied schedules: ${schedules.windows.length} window types, ${schedules.doors.length} door types`);
+      }
+    } catch {
+      progress("Schedule sheets found but could not be read; tag census stands");
+    }
+  }
+
   // Build-up stage: parallel per-element QS agents expand the measured
   // anchors into a BESMM-granular bill. Quantities stay engine-computed —
   // agents only name anchors or formulas; provisional items carry none.
   if (isLlmConfigured() && billItems.length > 0) {
     progress("Building up the bill with parallel QS agents");
-    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).`;
+    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
     const outcome = await buildUpBill(
       billItems,
       sheetContext,

@@ -143,7 +143,7 @@ export function PlansTab({ proposalId }: Props) {
                       onClick={() => {
                         void measurePlan
                           .mutateAsync(plan.id)
-                          .then((session) => navigate(`/sales/preconstruction/${session.id}`))
+                          .then((session) => navigate(`/sales/takeoff/${session.id}`))
                           .catch((err) => setError(getApiErrorMessage(err, "Could not start the takeoff.")));
                       }}
                     >
@@ -189,7 +189,7 @@ export function PlansTab({ proposalId }: Props) {
                       .mutateAsync(promptPlan.id)
                       .then((session) => {
                         setPromptPlan(null);
-                        navigate(`/sales/preconstruction/${session.id}`);
+                        navigate(`/sales/takeoff/${session.id}`);
                       })
                       .catch((err) => setError(getApiErrorMessage(err, "Could not start the takeoff.")));
                   } else {
@@ -217,7 +217,7 @@ export function PlansTab({ proposalId }: Props) {
                     size="sm"
                     variant="ghost"
                     className="text-primary-700"
-                    onClick={() => navigate(`/sales/preconstruction/${session.id}`)}
+                    onClick={() => navigate(`/sales/takeoff/${session.id}`)}
                   >
                     {session.status === "reviewing" ? "Review" : "Open"}
                   </Button>

@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
-import type { QueueManager } from "../../lib/queue/index.ts";
-import type { RealtimePayload } from "../../lib/realtime/index.ts";
+import type { QueueManager } from "../../../lib/queue/index.ts";
+import type { RealtimePayload } from "../../../lib/realtime/index.ts";
 import { preconRepository } from "./repository.ts";
 import { generateForSession } from "./engine/run.ts";
 
