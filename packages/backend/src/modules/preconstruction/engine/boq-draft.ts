@@ -117,14 +117,14 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
       for (const item of sectionItems) {
         const seed: RowSeed = {
           bill_id: measuredBill.id,
-          row_type: "item",
+          row_type: item.provisional ? "provisional_sum" : "item",
           element_group: element,
           code: item.code,
           description: item.description,
           unit: item.unit,
-          qty_gross: item.qtyGross,
+          qty_gross: item.provisional ? null : item.qtyGross,
           deductions: item.deductions.map((d) => ({ ...d, geometryId: null })),
-          qty: item.qty,
+          qty: item.provisional ? null : item.qty,
           confidence: item.confidence,
           status: item.confidence === "high" ? "ai_generated" : "needs_review",
           measurement_basis: item.measurementBasis,

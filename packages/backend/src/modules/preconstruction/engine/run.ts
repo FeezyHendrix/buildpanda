@@ -23,6 +23,8 @@ import {
   wallConfidence,
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { buildUpBill } from "./enrich.ts";
+import { chatJsonValidated, isLlmConfigured } from "../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
 const DEFAULT_WALL_HEIGHT_M = 2.7;
@@ -98,7 +100,7 @@ function measureSheetRegions(
       workSection: { code: "F10", title: "BRICK/BLOCK WALLING" },
       specNote: "Sandcrete block walls; cement mortar (1:6); wall height assumed 2.70m pending elevations.",
       code: "F10/125",
-      description: "225mm hollow sandcrete blockwork in cement mortar (1:6)",
+      description: "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; skin of hollow walls; laid in stretcher bond",
       unit: "m2",
       qtyGross: grossM2,
       deductions: [],
@@ -342,7 +344,29 @@ export async function generateForSession(
     }
   }
 
-  const { bills, rows, geometries } = draftBoq(sessionId, [...merged.values()], sheetIdByPage);
+  let billItems: MeasuredBoqItem[] = [...merged.values()];
+
+  // Build-up stage: parallel per-element QS agents expand the measured
+  // anchors into a BESMM-granular bill. Quantities stay engine-computed —
+  // agents only name anchors or formulas; provisional items carry none.
+  if (isLlmConfigured() && billItems.length > 0) {
+    progress("Building up the bill with parallel QS agents");
+    const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).`;
+    const outcome = await buildUpBill(
+      billItems,
+      sheetContext,
+      async (messages, schema) => chatJsonValidated(messages, schema),
+      (message) => progress(message),
+    );
+    const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);
+    if (failed.length > 0) progress(`Elements left for manual billing: ${failed.join(", ")}`);
+    // enrichment replaces the bare wall/floor lines with its fuller sections,
+    // but keeps measured geometry rows: merge by code+description, measured wins
+    const measuredKeys = new Set(billItems.map((i) => `${i.code}|${i.description}`));
+    billItems = [...billItems, ...outcome.items.filter((i) => !measuredKeys.has(`${i.code}|${i.description}`))];
+  }
+
+  const { bills, rows, geometries } = draftBoq(sessionId, billItems, sheetIdByPage);
 
   // price measured items against the org's most recent rate card
   const orgId = await repo.orgIdForSession(sessionId);
