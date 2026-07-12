@@ -361,4 +361,5 @@ export interface MeasuredBoqItem {
   measurementBasis: string;
   geometries: MeasuredGeometry[];
   pageNumber: number;
+  provisional?: boolean;
 }
