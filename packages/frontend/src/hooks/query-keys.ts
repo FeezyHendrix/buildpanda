@@ -308,9 +308,9 @@ export const materialLedgerKeys = {
 };
 
 export const preconKeys = {
-  all: (projectId: string) => ["projects", projectId, "precon"] as const,
-  sessions: (projectId: string) => [...preconKeys.all(projectId), "sessions"] as const,
-  snapshot: (projectId: string, sessionId: string) => [...preconKeys.all(projectId), "snapshot", sessionId] as const,
-  progressFeed: (sessionId: string) => ["precon", "progress-feed", sessionId] as const,
-  snap: (projectId: string, sheetId: string) => [...preconKeys.all(projectId), "snap", sheetId] as const,
+  all: ["precon"] as const,
+  sessions: () => [...preconKeys.all, "sessions"] as const,
+  snapshot: (sessionId: string) => [...preconKeys.all, "snapshot", sessionId] as const,
+  progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
+  snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };

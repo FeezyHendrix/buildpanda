@@ -20,7 +20,6 @@ const STATUS_META: Record<PreconRowStatus, { label: string; tone: BadgeTone; mar
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
 interface PanelProps {
-  projectId: string;
   sessionId: string;
   snapshot: PreconSnapshot;
   selectedRowId: string | null;
@@ -49,18 +48,16 @@ RowStatusDot.displayName = "RowStatusDot";
 
 function BreakdownCard({
   row,
-  projectId,
   sessionId,
   onConflict,
 }: {
   row: PreconBoqRow;
-  projectId: string;
   sessionId: string;
   onConflict: (message: string) => void;
 }) {
-  const verify = useVerifyPreconRow(projectId, sessionId);
-  const reject = useRejectPreconRow(projectId, sessionId);
-  const update = useUpdatePreconRow(projectId, sessionId);
+  const verify = useVerifyPreconRow(sessionId);
+  const reject = useRejectPreconRow(sessionId);
+  const update = useUpdatePreconRow(sessionId);
   const [qtyDraft, setQtyDraft] = useState<string | null>(null);
   const [rateDraft, setRateDraft] = useState<string | null>(null);
 
@@ -180,7 +177,7 @@ function BreakdownCard({
 }
 BreakdownCard.displayName = "BreakdownCard";
 
-export function PreconBoqPanel({ projectId, sessionId, snapshot, selectedRowId, onSelectRow }: PanelProps) {
+export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow }: PanelProps) {
   const [conflictNote, setConflictNote] = useState<string | null>(null);
 
   const sheetByRow = useMemo(() => {
@@ -276,7 +273,6 @@ export function PreconBoqPanel({ projectId, sessionId, snapshot, selectedRowId, 
                       <div className="px-3 pb-3" ref={(el) => el?.scrollIntoView({ block: "nearest", behavior: "smooth" })}>
                         <BreakdownCard
                           row={row}
-                          projectId={projectId}
                           sessionId={sessionId}
                           onConflict={setConflictNote}
                         />

@@ -12,7 +12,8 @@ export type PreconRowType = "heading" | "work_section" | "spec_note" | "item" | 
 
 export interface PreconSession {
   id: string;
-  projectId: string;
+  orgId: string;
+  projectId: string | null;
   status: PreconSessionStatus;
   title: string;
   error: string | null;
@@ -114,56 +115,48 @@ export interface UpdateRowInput {
 }
 
 export const preconApi = {
-  listSessions: (projectId: string) =>
-    api.get<PreconSession[]>(`/projects/${projectId}/precon/sessions`).then((r) => r.data),
+  listSessions: () => api.get<PreconSession[]>(`/precon/sessions`).then((r) => r.data),
 
-  createSession: (projectId: string, files: File[], title?: string) => {
+  createSession: (files: File[], title?: string) => {
     const form = new FormData();
     for (const file of files) form.append("files", file);
     return api
-      .post<PreconSession>(`/projects/${projectId}/precon/sessions`, form, {
+      .post<PreconSession>(`/precon/sessions`, form, {
         params: title ? { title } : undefined,
         headers: { "Content-Type": "multipart/form-data" },
       })
       .then((r) => r.data);
   },
 
-  snapshot: (projectId: string, sessionId: string) =>
-    api.get<PreconSnapshot>(`/projects/${projectId}/precon/sessions/${sessionId}`).then((r) => r.data),
+  snapshot: (sessionId: string) => api.get<PreconSnapshot>(`/precon/sessions/${sessionId}`).then((r) => r.data),
 
-  updateRow: (projectId: string, rowId: string, input: UpdateRowInput) =>
-    api.patch<PreconBoqRow>(`/projects/${projectId}/precon/rows/${rowId}`, input).then((r) => r.data),
+  updateRow: (rowId: string, input: UpdateRowInput) =>
+    api.patch<PreconBoqRow>(`/precon/rows/${rowId}`, input).then((r) => r.data),
 
-  verifyRow: (projectId: string, rowId: string, version: number) =>
-    api.post<PreconBoqRow>(`/projects/${projectId}/precon/rows/${rowId}/verify`, { version }).then((r) => r.data),
+  verifyRow: (rowId: string, version: number) =>
+    api.post<PreconBoqRow>(`/precon/rows/${rowId}/verify`, { version }).then((r) => r.data),
 
-  rejectRow: (projectId: string, rowId: string, version: number) =>
-    api.post<PreconBoqRow>(`/projects/${projectId}/precon/rows/${rowId}/reject`, { version }).then((r) => r.data),
+  rejectRow: (rowId: string, version: number) =>
+    api.post<PreconBoqRow>(`/precon/rows/${rowId}/reject`, { version }).then((r) => r.data),
 
-  updateGeometry: (projectId: string, rowId: string, input: { version: number; kind: PreconGeometryKind; vertices: number[][] }) =>
-    api.put<PreconBoqRow>(`/projects/${projectId}/precon/rows/${rowId}/geometry`, input).then((r) => r.data),
+  updateGeometry: (rowId: string, input: { version: number; kind: PreconGeometryKind; vertices: number[][] }) =>
+    api.put<PreconBoqRow>(`/precon/rows/${rowId}/geometry`, input).then((r) => r.data),
 
-  addDeduction: (projectId: string, rowId: string, input: { version: number; label: string; vertices: number[][] }) =>
-    api.post<PreconBoqRow>(`/projects/${projectId}/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
+  addDeduction: (rowId: string, input: { version: number; label: string; vertices: number[][] }) =>
+    api.post<PreconBoqRow>(`/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
 
-  updateSettings: (projectId: string, sessionId: string, patch: Partial<PreconSummarySettings>) =>
+  updateSettings: (sessionId: string, patch: Partial<PreconSummarySettings>) =>
+    api.patch<PreconSummarySettings>(`/precon/sessions/${sessionId}/settings`, patch).then((r) => r.data),
+
+  snapIndex: (sheetId: string) =>
+    api.get<{ points: number[][] }>(`/precon/sheets/${sheetId}/snap`).then((r) => r.data.points),
+
+  sheetFileUrl: (sheetId: string) => `${api.defaults.baseURL ?? ""}/precon/sheets/${sheetId}/file`,
+
+  exportUrl: (sessionId: string) => `${api.defaults.baseURL ?? ""}/precon/sessions/${sessionId}/export.xlsx`,
+
+  sendToProposals: (sessionId: string) =>
     api
-      .patch<PreconSummarySettings>(`/projects/${projectId}/precon/sessions/${sessionId}/settings`, patch)
-      .then((r) => r.data),
-
-  snapIndex: (projectId: string, sheetId: string) =>
-    api.get<{ points: number[][] }>(`/projects/${projectId}/precon/sheets/${sheetId}/snap`).then((r) => r.data.points),
-
-  sheetFileUrl: (projectId: string, sheetId: string) =>
-    `${api.defaults.baseURL ?? ""}/projects/${projectId}/precon/sheets/${sheetId}/file`,
-
-  exportUrl: (projectId: string, sessionId: string) =>
-    `${api.defaults.baseURL ?? ""}/projects/${projectId}/precon/sessions/${sessionId}/export.xlsx`,
-
-  sendToProposals: (projectId: string, sessionId: string) =>
-    api
-      .post<{ proposalId: string; itemCount: number }>(
-        `/projects/${projectId}/precon/sessions/${sessionId}/send-to-proposals`,
-      )
+      .post<{ proposalId: string; itemCount: number }>(`/precon/sessions/${sessionId}/send-to-proposals`)
       .then((r) => r.data),
 };

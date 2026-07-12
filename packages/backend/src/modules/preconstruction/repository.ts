@@ -24,8 +24,8 @@ export function preconRepository(db: Knex) {
       return inserted!;
     },
     sessionById: (id: string) => db<PreconSessionRow>("precon_sessions").where({ id }).first(),
-    sessionsByProject: (projectId: string) =>
-      db<PreconSessionRow>("precon_sessions").where({ project_id: projectId }).orderBy("created_at", "desc"),
+    sessionsByOrg: (orgId: string) =>
+      db<PreconSessionRow>("precon_sessions").where({ org_id: orgId }).orderBy("created_at", "desc"),
     updateSessionStatus: (id: string, status: SessionStatus, error?: string | null) =>
       db<PreconSessionRow>("precon_sessions")
         .where({ id })
@@ -178,21 +178,17 @@ export function preconRepository(db: Knex) {
 
     projectNameForSession: async (sessionId: string): Promise<string | null> => {
       const row = await db("precon_sessions")
-        .join("projects", "projects.id", "precon_sessions.project_id")
+        .leftJoin("projects", "projects.id", "precon_sessions.project_id")
         .where("precon_sessions.id", sessionId)
-        .select<{ name: string }>("projects.name")
+        .select<{ name: string | null }>("projects.name")
         .first();
       return row?.name ?? null;
     },
 
     // rates
     orgIdForSession: async (sessionId: string): Promise<string | null> => {
-      const row = await db("precon_sessions")
-        .join("projects", "projects.id", "precon_sessions.project_id")
-        .where("precon_sessions.id", sessionId)
-        .select<{ organization_id: string | null }>("projects.organization_id")
-        .first();
-      return row?.organization_id ?? null;
+      const row = await db<PreconSessionRow>("precon_sessions").where({ id: sessionId }).select("org_id").first();
+      return row?.org_id ?? null;
     },
     rateCardsByOrg: (orgId: string) =>
       db<PreconRateCardRow>("precon_rate_cards").where({ org_id: orgId }).orderBy("created_at", "desc"),

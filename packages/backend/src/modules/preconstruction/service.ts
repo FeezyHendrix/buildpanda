@@ -29,6 +29,7 @@ const num = (v: string | number | null): number | null => (v === null ? null : N
 function toSession(r: PreconSessionRow): PreconSession {
   return {
     id: r.id,
+    orgId: r.org_id,
     projectId: r.project_id,
     status: r.status,
     title: r.title,
@@ -197,10 +198,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
   }
 
   return {
-    async createSession(projectId: string, title: string, userId: string, files: { fileName: string; storagePath: string }[]) {
+    async createSession(orgId: string, title: string, userId: string, files: { fileName: string; storagePath: string }[]) {
       const session = await repo.insertSession({
         id: generateId("pcs"),
-        project_id: projectId,
+        org_id: orgId,
+        project_id: null,
         status: "uploading",
         title,
         error: null,
@@ -230,14 +232,24 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return toSession(session);
     },
 
-    async listSessions(projectId: string) {
-      return (await repo.sessionsByProject(projectId)).map(toSession);
+    async listSessions(orgId: string) {
+      return (await repo.sessionsByOrg(orgId)).map(toSession);
     },
 
-    async getSession(sessionId: string) {
+    // Every sales-suite access path must prove the session belongs to the
+    // caller's active organization before touching its data.
+    async assertSessionOrg(sessionId: string, orgId: string) {
       const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Preconstruction session");
       return toSession(session);
+    },
+
+    async assertRowOrg(rowId: string, orgId: string) {
+      const sessionId = await repo.sessionIdForRow(rowId);
+      if (!sessionId) throw new NotFoundError("BOQ row");
+      const session = await repo.sessionById(sessionId);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
+      return sessionId;
     },
 
     async getSnapshot(sessionId: string): Promise<PreconSnapshot> {

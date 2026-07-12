@@ -11,41 +11,25 @@ import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
 import { GEOMETRY_KINDS } from "./types.ts";
 import type { AddDeductionBody, PreconSummarySettings, UpdateGeometryBody, UpdateRowBody } from "./types.ts";
 
-const idParams = {
-  type: "object",
-  required: ["id"],
-  additionalProperties: false,
-  properties: { id: { type: "string", minLength: 1 } },
-} as const;
-
 const sessionParams = {
   type: "object",
-  required: ["id", "sessionId"],
+  required: ["sessionId"],
   additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    sessionId: { type: "string", minLength: 1 },
-  },
+  properties: { sessionId: { type: "string", minLength: 1 } },
 } as const;
 
 const sheetParams = {
   type: "object",
-  required: ["id", "sheetId"],
+  required: ["sheetId"],
   additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    sheetId: { type: "string", minLength: 1 },
-  },
+  properties: { sheetId: { type: "string", minLength: 1 } },
 } as const;
 
 const rowParams = {
   type: "object",
-  required: ["id", "rowId"],
+  required: ["rowId"],
   additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    rowId: { type: "string", minLength: 1 },
-  },
+  properties: { rowId: { type: "string", minLength: 1 } },
 } as const;
 
 const updateRowBody = {
@@ -160,21 +144,25 @@ const rateBody = {
   },
 } as const;
 
+// Preconstruction lives in the sales suite: every route is organization-scoped
+// (bids usually precede a project). Reads need org membership; writes need the
+// proposals org permission, mirroring the proposals module.
 const preconRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(multipart, {
     limits: { fileSize: config.uploads.maxFileBytes, files: 10 },
   });
 
-  const service = preconService(preconRepository(fastify.db), (sessionId, event) => {
+  const repo = preconRepository(fastify.db);
+  const service = preconService(repo, (sessionId, event) => {
     fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
   });
 
-  fastify.post<{ Params: { id: string }; Querystring: { title?: string } }>(
-    "/projects/:id/precon/sessions",
-    { schema: { params: idParams, querystring: createSessionQuery } },
+  fastify.post<{ Querystring: { title?: string } }>(
+    "/precon/sessions",
+    { schema: { querystring: createSessionQuery } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "create");
       const files: { fileName: string; storagePath: string }[] = [];
       for await (const part of request.files()) {
         if (!/\.(pdf|dwg)$/i.test(part.filename)) {
@@ -184,124 +172,130 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
         files.push({ fileName: part.filename, storagePath: stored.storagePath });
       }
       if (files.length === 0) throw new BadRequestError("No drawing files uploaded");
-      const session = await service.createSession(
-        project.id,
-        request.query.title ?? files[0]!.fileName,
-        user.id,
-        files,
-      );
+      const session = await service.createSession(orgId, request.query.title ?? files[0]!.fileName, user.id, files);
       const jobData: PreconGenerateJobData = { sessionId: session.id };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);
     },
   );
 
-  fastify.get<{ Params: { id: string } }>(
-    "/projects/:id/precon/sessions",
-    { schema: { params: idParams } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "project", "view");
-      return service.listSessions(project.id);
-    },
-  );
+  fastify.get("/precon/sessions", async (request) => {
+    request.requireAuth();
+    const orgId = request.requireOrgScope();
+    return service.listSessions(orgId);
+  });
 
-  fastify.get<{ Params: { id: string; sessionId: string } }>(
-    "/projects/:id/precon/sessions/:sessionId",
+  fastify.get<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId",
     { schema: { params: sessionParams } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "project", "view");
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.getSnapshot(request.params.sessionId);
     },
   );
 
-  fastify.patch<{ Params: { id: string; rowId: string }; Body: UpdateRowBody }>(
-    "/projects/:id/precon/rows/:rowId",
+  fastify.patch<{ Params: { rowId: string }; Body: UpdateRowBody }>(
+    "/precon/rows/:rowId",
     { schema: { params: rowParams, body: updateRowBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
       return service.updateRow(request.params.rowId, request.body, user.id);
     },
   );
 
-  fastify.post<{ Params: { id: string; rowId: string }; Body: { version: number } }>(
-    "/projects/:id/precon/rows/:rowId/verify",
+  fastify.post<{ Params: { rowId: string }; Body: { version: number } }>(
+    "/precon/rows/:rowId/verify",
     { schema: { params: rowParams, body: versionOnlyBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
       return service.verifyRow(request.params.rowId, request.body.version, user.id);
     },
   );
 
-  fastify.post<{ Params: { id: string; rowId: string }; Body: { version: number } }>(
-    "/projects/:id/precon/rows/:rowId/reject",
+  fastify.post<{ Params: { rowId: string }; Body: { version: number } }>(
+    "/precon/rows/:rowId/reject",
     { schema: { params: rowParams, body: versionOnlyBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
       return service.rejectRow(request.params.rowId, request.body.version, user.id);
     },
   );
 
-  fastify.put<{ Params: { id: string; rowId: string }; Body: UpdateGeometryBody }>(
-    "/projects/:id/precon/rows/:rowId/geometry",
+  fastify.put<{ Params: { rowId: string }; Body: UpdateGeometryBody }>(
+    "/precon/rows/:rowId/geometry",
     { schema: { params: rowParams, body: updateGeometryBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
       return service.updateGeometry(request.params.rowId, request.body, user.id);
     },
   );
 
-  fastify.post<{ Params: { id: string; rowId: string }; Body: AddDeductionBody }>(
-    "/projects/:id/precon/rows/:rowId/deductions",
+  fastify.post<{ Params: { rowId: string }; Body: AddDeductionBody }>(
+    "/precon/rows/:rowId/deductions",
     { schema: { params: rowParams, body: addDeductionBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
       return service.addDeduction(request.params.rowId, request.body, user.id);
     },
   );
 
-  fastify.patch<{ Params: { id: string; sessionId: string }; Body: Partial<PreconSummarySettings> }>(
-    "/projects/:id/precon/sessions/:sessionId/settings",
+  fastify.patch<{ Params: { sessionId: string }; Body: Partial<PreconSummarySettings> }>(
+    "/precon/sessions/:sessionId/settings",
     { schema: { params: sessionParams, body: settingsBody } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.updateSettings(request.params.sessionId, request.body, user.id);
     },
   );
 
-  fastify.get<{ Params: { id: string; sheetId: string } }>(
-    "/projects/:id/precon/sheets/:sheetId/file",
+  fastify.get<{ Params: { sheetId: string } }>(
+    "/precon/sheets/:sheetId/file",
     { schema: { params: sheetParams } },
     async (request, reply) => {
-      await request.requireProjectPermission(request.params.id, "project", "view");
-      const sheet = await preconRepository(fastify.db).sheetById(request.params.sheetId);
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      const sheet = await repo.sheetById(request.params.sheetId);
       if (!sheet) throw new NotFoundError("Sheet");
+      await service.assertSessionOrg(sheet.session_id, orgId);
       const stream = await openStoredFile(sheet.storage_path);
       return reply.header("content-type", "application/pdf").send(stream);
     },
   );
 
-  fastify.get<{ Params: { id: string; sheetId: string } }>(
-    "/projects/:id/precon/sheets/:sheetId/snap",
+  fastify.get<{ Params: { sheetId: string } }>(
+    "/precon/sheets/:sheetId/snap",
     { schema: { params: sheetParams } },
     async (request) => {
-      await request.requireProjectPermission(request.params.id, "project", "view");
-      const sheet = await preconRepository(fastify.db).sheetById(request.params.sheetId);
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      const sheet = await repo.sheetById(request.params.sheetId);
       if (!sheet) throw new NotFoundError("Sheet");
+      await service.assertSessionOrg(sheet.session_id, orgId);
       return { points: sheet.snap_index ?? [] };
     },
   );
 
-  fastify.get<{ Params: { id: string; sessionId: string } }>(
-    "/projects/:id/precon/sessions/:sessionId/export.xlsx",
+  fastify.get<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/export.xlsx",
     { schema: { params: sessionParams } },
     async (request, reply) => {
-      await request.requireProjectPermission(request.params.id, "project", "view");
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      await service.assertSessionOrg(request.params.sessionId, orgId);
       const { fileName, buffer } = await service.exportWorkbook(request.params.sessionId);
       return reply
         .header("content-type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -310,19 +304,19 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; sessionId: string } }>(
-    "/projects/:id/precon/sessions/:sessionId/send-to-proposals",
+  fastify.post<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/send-to-proposals",
     { schema: { params: sessionParams } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
       const orgId = request.requireOrgPermission("proposals", "create");
+      const session = await service.assertSessionOrg(request.params.sessionId, orgId);
       const snapshot = await service.getSnapshot(request.params.sessionId);
       const proposals = proposalsService(proposalsRepository(fastify.db));
       const proposal = await proposals.createProposal(orgId, user.id, {
-        title: snapshot.session.title,
-        clientName: (project as { name?: string }).name ?? snapshot.session.title,
-        brief: `Generated from preconstruction session ${snapshot.session.id}`,
+        title: session.title,
+        clientName: session.title,
+        brief: `Generated from preconstruction session ${session.id}`,
       });
       // BOQ copy uses the proposals module's own repository method — the
       // proposals service does not expose BOQ item writes yet.

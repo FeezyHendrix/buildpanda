@@ -5,7 +5,6 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { PageHeader } from "@/components/molecules/page-header";
-import { useProjectContext } from "@/layouts/project-layout";
 import { useCreatePreconSession, usePreconSessions } from "@/hooks/use-precon";
 import type { PreconSession, PreconSessionStatus } from "@/api/precon";
 import { formatDayMonth } from "@/lib/formatters";
@@ -40,14 +39,13 @@ function SessionCard({ session, onOpen }: { session: PreconSession; onOpen: (id:
 SessionCard.displayName = "SessionCard";
 
 export default function PreconstructionPage() {
-  const { project } = useProjectContext();
   const navigate = useNavigate();
-  const { data: sessions = [], isPending } = usePreconSessions(project.id);
-  const create = useCreatePreconSession(project.id);
+  const { data: sessions = [], isPending } = usePreconSessions();
+  const create = useCreatePreconSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const openSession = (sessionId: string) => navigate(`/project/${project.id}/preconstruction/${sessionId}`);
+  const openSession = (sessionId: string) => navigate(`/sales/preconstruction/${sessionId}`);
 
   const onFilesPicked = (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;

@@ -7,7 +7,6 @@ import { Spinner } from "@/components/atoms/spinner";
 import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
 import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
 import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
-import { useProjectContext } from "@/layouts/project-layout";
 import { usePreconChannel, usePreconSnapshot } from "@/hooks/use-precon";
 import { preconKeys } from "@/hooks/query-keys";
 import { cn } from "@/lib/utils";
@@ -91,9 +90,8 @@ function GenerateFeed({ sessionId, failed, error }: { sessionId: string; failed:
 GenerateFeed.displayName = "GenerateFeed";
 
 export default function PreconSessionPage() {
-  const { project } = useProjectContext();
   const { sessionId = "" } = useParams<{ sessionId: string }>();
-  const { data: snapshot, isPending } = usePreconSnapshot(project.id, sessionId);
+  const { data: snapshot, isPending } = usePreconSnapshot(sessionId);
   usePreconChannel(sessionId || null);
 
   const [step, setStep] = useState<StepKey | null>(null);
@@ -152,11 +150,10 @@ export default function PreconSessionPage() {
           error={snapshot.session.error}
         />
       ) : effectiveStep === "output" ? (
-        <PreconOutputPanel projectId={project.id} snapshot={snapshot} />
+        <PreconOutputPanel snapshot={snapshot} />
       ) : (
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_420px]">
           <PreconSheetViewer
-            projectId={project.id}
             sessionId={sessionId}
             sheets={measurableSheets}
             activeSheet={activeSheet}
@@ -169,7 +166,6 @@ export default function PreconSessionPage() {
             onToolChange={setTool}
           />
           <PreconBoqPanel
-            projectId={project.id}
             sessionId={sessionId}
             snapshot={snapshot}
             selectedRowId={selectedRowId}

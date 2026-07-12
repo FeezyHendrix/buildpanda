@@ -23,7 +23,6 @@ const RENDER_SCALE = 1.5;
 const SNAP_PX = 10;
 
 interface ViewerProps {
-  projectId: string;
   sessionId: string;
   sheets: PreconSheet[];
   activeSheet: PreconSheet | null;
@@ -57,7 +56,6 @@ function pageWithinFile(sheet: PreconSheet, sheets: PreconSheet[]): number {
 }
 
 export function PreconSheetViewer({
-  projectId,
   sessionId,
   sheets,
   activeSheet,
@@ -78,9 +76,9 @@ export function PreconSheetViewer({
   const [note, setNote] = useState<string | null>(null);
   const panRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
 
-  const { data: snapPoints = [] } = usePreconSnapIndex(projectId, activeSheet?.id ?? null);
-  const updateGeometry = useUpdatePreconGeometry(projectId, sessionId);
-  const addDeduction = useAddPreconDeduction(projectId, sessionId);
+  const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
+  const updateGeometry = useUpdatePreconGeometry(sessionId);
+  const addDeduction = useAddPreconDeduction(sessionId);
 
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const sheetGeometries = useMemo(
@@ -101,7 +99,7 @@ export function PreconSheetViewer({
         import.meta.url,
       ).toString();
       const doc = await pdfjs.getDocument({
-        url: preconApi.sheetFileUrl(projectId, activeSheet.id),
+        url: preconApi.sheetFileUrl(activeSheet.id),
         withCredentials: true,
       }).promise;
       if (cancelled) return;
@@ -129,7 +127,7 @@ export function PreconSheetViewer({
     };
     // sheets identity churn is fine; the file/page only depends on the sheet id
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, activeSheet?.id]);
+  }, [activeSheet?.id]);
 
   const toPx = useCallback(
     (pt: number[]): [number, number] => [pt[0]! * RENDER_SCALE, (page ? page.heightPt - pt[1]! : 0) * RENDER_SCALE],
