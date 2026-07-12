@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
@@ -131,6 +131,14 @@ export default function PreconSessionPage() {
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
+          {snapshot.session.proposalId ? (
+            <Link
+              to={`/sales/proposals/${snapshot.session.proposalId}`}
+              className="text-xs font-medium text-primary-600 hover:underline"
+            >
+              &larr; Back to proposal
+            </Link>
+          ) : null}
           <h1 className="truncate text-lg font-semibold text-gray-900">{snapshot.session.title}</h1>
           <p className="text-xs text-gray-500">
             {snapshot.progress.verified} of {snapshot.progress.total} items verified

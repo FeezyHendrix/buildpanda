@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { openStoredFile, saveStream } from "../../lib/file-storage.ts";
 import { preconRepository } from "./repository.ts";
 import { proposalsRepository } from "../proposals/repository.ts";
+import { filesRepository } from "../files/repository.ts";
 import { proposalsService } from "../proposals/service.ts";
 import { preconService } from "./service.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
@@ -91,7 +92,26 @@ const addDeductionBody = {
 const createSessionQuery = {
   type: "object",
   additionalProperties: false,
-  properties: { title: { type: "string", maxLength: 200 } },
+  properties: {
+    title: { type: "string", maxLength: 200 },
+    proposalId: { type: "string", maxLength: 100 },
+  },
+} as const;
+
+const listSessionsQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { proposalId: { type: "string", maxLength: 100 } },
+} as const;
+
+const fromPlanBody = {
+  type: "object",
+  required: ["proposalId", "planId"],
+  additionalProperties: false,
+  properties: {
+    proposalId: { type: "string", minLength: 1 },
+    planId: { type: "string", minLength: 1 },
+  },
 } as const;
 
 const settingsBody = {
@@ -157,12 +177,17 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
   });
 
-  fastify.post<{ Querystring: { title?: string } }>(
+  fastify.post<{ Querystring: { title?: string; proposalId?: string } }>(
     "/precon/sessions",
     { schema: { querystring: createSessionQuery } },
     async (request, reply) => {
       const user = request.requireAuth();
       const orgId = request.requireOrgPermission("proposals", "create");
+      const proposalId = request.query.proposalId ?? null;
+      if (proposalId) {
+        const proposal = await proposalsRepository(fastify.db).getById(proposalId, orgId);
+        if (!proposal) throw new NotFoundError("Proposal");
+      }
       const files: { fileName: string; storagePath: string }[] = [];
       for await (const part of request.files()) {
         if (!/\.(pdf|dwg)$/i.test(part.filename)) {
@@ -172,18 +197,60 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
         files.push({ fileName: part.filename, storagePath: stored.storagePath });
       }
       if (files.length === 0) throw new BadRequestError("No drawing files uploaded");
-      const session = await service.createSession(orgId, request.query.title ?? files[0]!.fileName, user.id, files);
+      const session = await service.createSession(
+        orgId,
+        request.query.title ?? files[0]!.fileName,
+        user.id,
+        files,
+        proposalId,
+      );
       const jobData: PreconGenerateJobData = { sessionId: session.id };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);
     },
   );
 
-  fastify.get("/precon/sessions", async (request) => {
-    request.requireAuth();
-    const orgId = request.requireOrgScope();
-    return service.listSessions(orgId);
-  });
+  // Measure a plan already uploaded to the proposal — no re-upload; the
+  // session reuses the plan's stored file.
+  fastify.post<{ Body: { proposalId: string; planId: string } }>(
+    "/precon/sessions/from-plan",
+    { schema: { body: fromPlanBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "create");
+      const proposalsRepo = proposalsRepository(fastify.db);
+      const proposal = await proposalsRepo.getById(request.body.proposalId, orgId);
+      if (!proposal) throw new NotFoundError("Proposal");
+      const plans = await proposalsRepo.listPlans(request.body.proposalId);
+      const plan = plans.find((p) => p.id === request.body.planId);
+      if (!plan) throw new NotFoundError("Plan");
+      if (!/\.(pdf|dwg)$/i.test(plan.fileName)) {
+        throw new BadRequestError("Panda AI can measure PDF or DWG drawings only");
+      }
+      const file = await filesRepository(fastify.db).findById(plan.fileId);
+      if (!file) throw new NotFoundError("Plan file");
+      const session = await service.createSession(
+        orgId,
+        plan.fileName,
+        user.id,
+        [{ fileName: file.file_name, storagePath: file.storage_path }],
+        request.body.proposalId,
+      );
+      const jobData: PreconGenerateJobData = { sessionId: session.id };
+      await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
+      return reply.status(202).send(session);
+    },
+  );
+
+  fastify.get<{ Querystring: { proposalId?: string } }>(
+    "/precon/sessions",
+    { schema: { querystring: listSessionsQuery } },
+    async (request) => {
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      return service.listSessions(orgId, request.query.proposalId);
+    },
+  );
 
   fastify.get<{ Params: { sessionId: string } }>(
     "/precon/sessions/:sessionId",
@@ -305,19 +372,24 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.post<{ Params: { sessionId: string } }>(
-    "/precon/sessions/:sessionId/send-to-proposals",
+    "/precon/sessions/:sessionId/apply-to-proposal",
     { schema: { params: sessionParams } },
     async (request, reply) => {
       const user = request.requireAuth();
       const orgId = request.requireOrgPermission("proposals", "create");
       const session = await service.assertSessionOrg(request.params.sessionId, orgId);
       const snapshot = await service.getSnapshot(request.params.sessionId);
-      const proposals = proposalsService(proposalsRepository(fastify.db));
-      const proposal = await proposals.createProposal(orgId, user.id, {
-        title: session.title,
-        clientName: session.title,
-        brief: `Generated from preconstruction session ${session.id}`,
-      });
+      let proposalId = session.proposalId;
+      if (!proposalId) {
+        const proposals = proposalsService(proposalsRepository(fastify.db));
+        const proposal = await proposals.createProposal(orgId, user.id, {
+          title: session.title,
+          clientName: session.title,
+          brief: `Generated from preconstruction session ${session.id}`,
+        });
+        proposalId = proposal.id;
+        await service.linkToProposal(session.id, proposalId);
+      }
       // BOQ copy uses the proposals module's own repository method — the
       // proposals service does not expose BOQ item writes yet.
       const items = snapshot.rows
@@ -329,8 +401,8 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
           unit: r.unit ?? "item",
           sort: idx,
         }));
-      await proposalsRepository(fastify.db).replaceBoqItems(proposal.id, items);
-      return reply.status(201).send({ proposalId: proposal.id, itemCount: items.length });
+      await proposalsRepository(fastify.db).replaceBoqItems(proposalId, items);
+      return reply.status(201).send({ proposalId, itemCount: items.length });
     },
   );
 

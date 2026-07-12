@@ -1,13 +1,21 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { preconApi, type PreconGeometryKind, type PreconSummarySettings, type UpdateRowInput } from "@/api/precon";
-import { preconKeys } from "@/hooks/query-keys";
+import { preconKeys, proposalKeys } from "@/hooks/query-keys";
 import { useRealtime } from "@/lib/realtime";
 
-export function usePreconSessions() {
+export function usePreconSessions(proposalId?: string) {
   return useQuery({
-    queryKey: preconKeys.sessions(),
-    queryFn: () => preconApi.listSessions(),
+    queryKey: [...preconKeys.sessions(), proposalId ?? "all"],
+    queryFn: () => preconApi.listSessions(proposalId),
+  });
+}
+
+export function useCreatePreconSessionFromPlan(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (planId: string) => preconApi.createSessionFromPlan(proposalId, planId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
   });
 }
 
@@ -97,9 +105,11 @@ export function useUpdatePreconSettings(sessionId: string) {
   );
 }
 
-export function useSendPreconToProposals(sessionId: string) {
+export function useApplyPreconToProposal(sessionId: string) {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => preconApi.sendToProposals(sessionId),
+    mutationFn: () => preconApi.applyToProposal(sessionId),
+    onSuccess: (result) => qc.invalidateQueries({ queryKey: proposalKeys.boq(result.proposalId) }),
   });
 }
 

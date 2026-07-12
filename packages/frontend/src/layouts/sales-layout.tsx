@@ -59,19 +59,6 @@ const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNod
     ),
   },
   {
-    label: "Preconstruction",
-    to: "/sales/preconstruction",
-    flag: "ai.preconstruction",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
-        <path d="M3 21h18" />
-        <path d="M5 21V7l7-4 7 4v14" />
-        <path d="M9 21v-6h6v6" />
-        <path d="M9 10h.01M15 10h.01" />
-      </svg>
-    ),
-  },
-  {
     label: "Settings",
     to: "/sales/settings",
     icon: (

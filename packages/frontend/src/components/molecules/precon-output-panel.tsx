@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { preconApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
-import { useSendPreconToProposals, useUpdatePreconSettings } from "@/hooks/use-precon";
+import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
@@ -21,7 +21,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
   const navigate = useNavigate();
   const sessionId = snapshot.session.id;
   const updateSettings = useUpdatePreconSettings(sessionId);
-  const sendToProposals = useSendPreconToProposals(sessionId);
+  const applyToProposal = useApplyPreconToProposal(sessionId);
   const [sendResult, setSendResult] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Partial<Record<keyof PreconSummarySettings, string>>>({});
 
@@ -87,7 +87,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
       <Card className="space-y-4 p-5">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">Bid pack</h2>
-          <p className="text-xs text-gray-500">Export the BOQ workbook or hand the bill to a proposal.</p>
+          <p className="text-xs text-gray-500">Export the BOQ workbook or apply the reviewed bill to the proposal.</p>
         </div>
         <div className="space-y-2">
           <a href={preconApi.exportUrl(sessionId)} download>
@@ -96,19 +96,19 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
           <Button
             variant="secondary"
             className="w-full"
-            loading={sendToProposals.isPending}
+            loading={applyToProposal.isPending}
             onClick={() =>
-              sendToProposals.mutate(undefined, {
+              applyToProposal.mutate(undefined, {
                 onSuccess: (result) => {
-                  setSendResult(`Proposal created with ${result.itemCount} BOQ items.`);
+                  setSendResult(`${result.itemCount} BOQ items applied to the proposal.`);
                   navigate(`/sales/proposals/${result.proposalId}`);
                 },
                 onError: (error) =>
-                  setSendResult(error instanceof Error ? error.message : "Could not create the proposal"),
+                  setSendResult(error instanceof Error ? error.message : "Could not apply to the proposal"),
               })
             }
           >
-            Send to Proposals
+            {snapshot.session.proposalId ? "Apply to proposal BoQ" : "Create proposal from this BOQ"}
           </Button>
           {sendResult ? <p className="text-xs text-gray-500">{sendResult}</p> : null}
         </div>
