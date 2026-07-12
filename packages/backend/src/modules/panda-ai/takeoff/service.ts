@@ -1,5 +1,5 @@
-import { ConflictError, NotFoundError, BadRequestError } from "../../lib/errors.ts";
-import { generateId } from "../../lib/ids.ts";
+import { ConflictError, NotFoundError, BadRequestError } from "../../../lib/errors.ts";
+import { generateId } from "../../../lib/ids.ts";
 import type { PreconRepository } from "./repository.ts";
 import type {
   AddDeductionBody,
@@ -473,10 +473,10 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         this.getSnapshot(sessionId),
         repo.projectNameForSession(sessionId),
       ]);
-      const { buildBoqWorkbook, workbookBuffer } = await import("./export.ts");
-      const workbook = buildBoqWorkbook(snapshot, projectName ?? snapshot.session.title);
+      const { buildBoqWorkbookBuffer } = await import("./export.ts");
+      const buffer = await buildBoqWorkbookBuffer(snapshot, projectName ?? snapshot.session.title);
       const safeTitle = snapshot.session.title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
-      return { fileName: `BOQ-${safeTitle}.xlsx`, buffer: workbookBuffer(workbook) };
+      return { fileName: `BOQ-${safeTitle}.xlsx`, buffer };
     },
 
     async listRateCards(orgId: string) {

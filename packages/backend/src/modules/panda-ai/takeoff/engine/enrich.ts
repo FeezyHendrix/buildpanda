@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LlmMessage } from "../../../lib/llm.ts";
+import type { LlmMessage } from "../../../../lib/llm.ts";
 import type { Confidence, MeasuredBoqItem } from "../types.ts";
 import { BESMM_ELEMENT_BRIEFS, type ElementBrief } from "./besmm-reference.ts";
 

@@ -1,12 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
-import { config } from "../../config/index.ts";
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
-import { openStoredFile, saveStream } from "../../lib/file-storage.ts";
+import { config } from "../../../config/index.ts";
+import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
+import { openStoredFile, saveStream } from "../../../lib/file-storage.ts";
 import { preconRepository } from "./repository.ts";
-import { proposalsRepository } from "../proposals/repository.ts";
-import { filesRepository } from "../files/repository.ts";
-import { proposalsService } from "../proposals/service.ts";
+import { proposalsRepository } from "../../proposals/repository.ts";
+import { filesRepository } from "../../files/repository.ts";
+import { proposalsService } from "../../proposals/service.ts";
 import { preconService } from "./service.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
 import { GEOMETRY_KINDS } from "./types.ts";

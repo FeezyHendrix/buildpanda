@@ -1,5 +1,5 @@
 import type { MeasuredBoqItem, PreconBillRow, PreconBoqRowRow, PreconGeometryRow } from "../types.ts";
-import { generateId } from "../../../lib/ids.ts";
+import { generateId } from "../../../../lib/ids.ts";
 import { BESMM_ELEMENT_ORDER } from "./besmm-reference.ts";
 
 // Standard preliminaries clauses (BESMM/JCT-style) drafted as unpriced rows —
