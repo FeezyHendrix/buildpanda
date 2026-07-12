@@ -1,5 +1,6 @@
 import type { MeasuredBoqItem, PreconBillRow, PreconBoqRowRow, PreconGeometryRow } from "../types.ts";
 import { generateId } from "../../../lib/ids.ts";
+import { BESMM_ELEMENT_ORDER } from "./besmm-reference.ts";
 
 // Standard preliminaries clauses (BESMM/JCT-style) drafted as unpriced rows —
 // the QS prices or strikes them in review.
@@ -83,7 +84,8 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
     });
   }
 
-  // measured works, grouped: element -> work section -> spec note -> items
+  // measured works, grouped: element -> work section -> preamble/group -> items,
+  // elements in the standard BESMM order
   const geometries: DraftedBoq["geometries"] = [];
   const rowsWithGeometry: { seed: RowSeed; item: MeasuredBoqItem }[] = [];
   const byElement = new Map<string, MeasuredBoqItem[]>();
@@ -92,8 +94,13 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
     if (list) list.push(item);
     else byElement.set(item.elementGroup, [item]);
   }
+  const orderOf = (element: string): number => {
+    const index = (BESMM_ELEMENT_ORDER as readonly string[]).indexOf(element);
+    return index === -1 ? BESMM_ELEMENT_ORDER.length : index;
+  };
+  const orderedElements = [...byElement.entries()].sort((a, b) => orderOf(a[0]) - orderOf(b[0]));
 
-  for (const [element, elementItems] of byElement) {
+  for (const [element, elementItems] of orderedElements) {
     seeds.push({ bill_id: measuredBill.id, row_type: "heading", element_group: element, description: element.toUpperCase() });
     const bySection = new Map<string, MeasuredBoqItem[]>();
     for (const item of elementItems) {
@@ -110,11 +117,24 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
         code: sectionItems[0]!.workSection.code,
         description: section,
       });
-      const notes = [...new Set(sectionItems.map((i) => i.specNote).filter((n): n is string => n !== null))];
-      for (const note of notes) {
+      const sectionLevelNotes = [
+        ...new Set(
+          sectionItems
+            .filter((i) => !i.groupHeading && i.specNote !== null && i.geometries.length > 0)
+            .map((i) => i.specNote as string),
+        ),
+      ];
+      for (const note of sectionLevelNotes) {
         seeds.push({ bill_id: measuredBill.id, row_type: "spec_note", element_group: element, description: note });
       }
       for (const item of sectionItems) {
+        // agent items carry their own preamble/group heading in bill order
+        if (item.geometries.length === 0 && item.specNote) {
+          seeds.push({ bill_id: measuredBill.id, row_type: "spec_note", element_group: element, description: item.specNote });
+        }
+        if (item.groupHeading) {
+          seeds.push({ bill_id: measuredBill.id, row_type: "spec_note", element_group: element, description: item.groupHeading });
+        }
         const seed: RowSeed = {
           bill_id: measuredBill.id,
           row_type: item.provisional ? "provisional_sum" : "item",

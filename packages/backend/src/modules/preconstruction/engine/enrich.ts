@@ -92,25 +92,30 @@ export function evaluateFormula(formula: string, anchors: Anchors): number | nul
 }
 
 const buildupItemSchema = z.object({
-  code: z.string().min(1).max(20),
-  description: z.string().min(10).max(400),
-  unit: z.enum(["m2", "m3", "m", "nr", "item", "sum"]),
+  besmmRef: z.string().max(12).nullable().optional(),
+  particulars: z.string().min(5).max(240),
+  unit: z.enum(["m2", "m3", "m", "nr", "item", "sum", "tonnes"]),
   basis: z.enum(["anchor", "derived", "provisional"]),
   anchor: z.string().max(60).optional(),
-  formula: z.string().max(120).optional(),
-  specNote: z.string().max(300).nullable().optional(),
+  formula: z.string().max(160).optional(),
+});
+
+const buildupGroupSchema = z.object({
+  preamble: z.string().max(500).nullable(),
+  heading: z.string().max(120).nullable(),
+  items: z.array(buildupItemSchema).max(15),
 });
 
 const buildupSchema = z.object({
   workSections: z
     .array(
       z.object({
-        code: z.string().min(1).max(12),
-        title: z.string().min(3).max(80),
-        items: z.array(buildupItemSchema).max(20),
+        sectionNumber: z.string().min(3).max(8),
+        title: z.string().min(3).max(70),
+        groups: z.array(buildupGroupSchema).max(8),
       }),
     )
-    .max(8),
+    .max(6),
 });
 
 export type BuildupResult = z.infer<typeof buildupSchema>;
@@ -126,7 +131,10 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
       role: "system",
       content: [
         "You are a Nigerian quantity surveyor drafting one element of a Bill of Quantities to BESMM4.",
-        "Write item descriptions in the BESMM voice of the exemplars: material kind/quality, thickness, mix, method; semicolon-separated particulars.",
+        "STRUCTURE — bills are three levels, exactly as in the template:",
+        "  - workSection: BESMM section number + TITLE (e.g. sectionNumber '1.11', title 'INSITU CONCRETE WORKS').",
+        "  - group: 'preamble' is the unnumbered MATERIAL SPECIFICATION paragraph carrying kind/quality/mix/fixing (this is where the rich text lives); 'heading' is an optional short group caption ('Formwork - Plain formwork', 'Reinforcement', 'Door Sets').",
+        "  - items: SHORT particulars only — thickness/location/size-band; the spec is NOT repeated. Consecutive similar items start with 'Ditto;'. Finishes split width bands: 'less or equal to 600mm wide' in m, 'over 600mm wide' in m2. besmmRef holds the item reference (e.g. '2.1.1', '34.1.1*2') when the template shows one.",
         "HARD RULES — violations make the output unusable:",
         "1. NEVER output a number as a quantity. For each item choose basis:",
         '   - "anchor": quantity IS one measured anchor; set "anchor" to its exact name.',
@@ -134,7 +142,8 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
         '   - "provisional": the drawings cannot support a quantity (needs structural/MEP/roof drawings). unit must be "sum" or "item". No anchor, no formula.',
         "2. Infer like a QS: standard construction build-ups over the anchors are allowed and encouraged — strip foundations follow wall_centreline_m, oversite work follows floor areas, painting follows plastered areas — but EVERY assumed dimension, depth, thickness or factor must be stated in the description with the word 'assumed' (e.g. 'assumed 675mm wide x 900mm deep strip foundation along wall centreline'). An inference you cannot express as a formula over the anchors with stated assumptions stays provisional.",
         "3. At most 20 items for this element. Fewer, correct items beat many speculative ones.",
-        "Respond with JSON only matching: {\"workSections\":[{\"code\",\"title\",\"items\":[{\"code\",\"description\",\"unit\",\"basis\",\"anchor?\",\"formula?\",\"specNote?\"}]}]}",
+        'Respond with JSON only, exactly this shape: {"workSections":[{"sectionNumber":"1.11","title":"INSITU CONCRETE WORKS","groups":[{"preamble":"material spec paragraph or null","heading":"group caption or null","items":[{"besmmRef":"2.1.1 or null","particulars":"short particulars","unit":"m2|m3|m|nr|item|sum|tonnes","basis":"anchor|derived|provisional","anchor":"(when basis=anchor)","formula":"(when basis=derived)"}]}]}]}',
+
       ].join("\n"),
     },
     {
@@ -142,7 +151,7 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
       content: [
         `ELEMENT: ${brief.element}`,
         `GUIDANCE: ${brief.guidance}`,
-        `EXEMPLARS (BESMM voice):\n${brief.exemplars.map((e) => `- ${e}`).join("\n")}`,
+        `BILLING TEMPLATE for this element (follow its section numbers, preambles, groups and item style):\n${brief.template}`,
         `MEASURED ANCHORS (the only numbers that exist):\n${anchorList || "(none)"}`,
         `DRAWING CONTEXT: ${sheetContext}`,
       ].join("\n\n"),
@@ -157,44 +166,49 @@ export interface EnrichedItem extends MeasuredBoqItem {
 function toItems(brief: ElementBrief, result: BuildupResult, anchors: Anchors): EnrichedItem[] {
   const items: EnrichedItem[] = [];
   for (const section of result.workSections) {
-    for (const raw of section.items) {
+    for (const group of section.groups) {
+      let firstOfGroup = true;
+      for (const raw of group.items) {
       let qty: number | null = null;
       let basisText: string;
       let confidence: Confidence = "low";
-      if (raw.basis === "anchor" && raw.anchor) {
-        // the measured bill already carries the anchor quantities themselves;
-        // agents add ASSOCIATED work, they must not re-bill the anchor
-        if (raw.anchor === "wall_area_m2" || raw.anchor === "floor_area_m2") continue;
-        const value = anchors[raw.anchor];
-        if (value === undefined) continue;
-        qty = value;
-        basisText = `Anchor ${raw.anchor} = ${value}`;
-      } else if (raw.basis === "derived" && raw.formula) {
-        const value = evaluateFormula(raw.formula, anchors);
-        if (value === null) continue;
-        qty = value;
-        basisText = `Derived: ${raw.formula} = ${value} (engine-evaluated over measured anchors)`;
-      } else if (raw.basis === "provisional") {
-        basisText = "Provisional — supporting drawings required; no quantity claimed";
-      } else {
-        continue;
+        if (raw.basis === "anchor" && raw.anchor) {
+          // the measured bill already carries the anchor quantities themselves;
+          // agents add ASSOCIATED work, they must not re-bill the anchor
+          if (raw.anchor === "wall_area_m2" || raw.anchor === "floor_area_m2") continue;
+          const value = anchors[raw.anchor];
+          if (value === undefined) continue;
+          qty = value;
+          basisText = `Anchor ${raw.anchor} = ${value}`;
+        } else if (raw.basis === "derived" && raw.formula) {
+          const value = evaluateFormula(raw.formula, anchors);
+          if (value === null) continue;
+          qty = value;
+          basisText = `Derived: ${raw.formula} = ${value} (engine-evaluated over measured anchors)`;
+        } else if (raw.basis === "provisional") {
+          basisText = "Provisional — supporting drawings required; no quantity claimed";
+        } else {
+          continue;
+        }
+        items.push({
+          elementGroup: brief.element,
+          workSection: { code: section.sectionNumber, title: section.title },
+          specNote: firstOfGroup && group.preamble?.trim() ? group.preamble : null,
+          groupHeading: firstOfGroup && group.heading?.trim() ? group.heading : null,
+          code: raw.besmmRef ?? null,
+          description: raw.particulars,
+          unit: raw.unit,
+          qtyGross: qty ?? 0,
+          deductions: [],
+          qty: qty ?? 0,
+          confidence,
+          measurementBasis: basisText,
+          geometries: [],
+          pageNumber: 0,
+          provisional: raw.basis === "provisional",
+        });
+        firstOfGroup = false;
       }
-      items.push({
-        elementGroup: brief.element,
-        workSection: { code: section.code, title: section.title },
-        specNote: raw.specNote?.trim() ? raw.specNote : null,
-        code: raw.code,
-        description: raw.description,
-        unit: raw.unit,
-        qtyGross: qty ?? 0,
-        deductions: [],
-        qty: qty ?? 0,
-        confidence,
-        measurementBasis: basisText,
-        geometries: [],
-        pageNumber: 0,
-        provisional: raw.basis === "provisional",
-      });
     }
   }
   return items;

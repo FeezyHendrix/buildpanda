@@ -96,7 +96,7 @@ function measureSheetRegions(
   if (walls.centrelineM > 0) {
     const grossM2 = Math.round(walls.centrelineM * DEFAULT_WALL_HEIGHT_M * 100) / 100;
     items.push({
-      elementGroup: "Walls",
+      elementGroup: "Internal and external walls",
       workSection: { code: "F10", title: "BRICK/BLOCK WALLING" },
       specNote: "Sandcrete block walls; cement mortar (1:6); wall height assumed 2.70m pending elevations.",
       code: "F10/125",
@@ -118,7 +118,7 @@ function measureSheetRegions(
   if (tags.doors.size > 0) {
     for (const [tag, occurrences] of [...tags.doors.entries()].sort()) {
       items.push({
-        elementGroup: "Windows and doors",
+        elementGroup: "Doors",
         workSection: { code: "L20", title: "DOORS/SHUTTERS/HATCHES" },
         specNote: "Door types per architect's door schedule.",
         code: "L20",
@@ -142,7 +142,7 @@ function measureSheetRegions(
     }
   } else if (doors.count > 0) {
     items.push({
-      elementGroup: "Windows and doors",
+      elementGroup: "Doors",
       workSection: { code: "L20", title: "DOORS/SHUTTERS/HATCHES" },
       specNote: null,
       code: "L20",
@@ -159,7 +159,7 @@ function measureSheetRegions(
   }
   for (const [tag, occurrences] of [...tags.windows.entries()].sort()) {
     items.push({
-      elementGroup: "Windows and doors",
+      elementGroup: "Windows",
       workSection: { code: "L11", title: "WINDOWS/ROOFLIGHTS/SCREENS" },
       specNote: "Window types per architect's window schedule.",
       code: "L11",
@@ -181,7 +181,7 @@ function measureSheetRegions(
   const totalFloorM2 = Math.round(rooms.reduce((s, r) => s + r.areaM2, 0) * 100) / 100;
   if (rooms.length > 0) {
     items.push({
-      elementGroup: "Finishes",
+      elementGroup: "Floor finishings",
       workSection: { code: "M10", title: "SAND CEMENT SCREEDS/TOPPINGS" },
       specNote: "Floor areas measured room-by-room from wall enclosure; finishes to specification.",
       code: "M10",
