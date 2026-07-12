@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// Vite resolves ?url asset imports in both dev and production builds; the
-// bare-specifier new URL(...) form 404s in production bundles.
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+// ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
+// constructor — static hosts that serve .mjs as octet-stream (staging nginx)
+// break both workerSrc and the fake-worker fallback, so never fetch .mjs.
+import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+
+let sharedWorker: Worker | null = null;
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
 import { preconApi, type PreconBoqRow, type PreconGeometry, type PreconSheet } from "@/api/precon";
@@ -97,7 +100,8 @@ export function PreconSheetViewer({
     setDraft([]);
     (async () => {
       const pdfjs = await import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+      if (!sharedWorker) sharedWorker = new PdfWorker();
+      pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
       const doc = await pdfjs.getDocument({
         url: preconApi.sheetFileUrl(activeSheet.id),
         withCredentials: true,
