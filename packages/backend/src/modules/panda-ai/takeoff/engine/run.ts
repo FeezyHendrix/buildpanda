@@ -23,6 +23,7 @@ import {
   wallConfidence,
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
 import { buildUpBill } from "./enrich.ts";
 import { applySchedules, looksLikeScheduleSheet, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
@@ -72,6 +73,7 @@ function classifySheet(texts: { str: string }[], hasDoorArcs: boolean, hasRoomLa
 
 interface SheetMeasurement {
   items: MeasuredBoqItem[];
+  fingerprint: PlanFingerprint | null;
 }
 
 // One region = one drawing. Measure only floor-plan-looking regions, and only
@@ -86,7 +88,7 @@ function measureSheetRegions(
 ): SheetMeasurement {
   const regions = clusterRegions(extracted);
   const items: MeasuredBoqItem[] = [];
-  if (regions.length === 0) return { items };
+  if (regions.length === 0) return { items, fingerprint: null };
 
   const primary = regions[0]!;
   const regionSegments = segmentsInRegion(extracted.segments, primary);
@@ -115,6 +117,16 @@ function measureSheetRegions(
 
   const doors = countDoorArcs(regionCurves, mmPerPt);
   const tags = countTags(regionTexts);
+  const toM = mmPerPt / 1000;
+  const fingerprint: PlanFingerprint = {
+    pageNumber,
+    centrelineM: walls.centrelineM,
+    wallPairs: walls.pairs.length,
+    widthM: Math.round((primary.maxX - primary.minX) * toM * 10) / 10,
+    heightM: Math.round((primary.maxY - primary.minY) * toM * 10) / 10,
+    doorArcs: doors.count,
+    tagSignature: tagSignature(tags),
+  };
 
   if (tags.doors.size > 0) {
     for (const [tag, occurrences] of [...tags.doors.entries()].sort()) {
@@ -206,7 +218,7 @@ function measureSheetRegions(
     });
   }
 
-  return { items };
+  return { items, fingerprint };
 }
 
 export async function generateForSession(
@@ -219,6 +231,7 @@ export async function generateForSession(
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   const allItems: MeasuredBoqItem[] = [];
+  const pageFingerprints: PlanFingerprint[] = [];
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
   const sheetIdByPage = new Map<number, string>();
   let nextPageNumber = 1;
@@ -298,6 +311,7 @@ export async function generateForSession(
 
             if (calibration && kind === "floor-plan") {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel);
+              if (measured.fingerprint) pageFingerprints.push(measured.fingerprint);
               // low calibration confidence demotes everything on the sheet
               const demoted =
                 calibration.confidence < 0.7
@@ -324,11 +338,22 @@ export async function generateForSession(
     }
   }
 
+  // Repeated-floor detection: drop items measured from pages whose plan
+  // geometry duplicates an earlier page — same floor drawn twice must not sum.
+  const duplicateOf = findDuplicatePlans(pageFingerprints);
+  let dedupedItems = allItems;
+  if (duplicateOf.size > 0) {
+    dedupedItems = allItems.filter((item) => !duplicateOf.has(item.pageNumber));
+    for (const [dup, rep] of duplicateOf) {
+      progress(`Page ${dup} duplicates the plan on page ${rep} — measured once`);
+    }
+  }
+
   // Duplicate item descriptions across floor-plan sheets collapse into one row
   // per description with quantities summed — separate floors add up; repeated
   // views of the same floor are avoided upstream by measuring one region/sheet.
   const merged = new Map<string, MeasuredBoqItem>();
-  for (const item of allItems) {
+  for (const item of dedupedItems) {
     const key = `${item.code}|${item.description}`;
     const existing = merged.get(key);
     if (!existing) {

@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError, BadRequestError } from "../../../lib/errors.ts";
 import { generateId } from "../../../lib/ids.ts";
+import { DERIVED_BASIS_PATTERN, anchorsFromRows, evaluateFormula } from "./engine/enrich.ts";
 import type { PreconRepository } from "./repository.ts";
 import type {
   AddDeductionBody,
@@ -192,6 +193,39 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     };
   }
 
+  function isAnchorRow(row: PreconBoqRowRow): boolean {
+    if (row.code === "F10/125" || row.code === "M10") return true;
+    return (row.code === "L11" || row.code === "L20") && /type [WD]\d/i.test(row.description);
+  }
+
+  // Derived rows carry their formula in the measurement basis; when a QS
+  // corrects a measured anchor, re-evaluate every formula so the build-up
+  // follows the correction instead of the stale measurement.
+  async function recomputeDerivedRows(sessionId: string, actor: string): Promise<void> {
+    const rows = await repo.rowsBySession(sessionId);
+    const anchors = anchorsFromRows(rows);
+    for (const row of rows) {
+      if (row.status === "rejected") continue;
+      const match = row.measurement_basis?.match(DERIVED_BASIS_PATTERN);
+      if (!match) continue;
+      const value = evaluateFormula(match[1]!, anchors);
+      if (value === null || Math.abs(value - Number(row.qty ?? 0)) < 0.005) continue;
+      const amount = row.rate !== null ? Math.round(value * Number(row.rate) * 100) / 100 : null;
+      const basis = `Derived: ${match[1]} = ${value} (engine-evaluated over measured anchors)`;
+      const updated = await repo.applyDerivedRecompute(row.id, value, amount, basis);
+      if (!updated) continue;
+      await audit(sessionId, row.id, actor, "recomputed", { qty: num(row.qty) }, { qty: value });
+      publish(sessionId, {
+        type: "row.updated",
+        sessionId,
+        rowId: row.id,
+        version: updated.version,
+        actor,
+        changes: { qty: value, amount },
+      });
+    }
+  }
+
   async function requireRow(rowId: string): Promise<{ row: PreconBoqRowRow; sessionId: string }> {
     const [row, sessionId] = await Promise.all([repo.rowById(rowId), repo.sessionIdForRow(rowId)]);
     if (!row || !sessionId) throw new NotFoundError("BOQ row");
@@ -333,6 +367,9 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         actor,
         changes: body.changes,
       });
+      if (body.changes.qty !== undefined && isAnchorRow(updated)) {
+        await recomputeDerivedRows(sessionId, actor);
+      }
       return toRow(updated);
     },
 
@@ -420,6 +457,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         actor,
         changes: { qty: net, qtyGross: quantity },
       });
+      if (isAnchorRow(updated)) await recomputeDerivedRows(sessionId, actor);
       return toRow(updated);
     },
 

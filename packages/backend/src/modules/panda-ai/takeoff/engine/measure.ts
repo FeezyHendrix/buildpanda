@@ -166,9 +166,16 @@ export function curvesInRegion(curves: Curve[], region: DrawingRegion): Curve[] 
 // ---------- floor areas: wall-mask flood fill seeded from room labels ----------
 
 const GRID_MM = 50;
-const ROOM_LABEL = /^[A-Z][A-Z .'/-]{2,}$/;
+// Room labels come in every case ("Toilet", "kitchenette", "STORE"); accept
+// word-like text and let the leak/area filters kill bad seeds. Known room
+// words are seeded first so a furniture code inside the same room cannot
+// claim its name.
+const ROOM_LABEL = /^[A-Za-z][A-Za-z .'/-]{2,28}$/;
+const SHORT_ROOM_WORDS = new Set(["wc", "whb"]);
+const ROOM_WORDS =
+  /bed|toilet|bath|kitchen|living|lounge|dining|office|store|reception|lobby|corridor|hall|waiting|conference|meeting|laundry|garage|balcony|terrace|veranda|pantry|study|staff|server|record|library|clinic|ward|prayer|mail|copy|print|gym|studio|shop|kiosk|cafe|canteen/i;
 const ROOM_LABEL_BLOCKLIST =
-  /PLAN|ELEVATION|SECTION|SCALE|DETAIL|NOTES|DRAWING|PROJECT|SHEET|LEVEL|GENERAL|LEGEND|SCHEDULE|TITLE/;
+  /plan|elevation|section|scale|detail|note|drawing|project|sheet|level|general|legend|schedule|title|type|mark|date|drawn|checked|approved|designed|sign|furniture|equipment|miscelan|desk|chair|computer|phone|machine|couch|cabinate|cabinet|blinde|planter|dust bin/i;
 
 export interface RoomArea {
   name: string;
@@ -232,16 +239,21 @@ export function measureRoomAreas(
   // keep original walls regardless of erosion rounding
   for (let i = 0; i < grid.length; i++) if (grid[i]) dilated[i] = 1;
 
-  const labels = texts.filter(
-    (t) =>
-      !t.rotated &&
-      ROOM_LABEL.test(t.str) &&
-      !ROOM_LABEL_BLOCKLIST.test(t.str) &&
-      t.x >= region.minX &&
-      t.x <= region.maxX &&
-      t.y >= region.minY &&
-      t.y <= region.maxY,
-  );
+  const inRegion = (t: TextRun): boolean =>
+    t.x >= region.minX && t.x <= region.maxX && t.y >= region.minY && t.y <= region.maxY;
+  const isLabel = (t: TextRun): boolean => {
+    if (t.rotated || !inRegion(t)) return false;
+    const str = t.str.trim();
+    if (SHORT_ROOM_WORDS.has(str.toLowerCase())) return true;
+    if (!ROOM_LABEL.test(str) || str.length < 3) return false;
+    if (ROOM_LABEL_BLOCKLIST.test(str)) return false;
+    if (/^[wd]-?\d{1,2}$/i.test(str)) return false; // opening tags
+    return true;
+  };
+  // known room words seed first so they win the naming race for their room
+  const labels = texts
+    .filter(isLabel)
+    .sort((a, b) => Number(ROOM_WORDS.test(b.str)) - Number(ROOM_WORDS.test(a.str)) || b.str.length - a.str.length);
 
   const filled = new Uint8Array(cols * rowsN);
   const results: RoomArea[] = [];
