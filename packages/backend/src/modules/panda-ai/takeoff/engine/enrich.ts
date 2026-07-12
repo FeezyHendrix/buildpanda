@@ -101,8 +101,9 @@ const buildupItemSchema = z.object({
 });
 
 const buildupGroupSchema = z.object({
-  preamble: z.string().max(500).nullable(),
-  heading: z.string().max(120).nullable(),
+  // models omit these keys as often as they null them — accept both
+  preamble: z.string().max(500).nullable().optional(),
+  heading: z.string().max(120).nullable().optional(),
   items: z.array(buildupItemSchema).max(15),
 });
 
