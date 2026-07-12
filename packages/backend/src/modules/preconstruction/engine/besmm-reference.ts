@@ -14,7 +14,7 @@ export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
     key: "substructure",
     element: "Substructure",
     guidance:
-      "Excavation, filling, concrete, formwork and reinforcement quantities require structural drawings and sections. Without them every item here is PROVISIONAL or derived from the building footprint anchor only.",
+      "No structural drawings are available, so infer the substructure the way a QS would and state every assumption: strip foundations follow the wall centreline (wall_centreline_m) — assume and state trench width/depth for excavation volume, concrete volume and formwork length; blockwork in foundation follows centreline x assumed depth; hardcore filling, blinding and oversite concrete follow measured floor coverage. Items that cannot be tied to an anchor even with stated assumptions stay provisional.",
     exemplars: [
       "Site Clearance; Clearing site vegetation and other growth and dispose off site; entire site — Sq.m",
       "Site Preparation; Remove topsoil 150mm deep — Sq.m",
@@ -67,7 +67,7 @@ export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
     key: "roof",
     element: "Roof",
     guidance:
-      "Roof structure and coverings cannot be measured from floor plans. Every item is PROVISIONAL until roof plans/sections are provided.",
+      "No roof plan is available. A QS infers roof coverage from the plan: covered area approximates the enclosed plan area with a stated pitch allowance (e.g. 'assumed 15 degree pitch, factor 1.04') and eaves length approximates the external wall line. Only floor_area_m2 and wall_centreline_m anchors exist — if the measured floor coverage is clearly partial, keep coverings provisional and say why; otherwise derive with stated assumptions.",
     exemplars: [
       "Allow for the Fabrication and Erection of Structural steel roof members — Sum",
       "0.70mm longspan Aluminium roofing sheets; Pitch 15 degrees — Sq.m",

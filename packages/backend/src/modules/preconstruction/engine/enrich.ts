@@ -19,6 +19,9 @@ export function buildAnchors(items: MeasuredBoqItem[]): Anchors {
   for (const item of items) {
     if (item.code === "F10/125") {
       anchors["wall_area_m2"] = (anchors["wall_area_m2"] ?? 0) + item.qty;
+      // wall area was measured as centreline x 2.7m assumed height, so the
+      // centreline is the same measurement expressed in metres
+      anchors["wall_centreline_m"] = Math.round(((anchors["wall_area_m2"] ?? 0) / 2.7) * 100) / 100;
     } else if (item.code === "M10") {
       anchors["floor_area_m2"] = (anchors["floor_area_m2"] ?? 0) + item.qty;
     } else if (item.code === "L20") {
@@ -129,7 +132,7 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
         '   - "anchor": quantity IS one measured anchor; set "anchor" to its exact name.',
         '   - "derived": quantity is a formula over anchor names and constants, e.g. "2 * wall_area_m2" or "wall_area_m2 * 0.012"; set "formula". Only derive relationships a QS would defend (render both faces, paint follows render, one frame per door).',
         '   - "provisional": the drawings cannot support a quantity (needs structural/MEP/roof drawings). unit must be "sum" or "item". No anchor, no formula.',
-        "2. Do not invent element types, sizes or specifications that are not in the exemplars or anchors; where the standard description needs a size you do not have, write 'as schedule' or mark provisional.",
+        "2. Infer like a QS: standard construction build-ups over the anchors are allowed and encouraged — strip foundations follow wall_centreline_m, oversite work follows floor areas, painting follows plastered areas — but EVERY assumed dimension, depth, thickness or factor must be stated in the description with the word 'assumed' (e.g. 'assumed 675mm wide x 900mm deep strip foundation along wall centreline'). An inference you cannot express as a formula over the anchors with stated assumptions stays provisional.",
         "3. At most 20 items for this element. Fewer, correct items beat many speculative ones.",
         "Respond with JSON only matching: {\"workSections\":[{\"code\",\"title\",\"items\":[{\"code\",\"description\",\"unit\",\"basis\",\"anchor?\",\"formula?\",\"specNote?\"}]}]}",
       ].join("\n"),
