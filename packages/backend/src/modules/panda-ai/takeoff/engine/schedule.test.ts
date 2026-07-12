@@ -61,7 +61,7 @@ test("applySchedules: schedule quantity wins, agreement keeps high confidence", 
   assert.equal(w4.qty, 96); // schedule beats census
   assert.equal(w4.confidence, "low"); // 96 vs 84 disagreement flagged
   assert.match(w4.measurementBasis, /DISCREPANCY/);
-  assert.match(w4.description, /1200 x 1200mm/);
+  assert.match(w4.description, /1200 x 1200 as schedule/);
   assert.match(w4.description, /aluminium frame/);
   const d5 = items.find((i) => /D5/.test(i.description))!;
   assert.equal(d5.qty, 19);
