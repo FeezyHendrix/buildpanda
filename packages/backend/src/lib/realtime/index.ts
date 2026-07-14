@@ -12,7 +12,12 @@ export type RealtimeEvent =
   | "read.updated"
   | "channel.updated"
   | "unread.changed"
-  | "notification.created";
+  | "notification.created"
+  | "row.updated"
+  | "row.verified"
+  | "row.rejected"
+  | "geometry.updated"
+  | "precon.progress";
 
 export interface RealtimePayload {
   event: RealtimeEvent;

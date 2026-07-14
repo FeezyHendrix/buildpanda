@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
@@ -46,14 +46,25 @@ export function UpdateCard({
   projectId,
   update,
   canManage,
+  autoEdit = false,
+  onAutoEditHandled,
 }: {
   projectId: string;
   update: ProjectUpdate;
   canManage: boolean;
+  autoEdit?: boolean;
+  onAutoEditHandled?: () => void;
 }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (autoEdit && canManage) {
+      setEditOpen(true);
+      onAutoEditHandled?.();
+    }
+  }, [autoEdit, canManage, onAutoEditHandled]);
   // const transition = useTransitionUpdate();
   const addComment = useAddComment();
   const editUpdate = useEditUpdate();
@@ -226,6 +237,7 @@ export function UpdateCard({
         open={editOpen}
         onOpenChange={setEditOpen}
         mode="edit"
+        projectId={projectId}
         initial={{
           category: update.category,
           title: update.title,

@@ -57,6 +57,7 @@ export async function attachImportedDocument(db: Knex, input: AttachDocumentInpu
     await trx("uploaded_files").insert({
       id: fileId,
       owner_id: input.ownerId,
+      project_id: input.projectId,
       file_name: input.fileName,
       mime_type: mimeType,
       size_bytes: sizeBytes,

@@ -6,6 +6,8 @@ import type {
   Subtask,
   SubtaskRow,
   Task,
+  TaskAssignee,
+  TaskAssigneeRow,
   TaskBoard,
   TaskBoardRow,
   TaskColumn,
@@ -29,6 +31,7 @@ export interface CreateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: TaskAssigneeInput[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];
@@ -44,9 +47,15 @@ export interface UpdateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: TaskAssigneeInput[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];
+}
+
+export interface TaskAssigneeInput {
+  kind: "user" | "team";
+  id: string;
 }
 
 export interface MoveTaskInput {
@@ -112,9 +121,11 @@ function normalizeLabels(labels: string[]): string[] {
 
 function toTask(
   row: TaskRow,
+  assignees: TaskAssignee[] = [],
   counts?: { total: number; done: number },
   entityLinkTypes?: TaskEntityType[],
 ): Task {
+  const firstAssignee = assignees[0] ?? null;
   return {
     id: row.id,
     projectId: row.project_id,
@@ -125,7 +136,8 @@ function toTask(
     descriptionHtml: row.description_html,
     assigneeId: row.assignee_id,
     assigneeTeamMemberId: row.assignee_team_member_id,
-    assigneeName: row.assignee_name ?? row.assignee_team_member_name,
+    assigneeName: firstAssignee?.name ?? null,
+    assignees,
     dueDate: row.due_date,
     priority: row.priority,
     labels: parseLabels(row.labels),
@@ -140,6 +152,22 @@ function toTask(
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function groupAssignees(rows: TaskAssigneeRow[]): Map<string, TaskAssignee[]> {
+  const grouped = new Map<string, TaskAssignee[]>();
+  for (const row of rows) {
+    const assignee = row.assignee_id
+      ? { kind: "user" as const, id: row.assignee_id, name: row.assignee_name ?? "Unknown user" }
+      : row.assignee_team_member_id
+        ? { kind: "team" as const, id: row.assignee_team_member_id, name: row.assignee_team_member_name ?? "Unknown team member" }
+        : null;
+    if (!assignee) continue;
+    const list = grouped.get(row.task_id) ?? [];
+    list.push(assignee);
+    grouped.set(row.task_id, list);
+  }
+  return grouped;
 }
 
 function toSubtask(row: SubtaskRow): Subtask {
@@ -166,36 +194,42 @@ function toComment(row: TaskCommentRow): TaskComment {
   };
 }
 
-function notifyAssignee(
+function notifyAssignees(
   deps: TasksDeps,
   row: TaskRow,
+  assignees: TaskAssignee[],
   actorId: string | null,
 ): void {
-  if (!deps.notifications || !row.assignee_id || row.assignee_id === actorId) return;
-  void deps.notifications
-    .notify(row.assignee_id, "task_assigned", {
-      title: "A task was assigned to you",
-      body: row.title,
-      projectId: row.project_id,
-    })
-    .catch(() => undefined);
+  if (!deps.notifications) return;
+  for (const assignee of assignees) {
+    if (assignee.kind !== "user" || assignee.id === actorId) continue;
+    void deps.notifications
+      .notify(assignee.id, "task_assigned", {
+        title: "A task was assigned to you",
+        body: row.title,
+        projectId: row.project_id,
+      })
+      .catch(() => undefined);
+  }
 }
 
 function notifyHighPriority(
   deps: TasksDeps,
   row: TaskRow,
+  assignees: TaskAssignee[],
   actorId: string | null,
 ): void {
-  if (!deps.notifications || row.priority !== "High" || !row.assignee_id || row.assignee_id === actorId) {
-    return;
+  if (!deps.notifications || row.priority !== "High") return;
+  for (const assignee of assignees) {
+    if (assignee.kind !== "user" || assignee.id === actorId) continue;
+    void deps.notifications
+      .notify(assignee.id, "task_high_priority", {
+        title: "A high-priority task needs your attention",
+        body: row.title,
+        projectId: row.project_id,
+      })
+      .catch(() => undefined);
   }
-  void deps.notifications
-    .notify(row.assignee_id, "task_high_priority", {
-      title: "A high-priority task needs your attention",
-      body: row.title,
-      projectId: row.project_id,
-    })
-    .catch(() => undefined);
 }
 
 export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) {
@@ -220,11 +254,19 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     return created;
   }
 
-  async function assembleBoard(boardRow: TaskBoardRow): Promise<TaskBoard> {
-    const [columns, tasks] = await Promise.all([
+  async function assembleBoard(
+    boardRow: TaskBoardRow,
+    assigneeId?: string,
+  ): Promise<TaskBoard> {
+    const [columns, allTasks] = await Promise.all([
       repository.listColumns(boardRow.id),
       repository.listTasksByBoard(boardRow.id),
     ]);
+    const allTaskIds = allTasks.map((t) => t.id);
+    const assigneesByTask = groupAssignees(await repository.listAssigneesByTaskIds(allTaskIds));
+    const tasks = assigneeId
+      ? allTasks.filter((task) => assigneesByTask.get(task.id)?.some((assignee) => assignee.kind === "user" && assignee.id === assigneeId))
+      : allTasks;
     const taskIds = tasks.map((t) => t.id);
     const [counts, linkTypes] = await Promise.all([
       repository.subtaskCounts(taskIds),
@@ -235,8 +277,9 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       projectId: boardRow.project_id,
       name: boardRow.name,
       isDefault: boardRow.is_default,
+      scope: assigneeId ? "assigned" : "all",
       columns: columns.map(toColumn),
-      tasks: tasks.map((t) => toTask(t, counts.get(t.id), linkTypes.get(t.id))),
+      tasks: tasks.map((t) => toTask(t, assigneesByTask.get(t.id) ?? [], counts.get(t.id), linkTypes.get(t.id))),
     };
   }
 
@@ -264,6 +307,40 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     return { assignee_id: assigneeId ?? null, assignee_team_member_id: null };
   }
 
+  async function resolveAssignees(
+    projectId: string,
+    input: {
+      assignees?: TaskAssigneeInput[];
+      assigneeId?: string | null;
+      assigneeTeamMemberId?: string | null;
+    },
+  ): Promise<{ assignee_id: string | null; assignee_team_member_id: string | null }[]> {
+    const rawAssignees = input.assignees;
+    if (rawAssignees !== undefined) {
+      const seen = new Set<string>();
+      const resolved: { assignee_id: string | null; assignee_team_member_id: string | null }[] = [];
+      for (const assignee of rawAssignees) {
+        const key = `${assignee.kind}:${assignee.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (assignee.kind === "team") {
+          const ok = await repository.teamMemberInProject(assignee.id, projectId);
+          if (!ok) throw new BadRequestError("Unknown team member for this project");
+          resolved.push({ assignee_id: null, assignee_team_member_id: assignee.id });
+        } else {
+          resolved.push({ assignee_id: assignee.id, assignee_team_member_id: null });
+        }
+      }
+      return resolved;
+    }
+    const assignee = await resolveAssignee(projectId, input.assigneeId, input.assigneeTeamMemberId);
+    return assignee.assignee_id || assignee.assignee_team_member_id ? [assignee] : [];
+  }
+
+  async function taskAssignees(taskId: string): Promise<TaskAssignee[]> {
+    return groupAssignees(await repository.listAssigneesByTaskIds([taskId])).get(taskId) ?? [];
+  }
+
   async function resolveEntityLinks(rows: TaskEntityLinkRow[]): Promise<TaskEntityLink[]> {
     if (rows.length === 0) return [];
     const labels = await repository.resolveEntityLabels(rows);
@@ -280,9 +357,19 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
   }
 
   return {
-    async getDefaultBoard(projectId: string, userId: string | null): Promise<TaskBoard> {
+    async getDefaultBoard(
+      projectId: string,
+      userId: string | null,
+      assigneeId?: string,
+    ): Promise<TaskBoard> {
       const board = await ensureDefaultBoard(projectId, userId);
-      return assembleBoard(board);
+      return assembleBoard(board, assigneeId);
+    },
+
+    async isTaskAssignedToUser(projectId: string, taskId: string, userId: string): Promise<boolean> {
+      const task = await repository.findTaskById(taskId);
+      if (!task || task.project_id !== projectId) throw new NotFoundError("Task");
+      return repository.taskAssignedToUser(projectId, taskId, userId);
     },
 
     async listAssignable(
@@ -385,7 +472,8 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       if (!column) throw new NotFoundError("Task column");
 
       const maxPosition = await repository.maxPositionInColumn(column.id);
-      const assignee = await resolveAssignee(projectId, input.assigneeId, input.assigneeTeamMemberId);
+      const assignees = await resolveAssignees(projectId, input);
+      const primaryAssignee = assignees[0] ?? { assignee_id: null, assignee_team_member_id: null };
       const id = generateId("task");
       await repository.createTask({
         id,
@@ -395,8 +483,8 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         title: input.title,
         description: input.description ?? null,
         description_html: input.descriptionHtml ?? null,
-        assignee_id: assignee.assignee_id,
-        assignee_team_member_id: assignee.assignee_team_member_id,
+        assignee_id: primaryAssignee.assignee_id,
+        assignee_team_member_id: primaryAssignee.assignee_team_member_id,
         due_date: input.dueDate ?? null,
         priority: input.priority ?? "Medium",
         labels: JSON.stringify(normalizeLabels(input.labels ?? [])),
@@ -405,12 +493,14 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         source_id: input.sourceId ?? null,
         created_by_id: userId,
       });
+      await repository.replaceTaskAssignees(id, assignees);
 
       const row = await repository.findTaskById(id);
       if (!row) throw new NotFoundError("Task");
-      notifyAssignee(deps, row, userId);
-      notifyHighPriority(deps, row, userId);
-      return toTask(row);
+      const savedAssignees = await taskAssignees(id);
+      notifyAssignees(deps, row, savedAssignees, userId);
+      notifyHighPriority(deps, row, savedAssignees, userId);
+      return toTask(row, savedAssignees);
     },
 
     async updateTask(
@@ -422,36 +512,53 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       const existing = await repository.findTaskById(taskId);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Task");
 
-      const assigneeProvided =
-        input.assigneeId !== undefined || input.assigneeTeamMemberId !== undefined;
-      const assignee = assigneeProvided
-        ? await resolveAssignee(projectId, input.assigneeId, input.assigneeTeamMemberId)
-        : null;
-      const userAssigneeChanged =
-        assignee !== null && assignee.assignee_id !== existing.assignee_id && assignee.assignee_id !== null;
+      const assigneeProvided = input.assignees !== undefined || input.assigneeId !== undefined || input.assigneeTeamMemberId !== undefined;
+      const existingAssignees = await taskAssignees(taskId);
+      const assignees = assigneeProvided ? await resolveAssignees(projectId, input) : null;
+      const primaryAssignee = assignees?.[0] ?? { assignee_id: null, assignee_team_member_id: null };
+      const existingUserIds = new Set(existingAssignees.filter((assignee) => assignee.kind === "user").map((assignee) => assignee.id));
+      const newlyAssignedUserIds = (assignees ?? [])
+        .filter((assignee) => assignee.assignee_id && !existingUserIds.has(assignee.assignee_id))
+        .map((assignee) => assignee.assignee_id!);
 
       await repository.updateTask(taskId, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.descriptionHtml !== undefined ? { description_html: input.descriptionHtml } : {}),
-        ...(assignee !== null
-          ? { assignee_id: assignee.assignee_id, assignee_team_member_id: assignee.assignee_team_member_id }
+        ...(assignees !== null
+          ? { assignee_id: primaryAssignee.assignee_id, assignee_team_member_id: primaryAssignee.assignee_team_member_id }
           : {}),
         ...(input.dueDate !== undefined ? { due_date: input.dueDate } : {}),
         ...(input.priority !== undefined ? { priority: input.priority } : {}),
         ...(input.labels !== undefined ? { labels: JSON.stringify(normalizeLabels(input.labels)) } : {}),
       });
+      if (assignees !== null) await repository.replaceTaskAssignees(taskId, assignees);
 
       const row = await repository.findTaskById(taskId);
       if (!row) throw new NotFoundError("Task");
-      if (userAssigneeChanged) notifyAssignee(deps, row, actorId);
+      const savedAssignees = await taskAssignees(taskId);
+      if (newlyAssignedUserIds.length > 0) {
+        notifyAssignees(
+          deps,
+          row,
+          savedAssignees.filter((assignee) => assignee.kind === "user" && newlyAssignedUserIds.includes(assignee.id)),
+          actorId,
+        );
+      }
       // Fire only on the transition INTO High (or when a High task is reassigned),
       // so re-saving an already-High task doesn't re-spam the assignee.
       const becameHigh = row.priority === "High" && existing.priority !== "High";
-      if (becameHigh || (row.priority === "High" && userAssigneeChanged)) {
-        notifyHighPriority(deps, row, actorId);
+      if (becameHigh) {
+        notifyHighPriority(deps, row, savedAssignees, actorId);
+      } else if (row.priority === "High" && newlyAssignedUserIds.length > 0) {
+        notifyHighPriority(
+          deps,
+          row,
+          savedAssignees.filter((assignee) => assignee.kind === "user" && newlyAssignedUserIds.includes(assignee.id)),
+          actorId,
+        );
       }
-      return toTask(row);
+      return toTask(row, savedAssignees);
     },
 
     async moveTask(projectId: string, taskId: string, input: MoveTaskInput): Promise<Task> {
@@ -469,7 +576,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       });
       const row = await repository.findTaskById(taskId);
       if (!row) throw new NotFoundError("Task");
-      return toTask(row);
+      return toTask(row, await taskAssignees(taskId));
     },
 
     async removeTask(projectId: string, taskId: string): Promise<void> {
@@ -489,7 +596,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
         repository.subtaskCounts([taskId]),
       ]);
       return {
-        ...toTask(row, counts.get(taskId)),
+        ...toTask(row, await taskAssignees(taskId), counts.get(taskId)),
         subtasks: subtaskRows.map(toSubtask),
         links: linkRows.map(toLink),
         entityLinks: await resolveEntityLinks(entityLinkRows),

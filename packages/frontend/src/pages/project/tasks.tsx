@@ -35,17 +35,23 @@ import {
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption, FIELD } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
 
+type TaskBoardScope = "assigned" | "all";
+
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
-  const canAddTasks = canResourceAction(access, "tasks", "add");
-  const canRemoveTasks = canResourceAction(access, "tasks", "remove");
-  const { data: board, isLoading } = useTaskBoard(project.id);
+  const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
+  const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
+  const canSeeAllTasks = canRemoveTasks;
+  const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
+  const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
+  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope, Boolean(access));
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);
@@ -224,16 +230,12 @@ export default function ProjectTasks() {
     title: string;
     description: string;
     descriptionHtml: string;
-    assignee: AssigneeOption | null;
+    assignees: AssigneeOption[];
     dueDate: string | null;
     priority: TaskPriority;
     labels: string[];
   }): void {
-    const assigneeFields = {
-      assigneeId: values.assignee?.kind === "user" ? values.assignee.id : null,
-      assigneeTeamMemberId:
-        values.assignee?.kind === "team" ? values.assignee.id : null,
-    };
+    const assigneeFields = { assignees: values.assignees.map(({ kind, id }) => ({ kind, id })) };
     if (editing) {
       updateTask.mutate(
         {
@@ -277,7 +279,11 @@ export default function ProjectTasks() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Tasks"
-        description="Plan and track work across the team. Drag cards between columns."
+        description={
+          board.scope === "assigned"
+            ? "Your personal task board shows only tasks assigned to you. Moving a card updates the shared team board."
+            : "Plan and track work across the team. Drag cards between columns."
+        }
         actions={
           canAddTasks && board.columns[0] ? (
             <Button
@@ -291,6 +297,31 @@ export default function ProjectTasks() {
           ) : null
         }
       />
+
+      {canSeeAllTasks ? (
+        <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
+          <button
+            type="button"
+            onClick={() => setBoardScope("assigned")}
+            className={cn(
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+            )}
+          >
+            My tasks
+          </button>
+          <button
+            type="button"
+            onClick={() => setBoardScope("all")}
+            className={cn(
+              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+            )}
+          >
+            All tasks
+          </button>
+        </div>
+      ) : null}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="mt-6 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto scroll-px-4 pb-4 lg:snap-none">

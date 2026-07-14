@@ -31,11 +31,11 @@ export function useMyProjects() {
   });
 }
 
-export function useParticipants(projectId: string | undefined) {
+export function useParticipants(projectId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: participantKeys.list(projectId ?? "__none__"),
     queryFn: () => participantsApi.list(projectId!),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && enabled,
   });
 }
 

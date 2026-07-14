@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
@@ -10,6 +11,8 @@ import {
   useStartProposalTakeoff,
 } from "@/hooks/use-proposals";
 import { useUploadFile } from "@/hooks/use-files";
+import { useCreatePreconSessionFromPlan, usePreconSessions } from "@/hooks/use-precon";
+import { useNavigate } from "react-router-dom";
 import { filesApi } from "@/api/files";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
@@ -36,8 +39,12 @@ export function PlansTab({ proposalId }: Props) {
   const deletePlan = useDeletePlan(proposalId);
   const startTakeoff = useStartProposalTakeoff(proposalId);
   const uploadFile = useUploadFile();
+  const navigate = useNavigate();
+  const { data: takeoffSessions = [] } = usePreconSessions(proposalId);
+  const measurePlan = useCreatePreconSessionFromPlan(proposalId);
 
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [promptPlan, setPromptPlan] = useState<{ id: string; fileName: string } | null>(null);
 
@@ -54,7 +61,7 @@ export function PlansTab({ proposalId }: Props) {
       const uploaded = await uploadFile.mutateAsync({ file });
       const nextPlans = await addPlan.mutateAsync({ fileId: uploaded.id });
       const added = nextPlans.find((plan) => plan.fileId === uploaded.id) ?? nextPlans[nextPlans.length - 1];
-      if (added && /\.dwg$/i.test(added.fileName)) {
+      if (added && /\.(dwg|pdf)$/i.test(added.fileName)) {
         setPromptPlan({ id: added.id, fileName: added.fileName });
       }
     } catch (err) {
@@ -73,22 +80,23 @@ export function PlansTab({ proposalId }: Props) {
       <div className="flex flex-col gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6">
         <p className="text-sm text-gray-600">
           Upload architectural drawings, site plans, MEP schematics, or any reference
-          artwork for this proposal. DWG files can be used to auto-generate a draft BoQ.
+          artwork for this proposal. Panda AI can measure PDF and DWG drawings into a draft BoQ for review.
         </p>
-        <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-[#004DE7] px-4 py-2 text-sm font-medium text-white hover:bg-[#003fb8]">
-          <input
-            type="file"
-            accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp"
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleUpload(file);
-              e.target.value = "";
-            }}
-          />
-          {uploading ? "Uploading…" : "Choose file"}
-        </label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".dwg,.pdf,.png,.jpg,.jpeg,.webp"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleUpload(file);
+            e.target.value = "";
+          }}
+        />
+        <Button className="w-fit" loading={uploading} onClick={() => fileInputRef.current?.click()}>
+          Choose file
+        </Button>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
@@ -125,14 +133,33 @@ export function PlansTab({ proposalId }: Props) {
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(plan.id)}
-                  className="rounded-lg px-2 py-1 text-xs text-red-500 hover:bg-red-50"
-                  disabled={deletePlan.isPending}
-                >
-                  Remove
-                </button>
+                <div className="flex items-center gap-2">
+                  {/\.pdf$/i.test(plan.fileName) ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="text-primary-700"
+                      loading={measurePlan.isPending}
+                      onClick={() => {
+                        void measurePlan
+                          .mutateAsync(plan.id)
+                          .then((session) => navigate(`/sales/takeoff/${session.id}`))
+                          .catch((err) => setError(getApiErrorMessage(err, "Could not start the takeoff.")));
+                      }}
+                    >
+                      ✦ Measure with Panda AI
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-500 hover:bg-red-50"
+                    disabled={deletePlan.isPending}
+                    onClick={() => void handleDelete(plan.id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </li>
             );
           })}
@@ -143,31 +170,61 @@ export function PlansTab({ proposalId }: Props) {
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm font-semibold text-blue-950">Generate a draft BoQ from this DWG?</p>
+              <p className="text-sm font-semibold text-blue-950">Measure this drawing with Panda AI?</p>
               <p className="mt-1 text-sm text-blue-800">
-                BuildPanda can run an automated take-off for <strong>{promptPlan.fileName}</strong>, then add the measured lines to the BoQ tab for review.
+                Panda AI can measure <strong>{promptPlan.fileName}</strong> into a draft BoQ. You review and verify
+                every line before it touches this proposal.
               </p>
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPromptPlan(null)}
-                className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-white"
-              >
+              <Button size="sm" variant="ghost" className="text-blue-800" onClick={() => setPromptPlan(null)}>
                 Not now
-              </button>
-              <button
-                type="button"
-                disabled={startTakeoff.isPending}
+              </Button>
+              <Button
+                size="sm"
+                loading={startTakeoff.isPending || measurePlan.isPending}
                 onClick={() => {
-                  void startTakeoff.mutateAsync(promptPlan.id).then(() => setPromptPlan(null));
+                  if (/\.pdf$/i.test(promptPlan.fileName)) {
+                    void measurePlan
+                      .mutateAsync(promptPlan.id)
+                      .then((session) => {
+                        setPromptPlan(null);
+                        navigate(`/sales/takeoff/${session.id}`);
+                      })
+                      .catch((err) => setError(getApiErrorMessage(err, "Could not start the takeoff.")));
+                  } else {
+                    void startTakeoff.mutateAsync(promptPlan.id).then(() => setPromptPlan(null));
+                  }
                 }}
-                className="rounded-lg bg-[#004DE7] px-3 py-2 text-sm font-medium text-white hover:bg-[#003fb8] disabled:opacity-60"
               >
-                {startTakeoff.isPending ? "Starting…" : "Auto-generate BoQ"}
-              </button>
+                Measure with Panda AI
+              </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {takeoffSessions.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-sm font-semibold text-gray-900">Panda AI takeoffs</p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {takeoffSessions.map((session) => (
+              <li key={session.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+                <span className="truncate text-gray-700">{session.title}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">{session.status}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-primary-700"
+                    onClick={() => navigate(`/sales/takeoff/${session.id}`)}
+                  >
+                    {session.status === "reviewing" ? "Review" : "Open"}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -105,7 +105,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "view");
       return service.list(project.id, request.query.status);
     },
   );
@@ -114,7 +114,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       const user = request.requireAuth();
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
@@ -125,7 +125,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "view");
       return service.get(project.id, request.params.changeId);
     },
   );
@@ -134,7 +134,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       const user = request.requireAuth();
       return service.update(project.id, request.params.changeId, request.body, user.id);
     },
@@ -144,7 +144,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId",
     { schema: { params: crParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       await service.remove(project.id, request.params.changeId);
       return reply.status(204).send();
     },
@@ -168,7 +168,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId/budget-links",
     { schema: { params: crParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "view");
       return service.getBudgetLinks(project.id, request.params.changeId);
     },
   );
@@ -180,7 +180,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/change-requests/:changeId/budget-links",
     { schema: { params: crParams, body: budgetLinksBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       return service.setBudgetLinks(
         project.id,
         request.params.changeId,

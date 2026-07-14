@@ -12,6 +12,7 @@ import type {
   TaskEntityLink,
   TaskEntityType,
   TaskComment,
+  TaskAssignee,
 } from "@/lib/project-types";
 
 export interface CreateTaskInput {
@@ -20,6 +21,7 @@ export interface CreateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: Pick<TaskAssignee, "kind" | "id">[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];
@@ -32,14 +34,15 @@ export interface UpdateTaskInput {
   descriptionHtml?: string | null;
   assigneeId?: string | null;
   assigneeTeamMemberId?: string | null;
+  assignees?: Pick<TaskAssignee, "kind" | "id">[];
   dueDate?: string | null;
   priority?: TaskPriority;
   labels?: string[];
 }
 
 export const taskApi = {
-  board: (projectId: string) =>
-    api.get<TaskBoard>(`/projects/${projectId}/tasks/board`).then((r) => r.data),
+  board: (projectId: string, scope?: "all" | "assigned") =>
+    api.get<TaskBoard>(`/projects/${projectId}/tasks/board`, { params: scope ? { scope } : undefined }).then((r) => r.data),
 
   assignableUsers: (projectId: string) =>
     api.get<AssignableUser[]>(`/projects/${projectId}/tasks/assignable`).then((r) => r.data),

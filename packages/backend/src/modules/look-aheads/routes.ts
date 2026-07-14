@@ -90,7 +90,7 @@ const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
       order?: "asc" | "desc";
     };
   }>("/projects/:id/look-aheads", { schema: { params: projectIdParams, querystring: listQuery } }, async (request) => {
-    const project = await request.requireProjectAccess(request.params.id);
+    const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
     return service.list(project.id, request.query);
   });
 
@@ -98,7 +98,7 @@ const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/look-aheads/auto-window",
     { schema: { params: projectIdParams, querystring: autoWindowQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
       return autoWindow.build(project.id, request.query.weeks ?? 4);
     },
   );
@@ -107,7 +107,7 @@ const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/look-aheads/:lookAheadId",
     { schema: { params: lookAheadParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
       return service.get(project.id, request.params.lookAheadId);
     },
   );

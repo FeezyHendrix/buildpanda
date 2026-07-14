@@ -46,6 +46,7 @@ export interface NewInvoiceRecord {
   cover_note: string | null;
   header_text: string | null;
   footer_text: string | null;
+  source_file_id: string | null;
 }
 
 export interface InvoiceUpdatePatch {

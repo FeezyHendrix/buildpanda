@@ -30,7 +30,7 @@ export function StartStep({ onSelect, isCreating }: StartStepProps) {
         />
         <OptionCard
           title="Start from a programme"
-          subtitle="Upload an .mpp or Excel schedule. We'll extract activities, milestones, and build the project structure automatically."
+          subtitle="Upload a Microsoft Project XML or Excel schedule. We'll extract activities, milestones, and build the project structure automatically."
           icon={<img src={milestoneIcon} alt="" className="size-12" />}
           selected={false}
           onClick={() => {

@@ -86,8 +86,10 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
 
       const part = await request.file();
       if (!part) throw new BadRequestError("Missing programme file upload");
-      if (!/\.(mpp|xml|xls|xlsx)$/i.test(part.filename)) {
-        throw new BadRequestError("Programme file must be .mpp, .xml, .xls or .xlsx");
+      if (!/\.(xml|xls|xlsx)$/i.test(part.filename)) {
+        throw new BadRequestError(
+          "Programme file must be .xml, .xls or .xlsx. In Microsoft Project use File > Save As > XML (*.xml).",
+        );
       }
 
       const stored = await saveStream(user.id, part.file);
@@ -144,7 +146,7 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
       const body = request.body;
 
       if (body.projectId) {
-        await request.requireProjectWrite(body.projectId);
+        await request.requireProjectPermission(body.projectId, "schedule", "manage");
       } else {
         if (organizationId !== null) {
           request.requireOrgPermission("project", "create");

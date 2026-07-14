@@ -95,7 +95,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "key-dates", "view");
       const rows = await db<KeyDateRow>("key_dates")
         .where({ project_id: project.id })
         .orderBy([{ column: "target_date", order: "asc" }, { column: "sort_order", order: "asc" }]);
@@ -107,7 +107,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates",
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "key-dates", "manage");
       const record = {
         id: generateId("kd"),
         project_id: project.id,
@@ -127,7 +127,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates/:keyDateId",
     { schema: { params: kdParams, body: updateBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "key-dates", "manage");
       const existing = await db<KeyDateRow>("key_dates")
         .where({ id: request.params.keyDateId, project_id: project.id })
         .first();
@@ -144,7 +144,7 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/key-dates/:keyDateId",
     { schema: { params: kdParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "key-dates", "manage");
       await db("key_dates").where({ id: request.params.keyDateId, project_id: project.id }).del();
       return reply.status(204).send();
     },

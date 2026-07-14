@@ -70,7 +70,7 @@ const importSessionRoutes: FastifyPluginAsync = async (fastify) => {
   async function assertSessionAccess(sessionId: string, request: FastifyRequest) {
     const session = await service.detail(sessionId);
     if (session.projectId) {
-      await request.requireProjectAccess(session.projectId);
+      await request.requireProjectPermission(session.projectId, "project", "view");
     } else {
       request.requireAuth();
     }

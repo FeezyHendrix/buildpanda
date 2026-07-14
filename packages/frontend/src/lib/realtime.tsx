@@ -28,7 +28,12 @@ type RealtimeEvent =
   | "read.updated"
   | "channel.updated"
   | "unread.changed"
-  | "notification.created";
+  | "notification.created"
+  | "row.updated"
+  | "row.verified"
+  | "row.rejected"
+  | "geometry.updated"
+  | "precon.progress";
 
 interface RealtimePayload {
   event: RealtimeEvent;
@@ -236,6 +241,27 @@ function handleEvent(
         return { ...prev, pages };
       },
     );
+    return;
+  }
+
+  if (
+    payload.event === "row.updated" ||
+    payload.event === "row.verified" ||
+    payload.event === "row.rejected" ||
+    payload.event === "geometry.updated" ||
+    payload.event === "precon.progress"
+  ) {
+    const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
+    if (!sessionId) return;
+    if (payload.event === "precon.progress") {
+      const message = (payload.data as { message?: string }).message ?? "";
+      queryClient.setQueryData<string[]>(["precon", "progress-feed", sessionId], (prev) =>
+        [...(prev ?? []), message].slice(-50),
+      );
+    }
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes("snapshot") && query.queryKey.includes(sessionId),
+    });
     return;
   }
 

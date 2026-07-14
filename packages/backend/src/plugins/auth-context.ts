@@ -162,7 +162,13 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
       const project = await loadProject.call(this, id);
       assertProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: this.orgRoles, projectRoles: this.projectRoles, orgPermissions: this.orgPermissions },
+        {
+          userId: user.id,
+          orgRoles: this.orgRoles,
+          projectRoles: this.projectRoles,
+          orgPermissions: this.orgPermissions,
+          projectSectionPermissions: this.projectSectionPermissions,
+        },
         resource,
         action,
       );

@@ -11,7 +11,7 @@ import { CURRENCY_CODES } from "@/lib/currency";
 
 const CURRENCY_CHOICES = CURRENCY_CODES.slice(0, 5);
 
-const ACCEPT = ".mpp,.xml,.xls,.xlsx,application/vnd.ms-project,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const ACCEPT = ".xml,.xls,.xlsx,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 interface ProgrammeStepProps {
   sessionId: string;
@@ -121,7 +121,7 @@ export function ProgrammeStep({ sessionId, onProjectCreated, onNext }: Omit<Prog
                 </svg>
               </div>
               <p className="mb-1 text-sm font-medium text-gray-900">Click to upload or drag and drop</p>
-              <p className="mb-4 text-xs text-gray-500">.mpp, .xml, or Excel files</p>
+              <p className="mb-4 text-xs text-gray-500">.xml or Excel files (in Microsoft Project: File &gt; Save As &gt; XML)</p>
               <Button onClick={() => fileInputRef.current?.click()} variant="secondary">Select File</Button>
               <input type="file" className="hidden" accept={ACCEPT} ref={fileInputRef} onChange={(e) => {
                 const file = e.target.files?.[0];

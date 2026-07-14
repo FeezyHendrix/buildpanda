@@ -95,27 +95,38 @@ export interface TaskSeed {
 
 export function projectsRepository(db: Knex) {
   return {
-    // Lists projects the user can see: ones they own, seed rows, projects in the
-    // given orgs where they have org-wide access (owner/admin/member/viewer —
-    // NOT employee), and projects they are an active participant on regardless
-    // of org. Employees only see their participant projects.
+    // Lists projects the user can see, scoped to the active workspace(s) passed
+    // in orgRoles: projects they own (personal, or in an active org), seed rows,
+    // projects in the active orgs where they have org-wide access (owner/admin/
+    // member/viewer — NOT employee), and projects they participate in within the
+    // active orgs. When no workspace is active (orgRoles empty), personal and
+    // participant projects remain visible so external stakeholders still see them.
     async listForUser(
       ownerId: string,
       orgRoles: ReadonlyMap<string, string>,
     ): Promise<ProjectRow[]> {
+      const activeOrgIds = [...orgRoles.keys()];
       const orgWideProjectOrgIds = [...orgRoles.entries()]
         .filter(([, role]) => !isEmployeeRole(role))
         .map(([orgId]) => orgId);
-      const participantProjectIds = await db("project_participants")
-        .where({ user_id: ownerId })
-        .whereNot("status", "revoked")
-        .pluck<string[]>("project_id");
+
+      const participantQuery = db("project_participants as pp")
+        .join("projects as p", "p.id", "pp.project_id")
+        .where("pp.user_id", ownerId)
+        .whereNot("pp.status", "revoked");
+      if (activeOrgIds.length) participantQuery.whereIn("p.organization_id", activeOrgIds);
+      const participantProjectIds = await participantQuery.pluck<string[]>("pp.project_id");
+
       return db<ProjectRow>("projects")
         .where(function () {
-          this.where("owner_id", ownerId)
-            .orWhere(function () {
-              this.whereNull("owner_id").whereNull("organization_id");
+          this.where(function () {
+            this.where("owner_id", ownerId).andWhere(function () {
+              this.whereNull("organization_id");
+              if (activeOrgIds.length) this.orWhereIn("organization_id", activeOrgIds);
             });
+          }).orWhere(function () {
+            this.whereNull("owner_id").whereNull("organization_id");
+          });
           if (orgWideProjectOrgIds.length) this.orWhereIn("organization_id", orgWideProjectOrgIds);
           if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
         })

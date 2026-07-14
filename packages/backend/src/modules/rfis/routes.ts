@@ -197,7 +197,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/rfis",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "rfis", "view");
       const user = request.requireAuth();
       return service.list(project.id, {
         status: request.query.status,
@@ -233,7 +233,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/rfis/:rfiId",
     { schema: { params: rfiParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "rfis", "view");
       return service.get(project.id, request.params.rfiId, !isCompanyCaller(request, project));
     },
   );
@@ -318,7 +318,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/rfis/:rfiId/distribution",
     { schema: { params: rfiParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "rfis", "view");
       return service.listDistribution(project.id, request.params.rfiId);
     },
   );

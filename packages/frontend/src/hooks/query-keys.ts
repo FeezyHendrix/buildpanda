@@ -294,7 +294,7 @@ export const messageKeys = {
 
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
-  board: (projectId: string) => [...taskKeys.all(projectId), "board"] as const,
+  board: (projectId: string, scope: "all" | "assigned" = "all") => [...taskKeys.all(projectId), "board", scope] as const,
   assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
@@ -305,4 +305,12 @@ export const materialLedgerKeys = {
   ledger: (projectId: string, materialId?: string, entryType?: string) =>
     [...materialLedgerKeys.all(projectId), "ledger", materialId ?? "all", entryType ?? "all"] as const,
   catalog: (projectId: string) => [...materialLedgerKeys.all(projectId), "catalog"] as const,
+};
+
+export const preconKeys = {
+  all: ["precon"] as const,
+  sessions: () => [...preconKeys.all, "sessions"] as const,
+  snapshot: (sessionId: string) => [...preconKeys.all, "snapshot", sessionId] as const,
+  progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
+  snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };

@@ -3,7 +3,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { RichTextEditor } from "@/components/molecules/rich-text-editor";
-import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
+import type { ComboItem } from "@/components/molecules/combo-select";
 import { toast } from "@/lib/toast";
 import type { Task, TaskPriority } from "@/lib/project-types";
 import {
@@ -39,14 +39,15 @@ export function UpsertTaskDialog({
   teamOptions: AssigneeOption[];
   selfId: string | null;
   submitting: boolean;
-  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignee: AssigneeOption | null; dueDate: string | null; priority: TaskPriority; labels: string[] }) => void;
+  onSubmit: (values: { title: string; description: string; descriptionHtml: string; assignees: AssigneeOption[]; dueDate: string | null; priority: TaskPriority; labels: string[] }) => void;
   onRequestDelete?: () => void;
   onOpenTask?: (taskId: string) => void;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
-  const [assigneeValue, setAssigneeValue] = useState<string>("");
+  const [assigneeValues, setAssigneeValues] = useState<string[]>([]);
+  const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [labels, setLabels] = useState<string[]>([]);
@@ -81,17 +82,19 @@ export function UpsertTaskDialog({
       setTitle(task?.title ?? "");
       setDescription(task?.description ?? "");
       setDescriptionHtml(task?.descriptionHtml ?? task?.description ?? "");
-      setAssigneeValue(
-        task?.assigneeId
-          ? `user:${task.assigneeId}`
-          : task?.assigneeTeamMemberId
-            ? `team:${task.assigneeTeamMemberId}`
-            : "",
+      setAssigneeValues(
+        task?.assignees?.map((assignee) => `${assignee.kind}:${assignee.id}`) ??
+          (task?.assigneeId
+            ? [`user:${task.assigneeId}`]
+            : task?.assigneeTeamMemberId
+              ? [`team:${task.assigneeTeamMemberId}`]
+              : []),
       );
       setDueDate(task?.dueDate ? task.dueDate.slice(0, 10) : "");
       setPriority(task?.priority ?? "Medium");
       setLabels(task?.labels ?? []);
       setLabelDraft("");
+      setAssigneePickerOpen(false);
     }
   }, [open, dialogKey]);
 
@@ -110,12 +113,23 @@ export function UpsertTaskDialog({
     setLabels((prev) => prev.filter((l) => l !== label));
   }
 
-  function resolveAssignee(): AssigneeOption | null {
-    if (!assigneeValue) return null;
-    const [kind, id] = assigneeValue.split(":");
-    const pool = kind === "team" ? teamOptions : userOptions;
-    const found = pool.find((o) => o.id === id);
-    return found ?? null;
+  function toggleAssignee(value: string): void {
+    setAssigneeValues((prev) =>
+      prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value],
+    );
+  }
+
+  function resolveAssignees(): AssigneeOption[] {
+    return assigneeValues.flatMap((value) => {
+      const [kind, id] = value.split(":");
+      const pool = kind === "team" ? teamOptions : userOptions;
+      const found = pool.find((o) => o.id === id);
+      return found ? [found] : [];
+    });
+  }
+
+  function assigneeLabel(value: string): string {
+    return assigneeItems.find((option) => option.id === value)?.label ?? value;
   }
 
   function handleSubmit(): void {
@@ -131,7 +145,7 @@ export function UpsertTaskDialog({
       title: title.trim(),
       description: isEmpty ? "" : description.trim(),
       descriptionHtml: isEmpty ? "" : html,
-      assignee: resolveAssignee(),
+      assignees: resolveAssignees(),
       dueDate: dueDate || null,
       priority,
       labels: finalLabels,
@@ -193,25 +207,72 @@ export function UpsertTaskDialog({
       />
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="task-assignee">Assignee</Label>
-          {selfId && assigneeValue !== `user:${selfId}` && (
+          <Label>Assignees</Label>
+          {selfId && !assigneeValues.includes(`user:${selfId}`) && (
             <button
               type="button"
-              onClick={() => setAssigneeValue(`user:${selfId}`)}
+              onClick={() => {
+                setAssigneeValues((prev) => [...prev, `user:${selfId}`]);
+                setAssigneePickerOpen(false);
+              }}
               className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
             >
               Assign to me
             </button>
           )}
         </div>
-        <ComboSelect
-          items={assigneeItems}
-          value={assigneeValue || null}
-          onChange={(v) => setAssigneeValue(v ?? "")}
-          placeholder="Unassigned"
-          searchPlaceholder="Search people or team…"
-          emptyText="No people found"
-        />
+        <div className="rounded-lg bg-[#F6F6F6] p-2">
+          <button
+            type="button"
+            onClick={() => setAssigneePickerOpen((prev) => !prev)}
+            aria-expanded={assigneePickerOpen}
+            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-left text-sm text-gray-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          >
+            <span className="min-w-0 flex-1 truncate text-gray-400">
+              {assigneeValues.length === 0
+                ? "Select assignees"
+                : assigneeValues.length === 1
+                  ? assigneeLabel(assigneeValues[0]!)
+                  : `${assigneeLabel(assigneeValues[0]!)} +${assigneeValues.length - 1}`}
+            </span>
+            <span className="text-gray-400">▾</span>
+          </button>
+          {assigneeValues.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {assigneeValues.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleAssignee(value)}
+                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:text-gray-900"
+                >
+                  {assigneeLabel(value)}
+                  <span className="text-gray-400">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {assigneePickerOpen && (
+            <div className="mt-2 max-h-44 overflow-y-auto rounded-md bg-white p-1">
+            {assigneeItems.map((item) => (
+              <label
+                key={item.id}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={assigneeValues.includes(item.id)}
+                  onChange={() => toggleAssignee(item.id)}
+                  className="size-4 rounded border-gray-300"
+                />
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.group && <span className="text-xs text-gray-400">{item.group}</span>}
+              </label>
+            ))}
+            {assigneeItems.length === 0 && <p className="px-2 py-1.5 text-sm text-gray-400">No people found</p>}
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-due">Due date (optional)</Label>

@@ -35,7 +35,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/insights",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const id = project.id;
 
       const [
@@ -101,7 +101,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/whats-next",
     { schema: { params: projectIdParams, querystring: whatsNextQuery } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const id = project.id;
       const days = request.query.days ?? 14;
       const nowIso = new Date().toISOString();
@@ -139,9 +139,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { querystring: whatsNextQuery } },
     async (request) => {
       const user = request.requireAuth();
-      const projects = await projectsRepository(db).listForUser(user.id, [
-        ...request.orgRoles.keys(),
-      ]);
+      const projects = await projectsRepository(db).listForUser(user.id, request.orgRoles);
       const days = request.query.days ?? 14;
       const nowIso = new Date().toISOString();
       const today = nowIso.slice(0, 10);

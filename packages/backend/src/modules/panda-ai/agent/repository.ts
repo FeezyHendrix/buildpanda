@@ -143,6 +143,51 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    preconBoqRows(projectId: string) {
+      return db("precon_boq_rows as row")
+        .join("precon_bills as bill", "bill.id", "row.bill_id")
+        .join("precon_sessions as session", "session.id", "bill.session_id")
+        .where("session.project_id", projectId)
+        .whereIn("row.row_type", ["item", "provisional_sum"])
+        .where((q) => q.whereNot("row.status", "rejected").orWhereNull("row.status"))
+        .orderBy([
+          { column: "session.created_at", order: "asc" },
+          { column: "row.sort", order: "asc" },
+        ])
+        .select(
+          "session.id as session_id",
+          "session.title as session_title",
+          "session.status as session_status",
+          "row.element_group",
+          "row.code",
+          "row.description",
+          "row.qty",
+          "row.unit",
+          "row.rate",
+          "row.amount",
+          "row.status",
+          "row.confidence",
+        );
+    },
+
+    boqItems(projectId: string) {
+      return db("proposal_boq_items as item")
+        .join("proposals as proposal", "proposal.id", "item.proposal_id")
+        .where("proposal.project_id", projectId)
+        .whereIn("proposal.status", ["Accepted", "Converted"])
+        .orderBy("item.sort", "asc")
+        .select(
+          "proposal.id as proposal_id",
+          "proposal.title as proposal_title",
+          "proposal.status as proposal_status",
+          "item.id",
+          "item.group_label",
+          "item.description",
+          "item.qty",
+          "item.unit",
+        );
+    },
+
     materialStock(projectId: string) {
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")

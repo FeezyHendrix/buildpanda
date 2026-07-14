@@ -15,12 +15,13 @@ export function uploadFileRequest(
 export interface UploadFileVariables {
   file: File;
   onProgress?: UploadProgressHandler;
+  projectId?: string;
 }
 
 export function useUploadFile() {
   return useMutation({
-    mutationFn: ({ file, onProgress }: UploadFileVariables) =>
-      filesApi.upload(file, onProgress),
+    mutationFn: ({ file, onProgress, projectId }: UploadFileVariables) =>
+      filesApi.upload(file, onProgress, projectId),
   });
 }
 

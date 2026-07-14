@@ -117,9 +117,22 @@ export function TaskCard({
             )}
           </div>
         )}
-        {(task.assigneeName || due || task.subtaskTotal > 0) && (
+        {(task.assignees.length > 0 || task.assigneeName || due || task.subtaskTotal > 0) && (
           <div className="mt-2.5 flex items-center gap-2">
-            {task.assigneeName ? (
+            {task.assignees.length > 0 ? (
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <div className="flex -space-x-1">
+                  {task.assignees.slice(0, 3).map((assignee) => (
+                    <Avatar key={`${assignee.kind}:${assignee.id}`} name={assignee.name} size="sm" />
+                  ))}
+                </div>
+                <span className="truncate text-xs text-gray-600">
+                  {task.assignees.length === 1
+                    ? task.assignees[0]!.name
+                    : `${task.assignees[0]!.name} +${task.assignees.length - 1}`}
+                </span>
+              </div>
+            ) : task.assigneeName ? (
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <Avatar name={task.assigneeName} size="sm" />
                 <span className="truncate text-xs text-gray-600">{task.assigneeName}</span>
