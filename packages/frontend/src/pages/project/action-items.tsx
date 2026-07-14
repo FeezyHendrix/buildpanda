@@ -30,6 +30,7 @@ import {
 import { useParticipants } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import type {
   ActionItem,
   ActionStatus,
@@ -59,7 +60,7 @@ function recurrenceLabel(
 
 export default function ProjectActionItems() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "action-items", "manage");
   const [filter, setFilter] = useState<ActionStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useActionItems(

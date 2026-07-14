@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import type { MilestonePayment } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { BudgetAllocationCard } from "./finances/budget-allocation-card";
@@ -28,8 +29,8 @@ import { BillingAuditCard } from "./finances/billing-audit-card";
 
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const canDispute = canManage || access?.relationship === "client";
+  const canManage = canResourceAction(access, "finances", "manage");
+  const canDispute = canManage || access?.relationship === "client" || canResourceAction(access, "finances", "dispute");
   const { data: finances, isPending } = useProjectFinances(project.id);
   const { data: snapshot } = useReportingSnapshot(project.id);
 

@@ -3,7 +3,11 @@ import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
 import { chatVision, type LlmTool } from "../../../lib/llm.ts";
-import { assertCanActAsClient, assertCanModifyProject } from "../../../lib/authorization.ts";
+import {
+  assertProjectPermission,
+  type ProjectSectionPermissions,
+} from "../../../lib/authorization.ts";
+import type { PermissionMap } from "../../../lib/permissions.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { tasksRepository } from "../../tasks/repository.ts";
 import { tasksService } from "../../tasks/service.ts";
@@ -31,6 +35,8 @@ export interface AgentCaller {
   project: { id: string; ownerId: string | null; organizationId: string | null };
   orgRoles: ReadonlyMap<string, string>;
   projectRoles: ReadonlyMap<string, string>;
+  orgPermissions: ReadonlyMap<string, PermissionMap>;
+  projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
 }
 
 export interface ToolContext {
@@ -38,6 +44,16 @@ export interface ToolContext {
   projectId: string;
   caller: AgentCaller;
   queue?: QueueManager;
+}
+
+function callerAccessContext(ctx: ToolContext) {
+  return {
+    userId: ctx.caller.user.id,
+    orgRoles: ctx.caller.orgRoles,
+    projectRoles: ctx.caller.projectRoles,
+    orgPermissions: ctx.caller.orgPermissions,
+    projectSectionPermissions: ctx.caller.projectSectionPermissions,
+  };
 }
 
 interface AgentTool {
@@ -640,11 +656,8 @@ export function buildTools(): AgentTool[] {
       assigneeId: { type: "string", description: "Optional user id to assign — only if a user id is known; do not guess" },
       dueDate: { type: "string", description: "Optional due date, YYYY-MM-DD" },
     }, ["title"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/tasks (requireProjectWrite).
-      assertCanModifyProject(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-      });
+      // Same check as POST /projects/:id/tasks (tasks:add).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "tasks", "add");
       const service = tasksService(tasksRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });
@@ -674,12 +687,8 @@ export function buildTools(): AgentTool[] {
       subject: { type: "string", description: "Short query subject (required)" },
       question: { type: "string", description: "The question body (required)" },
     }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/queries (staff with write access or client participant).
-      assertCanActAsClient(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-        projectRoles: ctx.caller.projectRoles,
-      });
+      // Same check as POST /projects/:id/queries (queries:raise).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "queries", "raise");
       const service = queriesService(queriesRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });
@@ -706,12 +715,8 @@ export function buildTools(): AgentTool[] {
       subject: { type: "string", description: "Short RFI subject (required)" },
       question: { type: "string", description: "The full question being asked (required)" },
     }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/rfis (staff with write access or client participant).
-      assertCanActAsClient(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-        projectRoles: ctx.caller.projectRoles,
-      });
+      // Same check as POST /projects/:id/rfis (rfis:create).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "rfis", "create");
       const service = rfisService(rfisRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });

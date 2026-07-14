@@ -8,6 +8,7 @@ import { setLogger } from "./lib/logger.ts";
 import { setLlmCallSink } from "./lib/llm.ts";
 import { llmCallsRepository } from "./modules/llm-calls/repository.ts";
 import databasePlugin from "./plugins/database.ts";
+import accessCachePlugin from "./plugins/access-cache.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
 import securityPlugin from "./plugins/security.ts";
@@ -135,6 +136,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(errorHandlerPlugin);
+  await app.register(accessCachePlugin);
   await app.register(authContextPlugin);
   await app.register(featureFlagsPlugin);
   await app.register(queuePlugin);

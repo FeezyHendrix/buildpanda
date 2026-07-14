@@ -25,10 +25,11 @@ import {
 } from "@/hooks/use-inspections";
 import { INSPECTION_STATUS_TONE, RISK_LEVEL_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
-import type {
-  InspectionCategory,
-  InspectionReport,
-  InspectionStatus,
+import {
+  canResourceAction,
+  type InspectionCategory,
+  type InspectionReport,
+  type InspectionStatus,
 } from "@/lib/project-types";
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
@@ -44,9 +45,12 @@ const FILTERS: InspectionCategory[] = [
 
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
-  const canRequestInspection =
-    (access?.capabilities?.canManage ?? false) ||
-    access?.relationship === "inspector";
+  const canRequestInspection = Boolean(
+    access && canResourceAction(access, "inspections", "request"),
+  );
+  const canManageInspections = Boolean(
+    access && canResourceAction(access, "inspections", "manage"),
+  );
   const { data: inspections = [] } = useProjectInspections(project.id);
   const [activeFilter, setActiveFilter] =
     useState<InspectionCategory>("All Reports");
@@ -142,7 +146,7 @@ export default function ProjectInspections() {
           <KanbanBoard
             items={visible}
             columns={INSPECTION_COLUMNS}
-            canManage={canRequestInspection}
+            canManage={canManageInspections}
             getId={(r) => r.id}
             getStatus={(r) => r.status}
             getTitle={(r) => r.title}

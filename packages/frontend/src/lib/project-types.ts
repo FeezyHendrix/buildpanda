@@ -423,6 +423,7 @@ export type StageStatus = PhaseStatus;
 
 export type KnownParticipantRole =
   | "client"
+  | "project_manager"
   | "architect"
   | "inspector"
   | "guest"

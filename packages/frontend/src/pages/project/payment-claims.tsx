@@ -25,6 +25,7 @@ import {
 } from "@/hooks/use-payment-claims";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
 import type { MilestonePayment } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 interface PaymentClaimValues {
@@ -376,7 +377,7 @@ function Metric({ label, value, accent = false }: { label: string; value: string
 
 export default function ProjectPaymentClaims() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: claims = [], isPending } = usePaymentClaims(project.id);
   const { data: finances } = useProjectFinances(project.id);

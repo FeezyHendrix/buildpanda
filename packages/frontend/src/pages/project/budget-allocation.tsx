@@ -13,6 +13,7 @@ import {
 import { useProjectContext } from "@/layouts/project-layout";
 import { useCreateBudgetCategory } from "@/hooks/use-budget";
 import { useProjectFinances } from "@/hooks/use-finances";
+import { canResourceAction } from "@/lib/project-types";
 
 import { AllocationBreakdown } from "./budget-allocation/allocation-breakdown";
 import { PlannedVsActualChart } from "./budget-allocation/planned-vs-actual-chart";
@@ -32,7 +33,7 @@ function toCategoryInput(values: UpsertBudgetCategoryValues) {
 // ── Main page ─────────────────────────────────────────────────────────────
 export default function ProjectBudgetAllocation() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const { data: finances, isPending } = useProjectFinances(project.id);
   const createCategory = useCreateBudgetCategory();
   const [createOpen, setCreateOpen] = useState(false);

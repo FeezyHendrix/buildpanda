@@ -18,7 +18,7 @@ import {
   useUpdateStage,
 } from "@/hooks/use-stages";
 import { cn } from "@/lib/utils";
-import type { Stage, StageStatus } from "@/lib/project-types";
+import { canResourceAction, type Stage, type StageStatus } from "@/lib/project-types";
 import { KpiCard, ProgressBar } from "@/components";
 import { icons } from "@/assets/icons/icons";
 
@@ -59,7 +59,7 @@ const TABS: { key: FilterTab; label: string }[] = [
 
 export default function ProjectStages() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { data: stages = [], isLoading } = useStages(project.id);
   const createStage = useCreateStage();
   const updateStage = useUpdateStage();

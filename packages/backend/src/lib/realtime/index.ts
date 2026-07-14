@@ -17,7 +17,8 @@ export type RealtimeEvent =
   | "row.verified"
   | "row.rejected"
   | "geometry.updated"
-  | "precon.progress";
+  | "precon.progress"
+  | "access.updated";
 
 export interface RealtimePayload {
   event: RealtimeEvent;

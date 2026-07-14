@@ -1,9 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanActAsClient } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { changeRequestsRepository } from "../change-requests/repository.ts";
 import { changeRequestsService } from "../change-requests/service.ts";
 import { selectionsRepository } from "./repository.ts";
@@ -127,7 +124,6 @@ const selectionSchema = {
 } as const;
 
 const selectionRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const notifications = notificationsService(notificationsRepository(fastify.db), fastify.queue);
   const service = selectionsService(selectionsRepository(fastify.db), { notifications });
   const changeRequests = changeRequestsService(changeRequestsRepository(fastify.db), {
@@ -188,14 +184,12 @@ const selectionRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: selectionParams, body: decideBody, response: { 200: selectionSchema } } },
     async (request) => {
       const user = request.requireAuth();
-      const project = await projects.findById(request.params.id);
-      if (!project) throw new NotFoundError("Project");
-      // The homeowner (client) makes the choice, and company staff can record it
-      // on their behalf. assertCanActAsClient blocks viewers and unrelated users
-      // — the same gate approvals use for client decisions.
-      assertCanActAsClient(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
+      // Homeowner (client), company staff, or any participant granted
+      // selections:decide via role default or section matrix.
+      const project = await request.requireProjectPermission(
+        request.params.id,
+        "selections",
+        "decide",
       );
       return service.decide(project.id, request.params.selectionId, request.body.optionId, user.id);
     },
