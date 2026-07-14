@@ -3,6 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { Avatar } from "@/components/atoms/avatar";
 import { formatTimeAgo, formatShortDate } from "@/lib/formatters";
 import { useTaskDetail, useAddTaskComment } from "@/hooks/use-tasks";
+import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 
 function formatWhen(value: string): string {
@@ -10,6 +11,8 @@ function formatWhen(value: string): string {
 }
 
 export function TaskComments({ projectId, taskId }: { projectId: string; taskId: string }) {
+  const { access } = useProjectContext();
+  const canComment = access?.capabilities?.canComment ?? false;
   const { data: detail } = useTaskDetail(projectId, taskId);
   const addComment = useAddTaskComment(projectId, taskId);
   const [comment, setComment] = useState("");
@@ -48,33 +51,35 @@ export function TaskComments({ projectId, taskId }: { projectId: string; taskId:
         </ul>
       )}
 
-      <div className="mt-4 flex flex-col gap-2">
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submitComment();
-            }
-          }}
-          rows={2}
-          placeholder="Add a comment…"
-          className="w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-        <div className="flex items-center justify-end">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={submitComment}
-            disabled={!comment.trim() || addComment.isPending}
-            loading={addComment.isPending}
-          >
-            Comment
-          </Button>
+      {canComment && (
+        <div className="mt-4 flex flex-col gap-2">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submitComment();
+              }
+            }}
+            rows={2}
+            placeholder="Add a comment…"
+            className="w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          />
+          <div className="flex items-center justify-end">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={submitComment}
+              disabled={!comment.trim() || addComment.isPending}
+              loading={addComment.isPending}
+            >
+              Comment
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -10,9 +10,10 @@ import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { useProjectInvoices } from "@/hooks/use-invoices";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useAddEntityLink, useDeleteEntityLink } from "@/hooks/use-tasks";
+import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { TaskEntityLink, TaskEntityType } from "@/lib/project-types";
+import { canResourceAction, type TaskEntityLink, type TaskEntityType } from "@/lib/project-types";
 import { ENTITY_META, ENTITY_ORDER, FIELD } from "./task-ui";
 
 export function TaskEntityLinks({
@@ -25,6 +26,8 @@ export function TaskEntityLinks({
   entityLinks: TaskEntityLink[];
 }) {
   const navigate = useNavigate();
+  const { access } = useProjectContext();
+  const canManageTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const addEntityLink = useAddEntityLink(projectId, taskId);
   const deleteEntityLink = useDeleteEntityLink(projectId, taskId);
 
@@ -114,14 +117,16 @@ export function TaskEntityLinks({
                       </span>
                     )}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteEntityLink.mutate(link.id)}
-                    aria-label="Remove linked item"
-                    className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                  >
-                    ✕
-                  </button>
+                  {canManageTasks && (
+                    <button
+                      type="button"
+                      onClick={() => deleteEntityLink.mutate(link.id)}
+                      aria-label="Remove linked item"
+                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -129,36 +134,38 @@ export function TaskEntityLinks({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
-        <div className="flex gap-2">
-          <select
-            value={entityType}
-            onChange={(e) => {
-              setEntityType(e.target.value as TaskEntityType);
-              setEntityTarget(null);
-            }}
-            className={cn(FIELD, "h-9 w-36 shrink-0")}
-          >
-            {ENTITY_ORDER.map((t) => (
-              <option key={t} value={t}>{ENTITY_META[t].label}</option>
-            ))}
-          </select>
-          <div className="min-w-0 flex-1">
-            <ComboSelect
-              items={pickerItems}
-              value={entityTarget}
-              onChange={setEntityTarget}
-              placeholder={`Search ${ENTITY_META[entityType].label.toLowerCase()}…`}
-              searchPlaceholder="Search…"
-              emptyText="Nothing to link"
-              className="h-9"
-            />
+      {canManageTasks && (
+        <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
+          <div className="flex gap-2">
+            <select
+              value={entityType}
+              onChange={(e) => {
+                setEntityType(e.target.value as TaskEntityType);
+                setEntityTarget(null);
+              }}
+              className={cn(FIELD, "h-9 w-36 shrink-0")}
+            >
+              {ENTITY_ORDER.map((t) => (
+                <option key={t} value={t}>{ENTITY_META[t].label}</option>
+              ))}
+            </select>
+            <div className="min-w-0 flex-1">
+              <ComboSelect
+                items={pickerItems}
+                value={entityTarget}
+                onChange={setEntityTarget}
+                placeholder={`Search ${ENTITY_META[entityType].label.toLowerCase()}…`}
+                searchPlaceholder="Search…"
+                emptyText="Nothing to link"
+                className="h-9"
+              />
+            </div>
           </div>
+          <Button variant="ghost" size="sm" onClick={submitEntityLink} disabled={!entityTarget} className="self-end">
+            Add link
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={submitEntityLink} disabled={!entityTarget} className="self-end">
-          Add link
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

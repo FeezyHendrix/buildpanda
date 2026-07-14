@@ -251,22 +251,24 @@ export default function ProjectActionItems() {
                     )}
                   </div>
                 </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditItem(item)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteId(item.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
+                {canManage && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditItem(item)}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(item.id)}
+                      className="text-xs font-medium text-red-500 hover:text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </Card>
             ))
           )}
