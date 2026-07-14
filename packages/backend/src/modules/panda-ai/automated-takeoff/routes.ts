@@ -63,7 +63,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/takeoff",
     { schema: { params: idParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "materials", "request");
       const user = request.requireAuth();
       const part = await request.file();
       if (!part) throw new BadRequestError("No file uploaded");
@@ -91,7 +91,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/takeoff",
     { schema: { params: idParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const rows = await jobs.listByProject(project.id);
       return rows.map(toDto);
     },
@@ -101,7 +101,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/takeoff/:jobId",
     { schema: { params: jobParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const job = await jobs.findById(request.params.jobId, project.id);
       if (!job) throw new NotFoundError("Take-off job");
       return toDto(job);

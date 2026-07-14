@@ -42,6 +42,14 @@ function roleLabel(role: string): string {
   return ROLE_LABEL[role] ?? role;
 }
 
+// A real display name only when it is present and not just a copy of the email,
+// so the card shows "name / email" and never "email / email".
+function displayName(participant: ProjectParticipant): string | null {
+  const name = participant.name?.trim();
+  if (!name || name.toLowerCase() === participant.email.toLowerCase()) return null;
+  return name;
+}
+
 export default function ProjectTeam() {
   const { project } = useProjectContext();
 
@@ -103,12 +111,12 @@ export default function ProjectTeam() {
           <button
             type="button"
             onClick={openInvite}
-            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
+            className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300">
-              <PlusIcon className="size-3.5 text-gray-400" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 transition-colors group-hover:border-[#004DE7]">
+              <PlusIcon className="size-3.5 text-gray-400 transition-colors group-hover:text-[#004DE7]" />
             </div>
-            <span className="text-sm text-gray-400">Invite someone…</span>
+            <span className="text-sm text-gray-400 transition-colors group-hover:text-[#004DE7]">Invite someone…</span>
           </button>
         </div>
       </section>
@@ -211,16 +219,16 @@ function ParticipantRow({
       )}
     >
       <Avatar
-        name={participant.name ?? participant.email}
+        name={displayName(participant) ?? participant.email}
         size="sm"
         className="shrink-0"
       />
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-gray-900">
-          {participant.name ?? participant.email}
+          {displayName(participant) ?? participant.email}
         </p>
-        {participant.name && (
+        {displayName(participant) && (
           <p className="truncate text-xs text-gray-400">{participant.email}</p>
         )}
       </div>

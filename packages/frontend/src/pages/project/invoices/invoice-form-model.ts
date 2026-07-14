@@ -1,4 +1,4 @@
-import { type InvoiceStatus, type InvoiceType } from "@/hooks/use-invoices";
+import { type InvoiceStatus, type InvoiceType, type ExtractedInvoice } from "@/hooks/use-invoices";
 
 export interface UpsertLineItem {
   description: string;
@@ -121,5 +121,34 @@ export function sanitizeInvoice(
     lineItems: values.lineItems.filter(
       (li) => li.description.trim().length > 0,
     ),
+  };
+}
+
+const numToField = (n: number | null): string => (n === null ? "" : String(n));
+
+export function draftToInvoiceValues(
+  draft: ExtractedInvoice,
+  fallbackCurrency: string,
+): UpsertInvoiceValues {
+  const lineItems: UpsertLineItem[] = draft.lineItems.map((li) => ({
+    description: li.description,
+    quantity: li.quantity === null ? "1" : String(li.quantity),
+    unit: li.unit ?? "",
+    unitRate: numToField(li.unitRate),
+  }));
+
+  return {
+    ...EMPTY_INVOICE,
+    vendorName: draft.vendorName ?? "",
+    number: draft.invoiceNumber ?? "",
+    currency: draft.currency ?? fallbackCurrency,
+    vatRate: draft.vatRate === null ? EMPTY_INVOICE.vatRate : String(draft.vatRate),
+    whtRate: draft.whtRate === null ? EMPTY_INVOICE.whtRate : String(draft.whtRate),
+    retentionRate:
+      draft.retentionRate === null ? EMPTY_INVOICE.retentionRate : String(draft.retentionRate),
+    issueDate: draft.issueDate ?? "",
+    dueDate: draft.dueDate ?? "",
+    notes: draft.notes ?? "",
+    lineItems: lineItems.length > 0 ? lineItems : [emptyLine()],
   };
 }

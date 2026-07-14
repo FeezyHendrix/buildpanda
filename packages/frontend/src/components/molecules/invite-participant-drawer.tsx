@@ -73,13 +73,17 @@ export function InviteParticipantDrawer({
     setRole(r);
     setShowCustomRole(false);
     setCustomRole("");
-    setPermissions({ ...ROLE_DEFAULTS[r] });
+    // Edit mode must not discard grants already made: existing choices win over
+    // role defaults (spread prev last). A fresh invite has nothing to preserve.
+    setPermissions((prev) =>
+      isEdit ? { ...ROLE_DEFAULTS[r], ...prev } : { ...ROLE_DEFAULTS[r] },
+    );
   }
 
   function handleCustomRoleChange(value: string) {
     setCustomRole(value);
     setRole(value.trim());
-    if (value.trim()) setPermissions({});
+    if (value.trim() && !isEdit) setPermissions({});
   }
 
   function handlePermission(key: string, value: SectionPermission) {
@@ -191,7 +195,7 @@ export function InviteParticipantDrawer({
             <button
               type="button"
               onClick={() => setShowCustomRole(true)}
-              className="py-1 text-left text-xs font-medium text-gray-400 transition-colors hover:text-brand"
+              className="py-1 text-left text-xs font-medium text-gray-400 transition-colors hover:text-[#004DE7] hover:underline"
             >
               + Add custom role
             </button>

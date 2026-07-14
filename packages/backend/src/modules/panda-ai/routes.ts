@@ -75,7 +75,7 @@ const pandaAiRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/insights",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       return { insight: await service.getLatest(project.id) };
     },
   );
@@ -95,7 +95,7 @@ const pandaAiRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/ai/detect-phases",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
       const orders = await materials.listMaterialOrders(request.params.id);
       const materialNames = orders.map((order) => order.materialName).filter(Boolean);
       return detectPhases(project.name, materialNames);

@@ -199,7 +199,7 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/channels",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "messages", "view");
       const user = request.requireAuth();
       const members = await projectMemberIds(fastify.db, project.id);
       if (project.owner_id) members.push(project.owner_id);

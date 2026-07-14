@@ -76,7 +76,7 @@ export const projectFileImportApi = {
     return api.post<ProjectFileJob>(
       `/project-files/extract${query}`,
       form,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 }
     ).then((r) => r.data);
   },
 

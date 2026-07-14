@@ -66,7 +66,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "teamMembers", "view");
       return service.listByProject(project.id);
     },
   );
@@ -75,7 +75,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members",
     { schema: { params: projectIdParams, body: createMemberBody } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "teamMembers", "manage");
       const user = request.requireAuth();
       const member = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(member);
@@ -89,7 +89,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members/:memberId",
     { schema: { params: memberParams, body: editMemberBody } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "teamMembers", "manage");
       return service.edit(project.id, request.params.memberId, request.body);
     },
   );
@@ -98,7 +98,7 @@ const teamMemberRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/team-members/:memberId",
     { schema: { params: memberParams } },
     async (request, reply) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "teamMembers", "manage");
       await service.remove(project.id, request.params.memberId);
       return reply.status(204).send();
     },

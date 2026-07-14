@@ -46,7 +46,7 @@ function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
         the process from anywhere in the world.
       </p>
 
-      <div className="mt-8 flex gap-5">
+      <div className="mt-8 flex flex-col lg:flex-row gap-5">
         {options.map((option) => (
           <OptionCard
             key={option.type}

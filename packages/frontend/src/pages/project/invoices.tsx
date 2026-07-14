@@ -1,7 +1,7 @@
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
@@ -15,10 +15,12 @@ import { useProjectInvoices } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
 import { InvoiceCard } from "./invoices/invoice-card";
 import { SummaryTile } from "./invoices/summary-tile";
+import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
 
 export default function ProjectInvoices() {
   const { project, access } = useProjectContext();
   const navigate = useNavigate();
+  const [scanOpen, setScanOpen] = useState(false);
   const canManage = access?.capabilities?.canManage ?? false;
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
@@ -57,10 +59,15 @@ export default function ProjectInvoices() {
         description="Track vendor invoices, retainage withheld, and payments made across the project."
         actions={
           canManage ? (
-            <Button variant="primary" size="md" onClick={goToCreate}>
-              <PlusIcon className="size-4" />
-              New invoice
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+                Scan invoice
+              </Button>
+              <Button variant="primary" size="md" onClick={goToCreate}>
+                <PlusIcon className="size-4" />
+                New invoice
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -113,10 +120,15 @@ export default function ProjectInvoices() {
               description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
               action={
                 canManage ? (
-                  <Button variant="primary" size="md" onClick={goToCreate}>
-                    <PlusIcon className="size-4" />
-                    New invoice
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+                      Scan invoice
+                    </Button>
+                    <Button variant="primary" size="md" onClick={goToCreate}>
+                      <PlusIcon className="size-4" />
+                      New invoice
+                    </Button>
+                  </div>
                 ) : undefined
               }
             />
@@ -134,6 +146,11 @@ export default function ProjectInvoices() {
           </div>
         )}
       </section>
+      <ScanInvoiceDialog
+        projectId={project.id}
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+      />
     </div>
   );
 }

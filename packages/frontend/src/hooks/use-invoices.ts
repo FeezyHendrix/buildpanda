@@ -14,6 +14,12 @@ export type {
   PaymentInput,
   SendInvoiceInput,
   InvoiceAllocation,
+  ExtractedInvoice,
+  ExtractedInvoiceLineItem,
+  ExtractedInvoiceParty,
+  InvoiceScanResult,
+  InvoiceDocumentKind,
+  InvoiceScanConfidence,
 } from "@/api/invoices";
 import { invoiceKeys } from "./query-keys";
 
@@ -140,6 +146,12 @@ export function useSendInvoice() {
 export function useInvoicePdf() {
   return useMutation({
     mutationFn: ({ projectId, invoiceId }: { projectId: string; invoiceId: string }) => invoicesApi.pdf(projectId, invoiceId),
+  });
+}
+
+export function useScanInvoice() {
+  return useMutation({
+    mutationFn: ({ projectId, fileId }: { projectId: string; fileId: string }) => invoicesApi.scan(projectId, fileId),
   });
 }
 

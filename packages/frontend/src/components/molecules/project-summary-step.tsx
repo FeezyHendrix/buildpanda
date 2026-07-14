@@ -103,9 +103,9 @@ function BlueprintPage({
     return (
       <div className="space-y-0">
         <div className="flex items-start justify-between border-b border-gray-200 pb-6">
-          <img src={logo} alt="BuildPanda" className="h-8" />
+          <img src={logo} alt="BuildPanda" className="h-6 lg:h-8" />
           <div className="flex-1 text-right">
-            <h2 className="text-xl font-bold text-gray-900 text-balance">
+            <h2 className="text-sm lg:text-xl font-bold text-black-500 text-balance">
               Your Project Blueprint
             </h2>
             <p className="mt-1 text-xs text-gray-500 text-pretty">
@@ -122,12 +122,12 @@ function BlueprintPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 border-b border-gray-200 py-6">
+        <div className="grid grid-cols-1 gap-4 border-b border-gray-200 py-6 sm:grid-cols-2 sm:gap-6">
           <div>
             <p className="mb-1 text-xs font-medium text-gray-500">
               Estimated Cost Range
             </p>
-            <p className="text-lg font-bold text-gray-900">
+            <p className="text-base font-bold text-gray-900 sm:text-lg">
               {formatBudget(data.currency, data.budget)}
             </p>
           </div>
@@ -135,7 +135,7 @@ function BlueprintPage({
             <p className="mb-1 text-xs font-medium text-gray-500">
               Estimated Timeline
             </p>
-            <p className="text-lg font-bold text-gray-900">{timelineLabel}</p>
+            <p className="text-base font-bold text-gray-900 sm:text-lg">{timelineLabel}</p>
           </div>
         </div>
 
@@ -287,27 +287,18 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
   const pages = Array.from({ length: Math.max(totalPages, 2) }, (_, i) => i);
 
   return (
-    <div className="flex gap-10 px-4 py-8">
-      <div className="w-[60%] shrink-0">
-        <div
-          ref={contentRef}
-          className="rounded-sm border border-gray-200 bg-white p-8 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-          style={{ minHeight: PDF_PAGE_HEIGHT }}
-        >
-          <BlueprintPage data={data} pageIndex={activePage} hideManagement={hideManagement} />
-        </div>
-      </div>
+    <div className="flex flex-col gap-6 px-0 py-2 lg:flex-row lg:gap-10 lg:px-8 lg:py-4">
 
-      <div className="flex flex-1 flex-col items-center justify-center py-4">
-        <div className="w-full max-w-sm">
-        <div className="mb-6 space-y-1">
+      {/* Mobile-only: page tabs + download above the blueprint */}
+      <div className="flex flex-col gap-4 lg:hidden">
+        <div className="flex w-full gap-2">
           {pages.map((pageIdx) => (
             <button
               key={pageIdx}
               type="button"
               onClick={() => setActivePage(pageIdx)}
               className={cn(
-                "block w-full rounded px-4 py-3 text-left text-sm font-medium transition-colors",
+                "block w-full rounded-lg px-4 py-2 text-sm font-medium transition-colors",
                 activePage === pageIdx
                   ? "bg-[#F6F6F6] text-gray-900"
                   : "text-gray-500 hover:text-gray-700",
@@ -317,42 +308,86 @@ function ProjectSummaryStep({ data, onEdit, onStart, isStarting = false, hideMan
             </button>
           ))}
         </div>
-
         <button
           type="button"
-          className="mb-8 flex w-full items-center justify-end gap-2 text-sm font-medium text-[#004DE7] hover:opacity-80"
+          className="flex w-full items-center justify-end gap-1.5 text-sm font-medium text-[#004DE7] hover:opacity-80"
           onClick={() => window.print()}
         >
           <DownloadIcon />
           Download PDF
         </button>
+      </div>
 
-        <hr className="mb-8 border-gray-200" />
-
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-[25px] font-bold text-gray-900 text-balance">
-              Ready to break ground?
-            </h2>
-            <p className="mt-3 text-sm text-gray-500 leading-relaxed text-pretty">
-              Our team is ready to bring your project to life. Review your
-              blueprint and kick off construction when you're ready.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <Button className="w-full" onClick={onStart} disabled={isStarting}>
-              {isStarting ? "Creating…" : "Start Your Project"}
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full border border-[#004DE7] text-[#004DE7] hover:bg-[#004DE7]/5"
-              onClick={() => onEdit(1)}
-            >
-              Modify Blueprint
-            </Button>
+      {/* Blueprint preview */}
+      <div className="w-full lg:w-[60%] lg:shrink-0">
+        <div className="overflow-x-auto">
+          <div
+            ref={contentRef}
+            className="min-w-[300px] rounded-sm border border-gray-200 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] lg:p-8"
+            style={{ minHeight: PDF_PAGE_HEIGHT }}
+          >
+            <BlueprintPage data={data} pageIndex={activePage} hideManagement={hideManagement} />
           </div>
         </div>
+      </div>
+
+      {/* Sidebar — desktop only for page nav + download; CTA always visible */}
+      <div className="flex w-full flex-col lg:flex-1 lg:items-center lg:justify-center lg:py-4">
+        <div className="w-full lg:max-w-sm">
+          {/* Page tabs + download — desktop only */}
+          <div className="hidden lg:block">
+            <div className="mb-6 space-y-1">
+              {pages.map((pageIdx) => (
+                <button
+                  key={pageIdx}
+                  type="button"
+                  onClick={() => setActivePage(pageIdx)}
+                  className={cn(
+                    "block w-full rounded-lg px-4 py-2.5 text-left text-sm font-medium transition-colors",
+                    activePage === pageIdx
+                      ? "bg-[#F6F6F6] text-gray-900"
+                      : "text-gray-500 hover:text-gray-700",
+                  )}
+                >
+                  Page {pageIdx + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="mb-8 flex w-full items-center justify-end gap-2 text-sm font-medium text-[#004DE7] hover:opacity-80"
+              onClick={() => window.print()}
+            >
+              <DownloadIcon />
+              Download PDF
+            </button>
+            <hr className="mb-8 border-gray-200" />
+          </div>
+
+          <div className="space-y-5 lg:space-y-6">
+            <div>
+              <h2 className="text-[22px] font-bold text-balance text-gray-900 lg:text-[25px]">
+                Ready to break ground?
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-pretty text-gray-500 lg:mt-3">
+                Our team is ready to bring your project to life. Review your
+                blueprint and kick off construction when you're ready.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button className="w-full" onClick={onStart} disabled={isStarting}>
+                {isStarting ? "Creating…" : "Start Your Project"}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full border border-[#004DE7] text-[#004DE7] hover:bg-[#004DE7]/5"
+                onClick={() => onEdit(1)}
+              >
+                Modify Blueprint
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

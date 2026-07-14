@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { icons } from "@/assets/icons/icons";
 
 const ACCEPT =
-  ".mpp,.xml,.xls,.xlsx,application/vnd.ms-project,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  ".xml,.xls,.xlsx,text/xml,application/xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export function UploadState({
   isPending,
@@ -56,7 +56,7 @@ export function UploadState({
           Drag and drop your file here, or click to browse.
         </span>
         <span className="mt-3 text-xs font-medium text-gray-400">
-          Accepts .mpp · .xml · .xls · .xlsx
+          Accepts .xml · .xls · .xlsx
         </span>
       </button>
 

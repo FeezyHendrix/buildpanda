@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type {
   SubtaskRow,
   TaskBoardRow,
+  TaskAssigneeRow,
   TaskColumnRow,
   TaskCommentRow,
   TaskEntityLinkRow,
@@ -60,9 +61,7 @@ const TASK_SELECT = [
   "t.description",
   "t.description_html",
   "t.assignee_id",
-  "u.name as assignee_name",
   "t.assignee_team_member_id",
-  "tm.name as assignee_team_member_name",
   "t.due_date",
   "t.priority",
   "t.labels",
@@ -92,8 +91,6 @@ const ENTITY_SOURCES: Record<
 export function tasksRepository(db: Knex) {
   function taskBase() {
     return db("tasks as t")
-      .leftJoin("user as u", "u.id", "t.assignee_id")
-      .leftJoin("team_members as tm", "tm.id", "t.assignee_team_member_id")
       .leftJoin("user as creator", "creator.id", "t.created_by_id");
   }
 
@@ -188,6 +185,48 @@ export function tasksRepository(db: Knex) {
 
     async createTask(record: NewTaskRecord): Promise<void> {
       await db("tasks").insert(record);
+    },
+
+    async replaceTaskAssignees(
+      taskId: string,
+      assignees: ReadonlyArray<{ assignee_id: string | null; assignee_team_member_id: string | null }>,
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("task_assignees").where({ task_id: taskId }).delete();
+        if (assignees.length === 0) return;
+        await trx("task_assignees").insert(
+          assignees.map((assignee) => ({
+            task_id: taskId,
+            assignee_id: assignee.assignee_id,
+            assignee_team_member_id: assignee.assignee_team_member_id,
+          })),
+        );
+      });
+    },
+
+    async listAssigneesByTaskIds(taskIds: string[]): Promise<TaskAssigneeRow[]> {
+      if (taskIds.length === 0) return [];
+      return db("task_assignees as ta")
+        .leftJoin("user as u", "u.id", "ta.assignee_id")
+        .leftJoin("team_members as tm", "tm.id", "ta.assignee_team_member_id")
+        .whereIn("ta.task_id", taskIds)
+        .select(
+          "ta.task_id",
+          "ta.assignee_id",
+          "u.name as assignee_name",
+          "ta.assignee_team_member_id",
+          "tm.name as assignee_team_member_name",
+        ) as Promise<TaskAssigneeRow[]>;
+    },
+
+    async taskAssignedToUser(projectId: string, taskId: string, userId: string): Promise<boolean> {
+      const row = await db("task_assignees as ta")
+        .join("tasks as t", "t.id", "ta.task_id")
+        .where("t.project_id", projectId)
+        .where("ta.task_id", taskId)
+        .where("ta.assignee_id", userId)
+        .first();
+      return Boolean(row);
     },
 
     async updateTask(id: string, patch: TaskUpdatePatch): Promise<void> {

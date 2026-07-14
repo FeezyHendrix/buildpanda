@@ -24,6 +24,7 @@ import {
   type UpsertBudgetPeriodValues,
 } from "@/components/molecules/upsert-budget-period-dialog";
 import { formatCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 import { CategoryCard } from "./budget/category-card";
@@ -31,7 +32,7 @@ import { PeriodCard } from "./budget/period-card";
 import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
 export default function ProjectBudget() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "finances", "manage"));
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(

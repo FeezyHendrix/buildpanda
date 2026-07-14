@@ -90,7 +90,7 @@ export const materialsEquipmentApi = {
   startBoqImport: (projectId: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return api.post<BoqImportJob>(`/projects/${projectId}/materials/import`, form, { headers: { "Content-Type": "multipart/form-data" } }).then(r => r.data);
+    return api.post<BoqImportJob>(`/projects/${projectId}/materials/import`, form, { headers: { "Content-Type": "multipart/form-data" }, timeout: 0 }).then(r => r.data);
   },
   
   getBoqImportJob: (projectId: string, jobId: string) =>

@@ -222,7 +222,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/participants",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectWrite(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "participants", "view");
       const rows = await db<ParticipantRow>("project_participants as p")
         .leftJoin("user as u", "u.id", "p.user_id")
         .where("p.project_id", project.id)
@@ -474,7 +474,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/access",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectAccess(request.params.id);
+      const project = await request.requireProjectPermission(request.params.id, "participants", "view");
       return computeAccess(project, request);
     },
   );

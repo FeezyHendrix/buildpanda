@@ -5,12 +5,15 @@ import { Label } from "@/components/atoms/label";
 import { Button } from "@/components/atoms/button";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
 import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const selectClass = cn(
   "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
   "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
 );
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -48,10 +51,15 @@ export default function SalesSettings() {
   }, [profile]);
 
   function handleSave() {
+    const normalizedContactEmail = contactEmail.trim().toLowerCase();
+    if (normalizedContactEmail && !EMAIL_PATTERN.test(normalizedContactEmail)) {
+      toast("Enter a valid contact email");
+      return;
+    }
     update.mutate({
       phone: phone.trim() || null,
       address: address.trim() || null,
-      contactEmail: contactEmail.trim() || null,
+      contactEmail: normalizedContactEmail || null,
       website: website.trim() || null,
       defaultCurrency,
       defaultTaxLabel: defaultTaxLabel.trim(),
@@ -89,6 +97,7 @@ export default function SalesSettings() {
               type="email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
+              onBlur={(e) => setContactEmail(e.target.value.trim().toLowerCase())}
               placeholder="billing@example.com"
             />
           </FieldRow>
