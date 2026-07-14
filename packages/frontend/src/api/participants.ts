@@ -26,6 +26,7 @@ export interface UpdateParticipantInput {
 export interface PermissionCatalog {
   resources: Record<string, string[]>;
   privileged: Record<string, string[]>;
+  presets: Record<string, Record<string, string[]>>;
 }
 
 export interface ProjectInvitePreview {

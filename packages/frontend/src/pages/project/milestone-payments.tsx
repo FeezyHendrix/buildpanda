@@ -35,7 +35,7 @@ export default function ProjectMilestonePayments() {
   const location = useLocation();
   const isUnderSchedules = location.pathname.includes("/schedules");
   const canManage = canResourceAction(access, "finances", "manage");
-  const canDispute = canManage || access?.relationship === "client" || canResourceAction(access, "finances", "dispute");
+  const canDispute = canManage || canResourceAction(access, "finances", "dispute");
   const { data: finances, isPending } = useProjectFinances(project.id);
 
   const [upsertOpen, setUpsertOpen] = useState(false);

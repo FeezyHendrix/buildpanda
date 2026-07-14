@@ -392,10 +392,12 @@ function PurchaseOrderCard({
   purchaseOrder,
   projectId,
   currency,
+  canManage,
 }: {
   purchaseOrder: PurchaseOrder;
   projectId: string;
   currency: string;
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -427,10 +429,12 @@ function PurchaseOrderCard({
             {purchaseOrder.expectedDate ? ` · Expected ${purchaseOrder.expectedDate}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -597,6 +601,7 @@ export default function ProjectPurchaseOrders() {
                 purchaseOrder={purchaseOrder}
                 projectId={project.id}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>

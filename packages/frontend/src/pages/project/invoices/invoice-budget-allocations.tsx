@@ -14,10 +14,12 @@ export function InvoiceBudgetAllocations({
   projectId,
   invoice,
   currency,
+  canManage,
 }: {
   projectId: string;
   invoice: Invoice;
   currency: string;
+  canManage: boolean;
 }) {
   const { data: budget } = useProjectBudget(projectId);
   const { data: allocationsData = [], isPending } = useInvoiceAllocations(
@@ -97,40 +99,53 @@ export function InvoiceBudgetAllocations({
         Charge to budget category
       </p>
       <div className="flex flex-col gap-2">
-        {allocations.map((a, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <select
-              value={a.categoryId}
-              onChange={(e) => updateRow(i, "categoryId", e.target.value)}
-              className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm"
-            >
-              {budget.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <MoneyInput
-              currencySymbol={currencySymbol(currency)}
-              value={a.amount}
-              onChange={(val) => updateRow(i, "amount", val)}
-              className="h-9 w-32 rounded-lg border border-gray-200 px-3 text-sm"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 text-red-500"
-              onClick={() => removeRow(i)}
-            >
-              ✕
-            </Button>
-          </div>
-        ))}
+        {allocations.map((a, i) => {
+          const categoryName = budget.categories.find((c) => c.id === a.categoryId)?.name;
+          if (!canManage) {
+            return (
+              <div key={i} className="flex items-center justify-between gap-2 text-sm text-gray-700">
+                <span className="flex-1 truncate">{categoryName ?? "—"}</span>
+                <span className="tabular-nums">{formatCurrency(Number(a.amount) || 0, currency)}</span>
+              </div>
+            );
+          }
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <select
+                value={a.categoryId}
+                onChange={(e) => updateRow(i, "categoryId", e.target.value)}
+                className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+              >
+                {budget.categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <MoneyInput
+                currencySymbol={currencySymbol(currency)}
+                value={a.amount}
+                onChange={(val) => updateRow(i, "amount", val)}
+                className="h-9 w-32 rounded-lg border border-gray-200 px-3 text-sm"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-red-500"
+                onClick={() => removeRow(i)}
+              >
+                ✕
+              </Button>
+            </div>
+          );
+        })}
       </div>
       <div className="mt-2 flex items-center justify-between">
-        <Button variant="secondary" size="sm" onClick={addRow}>
-          + Add category
-        </Button>
+        {canManage ? (
+          <Button variant="secondary" size="sm" onClick={addRow}>
+            + Add category
+          </Button>
+        ) : <span />}
         <div className="flex items-center gap-4">
           <span
             className={cn(
@@ -141,15 +156,17 @@ export function InvoiceBudgetAllocations({
             Total: {formatCurrency(totalAllocated, currency)} /{" "}
             {formatCurrency(invoice.totalInvoiced, currency)}
           </span>
-          <Button
-            variant="primary"
-            size="sm"
-            loading={setAllocations.isPending}
-            disabled={isOver}
-            onClick={handleSave}
-          >
-            Save allocations
-          </Button>
+          {canManage && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={setAllocations.isPending}
+              disabled={isOver}
+              onClick={handleSave}
+            >
+              Save allocations
+            </Button>
+          )}
         </div>
       </div>
     </div>

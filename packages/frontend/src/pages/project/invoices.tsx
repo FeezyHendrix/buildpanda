@@ -142,6 +142,7 @@ export default function ProjectInvoices() {
                 projectId={project.id}
                 invoice={invoice}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>

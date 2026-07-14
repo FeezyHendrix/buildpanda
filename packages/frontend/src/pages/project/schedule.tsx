@@ -94,9 +94,11 @@ export default function ProjectSchedule() {
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
-                Import programme
-              </Button>
+              {canEdit && (
+                <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                  Import programme
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={downloadReport}>
                 Export report
               </Button>
@@ -131,9 +133,11 @@ export default function ProjectSchedule() {
               title="No scheduled activities"
               description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
               action={
-                <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
-                  Import programme of works
-                </Button>
+                canEdit ? (
+                  <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
+                    Import programme of works
+                  </Button>
+                ) : undefined
               }
             />
           </Card>

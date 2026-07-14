@@ -11,7 +11,6 @@ import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { PandaAiPane } from "@/components/organisms/panda-ai-pane";
@@ -91,7 +90,6 @@ export default function ProjectLayout() {
           onOpen={() => setSidebarOpen(true)}
         />
         <main className="relative flex-1 overflow-y-auto no-scrollbar">
-          {access && <ReadOnlyBanner access={access} />}
           <ErrorBoundary>
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
