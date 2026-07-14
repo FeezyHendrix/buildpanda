@@ -59,10 +59,12 @@ export function InvoiceCard({
   projectId,
   invoice,
   currency,
+  canManage,
 }: {
   projectId: string;
   invoice: Invoice;
   currency: string;
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -147,13 +149,15 @@ export function InvoiceCard({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setSendOpen(true)}
-          >
-            Send
-          </Button>
+          {canManage && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSendOpen(true)}
+            >
+              Send
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -162,23 +166,29 @@ export function InvoiceCard({
           >
             {invoicePdf.isPending ? "…" : "PDF"}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPaymentOpen(true)}
-          >
-            Record payment
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteOpen(true)}
-          >
-            Delete
-          </Button>
+          {canManage && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPaymentOpen(true)}
+            >
+              Record payment
+            </Button>
+          )}
+          {canManage && (
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 
@@ -214,7 +224,7 @@ export function InvoiceCard({
         </div>
       ) : null}
 
-      <InvoiceBudgetAllocations projectId={projectId} invoice={invoice} currency={currency} />
+      <InvoiceBudgetAllocations projectId={projectId} invoice={invoice} currency={currency} canManage={canManage} />
 
       {invoice.payments.length > 0 && (
         <div className="flex flex-col gap-2 border-t border-[#F0F0F0] pt-3">
@@ -236,13 +246,15 @@ export function InvoiceCard({
                   {payment.note ? ` · ${payment.note}` : ""}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setDeletePaymentId(payment.id)}
-                className="text-xs font-medium text-gray-400 hover:text-[#C72525]"
-              >
-                Remove
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setDeletePaymentId(payment.id)}
+                  className="text-xs font-medium text-gray-400 hover:text-[#C72525]"
+                >
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>

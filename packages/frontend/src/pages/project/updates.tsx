@@ -25,8 +25,8 @@ import {
 
 export default function ProjectUpdates() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
   const canPost = Boolean(access && canResourceAction(access, "updates", "post"));
+  const canManage = canPost;
   const { data: updates = [] } = useProjectUpdates(project.id);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
@@ -82,23 +82,19 @@ export default function ProjectUpdates() {
         title="Updates"
         description="Track construction progress with real-time reports from the site."
         actions={
-          canManage || canPost ? (
+          canPost ? (
             <>
-              {canManage ? (
-                <Button
-                  variant="secondary"
-                  loading={generateDraft.isPending}
-                  onClick={handleGenerateDraft}
-                >
-                  <ReactSVG src={icons.aiVerify} />
-                  Draft with Panda AI
-                </Button>
-              ) : null}
-              {canPost ? (
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                  New update
-                </Button>
-              ) : null}
+              <Button
+                variant="secondary"
+                loading={generateDraft.isPending}
+                onClick={handleGenerateDraft}
+              >
+                <ReactSVG src={icons.aiVerify} />
+                Draft with Panda AI
+              </Button>
+              <Button variant="primary" onClick={() => setCreateOpen(true)}>
+                New update
+              </Button>
             </>
           ) : null
         }

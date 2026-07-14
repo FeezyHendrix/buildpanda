@@ -484,6 +484,25 @@ export function grantableCatalog(): Record<string, string[]> {
   return out;
 }
 
+/**
+ * Starter role presets as grant maps (resource->actions). The editor offers
+ * these as a one-click starting point; the inviter then extends or trims the
+ * grants freely. Sourced from PARTICIPANT_PERMISSIONS so presets never drift
+ * from the roles the system already understands. Org surfaces are filtered out.
+ */
+export function rolePresets(): Record<string, Record<string, string[]>> {
+  const out: Record<string, Record<string, string[]>> = {};
+  for (const [role, perms] of Object.entries(PARTICIPANT_PERMISSIONS)) {
+    const grants: Record<string, string[]> = {};
+    for (const [resource, actions] of Object.entries(perms)) {
+      if (NON_PARTICIPANT_RESOURCES.has(resource)) continue;
+      grants[resource] = [...actions];
+    }
+    out[role] = grants;
+  }
+  return out;
+}
+
 export interface GrantValidationContext extends EnrichedAccessContext {
   isOrgAdmin: boolean;
 }

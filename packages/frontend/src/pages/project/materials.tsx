@@ -180,9 +180,11 @@ export default function ProjectMaterials() {
               title="No material orders yet"
               description="Create the first request and tie it to the phase and site activity it unlocks."
               action={
-                <Button onClick={() => setCreateOpen(true)}>
-                  Create order
-                </Button>
+                canRequest ? (
+                  <Button onClick={() => setCreateOpen(true)}>
+                    Create order
+                  </Button>
+                ) : undefined
               }
               className="py-10"
             />

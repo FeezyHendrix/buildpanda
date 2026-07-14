@@ -242,9 +242,11 @@ export default function ProjectEquipmentRequests() {
             title="No equipment requests here"
             description="Create a rental request or move existing equipment through the lifecycle."
             action={
-              <Button onClick={() => setCreateOpen(true)}>
-                Create request
-              </Button>
+              canRequest ? (
+                <Button onClick={() => setCreateOpen(true)}>
+                  Create request
+                </Button>
+              ) : undefined
             }
             className="py-10"
           />

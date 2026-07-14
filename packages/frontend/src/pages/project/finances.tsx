@@ -30,7 +30,7 @@ import { BillingAuditCard } from "./finances/billing-audit-card";
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
-  const canDispute = canManage || access?.relationship === "client" || canResourceAction(access, "finances", "dispute");
+  const canDispute = canManage || canResourceAction(access, "finances", "dispute");
   const { data: finances, isPending } = useProjectFinances(project.id);
   const { data: snapshot } = useReportingSnapshot(project.id);
 
