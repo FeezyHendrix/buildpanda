@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-purchase-orders";
 import { useProjectContext } from "@/layouts/project-layout";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 const STATUSES: PurchaseOrderStatus[] = [
@@ -494,7 +495,7 @@ function PurchaseOrderCard({
 
 export default function ProjectPurchaseOrders() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: purchaseOrders = [], isPending } = usePurchaseOrders(project.id);
   const createPurchaseOrder = useCreatePurchaseOrder();

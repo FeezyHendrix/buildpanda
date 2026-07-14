@@ -170,6 +170,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
             status: "active",
             invited_by_id: user.id,
           });
+          await fastify.accessCache.invalidate(user.id);
           return reply.status(201).send(project);
         }
       }

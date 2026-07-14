@@ -24,6 +24,19 @@ function ctxWithSectionMatrix(
   };
 }
 
+function ctxWithParticipantRole(
+  role: string,
+  matrix?: ProjectSectionPermissions,
+): EnrichedAccessContext {
+  return {
+    userId: "user_1",
+    orgRoles: new Map(),
+    orgPermissions: new Map(),
+    projectRoles: new Map([["proj_1", role]]),
+    projectSectionPermissions: matrix ? new Map([["proj_1", matrix]]) : new Map(),
+  };
+}
+
 function allows(ctx: EnrichedAccessContext, resource: string, action: string): boolean {
   try {
     assertProjectPermission(PROJECT, ctx, resource, action);
@@ -105,4 +118,22 @@ test("project owner bypasses all resource checks", () => {
   const ctx = ctxWithSectionMatrix("owner_1", {});
   assert.equal(allows(ctx, "finances", "manage"), true);
   assert.equal(allows(ctx, "teamMembers", "manage"), true);
+});
+
+test("participant role default grants its actions with no matrix", () => {
+  const ctx = ctxWithParticipantRole("project_manager");
+  assert.equal(allows(ctx, "schedule", "manage"), true);
+  assert.equal(allows(ctx, "rfis", "create"), true);
+});
+
+test("matrix 'hidden' revokes a matrix-expressible role default", () => {
+  const ctx = ctxWithParticipantRole("project_manager", { "projects.schedule": "hidden" });
+  assert.equal(allows(ctx, "schedule", "manage"), false);
+  assert.equal(allows(ctx, "schedule", "view"), false);
+});
+
+test("matrix does NOT revoke role actions it cannot express (client keeps finances:dispute)", () => {
+  const ctx = ctxWithParticipantRole("client", { "commercial.finances": "hidden" });
+  assert.equal(allows(ctx, "finances", "dispute"), true);
+  assert.equal(allows(ctx, "finances", "view"), false);
 });

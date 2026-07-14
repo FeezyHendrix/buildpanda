@@ -83,7 +83,15 @@ export function InviteParticipantDrawer({
   function handleCustomRoleChange(value: string) {
     setCustomRole(value);
     setRole(value.trim());
-    if (value.trim() && !isEdit) setPermissions({});
+    // Custom roles have no backend defaults: keep any grants already made,
+    // seed view-only guest access otherwise, and open the matrix so the
+    // inviter grants pages explicitly instead of sending a permission-less invite.
+    if (value.trim()) {
+      setShowMatrix(true);
+      setPermissions((prev) =>
+        Object.keys(prev).length > 0 ? prev : { ...ROLE_DEFAULTS.guest },
+      );
+    }
   }
 
   function handlePermission(key: string, value: SectionPermission) {

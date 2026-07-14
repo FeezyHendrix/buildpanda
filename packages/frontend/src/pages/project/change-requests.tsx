@@ -28,6 +28,7 @@ import {
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
 import { cn } from "@/lib/utils";
+import { canResourceAction } from "@/lib/project-types";
 import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
 import { formatWholeCurrency } from "@/lib/formatters";
 
@@ -45,7 +46,7 @@ function money(amount: number, currency: string): string {
 
 export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "change-requests", "manage");
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useChangeRequests(

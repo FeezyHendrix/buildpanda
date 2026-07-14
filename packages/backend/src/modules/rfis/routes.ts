@@ -1,11 +1,9 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { assertCanActAsClient, canProjectPermission } from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
+import { canProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
 import { config } from "../../config/index.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { rfiBallInCourtEmail, rfiDistributionEmail } from "../../lib/email-templates.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { changeRequestsRepository } from "../change-requests/repository.ts";
 import { changeRequestsService } from "../change-requests/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
@@ -151,17 +149,10 @@ const distributionBody = {
 } as const;
 
 const rfiRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = rfisService(rfisRepository(fastify.db), {
     changeRequests: changeRequestsService(changeRequestsRepository(fastify.db)),
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   function isCompanyCaller(
     request: FastifyRequest,
@@ -212,11 +203,7 @@ const rfiRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      assertCanActAsClient(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
-      );
+      const project = await request.requireProjectPermission(request.params.id, "rfis", "create");
       const isClient = request.projectRoles.get(project.id) === "client";
       const created = await service.create(
         project.id,

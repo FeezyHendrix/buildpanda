@@ -29,6 +29,7 @@ import {
 } from "@/hooks/use-queries";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import type { QueryStatus, SiteQuery } from "@/lib/project-types";
 
 const FILTERS: { value: QueryStatus | "all"; label: string }[] = [
@@ -45,8 +46,8 @@ function formatDue(value: string | null): string | null {
 export default function ProjectQueries() {
   const { project, access } = useProjectContext();
   const canRaiseQueries = access?.capabilities?.canRaiseQueries ?? false;
-  const canDeleteQueries = access?.capabilities?.canManage ?? false;
-  const canAssignQueries = access?.capabilities?.canManageParticipants ?? false;
+  const canDeleteQueries = canResourceAction(access, "queries", "manage");
+  const canAssignQueries = canResourceAction(access, "queries", "raise");
   const [filter, setFilter] = useState<QueryStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: queries = [], isLoading } = useProjectQueries(

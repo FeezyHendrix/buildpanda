@@ -32,9 +32,8 @@ import { STATUS_META, STATUS_FILTERS } from "./materials/shared";
 
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const canRequest = canManage && canResourceAction(access, "materials", "request");
-  const canApprove = canManage && canResourceAction(access, "materials", "approve");
+  const canRequest = canResourceAction(access, "materials", "request");
+  const canApprove = canResourceAction(access, "materials", "approve");
   const [filter, setFilter] = useState<MaterialOrderStatus | "all">("all");
   const { data: orders = [], isLoading } = useMaterialOrders(
     project.id,

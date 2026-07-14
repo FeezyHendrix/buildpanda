@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
+import { canResourceAction } from "@/lib/project-types";
 import type { Approval, ApprovalStatus } from "@/lib/project-types";
 import { MessagesIcon } from "@/components/atoms/project-nav-icons";
 
@@ -41,7 +42,7 @@ function formatDue(value: string | null): string | null {
 
 export default function ProjectApprovals() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "approvals", "manage");
   const canDecide = access?.capabilities?.canDecideApprovals ?? false;
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? "";

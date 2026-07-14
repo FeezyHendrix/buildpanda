@@ -102,9 +102,8 @@ function defaultUntil(): string {
 
 export default function ProjectEquipmentRequests() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const canRequest = canManage && canResourceAction(access, "materials", "request");
-  const canApprove = canManage && canResourceAction(access, "materials", "approve");
+  const canRequest = canResourceAction(access, "materials", "request");
+  const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
   const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
     ? params.bucket

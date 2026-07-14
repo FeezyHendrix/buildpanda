@@ -1,10 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import {
-  assertCanActAsClient,
-} from "../../lib/authorization.ts";
-import { NotFoundError } from "../../lib/errors.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { queriesRepository } from "./repository.ts";
@@ -67,16 +62,9 @@ const commentBody = {
 } as const;
 
 const queryRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = queriesService(queriesRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: QueryStatus } }>(
     "/projects/:id/queries",
@@ -92,11 +80,12 @@ const queryRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      // The homeowner (client) can raise queries, as well as company staff.
-      assertCanActAsClient(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
+      // Homeowner (client), company staff, or any participant granted
+      // queries:raise via role default or section matrix.
+      const project = await request.requireProjectPermission(
+        request.params.id,
+        "queries",
+        "raise",
       );
       const created = await service.create(project.id, request.body, user.id);
       return reply.status(201).send(created);
