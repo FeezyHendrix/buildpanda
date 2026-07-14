@@ -18,6 +18,7 @@ interface ParticipantRoleRow {
   project_id: string;
   role: string;
   permissions: Record<string, string> | null;
+  grants: Record<string, string[]> | null;
 }
 
 export interface AccessContextRows {

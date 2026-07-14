@@ -1,25 +1,43 @@
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { cn } from "@/lib/utils";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
-import { useInviteParticipant, useUpdateParticipant } from "@/hooks/use-participants";
-import type {
-  KnownParticipantRole,
-  ParticipantPermissions,
-  ProjectParticipant,
-  SectionPermission,
-} from "@/lib/project-types";
-import { KNOWN_ROLES, ROLE_META, PERMISSION_MATRIX, ROLE_DEFAULTS } from "./invite-participant-drawer/constants";
-import { SegmentedPermission } from "./invite-participant-drawer/segmented-permission";
-import { RolePill } from "./invite-participant-drawer/role-pill";
-
-
+import {
+  useInviteParticipant,
+  useUpdateParticipant,
+  usePermissionCatalog,
+  useProjectAccess,
+} from "@/hooks/use-participants";
+import type { ProjectParticipant } from "@/lib/project-types";
 
 export interface InviteParticipantDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   initial?: ProjectParticipant;
+}
+
+function humanizeResource(r: string) {
+  const map: Record<string, string> = {
+    "action-items": "Action items",
+    "change-requests": "Change requests",
+    "contract-instructions": "Contract instructions",
+    "daily-reports": "Daily reports",
+    "drawings": "Drawings",
+    "instructions": "Instructions",
+    "payment-claims": "Payment claims",
+    "photos": "Photos",
+    "proposals": "Proposals",
+    "rfi": "RFIs",
+    "site-observations": "Site observations",
+    "specifications": "Specifications",
+    "variations": "Variations",
+  };
+  if (map[r]) return map[r];
+  return r.charAt(0).toUpperCase() + r.slice(1).replace(/-/g, " ");
+}
+
+function humanizeAction(a: string) {
+  return a.charAt(0).toUpperCase() + a.slice(1).replace(/-/g, " ");
 }
 
 export function InviteParticipantDrawer({
@@ -35,90 +53,71 @@ export function InviteParticipantDrawer({
   const [role, setRole] = useState(
     initial?.role && initial.role !== "owner" ? initial.role : "",
   );
-  const [showCustomRole, setShowCustomRole] = useState(
-    Boolean(
-      initial?.role &&
-        initial.role !== "owner" &&
-        !KNOWN_ROLES.includes(initial.role as KnownParticipantRole),
-    ),
-  );
-  const [customRole, setCustomRole] = useState(
-    initial?.role && !KNOWN_ROLES.includes(initial.role as KnownParticipantRole) && initial.role !== "owner"
-      ? initial.role
-      : "",
-  );
-  const [permissions, setPermissions] = useState<ParticipantPermissions>(() => {
-    if (initial?.permissions && Object.keys(initial.permissions).length > 0) {
-      return initial.permissions;
+  
+  const [grants, setGrants] = useState<Record<string, string[]>>(() => {
+    if (initial?.grants && Object.keys(initial.grants).length > 0) {
+      return initial.grants;
     }
-    const r = initial?.role as KnownParticipantRole | undefined;
-    return r && ROLE_DEFAULTS[r] ? { ...ROLE_DEFAULTS[r] } : {};
+    return isEdit ? {} : { project: ["view"] };
   });
-  const [showMatrix, setShowMatrix] = useState(isEdit);
 
-  const { data: flagsData } = useFeatureFlags();
+  const { data: catalog } = usePermissionCatalog();
+  const { data: access } = useProjectAccess(projectId);
+  const isOrgAdmin = access?.orgRole === "owner" || access?.orgRole === "admin";
+
   const invite = useInviteParticipant();
   const update = useUpdateParticipant();
   const mutation = isEdit ? update : invite;
 
-  const enabledFlagKeys = new Set(
-    (flagsData?.flags ?? []).filter((f) => f.enabled !== false).map((f) => f.key),
-  );
-  const visibleGroups = PERMISSION_MATRIX.map((g) => ({
-    ...g,
-    items: g.items.filter((i) => enabledFlagKeys.size === 0 || enabledFlagKeys.has(i.key)),
-  })).filter((g) => g.items.length > 0);
-
-  function handleRoleSelect(r: KnownParticipantRole) {
-    setRole(r);
-    setShowCustomRole(false);
-    setCustomRole("");
-    // Edit mode must not discard grants already made: existing choices win over
-    // role defaults (spread prev last). A fresh invite has nothing to preserve.
-    setPermissions((prev) =>
-      isEdit ? { ...ROLE_DEFAULTS[r], ...prev } : { ...ROLE_DEFAULTS[r] },
-    );
-  }
-
-  function handleCustomRoleChange(value: string) {
-    setCustomRole(value);
-    setRole(value.trim());
-    // Custom roles have no backend defaults: keep any grants already made,
-    // seed view-only guest access otherwise, and open the matrix so the
-    // inviter grants pages explicitly instead of sending a permission-less invite.
-    if (value.trim()) {
-      setShowMatrix(true);
-      setPermissions((prev) =>
-        Object.keys(prev).length > 0 ? prev : { ...ROLE_DEFAULTS.guest },
-      );
-    }
-  }
-
-  function handlePermission(key: string, value: SectionPermission) {
-    setPermissions((prev) => ({ ...prev, [key]: value }));
+  function handleToggleGrant(resource: string, action: string, checked: boolean) {
+    setGrants((prev) => {
+      const current = prev[resource] ?? [];
+      let next: string[];
+      if (checked) {
+        if (current.includes(action)) return prev;
+        next = [...current, action];
+      } else {
+        if (!current.includes(action)) return prev;
+        next = current.filter((a) => a !== action);
+      }
+      
+      const updated = { ...prev };
+      if (next.length === 0) {
+        delete updated[resource];
+      } else {
+        updated[resource] = next;
+      }
+      return updated;
+    });
   }
 
   function handleSubmit() {
     const effectiveRole = role.trim() || undefined;
     if (isEdit && initial) {
       update.mutate(
-        { projectId, participantId: initial.id, role: effectiveRole, permissions },
+        { projectId, participantId: initial.id, role: effectiveRole, grants },
         { onSuccess: () => onOpenChange(false) },
       );
     } else {
       invite.mutate(
-        { projectId, email, name: name.trim() || undefined, role: effectiveRole, permissions },
+        { projectId, email, name: name.trim() || undefined, role: effectiveRole, grants },
         { onSuccess: () => onOpenChange(false) },
       );
     }
   }
 
-  const showRoleSection = isEdit || email.trim().length > 0;
-  const showPermissionToggle = Boolean(role.trim());
-
   const inputCls =
     "w-full rounded-xl border border-[#E8E8E8] bg-[#FAFAFA] px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-brand/40 focus:bg-white focus:ring-2 focus:ring-brand/10";
   const labelCls = "mb-1.5 block text-xs font-medium text-gray-600";
+
+  const resources = catalog?.resources ?? {};
+  const privileged = catalog?.privileged ?? {};
+
+  const resourceKeys = Object.keys(resources).sort((a, b) => {
+    if (a === "project") return -1;
+    if (b === "project") return 1;
+    return a.localeCompare(b);
+  });
 
   return (
     <FormDrawer
@@ -172,103 +171,70 @@ export function InviteParticipantDrawer({
       </div>
 
       {/* Phase 2 — role selection */}
-      {showRoleSection && (
-        <div className="flex flex-col gap-2.5 border-t border-[#F0F0F0] pt-5">
-          <p className="text-sm font-semibold text-gray-900">Role</p>
-          {KNOWN_ROLES.map((r) => (
-            <RolePill
-              key={r}
-              meta={ROLE_META[r]}
-              selected={role === r}
-              onSelect={() => handleRoleSelect(r)}
-            />
-          ))}
-
-          {showCustomRole ? (
-            <div className="flex flex-col gap-1.5">
-              <label className={labelCls}>Role name</label>
-              <input
-                autoFocus
-                type="text"
-                placeholder="e.g. Quantity Surveyor"
-                value={customRole}
-                onChange={(e) => handleCustomRoleChange(e.target.value)}
-                className={cn(
-                  inputCls,
-                  customRole.trim() && "border-brand/40 bg-white ring-2 ring-brand/10",
-                )}
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowCustomRole(true)}
-              className="py-1 text-left text-xs font-medium text-gray-400 transition-colors hover:text-[#004DE7] hover:underline"
-            >
-              + Add custom role
-            </button>
+      <div className="mt-5 flex flex-col gap-1.5 border-t border-[#F0F0F0] pt-5">
+        <label className={labelCls}>Role</label>
+        <input
+          type="text"
+          placeholder="e.g. Project Manager, Client, Engineer"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className={cn(
+            inputCls,
+            role.trim() && "border-brand/40 bg-white ring-2 ring-brand/10",
           )}
-        </div>
-      )}
+        />
+      </div>
 
-      {/* Phase 3 — permission matrix */}
-      {showPermissionToggle && (
-        <div className="flex flex-col border-t border-[#F0F0F0] pt-5">
-          <button
-            type="button"
-            onClick={() => setShowMatrix((v) => !v)}
-            className="flex w-full items-center justify-between text-left"
-          >
-            <div>
-              <p className="text-sm font-semibold text-gray-900">Access permissions</p>
-              <p className="mt-0.5 text-xs text-gray-500">
-                {showMatrix
-                  ? "Customise what each section shows for this person."
-                  : "Role defaults applied. Tap to customise."}
+      {/* Phase 3 — permissions */}
+      <div className="mt-5 flex flex-col border-t border-[#F0F0F0] pt-5">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Permissions</p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            Grant specific actions for each area of the project.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-5">
+          {resourceKeys.map((resource) => (
+            <div key={resource}>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                {humanizeResource(resource)}
               </p>
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                {(resources[resource] ?? []).map((action) => {
+                  const isPrivileged = privileged[resource]?.includes(action);
+                  const disabled = isPrivileged && !isOrgAdmin;
+                  const checked = grants[resource]?.includes(action) ?? false;
+                  
+                  return (
+                    <label
+                      key={action}
+                      className={cn(
+                        "flex items-center gap-2 cursor-pointer text-sm transition-colors",
+                        disabled ? "opacity-50 cursor-not-allowed" : "hover:text-brand"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={disabled}
+                        checked={checked}
+                        onChange={(e) => handleToggleGrant(resource, action, e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand disabled:cursor-not-allowed"
+                      />
+                      <span className="flex items-center gap-1.5 text-gray-700">
+                        {humanizeAction(action)}
+                        {disabled && (
+                          <span className="text-[10px] text-gray-400 font-medium tracking-wide">(Admin only)</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn(
-                "h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200",
-                showMatrix && "rotate-180",
-              )}
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          {showMatrix && (
-            <div className="mt-4 flex flex-col gap-5">
-              {visibleGroups.map((group) => (
-                <div key={group.group}>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                    {group.group}
-                  </p>
-                  <div className="flex flex-col gap-2.5">
-                    {group.items.map((item) => (
-                      <div key={item.key} className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-gray-700">{item.label}</span>
-                        <div className="w-40 shrink-0">
-                          <SegmentedPermission
-                            value={permissions[item.key] ?? "hidden"}
-                            onChange={(v) => handlePermission(item.key, v)}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
-      )}
+      </div>
     </FormDrawer>
   );
 }

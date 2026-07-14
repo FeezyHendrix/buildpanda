@@ -13,7 +13,18 @@ export const participantKeys = {
   access: (projectId: string) => ["projects", projectId, "access"] as const,
   myProjects: () => ["me", "projects"] as const,
   invite: (token: string) => ["project-invite", token] as const,
+  catalog: () => ["permissions", "catalog"] as const,
 };
+
+export function usePermissionCatalog() {
+  return useQuery({
+    queryKey: participantKeys.catalog(),
+    queryFn: () => participantsApi.getCatalog(),
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
+  });
+}
 
 /**
  * The caller's relationship + capabilities for a project (drives the UI).

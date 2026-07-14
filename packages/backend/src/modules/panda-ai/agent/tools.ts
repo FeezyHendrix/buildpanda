@@ -37,6 +37,7 @@ export interface AgentCaller {
   projectRoles: ReadonlyMap<string, string>;
   orgPermissions: ReadonlyMap<string, PermissionMap>;
   projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
+  projectGrants: ReadonlyMap<string, Record<string, readonly string[]>>;
 }
 
 export interface ToolContext {
@@ -53,6 +54,7 @@ function callerAccessContext(ctx: ToolContext) {
     projectRoles: ctx.caller.projectRoles,
     orgPermissions: ctx.caller.orgPermissions,
     projectSectionPermissions: ctx.caller.projectSectionPermissions,
+    projectGrants: ctx.caller.projectGrants,
   };
 }
 
