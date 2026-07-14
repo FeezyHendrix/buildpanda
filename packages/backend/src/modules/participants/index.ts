@@ -1,9 +1,10 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import {
-  composeParticipantPermissions,
+  assertCanGrant,
+  effectiveParticipantGrants,
   participantRole,
-  PARTICIPANT_PERMISSIONS,
+  type GrantValidationContext,
 } from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
@@ -30,6 +31,7 @@ interface ParticipantRow {
   invite_expires_at: string | null;
   name?: string | null;
   permissions: Record<string, string> | null;
+  grants: Record<string, string[]> | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +45,7 @@ interface TeamEntry {
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
   permissions: Record<string, string>;
+  grants: Record<string, string[]> | null;
   createdAt: string;
 }
 
@@ -56,6 +59,7 @@ function toParticipant(r: ParticipantRow): TeamEntry {
     role: r.role,
     status: r.status,
     permissions: (r.permissions as Record<string, string>) ?? {},
+    grants: (r.grants as Record<string, string[]> | null) ?? null,
     createdAt: r.created_at,
   };
 }
@@ -86,6 +90,11 @@ const tokenParams = {
   properties: { token: { type: "string", minLength: 1 } },
 } as const;
 
+const grantsSchema = {
+  type: "object",
+  additionalProperties: { type: "array", items: { type: "string", maxLength: 40 } },
+} as const;
+
 const inviteBody = {
   type: "object",
   required: ["email"],
@@ -95,6 +104,7 @@ const inviteBody = {
     name: { type: "string", maxLength: 120 },
     role: { type: "string", minLength: 1, maxLength: 80 },
     permissions: { type: "object", additionalProperties: { type: "string" } },
+    grants: grantsSchema,
   },
 } as const;
 
@@ -106,6 +116,7 @@ const updateBody = {
     role: { type: "string", minLength: 1, maxLength: 80 },
     status: { type: "string", enum: ["invited", "active", "revoked"] },
     permissions: { type: "object", additionalProperties: { type: "string" } },
+    grants: grantsSchema,
   },
 } as const;
 
@@ -132,6 +143,8 @@ function computeAccess(
     userId: request.user!.id,
     orgRoles: request.orgRoles,
     projectRoles: request.projectRoles,
+    projectSectionPermissions: request.projectSectionPermissions,
+    projectGrants: request.projectGrants,
   };
   const scope = { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id };
   const orgRole = project.organization_id ? request.orgRoles.get(project.organization_id) : undefined;
@@ -161,12 +174,9 @@ function computeAccess(
     if (orgPerms) {
       for (const [res, actions] of orgPerms) permissions[res] = [...actions];
     }
-    // Participant overlay with matrix-override semantics — must mirror
-    // assertProjectPermission so the UI never shows more or less than the API allows.
-    const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-    for (const [res, actions] of Object.entries(
-      composeParticipantPermissions(pPerms, sections),
-    )) {
+    // Participant overlay (stored grants when present, else legacy compose) —
+    // must mirror assertProjectPermission so the UI shows exactly what the API allows.
+    for (const [res, actions] of Object.entries(effectiveParticipantGrants(scope, ctx))) {
       permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
     }
   }
@@ -199,6 +209,27 @@ function computeAccess(
 const participantRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
   const messaging = messagingService(messagingRepository(fastify.db));
+
+  function validateGrants(
+    request: FastifyRequest,
+    project: { organization_id: string | null },
+    grants: Record<string, string[]> | undefined,
+  ): void {
+    if (!grants) return;
+    const orgRole = project.organization_id
+      ? request.orgRoles.get(project.organization_id)
+      : undefined;
+    const ctx: GrantValidationContext = {
+      userId: request.user!.id,
+      orgRoles: request.orgRoles,
+      orgPermissions: request.orgPermissions,
+      projectRoles: request.projectRoles,
+      projectSectionPermissions: request.projectSectionPermissions,
+      projectGrants: request.projectGrants,
+      isOrgAdmin: orgRole === "owner" || orgRole === "admin",
+    };
+    assertCanGrant(ctx, grants);
+  }
 
   async function resolveProjectOwner(
     ownerId: string | null,
@@ -242,6 +273,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.role",
           "p.status",
           "p.permissions",
+          "p.grants",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",
@@ -261,6 +293,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           role: "owner",
           status: "active",
           permissions: {},
+          grants: null,
           createdAt: String(project.created_at),
         });
       }
@@ -268,12 +301,13 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole; permissions?: Record<string, string> } }>(
+  fastify.post<{ Params: { id: string }; Body: { email: string; name?: string; role?: ParticipantRole; permissions?: Record<string, string>; grants?: Record<string, string[]> } }>(
     "/projects/:id/participants/invite",
     { schema: { params: projectIdParams, body: inviteBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
       const user = request.requireAuth();
+      validateGrants(request, project, request.body.grants);
 
       const email = request.body.email.trim().toLowerCase();
       const role = request.body.role?.trim() || "client";
@@ -308,6 +342,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         invite_token: token,
         invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         permissions: JSON.stringify(request.body.permissions ?? {}),
+        grants: request.body.grants ? JSON.stringify(request.body.grants) : null,
       };
       await db("project_participants").insert(record);
 
@@ -337,15 +372,17 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus; permissions?: Record<string, string> } }>(
+  fastify.patch<{ Params: { id: string; participantId: string }; Body: { role?: ParticipantRole; status?: ParticipantStatus; permissions?: Record<string, string>; grants?: Record<string, string[]> } }>(
     "/projects/:id/participants/:participantId",
     { schema: { params: participantParams, body: updateBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "participants", "manage");
+      validateGrants(request, project, request.body.grants);
       const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
       if (request.body.role) patch.role = request.body.role;
       if (request.body.status) patch.status = request.body.status;
       if (request.body.permissions !== undefined) patch.permissions = JSON.stringify(request.body.permissions);
+      if (request.body.grants !== undefined) patch.grants = JSON.stringify(request.body.grants);
       await db("project_participants")
         .where({ id: request.params.participantId, project_id: project.id })
         .update(patch);
@@ -360,6 +397,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           "p.role",
           "p.status",
           "p.permissions",
+          "p.grants",
           "p.invited_by_id",
           "p.created_at",
           "p.updated_at",

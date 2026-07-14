@@ -34,6 +34,7 @@ declare module "fastify" {
     orgPermissions: ReadonlyMap<string, PermissionMap>;
     projectRoles: ReadonlyMap<string, string>;
     projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
+    projectGrants: ReadonlyMap<string, Record<string, readonly string[]>>;
     activeOrganizationId: string | null;
     requireAuth(): AuthUser;
     requireAdmin(): AuthUser;
@@ -58,6 +59,7 @@ interface ParticipantRoleRow {
   project_id: string;
   role: string;
   permissions: Record<string, string> | null;
+  grants: Record<string, string[]> | null;
 }
 
 interface OrgRoleRow {
@@ -101,7 +103,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
 
     const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
       .where({ user_id: userId, status: "active" })
-      .select("project_id", "role", "permissions");
+      .select("project_id", "role", "permissions", "grants");
 
     return { memberRows, customRoleRows, participantRows };
   }
@@ -203,6 +205,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     request.orgPermissions = new Map<string, PermissionMap>();
     request.projectRoles = new Map<string, string>();
     request.projectSectionPermissions = new Map<string, ProjectSectionPermissions>();
+    request.projectGrants = new Map<string, Record<string, readonly string[]>>();
     if (request.url.startsWith("/api/auth/")) return;
 
     try {
@@ -256,6 +259,11 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           participantRows
             .filter((row) => row.permissions && Object.keys(row.permissions).length > 0)
             .map((row) => [row.project_id, row.permissions as ProjectSectionPermissions]),
+        );
+        request.projectGrants = new Map(
+          participantRows
+            .filter((row) => row.grants && Object.keys(row.grants).length > 0)
+            .map((row) => [row.project_id, row.grants as Record<string, readonly string[]>]),
         );
       }
     } catch (error) {
