@@ -106,14 +106,16 @@ export default function ProjectDailyLog() {
         title="Daily Log"
         description="Everyone on the team logs what they did each day. The report covers the whole day."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setEntryDate(today)}
-          >
-            <PlusIcon className="size-4" />
-            Add my log
-          </Button>
+          canCreateEntry ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setEntryDate(today)}
+            >
+              <PlusIcon className="size-4" />
+              Add my log
+            </Button>
+          ) : undefined
         }
       />
 
@@ -197,14 +199,16 @@ export default function ProjectDailyLog() {
             title="No daily logs yet"
             description="Add your first log to start the project diary. Anyone on the team can contribute."
             action={
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setEntryDate(today)}
-              >
-                <PlusIcon className="size-4" />
-                Add my log
-              </Button>
+              canCreateEntry ? (
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setEntryDate(today)}
+                >
+                  <PlusIcon className="size-4" />
+                  Add my log
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -216,6 +220,7 @@ export default function ProjectDailyLog() {
               userId={userId}
               canCreateEntry={canCreateEntry}
               canVoidEntry={canVoidEntry}
+              canGenerateReport={canGenerateReport}
               onAddEntry={() => setEntryDate(day.logDate)}
               onEditHeader={() => openHeader(day.logDate)}
             />
@@ -280,6 +285,7 @@ function DayCard({
   userId,
   canCreateEntry,
   canVoidEntry,
+  canGenerateReport,
   onAddEntry,
   onEditHeader,
 }: {
@@ -288,6 +294,7 @@ function DayCard({
   userId: string | null;
   canCreateEntry: boolean;
   canVoidEntry: boolean;
+  canGenerateReport: boolean;
   onAddEntry: () => void;
   onEditHeader: () => void;
 }) {
@@ -331,49 +338,55 @@ function DayCard({
               Conditions
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-            loading={downloadReport.isPending}
-            onClick={() =>
-              downloadReport.mutate(
-                { projectId, logDate: day.logDate },
-                { onError: () => toast("Could not download report") },
-              )
-            }
-          >
-            Download report
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-            loading={emailReport.isPending}
-            onClick={() =>
-              emailReport.mutate(
-                { projectId, logDate: day.logDate },
-                {
-                  onSuccess: (res) =>
-                    toast(`Report sent to ${res.sentTo}`, "success"),
-                  onError: () => toast("Could not email report"),
-                },
-              )
-            }
-          >
-            Email me
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            className="h-10 sm:h-8 px-3 text-xs"
-            onClick={onAddEntry}
-          >
-            <PlusIcon className="size-3.5" />
-            Add log
-          </Button>
+          {canGenerateReport && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
+              loading={downloadReport.isPending}
+              onClick={() =>
+                downloadReport.mutate(
+                  { projectId, logDate: day.logDate },
+                  { onError: () => toast("Could not download report") },
+                )
+              }
+            >
+              Download report
+            </Button>
+          )}
+          {canGenerateReport && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
+              loading={emailReport.isPending}
+              onClick={() =>
+                emailReport.mutate(
+                  { projectId, logDate: day.logDate },
+                  {
+                    onSuccess: (res) =>
+                      toast(`Report sent to ${res.sentTo}`, "success"),
+                    onError: () => toast("Could not email report"),
+                  },
+                )
+              }
+            >
+              Email me
+            </Button>
+          )}
+          {canCreateEntry && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-10 sm:h-8 px-3 text-xs"
+              onClick={onAddEntry}
+            >
+              <PlusIcon className="size-3.5" />
+              Add log
+            </Button>
+          )}
         </div>
       </header>
 

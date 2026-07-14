@@ -10,9 +10,10 @@ import {
   useAddLink,
   useDeleteLink,
 } from "@/hooks/use-tasks";
+import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { Task, TaskLinkType } from "@/lib/project-types";
+import { canResourceAction, type Task, type TaskLinkType } from "@/lib/project-types";
 import { FIELD, LINK_TYPE_LABELS, LINK_TYPE_ORDER, LINK_TYPE_TONE } from "./task-ui";
 import { TaskEntityLinks } from "./task-entity-links";
 import { TaskComments } from "./task-comments";
@@ -28,6 +29,8 @@ export function TaskExtras({
   allTasks: Task[];
   onOpenTask?: (taskId: string) => void;
 }) {
+  const { access } = useProjectContext();
+  const canManageTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const { data: detail } = useTaskDetail(projectId, taskId);
   const addSubtask = useAddSubtask(projectId, taskId);
   const updateSubtask = useUpdateSubtask(projectId, taskId);
@@ -91,35 +94,40 @@ export function TaskExtras({
               <input
                 type="checkbox"
                 checked={st.done}
+                disabled={!canManageTasks}
                 onChange={(e) => updateSubtask.mutate({ subtaskId: st.id, done: e.target.checked })}
                 className="size-4 rounded border-gray-300 text-[#004DE7] focus:ring-[#004DE7]"
               />
               <span className={cn("flex-1 text-sm", st.done ? "text-gray-400 line-through" : "text-gray-700")}>
                 {st.title}
               </span>
-              <button
-                type="button"
-                onClick={() => deleteSubtask.mutate(st.id)}
-                aria-label="Remove subtask"
-                className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-              >
-                ✕
-              </button>
+              {canManageTasks && (
+                <button
+                  type="button"
+                  onClick={() => deleteSubtask.mutate(st.id)}
+                  aria-label="Remove subtask"
+                  className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
-        <div className="flex gap-2">
-          <input
-            value={newSubtask}
-            onChange={(e) => setNewSubtask(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitSubtask(); } }}
-            placeholder="Add a subtask"
-            className={cn(FIELD, "h-9 flex-1")}
-          />
-          <Button variant="ghost" size="sm" onClick={submitSubtask} disabled={!newSubtask.trim()}>
-            Add
-          </Button>
-        </div>
+        {canManageTasks && (
+          <div className="flex gap-2">
+            <input
+              value={newSubtask}
+              onChange={(e) => setNewSubtask(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitSubtask(); } }}
+              placeholder="Add a subtask"
+              className={cn(FIELD, "h-9 flex-1")}
+            />
+            <Button variant="ghost" size="sm" onClick={submitSubtask} disabled={!newSubtask.trim()}>
+              Add
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -147,14 +155,16 @@ export function TaskExtras({
                     >
                       {link.targetTaskTitle}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteLink.mutate(link.id)}
-                      aria-label="Remove link"
-                      className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    >
-                      ✕
-                    </button>
+                    {canManageTasks && (
+                      <button
+                        type="button"
+                        onClick={() => deleteLink.mutate(link.id)}
+                        aria-label="Remove link"
+                        className="text-gray-300 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -162,7 +172,7 @@ export function TaskExtras({
           </div>
         )}
 
-        {linkableItems.length > 0 && (
+        {canManageTasks && linkableItems.length > 0 && (
           <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
             <div className="flex gap-2">
               <select

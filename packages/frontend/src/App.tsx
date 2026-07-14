@@ -311,6 +311,7 @@ export const router = createBrowserRouter([
       { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "suppliers", element: pf("commercial.materialsEquipment", <ProjectSuppliers />) },
 
+      { path: "schedules", element: <Navigate to="stages" replace /> },
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
