@@ -17,7 +17,7 @@ import {
 } from "@/hooks/use-permits";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import type { Permit, PermitStatus, PermitUrgency } from "@/lib/project-types";
+import { canResourceAction, type Permit, type PermitStatus, type PermitUrgency } from "@/lib/project-types";
 
 const STATUS_META: Record<
   PermitStatus,
@@ -120,7 +120,7 @@ function PermitCard({
 
 export default function ProjectPermits() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "permits", "manage"));
   const { data: permits = [], isLoading } = usePermits(project.id);
   const createPermit = useCreatePermit();
   const updatePermit = useUpdatePermit();

@@ -23,6 +23,7 @@ import {
 } from "@/hooks/use-selections";
 import { cn } from "@/lib/utils";
 import { formatWholeCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import type { Selection, SelectionOption, SelectionStatus } from "@/lib/project-types";
 
 const FILTERS: { value: SelectionStatus | "all"; label: string }[] = [
@@ -49,7 +50,7 @@ function decideDescription(selection: Selection, option: SelectionOption): strin
 
 export default function ProjectSelections() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "selections", "manage");
   const canDecide = access?.capabilities?.canDecideSelections ?? false;
 
   const [filter, setFilter] = useState<SelectionStatus | "all">("all");

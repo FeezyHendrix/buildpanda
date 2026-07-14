@@ -45,9 +45,9 @@ type TaskBoardScope = "assigned" | "all";
 
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
   const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
+  const canManage = canAddTasks;
   const canSeeAllTasks = canRemoveTasks;
   const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
   const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";

@@ -2,9 +2,12 @@ import type { ProjectAccess } from "@/lib/project-types";
 
 const ROLE_LABELS: Record<string, string> = {
   client: "homeowner",
+  project_manager: "project manager",
   architect: "architect",
   inspector: "inspector",
   guest: "guest",
+  materials_requester: "materials requester",
+  materials_approver: "materials approver",
 };
 
 interface ReadOnlyBannerProps {

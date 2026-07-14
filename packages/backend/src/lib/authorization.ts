@@ -126,6 +126,33 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     rfis: ["view", "create"],
     bim: ["view"],
   },
+  project_manager: {
+    project: ["view"],
+    tasks: ["view", "add", "remove"],
+    finances: ["view"],
+    schedule: ["view", "manage"],
+    documents: ["view", "upload"],
+    inspections: ["view", "request", "manage"],
+    materials: ["view", "manage", "report", "request"],
+    contractors: ["view"],
+    dailyLog: ["view", "create", "report"],
+    updates: ["view", "post"],
+    messages: ["view", "send"],
+    comments: ["view", "post"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    stages: ["view"],
+    "key-dates": ["view", "manage"],
+    queries: ["view", "raise", "manage"],
+    rfis: ["view", "create", "respond", "manage"],
+    approvals: ["view"],
+    selections: ["view"],
+    "change-requests": ["view", "manage"],
+    "action-items": ["view", "manage"],
+    permits: ["view", "manage"],
+    risks: ["view", "manage"],
+    bim: ["view", "upload"],
+  },
   architect: {
     project: ["view"],
     tasks: ["view"],
@@ -296,17 +323,69 @@ export function sectionsToPermissions(
   return out;
 }
 
-// True when the participant matrix explicitly grants (view or edit) the section
-// whose resource+action is being checked. Used to overlay per-participant grants
-// on top of role defaults inside canProjectPermission.
-function matrixAllows(
+// Actions the section matrix is capable of granting per resource (union of all
+// view/edit bridges). The matrix may only revoke what it could have granted:
+// actions outside this vocabulary (e.g. finances:dispute, materials:approve)
+// stay governed by the participant's role default even when the matrix names
+// the resource. editExtra grants are additive side-effects, never revocations.
+const MATRIX_EXPRESSIBLE: Record<string, ReadonlySet<string>> = (() => {
+  const map: Record<string, Set<string>> = {};
+  for (const entry of Object.values(SECTION_MAP)) {
+    const set = (map[entry.resource] ??= new Set());
+    for (const action of [...entry.view, ...entry.edit]) set.add(action);
+  }
+  return map;
+})();
+
+/**
+ * Effective participant permissions: role defaults overlaid with the
+ * per-participant section matrix. When the matrix names a resource it is the
+ * source of truth for that resource's matrix-expressible actions — "hidden"
+ * genuinely revokes them. Resources (and non-expressible actions) the matrix
+ * does not name fall through to the role default. Org permissions are NOT
+ * composed here; callers keep them additive.
+ */
+export function composeParticipantPermissions(
+  roleDefaults: Record<string, readonly string[]> | undefined,
   sections: ProjectSectionPermissions | undefined,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  if (sections) {
+    for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
+      out[res] = [...actions];
+    }
+  }
+  if (!roleDefaults) return out;
+
+  const covered = new Set<string>();
+  if (sections) {
+    for (const key of Object.keys(sections)) {
+      const entry = SECTION_MAP[key];
+      if (entry) covered.add(entry.resource);
+    }
+  }
+  for (const [resource, actions] of Object.entries(roleDefaults)) {
+    const retained = covered.has(resource)
+      ? actions.filter((action) => !MATRIX_EXPRESSIBLE[resource]?.has(action))
+      : actions;
+    if (retained.length > 0) {
+      out[resource] = [...new Set([...(out[resource] ?? []), ...retained])];
+    }
+  }
+  return out;
+}
+
+function participantAllows(
+  project: ProjectScope & { id: string },
+  ctx: AccessContext,
   resource: string,
   action: string,
 ): boolean {
-  if (!sections) return false;
-  const perms = sectionsToPermissions(sections);
-  return (perms[resource] ?? []).includes(action);
+  const pRole = participantRole(project, ctx);
+  const roleDefaults = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+  const sections = ctx.projectSectionPermissions?.get(project.id);
+  const composed = composeParticipantPermissions(roleDefaults, sections);
+  return (composed[resource] ?? []).includes(action);
 }
 
 /**
@@ -331,18 +410,9 @@ export function assertProjectPermission(
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   const orgAllowed = orgPerms ? mapAllows(orgPerms, resource, action) : false;
 
-  // Per-participant section matrix: a trusted grant whose SECTION_MAP bridge only
-  // yields safe read/author actions (never manage/approve/decide/delete), so
-  // honoring it here keeps backend enforcement in parity with canProjectPermission.
-  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
-  const matrixAllowed = matrixAllows(sections, resource, action);
-
-  // Participant-role overlay (additive)
-  const pRole = participantRole(project, ctx);
-  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-  const participantAllowed = pPerms ? (pPerms[resource] ?? []).includes(action) : false;
-
-  if (!orgAllowed && !matrixAllowed && !participantAllowed) {
+  // Participant overlay: role defaults + section matrix composed with
+  // matrix-override semantics (see composeParticipantPermissions).
+  if (!orgAllowed && !participantAllows(project, ctx, resource, action)) {
     throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
   }
 }
@@ -359,10 +429,5 @@ export function canProjectPermission(
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
 
-  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
-  if (matrixAllows(sections, resource, action)) return true;
-
-  const pRole = participantRole(project, ctx);
-  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-  return pPerms ? (pPerms[resource] ?? []).includes(action) : false;
+  return participantAllows(project, ctx, resource, action);
 }

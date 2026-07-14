@@ -14,7 +14,7 @@ import {
   useGenerateAiDraft,
   useProjectUpdates,
 } from "@/hooks/use-updates";
-import type { Person, ProjectUpdate } from "@/lib/project-types";
+import { canResourceAction, type Person, type ProjectUpdate } from "@/lib/project-types";
 
 import { UpdateCard } from "./updates/update-card";
 import {
@@ -26,6 +26,7 @@ import {
 export default function ProjectUpdates() {
   const { project, access } = useProjectContext();
   const canManage = access?.capabilities?.canManage ?? false;
+  const canPost = Boolean(access && canResourceAction(access, "updates", "post"));
   const { data: updates = [] } = useProjectUpdates(project.id);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
@@ -81,19 +82,23 @@ export default function ProjectUpdates() {
         title="Updates"
         description="Track construction progress with real-time reports from the site."
         actions={
-          canManage ? (
+          canManage || canPost ? (
             <>
-              <Button
-                variant="secondary"
-                loading={generateDraft.isPending}
-                onClick={handleGenerateDraft}
-              >
-                <ReactSVG src={icons.aiVerify} />
-                Draft with Panda AI
-              </Button>
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                New update
-              </Button>
+              {canManage ? (
+                <Button
+                  variant="secondary"
+                  loading={generateDraft.isPending}
+                  onClick={handleGenerateDraft}
+                >
+                  <ReactSVG src={icons.aiVerify} />
+                  Draft with Panda AI
+                </Button>
+              ) : null}
+              {canPost ? (
+                <Button variant="primary" onClick={() => setCreateOpen(true)}>
+                  New update
+                </Button>
+              ) : null}
             </>
           ) : null
         }

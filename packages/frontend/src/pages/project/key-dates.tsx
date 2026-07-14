@@ -20,7 +20,7 @@ import {
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { icons } from "@/assets/icons/icons";
-import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
+import { canResourceAction, type KeyDate, type KeyDateStatus } from "@/lib/project-types";
 
 function fmt(value: string | null): string {
   return formatShortDate(value) || "—";
@@ -288,7 +288,7 @@ const DATE_VIEW_OPTIONS: DropdownOption<DateView>[] = [
 
 export default function ProjectKeyDates() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = Boolean(access && canResourceAction(access, "key-dates", "manage"));
   const { data: keyDates = [], isLoading } = useKeyDates(project.id);
   const createKd = useCreateKeyDate();
   const updateKd = useUpdateKeyDate();

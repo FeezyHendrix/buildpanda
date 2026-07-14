@@ -65,7 +65,8 @@ function formatTime(iso: string): string {
 export default function ProjectDailyLog() {
   const { project, access } = useProjectContext();
   const { data: session } = useSession();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canCreateEntry = Boolean(access && canResourceAction(access, "dailyLog", "create"));
+  const canVoidEntry = Boolean(access && canResourceAction(access, "dailyLog", "void"));
   const userId = session?.user?.id ?? null;
 
   const { data: days = [], isPending } = useProjectDailyDays(project.id);
@@ -75,7 +76,7 @@ export default function ProjectDailyLog() {
   const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
   const [periodDate, setPeriodDate] = useState(todayIso());
 
-  const canGenerateReport = canResourceAction(access, "dailyLog", "report");
+  const canGenerateReport = Boolean(access && canResourceAction(access, "dailyLog", "report"));
   const downloadPeriodReport = useDownloadPeriodReport();
 
   const upsert = useUpsertDailyLog();
@@ -213,7 +214,8 @@ export default function ProjectDailyLog() {
               projectId={project.id}
               day={day}
               userId={userId}
-              canManage={canManage}
+              canCreateEntry={canCreateEntry}
+              canVoidEntry={canVoidEntry}
               onAddEntry={() => setEntryDate(day.logDate)}
               onEditHeader={() => openHeader(day.logDate)}
             />
@@ -276,14 +278,16 @@ function DayCard({
   projectId,
   day,
   userId,
-  canManage,
+  canCreateEntry,
+  canVoidEntry,
   onAddEntry,
   onEditHeader,
 }: {
   projectId: string;
   day: DailyLogDay;
   userId: string | null;
-  canManage: boolean;
+  canCreateEntry: boolean;
+  canVoidEntry: boolean;
   onAddEntry: () => void;
   onEditHeader: () => void;
 }) {
@@ -316,7 +320,7 @@ function DayCard({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          {canManage && (
+          {canCreateEntry && (
             <Button
               type="button"
               variant="ghost"
@@ -386,7 +390,7 @@ function DayCard({
               logDate={day.logDate}
               entry={entry}
               userId={userId}
-              canManage={canManage}
+              canVoidEntry={canVoidEntry}
             />
           ))
         )}
@@ -400,13 +404,13 @@ function EntryRow({
   logDate,
   entry,
   userId,
-  canManage,
+  canVoidEntry,
 }: {
   projectId: string;
   logDate: string;
   entry: DailyLogEntry;
   userId: string | null;
-  canManage: boolean;
+  canVoidEntry: boolean;
 }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -423,7 +427,7 @@ function EntryRow({
     });
     return () => cancelAnimationFrame(id);
   }, [entry.bodyHtml, expanded]);
-  const canVoid = !entry.voided && (entry.authorId === userId || canManage);
+  const canVoid = !entry.voided && (entry.authorId === userId || canVoidEntry);
   const lastVoid =
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
 

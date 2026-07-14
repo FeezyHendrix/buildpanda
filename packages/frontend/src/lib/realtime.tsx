@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { channelKeys, messageKeys, notificationKeys } from "@/hooks/query-keys";
+import { participantKeys } from "@/hooks/use-participants";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import { playMessageChime } from "@/lib/notification-sound";
 import {
@@ -33,7 +34,8 @@ type RealtimeEvent =
   | "row.verified"
   | "row.rejected"
   | "geometry.updated"
-  | "precon.progress";
+  | "precon.progress"
+  | "access.updated";
 
 interface RealtimePayload {
   event: RealtimeEvent;
@@ -274,6 +276,15 @@ function handleEvent(
 
   if (payload.event === "unread.changed") {
     void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    return;
+  }
+
+  if (payload.event === "access.updated") {
+    const data = payload.data as { projectId?: string };
+    if (data.projectId) {
+      void queryClient.invalidateQueries({ queryKey: participantKeys.access(data.projectId) });
+      void queryClient.invalidateQueries({ queryKey: participantKeys.myProjects() });
+    }
   }
 }
 

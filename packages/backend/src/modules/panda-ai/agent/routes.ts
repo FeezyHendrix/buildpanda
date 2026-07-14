@@ -98,6 +98,8 @@ const agentRoutes: FastifyPluginAsync = async (fastify) => {
               },
               orgRoles: request.orgRoles,
               projectRoles: request.projectRoles,
+              orgPermissions: request.orgPermissions,
+              projectSectionPermissions: request.projectSectionPermissions,
             },
           },
           {
