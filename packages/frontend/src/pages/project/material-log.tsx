@@ -22,6 +22,7 @@ import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { LedgerEntry } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 import { LedgerRow } from "./material-log/ledger-row";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
 import { StockCard } from "./material-log/stock-card";
@@ -29,7 +30,7 @@ import { StockCard } from "./material-log/stock-card";
 
 export default function ProjectMaterialLog() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "materials", "manage");
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
   const { data: catalog = [] } = useMaterialCatalog(project.id);

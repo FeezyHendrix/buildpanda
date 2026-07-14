@@ -16,6 +16,7 @@ import {
 } from "@/hooks/use-bim";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import { useParticipants } from "@/hooks/use-participants";
+import { canResourceAction } from "@/lib/project-types";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
@@ -81,8 +82,8 @@ const BimIssueDashboard = lazy(() =>
 );
 
 export default function ProjectBim() {
-  const { project } = useProjectContext();
-  // const canUpload = access?.capabilities?.canManage ?? false;
+  const { project, access } = useProjectContext();
+  const canManage = canResourceAction(access, "bim", "manage");
   const dashboardPreview = useFeatureFlag("projects.bimDashboard");
 
   const { data: models = [], isLoading } = useBimModels(project.id);
@@ -305,7 +306,7 @@ export default function ProjectBim() {
                       className="w-full"
                       onClick={addIssue}
                       loading={createIssue.isPending}
-                      disabled={issueTitle.trim() === ""}
+                      disabled={!canManage || issueTitle.trim() === ""}
                     >
                       Assign element
                     </Button>

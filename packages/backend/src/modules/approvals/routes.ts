@@ -1,9 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
-import { assertCanActAsClient } from "../../lib/authorization.ts";
-import { NotFoundError, ForbiddenError } from "../../lib/errors.ts";
+import { ForbiddenError } from "../../lib/errors.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
-import { projectsRepository } from "../projects/repository.ts";
 import { approvalsRepository } from "./repository.ts";
 import {
   approvalsService,
@@ -75,16 +73,9 @@ const commentBody = {
 } as const;
 
 const approvalRoutes: FastifyPluginAsync = async (fastify) => {
-  const projects = projectsRepository(fastify.db);
   const service = approvalsService(approvalsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
   });
-
-  async function loadProject(id: string) {
-    const project = await projects.findById(id);
-    if (!project) throw new NotFoundError("Project");
-    return project;
-  }
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ApprovalStatus } }>(
     "/projects/:id/approvals",
@@ -120,12 +111,12 @@ const approvalRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: approvalParams, body: updateBody } },
     async (request) => {
       const user = request.requireAuth();
-      const project = await loadProject(request.params.id);
-      // Baseline: the homeowner (client) signs off approvals, as well as company
-      // staff. assertCanActAsClient blocks viewers and unrelated participants.
-      assertCanActAsClient(
-        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
-        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles },
+      // Homeowner (client), company staff, or any participant granted
+      // approvals:decide via role default or section matrix.
+      const project = await request.requireProjectPermission(
+        request.params.id,
+        "approvals",
+        "decide",
       );
       // If the approval was directed at a specific reviewer, only that person may
       // record the decision (status change). Editing other fields stays open to

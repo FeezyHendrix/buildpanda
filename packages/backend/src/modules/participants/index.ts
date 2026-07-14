@@ -1,6 +1,10 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
-import { participantRole, PARTICIPANT_PERMISSIONS, sectionsToPermissions } from "../../lib/authorization.ts";
+import {
+  composeParticipantPermissions,
+  participantRole,
+  PARTICIPANT_PERMISSIONS,
+} from "../../lib/authorization.ts";
 import { statement } from "../../lib/permissions.ts";
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
@@ -157,20 +161,22 @@ function computeAccess(
     if (orgPerms) {
       for (const [res, actions] of orgPerms) permissions[res] = [...actions];
     }
+    // Participant overlay with matrix-override semantics — must mirror
+    // assertProjectPermission so the UI never shows more or less than the API allows.
     const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-    if (pPerms) {
-      for (const [res, actions] of Object.entries(pPerms)) {
-        permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
-      }
-    }
-    // Per-participant matrix overrides/extends the role default: fold its granted
-    // sections into the effective resource permissions so granted pages load.
-    if (sections) {
-      for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
-        permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
-      }
+    for (const [res, actions] of Object.entries(
+      composeParticipantPermissions(pPerms, sections),
+    )) {
+      permissions[res] = [...new Set([...(permissions[res] ?? []), ...actions])];
     }
   }
+
+  // Capabilities honor the composed permissions above (participant-role
+  // defaults + per-participant matrix), not just company/client status —
+  // otherwise a participant granted e.g. approvals:decide via the matrix
+  // would be authorized by the backend but see a read-only UI.
+  const allows = (resource: string, action: string): boolean =>
+    (permissions[resource] ?? []).includes(action);
 
   return {
     relationship,
@@ -180,11 +186,12 @@ function computeAccess(
     capabilities: {
       canManage: isCompanyManager,
       canViewAll: relationship !== "none",
-      canManageParticipants: isCompanyManager,
-      canDecideApprovals: isCompanyManager || isClient,
-      canDecideSelections: isCompanyManager || isClient,
-      canRaiseQueries: isCompanyManager || isClient,
-      canComment: relationship !== "none" && relationship !== "guest",
+      canManageParticipants: isCompanyManager || allows("participants", "manage"),
+      canDecideApprovals: isCompanyManager || isClient || allows("approvals", "decide"),
+      canDecideSelections: isCompanyManager || isClient || allows("selections", "decide"),
+      canRaiseQueries: isCompanyManager || isClient || allows("queries", "raise"),
+      canComment:
+        (relationship !== "none" && relationship !== "guest") || allows("comments", "post"),
     },
   };
 }
@@ -360,6 +367,14 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         )
         .first();
       if (!row) throw new NotFoundError("Participant");
+      if (row.user_id) {
+        await fastify.accessCache.invalidate(row.user_id);
+        fastify.realtime.publish({
+          event: "access.updated",
+          userId: row.user_id,
+          data: { projectId: project.id },
+        });
+      }
       return toParticipant(row);
     },
   );
@@ -377,6 +392,12 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         .update({ status: "revoked", updated_at: new Date().toISOString() });
       if (participant?.user_id) {
         await messaging.removeFromProjectChannels(project.id, participant.user_id);
+        await fastify.accessCache.invalidate(participant.user_id);
+        fastify.realtime.publish({
+          event: "access.updated",
+          userId: participant.user_id,
+          data: { projectId: project.id },
+        });
       }
       return reply.status(204).send();
     },
@@ -432,6 +453,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
         if (linked && linked.id !== invite.id) {
           await trx("project_participants").where({ id: linked.id }).update({
             role: invite.role,
+            permissions: JSON.stringify(invite.permissions ?? {}),
             status: "active",
             invite_token: null,
             updated_at: now,
@@ -446,6 +468,7 @@ const participantRoutes: FastifyPluginAsync = async (fastify) => {
           });
         }
       });
+      await fastify.accessCache.invalidate(user.id);
       return { projectId: invite.project_id, role: invite.role };
     },
   );

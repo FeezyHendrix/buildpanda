@@ -19,6 +19,7 @@ import { useProjectTeam } from "@/hooks/use-team";
 import type { AssigneeOption } from "@/components/molecules/upsert-rfi-dialog";
 import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import type { Rfi, RfiStatus } from "@/lib/project-types";
 
 const FILTERS: { value: RfiStatus | "all"; label: string }[] = [
@@ -83,9 +84,9 @@ function RfiRow({ rfi, onOpen }: { rfi: Rfi; onOpen: (id: string) => void }) {
 
 export default function ProjectRfis() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const canRaise = access?.capabilities?.canRaiseQueries ?? canManage;
-  const canRespond = canManage || access?.relationship === "architect";
+  const canManage = canResourceAction(access, "rfis", "manage");
+  const canRaise = canResourceAction(access, "rfis", "create");
+  const canRespond = canResourceAction(access, "rfis", "respond");
 
   const [filter, setFilter] = useState<RfiStatus | "all">("all");
   const { data: rfis = [], isLoading } = useProjectRfis(

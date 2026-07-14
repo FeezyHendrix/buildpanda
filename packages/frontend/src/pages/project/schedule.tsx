@@ -15,6 +15,7 @@ import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 
 import {
   buildReport,
@@ -31,7 +32,7 @@ export default function ProjectSchedule() {
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
   const [importOpen, setImportOpen] = useState(false);
-  const canEdit = access?.capabilities?.canManage ?? false;
+  const canEdit = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
   const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(

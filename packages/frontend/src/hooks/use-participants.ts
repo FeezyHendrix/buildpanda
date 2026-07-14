@@ -15,12 +15,19 @@ export const participantKeys = {
   invite: (token: string) => ["project-invite", token] as const,
 };
 
-/** The caller's relationship + capabilities for a project (drives the UI). */
+/**
+ * The caller's relationship + capabilities for a project (drives the UI).
+ * Cached indefinitely: invalidated only by participant writes (below) or the
+ * `access.updated` realtime event pushed when the caller's own access changes.
+ */
 export function useProjectAccess(projectId: string | undefined) {
   return useQuery({
     queryKey: participantKeys.access(projectId ?? "__none__"),
     queryFn: () => participantsApi.getAccess(projectId!),
     enabled: Boolean(projectId),
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 60,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -46,8 +53,10 @@ export function useInviteParticipant() {
       projectId,
       ...body
     }: InviteParticipantInput & { projectId: string }) => participantsApi.invite(projectId, body),
-    onSuccess: (_d, { projectId }) =>
-      qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
+    onSuccess: (_d, { projectId }) => {
+      void qc.invalidateQueries({ queryKey: participantKeys.list(projectId) });
+      void qc.invalidateQueries({ queryKey: participantKeys.access(projectId) });
+    },
   });
 }
 
@@ -60,8 +69,10 @@ export function useUpdateParticipant() {
       ...body
     }: UpdateParticipantInput & { projectId: string; participantId: string }) =>
       participantsApi.update(projectId, participantId, body),
-    onSuccess: (_d, { projectId }) =>
-      qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
+    onSuccess: (_d, { projectId }) => {
+      void qc.invalidateQueries({ queryKey: participantKeys.list(projectId) });
+      void qc.invalidateQueries({ queryKey: participantKeys.access(projectId) });
+    },
   });
 }
 
@@ -70,8 +81,10 @@ export function useRemoveParticipant() {
   return useMutation({
     mutationFn: ({ projectId, participantId }: { projectId: string; participantId: string }) =>
       participantsApi.remove(projectId, participantId),
-    onSuccess: (_d, { projectId }) =>
-      qc.invalidateQueries({ queryKey: participantKeys.list(projectId) }),
+    onSuccess: (_d, { projectId }) => {
+      void qc.invalidateQueries({ queryKey: participantKeys.list(projectId) });
+      void qc.invalidateQueries({ queryKey: participantKeys.access(projectId) });
+    },
   });
 }
 
