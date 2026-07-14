@@ -18,6 +18,7 @@ import realtimePlugin from "./plugins/realtime.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
+import permissionsRoutes from "./modules/permissions/routes.ts";
 import leadRoutes from "./modules/leads/routes.ts";
 import userRoutes from "./modules/users/routes.ts";
 import projectRoutes from "./modules/projects/routes.ts";
@@ -145,6 +146,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(assetRoutes);
   await app.register(healthRoutes);
+  await app.register(permissionsRoutes);
   await app.register(leadRoutes);
   await app.register(userRoutes);
   await app.register(projectRoutes);

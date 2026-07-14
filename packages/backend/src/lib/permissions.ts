@@ -11,7 +11,7 @@ export const statement = {
   // Construction suite
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve"],
+  finances: ["view", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
@@ -46,7 +46,7 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve"],
+  finances: ["view", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
@@ -74,7 +74,7 @@ const constructionFull = {
 const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage"],
+  finances: ["view", "manage", "dispute"],
   schedule: ["view", "manage"],
   documents: ["view", "upload"],
   inspections: ["view", "request", "manage"],

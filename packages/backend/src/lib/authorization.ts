@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { isEmployeeRole, mapAllows, type PermissionMap } from "./permissions.ts";
+import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -20,6 +20,10 @@ export interface AccessContext {
   // the source of truth for that participant (overrides role defaults); absent
   // means fall back to the role default.
   projectSectionPermissions?: ReadonlyMap<string, ProjectSectionPermissions>;
+  // Raw resource->actions[] grants keyed by project id — the new source of
+  // truth. When a project has an entry here it is authoritative and the legacy
+  // (role default ∪ section matrix) path is skipped entirely.
+  projectGrants?: ReadonlyMap<string, Record<string, readonly string[]>>;
 }
 
 export interface EnrichedAccessContext extends AccessContext {
@@ -375,17 +379,25 @@ export function composeParticipantPermissions(
   return out;
 }
 
+export function effectiveParticipantGrants(
+  project: ProjectScope & { id: string },
+  ctx: AccessContext,
+): Record<string, readonly string[]> {
+  const stored = ctx.projectGrants?.get(project.id);
+  if (stored) return stored;
+  const pRole = participantRole(project, ctx);
+  const roleDefaults = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+  const sections = ctx.projectSectionPermissions?.get(project.id);
+  return composeParticipantPermissions(roleDefaults, sections);
+}
+
 function participantAllows(
   project: ProjectScope & { id: string },
   ctx: AccessContext,
   resource: string,
   action: string,
 ): boolean {
-  const pRole = participantRole(project, ctx);
-  const roleDefaults = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-  const sections = ctx.projectSectionPermissions?.get(project.id);
-  const composed = composeParticipantPermissions(roleDefaults, sections);
-  return (composed[resource] ?? []).includes(action);
+  return (effectiveParticipantGrants(project, ctx)[resource] ?? []).includes(action);
 }
 
 /**
@@ -430,4 +442,85 @@ export function canProjectPermission(
   if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
 
   return participantAllows(project, ctx, resource, action);
+}
+
+// Resources that are org/sales surfaces, never a project-participant grant.
+const NON_PARTICIPANT_RESOURCES: ReadonlySet<string> = new Set([
+  "orgProfile",
+  "teamMembers",
+  "proposals",
+  "leads",
+]);
+
+// Verbs that are destructive, authoritative, or financial sign-off. Granting any
+// of these to a participant requires org owner/admin (see assertCanGrant).
+const PRIVILEGED_VERBS: ReadonlySet<string> = new Set([
+  "manage",
+  "approve",
+  "decide",
+  "delete",
+  "remove",
+  "void",
+]);
+
+// Actions privileged beyond the verb rule: project:update mutates project scope;
+// participants:manage would let the grantee re-grant (delegation of escalation).
+const PRIVILEGED_OVERRIDES: ReadonlySet<string> = new Set([
+  "project:update",
+  "participants:manage",
+]);
+
+export function isPrivilegedGrant(resource: string, action: string): boolean {
+  return PRIVILEGED_VERBS.has(action) || PRIVILEGED_OVERRIDES.has(`${resource}:${action}`);
+}
+
+/** The resource->actions catalog a participant editor may offer (org surfaces removed). */
+export function grantableCatalog(): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [resource, actions] of Object.entries(statement)) {
+    if (NON_PARTICIPANT_RESOURCES.has(resource)) continue;
+    out[resource] = [...actions];
+  }
+  return out;
+}
+
+export interface GrantValidationContext extends EnrichedAccessContext {
+  isOrgAdmin: boolean;
+}
+
+/**
+ * Validates a proposed participant grant map before persist. Rejects unknown or
+ * non-participant resource:action pairs, and privileged grants when the inviter
+ * is not org owner/admin. Returns nothing; throws ForbiddenError/BadRequest-style
+ * ForbiddenError listing every offending pair.
+ */
+export function assertCanGrant(
+  ctx: GrantValidationContext,
+  grants: Record<string, readonly string[]>,
+): void {
+  const catalog = grantableCatalog();
+  const unknown: string[] = [];
+  const privileged: string[] = [];
+
+  for (const [resource, actions] of Object.entries(grants)) {
+    const allowed = catalog[resource];
+    for (const action of actions) {
+      if (!allowed || !allowed.includes(action)) {
+        unknown.push(`${resource}:${action}`);
+        continue;
+      }
+      if (!ctx.isOrgAdmin && isPrivilegedGrant(resource, action)) {
+        privileged.push(`${resource}:${action}`);
+      }
+    }
+  }
+
+  if (unknown.length > 0) {
+    throw new ForbiddenError(`Unknown or non-grantable permissions: ${unknown.join(", ")}`);
+  }
+  if (privileged.length > 0) {
+    throw new ForbiddenError(
+      `Only an organization owner or admin can grant: ${privileged.join(", ")}`,
+    );
+  }
 }
