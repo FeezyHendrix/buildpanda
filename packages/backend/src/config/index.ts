@@ -104,10 +104,10 @@ export const config = {
   },
 
   mail: {
-    token: optional("ZEPTOMAIL_TOKEN", ""),
-    fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
-    fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
-    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.ai"),
+    token: optional("SENDBYTE_API_KEY", ""),
+    fromAddress: optional("SENDBYTE_FROM_ADDRESS", "noreply@buildpanda.io"),
+    fromName: optional("SENDBYTE_FROM_NAME", "BuildPanda"),
+    replyToAddress: optional("SENDBYTE_REPLY_TO", "hello@buildpanda.ai"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),
