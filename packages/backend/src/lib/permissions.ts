@@ -34,6 +34,7 @@ export const statement = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
+  stages: ["view"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
@@ -69,6 +70,7 @@ const constructionFull = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
+  stages: ["view"],
 } as const satisfies PresetShape;
 
 const constructionContributor = {
@@ -97,6 +99,7 @@ const constructionContributor = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
+  stages: ["view"],
 } as const satisfies PresetShape;
 
 const constructionReadOnly = {
@@ -125,6 +128,7 @@ const constructionReadOnly = {
   "key-dates": ["view"],
   permits: ["view"],
   risks: ["view"],
+  stages: ["view"],
 } as const satisfies PresetShape;
 
 export const owner = ac.newRole({
