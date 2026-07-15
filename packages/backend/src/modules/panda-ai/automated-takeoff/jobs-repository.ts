@@ -45,7 +45,9 @@ export function takeoffJobsRepository(db: Knex) {
     },
 
     async markProcessing(id: string): Promise<void> {
-      await db("takeoff_jobs").where({ id }).update({ status: "processing", updated_at: new Date() });
+      await db("takeoff_jobs")
+        .where({ id })
+        .update({ status: "processing", started_at: new Date(), updated_at: new Date() });
     },
 
     async markComplete(id: string, result: TakeoffResult): Promise<void> {
@@ -57,12 +59,15 @@ export function takeoffJobsRepository(db: Knex) {
           drawing_count: result.drawings.length,
           element_count: result.items.length,
           error: null,
+          completed_at: new Date(),
           updated_at: new Date(),
         });
     },
 
     async markFailed(id: string, error: string): Promise<void> {
-      await db("takeoff_jobs").where({ id }).update({ status: "failed", error, updated_at: new Date() });
+      await db("takeoff_jobs")
+        .where({ id })
+        .update({ status: "failed", error, completed_at: new Date(), updated_at: new Date() });
     },
   };
 }

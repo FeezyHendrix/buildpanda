@@ -44,9 +44,13 @@ export async function runPeriodicTick(
         status: "pending",
         requested_by: null,
       });
+      const project = await db("projects")
+        .where({ id: projectId })
+        .first<{ organization_id: string | null }>("organization_id");
       const jobData: AnalysisJobData = {
         insightId: row.id,
         projectId,
+        orgId: project?.organization_id ?? undefined,
       };
       await manager.enqueue(PANDA_AI_QUEUE, "analyze", jobData);
       await repo.pruneInsights(projectId);

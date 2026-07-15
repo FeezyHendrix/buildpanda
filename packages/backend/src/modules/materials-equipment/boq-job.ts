@@ -9,6 +9,7 @@ export const BOQ_IMPORT_QUEUE = "boq-import-extraction";
 
 export interface BoqImportJobData {
   jobId: string;
+  orgId?: string;
 }
 
 export async function runBoqImport(db: Knex, data: BoqImportJobData): Promise<void> {
