@@ -1,6 +1,7 @@
 import type { ZodType } from "zod";
 import { config } from "../config/index.ts";
 import { AppError } from "./errors.ts";
+import { getLlmContext } from "./llm-context.ts";
 
 // 502: a schema violation is an upstream (model) contract failure, not the caller's.
 export class LLMValidationError extends AppError {
@@ -44,8 +45,14 @@ export interface LlmTool {
   };
 }
 
+interface ChatUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+}
+
 interface ChatResponse {
   choices?: Array<{ message?: { content?: string; tool_calls?: LlmToolCall[] } }>;
+  usage?: ChatUsage;
 }
 
 interface Provider {
@@ -79,6 +86,9 @@ export interface LlmCallRecord {
   latencyMs: number;
   validationStatus: LlmValidationStatus;
   retryCount: number;
+  tokensIn?: number | null;
+  tokensOut?: number | null;
+  orgId?: string | null;
 }
 
 export type LlmCallSink = (record: LlmCallRecord) => void;
@@ -94,20 +104,26 @@ export function setLlmCallSink(sink: LlmCallSink | null): void {
 function emitCallRecord(record: LlmCallRecord): void {
   if (!callSink) return;
   try {
-    callSink(record);
+    callSink({ ...record, orgId: record.orgId ?? getLlmContext()?.orgId ?? null });
   } catch {
     // Telemetry must never break a live LLM call.
     void 0;
   }
 }
 
+export interface JsonCompletionResult {
+  content: string | null;
+  usage?: ChatUsage;
+}
+
 // Extracted so validated and unvalidated callers share one transport, and so
-// tests can exercise the envelope without a live provider.
-export type JsonCompletionTransport = (messages: LlmMessage[]) => Promise<string | null>;
+// tests can exercise the envelope without a live provider. Returns the content
+// plus optional token usage (absent when a provider omits it).
+export type JsonCompletionTransport = (messages: LlmMessage[]) => Promise<JsonCompletionResult>;
 
 const defaultJsonTransport: JsonCompletionTransport = async (messages) => {
   const provider = activeProvider();
-  if (!provider) return null;
+  if (!provider) return { content: null };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), provider.timeoutMs);
@@ -130,7 +146,7 @@ const defaultJsonTransport: JsonCompletionTransport = async (messages) => {
       throw new Error(`LLM API ${response.status}: ${await response.text()}`);
     }
     const payload = (await response.json()) as ChatResponse;
-    return payload.choices?.[0]?.message?.content ?? null;
+    return { content: payload.choices?.[0]?.message?.content ?? null, usage: payload.usage };
   } finally {
     clearTimeout(timer);
   }
@@ -149,7 +165,7 @@ export function setJsonTransportForTests(transport: JsonCompletionTransport): ()
 }
 
 export async function chatJson(messages: LlmMessage[]): Promise<unknown | null> {
-  const content = await jsonTransport(messages);
+  const { content } = await jsonTransport(messages);
   if (!content) return null;
   return JSON.parse(content);
 }
@@ -168,16 +184,22 @@ export async function chatJsonValidated<T>(
   schema: ZodType<T>,
 ): Promise<ValidatedJsonResult<T> | null> {
   const start = Date.now();
+  const modelVersion = activeModelName();
+  let usage: ChatUsage | undefined;
   const record = (validationStatus: LlmValidationStatus, retryCount: number): void => {
     emitCallRecord({
-      modelVersion: activeModelName(),
+      modelVersion,
       latencyMs: Date.now() - start,
       validationStatus,
       retryCount,
+      tokensIn: usage?.prompt_tokens ?? null,
+      tokensOut: usage?.completion_tokens ?? null,
     });
   };
 
-  const first = await jsonTransport(messages);
+  const firstCall = await jsonTransport(messages);
+  usage = firstCall.usage;
+  const first = firstCall.content;
   if (first === null) return null;
 
   const attempt = (raw: string): { ok: true; value: T } | { ok: false; issues: unknown } => {
@@ -208,7 +230,14 @@ export async function chatJsonValidated<T>(
         "Return ONLY corrected JSON that satisfies the schema. No prose.",
     },
   ];
-  const second = await jsonTransport(repairMessages);
+  const secondCall = await jsonTransport(repairMessages);
+  if (secondCall.usage) {
+    usage = {
+      prompt_tokens: (usage?.prompt_tokens ?? 0) + (secondCall.usage.prompt_tokens ?? 0),
+      completion_tokens: (usage?.completion_tokens ?? 0) + (secondCall.usage.completion_tokens ?? 0),
+    };
+  }
+  const second = secondCall.content;
   if (second === null) {
     record("failed", 1);
     throw new LLMValidationError("LLM produced no output on repair retry", {
@@ -244,29 +273,48 @@ export async function chatTools(
   const provider = activeProvider();
   if (!provider) return null;
 
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${provider.apiKey}`,
-    },
-    signal: options.signal,
-    body: JSON.stringify({
-      model: provider.model,
-      temperature: 0.2,
-      messages,
-      ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`LLM API ${response.status}: ${await response.text()}`);
+  const start = Date.now();
+  try {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      signal: options.signal,
+      body: JSON.stringify({
+        model: provider.model,
+        temperature: 0.2,
+        messages,
+        ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`LLM API ${response.status}: ${await response.text()}`);
+    }
+    const payload = (await response.json()) as ChatResponse;
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "unvalidated",
+      retryCount: 0,
+      tokensIn: payload.usage?.prompt_tokens ?? null,
+      tokensOut: payload.usage?.completion_tokens ?? null,
+    });
+    const message = payload.choices?.[0]?.message;
+    return {
+      content: message?.content ?? "",
+      toolCalls: message?.tool_calls ?? [],
+    };
+  } catch (error) {
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "failed",
+      retryCount: 0,
+    });
+    throw error;
   }
-  const payload = (await response.json()) as ChatResponse;
-  const message = payload.choices?.[0]?.message;
-  return {
-    content: message?.content ?? "",
-    toolCalls: message?.tool_calls ?? [],
-  };
 }
 
 export async function chatStream(
@@ -276,53 +324,80 @@ export async function chatStream(
   const provider = activeProvider();
   if (!provider) return "";
 
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${provider.apiKey}`,
-    },
-    signal: options.signal,
-    body: JSON.stringify({
-      model: provider.model,
-      temperature: 0.3,
-      stream: true,
-      messages,
-    }),
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`LLM API ${response.status}: ${await response.text().catch(() => "stream error")}`);
-  }
+  const start = Date.now();
+  let usage: ChatUsage | undefined;
+  try {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      signal: options.signal,
+      body: JSON.stringify({
+        model: provider.model,
+        temperature: 0.3,
+        stream: true,
+        stream_options: { include_usage: true },
+        messages,
+      }),
+    });
+    if (!response.ok || !response.body) {
+      throw new Error(`LLM API ${response.status}: ${await response.text().catch(() => "stream error")}`);
+    }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let full = "";
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let full = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
-      if (data === "[DONE]") continue;
-      try {
-        const json = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
-        const token = json.choices?.[0]?.delta?.content;
-        if (token) {
-          full += token;
-          options.onToken(token);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === "[DONE]") continue;
+        try {
+          const json = JSON.parse(data) as {
+            choices?: Array<{ delta?: { content?: string } }>;
+            usage?: ChatUsage;
+          };
+          if (json.usage) usage = json.usage;
+          const token = json.choices?.[0]?.delta?.content;
+          if (token) {
+            full += token;
+            options.onToken(token);
+          }
+        } catch {
+          continue;
         }
-      } catch {
-        continue;
       }
     }
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "unvalidated",
+      retryCount: 0,
+      tokensIn: usage?.prompt_tokens ?? null,
+      tokensOut: usage?.completion_tokens ?? null,
+    });
+    return full;
+  } catch (error) {
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "failed",
+      retryCount: 0,
+      tokensIn: usage?.prompt_tokens ?? null,
+      tokensOut: usage?.completion_tokens ?? null,
+    });
+    throw error;
   }
-  return full;
 }
 
 export async function chatVision(
@@ -339,22 +414,41 @@ export async function chatVision(
     ...images.map((url): LlmImageContent => ({ type: "image_url", image_url: { url, detail } })),
   ];
 
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${provider.apiKey}`,
-    },
-    signal: options.signal,
-    body: JSON.stringify({
-      model: provider.model,
-      temperature: 0.2,
-      messages: [{ role: "user", content }],
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`LLM API ${response.status}: ${await response.text()}`);
+  const start = Date.now();
+  try {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      signal: options.signal,
+      body: JSON.stringify({
+        model: provider.model,
+        temperature: 0.2,
+        messages: [{ role: "user", content }],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`LLM API ${response.status}: ${await response.text()}`);
+    }
+    const payload = (await response.json()) as ChatResponse;
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "unvalidated",
+      retryCount: 0,
+      tokensIn: payload.usage?.prompt_tokens ?? null,
+      tokensOut: payload.usage?.completion_tokens ?? null,
+    });
+    return payload.choices?.[0]?.message?.content ?? null;
+  } catch (error) {
+    emitCallRecord({
+      modelVersion: provider.model,
+      latencyMs: Date.now() - start,
+      validationStatus: "failed",
+      retryCount: 0,
+    });
+    throw error;
   }
-  const payload = (await response.json()) as ChatResponse;
-  return payload.choices?.[0]?.message?.content ?? null;
 }

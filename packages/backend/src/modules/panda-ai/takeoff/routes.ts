@@ -204,7 +204,7 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
         files,
         proposalId,
       );
-      const jobData: PreconGenerateJobData = { sessionId: session.id };
+      const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);
     },
@@ -236,7 +236,7 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
         [{ fileName: file.file_name, storagePath: file.storage_path }],
         request.body.proposalId,
       );
-      const jobData: PreconGenerateJobData = { sessionId: session.id };
+      const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);
     },

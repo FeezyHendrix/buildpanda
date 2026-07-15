@@ -14,7 +14,10 @@ import {
 } from "@/components/icons";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: DashboardIcon, end: true },
+  { to: "/", label: "Overview", icon: DashboardIcon, end: true },
+  { to: "/growth", label: "Growth", icon: DashboardIcon, end: false },
+  { to: "/engagement", label: "Engagement", icon: DashboardIcon, end: false },
+  { to: "/ops", label: "AI Operations", icon: DashboardIcon, end: false },
   { to: "/users", label: "Users", icon: UsersIcon, end: false },
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },

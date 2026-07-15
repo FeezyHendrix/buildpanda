@@ -195,6 +195,55 @@ export interface FeatureFlagsSettings {
   updatedAt: string | null;
 }
 
+export interface AdminMetricsOverview {
+  asOf: string;
+  range: { from: string; to: string };
+  signups: { value: number; deltaPct: number; series: { day: string; value: number }[] };
+  activeUsers: { dau: number; wau: number; mau: number; stickiness: number; series: { day: string; value: number }[] };
+  aiJobs: { total: number; successRate: number };
+  aiSpend: { costUsd: number; tokens: number; series: { day: string; tokensIn: number; tokensOut: number; costUsd: number }[] };
+  valueTracked: { totalBudgetTracked: number; highestBudgetedProject: { id: string; name: string; totalBudget: number; currency: string } | null };
+}
+
+export interface AdminMetricsGrowth {
+  asOf: string;
+  signupSeries: { day: string; value: number }[];
+  funnel: { step: string; value: number }[];
+}
+
+export interface AdminMetricsEngagement {
+  asOf: string;
+  activeSeries: { day: string; value: number }[];
+  dau: number;
+  wau: number;
+  mau: number;
+  stickiness: number;
+}
+
+export interface AdminMetricsAiOps {
+  asOf: string;
+  platform: { totalTokens: number; totalCostUsd: number; series: { day: string; tokensIn: number; tokensOut: number; costUsd: number }[] };
+  costByOrg: { orgId: string; orgName: string; tokensIn: number; tokensOut: number; costUsd: number }[];
+  jobHealth: { jobType: string; total: number; completed: number; failed: number; avgLatencySeconds: number }[];
+}
+
+export interface AdminAuditLogRow {
+  id: string;
+  adminUserId: string;
+  adminName: string;
+  adminEmail: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  method: string;
+  path: string;
+  route: string;
+  ip: string;
+  statusCode: number;
+  metadata: Record<string, any>;
+  createdAt: string;
+}
+
 export const adminApi = {
   me: () =>
     api.get<{ id: string; name: string; email: string; role: string }>("/admin/me").then((r) => r.data),
@@ -236,4 +285,15 @@ export const adminApi = {
     api.get<FeatureFlagsSettings>("/admin/feature-flags").then((r) => r.data),
   updateFeatureFlags: (flags: Record<string, boolean>) =>
     api.patch<FeatureFlagsSettings>("/admin/feature-flags", { flags }).then((r) => r.data),
+
+  metricsOverview: (args?: { from?: string; to?: string }) =>
+    api.get<AdminMetricsOverview>("/admin/metrics/overview", { params: args }).then((r) => r.data),
+  metricsGrowth: (args?: { from?: string; to?: string }) =>
+    api.get<AdminMetricsGrowth>("/admin/metrics/growth", { params: args }).then((r) => r.data),
+  metricsEngagement: (args?: { from?: string; to?: string }) =>
+    api.get<AdminMetricsEngagement>("/admin/metrics/engagement", { params: args }).then((r) => r.data),
+  metricsAiOps: (args?: { from?: string; to?: string }) =>
+    api.get<AdminMetricsAiOps>("/admin/metrics/ai-ops", { params: args }).then((r) => r.data),
+  auditLog: (args?: { targetId?: string; adminUserId?: string; limit?: number; offset?: number; action?: string; targetType?: string }) =>
+    api.get<Paginated<AdminAuditLogRow>>("/admin/audit-log", { params: args }).then((r) => r.data),
 };

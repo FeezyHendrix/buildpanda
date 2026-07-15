@@ -1,14 +1,16 @@
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
+import { adminKeys } from "@/api/admin-keys";
 import { Badge, Card, ErrorState, Loading, StatusBadge } from "@/components/ui";
 import { ChevronLeftIcon } from "@/components/icons";
 import { formatDate } from "@/lib/utils";
+import { AuditLogTable } from "@/components/audit-log-table";
 
 export default function OrganizationDetailPage() {
   const { id = "" } = useParams();
   const { data: org, isLoading, isError } = useQuery({
-    queryKey: ["admin", "organization", id],
+    queryKey: adminKeys.orgs.detail(id),
     queryFn: () => adminApi.getOrganization(id),
   });
 
@@ -70,6 +72,13 @@ export default function OrganizationDetailPage() {
           )}
         </Card>
       </div>
+
+      <Card className="flex flex-col overflow-hidden">
+        <div className="p-5 pb-0">
+          <h2 className="text-sm font-semibold text-ink">Audit Log</h2>
+        </div>
+        <AuditLogTable targetId={org.id} />
+      </Card>
     </div>
   );
 }
