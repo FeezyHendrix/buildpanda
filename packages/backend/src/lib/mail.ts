@@ -1,25 +1,29 @@
-import { SendMailClient } from "zeptomail";
+import { SendByte, SendByteError } from "@sendbyte/node";
 import { config } from "../config/index.ts";
 import { logger } from "./logger.ts";
 import { captureBug } from "./sentry.ts";
 
 /**
- * ZeptoMail transactional email client.
- * Docs: https://www.zoho.com/zeptomail/help/api/email-sending.html
+ * SendByte transactional email client.
+ * Docs: https://docs.sendbyte.africa/sdks/node
  *
- * The token comes from ZEPTOMAIL_TOKEN (a "Zoho-enczapikey ..." send mail
- * token). When it's not configured (local dev), emails are logged to the
- * console instead of sent so auth flows remain testable — the verification /
- * reset link is printed in the log line.
+ * The key comes from SENDBYTE_API_KEY (an "sk_live_..." / "sk_test_..." API
+ * key). When it's not configured (local dev), emails are logged to the console
+ * instead of sent so auth flows remain testable — the verification / reset
+ * link is printed in the log line.
  */
-const ZEPTOMAIL_API_URL = "https://api.zeptomail.com/v1.1/email";
+const client = config.mail.token ? new SendByte(config.mail.token) : null;
 
-const client = config.mail.token
-  ? new SendMailClient({ url: ZEPTOMAIL_API_URL, token: config.mail.token })
-  : null;
+/**
+ * SendByte takes the sender as a single `"Name <address>"` string. Fall back to
+ * a bare address when no display name is present.
+ */
+function formatSender(sender: { address: string; name?: string }): string {
+  return sender.name ? `${sender.name} <${sender.address}>` : sender.address;
+}
 
 export interface EmailAttachment {
-  /** Raw file bytes; encoded to base64 for the ZeptoMail payload. */
+  /** Raw file bytes; encoded to base64 for the SendByte payload. */
   content: Buffer;
   name: string;
   mimeType: string;
@@ -74,7 +78,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     const attached = options.attachments?.map((file) => file.name) ?? [];
     logger.warn(
       { to: recipients, cc: options.cc, bcc: options.bcc, subject: options.subject, links, attachments: attached },
-      "[mail] ZEPTOMAIL_TOKEN not set — skipping send",
+      "[mail] SENDBYTE_API_KEY not set — skipping send",
     );
     return;
   }
@@ -82,46 +86,39 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
   try {
     const attachments = options.attachments?.map((file) => ({
       content: file.content.toString("base64"),
-      mime_type: file.mimeType,
-      name: file.name,
+      content_type: file.mimeType,
+      filename: file.name,
     }));
-    const response = await client.sendMail({
-      from: options.from ?? { address: config.mail.fromAddress, name: config.mail.fromName },
-      reply_to: [
-        options.replyTo ?? { address: config.mail.replyToAddress, name: config.mail.fromName },
-      ],
-      to: recipients.map((address, index) => ({
-        email_address: {
-          address,
-          name: (index === 0 && options.toName) || address,
-        },
-      })),
-      ...(options.cc && options.cc.length > 0
-        ? { cc: options.cc.map((address) => ({ email_address: { address, name: address } })) }
-        : {}),
-      ...(options.bcc && options.bcc.length > 0
-        ? { bcc: options.bcc.map((address) => ({ email_address: { address, name: address } })) }
-        : {}),
+    const sender = options.from ?? {
+      address: config.mail.fromAddress,
+      name: config.mail.fromName,
+    };
+    const replyTo =
+      options.replyTo ?? { address: config.mail.replyToAddress, name: config.mail.fromName };
+    const { id } = await client.emails.send({
+      from: formatSender(sender),
+      reply_to: replyTo.address,
+      to: recipients,
+      ...(options.cc && options.cc.length > 0 ? { cc: options.cc } : {}),
+      ...(options.bcc && options.bcc.length > 0 ? { bcc: options.bcc } : {}),
       subject: options.subject,
-      htmlbody: options.html,
-      textbody: text,
+      html: options.html,
+      text,
       ...(attachments && attachments.length > 0 ? { attachments } : {}),
     });
-    const requestId =
-      (response as { request_id?: string } | undefined)?.request_id ?? "unknown";
     logger.info(
-      { to: recipients, subject: options.subject, requestId },
+      { to: recipients, subject: options.subject, emailId: id },
       "[mail] Sent",
     );
   } catch (error) {
-    // ZeptoMail rejections arrive as objects with an `error.details` payload;
-    // surface them as real Errors so callers/loggers get a useful message.
     const detail =
-      error instanceof Error ? error.message : JSON.stringify(error);
-    // Trial-plan / daily-quota exhaustion (TM_3601 / SM_133 / SMI_115) silently
-    // takes down sign-up verification and invites — page ops, don't just log.
-    if (/TM_3601|SM_133|SMI_115|limit/i.test(detail)) {
-      captureBug(new Error(`ZeptoMail quota exhausted: ${detail}`), {
+      error instanceof SendByteError
+        ? `${error.code}: ${error.message}`
+        : error instanceof Error
+          ? error.message
+          : JSON.stringify(error);
+    if (/quota|limit|rate|insufficient|402|429/i.test(detail)) {
+      captureBug(new Error(`SendByte quota exhausted: ${detail}`), {
         extra: { subject: options.subject },
       });
       logger.error(
