@@ -132,7 +132,7 @@ never an authorization input.
   handled on request to security@buildpanda.io. (A self-service export/delete
   flow is not yet automated.)
 - **Subprocessors**: hosting/database (Railway), object storage (S3-compatible),
-  transactional email (ZeptoMail), error monitoring (Sentry), and the configured
+  transactional email (SendByte), error monitoring (Sentry), and the configured
   LLM provider for AI features. Client data is shared with these only as needed
   to operate the service.
 - **Retention**: records persist for the life of the account unless deletion is
