@@ -19,7 +19,7 @@ export interface ElementBrief {
 export const BESMM_ELEMENT_ORDER = [
   "Preliminaries",
   "Substructure",
-  "Frames",
+  "Frame",
   "Upper floors",
   "Staircases",
   "Roof",
@@ -31,6 +31,7 @@ export const BESMM_ELEMENT_ORDER = [
   "Ceiling finishings",
   "Mechanical services",
   "Electrical services",
+  "External works",
 ] as const;
 
 export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
@@ -178,10 +179,69 @@ export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
   {
     key: "electrical",
     element: "Electrical services",
-    guidance: "No electrical drawings. Named provisional items per system; no quantities.",
+    guidance:
+      "No electrical drawings. Named provisional items per system; no quantities.",
     template: `1.39: ELECTRICAL SERVICES
   (items) Lighting and power installations complete -- sum (provisional)
           Distribution boards and sub-mains -- sum (provisional)
           Earthing and lightning protection -- sum (provisional)`,
+  },
+  {
+    key: "preliminaries",
+    element: "Preliminaries",
+    guidance:
+      "BESMM4 Section 1 (Preliminaries). No drawing basis for pricing — structure the named preliminaries the BESMM way (employer's requirements, contractor's general cost items: site management, accommodation, services, insurances, temporary works) but every item is PROVISIONAL as a sum; quantities stay unclaimed.",
+    template: `1.1: PRELIMINARIES
+  (items) Employer's requirements; site records, defects liability -- sum (provisional)
+          Contractor's general cost items; management and staff, site accommodation, temporary services, safety and welfare -- sum (provisional)
+          Insurances and bonds -- sum (provisional)`,
+  },
+  {
+    key: "frame",
+    element: "Frame",
+    guidance:
+      "BESMM4 Section 11 (Insitu Concrete) / 15 (Structural Metalwork). A reinforced-concrete frame (columns and beams) inferred from the floor and wall anchors the QS way, stating every assumed member size and rebar rate — columns per storey, beams over wall centreline. Where no structural drawing supports a member, keep it PROVISIONAL. Reinforcement in tonnes from an assumed and stated kg/m3.",
+    template: `1.11: FRAME — INSITU CONCRETE
+  (preamble) Grade 25 reinforced concrete in superstructure frame
+  (items) Vertical work; columns; assumed 225 x 225mm -- m3
+  (group) Formwork - Plain formwork
+  (items) Sides of columns and beams; regular shape -- m2
+  (group) Reinforcement
+  (items) High yield steel bars; assumed rate over concrete volume -- tonnes`,
+  },
+  {
+    key: "upperFloors",
+    element: "Upper floors",
+    guidance:
+      "BESMM4 Section 11 (Insitu Concrete). Suspended upper-floor slabs inferred from floor area anchors for multi-storey buildings, stating assumed slab thickness. If the drawing set is single-storey or storey count is unknown, keep PROVISIONAL — do not invent floors.",
+    template: `1.11: UPPER FLOORS — SUSPENDED SLAB
+  (preamble) Grade 25 reinforced concrete in suspended slabs
+  (items) Horizontal work; slabs; assumed 150mm thick -- m3
+  (group) Formwork
+  (items) Soffits of slabs; horizontal -- m2
+  (group) Reinforcement
+  (items) High yield steel bars; assumed rate -- tonnes`,
+  },
+  {
+    key: "staircases",
+    element: "Staircases",
+    guidance:
+      "BESMM4 Section 11 (Insitu Concrete, staircases). A concrete staircase inferred only when a stair symbol/label is present in the drawing context; state assumed flight/going/riser dimensions. Absent evidence of a stair, keep the whole element PROVISIONAL.",
+    template: `1.11: STAIRCASES — INSITU CONCRETE
+  (preamble) Grade 25 reinforced concrete in staircases
+  (items) Sloping work; staircase flights and landings; assumed dimensions -- m3
+  (group) Formwork
+  (items) Soffits and risers of staircase; sloping -- m2`,
+  },
+  {
+    key: "externalWorks",
+    element: "External works",
+    guidance:
+      "BESMM4 (drainage, roads/paving, external services, boundary walls, landscaping). No site-layout drawing basis — structure named external-works systems but keep every item PROVISIONAL as a sum; quantities stay unclaimed until a site/external layout is available.",
+    template: `1.40: EXTERNAL WORKS
+  (items) Site drainage; manholes, pipework and connections -- sum (provisional)
+          Roads, paving and hardstandings -- sum (provisional)
+          External services and boundary walls -- sum (provisional)
+          Landscaping and site finishes -- sum (provisional)`,
   },
 ];

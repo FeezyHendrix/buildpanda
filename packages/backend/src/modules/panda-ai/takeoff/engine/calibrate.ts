@@ -7,6 +7,7 @@ const PT_TO_MM = 0.3528; // 1 pt at paper scale
 const CLUSTER_TOLERANCE = 1.03;
 const MIN_DIM_VALUE = 100;
 const MAX_DIM_VALUE = 20000;
+const SCALE_SNAP_MAX_ERROR = 0.06;
 
 interface DimensionText extends TextRun {
   value: number;
@@ -60,8 +61,11 @@ function densestCluster(sorted: number[]): { count: number; value: number } {
   return best;
 }
 
-// Dimensions may be annotated in mm, cm or m; pick the multiplier whose
-// implied drawing scale lands nearest a standard architectural scale.
+// Dimensions may be annotated in mm, cm or m; pick the multiplier whose implied
+// drawing scale lands nearest a standard architectural scale, then SNAP to that
+// exact scale. Drawings are drawn at an exact standard scale, so the true mmPerPt
+// is standard * PT_TO_MM — snapping removes the dimension-measurement noise (a raw
+// ratio 4% off 1:100 would otherwise put a 4% error on every quantity).
 function inferUnit(rawMmPerPt: number): { mmPerPt: number; unit: DimUnit; error: number } {
   let best: { mmPerPt: number; unit: DimUnit; error: number } = { mmPerPt: rawMmPerPt, unit: "mm", error: Infinity };
   const units: { mul: number; unit: DimUnit }[] = [
@@ -73,7 +77,7 @@ function inferUnit(rawMmPerPt: number): { mmPerPt: number; unit: DimUnit; error:
     const implied = (rawMmPerPt * mul) / PT_TO_MM;
     for (const standard of STANDARD_SCALES) {
       const error = Math.abs(implied - standard) / standard;
-      if (error < best.error) best = { mmPerPt: rawMmPerPt * mul, unit, error };
+      if (error < best.error) best = { mmPerPt: standard * PT_TO_MM, unit, error };
     }
   }
   return best;
@@ -84,13 +88,19 @@ export function calibrate(texts: TextRun[], segments: Segment[]): CalibrationRes
   const ratios = matchRatios(dims, segments).sort((a, b) => a - b);
   if (ratios.length < 3) return null;
   const cluster = densestCluster(ratios);
-  const confidence = cluster.count / ratios.length;
+  const clusterAgreement = cluster.count / ratios.length;
   const { mmPerPt, unit, error } = inferUnit(cluster.value);
-  // reject calibrations that neither cluster tightly nor land near a standard scale
-  if (confidence < 0.3 || error > 0.15) return null;
+  // Reject calibrations that don't cluster tightly OR sit too far from a standard
+  // scale. A ratio >6% off any standard scale is untrustworthy — since we now snap
+  // to the standard, a large error means we're snapping to the WRONG scale.
+  if (clusterAgreement < 0.3 || error > SCALE_SNAP_MAX_ERROR) return null;
+  // Grade confidence by both cluster agreement AND how cleanly the snap landed, so
+  // review sees a true accuracy signal, not just "how many ratios agreed".
+  const snapConfidence = 1 - error / SCALE_SNAP_MAX_ERROR;
+  const confidence = Math.round(clusterAgreement * snapConfidence * 100) / 100;
   return {
     mmPerPt,
-    confidence: Math.round(confidence * 100) / 100,
+    confidence,
     dimUnit: unit,
     matches: cluster.count,
   };

@@ -10,8 +10,10 @@ import type {
 export const WALL_GAP_MIN_MM = 120;
 export const WALL_GAP_MAX_MM = 280;
 const WALL_MIN_OVERLAP_M = 0.4;
-const WALL_SEG_MIN_M = 0.4;
 const WALL_SEG_MAX_M = 25;
+const WALL_COLLINEAR_TOL_PT = 0.5;
+const WALL_JOINT_MAX_M = 1.2;
+const WALL_RUN_MIN_M = 0.6;
 const DOOR_RADIUS_MIN_MM = 600;
 const DOOR_RADIUS_MAX_MM = 1200;
 const DOOR_DEDUPE_MM = 300;
@@ -25,6 +27,58 @@ interface Span {
   fixed: number; // the shared axis coordinate
   lo: number;
   hi: number;
+}
+
+interface RunSpan extends Span {
+  parts: { lo: number; hi: number }[];
+}
+
+// A block/sandcrete wall face is often drawn as several collinear segments split
+// by door/window openings or CAD joints. Joining them into one continuous run —
+// bridging joints up to WALL_JOINT_MAX_M — lets pairing annotate the whole wall
+// instead of a single fragment's overlap.
+function mergeCollinearSpans(spans: Span[], mmPerPt: number): RunSpan[] {
+  if (spans.length === 0) return [];
+  const toM = mmPerPt / 1000;
+  const jointMaxPt = WALL_JOINT_MAX_M / toM;
+  const sorted = [...spans].sort((a, b) => a.fixed - b.fixed || a.lo - b.lo);
+
+  const runs: RunSpan[] = [];
+  let g = 0;
+  while (g < sorted.length) {
+    let h = g;
+    while (h + 1 < sorted.length && Math.abs(sorted[h + 1]!.fixed - sorted[g]!.fixed) <= WALL_COLLINEAR_TOL_PT) {
+      h++;
+    }
+    const group = sorted.slice(g, h + 1).sort((a, b) => a.lo - b.lo);
+    g = h + 1;
+
+    let cur: RunSpan | null = null;
+    for (const s of group) {
+      if (!cur) {
+        cur = { fixed: s.fixed, lo: s.lo, hi: s.hi, parts: [{ lo: s.lo, hi: s.hi }] };
+        continue;
+      }
+      const gap = s.lo - cur.hi;
+      if (gap <= jointMaxPt) {
+        const curLen = cur.hi - cur.lo;
+        const sLen = s.hi - s.lo;
+        cur.fixed = (cur.fixed * curLen + s.fixed * sLen) / (curLen + sLen || 1);
+        if (gap > 0) {
+          cur.parts.push({ lo: s.lo, hi: s.hi });
+        } else {
+          const last = cur.parts[cur.parts.length - 1]!;
+          last.hi = Math.max(last.hi, s.hi);
+        }
+        cur.hi = Math.max(cur.hi, s.hi);
+      } else {
+        runs.push(cur);
+        cur = { fixed: s.fixed, lo: s.lo, hi: s.hi, parts: [{ lo: s.lo, hi: s.hi }] };
+      }
+    }
+    if (cur) runs.push(cur);
+  }
+  return runs;
 }
 
 function toSpansH(segments: Segment[]): Span[] {
@@ -45,9 +99,9 @@ function pairSpans(
   horizontal: boolean,
 ): { vertices: number[][]; lengthM: number; gapMm: number }[] {
   const toM = mmPerPt / 1000;
-  const eligible = spans.filter((s) => {
-    const lenM = (s.hi - s.lo) * toM;
-    return lenM >= WALL_SEG_MIN_M && lenM <= WALL_SEG_MAX_M;
+  const eligible = mergeCollinearSpans(spans, mmPerPt).filter((r) => {
+    const lenM = (r.hi - r.lo) * toM;
+    return lenM >= WALL_RUN_MIN_M && lenM <= WALL_SEG_MAX_M;
   });
   eligible.sort((a, b) => a.fixed - b.fixed);
   const used = new Array<boolean>(eligible.length).fill(false);
@@ -61,6 +115,7 @@ function pairSpans(
       const gapMm = Math.abs(a.fixed - b.fixed) * mmPerPt;
       if (gapMm > WALL_GAP_MAX_MM) break; // sorted by fixed axis: no closer partner further on
       if (gapMm < WALL_GAP_MIN_MM) continue;
+      // Annotate the full overlap of the two merged runs — the whole wall span.
       const lo = Math.max(a.lo, b.lo);
       const hi = Math.min(a.hi, b.hi);
       const overlapM = (hi - lo) * toM;

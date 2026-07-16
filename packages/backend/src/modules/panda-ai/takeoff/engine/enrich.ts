@@ -2,6 +2,36 @@ import { z } from "zod";
 import type { LlmMessage } from "../../../../lib/llm.ts";
 import type { Confidence, MeasuredBoqItem, PreconBoqRowRow } from "../types.ts";
 import { BESMM_ELEMENT_BRIEFS, type ElementBrief } from "./besmm-reference.ts";
+import besmmPrecomputed from "./besmm-precomputed.json" with { type: "json" };
+
+interface BesmmChunk {
+  page: number;
+  score: number;
+  text: string;
+}
+const BESMM_REFS = besmmPrecomputed.elements as Record<string, BesmmChunk[]>;
+
+function besmmRefChunks(elementKey: string): BesmmChunk[] {
+  return BESMM_REFS[elementKey] ?? [];
+}
+
+function buildBesmmBlock(elementKey: string): string {
+  const chunks = besmmRefChunks(elementKey);
+  if (chunks.length === 0) return "";
+  const pages = chunks.map((c) => c.page).join(", ");
+  const body = chunks.map((c) => `[p.${c.page}] ${c.text.trim()}`).join("\n\n");
+  return [
+    `<besmm_reference source="BESMM4 NIQS 4th Ed 2015" pages="${pages}">`,
+    body,
+    `</besmm_reference>`,
+    "BESMM REFERENCE RULES:",
+    "- Use these clauses to shape measurement decisions and produce BESMM-conformant description text.",
+    "- PARAPHRASE. Never quote the reference text verbatim into a bill item description.",
+    "- The billing template's unit is AUTHORITATIVE. If the reference implies a different unit, keep the template's unit.",
+    "- The reference is OCR-extracted and table columns may be interleaved. Only rely on a threshold or number when it appears clearly and un-fragmented; otherwise ignore it.",
+    `- For each item you rely on the reference for, set refPages to the page numbers you used, from this list only: ${pages}. Never invent page numbers.`,
+  ].join("\n");
+}
 
 // ---------------------------------------------------------------------------
 // The build-up stage: parallel per-element agents turn the deterministic
@@ -127,6 +157,7 @@ const buildupItemSchema = z.object({
   basis: z.enum(["anchor", "derived", "provisional"]),
   anchor: z.string().max(60).optional(),
   formula: z.string().max(160).optional(),
+  refPages: z.array(z.number().int().positive()).max(5).optional(),
 });
 
 const buildupGroupSchema = z.object({
@@ -181,6 +212,7 @@ function agentMessages(brief: ElementBrief, anchors: Anchors, sheetContext: stri
       content: [
         `ELEMENT: ${brief.element}`,
         `GUIDANCE: ${brief.guidance}`,
+        buildBesmmBlock(brief.key),
         `BILLING TEMPLATE for this element (follow its section numbers, preambles, groups and item style):\n${brief.template}`,
         `MEASURED ANCHORS (the only numbers that exist):\n${anchorList || "(none)"}`,
         `DRAWING CONTEXT: ${sheetContext}`,
@@ -195,6 +227,7 @@ export interface EnrichedItem extends MeasuredBoqItem {
 
 function toItems(brief: ElementBrief, result: BuildupResult, anchors: Anchors): EnrichedItem[] {
   const items: EnrichedItem[] = [];
+  const allowedPages = new Set(besmmRefChunks(brief.key).map((c) => c.page));
   for (const section of result.workSections) {
     for (const group of section.groups) {
       let firstOfGroup = true;
@@ -202,6 +235,7 @@ function toItems(brief: ElementBrief, result: BuildupResult, anchors: Anchors): 
       let qty: number | null = null;
       let basisText: string;
       let confidence: Confidence = "low";
+      const citedPages = (raw.refPages ?? []).filter((p) => allowedPages.has(p));
         if (raw.basis === "anchor" && raw.anchor) {
           // the measured bill already carries the anchor quantities themselves;
           // agents add ASSOCIATED work, they must not re-bill the anchor
@@ -232,7 +266,7 @@ function toItems(brief: ElementBrief, result: BuildupResult, anchors: Anchors): 
           deductions: [],
           qty: qty ?? 0,
           confidence,
-          measurementBasis: basisText,
+          measurementBasis: citedPages.length > 0 ? `${basisText} [BESMM4 p.${citedPages.join(", ")}]` : basisText,
           geometries: [],
           pageNumber: 0,
           provisional: raw.basis === "provisional",
