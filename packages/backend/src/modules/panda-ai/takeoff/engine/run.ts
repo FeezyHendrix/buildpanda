@@ -29,6 +29,7 @@ import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.t
 import { besmmRag } from "../../../../lib/besmm-rag.ts";
 import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
 import { BESMM_ELEMENT_BRIEFS } from "./besmm-reference.ts";
+import { classifyStructure } from "./classify.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
@@ -267,6 +268,8 @@ export async function generateForSession(
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
   const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
+  const classifyTitles: string[] = [];
+  const classifyText: string[] = [];
   let nextPageNumber = 1;
 
   for (const placeholder of sheets) {
@@ -348,6 +351,8 @@ export async function generateForSession(
               doorProbe.count > 0,
               /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" ")),
             );
+            if (title) classifyTitles.push(title);
+            if (classifyText.length < 40) classifyText.push(extracted.texts.map((t) => t.str).join(" ").slice(0, 2000));
             const sheetLabel = `${placeholder.file_name} p${pageNo}`;
             const code = `SHT-${String(globalPage).padStart(2, "0")}`;
 
@@ -460,6 +465,13 @@ export async function generateForSession(
       progress("Schedule sheets found but could not be read; tag census stands");
     }
   }
+
+  const structure = classifyStructure({ sheetTitles: classifyTitles, text: classifyText.join(" \n ") });
+  await repo.updateSessionStructure(sessionId, structure);
+  progress(
+    `Detected structure: ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`,
+    { structure },
+  );
 
   // Build-up stage: parallel per-element QS agents expand the measured
   // anchors into a BESMM-granular bill. Quantities stay engine-computed —

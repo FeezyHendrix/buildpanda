@@ -36,6 +36,7 @@ function toSession(r: PreconSessionRow): PreconSession {
     status: r.status,
     title: r.title,
     error: r.error,
+    structureContext: r.structure_context ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
   };
