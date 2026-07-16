@@ -8,6 +8,8 @@
 //     "Ditto"; finishes split into width bands (<=600mm = m, >600mm = m2);
 //   - every element closes "CARRIED TO SUMMARY".
 
+import type { StructureClass } from "../types.ts";
+
 export interface ElementBrief {
   key: string;
   element: string;
@@ -15,6 +17,7 @@ export interface ElementBrief {
   template: string;
   sectionCodes?: string[];
   retrievalQuery?: string;
+  classes?: StructureClass[];
 }
 
 // Standard element order in the bill (measured + agent elements both map here).
@@ -246,6 +249,91 @@ export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
           External services and boundary walls -- sum (provisional)
           Landscaping and site finishes -- sum (provisional)`,
   },
+  {
+    key: "piling",
+    element: "Piling",
+    classes: ["building", "bridge", "infrastructure"],
+    guidance:
+      "Only bill piling when a pile schedule / pile layout is present or a piled foundation is stated. Piles are ENUMERATED (nr) with size stated, plus bored/driven length in m. Pile reinforcement is in TONNES from the schedule; cutting off pile tops is deemed to include integrating reinforcement into the cap (BESMM C18). If no pile schedule exists, keep pile numbers and lengths PROVISIONAL — never invent pile counts or depths.",
+    template: `1.7: PILING
+  (preamble) Reinforced concrete bored piles; grade as specification; formed under bentonite or as method statement
+  (items) Bored piles; 600mm diameter; number stated -- nr
+          Bored piles; 600mm diameter; concrete in piles -- m
+          Cutting off tops of piles; 600mm diameter -- nr
+  (group) Reinforcement to piles
+  (items) High yield steel bars; as pile schedule -- tonnes`,
+  },
+  {
+    key: "pileCaps",
+    element: "Pile caps and ground beams",
+    classes: ["building", "bridge", "infrastructure"],
+    guidance:
+      "Bill only with a piled/RC substructure. Pile caps and ground beams are in-situ concrete (m3, reinforced) + formwork (m2) + reinforcement (tonnes). State assumed cap dimensions where a schedule is absent, and keep reinforcement provisional unless a bar bending schedule is present.",
+    template: `1.11: INSITU CONCRETE WORKS
+  (preamble) Grade 30 reinforced concrete in pile caps and ground beams
+  (items) Horizontal work; over 300mm thick; in pile caps; reinforced over 5% -- m3
+  (group) Formwork - Plain formwork
+  (items) Sides of foundations; over 1.00m high -- m2
+  (group) Reinforcement
+  (items) High yield steel bars; as bar bending schedule -- tonnes`,
+  },
+  {
+    key: "pavement",
+    element: "Pavement (roads, runways, aprons)",
+    classes: ["road", "airport", "infrastructure"],
+    guidance:
+      "For roads, runways, taxiways and aprons. Each pavement COURSE is measured in m2 by material type and DEPTH BAND (BESMM 2T: 100-150, 150-200, 200-250, 250-300, over 300mm). Sub-base, base and surfacing are separate courses. Steel fabric to concrete pavement is m2 by nominal-mass band. State assumed course depths where the pavement design is not dimensioned, and keep depths provisional if unknown.",
+    template: `2T: ROADS AND PAVINGS
+  (preamble) Flexible / rigid pavement construction to pavement design
+  (group) Sub-base
+  (items) Unbound sub-base; depth 150-200mm -- m2
+  (group) Base course
+  (items) Bituminous bound base; depth 100-150mm -- m2
+  (group) Surface course
+  (items) Asphalt concrete surface course; depth not exceeding 100mm -- m2`,
+  },
+  {
+    key: "kerbsAndDrainage",
+    element: "Kerbs, channels and road drainage",
+    classes: ["road", "airport", "infrastructure"],
+    guidance:
+      "Kerbs, channels and edgings are measured in metres (2T), stating cross-section. Road/pavement joints in metres. Gullies and manholes enumerated. Keep provisional where the layout is not dimensioned.",
+    template: `2T: ROADS AND PAVINGS
+  (items) Precast concrete kerbs; 125 x 255mm; on concrete bed and backing -- m
+          Channels; precast concrete -- m
+          Expansion joints in pavement -- m
+  (items) Road gullies; complete with connection -- nr`,
+  },
+  {
+    key: "deck",
+    element: "Bridge deck and superstructure",
+    classes: ["bridge"],
+    guidance:
+      "Bridge deck, piers, abutments and parapets. Deck and piers are in-situ concrete (m3, reinforced) + formwork (m2, incl soffit propping height bands) + reinforcement (tonnes). Prestressing / post-tensioning is measured separately (number of tendons, method stated). Bearings and expansion joints enumerated. All quantities depend on the GA + reinforcement schedule; keep provisional where a schedule is absent — never fabricate deck rebar tonnage.",
+    template: `2F: INSITU CONCRETE
+  (preamble) Grade 40 reinforced concrete in bridge deck, piers and abutments
+  (items) Concrete in deck slab -- m3
+          Concrete in piers and abutments -- m3
+2G: CONCRETE ANCILLARIES
+  (group) Formwork
+  (items) Formwork to soffit of deck; propping over 3m -- m2
+  (group) Reinforcement
+  (items) High yield steel bars; as bar bending schedule -- tonnes
+  (group) Prestressing
+  (items) Post-tensioned tendons; method as specification -- nr`,
+  },
+  {
+    key: "earthworks",
+    element: "Earthworks (civil)",
+    classes: ["road", "bridge", "airport", "infrastructure"],
+    guidance:
+      "Civil earthworks (BESMM 2E): excavation by material and depth stage (m3), disposal (m3), filling and compaction (m3), and preparation of surfaces. For roads this is the formation/cut-fill; for bridges the foundation excavation. State assumed depths where the sections are not dimensioned.",
+    template: `2E: EARTHWORKS
+  (items) General excavation; to reduce levels; not exceeding 2m deep -- m3
+          Disposal of excavated material off site -- m3
+          Filling and compaction; imported granular fill -- m3
+          Preparation of formation surface -- m2`,
+  },
 ];
 
 // Maps each element to the BESMM sections whose rules govern it, so RAG
@@ -266,7 +354,24 @@ const ELEMENT_RETRIEVAL: Record<string, { sectionCodes: string[]; retrievalQuery
   electrical: { sectionCodes: ["1.39"], retrievalQuery: "electrical services installations item enumerated points" },
   preliminaries: { sectionCodes: ["1.1"], retrievalQuery: "preliminaries employer requirements site establishment" },
   externalWorks: { sectionCodes: ["1.34", "1.35", "2T"], retrievalQuery: "drainage below ground roads pavings site works external" },
+  piling: { sectionCodes: ["1.7", "2R", "2S"], retrievalQuery: "piles enumerated size stated bored driven concrete in piles cutting off tops reinforcement to piles tonnes" },
+  pileCaps: { sectionCodes: ["1.11", "2F", "2G"], retrievalQuery: "pile caps ground beams reinforced concrete horizontal work formwork reinforcement tonnes" },
+  pavement: { sectionCodes: ["2T"], retrievalQuery: "road pavement sub-base base surfacing course depth bands m2 unbound bituminous concrete slab" },
+  kerbsAndDrainage: { sectionCodes: ["2T", "1.34"], retrievalQuery: "kerbs channels edgings metres precast concrete pavement joints gullies manholes" },
+  deck: { sectionCodes: ["2F", "2G"], retrievalQuery: "bridge deck piers abutments concrete formwork soffit propping reinforcement tonnes prestressing tendons post-tension" },
+  earthworks: { sectionCodes: ["2E"], retrievalQuery: "earthworks excavation depth stages disposal filling compaction formation m3" },
 };
+
+// Selects the element briefs that apply to a structure class. Briefs with no
+// classes tag are building-oriented (the historical default). The item set is
+// therefore the elements relevant to what the plan IS, not a fixed list.
+export function briefsFor(structureClass: StructureClass): ElementBrief[] {
+  if (structureClass === "unknown") return BESMM_ELEMENT_BRIEFS;
+  return BESMM_ELEMENT_BRIEFS.filter((brief) => {
+    const classes = brief.classes ?? ["building"];
+    return classes.includes(structureClass);
+  });
+}
 
 for (const brief of BESMM_ELEMENT_BRIEFS) {
   const meta = ELEMENT_RETRIEVAL[brief.key];
