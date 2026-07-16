@@ -25,6 +25,25 @@ export type GeometryKind = (typeof GEOMETRY_KINDS)[number];
 export const GEOMETRY_SOURCES = ["ai", "manual"] as const;
 export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 
+export const STRUCTURE_CLASSES = ["building", "road", "bridge", "airport", "infrastructure", "unknown"] as const;
+export type StructureClass = (typeof STRUCTURE_CLASSES)[number];
+
+export const STRUCTURAL_SYSTEMS = ["load-bearing-masonry", "reinforced-concrete-frame", "steel-frame", "composite", "unknown"] as const;
+export type StructuralSystem = (typeof STRUCTURAL_SYSTEMS)[number];
+
+export const FOUNDATION_TYPES = ["strip", "raft", "pad", "pile", "unknown"] as const;
+export type FoundationType = (typeof FOUNDATION_TYPES)[number];
+
+export interface StructureContext {
+  structureClass: StructureClass;
+  buildingType: string | null;
+  storeys: number | null;
+  structuralSystem: StructuralSystem;
+  foundationType: FoundationType;
+  confidence: Confidence;
+  signals: string[];
+}
+
 // ---------- rows (snake_case, DB) ----------
 
 export interface PreconSessionRow {
@@ -35,6 +54,7 @@ export interface PreconSessionRow {
   status: SessionStatus;
   title: string;
   error: string | null;
+  structure_context: StructureContext | null;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
@@ -168,6 +188,7 @@ export interface PreconSession {
   status: SessionStatus;
   title: string;
   error: string | null;
+  structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
 }

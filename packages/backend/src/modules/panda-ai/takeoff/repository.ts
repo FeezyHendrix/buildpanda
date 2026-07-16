@@ -12,6 +12,7 @@ import type {
   RowStatus,
   SessionStatus,
   SheetStatus,
+  StructureContext,
 } from "./types.ts";
 
 export type PreconRepository = ReturnType<typeof preconRepository>;
@@ -19,7 +20,7 @@ export type PreconRepository = ReturnType<typeof preconRepository>;
 export function preconRepository(db: Knex) {
   return {
     // sessions
-    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at">) => {
+    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context">) => {
       const [inserted] = await db<PreconSessionRow>("precon_sessions").insert(row).returning("*");
       return inserted!;
     },
@@ -39,6 +40,11 @@ export function preconRepository(db: Knex) {
       db<PreconSessionRow>("precon_sessions")
         .where({ id })
         .update({ status, error: error ?? null, updated_at: db.fn.now() }),
+
+    updateSessionStructure: (id: string, structure: StructureContext) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({ structure_context: db.raw("?::jsonb", [JSON.stringify(structure)]), updated_at: db.fn.now() }),
 
     // sheets
     insertSheets: (rows: Omit<PreconSheetRow, "created_at" | "updated_at">[]) =>
