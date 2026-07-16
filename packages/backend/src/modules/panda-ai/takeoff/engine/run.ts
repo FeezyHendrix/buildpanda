@@ -25,12 +25,42 @@ import {
 import { draftBoq } from "./boq-draft.ts";
 import { measureSheetViaVision, VISION_MAX_SHEETS_PER_SESSION } from "./vision-takeoff.ts";
 import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
-import { buildUpBill } from "./enrich.ts";
+import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
+import { besmmRag } from "../../../../lib/besmm-rag.ts";
+import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
+import { BESMM_ELEMENT_BRIEFS } from "./besmm-reference.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
 const DEFAULT_WALL_HEIGHT_M = 2.7;
+
+function besmmResolverFor(db: Knex): BesmmResolver {
+  if (!isEmbeddingConfigured()) return staticBesmmResolver;
+  const rag = besmmRag(db);
+  return async (brief) => {
+    try {
+      const query = brief.retrievalQuery ?? `${brief.element}. ${brief.guidance}`;
+      const matches = await rag.search(query, { sectionCodes: brief.sectionCodes, limit: 6 });
+      if (matches.length === 0) return staticBesmmResolver(brief);
+      const pages = matches.map((m) => m.pageFrom).join(", ");
+      const body = matches.map((m) => `[p.${m.pageFrom}] ${m.content.trim()}`).join("\n\n");
+      return [
+        `<besmm_reference source="BESMM4 NIQS 4th Ed 2015" pages="${pages}">`,
+        body,
+        `</besmm_reference>`,
+        "BESMM REFERENCE RULES:",
+        "- Use these clauses to shape measurement decisions and produce BESMM-conformant description text.",
+        "- PARAPHRASE. Never quote the reference text verbatim into a bill item description.",
+        "- The billing template's unit is AUTHORITATIVE. If the reference implies a different unit, keep the template's unit.",
+        "- The reference is OCR-extracted and table columns may be interleaved. Only rely on a threshold or number when it appears clearly and un-fragmented; otherwise ignore it.",
+        `- For each item you rely on the reference for, set refPages to the page numbers you used, from this list only: ${pages}. Never invent page numbers.`,
+      ].join("\n");
+    } catch {
+      return staticBesmmResolver(brief);
+    }
+  };
+}
 
 export type ProgressFn = (message: string, data?: Record<string, unknown>) => void;
 
@@ -437,11 +467,14 @@ export async function generateForSession(
   if (isLlmConfigured() && billItems.length > 0) {
     progress("Building up the bill with parallel QS agents");
     const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
+    const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(
       billItems,
       sheetContext,
       async (messages, schema) => chatJsonValidated(messages, schema),
       (message) => progress(message),
+      BESMM_ELEMENT_BRIEFS,
+      resolveBesmm,
     );
     const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);
     if (failed.length > 0) progress(`Elements left for manual billing: ${failed.join(", ")}`);
