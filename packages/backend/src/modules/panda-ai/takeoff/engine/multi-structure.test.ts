@@ -3,6 +3,12 @@ import assert from "node:assert/strict";
 import { classifyStructure } from "./classify.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { readBbs, bbsToItems, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
+import { measureCivil, civilToItems } from "./civil-measure.ts";
+import type { Segment } from "../types.ts";
+
+function seg(x1: number, y1: number, x2: number, y2: number): Segment {
+  return { x1, y1, x2, y2, len: Math.hypot(x2 - x1, y2 - y1), width: 0.3, color: "#000" };
+}
 
 // End-to-end acceptance for the element-driven engine: for each construction
 // type, the classify -> briefsFor -> schedule-reader core must produce the
@@ -55,6 +61,15 @@ test("ROAD: road class, pavement+kerbs+earthworks, no building elements", () => 
   const keys = briefsFor(ctx.structureClass).map((b) => b.key);
   assert.ok(keys.includes("pavement") && keys.includes("kerbsAndDrainage") && keys.includes("earthworks"));
   assert.ok(!keys.includes("walls") && !keys.includes("wall-finishings") && !keys.includes("deck"));
+
+  // civil geometry detector measures paved surface + road length from the plan
+  const carriageway = [seg(0, 0, 2000, 0), seg(0, 30, 2000, 30), seg(0, 0, 0, 30), seg(2000, 0, 2000, 30)];
+  const civilItems = civilToItems(measureCivil(carriageway, 100), 1);
+  const area = civilItems.find((i) => i.unit === "m2");
+  const length = civilItems.find((i) => i.unit === "m");
+  assert.ok(area && length, "road plan must yield measured paved area + length");
+  assert.equal(length!.qty, 200); // 2000pt x 0.1m/pt = 200m
+  assert.equal(area!.workSection.code, "2T");
 });
 
 test("BRIDGE: bridge class, deck+piling+earthworks, pile schedule -> measured piles", () => {

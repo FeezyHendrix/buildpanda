@@ -8,7 +8,7 @@ import { createWriteStream } from "node:fs";
 import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, SheetKind, TextRun } from "../types.ts";
+import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
 import { calibrate } from "./calibrate.ts";
 import { clusterRegions, segmentsInRegion } from "./cluster.ts";
@@ -31,6 +31,7 @@ import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { classifyStructure } from "./classify.ts";
 import { readBbs, bbsToItems, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
+import { measureCivil, civilToItems } from "./civil-measure.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
@@ -271,6 +272,7 @@ export async function generateForSession(
   const sheetIdByPage = new Map<number, string>();
   const classifyTitles: string[] = [];
   const classifyText: string[] = [];
+  const civilSheets: { segments: Segment[]; mmPerPt: number; pageNumber: number }[] = [];
   let nextPageNumber = 1;
 
   for (const placeholder of sheets) {
@@ -369,6 +371,9 @@ export async function generateForSession(
               snap_index: buildSnapIndex(extracted.segments),
             });
 
+            if (calibration && extracted.segments.length >= 20) {
+              civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
+            }
             if (calibration && kind === "floor-plan") {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel);
               if (measured.fingerprint) pageFingerprints.push(measured.fingerprint);
@@ -493,6 +498,16 @@ export async function generateForSession(
     `Detected structure: ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`,
     { structure },
   );
+
+  const CIVIL_CLASSES = new Set(["road", "airport", "bridge", "infrastructure"]);
+  if (CIVIL_CLASSES.has(structure.structureClass) && civilSheets.length > 0) {
+    const best = civilSheets.reduce((a, b) => (b.segments.length > a.segments.length ? b : a));
+    const civilItems = civilToItems(measureCivil(best.segments, best.mmPerPt), best.pageNumber);
+    if (civilItems.length > 0) {
+      billItems.push(...civilItems);
+      progress(`Measured civil surface geometry on page ${best.pageNumber}: ${civilItems.length} anchors`);
+    }
+  }
 
   // Build-up stage: parallel per-element QS agents expand the measured
   // anchors into a BESMM-granular bill. Quantities stay engine-computed —
