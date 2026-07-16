@@ -75,6 +75,7 @@ import taskRoutes from "./modules/tasks/routes.ts";
 import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
 import lookAheadRoutes from "./modules/look-aheads/routes.ts";
+import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -209,6 +210,13 @@ export async function buildApp(): Promise<FastifyInstance> {
 
 export async function start(): Promise<void> {
   const app = await buildApp();
+
+  try {
+    const { seeded } = await besmmRag(app.db).ensureSeeded();
+    if (seeded > 0) app.log.info({ seeded }, "Seeded BESMM vector store from committed embeddings");
+  } catch (error) {
+    app.log.warn({ err: error }, "BESMM vector store seed skipped; take-off will use static reference");
+  }
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     app.log.info({ signal }, "Shutting down");
