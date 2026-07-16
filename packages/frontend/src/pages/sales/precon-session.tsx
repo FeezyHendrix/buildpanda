@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
+import { Button } from "@/components/atoms/button";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
@@ -79,38 +81,150 @@ function Stepper({ active, reviewing, onSelect }: { active: StepKey; reviewing: 
 }
 Stepper.displayName = "Stepper";
 
-function GenerateFeed({ sessionId, failed, error }: { sessionId: string; failed: boolean; error: string | null }) {
+const GENERATE_PHASES = [
+  { id: "reading", label: "Reading drawings", pattern: /Reading .* pages|Measured .*: .* items|No reliable scale|duplicates the plan/i },
+  { id: "structure", label: "Detecting structure", pattern: /Detected structure/i },
+  { id: "schedules", label: "Reading schedules", pattern: /schedule|Applied schedules|reinforcement|piles/i },
+  { id: "building", label: "Building the bill", pattern: /Building up the bill|Elements left/i },
+  { id: "pricing", label: "Pricing", pattern: /Priced .* items/i },
+  { id: "draft", label: "Draft ready", pattern: /Draft BOQ ready/i },
+] as const;
+
+function getPhaseState(feed: string[]) {
+  let highestPhaseIdx = -1;
+  const phaseMessages = new Map<number, string>();
+
+  for (const msg of feed) {
+    const matchedIdx = GENERATE_PHASES.findIndex((phase) => phase.pattern.test(msg));
+    if (matchedIdx !== -1) {
+      if (matchedIdx > highestPhaseIdx) highestPhaseIdx = matchedIdx;
+      phaseMessages.set(matchedIdx, msg);
+    } else if (highestPhaseIdx !== -1) {
+      phaseMessages.set(highestPhaseIdx, msg);
+    }
+  }
+
+  const lastMessage = feed.length > 0 ? feed[feed.length - 1] : undefined;
+  if (lastMessage && highestPhaseIdx === -1) {
+    highestPhaseIdx = 0;
+    phaseMessages.set(0, lastMessage);
+  } else if (highestPhaseIdx === -1) {
+    highestPhaseIdx = 0;
+  }
+
+  return { highestPhaseIdx, phaseMessages };
+}
+
+function GenerateFeed({ 
+  sessionId, 
+  failed, 
+  error,
+  justCompleted,
+  itemsCount,
+  billsCount
+}: { 
+  sessionId: string; 
+  failed: boolean; 
+  error: string | null;
+  justCompleted?: boolean;
+  itemsCount?: number;
+  billsCount?: number;
+}) {
   const { data: feed = [] } = useQuery({
     queryKey: preconKeys.progressFeed(sessionId),
     queryFn: () => [] as string[],
     staleTime: Infinity,
     gcTime: Infinity,
   });
+
+  const { highestPhaseIdx, phaseMessages } = getPhaseState(feed);
+
+  if (justCompleted) {
+    return (
+      <Card className="mx-auto max-w-2xl p-8 text-center animate-fade-in motion-reduce:animate-none">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mb-4 animate-pop motion-reduce:animate-none">
+          <svg className="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900">Draft ready</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          {itemsCount} items across {billsCount} bills
+        </p>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="mx-auto max-w-2xl p-8 text-center">
+    <Card className="mx-auto max-w-2xl p-8">
       {failed ? (
-        <>
-          <p className="text-sm font-semibold text-red-700">Generation failed</p>
-          <p className="mt-2 text-sm text-gray-600">{error ?? "Unknown error"}</p>
-        </>
+        <div className="text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+            <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 className="mt-4 text-sm font-semibold text-red-700">Generation failed</h3>
+          <p className="mt-2 text-sm text-gray-600">{error ?? "An unexpected error occurred while measuring your drawings."}</p>
+          <div className="mt-6">
+            <Button variant="secondary" onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        </div>
       ) : (
         <>
-          <div className="flex justify-center">
-            <Spinner size="md" />
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-semibold text-gray-900">Panda AI is working</h2>
+            <p className="mt-1 text-sm text-gray-500">Nothing is final — every item goes to human review next.</p>
           </div>
-          <p className="mt-4 text-sm font-semibold text-gray-900">Panda AI is measuring your drawings</p>
-          <p className="mt-1 text-sm text-gray-500">Nothing is final — every item goes to human review next.</p>
+          
+          <div className="mx-auto max-w-sm space-y-6">
+            {GENERATE_PHASES.map((phase, idx) => {
+              const isActive = idx === highestPhaseIdx;
+              const isDone = idx < highestPhaseIdx;
+              const isPending = idx > highestPhaseIdx;
+              const latestMsg = phaseMessages.get(idx);
+
+              return (
+                <div key={phase.id} className={cn("relative flex gap-4 transition-opacity duration-300", isPending ? "opacity-40" : "opacity-100")}>
+                  {idx !== GENERATE_PHASES.length - 1 && (
+                    <div className={cn(
+                      "absolute left-2.5 top-6 h-full w-px -ml-px",
+                      isDone ? "bg-primary-500" : "bg-gray-200"
+                    )} />
+                  )}
+
+                  <div className="flex-none pt-0.5 z-10 bg-white">
+                    {isDone ? (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-white animate-pop motion-reduce:animate-none">
+                        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    ) : isActive ? (
+                      <div className="flex h-5 w-5 items-center justify-center">
+                        <Spinner size="xs" className="text-primary-600" />
+                      </div>
+                    ) : (
+                      <div className="h-5 w-5 rounded-full border-2 border-gray-300 bg-white" />
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 pb-1">
+                    <p className={cn("text-sm font-medium", isActive ? "text-primary-700" : isDone ? "text-gray-900" : "text-gray-500")}>
+                      {phase.label}
+                    </p>
+                    {isActive && latestMsg && (
+                      <p key={latestMsg} className="mt-1 text-xs text-gray-500 animate-slide-up motion-reduce:animate-none">
+                        {latestMsg}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
-      {feed.length > 0 ? (
-        <ul className="mt-6 space-y-1 text-left text-xs text-gray-600">
-          {feed.slice(-8).map((message, index) => (
-            <li key={`${index}-${message}`} className="truncate">
-              {message}
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </Card>
   );
 }
@@ -127,10 +241,26 @@ export default function PreconSessionPage() {
   const [tool, setTool] = useState<PreconTool>("select");
 
   const status = snapshot?.session.status;
+  const [justCompleted, setJustCompleted] = useState(false);
+  const previousStatusRef = useRef(status);
+
   useEffect(() => {
-    // follow the pipeline until the user starts navigating steps themselves
-    if (status && step === null && (status === "reviewing" || status === "output")) setStep("review");
-  }, [status, step]);
+    if (previousStatusRef.current === "generating" && status === "reviewing") {
+      setJustCompleted(true);
+      const timer = setTimeout(() => {
+        setJustCompleted(false);
+        setStep((prev) => (prev === null || prev === "generate" ? "review" : prev));
+      }, 1200); // brief confirmation
+      return () => clearTimeout(timer);
+    }
+    previousStatusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    if (status && step === null && (status === "reviewing" || status === "output")) {
+      if (!justCompleted) setStep("review");
+    }
+  }, [status, step, justCompleted]);
 
   const measurableSheets = useMemo(
     () => (snapshot?.sheets ?? []).filter((s) => s.status !== "pending"),
@@ -145,13 +275,36 @@ export default function PreconSessionPage() {
 
   if (isPending || !snapshot) {
     return (
-      <div className="flex justify-center py-24">
-        <Spinner size="md" />
+      <div className="flex h-full min-h-0 flex-col gap-4 p-6 animate-pulse motion-reduce:animate-none">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <div className="h-6 w-48 rounded bg-gray-200" />
+            <div className="h-4 w-32 rounded bg-gray-100" />
+          </div>
+        </div>
+        <div className="h-8 border-b border-gray-200">
+          <div className="flex gap-4">
+            <div className="h-4 w-20 rounded bg-gray-200" />
+            <div className="h-4 w-24 rounded bg-gray-200" />
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 gap-4">
+          <div className="flex flex-1 flex-col rounded-lg border border-gray-200 bg-white p-4">
+            <div className="h-full rounded bg-gray-50" />
+          </div>
+          <div className="flex w-[400px] flex-col rounded-lg border border-gray-200 bg-white p-4">
+            <div className="h-6 w-32 rounded bg-gray-200 mb-4" />
+            <div className="space-y-3">
+              <div className="h-16 rounded bg-gray-50 border border-gray-100" />
+              <div className="h-16 rounded bg-gray-50 border border-gray-100" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const effectiveStep: StepKey = step ?? stepForStatus(snapshot.session.status);
+  const effectiveStep: StepKey = step ?? (justCompleted ? "generate" : stepForStatus(snapshot.session.status));
   const reviewing = snapshot.session.status === "reviewing" || snapshot.session.status === "output";
 
   return (
@@ -194,6 +347,9 @@ export default function PreconSessionPage() {
           sessionId={sessionId}
           failed={snapshot.session.status === "failed"}
           error={snapshot.session.error}
+          justCompleted={justCompleted}
+          itemsCount={snapshot.rows.length}
+          billsCount={snapshot.bills.length}
         />
       ) : effectiveStep === "output" ? (
         <PreconOutputPanel snapshot={snapshot} />

@@ -325,3 +325,22 @@ input[type="radio"] {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+@theme {
+  --animate-pop: pop 150ms ease-out forwards;
+  --animate-fade-in: fade-in 200ms ease-out forwards;
+  --animate-slide-up: slide-up 200ms ease-out forwards;
+
+  @keyframes pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

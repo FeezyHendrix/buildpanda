@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { preconApi, type PreconGeometryKind, type PreconSummarySettings, type UpdateRowInput } from "@/api/precon";
+import { preconApi, type PreconGeometryKind, type PreconSummarySettings, type UpdateRowInput, type PreconSnapshot } from "@/api/precon";
 import { preconKeys, proposalKeys } from "@/hooks/query-keys";
 import { useRealtime } from "@/lib/realtime";
 
@@ -66,21 +66,98 @@ function useRowMutation<TVariables>(sessionId: string, mutationFn: (variables: T
 }
 
 export function useUpdatePreconRow(sessionId: string) {
-  return useRowMutation(sessionId, ({ rowId, input }: { rowId: string; input: UpdateRowInput }) =>
-    preconApi.updateRow(rowId, input),
-  );
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, input }: { rowId: string; input: UpdateRowInput }) =>
+      preconApi.updateRow(rowId, input),
+    onMutate: async ({ rowId, input }) => {
+      await qc.cancelQueries({ queryKey: preconKeys.snapshot(sessionId) });
+      const previous = qc.getQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId));
+      if (previous) {
+        qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), {
+          ...previous,
+          rows: previous.rows.map((r) =>
+            r.id === rowId ? { ...r, ...input.changes } : r
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        qc.setQueryData(preconKeys.snapshot(sessionId), context.previous);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+    },
+  });
 }
 
 export function useVerifyPreconRow(sessionId: string) {
-  return useRowMutation(sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
-    preconApi.verifyRow(rowId, version),
-  );
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, version }: { rowId: string; version: number }) =>
+      preconApi.verifyRow(rowId, version),
+    onMutate: async ({ rowId }) => {
+      await qc.cancelQueries({ queryKey: preconKeys.snapshot(sessionId) });
+      const previous = qc.getQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId));
+      if (previous) {
+        qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), {
+          ...previous,
+          rows: previous.rows.map((r) =>
+            r.id === rowId ? { ...r, status: "verified" } : r
+          ),
+          progress: {
+            ...previous.progress,
+            verified: previous.progress.verified + (previous.rows.find(r => r.id === rowId)?.status !== "verified" ? 1 : 0)
+          }
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        qc.setQueryData(preconKeys.snapshot(sessionId), context.previous);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+    },
+  });
 }
 
 export function useRejectPreconRow(sessionId: string) {
-  return useRowMutation(sessionId, ({ rowId, version }: { rowId: string; version: number }) =>
-    preconApi.rejectRow(rowId, version),
-  );
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, version }: { rowId: string; version: number }) =>
+      preconApi.rejectRow(rowId, version),
+    onMutate: async ({ rowId }) => {
+      await qc.cancelQueries({ queryKey: preconKeys.snapshot(sessionId) });
+      const previous = qc.getQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId));
+      if (previous) {
+        qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), {
+          ...previous,
+          rows: previous.rows.map((r) =>
+            r.id === rowId ? { ...r, status: "rejected" } : r
+          ),
+          progress: {
+            ...previous.progress,
+            verified: previous.progress.verified - (previous.rows.find(r => r.id === rowId)?.status === "verified" ? 1 : 0)
+          }
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previous) {
+        qc.setQueryData(preconKeys.snapshot(sessionId), context.previous);
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+    },
+  });
 }
 
 export function useUpdatePreconGeometry(sessionId: string) {
