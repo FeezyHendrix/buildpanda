@@ -106,6 +106,58 @@ test("buildUpBill: quantities come from the engine, never the model", async () =
   assert.equal(provisional.qty, 0);
 });
 
+test("buildUpBill: injects the BESMM reference block into the element prompt", async () => {
+  let sawBesmmBlock = false;
+  const fakeLlm = async (messages: Array<{ content: string }>) => {
+    const joined = messages.map((m) => m.content).join("\n");
+    if (/<besmm_reference source="BESMM4/.test(joined) && /BESMM REFERENCE RULES:/.test(joined)) {
+      sawBesmmBlock = true;
+    }
+    return { data: { workSections: [] } };
+  };
+  await buildUpBill(measured, "ctx", fakeLlm as never);
+  assert.ok(sawBesmmBlock, "agent prompt must carry the <besmm_reference> block with cited pages");
+});
+
+test("buildUpBill: an item's cited BESMM pages are whitelisted to the element's own references", async () => {
+  // Only answer for the Wall finishings agent so the assertion targets one element.
+  const fakeLlm = async (messages: Array<{ content: string }>) => {
+    const isWallFinishings = messages.some((m) => /ELEMENT: Wall finishings/.test(m.content));
+    if (!isWallFinishings) return { data: { workSections: [] } };
+    return {
+      data: {
+        workSections: [
+          {
+            sectionNumber: "1.28",
+            title: "FINISHINGS",
+            groups: [
+              {
+                preamble: null,
+                heading: null,
+                items: [
+                  {
+                    besmmRef: "7.2.0",
+                    particulars: "Plastering to walls; internally",
+                    unit: "m2" as const,
+                    basis: "derived" as const,
+                    formula: "2 * wall_area_m2",
+                    refPages: [9999, 249], // 9999 fabricated -> dropped; 249 is a real wall-finishings ref page
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+  };
+  const outcome = await buildUpBill(measured, "ctx", fakeLlm as never);
+  const item = outcome.items.find((i) => i.code === "7.2.0");
+  assert.ok(item);
+  assert.doesNotMatch(item.measurementBasis, /9999/, "fabricated page must be stripped");
+  assert.match(item.measurementBasis, /BESMM4 p\.249/, "valid cited page is kept");
+});
+
 test("buildUpBill: failed agent degrades to empty, never throws", async () => {
   const failing = async () => {
     throw new Error("model down");

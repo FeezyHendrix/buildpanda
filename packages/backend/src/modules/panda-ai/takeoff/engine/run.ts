@@ -8,7 +8,7 @@ import { createWriteStream } from "node:fs";
 import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, SheetKind } from "../types.ts";
+import type { MeasuredBoqItem, PreconSheetRow, SheetKind, TextRun } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
 import { calibrate } from "./calibrate.ts";
 import { clusterRegions, segmentsInRegion } from "./cluster.ts";
@@ -23,9 +23,10 @@ import {
   wallConfidence,
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
+import { measureSheetViaVision, VISION_MAX_SHEETS_PER_SESSION } from "./vision-takeoff.ts";
 import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
 import { buildUpBill } from "./enrich.ts";
-import { applySchedules, looksLikeScheduleSheet, readSchedules, readingOrderLines } from "./schedule.ts";
+import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
@@ -231,8 +232,10 @@ export async function generateForSession(
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   const allItems: MeasuredBoqItem[] = [];
+  const visionBudget = { remainingSheets: VISION_MAX_SHEETS_PER_SESSION };
   const pageFingerprints: PlanFingerprint[] = [];
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
+  const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
   let nextPageNumber = 1;
 
@@ -277,15 +280,36 @@ export async function generateForSession(
             const page = await doc.getPage(pageNo);
             const extracted = await extractSheet(page as never, pdfjs.OPS as never);
             if (extracted.segments.length < 100) {
-              await repo.updateSheet(sheetId, {
-                status: "unmeasurable",
-                error: "No vector content — likely a scanned/raster drawing; use manual takeoff",
-                page_number: globalPage,
-              });
+              const visionItems = await measureSheetViaVision(
+                {
+                  storagePath: placeholder.storage_path,
+                  pageNumber: pageNo,
+                  globalPage,
+                  sheetLabel: `${placeholder.file_name} p${pageNo}`,
+                },
+                visionBudget,
+              );
+              if (visionItems && visionItems.length > 0) {
+                allItems.push(...visionItems);
+                await repo.updateSheet(sheetId, {
+                  code: `SHT-${String(globalPage).padStart(2, "0")}`,
+                  title: placeholder.file_name,
+                  kind: "floor-plan",
+                  status: "measured",
+                  page_number: globalPage,
+                });
+              } else {
+                await repo.updateSheet(sheetId, {
+                  status: "unmeasurable",
+                  error: "No vector content — likely a scanned/raster drawing; use manual takeoff",
+                  page_number: globalPage,
+                });
+              }
               continue;
             }
             if (looksLikeScheduleSheet(extracted.texts)) {
               scheduleSheets.push({ pageNumber: globalPage, lines: readingOrderLines(extracted.texts) });
+              scheduleTexts.push(...extracted.texts);
             }
             const calibration = calibrate(extracted.texts, extracted.segments);
             const doorProbe = countDoorArcs(extracted.curves, calibration?.mmPerPt ?? 17.68);
@@ -383,11 +407,18 @@ export async function generateForSession(
   if (isLlmConfigured() && scheduleSheets.length > 0) {
     progress(`Reading ${scheduleSheets.length} schedule sheet(s)`);
     try {
-      const schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
+      let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
         chatJsonValidated(messages, schema),
       );
       if (schedules) {
+        // deterministic diagram dimensions beat transcribed table cells
+        const diagramSizes = measureDiagramSizes(scheduleTexts);
+        if (diagramSizes.size > 0) {
+          schedules = mergeDiagramSizes(schedules, diagramSizes);
+          progress(`Measured ${diagramSizes.size} type elevations on the schedule sheet`);
+        }
         billItems = applySchedules(billItems, schedules);
+        billItems = applyOpeningDeductions(billItems, schedules);
         const specs = [...schedules.windows, ...schedules.doors]
           .filter((e) => e.material || e.remarks)
           .map((e) => `${e.type}: ${[e.material, e.remarks].filter(Boolean).join(", ")}`)
