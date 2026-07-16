@@ -13,6 +13,8 @@ export interface ElementBrief {
   element: string;
   guidance: string;
   template: string;
+  sectionCodes?: string[];
+  retrievalQuery?: string;
 }
 
 // Standard element order in the bill (measured + agent elements both map here).
@@ -245,3 +247,31 @@ export const BESMM_ELEMENT_BRIEFS: ElementBrief[] = [
           Landscaping and site finishes -- sum (provisional)`,
   },
 ];
+
+// Maps each element to the BESMM sections whose rules govern it, so RAG
+// retrieval is scoped to the right sections instead of nearest-text overall.
+const ELEMENT_RETRIEVAL: Record<string, { sectionCodes: string[]; retrievalQuery: string }> = {
+  substructure: { sectionCodes: ["1.5", "1.7", "1.11"], retrievalQuery: "excavation filling foundation concrete blinding reinforcement in tonnes strip foundation" },
+  walls: { sectionCodes: ["1.14"], retrievalQuery: "masonry brick block walling measured on centre line thickness void deduction 0.50m2" },
+  windows: { sectionCodes: ["1.23", "1.27"], retrievalQuery: "windows screens lights measured enumerated glazing" },
+  doors: { sectionCodes: ["1.24"], retrievalQuery: "doors shutters hatches door sets enumerated frames" },
+  "wall-finishings": { sectionCodes: ["1.28"], retrievalQuery: "wall finishes plaster render m2 width bands over 600mm void deduction 1.00m2" },
+  "floor-finishings": { sectionCodes: ["1.28"], retrievalQuery: "floor finishes screed tiling m2 width bands void deduction" },
+  "ceiling-finishings": { sectionCodes: ["1.28", "1.30"], retrievalQuery: "ceiling finishes suspended ceilings m2" },
+  roof: { sectionCodes: ["1.16", "1.17", "1.18", "1.19"], retrievalQuery: "roof coverings sheet tile slate carpentry waterproofing" },
+  frame: { sectionCodes: ["1.11", "1.15"], retrievalQuery: "reinforced concrete columns beams frame reinforcement tonnes structural metalwork" },
+  upperFloors: { sectionCodes: ["1.11"], retrievalQuery: "suspended concrete slab upper floors horizontal work thickness reinforced formwork soffit" },
+  staircases: { sectionCodes: ["1.11", "1.25"], retrievalQuery: "staircases concrete stairs sloping work formwork" },
+  mechanical: { sectionCodes: ["1.38"], retrievalQuery: "mechanical services installations item enumerated" },
+  electrical: { sectionCodes: ["1.39"], retrievalQuery: "electrical services installations item enumerated points" },
+  preliminaries: { sectionCodes: ["1.1"], retrievalQuery: "preliminaries employer requirements site establishment" },
+  externalWorks: { sectionCodes: ["1.34", "1.35", "2T"], retrievalQuery: "drainage below ground roads pavings site works external" },
+};
+
+for (const brief of BESMM_ELEMENT_BRIEFS) {
+  const meta = ELEMENT_RETRIEVAL[brief.key];
+  if (meta) {
+    brief.sectionCodes = meta.sectionCodes;
+    brief.retrievalQuery = meta.retrievalQuery;
+  }
+}
