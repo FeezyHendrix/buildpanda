@@ -13,6 +13,7 @@ export const statement = {
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
+  stages: ["view"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
   materials: ["view", "manage", "report", "request", "approve"],
@@ -34,7 +35,6 @@ export const statement = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],

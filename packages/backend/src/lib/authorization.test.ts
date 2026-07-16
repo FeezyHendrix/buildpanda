@@ -204,6 +204,14 @@ test("grantable catalog excludes org/sales surfaces", () => {
   assert.ok(cat.finances?.includes("approve"));
 });
 
+// Regression: presets/editor grant `stages:view`; missing from statement => rejected as unknown.
+test("stages:view is grantable (preset/editor section)", () => {
+  assert.ok(grantableCatalog().stages?.includes("view"));
+  assert.doesNotThrow(() =>
+    assertCanGrant(grantCtx(false), { schedule: ["view"], stages: ["view"] }),
+  );
+});
+
 test("non-admin inviter cannot grant privileged actions", () => {
   assert.throws(
     () => assertCanGrant(grantCtx(false), { finances: ["view", "approve"] }),
