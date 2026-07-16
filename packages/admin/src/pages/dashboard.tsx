@@ -8,6 +8,8 @@ import { formatDate, formatMoney, formatUsd, cn } from "@/lib/utils";
 import { DateRangePicker, AsOf } from "@/components/chart-components";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
 
+import { PageContainer } from "@/components/page-container";
+
 export default function DashboardPage() {
   const [range, setRange] = useState<{ from?: string; to?: string }>({});
 
@@ -28,7 +30,7 @@ export default function DashboardPage() {
   const metrics = metricsQuery.data;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer variant="wide" className="flex flex-col gap-6">
       <PageHeader 
         title="Dashboard" 
         description="Platform-wide overview of BuildPanda." 
@@ -116,8 +118,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="p-5 xl:col-span-1">
           <h2 className="mb-3 text-sm font-semibold text-ink">Newest users</h2>
           <ul className="flex flex-col divide-y divide-line">
             {data.recentUsers.map((u) => (
@@ -132,7 +134,7 @@ export default function DashboardPage() {
           </ul>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-5 xl:col-span-2">
           <h2 className="mb-3 text-sm font-semibold text-ink">Newest projects</h2>
           <ul className="flex flex-col divide-y divide-line">
             {data.recentProjects.map((p) => (
@@ -150,6 +152,6 @@ export default function DashboardPage() {
           </ul>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 }

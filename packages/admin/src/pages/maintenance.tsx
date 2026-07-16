@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type MaintenanceSettings } from "@/api/admin";
@@ -32,7 +33,7 @@ export default function MaintenancePage() {
   const messageDirty = message.trim() !== (data.message ?? "").trim();
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <PageContainer className="flex max-w-2xl flex-col gap-6">
       <PageHeader
         title="Maintenance mode"
         description="Take the customer app offline for everyone except platform admins. The admin panel always stays accessible."
@@ -92,6 +93,6 @@ export default function MaintenancePage() {
           </p>
         ) : null}
       </Card>
-    </div>
+    </PageContainer>
   );
 }

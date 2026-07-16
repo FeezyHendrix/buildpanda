@@ -69,7 +69,7 @@ export function ChartCard({
         <h3 className="font-semibold text-gray-900">{title}</h3>
         {subtitle && <div className="text-sm text-gray-500 mt-1">{subtitle}</div>}
       </div>
-      <div className="flex-1 min-h-[300px] flex flex-col">
+      <div className="flex-1 min-h-[300px] lg:min-h-[360px] xl:min-h-[420px] flex flex-col">
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loading />
@@ -83,7 +83,7 @@ export function ChartCard({
             <EmptyState title="No data available" hint="There is no data for the selected range." />
           </div>
         ) : (
-          <div className="h-[300px] w-full">{children}</div>
+          <div className="h-[300px] lg:h-[360px] xl:h-[420px] w-full">{children}</div>
         )}
       </div>
     </Card>

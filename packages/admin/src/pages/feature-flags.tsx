@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type FeatureFlag, type FeatureFlagsSettings } from "@/api/admin";
@@ -72,7 +73,7 @@ export default function FeatureFlagsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <PageHeader
         title="Feature flags"
         description="Turn product areas on or off platform-wide. Disabled features are blocked at the API level — admin access stays unaffected."
@@ -127,6 +128,6 @@ export default function FeatureFlagsPage() {
           </Card>
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }

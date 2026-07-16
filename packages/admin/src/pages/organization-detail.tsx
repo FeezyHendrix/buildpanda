@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
@@ -18,7 +19,7 @@ export default function OrganizationDetailPage() {
   if (isError || !org) return <ErrorState />;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Link to="/organizations" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
         <ChevronLeftIcon className="h-4 w-4" /> Organizations
       </Link>
@@ -79,6 +80,6 @@ export default function OrganizationDetailPage() {
         </div>
         <AuditLogTable targetId={org.id} />
       </Card>
-    </div>
+    </PageContainer>
   );
 }

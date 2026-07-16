@@ -6,6 +6,8 @@ import { PageHeader, Card } from "@/components/ui";
 import { DateRangePicker, AsOf, ChartCard } from "@/components/chart-components";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
+import { PageContainer } from "@/components/page-container";
+
 export default function EngagementPage() {
   const [range, setRange] = useState<{ from?: string; to?: string }>({});
 
@@ -15,7 +17,7 @@ export default function EngagementPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer variant="wide" className="flex flex-col gap-6">
       <PageHeader 
         title="Engagement" 
         description="Active users and stickiness metrics." 
@@ -64,6 +66,6 @@ export default function EngagementPage() {
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
-    </div>
+    </PageContainer>
   );
 }
