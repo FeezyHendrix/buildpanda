@@ -30,6 +30,7 @@ import { besmmRag } from "../../../../lib/besmm-rag.ts";
 import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { classifyStructure } from "./classify.ts";
+import { readBbs, bbsToItems } from "./structural-schedule.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
@@ -434,6 +435,16 @@ export async function generateForSession(
   }
 
   let billItems: MeasuredBoqItem[] = [...merged.values()];
+
+  for (const sheet of scheduleSheets) {
+    const reading = readBbs(sheet.lines);
+    if (!reading) continue;
+    const rebarItems = bbsToItems(reading, sheet.pageNumber);
+    if (rebarItems.length > 0) {
+      billItems.push(...rebarItems);
+      progress(`Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
+    }
+  }
 
   // Schedule pass: the architect's door/window schedule tables are the
   // authoritative counts and carry sizes/materials; the tag census becomes
