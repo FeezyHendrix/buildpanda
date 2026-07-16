@@ -10,6 +10,7 @@ import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
 import { usePreconChannel, usePreconSnapshot } from "@/hooks/use-precon";
 import { preconKeys } from "@/hooks/query-keys";
 import { cn } from "@/lib/utils";
+import type { StructureContext } from "@/api/precon";
 
 const STEPS = [
   { key: "upload", label: "01 Upload" },
@@ -18,6 +19,32 @@ const STEPS = [
   { key: "output", label: "04 Output" },
 ] as const;
 type StepKey = (typeof STEPS)[number]["key"];
+
+function formatStructureContext(ctx: StructureContext | null): string | null {
+  if (!ctx || ctx.structureClass === "unknown") return null;
+
+  const parts: string[] = [];
+  parts.push(ctx.structureClass.charAt(0).toUpperCase() + ctx.structureClass.slice(1));
+  
+  if (ctx.buildingType) {
+    parts.push(ctx.buildingType.charAt(0).toUpperCase() + ctx.buildingType.slice(1));
+  }
+  if (ctx.storeys) {
+    parts.push(`${ctx.storeys} storeys`);
+  }
+  if (ctx.structuralSystem && ctx.structuralSystem !== "unknown") {
+    const sys = ctx.structuralSystem;
+    if (sys === "reinforced-concrete-frame") parts.push("RC frame");
+    else if (sys === "load-bearing-masonry") parts.push("Load-bearing masonry");
+    else if (sys === "steel-frame") parts.push("Steel frame");
+    else if (sys === "composite") parts.push("Composite");
+  }
+  if (ctx.foundationType && ctx.foundationType !== "unknown") {
+    parts.push(`${ctx.foundationType.charAt(0).toUpperCase() + ctx.foundationType.slice(1)} foundation`);
+  }
+  
+  return parts.join(" · ");
+}
 
 function stepForStatus(status: string): StepKey {
   if (status === "uploading") return "upload";
@@ -140,9 +167,20 @@ export default function PreconSessionPage() {
             </Link>
           ) : null}
           <h1 className="truncate text-lg font-semibold text-gray-900">{snapshot.session.title}</h1>
-          <p className="text-xs text-gray-500">
-            {snapshot.progress.verified} of {snapshot.progress.total} items verified
-          </p>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-xs text-gray-500">
+              {snapshot.progress.verified} of {snapshot.progress.total} items verified
+            </p>
+            {(() => {
+              const ctxLabel = formatStructureContext(snapshot.session.structureContext);
+              if (!ctxLabel) return null;
+              return (
+                <p className={cn("text-xs text-gray-500", snapshot.session.structureContext?.confidence === "low" && "opacity-75")}>
+                  {ctxLabel}{snapshot.session.structureContext?.confidence === "low" && " (low confidence)"}
+                </p>
+              );
+            })()}
+          </div>
         </div>
         <Badge tone={reviewing ? "warning" : snapshot.session.status === "failed" ? "danger" : "info"}>
           {snapshot.session.status}
