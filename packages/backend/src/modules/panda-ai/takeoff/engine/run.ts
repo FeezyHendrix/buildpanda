@@ -30,7 +30,7 @@ import { besmmRag } from "../../../../lib/besmm-rag.ts";
 import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { classifyStructure } from "./classify.ts";
-import { readBbs, bbsToItems } from "./structural-schedule.ts";
+import { readBbs, bbsToItems, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
@@ -438,11 +438,21 @@ export async function generateForSession(
 
   for (const sheet of scheduleSheets) {
     const reading = readBbs(sheet.lines);
-    if (!reading) continue;
-    const rebarItems = bbsToItems(reading, sheet.pageNumber);
-    if (rebarItems.length > 0) {
-      billItems.push(...rebarItems);
-      progress(`Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
+    if (reading) {
+      const rebarItems = bbsToItems(reading, sheet.pageNumber);
+      if (rebarItems.length > 0) {
+        billItems.push(...rebarItems);
+        progress(`Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
+      }
+    }
+    const piles = readPileSchedule(sheet.lines);
+    if (piles) {
+      const pileItems = pileScheduleToItems(piles, sheet.pageNumber);
+      if (pileItems.length > 0) {
+        billItems.push(...pileItems);
+        const totalPiles = Object.values(piles.byDiameter).reduce((s, d) => s + d.number, 0);
+        progress(`Read pile schedule on page ${sheet.pageNumber}: ${totalPiles} piles`);
+      }
     }
   }
 
