@@ -28,7 +28,7 @@ import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./finger
 import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
 import { besmmRag } from "../../../../lib/besmm-rag.ts";
 import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
-import { BESMM_ELEMENT_BRIEFS } from "./besmm-reference.ts";
+import { briefsFor } from "./besmm-reference.ts";
 import { classifyStructure } from "./classify.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
@@ -485,7 +485,7 @@ export async function generateForSession(
       sheetContext,
       async (messages, schema) => chatJsonValidated(messages, schema),
       (message) => progress(message),
-      BESMM_ELEMENT_BRIEFS,
+      briefsFor(structure.structureClass),
       resolveBesmm,
     );
     const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);
