@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
@@ -52,7 +53,7 @@ export default function UserDetailPage() {
   const busy = update.isPending || remove.isPending;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Link to="/users" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
         <ChevronLeftIcon className="h-4 w-4" /> Users
       </Link>
@@ -164,7 +165,7 @@ export default function UserDetailPage() {
         </div>
         <AuditLogTable adminUserId={user.id} targetId={user.id} />
       </Card>
-    </div>
+    </PageContainer>
   );
 }
 

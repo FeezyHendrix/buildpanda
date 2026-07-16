@@ -94,7 +94,7 @@ export function Layout() {
           </button>
         </header>
         <main className="flex-1 overflow-y-auto bg-surface-faint">
-          <div className="mx-auto w-full max-w-6xl p-5 sm:p-8">
+          <div className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-8 xl:px-10">
             <Outlet />
           </div>
         </main>

@@ -8,6 +8,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { formatUsd } from "@/lib/utils";
 import { DataTable } from "@/components/data-table";
 
+import { PageContainer } from "@/components/page-container";
+
 export default function AiOpsPage() {
   const [range, setRange] = useState<{ from?: string; to?: string }>({});
 
@@ -17,7 +19,7 @@ export default function AiOpsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer variant="wide" className="flex flex-col gap-6">
       <PageHeader 
         title="AI Operations" 
         description="Token burn, API costs, and job health." 
@@ -111,6 +113,6 @@ export default function AiOpsPage() {
           </Card>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

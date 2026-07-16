@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/ui";
 import { DateRangePicker, AsOf, ChartCard } from "@/components/chart-components";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell, LabelList } from "recharts";
 
+import { PageContainer } from "@/components/page-container";
+
 export default function GrowthPage() {
   const [range, setRange] = useState<{ from?: string; to?: string }>({});
 
@@ -15,7 +17,7 @@ export default function GrowthPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer variant="wide" className="flex flex-col gap-6">
       <PageHeader 
         title="Growth" 
         description="Signups and activation funnel." 
@@ -27,12 +29,13 @@ export default function GrowthPage() {
         }
       />
 
-      <ChartCard 
-        title="Signups over time" 
-        isLoading={isLoading} 
-        error={error} 
-        isEmpty={data?.signupSeries?.length === 0}
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard 
+          title="Signups over time" 
+          isLoading={isLoading} 
+          error={error} 
+          isEmpty={data?.signupSeries?.length === 0}
+        >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data?.signupSeries || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
@@ -77,7 +80,8 @@ export default function GrowthPage() {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-      </ChartCard>
-    </div>
+        </ChartCard>
+      </div>
+    </PageContainer>
   );
 }
