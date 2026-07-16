@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { barMassKgPerM, barTonnes, nearestBarSize } from "./steel-mass.ts";
-import { readBbs, bbsToItems, looksLikeBbs } from "./structural-schedule.ts";
+import { readBbs, bbsToItems, looksLikeBbs, readPileSchedule, pileScheduleToItems, looksLikePileSchedule } from "./structural-schedule.ts";
 
 test("barMassKgPerM: BS4449 tabulated values", () => {
   assert.equal(barMassKgPerM(12), 0.888);
@@ -66,5 +66,43 @@ test("bbsToItems: emits reinforcement items in tonnes by nominal size", () => {
     assert.equal(item.confidence, "high");
     assert.equal(item.qty, item.qtyGross);
     assert.match(item.description, /nominal size/);
+  }
+});
+
+test("looksLikePileSchedule: needs a pile marker + diameter rows", () => {
+  assert.equal(looksLikePileSchedule(["Pile Schedule", "P1 600 12 25", "P2 600 8 30"]), true);
+  assert.equal(looksLikePileSchedule(["Floor Plan", "Bedroom", "Kitchen"]), false);
+});
+
+test("readPileSchedule: totals number and length by diameter", () => {
+  const reading = readPileSchedule([
+    "Pile Schedule",
+    "Mark Dia No Length",
+    "P1 600 12 25",
+    "P2 600 8 30",
+    "P3 900 4 35",
+  ]);
+  assert.ok(reading);
+  // 600mm: 12 + 8 = 20 piles; length 12x25 + 8x30 = 540m
+  assert.equal(reading!.byDiameter[600]!.number, 20);
+  assert.equal(reading!.byDiameter[600]!.totalLengthM, 540);
+  assert.equal(reading!.byDiameter[900]!.number, 4);
+});
+
+test("readPileSchedule REFUSES to fabricate: no pile marker returns null", () => {
+  assert.equal(readPileSchedule(["Ground Floor Plan", "column 600", "beam 300"]), null);
+});
+
+test("pileScheduleToItems: emits nr + concrete-length items in piling section", () => {
+  const reading = readPileSchedule(["Pile Schedule", "P1 600 12 25", "P2 900 4 35"])!;
+  const items = pileScheduleToItems(reading, 3);
+  const nrItems = items.filter((i) => i.unit === "nr");
+  const mItems = items.filter((i) => i.unit === "m");
+  assert.ok(nrItems.length >= 2);
+  assert.ok(mItems.length >= 2);
+  for (const item of items) {
+    assert.equal(item.workSection.code, "1.7");
+    assert.equal(item.confidence, "high");
+    assert.match(item.description, /Bored piles/);
   }
 });

@@ -59,6 +59,107 @@ export function readBbs(lines: string[]): BbsReading | null {
   return { rows, tonnesBySize, totalTonnes };
 }
 
+export interface PileRow {
+  pileMark: string | null;
+  diameterMm: number;
+  number: number;
+  lengthM: number;
+}
+
+export interface PileScheduleReading {
+  rows: PileRow[];
+  byDiameter: Record<number, { number: number; totalLengthM: number }>;
+}
+
+const PILE_MARKER = /\b(pile\s*schedule|pile\s*layout|pile\s*mark|bored\s*pile|driven\s*pile|CFA\s*pile)\b/i;
+const PILE_DIAMETER = /\b(?:dia\.?|Ø|diameter)?\s*(300|350|400|450|500|600|750|900|1000|1200)\b/;
+
+export function looksLikePileSchedule(lines: string[]): boolean {
+  const joined = lines.join(" \n ");
+  if (!PILE_MARKER.test(joined)) return false;
+  return lines.filter((l) => PILE_DIAMETER.test(l) && /\d/.test(l)).length >= 2;
+}
+
+function parsePileRow(line: string): PileRow | null {
+  const dMatch = line.match(PILE_DIAMETER);
+  if (!dMatch) return null;
+  const diameterMm = Number(dMatch[1]);
+  const markMatch = line.match(/\b(P\d{1,3}[A-Z]?)\b/i);
+  // Read positionally: after the pile mark and the diameter column, the next
+  // two numbers are the count then the cut length (mark | dia | no | length).
+  const afterDia = line.slice((dMatch.index ?? 0) + dMatch[0].length);
+  const trailing = [...afterDia.matchAll(/\b(\d{1,5})(?:\.\d+)?\b/g)].map((m) => Number(m[0]));
+  if (trailing.length < 2) return null;
+  const number = trailing[0]!;
+  const lengthM = trailing[1]!;
+  if (number <= 0 || lengthM <= 0 || lengthM > 120) return null;
+  return { pileMark: markMatch ? markMatch[1]! : null, diameterMm, number, lengthM };
+}
+
+export function readPileSchedule(lines: string[]): PileScheduleReading | null {
+  if (!looksLikePileSchedule(lines)) return null;
+  const rows: PileRow[] = [];
+  for (const line of lines) {
+    const row = parsePileRow(line);
+    if (row) rows.push(row);
+  }
+  if (rows.length === 0) return null;
+  const byDiameter: Record<number, { number: number; totalLengthM: number }> = {};
+  for (const row of rows) {
+    const entry = byDiameter[row.diameterMm] ?? { number: 0, totalLengthM: 0 };
+    entry.number += row.number;
+    entry.totalLengthM += row.number * row.lengthM;
+    byDiameter[row.diameterMm] = entry;
+  }
+  return { rows, byDiameter };
+}
+
+// Emits BESMM piling items (nr enumerated + concrete length in m, by pile
+// diameter) measured from a pile schedule. Only called when a real pile
+// schedule is present — no schedule means NOTHING is emitted, not a guess.
+export function pileScheduleToItems(reading: PileScheduleReading, pageNumber: number): MeasuredBoqItem[] {
+  const items: MeasuredBoqItem[] = [];
+  const diameters = Object.keys(reading.byDiameter).map(Number).sort((a, b) => a - b);
+  for (const dia of diameters) {
+    const { number, totalLengthM } = reading.byDiameter[dia]!;
+    if (number <= 0) continue;
+    const lengthM = Math.round(totalLengthM);
+    items.push({
+      elementGroup: "Substructure",
+      workSection: { code: "1.7", title: "PILING" },
+      specNote: "Reinforced concrete bored piles",
+      groupHeading: "Piling",
+      code: "P1",
+      description: `Bored piles; ${dia}mm diameter; number stated`,
+      unit: "nr",
+      qtyGross: number,
+      deductions: [],
+      qty: number,
+      confidence: "high",
+      measurementBasis: `Measured from pile schedule: ${number} nr ${dia}mm piles (page ${pageNumber})`,
+      geometries: [],
+      pageNumber,
+    });
+    items.push({
+      elementGroup: "Substructure",
+      workSection: { code: "1.7", title: "PILING" },
+      specNote: "Reinforced concrete bored piles",
+      groupHeading: "Piling",
+      code: "P2",
+      description: `Bored piles; ${dia}mm diameter; concrete in piles`,
+      unit: "m",
+      qtyGross: lengthM,
+      deductions: [],
+      qty: lengthM,
+      confidence: "high",
+      measurementBasis: `Measured from pile schedule: ${lengthM}m total pile length, ${dia}mm diameter (page ${pageNumber})`,
+      geometries: [],
+      pageNumber,
+    });
+  }
+  return items;
+}
+
 // Emits BESMM reinforcement items (tonnes, by nominal size) measured from a
 // bar bending schedule. Only called when a real BBS is present — with no
 // schedule the engine emits NOTHING here rather than fabricating tonnage.
