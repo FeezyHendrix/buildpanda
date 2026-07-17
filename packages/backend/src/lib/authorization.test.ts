@@ -57,6 +57,17 @@ test("section-matrix 'edit' grants schedule:manage through the backend guard", (
   assert.equal(allows(ctx, "schedule", "view"), true);
 });
 
+test("schedule section bridges to stages: 'edit' grants stages:manage, 'view' grants stages:view only", () => {
+  const editor = ctxWithSectionMatrix("user_1", { "projects.schedule": "edit" });
+  assert.equal(allows(editor, "stages", "view"), true);
+  assert.equal(allows(editor, "stages", "manage"), true);
+  const viewer = ctxWithSectionMatrix("user_2", { "projects.schedule": "view" });
+  assert.equal(allows(viewer, "stages", "view"), true);
+  assert.equal(allows(viewer, "stages", "manage"), false);
+  const hidden = ctxWithSectionMatrix("user_3", { "projects.schedule": "hidden" });
+  assert.equal(allows(hidden, "stages", "view"), false);
+});
+
 test("section-matrix 'edit' grants documents:upload through the backend guard", () => {
   const ctx = ctxWithSectionMatrix("user_1", { "projects.documents": "edit" });
   assert.equal(allows(ctx, "documents", "upload"), true);
