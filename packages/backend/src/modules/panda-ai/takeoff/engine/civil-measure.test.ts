@@ -48,3 +48,17 @@ test("civilToItems: no measurable geometry -> no items", () => {
   const items = civilToItems(measureCivil([], 100), 1);
   assert.equal(items.length, 0);
 });
+
+test("measureCivil: sheet title-block border is excluded, not measured", () => {
+  // a 1000x20pt road inside a 1400x900pt sheet frame; at mmPerPt=100 -> 200 m2
+  const road = [seg(0, 0, 1000, 0), seg(0, 20, 1000, 20)];
+  const frame = [
+    seg(-100, -100, 1300, -100),
+    seg(-100, 800, 1300, 800),
+    seg(-100, -100, -100, 800),
+    seg(1300, -100, 1300, 800),
+  ];
+  const m = measureCivil([...road, ...frame], 100);
+  assert.equal(m.pavedAreaM2, 200); // NOT 12600 (frame bounding box)
+  assert.equal(m.roadLengthM, 100); // NOT 140 (frame width)
+});

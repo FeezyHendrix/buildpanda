@@ -106,3 +106,33 @@ test("pileScheduleToItems: emits nr + concrete-length items in piling section", 
     assert.match(item.description, /Bored piles/);
   }
 });
+
+test("readBbs: comma thousands '12,000' parse correctly (not silently dropped)", () => {
+  const r = readBbs(["Bar Bending Schedule", "01 T16 40 12,000", "02 T20 30 10,000", "03 T25 20 8,000"]);
+  assert.ok(r);
+  assert.equal(r!.unreadable, false);
+  // 16:40x12x1.578/1000=0.757 + 20:30x10x2.466/1000=0.740 + 25:20x8x3.854/1000=0.617 = 2.114
+  assert.ok(Math.abs(r!.totalTonnes - 2.114) < 0.01, `got ${r!.totalTonnes}`);
+});
+
+test("readBbs: metre cut length '12.0' parses same as mm equivalent", () => {
+  const metres = readBbs(["Bar Bending Schedule", "01 T16 40 12.0", "02 T20 30 10.0", "03 T25 20 8.0"]);
+  assert.ok(metres);
+  assert.equal(metres!.unreadable, false);
+  assert.ok(Math.abs(metres!.totalTonnes - 2.114) < 0.01, `got ${metres!.totalTonnes}`);
+});
+
+test("readBbs: bar spacing suffix 'T16-150' does not pollute the quantity", () => {
+  const r = readBbs(["Reinforcement Schedule", "01 T16-150 200 5000", "02 T12-200 150 4000", "03 T10-100 300 3000"]);
+  assert.ok(r);
+  // 150/200/100 spacings must be stripped; 16mm row = 200 bars x 5m
+  const s16 = r!.rows.find((x) => x.sizeMm === 16)!;
+  assert.equal(s16.number, 200);
+  assert.equal(s16.lengthMm, 5000);
+});
+
+test("readBbs REFUSES: a BBS whose rows cannot be parsed is flagged unreadable, not zeroed", () => {
+  const r = readBbs(["Bar Bending Schedule", "refer to structural engineer", "TBC", "provisional sum", "see drawing 401"]);
+  // either not recognised as a BBS (null) or recognised but flagged unreadable
+  if (r) assert.equal(r.unreadable, true);
+});
