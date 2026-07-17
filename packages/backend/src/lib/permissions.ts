@@ -13,7 +13,7 @@ export const statement = {
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve", "dispute"],
   schedule: ["view", "manage"],
-  stages: ["view"],
+  stages: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
   materials: ["view", "manage", "report", "request", "approve"],
@@ -70,7 +70,7 @@ const constructionFull = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
+  stages: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionContributor = {
@@ -99,7 +99,7 @@ const constructionContributor = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
+  stages: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionReadOnly = {

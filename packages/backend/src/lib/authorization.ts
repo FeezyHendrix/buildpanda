@@ -278,10 +278,16 @@ export type ProjectSectionPermissions = Record<string, SectionValue>;
 // approve, decide or delete (those stay privileged, off the UI matrix).
 const SECTION_MAP: Record<
   string,
-  { resource: string; view: string[]; edit: string[]; editExtra?: Record<string, string[]> }
+  { resource: string; view: string[]; edit: string[]; viewExtra?: Record<string, string[]>; editExtra?: Record<string, string[]> }
 > = {
   "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
-  "projects.schedule": { resource: "schedule", view: ["view"], edit: ["view", "manage"] },
+  "projects.schedule": {
+    resource: "schedule",
+    view: ["view"],
+    edit: ["view", "manage"],
+    viewExtra: { stages: ["view"] },
+    editExtra: { stages: ["view", "manage"] },
+  },
   "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
   "quality.inspections": { resource: "inspections", view: ["view"], edit: ["view", "request"] },
   "quality.dailyLogs": { resource: "dailyLog", view: ["view", "report"], edit: ["view", "create", "report"] },
@@ -318,6 +324,11 @@ export function sectionsToPermissions(
     if (!entry || value === "hidden") continue;
     const actions = value === "edit" ? entry.edit : entry.view;
     out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
+    if (entry.viewExtra) {
+      for (const [res, extra] of Object.entries(entry.viewExtra)) {
+        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
+      }
+    }
     if (value === "edit" && entry.editExtra) {
       for (const [res, extra] of Object.entries(entry.editExtra)) {
         out[res] = [...new Set([...(out[res] ?? []), ...extra])];

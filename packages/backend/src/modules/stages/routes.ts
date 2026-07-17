@@ -71,7 +71,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages",
     { schema: { params: projectIdParams } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
+      const project = await request.requireProjectPermission(request.params.id, "stages", "view");
       return service.list(project.id);
     },
   );
@@ -80,7 +80,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages",
     { schema: { params: projectIdParams, body: createStageBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       const stage = await service.create(project.id, request.body);
       return reply.status(201).send(stage);
     },
@@ -90,7 +90,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/reorder",
     { schema: { params: projectIdParams, body: reorderBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       return service.reorder(project.id, request.body.stageIds);
     },
   );
@@ -99,7 +99,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/:stageId",
     { schema: { params: stageParams, body: updateStageBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       return service.update(project.id, request.params.stageId, request.body);
     },
   );
@@ -108,7 +108,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/stages/:stageId",
     { schema: { params: stageParams } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "schedule", "manage");
+      const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       await service.remove(project.id, request.params.stageId);
       return reply.status(204).send();
     },
