@@ -12,12 +12,42 @@ function isLongLine(s: Segment): boolean {
   return s.len > 50;
 }
 
+// Every drawing sheet has a frame/title-block border — a near-full-extent
+// rectangle whose long lines would otherwise dominate any bounding box and blow
+// up the measured area (a 200 m2 road reads as 12,600 m2). This drops lines that
+// run along the outer extremities of the linework (the frame), so measurement
+// uses only the interior drawing content.
+function stripSheetFrame(lines: Segment[]): Segment[] {
+  if (lines.length < 4) return lines;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of lines) {
+    minX = Math.min(minX, s.x1, s.x2);
+    minY = Math.min(minY, s.y1, s.y2);
+    maxX = Math.max(maxX, s.x1, s.x2);
+    maxY = Math.max(maxY, s.y1, s.y2);
+  }
+  const w = maxX - minX;
+  const h = maxY - minY;
+  const edgeBand = 0.02 * Math.max(w, h);
+  const nearMin = (v: number, lo: number) => Math.abs(v - lo) <= edgeBand;
+  const isFrameLine = (s: Segment): boolean => {
+    const horizontal = Math.abs(s.y2 - s.y1) <= edgeBand && s.len >= 0.9 * w;
+    const vertical = Math.abs(s.x2 - s.x1) <= edgeBand && s.len >= 0.9 * h;
+    const onTopOrBottom = nearMin(s.y1, minY) || nearMin(s.y1, maxY);
+    const onLeftOrRight = nearMin(s.x1, minX) || nearMin(s.x1, maxX);
+    return (horizontal && onTopOrBottom) || (vertical && onLeftOrRight);
+  };
+  const interior = lines.filter((s) => !isFrameLine(s));
+  // If stripping the frame removed almost everything, there was no real content.
+  return interior.length >= 2 ? interior : [];
+}
+
 // The paved extent of a road/runway/apron sheet is the bounding footprint of
-// its long linework. Measuring the axis-aligned bounding area of the long
-// edge/kerb lines gives the paved surface area (m2) as a QS anchor; the course
-// build-up (depth bands) is applied by the pavement brief, not guessed here.
+// its interior long linework (after removing the sheet frame). This gives the
+// paved surface area (m2) as a QS anchor; the course build-up (depth bands) is
+// applied by the pavement brief, not guessed here.
 function boundingAreaM2(segments: Segment[], mmPerPt: number): number {
-  const lines = segments.filter(isLongLine);
+  const lines = stripSheetFrame(segments.filter(isLongLine));
   if (lines.length < 2) return 0;
   let minX = Infinity;
   let minY = Infinity;
@@ -35,9 +65,10 @@ function boundingAreaM2(segments: Segment[], mmPerPt: number): number {
 
 // Road/kerb length is the run of the dominant direction: the summed length of
 // the longest near-parallel long lines (the carriageway edges), taking the
-// longer axis span so a plan drawn along either axis reads correctly.
+// longer axis span so a plan drawn along either axis reads correctly. Sheet
+// frame lines are excluded so the border does not set the run.
 function dominantRunM(segments: Segment[], mmPerPt: number): number {
-  const lines = segments.filter(isLongLine);
+  const lines = stripSheetFrame(segments.filter(isLongLine));
   if (lines.length < 2) return 0;
   let horizExtent = 0;
   let vertExtent = 0;
@@ -52,11 +83,11 @@ function dominantRunM(segments: Segment[], mmPerPt: number): number {
 }
 
 export function measureCivil(segments: Segment[], mmPerPt: number): CivilMeasurement {
-  const edgeCount = segments.filter(isLongLine).length;
+  const interior = stripSheetFrame(segments.filter(isLongLine));
   return {
     pavedAreaM2: Math.round(boundingAreaM2(segments, mmPerPt) * 100) / 100,
     roadLengthM: Math.round(dominantRunM(segments, mmPerPt) * 100) / 100,
-    edgeCount,
+    edgeCount: interior.length,
   };
 }
 

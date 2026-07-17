@@ -13,10 +13,35 @@ export interface BbsReading {
   rows: BarRow[];
   tonnesBySize: Record<number, number>;
   totalTonnes: number;
+  // True when the sheet reads as a BBS but too few rows parsed cleanly, so the
+  // tonnage is NOT trustworthy — callers must bill rebar as provisional rather
+  // than treat the (partial) total as the building's reinforcement.
+  unreadable: boolean;
+  candidateRows: number;
 }
 
 const BBS_MARKER = /\b(bar\s*bending|reinforcement\s*schedule|bar\s*mark|b\.?b\.?s\.?)\b/i;
-const BAR_SIZE = /\b(?:T|Y|H|R|Ø|dia\.?)?\s*(6|8|10|12|16|20|25|32|40)\b/i;
+const BAR_SIZE = /(?:^|[\sTYHR])(?:T|Y|H|R|Ø|dia\.?)?\s*(6|8|10|12|16|20|25|32|40)\b/i;
+// A bar cut length in mm is realistically 100..18000; anything <=30 that reached
+// the length slot was given in metres, so it is scaled up.
+const MIN_LENGTH_MM = 100;
+const MAX_LENGTH_MM = 18000;
+const MAX_BAR_COUNT = 5000;
+
+// Extracts numbers from a schedule line after normalising thousands separators
+// ("12,000" -> 12000) and trimming bar-spacing suffixes ("T16-150" -> the 150
+// centres are dropped, not counted as a quantity). Each number keeps whether it
+// was written with a decimal point, since "12.0" (a metre length) parses to the
+// integer 12 and would otherwise be indistinguishable from a bar count.
+function scheduleNumbers(line: string): { value: number; decimal: boolean }[] {
+  const cleaned = line
+    .replace(/(\d),(\d{3})\b/g, "$1$2")
+    .replace(/[-@]\s*\d{2,3}\b/g, " ");
+  return [...cleaned.matchAll(/\b(\d{1,6}(?:\.\d+)?)\b/g)].map((m) => ({
+    value: Number(m[0]),
+    decimal: m[0].includes("."),
+  }));
+}
 
 export function looksLikeBbs(lines: string[]): boolean {
   const joined = lines.join(" \n ");
@@ -28,18 +53,27 @@ export function looksLikeBbs(lines: string[]): boolean {
 // Parses a bar bending schedule line into a bar row. A BBS row carries a bar
 // mark, size, number of bars and cut length; totals are the QS-standard
 // length x number x mass/1000. Hooks/bends/laps are BESMM-deemed (C21), so no
-// wastage factor is added. Returns null for lines that are not bar rows.
+// wastage factor is added. Length given in metres is scaled to mm. Returns null
+// for lines that are not parseable bar rows.
 function parseBarRow(line: string): BarRow | null {
   const sizeMatch = line.match(BAR_SIZE);
   if (!sizeMatch) return null;
   const sizeMm = nearestBarSize(Number(sizeMatch[1]));
-  const numbers = [...line.matchAll(/\b(\d{1,5})(?:\.\d+)?\b/g)].map((m) => Number(m[0]));
-  if (numbers.length < 2) return null;
-  const markMatch = line.match(/\b([A-Z]?\d{1,3}[A-Z]?)\b/);
-  const lengthMm = Math.max(...numbers);
-  const plausibleCounts = numbers.filter((n) => n !== lengthMm && n >= 1 && n <= 2000);
-  const number = plausibleCounts.length > 0 ? Math.max(...plausibleCounts) : 1;
-  if (lengthMm < 100) return null;
+  const nums = scheduleNumbers(line).filter((n) => n.value !== Number(sizeMatch[1]));
+  if (nums.length < 2) return null;
+  const markMatch = line.match(/\b([A-Z]{0,2}\d{1,3}[A-Z]?)\b/);
+
+  // A decimal value is a metre length (counts and mm lengths are integers);
+  // otherwise the length is the largest number. Metre lengths (<=30) scale to mm.
+  const values = nums.map((n) => n.value);
+  const decimal = nums.find((n) => n.decimal)?.value;
+  const rawLength = decimal !== undefined ? decimal : Math.max(...values);
+  let lengthMm = rawLength;
+  if (lengthMm > 0 && lengthMm <= 30) lengthMm *= 1000;
+  const counts = values.filter((n) => n !== rawLength && Number.isInteger(n) && n >= 1 && n <= MAX_BAR_COUNT);
+  const number = counts.length > 0 ? Math.max(...counts) : 1;
+
+  if (lengthMm < MIN_LENGTH_MM || lengthMm > MAX_LENGTH_MM) return null;
   const t = barTonnes(sizeMm, number, lengthMm);
   if (t === null) return null;
   return { barMark: markMatch ? markMatch[1]! : null, sizeMm, number, lengthMm, tonnes: t };
@@ -47,16 +81,19 @@ function parseBarRow(line: string): BarRow | null {
 
 export function readBbs(lines: string[]): BbsReading | null {
   if (!looksLikeBbs(lines)) return null;
+  const candidateRows = lines.filter((l) => BAR_SIZE.test(l) && /\d{2,}/.test(l)).length;
   const rows: BarRow[] = [];
   for (const line of lines) {
     const row = parseBarRow(line);
     if (row) rows.push(row);
   }
-  if (rows.length === 0) return null;
   const tonnesBySize: Record<number, number> = {};
   for (const row of rows) tonnesBySize[row.sizeMm] = (tonnesBySize[row.sizeMm] ?? 0) + row.tonnes;
   const totalTonnes = rows.reduce((s, r) => s + r.tonnes, 0);
-  return { rows, tonnesBySize, totalTonnes };
+  // Refuse rather than guess: if under two-thirds of the candidate rows parsed,
+  // the tonnage is untrustworthy — flag unreadable so rebar stays provisional.
+  const unreadable = rows.length < Math.ceil(candidateRows * (2 / 3)) || totalTonnes <= 0;
+  return { rows, tonnesBySize, totalTonnes, unreadable, candidateRows };
 }
 
 export interface PileRow {
@@ -188,4 +225,27 @@ export function bbsToItems(reading: BbsReading, pageNumber: number): MeasuredBoq
     });
   }
   return items;
+}
+
+// Refuse-not-guess: when a BBS is present but its rows could not be parsed
+// confidently, emit a flagged provisional item so rebar is visibly unresolved
+// rather than silently absent from the bill.
+export function provisionalRebarItem(pageNumber: number): MeasuredBoqItem {
+  return {
+    elementGroup: "Frame",
+    workSection: { code: "1.11", title: "INSITU CONCRETE WORKS" },
+    specNote: "High yield steel bar reinforcement to BS4449",
+    groupHeading: "Reinforcement",
+    code: "R34",
+    description: "Reinforcement per bar bending schedule; schedule not machine-readable — measure manually",
+    unit: "sum",
+    qtyGross: 0,
+    deductions: [],
+    qty: 0,
+    confidence: "low",
+    measurementBasis: `Bar bending schedule detected on page ${pageNumber} but could not be parsed reliably; rebar tonnage left provisional for manual takeoff`,
+    geometries: [],
+    pageNumber,
+    provisional: true,
+  };
 }
