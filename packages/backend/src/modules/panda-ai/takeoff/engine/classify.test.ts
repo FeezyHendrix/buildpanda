@@ -101,3 +101,45 @@ test("classifyStructure: bungalow single floor plan -> 1 storey", () => {
   });
   assert.equal(ctx.storeys, 1);
 });
+
+test("classifyStructure: 'Level N' naming counts storeys (Level 12 -> 13)", () => {
+  const sheets = [
+    { kind: "floor-plan" as const, title: "Level 00 Plan" },
+    { kind: "floor-plan" as const, title: "Level 05 Plan" },
+    { kind: "floor-plan" as const, title: "Level 12 Plan" },
+  ];
+  const ctx = classifyStructure({
+    sheetTitles: sheets.map((s) => s.title),
+    sheets,
+    text: "level plan office pool office corridor blockwork bedroom kitchen window schedule",
+  });
+  assert.equal(ctx.structureClass, "building");
+  assert.equal(ctx.storeys, 13);
+});
+
+test("classifyStructure: mezzanine counts as an extra storey", () => {
+  const sheets = [
+    { kind: "floor-plan" as const, title: "Ground Floor Plan" },
+    { kind: "floor-plan" as const, title: "Mezzanine Floor Plan" },
+    { kind: "floor-plan" as const, title: "First Floor Plan" },
+  ];
+  const ctx = classifyStructure({
+    sheetTitles: sheets.map((s) => s.title),
+    sheets,
+    text: "ground mezzanine first floor plan office blockwork bedroom kitchen window schedule",
+  });
+  assert.equal(ctx.storeys, 3);
+});
+
+test("classifyStructure: ordinal floor without the word 'Plan' still counts", () => {
+  const sheets = [
+    { kind: "floor-plan" as const, title: "Third Floor" },
+    { kind: "floor-plan" as const, title: "Eighth Floor" },
+  ];
+  const ctx = classifyStructure({
+    sheetTitles: sheets.map((s) => s.title),
+    sheets,
+    text: "third floor eighth floor office pool office blockwork bedroom kitchen window schedule door schedule",
+  });
+  assert.equal(ctx.storeys, 9);
+});

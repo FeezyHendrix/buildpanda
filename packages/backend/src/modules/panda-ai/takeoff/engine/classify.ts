@@ -70,11 +70,20 @@ const ORDINAL_WORDS: Record<string, number> = {
   seventh: 7, eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12,
 };
 
+// Matches a numbered floor level from a plan title. Handles both "Nth Floor"
+// ("Third Floor Plan") and the "Level N" convention ("Level 05 Plan", common
+// internationally), with or without the word "Plan".
 const FLOOR_LEVEL_RE = /\b(ground|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|\d{1,2})(?:st|nd|rd|th)?\s+floor\b/i;
+const LEVEL_RE = /\blevel\s*(\d{1,2})\b/i;
 
 function floorLevelOf(title: string): number | null {
   if (/\b(basement|lower\s+ground|sub[\s-]?basement)\b/i.test(title)) return null;
-  if (/\b(roof|mezzanine|penthouse)\b/i.test(title)) return null;
+  if (/\b(roof)\b/i.test(title)) return null;
+  const levelMatch = title.match(LEVEL_RE);
+  if (levelMatch) {
+    const n = Number(levelMatch[1]);
+    return Number.isFinite(n) && n >= 0 && n <= 99 ? n : null;
+  }
   const m = title.match(FLOOR_LEVEL_RE);
   if (!m) return null;
   const token = m[1]!.toLowerCase();
@@ -82,20 +91,29 @@ function floorLevelOf(title: string): number | null {
   return Number.isFinite(level) && level >= 0 && level <= 99 ? level : null;
 }
 
+// Mezzanine and podium are occupied storeys between the numbered levels; they
+// carry no floor number, so they are counted as additional storeys rather than
+// as a numbered plan level.
+function isIntermediateStorey(title: string): boolean {
+  return /\b(mezzanine|podium|penthouse)\b/i.test(title) && /\bplan\b/i.test(title);
+}
+
 // Occupied storeys come from FLOOR-PLAN titles only. Elevations/sections repeat
 // datum lines that include the roof/parapet ("9th FLOOR" over an 8-storey block)
 // and label every slab edge, so counting text matches over-counts badly. An
 // explicit "N storeys"/"G+N" statement overrides upward (typical-floor high-rises
 // share one plan). Precedence: drawings > prose > elevations. Returns floors
-// including ground (max plan level + 1).
+// including ground (max plan level + 1 + intermediate storeys).
 function countStoreys(sheets: ClassifySheet[], haystack: string): number | null {
   const planLevels = new Set<number>();
+  let intermediateStoreys = 0;
   for (const sheet of sheets) {
     if (sheet.kind !== "floor-plan") continue;
     const level = floorLevelOf(sheet.title);
     if (level !== null) planLevels.add(level);
+    else if (isIntermediateStorey(sheet.title)) intermediateStoreys += 1;
   }
-  const baseline = planLevels.size > 0 ? Math.max(...planLevels) + 1 : 0;
+  const baseline = planLevels.size > 0 ? Math.max(...planLevels) + 1 + intermediateStoreys : intermediateStoreys;
 
   let explicit = 0;
   const gPlus = haystack.match(/\bG\s*\+\s*(\d{1,3})\b/i);
