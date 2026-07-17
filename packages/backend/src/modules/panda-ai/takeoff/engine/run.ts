@@ -271,6 +271,7 @@ export async function generateForSession(
   const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
   const classifyTitles: string[] = [];
+  const classifySheets: { kind: SheetKind; title: string }[] = [];
   const classifyText: string[] = [];
   const civilSheets: { segments: Segment[]; mmPerPt: number; pageNumber: number }[] = [];
   let nextPageNumber = 1;
@@ -354,7 +355,10 @@ export async function generateForSession(
               doorProbe.count > 0,
               /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" ")),
             );
-            if (title) classifyTitles.push(title);
+            if (title) {
+              classifyTitles.push(title);
+              classifySheets.push({ kind, title });
+            }
             if (classifyText.length < 40) classifyText.push(extracted.texts.map((t) => t.str).join(" ").slice(0, 2000));
             const sheetLabel = `${placeholder.file_name} p${pageNo}`;
             const code = `SHT-${String(globalPage).padStart(2, "0")}`;
@@ -492,7 +496,7 @@ export async function generateForSession(
     }
   }
 
-  const structure = classifyStructure({ sheetTitles: classifyTitles, text: classifyText.join(" \n ") });
+  const structure = classifyStructure({ sheetTitles: classifyTitles, sheets: classifySheets, text: classifyText.join(" \n ") });
   await repo.updateSessionStructure(sessionId, structure);
   progress(
     `Detected structure: ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`,

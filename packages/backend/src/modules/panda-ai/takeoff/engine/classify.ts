@@ -1,14 +1,21 @@
 import type {
   Confidence,
   FoundationType,
+  SheetKind,
   StructuralSystem,
   StructureClass,
   StructureContext,
 } from "../types.ts";
 
+export interface ClassifySheet {
+  kind: SheetKind;
+  title: string;
+}
+
 export interface ClassifyInput {
   sheetTitles: string[];
   text: string;
+  sheets?: ClassifySheet[];
 }
 
 interface Rule {
@@ -58,12 +65,48 @@ function scoreClasses(haystack: string): { cls: StructureClass; score: number; h
   return { cls: best, score: bestScore, hits };
 }
 
-function countStoreys(haystack: string): number | null {
-  const floorWords = [...haystack.matchAll(/\b(ground|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d{1,2}(?:st|nd|rd|th))\s+floor\b/gi)];
-  const explicit = haystack.match(/\b(\d{1,3})\s*(?:storey|storeys|stories|floors?)\b/i);
-  const fromExplicit = explicit ? Number(explicit[1]) : 0;
-  const fromWords = floorWords.length;
-  const storeys = Math.max(fromExplicit, fromWords);
+const ORDINAL_WORDS: Record<string, number> = {
+  ground: 0, first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6,
+  seventh: 7, eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12,
+};
+
+const FLOOR_LEVEL_RE = /\b(ground|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|\d{1,2})(?:st|nd|rd|th)?\s+floor\b/i;
+
+function floorLevelOf(title: string): number | null {
+  if (/\b(basement|lower\s+ground|sub[\s-]?basement)\b/i.test(title)) return null;
+  if (/\b(roof|mezzanine|penthouse)\b/i.test(title)) return null;
+  const m = title.match(FLOOR_LEVEL_RE);
+  if (!m) return null;
+  const token = m[1]!.toLowerCase();
+  const level = token in ORDINAL_WORDS ? ORDINAL_WORDS[token]! : Number(token);
+  return Number.isFinite(level) && level >= 0 && level <= 99 ? level : null;
+}
+
+// Occupied storeys come from FLOOR-PLAN titles only. Elevations/sections repeat
+// datum lines that include the roof/parapet ("9th FLOOR" over an 8-storey block)
+// and label every slab edge, so counting text matches over-counts badly. An
+// explicit "N storeys"/"G+N" statement overrides upward (typical-floor high-rises
+// share one plan). Precedence: drawings > prose > elevations. Returns floors
+// including ground (max plan level + 1).
+function countStoreys(sheets: ClassifySheet[], haystack: string): number | null {
+  const planLevels = new Set<number>();
+  for (const sheet of sheets) {
+    if (sheet.kind !== "floor-plan") continue;
+    const level = floorLevelOf(sheet.title);
+    if (level !== null) planLevels.add(level);
+  }
+  const baseline = planLevels.size > 0 ? Math.max(...planLevels) + 1 : 0;
+
+  let explicit = 0;
+  const gPlus = haystack.match(/\bG\s*\+\s*(\d{1,3})\b/i);
+  if (gPlus) explicit = Number(gPlus[1]) + 1;
+  const stated = haystack.match(/\b(\d{1,3})\s*[-\s]?\s*(?:storey|storeys|story|stories)\b/i);
+  if (stated) explicit = Math.max(explicit, Number(stated[1]));
+
+  const typical = haystack.match(/typical\s+floor\s+plan[^.]*?(\d{1,3})\s*(?:to|through|[-–])\s*(\d{1,3})/i);
+  const typicalMax = typical ? Math.max(Number(typical[1]), Number(typical[2])) + 1 : 0;
+
+  const storeys = Math.max(baseline, explicit, typicalMax);
   return storeys > 0 ? storeys : null;
 }
 
@@ -85,10 +128,20 @@ function detectFoundation(haystack: string, storeys: number | null): FoundationT
   return "unknown";
 }
 
+function inferSheetKind(title: string): SheetKind {
+  if (/elevation/i.test(title)) return "elevation";
+  if (/section/i.test(title)) return "section";
+  if (/schedule/i.test(title)) return "schedule";
+  if (/detail/i.test(title)) return "detail";
+  if (/floor\s+plan|\bplan\b/i.test(title)) return "floor-plan";
+  return "unknown";
+}
+
 export function classifyStructure(input: ClassifyInput): StructureContext {
   const haystack = `${input.sheetTitles.join(" \n ")} \n ${input.text}`.slice(0, 20000);
   const { cls, score, hits } = scoreClasses(haystack);
-  const storeys = cls === "building" ? countStoreys(haystack) : null;
+  const sheets = input.sheets ?? input.sheetTitles.map((title) => ({ kind: inferSheetKind(title), title }));
+  const storeys = cls === "building" ? countStoreys(sheets, haystack) : null;
   const structuralSystem = cls === "building" ? detectSystem(haystack, storeys) : "unknown";
   const foundationType = cls === "building" || cls === "bridge" ? detectFoundation(haystack, storeys) : "unknown";
 

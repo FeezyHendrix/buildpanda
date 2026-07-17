@@ -56,3 +56,48 @@ test("classifyStructure: empty/ambiguous -> unknown low confidence", () => {
   assert.equal(ctx.structureClass, "unknown");
   assert.equal(ctx.confidence, "low");
 });
+
+// Regression (AUC Building A): floor plans up to Eighth Floor; elevations label a
+// 9th-floor ROOF datum + repeat every level. Must count 9 (Ground+1st..8th), not
+// 19/43 from summing repeated labels.
+test("classifyStructure: repeated floor labels across elevations do NOT inflate storeys", () => {
+  const kinds = { plan: "floor-plan" as const, elev: "elevation" as const };
+  const sheets = [
+    { kind: kinds.plan, title: "Third Basement Floor Plan" },
+    { kind: kinds.plan, title: "Ground Floor Plan" },
+    { kind: kinds.plan, title: "First Floor Plan" },
+    { kind: kinds.plan, title: "Fourth Floor Plan" },
+    { kind: kinds.plan, title: "Eighth Floor Plan" },
+    { kind: kinds.elev, title: "Front Side Elevation" },
+    { kind: kinds.elev, title: "Rear Side Elevation" },
+    { kind: kinds.elev, title: "Left Side Elevation" },
+  ];
+  const text =
+    "9th FLOOR 8th FLOOR 7th FLOOR 6th FLOOR 5th FLOOR 4th FLOOR 3rd FLOOR 2nd FLOOR 1st FLOOR GROUND FLOOR " +
+    "1 BASEMENT 2 BASEMENT 3rd BASEMENT 1st FLOOR 2nd FLOOR 3rd FLOOR 4th FLOOR 5th FLOOR 6th FLOOR 7th FLOOR 8th FLOOR 9th FLOOR " +
+    "blockwork office pool office window schedule door schedule";
+  const ctx = classifyStructure({ sheetTitles: sheets.map((s) => s.title), sheets, text });
+  assert.equal(ctx.structureClass, "building");
+  assert.equal(ctx.storeys, 9);
+});
+
+test("classifyStructure: explicit 'G+N' statement counts storeys when plans are shared", () => {
+  const ctx = classifyStructure({
+    sheetTitles: ["Typical Floor Plan"],
+    sheets: [{ kind: "floor-plan", title: "Typical Floor Plan" }],
+    text: "proposed G+11 office building reinforced concrete frame column schedule",
+  });
+  assert.equal(ctx.storeys, 12);
+});
+
+test("classifyStructure: bungalow single floor plan -> 1 storey", () => {
+  const ctx = classifyStructure({
+    sheetTitles: ["Ground Floor Plan", "Roof Plan"],
+    sheets: [
+      { kind: "floor-plan", title: "Ground Floor Plan" },
+      { kind: "floor-plan", title: "Roof Plan" },
+    ],
+    text: "bungalow blockwork strip foundation bedroom kitchen living",
+  });
+  assert.equal(ctx.storeys, 1);
+});
