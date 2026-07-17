@@ -24,7 +24,7 @@ import {
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
 import { measureSheetViaVision, VISION_MAX_SHEETS_PER_SESSION } from "./vision-takeoff.ts";
-import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
+import { findDuplicatePlans, applyFloorRepetition, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
 import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
 import { besmmRag } from "../../../../lib/besmm-rag.ts";
 import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
@@ -252,6 +252,7 @@ function measureSheetRegions(
     });
   }
 
+  for (const item of items) item.scope = "per-floor";
   return { items, fingerprint };
 }
 
@@ -407,14 +408,14 @@ export async function generateForSession(
     }
   }
 
-  // Repeated-floor detection: drop items measured from pages whose plan
-  // geometry duplicates an earlier page — same floor drawn twice must not sum.
-  const duplicateOf = findDuplicatePlans(pageFingerprints);
-  let dedupedItems = allItems;
-  if (duplicateOf.size > 0) {
-    dedupedItems = allItems.filter((item) => !duplicateOf.has(item.pageNumber));
-    for (const [dup, rep] of duplicateOf) {
-      progress(`Page ${dup} duplicates the plan on page ${rep} — measured once`);
+  // Repeated-floor handling: identical typical floors are one drawing repeated.
+  // Drop the duplicate pages, but MULTIPLY the representative's per-floor items
+  // by the group size so the building is not under-counted (measure once x N).
+  const dup = findDuplicatePlans(pageFingerprints);
+  const dedupedItems = applyFloorRepetition(allItems, dup);
+  for (const group of dup.groups.values()) {
+    if (group.groupSize > 1) {
+      progress(`Floors on pages ${group.members.join(", ")} are identical — measured once x ${group.groupSize}`);
     }
   }
 

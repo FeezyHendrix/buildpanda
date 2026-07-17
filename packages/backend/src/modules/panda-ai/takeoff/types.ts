@@ -368,6 +368,9 @@ export interface MeasuredGeometry {
   pageNumber?: number;
 }
 
+export const ITEM_SCOPES = ["per-floor", "whole-building"] as const;
+export type ItemScope = (typeof ITEM_SCOPES)[number];
+
 export interface MeasuredBoqItem {
   elementGroup: string;
   workSection: { code: string; title: string };
@@ -383,5 +386,6 @@ export interface MeasuredBoqItem {
   measurementBasis: string;
   geometries: MeasuredGeometry[];
   pageNumber: number;
+  scope?: ItemScope;
   provisional?: boolean;
 }
