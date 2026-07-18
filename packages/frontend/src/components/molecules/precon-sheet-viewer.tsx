@@ -197,8 +197,8 @@ export function PreconSheetViewer({
       if (cancelled) return;
       const pdfPage = await doc.getPage(pageWithinFile(activeSheet, sheets));
       if (cancelled) return;
-      pdfPageRef.current = { sheetId, page: pdfPage as PdfPageProxy };
-      await rasterize(pdfPage as PdfPageProxy, 1.5, () => cancelled);
+      pdfPageRef.current = { sheetId, page: pdfPage as unknown as PdfPageProxy };
+      await rasterize(pdfPage as unknown as PdfPageProxy, 1.5, () => cancelled);
       if (cancelled) return;
       setView({ tx: 0, ty: 0, userZoom: 1 });
       setRendering(false);
