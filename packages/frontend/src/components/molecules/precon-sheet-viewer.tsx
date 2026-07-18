@@ -47,6 +47,15 @@ interface PageInfo {
   rasterScale: number;
 }
 
+interface PdfViewport {
+  width: number;
+  height: number;
+}
+interface PdfPageProxy {
+  getViewport: (opts: { scale: number }) => PdfViewport;
+  render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: PdfViewport; canvas: HTMLCanvasElement }) => { promise: Promise<void> };
+}
+
 const ELEMENT_STYLES = [
   { match: "wall finish", color: "#059669", label: "Wall finishes" },
   { match: "ceiling finish", color: "#10b981", label: "Ceiling finishes" },
@@ -130,6 +139,27 @@ export function PreconSheetViewer({
     return styles.sort((a, b) => a.label.localeCompare(b.label));
   }, [sheetGeometries, rowById]);
 
+  // Rasterize a cached pdfjs page to the canvas at the given scale and publish
+  // the matching page-state in the SAME pass, so toPx/toPt/cssZoom always agree
+  // with the pixels actually on the canvas (no coordinate desync during zoom).
+  const rasterize = useCallback(async (pdfPage: PdfPageProxy, scale: number, isCancelled: () => boolean) => {
+    const viewport = pdfPage.getViewport({ scale });
+    const canvas = canvasRef.current;
+    if (!canvas || isCancelled()) return;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
+    if (isCancelled()) return;
+    setPage({
+      widthPx: viewport.width,
+      heightPx: viewport.height,
+      heightPt: viewport.height / scale,
+      rasterScale: scale,
+    });
+  }, []);
+
   const [activeRasterScale, setActiveRasterScale] = useState(1.5);
   const targetRasterScale = useMemo(() => {
     return Math.min(4.5, 1.5 * Math.max(1, Math.ceil(view.userZoom)));
@@ -143,51 +173,34 @@ export function PreconSheetViewer({
     return () => clearTimeout(timer);
   }, [targetRasterScale, activeRasterScale]);
 
-  const lastSheetId = useRef<string | null>(null);
+  // The loaded pdfjs page is cached per sheet so zoom re-rasters redraw from
+  // memory instead of re-downloading the whole PDF (the regression that made
+  // the canvas flash and desynced the annotation/tool coordinates mid-swap).
+  const pdfPageRef = useRef<{ sheetId: string; page: PdfPageProxy } | null>(null);
 
-  // render the PDF page to canvas whenever the active sheet or raster scale changes
+  // Load (fetch + cache) the PDF page once per sheet, then raster at base scale.
   useEffect(() => {
     if (!activeSheet) return;
     let cancelled = false;
-    
-    const isNewSheet = lastSheetId.current !== activeSheet.id;
-    if (isNewSheet) {
-      setDraft([]);
-      setActiveRasterScale(1.5);
-    }
-    lastSheetId.current = activeSheet.id;
-    
-    const scaleToRender = isNewSheet ? 1.5 : activeRasterScale;
-
+    const sheetId = activeSheet.id;
+    setDraft([]);
+    setActiveRasterScale(1.5);
     setRendering(true);
     (async () => {
       const pdfjs = await import("pdfjs-dist");
       if (!sharedWorker) sharedWorker = new PdfWorker();
       pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
       const doc = await pdfjs.getDocument({
-        url: preconApi.sheetFileUrl(activeSheet.id),
+        url: preconApi.sheetFileUrl(sheetId),
         withCredentials: true,
       }).promise;
       if (cancelled) return;
       const pdfPage = await doc.getPage(pageWithinFile(activeSheet, sheets));
-      const viewport = pdfPage.getViewport({ scale: scaleToRender });
-      const canvas = canvasRef.current;
-      if (!canvas || cancelled) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (cancelled) return;
-      setPage({ 
-        widthPx: viewport.width, 
-        heightPx: viewport.height, 
-        heightPt: viewport.height / scaleToRender,
-        rasterScale: scaleToRender
-      });
-      if (isNewSheet) {
-        setView({ tx: 0, ty: 0, userZoom: 1 });
-      }
+      pdfPageRef.current = { sheetId, page: pdfPage as PdfPageProxy };
+      await rasterize(pdfPage as PdfPageProxy, 1.5, () => cancelled);
+      if (cancelled) return;
+      setView({ tx: 0, ty: 0, userZoom: 1 });
       setRendering(false);
     })().catch((error: unknown) => {
       if (!cancelled) {
@@ -199,9 +212,21 @@ export function PreconSheetViewer({
     return () => {
       cancelled = true;
     };
-    // sheets identity churn is fine; the file/page only depends on the sheet id
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSheet?.id, activeRasterScale]);
+  }, [activeSheet?.id]);
+
+  // Re-raster the cached page when zoom crosses a DPI threshold — no re-fetch.
+  useEffect(() => {
+    const cached = pdfPageRef.current;
+    if (!activeSheet || !cached || cached.sheetId !== activeSheet.id) return;
+    if (!page || page.rasterScale === activeRasterScale) return;
+    let cancelled = false;
+    void rasterize(cached.page, activeRasterScale, () => cancelled);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRasterScale, activeSheet?.id]);
 
   const cssZoom = page ? (1.5 * view.userZoom) / page.rasterScale : view.userZoom;
 
