@@ -11,8 +11,9 @@ import {
   InspectionsIcon,
   MaterialsIcon,
   MessagesIcon,
-  OverviewIcon,
   SparkleIcon,
+  BuildingIcon,
+  BlocksIcon,
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
@@ -359,7 +360,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 item={{
                   label: "Manage Buildings",
                   slug: "buildings",
-                  Icon: OverviewIcon,
+                  Icon: BuildingIcon,
                   to: `/project/${project.id}/buildings`,
                 }}
                 onClose={onClose}
@@ -371,7 +372,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                     item={{
                       label: b.name,
                       slug: `buildings/${b.id}/stages`,
-                      Icon: SparkleIcon,
+                      Icon: BlocksIcon,
                       to: `/project/${project.id}/buildings/${b.id}/stages`,
                     }}
                     onClose={onClose}
