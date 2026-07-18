@@ -38,6 +38,7 @@ const listQuery = {
   properties: {
     from: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
     to: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+    buildingId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -149,12 +150,12 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
 
   const periodReports = periodReportService(fastify.db, { logs: service });
 
-  fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string; buildingId?: string } }>(
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
-      return service.listDays(project.id, request.query.from, request.query.to);
+      return service.listDays(project.id, request.query.from, request.query.to, request.query.buildingId);
     },
   );
 

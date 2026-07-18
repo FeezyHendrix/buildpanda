@@ -41,8 +41,12 @@ export interface UpdateTaskInput {
 }
 
 export const taskApi = {
-  board: (projectId: string, scope?: "all" | "assigned") =>
-    api.get<TaskBoard>(`/projects/${projectId}/tasks/board`, { params: scope ? { scope } : undefined }).then((r) => r.data),
+  board: (projectId: string, scope?: "all" | "assigned", buildingId?: string) =>
+    api
+      .get<TaskBoard>(`/projects/${projectId}/tasks/board`, {
+        params: { ...(scope ? { scope } : {}), ...(buildingId ? { buildingId } : {}) },
+      })
+      .then((r) => r.data),
 
   assignableUsers: (projectId: string) =>
     api.get<AssignableUser[]>(`/projects/${projectId}/tasks/assignable`).then((r) => r.data),

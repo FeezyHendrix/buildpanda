@@ -78,6 +78,7 @@ export interface LookAheadListFilters {
   status?: LookAheadStatus;
   timeline?: LookAheadTimeline;
   activityId?: string;
+  buildingId?: string;
   sort?: "startDate" | "endDate" | "status";
   order?: "asc" | "desc";
 }

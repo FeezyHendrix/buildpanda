@@ -2,7 +2,7 @@ import type { Knex } from "knex";
 import type { FastifyPluginAsync } from "fastify";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { idParams as projectIdParams, buildingQuery } from "../../lib/schemas.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 
 export type KeyDateStatus = "Upcoming" | "Met" | "Missed";
@@ -103,13 +103,15 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     return buildingId;
   }
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/key-dates",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "key-dates", "view");
+      const where: Record<string, string> = { project_id: project.id };
+      if (request.query.buildingId) where.building_id = request.query.buildingId;
       const rows = await db<KeyDateRow>("key_dates")
-        .where({ project_id: project.id })
+        .where(where)
         .orderBy([{ column: "target_date", order: "asc" }, { column: "sort_order", order: "asc" }]);
       return rows.map(toKeyDate);
     },

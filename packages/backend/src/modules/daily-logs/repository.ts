@@ -46,10 +46,12 @@ export function dailyLogsRepository(db: Knex) {
       projectId: string,
       from: string | undefined,
       to: string | undefined,
+      buildingId?: string,
     ): Promise<DailyLogRow[]> {
       let query = db<DailyLogRow>("daily_logs")
         .where({ project_id: projectId })
         .orderBy("log_date", "desc");
+      if (buildingId) query = query.andWhere("building_id", buildingId);
       if (from) query = query.andWhere("log_date", ">=", from);
       if (to) query = query.andWhere("log_date", "<=", to);
       return query;

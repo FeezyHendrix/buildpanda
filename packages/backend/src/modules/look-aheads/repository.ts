@@ -20,9 +20,10 @@ export type LookAheadPatch = Partial<
 
 export function lookAheadsRepository(db: Knex) {
   return {
-    listByProject(projectId: string, status?: LookAheadStatus): Promise<LookAheadRow[]> {
+    listByProject(projectId: string, status?: LookAheadStatus, buildingId?: string): Promise<LookAheadRow[]> {
       const query = db<LookAheadRow>("look_aheads").where({ project_id: projectId });
       if (status) query.andWhere({ status });
+      if (buildingId) query.andWhere({ building_id: buildingId });
       return query.orderBy("start_date", "desc");
     },
 

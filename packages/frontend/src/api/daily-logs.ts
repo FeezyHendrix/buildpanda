@@ -49,8 +49,12 @@ export interface VoidDailyLogInput {
 }
 
 export const dailyLogsApi = {
-  list: (projectId: string, range?: { from?: string; to?: string }) =>
-    api.get<DailyLogDay[]>(`/projects/${projectId}/daily-logs`, range ? { params: range } : undefined).then((r) => r.data),
+  list: (projectId: string, range?: { from?: string; to?: string }, buildingId?: string) =>
+    api
+      .get<DailyLogDay[]>(`/projects/${projectId}/daily-logs`, {
+        params: range || buildingId ? { ...range, ...(buildingId ? { buildingId } : {}) } : undefined,
+      })
+      .then((r) => r.data),
 
   addEntry: (projectId: string, logDate: string, body: { bodyHtml: string; bodyText: string | null }) =>
     api.post<DailyLogEntry>(`/projects/${projectId}/daily-logs/${logDate}/entries`, body).then((r) => r.data),

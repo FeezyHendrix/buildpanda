@@ -35,6 +35,7 @@ const listQuery = {
     status: { type: "string", enum: LOOK_AHEAD_STATUSES },
     timeline: { type: "string", enum: ["past", "current", "future"] },
     activityId: { type: "string", maxLength: 100 },
+    buildingId: { type: "string", minLength: 1, maxLength: 100 },
     sort: { type: "string", enum: ["startDate", "endDate", "status"] },
     order: { type: "string", enum: ["asc", "desc"] },
   },
@@ -91,6 +92,7 @@ const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
       status?: LookAheadStatus;
       timeline?: LookAheadTimeline;
       activityId?: string;
+      buildingId?: string;
       sort?: "startDate" | "endDate" | "status";
       order?: "asc" | "desc";
     };

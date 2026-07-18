@@ -56,6 +56,8 @@ function fakeRepo(rows: BuildingRow[], stageProgress: Map<string, number> = new 
     },
     reorder: async () => undefined,
     cloneStages: async () => 0,
+    firstRealBuildingId: async (projectId) =>
+      store.filter((r) => r.project_id === projectId && r.kind === "real")[0]?.id,
   };
 }
 
