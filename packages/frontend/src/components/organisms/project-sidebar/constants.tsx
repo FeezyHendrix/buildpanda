@@ -1,4 +1,5 @@
 import type { ComponentType, SVGAttributes } from "react";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import {
   AlertIcon,
   BinocularsIcon,
@@ -22,7 +23,7 @@ export interface NavEntry {
   label: string;
   slug: string;
   Icon: IconComponent | string;
-  flag?: string;
+  flag?: FeatureFlagKey;
   /** Permission resource from the backend `statement`; shown only with `<resource>:view`. */
   resource?: string;
 }
