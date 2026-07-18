@@ -180,8 +180,8 @@ export function activitiesService(
   }
 
   return {
-    async listByProject(projectId: string): Promise<Activity[]> {
-      const rows = await repository.listByProject(projectId);
+    async listByProject(projectId: string, buildingId?: string): Promise<Activity[]> {
+      const rows = await repository.listByProject(projectId, buildingId);
       if (rows.length === 0) return [];
       const [phases, delayRows] = await Promise.all([
         loadPhaseMap(projectId),

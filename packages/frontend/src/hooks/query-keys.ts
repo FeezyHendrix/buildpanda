@@ -109,8 +109,8 @@ export const teamKeys = {
 
 export const activityKeys = {
   all: (projectId: string) => ["projects", projectId, "activities"] as const,
-  list: (projectId: string) =>
-    [...activityKeys.all(projectId), "list"] as const,
+  list: (projectId: string, buildingId?: string) =>
+    [...activityKeys.all(projectId), "list", buildingId ?? "all"] as const,
   detail: (projectId: string, activityId: string) =>
     [...activityKeys.all(projectId), "detail", activityId] as const,
 };

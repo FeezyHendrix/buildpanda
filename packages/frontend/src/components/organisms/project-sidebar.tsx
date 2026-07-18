@@ -13,7 +13,6 @@ import {
   MessagesIcon,
   SparkleIcon,
   BuildingIcon,
-  BlocksIcon,
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
@@ -24,6 +23,8 @@ import { icons } from "@/assets/icons/icons";
 import { useProjectChannels, useAllChannels } from "@/hooks/use-chat";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { useBuildings } from "@/hooks/use-buildings";
+
+import { BuildingSwitcher } from "./project-sidebar/building-switcher";
 
 import {
   SidebarNavGroup,
@@ -365,19 +366,9 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 }}
                 onClose={onClose}
               />
-              {realBuildings.length > 1 &&
-                realBuildings.map((b) => (
-                  <ProjectNavLink
-                    key={b.id}
-                    item={{
-                      label: b.name,
-                      slug: `buildings/${b.id}/stages`,
-                      Icon: BlocksIcon,
-                      to: `/project/${project.id}/buildings/${b.id}/stages`,
-                    }}
-                    onClose={onClose}
-                  />
-                ))}
+              {realBuildings.length > 1 && (
+                <BuildingSwitcher projectId={project.id} buildings={realBuildings} onClose={onClose} />
+              )}
             </>
           )}
 
