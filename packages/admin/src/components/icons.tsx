@@ -100,3 +100,36 @@ export const JobsIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 9h18M8 14l2 2 4-4" />
   </svg>
 );
+
+export const GrowthIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M3 17l6-6 4 4 8-8" />
+    <path d="M17 3h4v4" />
+  </svg>
+);
+
+export const EngagementIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M22 12h-4l-3 8-4-16-3 8H4" />
+  </svg>
+);
+
+export const AiOpsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <rect x="8" y="8" width="8" height="8" rx="1" />
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
+  </svg>
+);
+
+export const MaintenanceIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.5 2.5-2-2 2.5-2.5z" />
+  </svg>
+);
+
+export const FlagIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...I(p)}>
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+    <line x1="4" y1="22" x2="4" y2="15" />
+  </svg>
+);

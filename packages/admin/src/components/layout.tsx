@@ -10,21 +10,25 @@ import {
   LogoutIcon,
   LeadsIcon,
   JobsIcon,
-  ShieldIcon,
+  GrowthIcon,
+  EngagementIcon,
+  AiOpsIcon,
+  MaintenanceIcon,
+  FlagIcon,
 } from "@/components/icons";
 
 const nav = [
   { to: "/", label: "Overview", icon: DashboardIcon, end: true },
-  { to: "/growth", label: "Growth", icon: DashboardIcon, end: false },
-  { to: "/engagement", label: "Engagement", icon: DashboardIcon, end: false },
-  { to: "/ops", label: "AI Operations", icon: DashboardIcon, end: false },
+  { to: "/growth", label: "Growth", icon: GrowthIcon, end: false },
+  { to: "/engagement", label: "Engagement", icon: EngagementIcon, end: false },
+  { to: "/ops", label: "AI Operations", icon: AiOpsIcon, end: false },
   { to: "/users", label: "Users", icon: UsersIcon, end: false },
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
   { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
   { to: "/jobs", label: "Import jobs", icon: JobsIcon, end: false },
-  { to: "/maintenance", label: "Maintenance", icon: ShieldIcon, end: false },
-  { to: "/feature-flags", label: "Feature flags", icon: ShieldIcon, end: false },
+  { to: "/maintenance", label: "Maintenance", icon: MaintenanceIcon, end: false },
+  { to: "/feature-flags", label: "Feature flags", icon: FlagIcon, end: false },
 ];
 
 export function Layout() {
