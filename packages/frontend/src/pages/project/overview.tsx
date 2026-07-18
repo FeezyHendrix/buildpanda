@@ -25,7 +25,7 @@ import { useSession } from "@/stores/auth";
 import { RecentUpdatesPanel } from "./overview/recent-updates-panel";
 import { RiskFactorsPanel } from "./overview/risk-factors-panel";
 import { TimelineStepper } from "./overview/timeline-stepper";
-
+import { FeatureGate } from "@/components/atoms/feature-gate";
 
 const RECENT_UPDATE_LIMIT = 2;
 
@@ -70,10 +70,11 @@ export default function ProjectOverview() {
         <InsightsSummary projectId={project.id} />
       </div> */}
 
-      <div className="mt-8">
-        <WeatherDashboard projectId={project.id} />
-      </div>
-
+      <FeatureGate flag="projects.weather">
+        <div className="mt-8">
+          <WeatherDashboard projectId={project.id} />
+        </div>
+      </FeatureGate>
 
       {realBuildings.length > 1 && (
         <section className="mt-8 flex flex-col gap-4">

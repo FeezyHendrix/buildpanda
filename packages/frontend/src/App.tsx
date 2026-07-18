@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import {
   HomeRedirect,
   RequireAuth,
@@ -128,18 +129,18 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
-function pf(flag: string, el: ReactElement) {
+function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
 /** Feature flag + resource permission (RBAC) gate for project routes. */
-function pfr(flag: string, resource: string, el: ReactElement) {
+function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
   return (
     <ProjectFeatureFlagGate flag={flag}>
       <ProjectPermissionGate resource={resource}>{el}</ProjectPermissionGate>
     </ProjectFeatureFlagGate>
   );
 }
-function sf(flag: string, el: ReactElement) {
+function sf(flag: FeatureFlagKey, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import { useOrgPermissions } from "@/hooks/use-organization";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
@@ -70,7 +71,7 @@ export function RequireCompany({ children }: { children: ReactNode }) {
 }
 
 /** Redirects to project overview if the given feature flag is disabled. */
-export function ProjectFeatureFlagGate({ flag, children }: { flag: string; children: ReactNode }) {
+export function ProjectFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey; children: ReactNode }) {
   const { projectId } = useParams<{ projectId: string }>();
   const enabled = useFeatureFlag(flag);
   if (!enabled) return <Navigate to={`/project/${projectId}/overview`} replace />;
@@ -116,7 +117,7 @@ export function OrgPermissionGate({
 }
 
 /** Redirects to /sales if the given feature flag is disabled. */
-export function SalesFeatureFlagGate({ flag, children }: { flag: string; children: ReactNode }) {
+export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey; children: ReactNode }) {
   const enabled = useFeatureFlag(flag);
   if (!enabled) return <Navigate to="/sales" replace />;
   return <>{children}</>;
