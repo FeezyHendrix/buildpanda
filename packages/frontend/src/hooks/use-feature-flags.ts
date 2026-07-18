@@ -11,6 +11,8 @@ export function useFeatureFlags() {
     queryKey: ["feature-flags"],
     queryFn: () => featureFlagsApi.get(),
     staleTime: 5_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 
