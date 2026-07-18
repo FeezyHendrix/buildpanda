@@ -46,7 +46,7 @@ function StatusCell({ status }: { status: BuildingStatus }) {
 
 export default function ProjectBuildings() {
   const { project, access } = useProjectContext();
-  const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
+  const canManage = Boolean(access && canResourceAction(access, "buildings", "manage"));
   const { data: buildings = [], isLoading } = useBuildings(project.id);
   const realBuildings = buildings.filter((b) => b.kind === "real");
 
