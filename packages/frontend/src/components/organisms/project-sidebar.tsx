@@ -23,6 +23,7 @@ import { icons } from "@/assets/icons/icons";
 import { useProjectChannels, useAllChannels } from "@/hooks/use-chat";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { useBuildings } from "@/hooks/use-buildings";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 
 import { BuildingSwitcher } from "./project-sidebar/building-switcher";
 
@@ -171,6 +172,22 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       location.pathname.startsWith(`${item.to}/`),
   );
 
+
+  const { selectedBuildingId } = useBuildingScope();
+  const activeBuilding = realBuildings.find(b => b.id === selectedBuildingId);
+  const showMultiBuildingNav = realBuildings.length > 1 && isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings");
+
+  const scopedSiteControlSlugs = ["schedules/daily-log", "look-aheads"];
+  const scopedSiteControlItems = siteControlItems.filter(item => scopedSiteControlSlugs.includes(item.slug));
+  const projectSiteControlItems = siteControlItems.filter(item => !scopedSiteControlSlugs.includes(item.slug));
+
+  const tasksItem: ProjectNavItem | null = isOn("projects.schedule") ? {
+    label: "Tasks",
+    slug: "tasks",
+    Icon: TrendingUpIcon,
+    to: `/project/${project.id}/tasks`,
+  } : null;
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -296,68 +313,19 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           ))}
         </nav>
       ) : (
-        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 no-scrollbar">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-            Main menu
-          </p>
-          {items.slice(0, 2).map((item) => (
-            <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
-          ))}
-          {isOn("projects.schedule") && (
-            <ProjectNavLink
-              item={{
-                label: "Tasks",
-                slug: "tasks",
-                Icon: TrendingUpIcon,
-                to: `/project/${project.id}/tasks`,
-              }}
-              onClose={onClose}
-          />
-          )}
-          {scheduleItems.length > 0 && (
-            <SidebarNavGroup
-              label="Schedules"
-              Icon={CalendarIcon}
-              items={scheduleItems}
-              active={isScheduleActive}
-              onClose={onClose}
-          />
-          )}
-          {siteControlItems.length > 0 && (
-            <SidebarNavGroup
-              label="Site Control"
-              Icon={InspectionsIcon}
-              items={siteControlItems}
-              active={isSiteControlActive}
-              onClose={onClose}
-          />
-          )}
-          {materialsItems.length > 0 && (
-            <SidebarNavGroup
-              label="Materials & Equipment"
-              Icon={MaterialsIcon}
-              items={materialsItems}
-              active={isMaterialsActive}
-              activeIconClassName="text-[#004DE7]"
-              onClose={onClose}
-          />
-          )}
-
-          {financeItems.length > 0 && (
-            <SidebarNavGroup
-              label="Finance"
-              Icon={FinancesIcon}
-              items={financeItems}
-              active={isFinanceActive}
-              onClose={onClose}
-          />
-          )}
-          {isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
-            <div className="mt-3 border-t border-gray-100 pt-3">
-              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Buildings
-              </p>
-              <div className="flex flex-col gap-0.5 pl-4">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1 pb-4 no-scrollbar">
+          {showMultiBuildingNav ? (
+            <>
+              <BuildingSwitcher buildings={realBuildings} onClose={onClose} />
+              
+              <div className="mt-1 mb-2">
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                  {activeBuilding ? activeBuilding.name : "All buildings"}
+                </p>
+                {scheduleItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
+                {tasksItem && <ProjectNavLink item={tasksItem} onClose={onClose} />}
+                {scopedSiteControlItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
+                
                 <ProjectNavLink
                   item={{
                     label: "Manage Buildings",
@@ -367,11 +335,119 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                   }}
                   onClose={onClose}
                 />
-                {realBuildings.length > 1 && (
-                  <BuildingSwitcher projectId={project.id} buildings={realBuildings} onClose={onClose} />
-                )}
               </div>
-            </div>
+
+              <div className="my-2 border-t border-gray-100" />
+
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Project
+              </p>
+              {items.slice(0, 2).map((item) => (
+                <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
+              ))}
+              {projectSiteControlItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Site Control"
+                  Icon={InspectionsIcon}
+                  items={projectSiteControlItems}
+                  active={isSiteControlActive}
+                  onClose={onClose}
+                />
+              )}
+              {materialsItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Materials & Equipment"
+                  Icon={MaterialsIcon}
+                  items={materialsItems}
+                  active={isMaterialsActive}
+                  activeIconClassName="text-[#004DE7]"
+                  onClose={onClose}
+                />
+              )}
+              {financeItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Finance"
+                  Icon={FinancesIcon}
+                  items={financeItems}
+                  active={isFinanceActive}
+                  onClose={onClose}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Main menu
+              </p>
+              {items.slice(0, 2).map((item) => (
+                <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
+              ))}
+              {tasksItem && (
+                <ProjectNavLink
+                  item={tasksItem}
+                  onClose={onClose}
+                />
+              )}
+              {scheduleItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Schedules"
+                  Icon={CalendarIcon}
+                  items={scheduleItems}
+                  active={isScheduleActive}
+                  onClose={onClose}
+                />
+              )}
+              {siteControlItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Site Control"
+                  Icon={InspectionsIcon}
+                  items={siteControlItems}
+                  active={isSiteControlActive}
+                  onClose={onClose}
+                />
+              )}
+              {materialsItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Materials & Equipment"
+                  Icon={MaterialsIcon}
+                  items={materialsItems}
+                  active={isMaterialsActive}
+                  activeIconClassName="text-[#004DE7]"
+                  onClose={onClose}
+                />
+              )}
+
+              {financeItems.length > 0 && (
+                <SidebarNavGroup
+                  label="Finance"
+                  Icon={FinancesIcon}
+                  items={financeItems}
+                  active={isFinanceActive}
+                  onClose={onClose}
+                />
+              )}
+              {isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    Buildings
+                  </p>
+                  <div className="flex flex-col gap-0.5 pl-4">
+                    <ProjectNavLink
+                      item={{
+                        label: "Manage Buildings",
+                        slug: "buildings",
+                        Icon: BuildingIcon,
+                        to: `/project/${project.id}/buildings`,
+                      }}
+                      onClose={onClose}
+                    />
+                    {realBuildings.length > 1 && (
+                      <BuildingSwitcher buildings={realBuildings} onClose={onClose} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {isOn("projects.documents") && canViewSection(access, "projects.documents", "documents") && (
@@ -383,7 +459,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 to: `/project/${project.id}/documents`,
               }}
               onClose={onClose}
-          />
+            />
           )}
           {isOn("project.team") && canViewSection(access, undefined, "teamMembers") && (
             <ProjectNavLink
@@ -394,7 +470,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 to: `/project/${project.id}/team`,
               }}
               onClose={onClose}
-          />
+            />
           )}
           {isOn("collaboration.messaging") && canViewSection(access, "collaboration.messaging", "messages") && (
             <ProjectNavLink
@@ -406,7 +482,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 badge: totalUnread > 0 ? totalUnread : undefined,
               }}
               onClose={onClose}
-          />
+            />
           )}
           <ProjectNavLink
             item={{
