@@ -9,7 +9,7 @@ export function useFeatureFlags() {
   return useQuery({
     queryKey: ["feature-flags"],
     queryFn: () => featureFlagsApi.get(),
-    staleTime: 60_000,
+    staleTime: 5_000,
   });
 }
 
