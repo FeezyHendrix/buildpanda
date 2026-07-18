@@ -350,7 +350,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
-          {realBuildings.length > 1 && isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
+          {isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
             <>
               <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 Buildings
@@ -364,18 +364,19 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 }}
                 onClose={onClose}
               />
-              {realBuildings.map((b) => (
-                <ProjectNavLink
-                  key={b.id}
-                  item={{
-                    label: b.name,
-                    slug: `buildings/${b.id}/stages`,
-                    Icon: SparkleIcon,
-                    to: `/project/${project.id}/buildings/${b.id}/stages`,
-                  }}
-                  onClose={onClose}
-                />
-              ))}
+              {realBuildings.length > 1 &&
+                realBuildings.map((b) => (
+                  <ProjectNavLink
+                    key={b.id}
+                    item={{
+                      label: b.name,
+                      slug: `buildings/${b.id}/stages`,
+                      Icon: SparkleIcon,
+                      to: `/project/${project.id}/buildings/${b.id}/stages`,
+                    }}
+                    onClose={onClose}
+                  />
+                ))}
             </>
           )}
 
