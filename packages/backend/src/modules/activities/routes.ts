@@ -42,6 +42,12 @@ const delayParams = {
 
 const isoString = { type: "string", minLength: 1, maxLength: 40 } as const;
 
+const buildingQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { buildingId: { type: "string", minLength: 1 } },
+} as const;
+
 const createActivityBody = {
   type: "object",
   required: ["name", "activityType", "plannedStartAt", "plannedEndAt"],
@@ -130,12 +136,12 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
   );
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/activities",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
-      return service.listByProject(project.id);
+      return service.listByProject(project.id, request.query.buildingId);
     },
   );
 

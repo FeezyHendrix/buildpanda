@@ -11,6 +11,8 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { useBuildings } from "@/hooks/use-buildings";
+import { BuildingFilterDropdown } from "./building-filter-dropdown";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
@@ -28,7 +30,12 @@ import { ScheduleReportPanel } from "./schedule/schedule-report-panel";
 
 export default function ProjectSchedule() {
   const { project, access } = useProjectContext();
-  const { data: activities = [], isPending } = useProjectActivities(project.id);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | undefined>(undefined);
+  
+  const { data: buildingsData = [] } = useBuildings(project.id);
+  const realBuildings = useMemo(() => buildingsData.filter(b => b.kind === "real"), [buildingsData]);
+  
+  const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
@@ -96,6 +103,11 @@ export default function ProjectSchedule() {
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
+              <BuildingFilterDropdown 
+                buildings={realBuildings} 
+                selectedBuildingId={selectedBuildingId} 
+                onChange={setSelectedBuildingId} 
+              />
               {canEdit && isProgrammeImportEnabled && (
                 <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
                   Import programme

@@ -72,10 +72,12 @@ export interface DelayResolvePatch {
 
 export function activitiesRepository(db: Knex) {
   return {
-    listByProject(projectId: string): Promise<ActivityRow[]> {
+    listByProject(projectId: string, buildingId?: string): Promise<ActivityRow[]> {
+      const where: Record<string, string> = { "activities.project_id": projectId };
+      if (buildingId) where["activities.building_id"] = buildingId;
       return db<ActivityRow>("activities")
         .leftJoin("user as asg", "asg.id", "activities.assignee_id")
-        .where({ "activities.project_id": projectId })
+        .where(where)
         .orderBy("planned_start_at", "asc")
         .select("activities.*", "asg.name as assignee_name");
     },
