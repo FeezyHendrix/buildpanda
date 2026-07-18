@@ -180,10 +180,11 @@ export function dailyLogsService(
       projectId: string,
       from?: string,
       to?: string,
+      buildingId?: string,
     ): Promise<DailyLog[]> {
       if (from) assertDate(from, "from");
       if (to) assertDate(to, "to");
-      const rows = await repository.listByProjectInRange(projectId, from, to);
+      const rows = await repository.listByProjectInRange(projectId, from, to, buildingId);
       return attachActivities(rows);
     },
 
@@ -276,10 +277,10 @@ export function dailyLogsService(
       return voided;
     },
 
-    async listDays(projectId: string, from?: string, to?: string): Promise<DailyLogDay[]> {
+    async listDays(projectId: string, from?: string, to?: string, buildingId?: string): Promise<DailyLogDay[]> {
       if (from) assertDate(from, "from");
       if (to) assertDate(to, "to");
-      const rows = await repository.listByProjectInRange(projectId, from, to);
+      const rows = await repository.listByProjectInRange(projectId, from, to, buildingId);
       const logs = await attachActivities(rows);
       const keys = rows.map((r) => ({ projectId: r.project_id, buildingId: r.building_id, logDate: toLogDateString(r.log_date) }));
       const entriesByDay = await loadEntriesByDay(keys);

@@ -61,6 +61,15 @@ export function buildingsRepository(db: Knex) {
       return rows.length === 1 ? rows[0]?.id : undefined;
     },
 
+    async firstRealBuildingId(projectId: string): Promise<string | undefined> {
+      const row = await db<BuildingRow>("buildings")
+        .where({ project_id: projectId, kind: "real" })
+        .orderBy("sort_order", "asc")
+        .select("id")
+        .first();
+      return row?.id;
+    },
+
     async countReal(projectId: string): Promise<number> {
       const row = await db("buildings")
         .where({ project_id: projectId, kind: "real" })

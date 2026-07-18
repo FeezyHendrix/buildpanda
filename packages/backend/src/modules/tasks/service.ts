@@ -378,8 +378,9 @@ export function tasksService(
       projectId: string,
       userId: string | null,
       assigneeId?: string,
+      buildingId?: string,
     ): Promise<TaskBoard> {
-      const board = await ensureDefaultBoard(projectId, userId);
+      const board = await ensureDefaultBoard(projectId, userId, buildingId);
       return assembleBoard(board, assigneeId);
     },
 

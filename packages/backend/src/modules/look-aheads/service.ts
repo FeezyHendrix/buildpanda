@@ -70,7 +70,7 @@ export function lookAheadsService(
 
   return {
     async list(projectId: string, filters: LookAheadListFilters): Promise<LookAhead[]> {
-      let rows = await repository.listByProject(projectId, filters.status);
+      let rows = await repository.listByProject(projectId, filters.status, filters.buildingId);
 
       const today = new Date().toISOString().slice(0, 10);
       if (filters.timeline) {

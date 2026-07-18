@@ -189,7 +189,8 @@ export const permitKeys = {
 
 export const keyDateKeys = {
   all: (projectId: string) => ["projects", projectId, "key-dates"] as const,
-  list: (projectId: string) => [...keyDateKeys.all(projectId), "list"] as const,
+  list: (projectId: string, buildingId?: string) =>
+    [...keyDateKeys.all(projectId), "list", buildingId ?? "all"] as const,
 };
 
 export const insightKeys = {
@@ -199,10 +200,10 @@ export const insightKeys = {
 
 export const dailyLogKeys = {
   all: (projectId: string) => ["projects", projectId, "daily-logs"] as const,
-  list: (projectId: string, range?: { from?: string; to?: string }) =>
+  list: (projectId: string, range?: { from?: string; to?: string }, buildingId?: string) =>
     range
-      ? ([...dailyLogKeys.all(projectId), "list", range] as const)
-      : ([...dailyLogKeys.all(projectId), "list"] as const),
+      ? ([...dailyLogKeys.all(projectId), "list", range, buildingId ?? "all"] as const)
+      : ([...dailyLogKeys.all(projectId), "list", buildingId ?? "all"] as const),
   detail: (projectId: string, date: string) =>
     [...dailyLogKeys.all(projectId), "detail", date] as const,
 };
@@ -299,7 +300,8 @@ export const messageKeys = {
 
 export const taskKeys = {
   all: (projectId: string) => ["projects", projectId, "tasks"] as const,
-  board: (projectId: string, scope: "all" | "assigned" = "all") => [...taskKeys.all(projectId), "board", scope] as const,
+  board: (projectId: string, scope: "all" | "assigned" = "all", buildingId?: string) =>
+    [...taskKeys.all(projectId), "board", scope, buildingId ?? "all"] as const,
   assignable: (projectId: string) => [...taskKeys.all(projectId), "assignable"] as const,
   detail: (projectId: string, taskId: string) => [...taskKeys.all(projectId), "detail", taskId] as const,
 };
