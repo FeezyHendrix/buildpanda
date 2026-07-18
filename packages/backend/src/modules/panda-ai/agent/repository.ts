@@ -35,6 +35,13 @@ export function agentRepository(db: Knex) {
         .select("id", "name", "status", "date_range", "sort_order");
     },
 
+    buildings(projectId: string) {
+      return db("buildings")
+        .where({ project_id: projectId, kind: "real" })
+        .orderBy("sort_order", "asc")
+        .select("id", "name", "code", "status", "progress_percent");
+    },
+
     activities(projectId: string) {
       return db("activities")
         .where({ project_id: projectId })

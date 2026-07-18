@@ -100,6 +100,7 @@ function assertChronology(start: string, end: string, label: string): void {
 export function activitiesService(
   repository: ActivitiesRepository,
   enqueueRecompute: (projectId: string) => Promise<void> = async () => {},
+  soleRealBuildingId: (projectId: string) => Promise<string | undefined> = async () => undefined,
   deps: ActivitiesDeps = {},
 ) {
   function notifyAssignee(
@@ -121,6 +122,34 @@ export function activitiesService(
   async function loadPhaseMap(projectId: string): Promise<Map<string, string>> {
     const phases = await repository.phaseNamesForProject(projectId);
     return new Map(phases.map((p) => [p.id, p.name]));
+  }
+
+  async function resolveCreateBuildingId(projectId: string, input: CreateActivityInput): Promise<string> {
+    let buildingId = input.buildingId ?? null;
+    if (input.phaseId) {
+      const phase = await repository.phaseById(input.phaseId);
+      if (!phase || phase.project_id !== projectId) {
+        throw new BadRequestError("phaseId does not belong to this project");
+      }
+      if (buildingId && buildingId !== phase.building_id) {
+        throw new BadRequestError("buildingId must match the selected phase");
+      }
+      buildingId = phase.building_id;
+    }
+    if (input.parentActivityId) {
+      const parent = await repository.findById(input.parentActivityId);
+      if (!parent || parent.project_id !== projectId) {
+        throw new BadRequestError("parentActivityId does not belong to this project");
+      }
+      if (buildingId && buildingId !== parent.building_id) {
+        throw new BadRequestError("buildingId must match the parent activity");
+      }
+      buildingId = parent.building_id;
+    }
+    if (buildingId) return buildingId;
+    const defaultBuildingId = await soleRealBuildingId(projectId);
+    if (!defaultBuildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+    return defaultBuildingId;
   }
 
   async function loadReasonMap(codes: string[]): Promise<Map<string, DelayReasonRow>> {
@@ -188,16 +217,12 @@ export function activitiesService(
     ): Promise<Activity> {
       assertChronology(input.plannedStartAt, input.plannedEndAt, "Planned");
 
-      if (input.phaseId) {
-        const phases = await loadPhaseMap(projectId);
-        if (!phases.has(input.phaseId)) {
-          throw new BadRequestError("phaseId does not belong to this project");
-        }
-      }
+      const buildingId = await resolveCreateBuildingId(projectId, input);
 
       const row = await repository.create({
         id: generateId("act"),
         project_id: projectId,
+        building_id: buildingId,
         phase_id: input.phaseId ?? null,
         name: input.name,
         activity_type: input.activityType,

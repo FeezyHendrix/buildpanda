@@ -11,6 +11,7 @@ import type {
 
 export interface DailyLogKey {
   projectId: string;
+  buildingId: string;
   logDate: string;
 }
 
@@ -56,7 +57,7 @@ export function dailyLogsRepository(db: Knex) {
 
     findOne(key: DailyLogKey): Promise<DailyLogRow | undefined> {
       return db<DailyLogRow>("daily_logs")
-        .where({ project_id: key.projectId, log_date: key.logDate })
+        .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
         .first();
     },
 
@@ -66,7 +67,7 @@ export function dailyLogsRepository(db: Knex) {
         .where(function () {
           for (const key of keys) {
             this.orWhere(function () {
-              this.where({ project_id: key.projectId, log_date: key.logDate });
+              this.where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate });
             });
           }
         })
@@ -80,12 +81,12 @@ export function dailyLogsRepository(db: Knex) {
     ): Promise<DailyLogRow> {
       const patch = toRowPatch(input);
       const existing = await db<DailyLogRow>("daily_logs")
-        .where({ project_id: key.projectId, log_date: key.logDate })
+        .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
         .first();
 
       if (existing) {
         const [row] = await db("daily_logs")
-          .where({ project_id: key.projectId, log_date: key.logDate })
+          .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
           .update({ ...patch, updated_at: new Date() })
           .returning<DailyLogRow[]>("*");
         if (!row) throw new Error("Failed to update daily log");
@@ -95,6 +96,7 @@ export function dailyLogsRepository(db: Knex) {
       const [row] = await db("daily_logs")
         .insert({
           project_id: key.projectId,
+          building_id: key.buildingId,
           log_date: key.logDate,
           ...patch,
           created_by_id: actorId,
@@ -112,6 +114,7 @@ export function dailyLogsRepository(db: Knex) {
       const existing = await db<DailyLogActivityRow>("daily_log_activities")
         .where({
           project_id: key.projectId,
+          building_id: key.buildingId,
           log_date: key.logDate,
           activity_id: activityId,
         })
@@ -121,6 +124,7 @@ export function dailyLogsRepository(db: Knex) {
         const [row] = await db("daily_log_activities")
           .where({
             project_id: key.projectId,
+            building_id: key.buildingId,
             log_date: key.logDate,
             activity_id: activityId,
           })
@@ -133,6 +137,7 @@ export function dailyLogsRepository(db: Knex) {
       const [row] = await db("daily_log_activities")
         .insert({
           project_id: key.projectId,
+          building_id: key.buildingId,
           log_date: key.logDate,
           activity_id: activityId,
           hours_logged: String(hoursLogged),
@@ -147,16 +152,16 @@ export function dailyLogsRepository(db: Knex) {
       return db("activities").whereIn("id", activityIds).select("id", "name");
     },
 
-    findActivity(projectId: string, activityId: string): Promise<{ id: string; name: string } | undefined> {
+    findActivity(projectId: string, activityId: string): Promise<{ id: string; name: string; building_id: string } | undefined> {
       return db("activities")
         .where({ id: activityId, project_id: projectId })
-        .select<{ id: string; name: string }>("id", "name")
+        .select<{ id: string; name: string; building_id: string }>("id", "name", "building_id")
         .first();
     },
 
     async voidOne(key: DailyLogKey, reason: string, actorId: string | null): Promise<DailyLogRow> {
       const [row] = await db("daily_logs")
-        .where({ project_id: key.projectId, log_date: key.logDate })
+        .where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate })
         .update({
           voided_at: new Date(),
           voided_by_id: actorId,
@@ -180,7 +185,7 @@ export function dailyLogsRepository(db: Knex) {
         .where(function () {
           for (const key of keys) {
             this.orWhere(function () {
-              this.where({ project_id: key.projectId, log_date: key.logDate });
+              this.where({ project_id: key.projectId, building_id: key.buildingId, log_date: key.logDate });
             });
           }
         })
@@ -193,6 +198,7 @@ export function dailyLogsRepository(db: Knex) {
 
     async insertEntry(record: {
       projectId: string;
+      buildingId: string;
       logDate: string;
       authorId: string | null;
       authorName: string;
@@ -204,6 +210,7 @@ export function dailyLogsRepository(db: Knex) {
         .insert({
           id: generateId("dle"),
           project_id: record.projectId,
+          building_id: record.buildingId,
           log_date: record.logDate,
           author_id: record.authorId,
           author_name: record.authorName,

@@ -6,6 +6,7 @@ export type LookAheadTimeline = "past" | "current" | "future";
 export interface LookAheadRow {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   description: string | null;
   status: LookAheadStatus;
@@ -20,6 +21,7 @@ export interface LookAheadRow {
 export interface LookAheadActivityRow {
   look_ahead_id: string;
   activity_id: string;
+  building_id: string;
   name: string;
   status: string;
   planned_start_at: string;
@@ -52,6 +54,7 @@ export interface LookAhead {
 
 export interface CreateLookAheadInput {
   name: string;
+  buildingId?: string | null;
   description?: string | null;
   status?: LookAheadStatus;
   startDate: string;

@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { stagesRepository } from "./repository.ts";
 import {
   stagesService,
@@ -23,6 +24,12 @@ const stageParams = {
   },
 } as const;
 
+const buildingQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { buildingId: { type: "string", minLength: 1 } },
+} as const;
+
 const STATUS = ["Done", "InProgress", "Pending"] as const;
 
 const createStageBody = {
@@ -31,6 +38,7 @@ const createStageBody = {
   additionalProperties: false,
   properties: {
     name: { type: "string", minLength: 1, maxLength: 120 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     status: { type: "string", enum: STATUS },
     startDate: { type: ["string", "null"], maxLength: 40 },
     endDate: { type: ["string", "null"], maxLength: 40 },
@@ -65,14 +73,17 @@ const reorderBody = {
 } as const;
 
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = stagesService(stagesRepository(fastify.db));
+  const buildings = buildingsRepository(fastify.db);
+  const service = stagesService(stagesRepository(fastify.db), (projectId) =>
+    buildings.soleRealBuildingId(projectId),
+  );
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/stages",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.list(project.id);
+      return service.list(project.id, request.query.buildingId);
     },
   );
 

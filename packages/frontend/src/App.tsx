@@ -107,6 +107,7 @@ const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
+const ProjectBuildings = lazy(() => import("@/pages/project/buildings"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
@@ -320,6 +321,9 @@ export const router = createBrowserRouter([
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+
+      { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
+      { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },
 
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },

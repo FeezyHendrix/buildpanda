@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { lookAheadsRepository } from "./repository.ts";
 import { lookAheadsService } from "./service.ts";
 import { autoWindowService } from "./auto-window.ts";
@@ -51,6 +52,7 @@ const lookAheadBody = {
   additionalProperties: false,
   properties: {
     name: { type: "string", minLength: 1, maxLength: 200 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     description: { type: ["string", "null"], maxLength: 2000 },
     status: { type: "string", enum: LOOK_AHEAD_STATUSES },
     startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
@@ -77,7 +79,10 @@ const lookAheadPatchBody = {
 } as const;
 
 const lookAheadRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = lookAheadsService(lookAheadsRepository(fastify.db));
+  const buildings = buildingsRepository(fastify.db);
+  const service = lookAheadsService(lookAheadsRepository(fastify.db), (projectId) =>
+    buildings.soleRealBuildingId(projectId),
+  );
   const autoWindow = autoWindowService(fastify.db);
 
   fastify.get<{

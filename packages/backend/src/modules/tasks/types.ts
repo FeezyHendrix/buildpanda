@@ -134,6 +134,7 @@ export interface TaskColumnRow {
 export interface TaskRow {
   id: string;
   project_id: string;
+  building_id: string;
   board_id: string;
   column_id: string;
   title: string;
@@ -164,6 +165,7 @@ export interface TaskAssigneeRow {
 export interface TaskBoardRow {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   is_default: boolean;
   created_by_id: string | null;

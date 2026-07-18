@@ -35,6 +35,7 @@ export interface DailyLog {
 
 export interface DailyLogRow {
   project_id: string;
+  building_id: string;
   log_date: Date | string;
   weather_condition: WeatherCondition | null;
   temperature_c: string | null;
@@ -55,12 +56,14 @@ export interface DailyLogRow {
 
 export interface DailyLogActivityRow {
   project_id: string;
+  building_id: string;
   log_date: Date | string;
   activity_id: string;
   hours_logged: string;
 }
 
 export interface UpsertDailyLogInput {
+  buildingId?: string | null;
   weatherCondition?: WeatherCondition | null;
   temperatureC?: number | null;
   precipitationMm?: number | null;
@@ -103,6 +106,7 @@ export interface DailyLogEntry {
 export interface DailyLogEntryRow {
   id: string;
   project_id: string;
+  building_id: string;
   log_date: Date | string;
   author_id: string | null;
   author_name: string;

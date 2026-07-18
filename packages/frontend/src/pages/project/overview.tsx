@@ -2,10 +2,12 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { ProgressBar } from "@/components/atoms/progress-bar";
 import { PageHeader } from "@/components/molecules/page-header";
 import { TourGuide } from "@/components/molecules/tour-guide";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectUpdates } from "@/hooks/use-updates";
+import { useBuildings } from "@/hooks/use-buildings";
 import { useTour } from "@/hooks/use-tour";
 import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import { useAutoWindow } from "@/hooks/use-look-aheads";
@@ -33,6 +35,8 @@ export default function ProjectOverview() {
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
   const { data: autoWindow } = useAutoWindow(project.id, 4);
+  const { data: buildings = [] } = useBuildings(project.id);
+  const realBuildings = buildings.filter((b) => b.kind === "real");
 
   const firstName = (session?.user?.name ?? "").trim().split(" ")[0] || "there";
   const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
@@ -69,6 +73,44 @@ export default function ProjectOverview() {
       <div className="mt-8">
         <WeatherDashboard projectId={project.id} />
       </div>
+
+
+      {realBuildings.length > 1 && (
+        <section className="mt-8 flex flex-col gap-4">
+          <h2 className="text-sm font-semibold text-gray-900">Buildings</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {realBuildings.map((b) => (
+              <Card key={b.id} className="p-4 flex flex-col gap-3 rounded-xl shadow-sm border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/project/${project.id}/buildings/${b.id}/stages`}
+                      className="text-base font-semibold text-gray-900 hover:text-[#004DE7]"
+                    >
+                      {b.name}
+                    </Link>
+                    {b.code && (
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                        {b.code}
+                      </span>
+                    )}
+                  </div>
+                  <Badge tone={b.status === "completed" ? "success" : b.status === "active" ? "info" : b.status === "on_hold" ? "warning" : "neutral"} size="sm">
+                    {b.status === "completed" ? "Completed" : b.status === "active" ? "Active" : b.status === "on_hold" ? "On Hold" : "Planned"}
+                  </Badge>
+                </div>
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Progress</span>
+                    <span className="font-medium text-gray-900">{b.progressPercent}%</span>
+                  </div>
+                  <ProgressBar value={b.progressPercent} className="h-2" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div data-tour="construction-progress">

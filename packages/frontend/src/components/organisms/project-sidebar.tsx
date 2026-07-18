@@ -11,6 +11,7 @@ import {
   InspectionsIcon,
   MaterialsIcon,
   MessagesIcon,
+  OverviewIcon,
   SparkleIcon,
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
@@ -21,6 +22,7 @@ import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { useProjectChannels, useAllChannels } from "@/hooks/use-chat";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
+import { useBuildings } from "@/hooks/use-buildings";
 
 import {
   SidebarNavGroup,
@@ -85,12 +87,17 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
     channels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0) +
     dmChannels.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
 
+
   const { data: flagsData } = useFeatureFlags();
   const enabledKeys = useMemo(
     () => new Map((flagsData?.flags ?? []).map((f) => [f.key, f.enabled])),
     [flagsData],
   );
   const isOn = (key?: string) => !key || (enabledKeys.get(key) ?? true);
+
+  const { data: buildingsData = [] } = useBuildings(project.id);
+  const realBuildings = useMemo(() => buildingsData.filter((b) => b.kind === "real"), [buildingsData]);
+
 
   const items = useMemo<ProjectNavItem[]>(
     () =>
@@ -333,6 +340,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
+
           {financeItems.length > 0 && (
             <SidebarNavGroup
               label="Finance"
@@ -342,6 +350,35 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               onClose={onClose}
           />
           )}
+          {realBuildings.length > 1 && isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
+            <>
+              <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Buildings
+              </p>
+              <ProjectNavLink
+                item={{
+                  label: "Manage Buildings",
+                  slug: "buildings",
+                  Icon: OverviewIcon,
+                  to: `/project/${project.id}/buildings`,
+                }}
+                onClose={onClose}
+              />
+              {realBuildings.map((b) => (
+                <ProjectNavLink
+                  key={b.id}
+                  item={{
+                    label: b.name,
+                    slug: `buildings/${b.id}/stages`,
+                    Icon: SparkleIcon,
+                    to: `/project/${project.id}/buildings/${b.id}/stages`,
+                  }}
+                  onClose={onClose}
+                />
+              ))}
+            </>
+          )}
+
           {isOn("projects.documents") && canViewSection(access, "projects.documents", "documents") && (
             <ProjectNavLink
               item={{

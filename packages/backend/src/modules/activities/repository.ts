@@ -10,6 +10,7 @@ import type {
 export interface NewActivityRecord {
   id: string;
   project_id: string;
+  building_id: string;
   phase_id: string | null;
   name: string;
   activity_type: string;
@@ -122,8 +123,12 @@ export function activitiesRepository(db: Knex) {
         .orderBy([{ column: "category" }, { column: "name" }]);
     },
 
-    phaseNamesForProject(projectId: string): Promise<{ id: string; name: string }[]> {
-      return db("project_phases").where({ project_id: projectId }).select("id", "name");
+    phaseNamesForProject(projectId: string): Promise<{ id: string; name: string; building_id: string }[]> {
+      return db("project_phases").where({ project_id: projectId }).select("id", "name", "building_id");
+    },
+
+    phaseById(id: string): Promise<{ id: string; project_id: string; building_id: string } | undefined> {
+      return db("project_phases").where({ id }).select("id", "project_id", "building_id").first();
     },
 
     async create(record: NewActivityRecord): Promise<ActivityRow> {

@@ -117,7 +117,12 @@ export const activityKeys = {
 
 export const stageKeys = {
   all: (projectId: string) => ["projects", projectId, "stages"] as const,
-  list: (projectId: string) => [...stageKeys.all(projectId), "list"] as const,
+  list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,
+};
+
+export const buildingKeys = {
+  all: (projectId: string) => ["projects", projectId, "buildings"] as const,
+  list: (projectId: string) => [...buildingKeys.all(projectId), "list"] as const,
 };
 
 export const actionItemKeys = {

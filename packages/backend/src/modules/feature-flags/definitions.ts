@@ -84,6 +84,15 @@ export const FEATURE_FLAGS = [
     ],
   },
   {
+    key: "projects.multiBuilding",
+    label: "Multiple buildings",
+    group: "Project controls",
+    description:
+      "Split a project into multiple buildings that share one funding pool but each run their own programme of work.",
+    enabledByDefault: false,
+    routePrefixes: ["/projects/:id/buildings"],
+  },
+  {
     key: "projects.bim",
     label: "BIM coordination",
     group: "Project controls",

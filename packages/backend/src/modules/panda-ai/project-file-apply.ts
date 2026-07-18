@@ -3,6 +3,7 @@ import { projectsRepository } from "../projects/repository.ts";
 import { projectsService } from "../projects/service.ts";
 import { stagesRepository } from "../stages/repository.ts";
 import { stagesService } from "../stages/service.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { budgetRepository } from "../budget/repository.ts";
 import { budgetService } from "../budget/service.ts";
 import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
@@ -47,7 +48,10 @@ export async function applyExtraction(
   };
 
   const projects = projectsService(projectsRepository(db));
-  const stages = stagesService(stagesRepository(db));
+  const buildings = buildingsRepository(db);
+  const stages = stagesService(stagesRepository(db), (projectId) =>
+    buildings.soleRealBuildingId(projectId),
+  );
   const budget = budgetService(budgetRepository(db));
   const materials = materialsEquipmentService(materialsEquipmentRepository(db));
 

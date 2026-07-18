@@ -67,6 +67,7 @@ export interface FinancesRow {
 export interface BudgetPhaseRow {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   planned: string;
   actual: string;
@@ -87,6 +88,7 @@ export interface MaterialProcurementRow {
 export interface MilestonePaymentRow {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   phase: string;
   status: MilestoneStatus;
@@ -101,6 +103,7 @@ export interface MilestonePaymentRow {
 export interface PaymentLedgerRow {
   id: string;
   project_id: string;
+  building_id: string;
   entry_date: string;
   description: string;
   description_html: string | null;

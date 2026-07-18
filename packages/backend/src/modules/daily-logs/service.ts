@@ -116,11 +116,20 @@ export interface DailyLogActivityHooks {
 export function dailyLogsService(
   repository: DailyLogsRepository,
   hooks: DailyLogActivityHooks = {},
+  soleRealBuildingId: (projectId: string) => Promise<string | undefined> = async () => undefined,
 ) {
+  async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
+    if (explicit) return explicit;
+    const buildingId = await soleRealBuildingId(projectId);
+    if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+    return buildingId;
+  }
+
   async function attachActivities(rows: DailyLogRow[]): Promise<DailyLog[]> {
     if (rows.length === 0) return [];
     const keys = rows.map((r) => ({
       projectId: r.project_id,
+      buildingId: r.building_id,
       logDate: toLogDateString(r.log_date),
     }));
     const links = await repository.activitiesFor(keys);
@@ -134,7 +143,7 @@ export function dailyLogsService(
 
     const linkMap = new Map<string, DailyLogActivityLink[]>();
     for (const link of links) {
-      const key = `${link.project_id}|${toLogDateString(link.log_date)}`;
+      const key = `${link.project_id}|${link.building_id}|${toLogDateString(link.log_date)}`;
       const list = linkMap.get(key) ?? [];
       list.push({
         activityId: link.activity_id,
@@ -145,12 +154,12 @@ export function dailyLogsService(
     }
 
     return rows.map((row) =>
-      buildLog(row, linkMap.get(`${row.project_id}|${toLogDateString(row.log_date)}`) ?? [], voiderNames),
+      buildLog(row, linkMap.get(`${row.project_id}|${row.building_id}|${toLogDateString(row.log_date)}`) ?? [], voiderNames),
     );
   }
 
   async function loadEntriesByDay(
-    keys: { projectId: string; logDate: string }[],
+    keys: { projectId: string; buildingId: string; logDate: string }[],
   ): Promise<Map<string, DailyLogEntry[]>> {
     const map = new Map<string, DailyLogEntry[]>();
     if (keys.length === 0) return map;
@@ -158,7 +167,7 @@ export function dailyLogsService(
     if (entryRows.length === 0) return map;
     const voidRows = await repository.voidsForEntries(entryRows.map((e) => e.id));
     for (const row of entryRows) {
-      const key = `${row.project_id}|${toLogDateString(row.log_date)}`;
+      const key = `${row.project_id}|${row.building_id}|${toLogDateString(row.log_date)}`;
       const list = map.get(key) ?? [];
       list.push(buildEntry(row, voidRows));
       map.set(key, list);
@@ -180,7 +189,8 @@ export function dailyLogsService(
 
     async getOne(projectId: string, logDate: string): Promise<DailyLog> {
       assertDate(logDate, "logDate");
-      const row = await repository.findOne({ projectId, logDate });
+      const buildingId = await resolveBuildingId(projectId);
+      const row = await repository.findOne({ projectId, buildingId, logDate });
       if (!row) throw new NotFoundError("Daily log");
       const [withActivities] = await attachActivities([row]);
       if (!withActivities) throw new NotFoundError("Daily log");
@@ -194,9 +204,10 @@ export function dailyLogsService(
       actorId: string,
     ): Promise<DailyLog> {
       assertDate(logDate, "logDate");
-      const current = await repository.findOne({ projectId, logDate });
+      const buildingId = await resolveBuildingId(projectId, input.buildingId);
+      const current = await repository.findOne({ projectId, buildingId, logDate });
       if (current?.voided_at) throw new BadRequestError("A voided daily log cannot be edited");
-      await repository.upsert({ projectId, logDate }, input, actorId);
+      await repository.upsert({ projectId, buildingId, logDate }, input, actorId);
       return this.getOne(projectId, logDate);
     },
 
@@ -209,12 +220,13 @@ export function dailyLogsService(
       assertDate(logDate, "logDate");
       const activity = await repository.findActivity(projectId, input.activityId);
       if (!activity) throw new BadRequestError("activityId does not belong to this project");
+      const buildingId = activity.building_id;
 
-      const existing = await repository.findOne({ projectId, logDate });
+      const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) throw new NotFoundError("Daily log");
 
       const link = await repository.upsertActivityLink(
-        { projectId, logDate },
+        { projectId, buildingId, logDate },
         input.activityId,
         input.hoursLogged,
       );
@@ -252,10 +264,11 @@ export function dailyLogsService(
       if (trimmed === "" || stripHtml(trimmed) === "") {
         throw new BadRequestError("A reason is required to void a daily log");
       }
-      const existing = await repository.findOne({ projectId, logDate });
+      const buildingId = await resolveBuildingId(projectId);
+      const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) throw new NotFoundError("Daily log");
       if (existing.voided_at) throw new BadRequestError("This daily log has already been voided");
-      await repository.voidOne({ projectId, logDate }, trimmed, actorId);
+      await repository.voidOne({ projectId, buildingId, logDate }, trimmed, actorId);
       const [voided] = await attachActivities([
         { ...existing, voided_at: new Date(), voided_by_id: actorId, void_reason: trimmed },
       ]);
@@ -268,16 +281,20 @@ export function dailyLogsService(
       if (to) assertDate(to, "to");
       const rows = await repository.listByProjectInRange(projectId, from, to);
       const logs = await attachActivities(rows);
-      const keys = rows.map((r) => ({ projectId: r.project_id, logDate: toLogDateString(r.log_date) }));
+      const keys = rows.map((r) => ({ projectId: r.project_id, buildingId: r.building_id, logDate: toLogDateString(r.log_date) }));
       const entriesByDay = await loadEntriesByDay(keys);
-      return logs.map((log) => toDay(log, entriesByDay.get(`${log.projectId}|${log.logDate}`) ?? []));
+      return logs.map((log, index) => {
+        const row = rows[index]!;
+        return toDay(log, entriesByDay.get(`${log.projectId}|${row.building_id}|${log.logDate}`) ?? []);
+      });
     },
 
     async getDay(projectId: string, logDate: string): Promise<DailyLogDay> {
       assertDate(logDate, "logDate");
-      const row = await repository.findOne({ projectId, logDate });
-      const entriesByDay = await loadEntriesByDay([{ projectId, logDate }]);
-      const entries = entriesByDay.get(`${projectId}|${logDate}`) ?? [];
+      const buildingId = await resolveBuildingId(projectId);
+      const row = await repository.findOne({ projectId, buildingId, logDate });
+      const entriesByDay = await loadEntriesByDay([{ projectId, buildingId, logDate }]);
+      const entries = entriesByDay.get(`${projectId}|${buildingId}|${logDate}`) ?? [];
       if (!row) {
         return {
           projectId,
@@ -309,12 +326,14 @@ export function dailyLogsService(
       if (stripHtml(bodyHtml).trim() === "") {
         throw new BadRequestError("Your daily log entry cannot be empty");
       }
-      const existing = await repository.findOne({ projectId, logDate });
+      const buildingId = await resolveBuildingId(projectId);
+      const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) {
-        await repository.upsert({ projectId, logDate }, {}, author.id);
+        await repository.upsert({ projectId, buildingId, logDate }, {}, author.id);
       }
       const row = await repository.insertEntry({
         projectId,
+        buildingId,
         logDate,
         authorId: author.id,
         authorName: author.name,
