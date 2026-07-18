@@ -353,23 +353,25 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           />
           )}
           {isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings") && (
-            <>
-              <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 Buildings
               </p>
-              <ProjectNavLink
-                item={{
-                  label: "Manage Buildings",
-                  slug: "buildings",
-                  Icon: BuildingIcon,
-                  to: `/project/${project.id}/buildings`,
-                }}
-                onClose={onClose}
-              />
-              {realBuildings.length > 1 && (
-                <BuildingSwitcher projectId={project.id} buildings={realBuildings} onClose={onClose} />
-              )}
-            </>
+              <div className="flex flex-col gap-0.5 pl-4">
+                <ProjectNavLink
+                  item={{
+                    label: "Manage Buildings",
+                    slug: "buildings",
+                    Icon: BuildingIcon,
+                    to: `/project/${project.id}/buildings`,
+                  }}
+                  onClose={onClose}
+                />
+                {realBuildings.length > 1 && (
+                  <BuildingSwitcher projectId={project.id} buildings={realBuildings} onClose={onClose} />
+                )}
+              </div>
+            </div>
           )}
 
           {isOn("projects.documents") && canViewSection(access, "projects.documents", "documents") && (
