@@ -37,10 +37,21 @@ export interface ProjectUpdatePatch {
 export interface NewPhaseRecord {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   status: "Pending";
   date_range: string;
   sort_order: number;
+}
+
+export interface NewProjectBuildingRecord {
+  id: string;
+  project_id: string;
+  name: string;
+  kind: "real" | "shared";
+  status: "active";
+  sort_order: number;
+  progress_percent: number;
 }
 
 export interface NewFinancesRecord {
@@ -62,6 +73,7 @@ export interface TaskSeed {
   board: {
     id: string;
     project_id: string;
+    building_id: string;
     name: string;
     is_default: boolean;
     created_by_id: string | null;
@@ -76,6 +88,7 @@ export interface TaskSeed {
   tasks: Array<{
     id: string;
     project_id: string;
+    building_id: string;
     board_id: string;
     column_id: string;
     title: string;
@@ -172,6 +185,7 @@ export function projectsRepository(db: Knex) {
 
     create(
       project: NewProjectRecord,
+      buildings: NewProjectBuildingRecord[],
       phases: NewPhaseRecord[],
       finances: NewFinancesRecord,
       taskSeed?: TaskSeed,
@@ -181,6 +195,7 @@ export function projectsRepository(db: Knex) {
           ...project,
           setup: JSON.stringify(project.setup),
         });
+        await trx("buildings").insert(buildings);
         if (phases.length) await trx("project_phases").insert(phases);
         await trx("project_finances").insert(finances);
         if (taskSeed) {

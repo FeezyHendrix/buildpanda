@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { isEmployeeRole } from "../../lib/permissions.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { tasksRepository } from "./repository.ts";
 import {
   tasksService,
@@ -62,6 +63,7 @@ const createBody = {
   additionalProperties: false,
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     description: { type: ["string", "null"], maxLength: 50000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
@@ -210,9 +212,10 @@ const linkParams = {
 } as const;
 
 const taskRoutes: FastifyPluginAsync = async (fastify) => {
+  const buildings = buildingsRepository(fastify.db);
   const service = tasksService(tasksRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
-  });
+  }, (projectId) => buildings.soleRealBuildingId(projectId));
 
   function canSeeFullTaskBoard(request: FastifyRequest, project: ProjectRow): boolean {
     const user = request.requireAuth();

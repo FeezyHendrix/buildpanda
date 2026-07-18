@@ -1,6 +1,8 @@
 import type { Knex } from "knex";
 
 const PROJECT_ID = "sample-project";
+const BUILDING_ID = "bld_sample-project";
+const SHARED_BUILDING_ID = `bld_shared_${PROJECT_ID}`;
 
 const MEDIA_URLS = [
   "https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=640&q=70",
@@ -36,12 +38,17 @@ export async function seed(knex: Knex): Promise<void> {
     updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
   });
 
+  await knex("buildings").insert([
+    { id: BUILDING_ID, project_id: PROJECT_ID, name: "Sample Project", kind: "real", status: "active", sort_order: 0, progress_percent: 12 },
+    { id: `bld_shared_${PROJECT_ID}`, project_id: PROJECT_ID, name: "Shared", kind: "shared", status: "active", sort_order: -1, progress_percent: 0 },
+  ]);
+
   await knex("project_phases").insert([
-    { id: "p1", project_id: PROJECT_ID, name: "Foundation", status: "Done", date_range: "Jan – Feb", start_date: "2026-01-06", end_date: "2026-02-27", progress_percent: 100, sort_order: 0 },
-    { id: "p2", project_id: PROJECT_ID, name: "Structural Shell", status: "InProgress", date_range: "Mar – Apr", start_date: "2026-03-02", end_date: "2026-04-30", progress_percent: 45, sort_order: 1 },
-    { id: "p3", project_id: PROJECT_ID, name: "Roofing & MEP", status: "Pending", date_range: "May – Jun", start_date: "2026-05-01", end_date: "2026-06-30", progress_percent: 0, sort_order: 2 },
-    { id: "p4", project_id: PROJECT_ID, name: "Interior Fit", status: "Pending", date_range: "Jul – Aug", start_date: "2026-07-01", end_date: "2026-08-31", progress_percent: 0, sort_order: 3 },
-    { id: "p5", project_id: PROJECT_ID, name: "Completion", status: "Pending", date_range: "Sep – Oct", start_date: "2026-09-01", end_date: "2026-10-31", progress_percent: 0, sort_order: 4 },
+    { id: "p1", project_id: PROJECT_ID, building_id: BUILDING_ID, name: "Foundation", status: "Done", date_range: "Jan – Feb", start_date: "2026-01-06", end_date: "2026-02-27", progress_percent: 100, sort_order: 0 },
+    { id: "p2", project_id: PROJECT_ID, building_id: BUILDING_ID, name: "Structural Shell", status: "InProgress", date_range: "Mar – Apr", start_date: "2026-03-02", end_date: "2026-04-30", progress_percent: 45, sort_order: 1 },
+    { id: "p3", project_id: PROJECT_ID, building_id: BUILDING_ID, name: "Roofing & MEP", status: "Pending", date_range: "May – Jun", start_date: "2026-05-01", end_date: "2026-06-30", progress_percent: 0, sort_order: 2 },
+    { id: "p4", project_id: PROJECT_ID, building_id: BUILDING_ID, name: "Interior Fit", status: "Pending", date_range: "Jul – Aug", start_date: "2026-07-01", end_date: "2026-08-31", progress_percent: 0, sort_order: 3 },
+    { id: "p5", project_id: PROJECT_ID, building_id: BUILDING_ID, name: "Completion", status: "Pending", date_range: "Sep – Oct", start_date: "2026-09-01", end_date: "2026-10-31", progress_percent: 0, sort_order: 4 },
   ]);
 
   await knex("action_items").insert([
@@ -258,9 +265,9 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex("key_dates").insert([
-    { id: "kd1", project_id: PROJECT_ID, label: "Foundation complete", target_date: "2026-02-25", actual_date: "2026-02-27", status: "Met", notes: null, sort_order: 0 },
-    { id: "kd2", project_id: PROJECT_ID, label: "Roof on (weathertight)", target_date: "2026-06-20", actual_date: null, status: "Upcoming", notes: null, sort_order: 1 },
-    { id: "kd3", project_id: PROJECT_ID, label: "Move-in target", target_date: "2026-10-31", actual_date: null, status: "Upcoming", notes: "Owner relocating from the UK.", sort_order: 2 },
+    { id: "kd1", project_id: PROJECT_ID, building_id: BUILDING_ID, label: "Foundation complete", target_date: "2026-02-25", actual_date: "2026-02-27", status: "Met", notes: null, sort_order: 0 },
+    { id: "kd2", project_id: PROJECT_ID, building_id: BUILDING_ID, label: "Roof on (weathertight)", target_date: "2026-06-20", actual_date: null, status: "Upcoming", notes: null, sort_order: 1 },
+    { id: "kd3", project_id: PROJECT_ID, building_id: BUILDING_ID, label: "Move-in target", target_date: "2026-10-31", actual_date: null, status: "Upcoming", notes: "Owner relocating from the UK.", sort_order: 2 },
   ]);
 
   await knex("project_participants").insert([
@@ -467,12 +474,12 @@ export async function seed(knex: Knex): Promise<void> {
   });
 
   await knex("budget_phases").insert([
-    { id: "ba1", project_id: PROJECT_ID, name: "Foundation", planned: 4_445_000, actual: 4_402_300, sort_order: 0 },
-    { id: "ba2", project_id: PROJECT_ID, name: "Superstructure", planned: 8_880_000, actual: 8_888_500, sort_order: 1 },
-    { id: "ba3", project_id: PROJECT_ID, name: "Roofing", planned: 6_500_000, actual: 0, sort_order: 2 },
-    { id: "ba4", project_id: PROJECT_ID, name: "MEP", planned: 7_200_000, actual: 0, sort_order: 3 },
-    { id: "ba5", project_id: PROJECT_ID, name: "Finishing", planned: 9_500_000, actual: 0, sort_order: 4 },
-    { id: "ba6", project_id: PROJECT_ID, name: "Contingency", planned: 4_775_500, actual: 0, sort_order: 5 },
+    { id: "ba1", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Foundation", planned: 4_445_000, actual: 4_402_300, sort_order: 0 },
+    { id: "ba2", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Superstructure", planned: 8_880_000, actual: 8_888_500, sort_order: 1 },
+    { id: "ba3", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Roofing", planned: 6_500_000, actual: 0, sort_order: 2 },
+    { id: "ba4", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "MEP", planned: 7_200_000, actual: 0, sort_order: 3 },
+    { id: "ba5", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Finishing", planned: 9_500_000, actual: 0, sort_order: 4 },
+    { id: "ba6", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, name: "Contingency", planned: 4_775_500, actual: 0, sort_order: 5 },
   ]);
 
   await knex("project_budget_categories").insert([
@@ -505,6 +512,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: "m1",
       project_id: PROJECT_ID,
+      building_id: SHARED_BUILDING_ID,
       name: "Main Roof Structure",
       phase: "Roofing",
       status: "Completed",
@@ -518,6 +526,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: "m2",
       project_id: PROJECT_ID,
+      building_id: SHARED_BUILDING_ID,
       name: "Electric Rough-in",
       phase: "Systems",
       status: "InProgress",
@@ -531,6 +540,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: "m3",
       project_id: PROJECT_ID,
+      building_id: SHARED_BUILDING_ID,
       name: "Electric Rough-in",
       phase: "Systems",
       status: "Pending",
@@ -544,15 +554,16 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex("payment_ledger").insert([
-    { id: "l1", project_id: PROJECT_ID, entry_date: "11-04-2026", description: "Release · Main Roof Structure", amount: 8_880_000, type: "Release", sort_order: 0 },
-    { id: "l2", project_id: PROJECT_ID, entry_date: "01-04-2026", description: "Deposit · Project funding", amount: 23_300_500, type: "Deposit", sort_order: 1 },
-    { id: "l3", project_id: PROJECT_ID, entry_date: "10-03-2026", description: "Hold · Electric Rough-in (escrow)", amount: 8_880_000, type: "Hold", sort_order: 2 },
+    { id: "l1", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, entry_date: "11-04-2026", description: "Release · Main Roof Structure", amount: 8_880_000, type: "Release", sort_order: 0 },
+    { id: "l2", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, entry_date: "01-04-2026", description: "Deposit · Project funding", amount: 23_300_500, type: "Deposit", sort_order: 1 },
+    { id: "l3", project_id: PROJECT_ID, building_id: SHARED_BUILDING_ID, entry_date: "10-03-2026", description: "Hold · Electric Rough-in (escrow)", amount: 8_880_000, type: "Hold", sort_order: 2 },
   ]);
 
   await knex("activities").insert([
     {
       id: "act-1",
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       phase_id: "p2",
       name: "Column placement — Block A, Floor 2",
       activity_type: "concrete_pour",
@@ -568,6 +579,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: "act-2",
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       phase_id: "p2",
       name: "Slab pour — Floor 2",
       activity_type: "concrete_pour",
@@ -583,6 +595,7 @@ export async function seed(knex: Knex): Promise<void> {
     {
       id: "act-3",
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       phase_id: "p3",
       name: "Roofing installation — Block A",
       activity_type: "roofing",
@@ -755,6 +768,7 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("daily_logs").insert([
     {
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       log_date: "2026-04-15",
       weather_condition: "Sunny",
       temperature_c: 31,
@@ -767,6 +781,7 @@ export async function seed(knex: Knex): Promise<void> {
     },
     {
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       log_date: "2026-04-17",
       weather_condition: "Rain",
       temperature_c: 27,
@@ -779,6 +794,7 @@ export async function seed(knex: Knex): Promise<void> {
     },
     {
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       log_date: "2026-04-23",
       weather_condition: "Cloudy",
       temperature_c: 29,
@@ -792,9 +808,9 @@ export async function seed(knex: Knex): Promise<void> {
   ]);
 
   await knex("daily_log_activities").insert([
-    { project_id: PROJECT_ID, log_date: "2026-04-15", activity_id: "act-1", hours_logged: 96 },
-    { project_id: PROJECT_ID, log_date: "2026-04-17", activity_id: "act-1", hours_logged: 60 },
-    { project_id: PROJECT_ID, log_date: "2026-04-23", activity_id: "act-2", hours_logged: 112 },
+    { project_id: PROJECT_ID, building_id: BUILDING_ID, log_date: "2026-04-15", activity_id: "act-1", hours_logged: 96 },
+    { project_id: PROJECT_ID, building_id: BUILDING_ID, log_date: "2026-04-17", activity_id: "act-1", hours_logged: 60 },
+    { project_id: PROJECT_ID, building_id: BUILDING_ID, log_date: "2026-04-23", activity_id: "act-2", hours_logged: 112 },
   ]);
 
   await knex("project_updates").where({ id: "u1" }).update({ activity_id: "act-3" });

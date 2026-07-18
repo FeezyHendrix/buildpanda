@@ -165,6 +165,22 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_buildings", "Get the buildings (blocks/structures) in this project with their status and progress. A project may contain several buildings that share one funding pool but each have their own programme of work. Use for questions like 'how is Block B tracking' or 'which building is furthest along'."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const buildings = await repo.buildings(ctx.projectId);
+      return {
+        output: {
+          buildings: buildings.map((b) => ({
+            id: b.id,
+            name: b.name,
+            code: b.code,
+            status: b.status,
+            progressPercent: Number(b.progress_percent ?? 0),
+          })),
+        },
+      };
+    }),
+
     tool(fn("get_delays", "Get all logged delays for the project with their cost impact and resolution status. Use for questions about delays, lost time, or schedule slippage."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const delays = await repo.delays(ctx.projectId);

@@ -9,6 +9,7 @@ import { activitiesRepository } from "../activities/repository.ts";
 import { projectsRepository } from "../projects/repository.ts";
 import { stagesRepository } from "../stages/repository.ts";
 import { stagesService } from "../stages/service.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import type { FilesService } from "../files/service.ts";
 import type { ActivityStatus } from "../activities/types.ts";
 import type { DailyLogsService } from "./service.ts";
@@ -75,7 +76,10 @@ export interface DailyReportDeps {
 export function dailyReportService(db: Knex, deps: DailyReportDeps) {
   const projects = projectsRepository(db);
   const activities = activitiesRepository(db);
-  const stagesSvc = stagesService(stagesRepository(db));
+  const buildings = buildingsRepository(db);
+  const stagesSvc = stagesService(stagesRepository(db), (projectId) =>
+    buildings.soleRealBuildingId(projectId),
+  );
   const resolveImage = makeReportImageResolver(deps.files);
 
   async function build(projectId: string, logDate: string): Promise<DailyReportResult> {

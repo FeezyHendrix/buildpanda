@@ -27,6 +27,7 @@ import type {
 
 export interface CreateTaskInput {
   title: string;
+  buildingId?: string | null;
   description?: string | null;
   descriptionHtml?: string | null;
   assigneeId?: string | null;
@@ -232,9 +233,25 @@ function notifyHighPriority(
   }
 }
 
-export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) {
-  async function ensureDefaultBoard(projectId: string, userId: string | null): Promise<TaskBoardRow> {
-    const existing = await repository.findDefaultBoard(projectId);
+export function tasksService(
+  repository: TasksRepository,
+  deps: TasksDeps = {},
+  soleRealBuildingId: (projectId: string) => Promise<string | undefined> = async () => undefined,
+) {
+  async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
+    if (explicit) return explicit;
+    const buildingId = await soleRealBuildingId(projectId);
+    if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+    return buildingId;
+  }
+
+  async function ensureDefaultBoard(
+    projectId: string,
+    userId: string | null,
+    explicitBuildingId?: string | null,
+  ): Promise<TaskBoardRow> {
+    const buildingId = await resolveBuildingId(projectId, explicitBuildingId);
+    const existing = await repository.findDefaultBoard(projectId, buildingId);
     if (existing) return existing;
 
     const boardId = generateId("board");
@@ -246,7 +263,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       position: index,
     }));
     await repository.createBoardWithColumns(
-      { id: boardId, project_id: projectId, name: "Tasks", is_default: true, created_by_id: userId },
+      { id: boardId, project_id: projectId, building_id: buildingId, name: "Tasks", is_default: true, created_by_id: userId },
       columns,
     );
     const created = await repository.findBoardById(boardId);
@@ -458,7 +475,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
     },
 
     async createTask(projectId: string, input: CreateTaskInput, userId: string | null): Promise<Task> {
-      const board = await ensureDefaultBoard(projectId, userId);
+      const board = await ensureDefaultBoard(projectId, userId, input.buildingId);
       const columns = await repository.listColumns(board.id);
 
       let column: TaskColumnRow | undefined;
@@ -478,6 +495,7 @@ export function tasksService(repository: TasksRepository, deps: TasksDeps = {}) 
       await repository.createTask({
         id,
         project_id: projectId,
+        building_id: board.building_id,
         board_id: board.id,
         column_id: column.id,
         title: input.title,

@@ -9,6 +9,7 @@ import { updatesRepository } from "../updates/repository.ts";
 import { updatesService } from "../updates/service.ts";
 import { activitiesRepository } from "../activities/repository.ts";
 import { activitiesService } from "../activities/service.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { filesRepository } from "../files/repository.ts";
 import { filesService } from "../files/service.ts";
 import { PROGRESS_RECOMPUTE_QUEUE } from "../activities/progress-job.ts";
@@ -122,10 +123,12 @@ const entryParams = {
 } as const;
 
 const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
+  const buildings = buildingsRepository(fastify.db);
   const updates = updatesService(updatesRepository(fastify.db));
   const activitiesRepo = activitiesRepository(fastify.db);
   const activities = activitiesService(activitiesRepo, (projectId) =>
     fastify.queue.enqueue(PROGRESS_RECOMPUTE_QUEUE, "recompute", { projectId }),
+    (projectId) => buildings.soleRealBuildingId(projectId),
   );
   const service = dailyLogsService(dailyLogsRepository(fastify.db), {
     createUpdate: (projectId, input, actor) => updates.create(projectId, input, actor),
@@ -137,7 +140,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
           .catch(() => undefined);
       }
     },
-  });
+  }, (projectId) => buildings.soleRealBuildingId(projectId));
 
   const reports = dailyReportService(fastify.db, {
     logs: service,
