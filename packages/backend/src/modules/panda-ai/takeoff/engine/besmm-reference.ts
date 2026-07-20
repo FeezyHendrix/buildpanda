@@ -362,14 +362,30 @@ const ELEMENT_RETRIEVAL: Record<string, { sectionCodes: string[]; retrievalQuery
   earthworks: { sectionCodes: ["2E"], retrievalQuery: "earthworks excavation depth stages disposal filling compaction formation m3" },
 };
 
+export interface BriefContext {
+  storeys?: number | null;
+  foundationType?: string | null;
+}
+
+// Element keys that only exist on multi-storey / piled buildings. A single-
+// storey bungalow on a strip footing has no upper floors, no structural frame,
+// no piling and no internal stair, so those briefs are pruned to keep the bill
+// to what the plan actually is.
+const MULTI_STOREY_ONLY = new Set(["upperFloors", "frame", "staircases"]);
+const PILED_ONLY = new Set(["piling", "pileCaps"]);
+
 // Selects the element briefs that apply to a structure class. Briefs with no
 // classes tag are building-oriented (the historical default). The item set is
 // therefore the elements relevant to what the plan IS, not a fixed list.
-export function briefsFor(structureClass: StructureClass): ElementBrief[] {
-  if (structureClass === "unknown") return BESMM_ELEMENT_BRIEFS;
-  return BESMM_ELEMENT_BRIEFS.filter((brief) => {
-    const classes = brief.classes ?? ["building"];
-    return classes.includes(structureClass);
+export function briefsFor(structureClass: StructureClass, ctx: BriefContext = {}): ElementBrief[] {
+  const base = structureClass === "unknown" ? BESMM_ELEMENT_BRIEFS : BESMM_ELEMENT_BRIEFS.filter((brief) => (brief.classes ?? ["building"]).includes(structureClass));
+  if (structureClass !== "building") return base;
+  const singleStorey = ctx.storeys != null && ctx.storeys <= 1;
+  const notPiled = ctx.foundationType != null && ctx.foundationType !== "pile" && ctx.foundationType !== "unknown";
+  return base.filter((brief) => {
+    if (singleStorey && MULTI_STOREY_ONLY.has(brief.key)) return false;
+    if ((singleStorey || notPiled) && PILED_ONLY.has(brief.key)) return false;
+    return true;
   });
 }
 
