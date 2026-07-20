@@ -296,6 +296,10 @@ export function measureRoomAreas(
 
   const inRegion = (t: TextRun): boolean =>
     t.x >= region.minX && t.x <= region.maxX && t.y >= region.minY && t.y <= region.maxY;
+  // A room seed must be an actual room NAME (a known room word), not any text
+  // that merely looks like a word. Otherwise annotation/material labels
+  // ("BRICKWORK", "REFER TO ENGINEERS", "SITE BOUNDARY", "AGGREGATE") get
+  // flood-filled as rooms and produce garbage areas. Refuse rather than guess.
   const isLabel = (t: TextRun): boolean => {
     if (t.rotated || !inRegion(t)) return false;
     const str = t.str.trim();
@@ -303,7 +307,7 @@ export function measureRoomAreas(
     if (!ROOM_LABEL.test(str) || str.length < 3) return false;
     if (ROOM_LABEL_BLOCKLIST.test(str)) return false;
     if (/^[wd]-?\d{1,2}$/i.test(str)) return false; // opening tags
-    return true;
+    return ROOM_WORDS.test(str);
   };
   // known room words seed first so they win the naming race for their room
   const labels = texts
