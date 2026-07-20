@@ -531,7 +531,7 @@ export async function generateForSession(
       sheetContext,
       async (messages, schema) => chatJsonValidated(messages, schema),
       (message) => progress(message),
-      briefsFor(structure.structureClass),
+      briefsFor(structure.structureClass, { storeys: structure.storeys, foundationType: structure.foundationType }),
       resolveBesmm,
     );
     const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);

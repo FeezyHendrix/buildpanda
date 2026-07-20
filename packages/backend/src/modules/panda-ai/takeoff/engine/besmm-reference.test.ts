@@ -55,3 +55,18 @@ test("every brief has section codes for RAG scoping", () => {
     assert.ok(b.sectionCodes && b.sectionCodes.length > 0, `brief ${b.key} missing sectionCodes`);
   }
 });
+
+test("briefsFor: a single-storey strip-footing building prunes tower elements", () => {
+  const keys = briefsFor("building", { storeys: 1, foundationType: "strip" }).map((b) => b.key);
+  for (const k of ["upperFloors", "frame", "piling", "pileCaps", "staircases"]) {
+    assert.ok(!keys.includes(k), `bungalow should not include ${k}`);
+  }
+  assert.ok(keys.includes("walls") && keys.includes("substructure") && keys.includes("roof"));
+});
+
+test("briefsFor: a piled multi-storey building keeps frame/upperFloors/piling", () => {
+  const keys = briefsFor("building", { storeys: 50, foundationType: "pile" }).map((b) => b.key);
+  for (const k of ["upperFloors", "frame", "piling", "pileCaps", "staircases"]) {
+    assert.ok(keys.includes(k), `tower should include ${k}`);
+  }
+});
