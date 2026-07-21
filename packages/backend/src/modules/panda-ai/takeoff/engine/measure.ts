@@ -314,17 +314,11 @@ export function measureRoomAreas(
     .filter(isLabel)
     .sort((a, b) => Number(ROOM_WORDS.test(b.str)) - Number(ROOM_WORDS.test(a.str)) || b.str.length - a.str.length);
 
-  const filled = new Uint8Array(cols * rowsN);
   const results: RoomArea[] = [];
   const cellAreaM2 = (GRID_MM / 1000) ** 2;
 
-  for (const label of labels) {
-    const sx = Math.floor((label.x + label.w / 2 - region.minX) / cellPt);
-    const sy = Math.floor((label.y - region.minY) / cellPt);
-    if (sx < 0 || sx >= cols || sy < 0 || sy >= rowsN) continue;
-    const startIdx = sy * cols + sx;
-    if (dilated[startIdx] || filled[startIdx]) continue;
-
+  const floodFrom = (wallMask: Uint8Array, startIdx: number): { cells: number[]; leaked: boolean } => {
+    const filled = new Uint8Array(cols * rowsN);
     const stack = [startIdx];
     const cells: number[] = [];
     filled[startIdx] = 1;
@@ -349,14 +343,34 @@ export function measureRoomAreas(
         const ny = y + dy;
         if (nx < 0 || nx >= cols || ny < 0 || ny >= rowsN) continue;
         const nIdx = ny * cols + nx;
-        if (dilated[nIdx] || filled[nIdx]) continue;
+        if (wallMask[nIdx] || filled[nIdx]) continue;
         filled[nIdx] = 1;
         stack.push(nIdx);
       }
     }
+    return { cells, leaked };
+  };
+
+  const claimed = new Uint8Array(cols * rowsN);
+  for (const label of labels) {
+    const sx = Math.floor((label.x + label.w / 2 - region.minX) / cellPt);
+    const sy = Math.floor((label.y - region.minY) / cellPt);
+    if (sx < 0 || sx >= cols || sy < 0 || sy >= rowsN) continue;
+    const startIdx = sy * cols + sx;
+    if (claimed[startIdx]) continue;
+
+    // Fill on the raw walls first — most residential rooms are already sealed
+    // there, and the door-sealing dilation, if applied up front, floods narrow
+    // rooms shut (a 10-pass closing swallows every seed on a compact bungalow).
+    // Only when the raw fill leaks (a real door gap to outside) do we retry on
+    // the sealed grid, which closes openings up to ~1m.
+    let { cells, leaked } = grid[startIdx] ? { cells: [], leaked: true } : floodFrom(grid, startIdx);
+    if (leaked && !dilated[startIdx]) ({ cells, leaked } = floodFrom(dilated, startIdx));
     if (leaked) continue;
+
     const areaM2 = Math.round(cells.length * cellAreaM2 * 100) / 100;
     if (areaM2 < 1 || areaM2 > 400) continue;
+    for (const c of cells) claimed[c] = 1;
     results.push({ name: label.str, areaM2, seed: [label.x, label.y] });
   }
   return results;
