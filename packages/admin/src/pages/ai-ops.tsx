@@ -54,9 +54,9 @@ export default function AiOpsPage() {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data?.platform?.series || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="day" tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
+              <XAxis dataKey="day" tickFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
               <YAxis tickFormatter={(v) => Intl.NumberFormat('en-US', { notation: "compact" }).format(v as number)} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dx={-10} />
-              <Tooltip labelFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} formatter={(v) => Number(v).toLocaleString()} />
+              <Tooltip labelFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} formatter={(v) => Number(v).toLocaleString()} />
               <Area type="monotone" dataKey="tokensIn" stackId="1" stroke="#004DE7" fill="#004DE7" name="Tokens In" />
               <Area type="monotone" dataKey="tokensOut" stackId="1" stroke="#3b82f6" fill="#3b82f6" name="Tokens Out" />
             </AreaChart>
@@ -72,9 +72,9 @@ export default function AiOpsPage() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data?.platform?.series || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="day" tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
+              <XAxis dataKey="day" tickFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
               <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dx={-10} />
-              <Tooltip labelFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} formatter={(v) => formatUsd(Number(v))} />
+              <Tooltip labelFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} formatter={(v) => formatUsd(Number(v))} />
               <Line type="monotone" dataKey="costUsd" stroke="#10b981" strokeWidth={2} dot={false} name="Cost" />
             </LineChart>
           </ResponsiveContainer>
