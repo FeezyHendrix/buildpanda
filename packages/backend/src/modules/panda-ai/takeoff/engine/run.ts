@@ -120,7 +120,7 @@ function measureSheetRegions(
   pageNumber: number,
   sheetLabel: string,
 ): SheetMeasurement {
-  const regions = clusterRegions(extracted);
+  const regions = clusterRegions(extracted, mmPerPt);
   const items: MeasuredBoqItem[] = [];
   if (regions.length === 0) return { items, fingerprint: null };
 

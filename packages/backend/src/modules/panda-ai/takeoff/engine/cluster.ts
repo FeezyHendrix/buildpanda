@@ -1,17 +1,36 @@
 import type { DrawingRegion, ExtractedSheet, Segment } from "../types.ts";
 
-const CELL_PT = 50;
+const CELL_PT_COARSE = 50;
+const CELL_PT_FILTERED = 20;
+const MIN_WALL_SEG_M = 0.3;
 
 // A sheet often holds several drawings (repeated floor plans, details).
 // Group segments into regions via connected occupancy on a coarse grid so a
 // measurement never spans two drawings.
-export function clusterRegions(sheet: ExtractedSheet): DrawingRegion[] {
+//
+// When mmPerPt is known, first drop sub-0.30m segments (glyph strokes, hatch,
+// dim ticks, arrowheads — ~68% of a dense residential sheet). These bridge the
+// whole sheet into one region and swamp the ~2% that are real walls; removing
+// them lets the building envelope separate from title block and notes. Filter
+// only removes and the tighter grid only separates, so a building is never split.
+export function clusterRegions(sheet: ExtractedSheet, mmPerPt?: number): DrawingRegion[] {
   const { segments } = sheet;
   if (segments.length === 0) return [];
 
-  const cellOf = (x: number, y: number) => `${Math.floor(x / CELL_PT)}:${Math.floor(y / CELL_PT)}`;
+  let cellPt = CELL_PT_COARSE;
+  let indexed = segments.map((s, idx) => ({ s, idx }));
+  if (mmPerPt) {
+    const minLenPt = MIN_WALL_SEG_M * 1000 / mmPerPt;
+    const kept = indexed.filter(({ s }) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= minLenPt);
+    if (kept.length >= 30) {
+      indexed = kept;
+      cellPt = CELL_PT_FILTERED;
+    }
+  }
+
+  const cellOf = (x: number, y: number) => `${Math.floor(x / cellPt)}:${Math.floor(y / cellPt)}`;
   const cellSegments = new Map<string, number[]>();
-  segments.forEach((s, idx) => {
+  indexed.forEach(({ s, idx }) => {
     // stamp both endpoints and the midpoint; enough for connectivity
     for (const [x, y] of [
       [s.x1, s.y1],
