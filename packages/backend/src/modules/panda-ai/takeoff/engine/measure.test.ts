@@ -42,3 +42,20 @@ test("measureRoomAreas: a real room word seeds a room", () => {
   assert.ok(rooms.length <= 1);
   if (rooms.length === 1) assert.match(rooms[0]!.name, /KITCHEN/i);
 });
+
+test("measureRoomAreas: a narrow sealed room is measured, not swallowed by door-sealing", () => {
+  // A ~1.5m-wide corridor: the two long walls are close enough that an
+  // up-front dilate-10 door-sealing closing (~1m each side) bridges them shut
+  // and buries the seed in wall. Raw-grid-first fill must still measure it.
+  const narrow = 40; // pt gap between the two long walls; at mmPerPt 11.3 -> ~450mm
+  const corridor: Segment[] = [
+    seg(40, 180, 360, 180),
+    seg(40, 180 + narrow, 360, 180 + narrow),
+    seg(40, 180, 40, 180 + narrow),
+    seg(360, 180, 360, 180 + narrow),
+  ];
+  const rooms = measureRoomAreas(corridor, [txt("HALL", 190, 195)], region, 11.3);
+  assert.equal(rooms.length, 1, "the narrow room must survive door-sealing");
+  assert.match(rooms[0]!.name, /HALL/i);
+  assert.ok(rooms[0]!.areaM2 > 1, `expected a real area, got ${rooms[0]!.areaM2}`);
+});
