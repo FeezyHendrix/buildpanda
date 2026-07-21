@@ -59,9 +59,9 @@ export default function EngagementPage() {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data?.activeSeries || []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-            <XAxis dataKey="day" tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
+            <XAxis dataKey="day" tickFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric" })} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dy={10} />
             <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} dx={-10} />
-            <Tooltip labelFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} />
+            <Tooltip labelFormatter={(v) => new Date(String(v)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} />
             <Line type="monotone" dataKey="value" stroke="#004DE7" strokeWidth={2} dot={{ r: 2, fill: "#004DE7" }} activeDot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
