@@ -113,6 +113,25 @@ interface SheetMeasurement {
 // One region = one drawing. Measure only floor-plan-looking regions, and only
 // the largest one per sheet — repeated plans on a sheet must not multiply
 // quantities; the QS duplicates verified items per floor in review instead.
+export function regionShareOfSheet(
+  region: { minX: number; minY: number; maxX: number; maxY: number },
+  segments: Segment[],
+): number {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of segments) {
+    minX = Math.min(minX, s.x1, s.x2);
+    maxX = Math.max(maxX, s.x1, s.x2);
+    minY = Math.min(minY, s.y1, s.y2);
+    maxY = Math.max(maxY, s.y1, s.y2);
+  }
+  const sheetArea = (maxX - minX) * (maxY - minY);
+  if (sheetArea <= 0) return 1;
+  return ((region.maxX - region.minX) * (region.maxY - region.minY)) / sheetArea;
+}
+
 function measureSheetRegions(
   extracted: Awaited<ReturnType<typeof extractSheet>>,
   mmPerPt: number,
@@ -129,6 +148,12 @@ function measureSheetRegions(
   const regionTexts = textsInRegion(extracted.texts, primary);
   const regionCurves = curvesInRegion(extracted.curves, primary);
 
+  // If the isolated region still fills almost the whole sheet, envelope
+  // isolation failed (walls are being measured over title block, notes and
+  // dimension lines). Emit the wall item as provisional — a null-quantity sum
+  // for manual takeoff — rather than silently billing a wrong contract figure.
+  const envelopeUntrustworthy = regionShareOfSheet(primary, extracted.segments) >= 0.85;
+
   const walls = measureWalls(regionSegments, mmPerPt);
   if (walls.centrelineM > 0) {
     const grossM2 = Math.round(walls.centrelineM * DEFAULT_WALL_HEIGHT_M * 100) / 100;
@@ -142,10 +167,13 @@ function measureSheetRegions(
       qtyGross: grossM2,
       deductions: [],
       qty: grossM2,
-      confidence: wallConfidence(walls.pairs.length, calibrationConfidence),
-      measurementBasis: `${walls.centrelineM.toFixed(1)}m centreline from ${walls.pairs.length} parallel wall pairs x ${DEFAULT_WALL_HEIGHT_M}m assumed height (${sheetLabel})`,
+      confidence: envelopeUntrustworthy ? "low" : wallConfidence(walls.pairs.length, calibrationConfidence),
+      measurementBasis: envelopeUntrustworthy
+        ? `Building could not be isolated from the sheet (measured extent fills the whole drawing); wall quantity left provisional for manual takeoff (${sheetLabel})`
+        : `${walls.centrelineM.toFixed(1)}m centreline from ${walls.pairs.length} parallel wall pairs x ${DEFAULT_WALL_HEIGHT_M}m assumed height (${sheetLabel})`,
       geometries: geometryFromWallPairs(walls.pairs),
       pageNumber,
+      provisional: envelopeUntrustworthy,
     });
   }
 
