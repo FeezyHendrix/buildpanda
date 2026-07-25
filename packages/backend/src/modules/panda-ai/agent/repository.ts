@@ -89,6 +89,42 @@ export function agentRepository(db: Knex) {
         .select("type", "actor_name", "summary", "amount", "created_at");
     },
 
+    transactions(projectId: string, filters: { category?: string; from?: string; to?: string; limit?: number }) {
+      const query = db("project_transactions")
+        .where({ project_id: projectId })
+        .orderBy("transacted_at", "desc")
+        .limit(filters.limit ?? 200)
+        .select(
+          "id",
+          "title",
+          "description",
+          "category",
+          "category_type",
+          "amount",
+          "transacted_at",
+          "vendor",
+          "reference",
+          "created_at",
+        );
+      if (filters.category) query.where("category", filters.category);
+      if (filters.from) query.where("transacted_at", ">=", filters.from);
+      if (filters.to) query.where("transacted_at", "<=", filters.to);
+      return query;
+    },
+
+    transactionTotalsByCategory(projectId: string, filters: { from?: string; to?: string }) {
+      const query = db("project_transactions")
+        .where({ project_id: projectId })
+        .groupBy("category")
+        .orderBy(db.raw("SUM(amount)"), "desc")
+        .select("category")
+        .sum({ total: "amount" })
+        .count({ count: "id" });
+      if (filters.from) query.where("transacted_at", ">=", filters.from);
+      if (filters.to) query.where("transacted_at", "<=", filters.to);
+      return query;
+    },
+
     milestonePayments(projectId: string) {
       return db("milestone_payments")
         .where({ project_id: projectId })

@@ -210,6 +210,64 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("list_transactions", "List the project's logged expenditures (materials, labour, equipment, subcontractor, transport, permits_fees, utilities, professional_services, preliminaries, overhead, miscellaneous or any custom category the org added). Each entry is a real-world expense the team recorded — with title, description, category, amount, vendor, date transacted and reference. Also returns a rollup of totals per category and an overall total. Use for questions like 'how much did we spend on X', 'top spending categories', 'recent expenses', 'what did we spend this month'. Note: BuildPanda LOGS spend; it does not move money.", {
+      category: { type: "string", description: "Optional exact category key or custom label to filter by (e.g. 'materials', 'labour', 'Scaffolding')." },
+      from: { type: "string", description: "Optional ISO date (YYYY-MM-DD) inclusive lower bound on transacted_at." },
+      to: { type: "string", description: "Optional ISO date (YYYY-MM-DD) inclusive upper bound on transacted_at." },
+      limit: { type: "integer", minimum: 1, maximum: 500, description: "Optional cap on returned entries (default 200)." },
+    }), async (ctx, args) => {
+      const repo = agentRepository(ctx.db);
+      const category = optionalString(args.category, 200) ?? undefined;
+      const from = optionalString(args.from, 30) ?? undefined;
+      const to = optionalString(args.to, 30) ?? undefined;
+      const limit = typeof args.limit === "number" ? Math.max(1, Math.min(500, Math.trunc(args.limit))) : undefined;
+
+      const [rows, totals] = await Promise.all([
+        repo.transactions(ctx.projectId, { category, from, to, limit }),
+        repo.transactionTotalsByCategory(ctx.projectId, { from, to }),
+      ]);
+
+      const typedRows = rows as Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        category: string;
+        category_type: string;
+        amount: string;
+        transacted_at: string;
+        vendor: string | null;
+        reference: string | null;
+        created_at: string;
+      }>;
+      const typedTotals = totals as Array<{ category: string; total: string; count: string }>;
+
+      const overallTotal = typedTotals.reduce((sum, t) => sum + Number(t.total), 0);
+
+      return {
+        output: {
+          transactions: typedRows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            category: r.category,
+            categoryType: r.category_type,
+            amount: round2(Number(r.amount)),
+            transactedAt: r.transacted_at,
+            vendor: r.vendor,
+            reference: r.reference,
+          })),
+          totalsByCategory: typedTotals.map((t) => ({
+            category: t.category,
+            total: round2(Number(t.total)),
+            count: Number(t.count),
+          })),
+          overallTotal: round2(overallTotal),
+          count: typedRows.length,
+        },
+        navigate: "transactions",
+      };
+    }),
+
     tool(fn("get_invoices", "Get the project's invoices in detail: number, vendor, billed-to party, workflow status, issue/due dates, total, amount paid, outstanding balance and an isOverdue flag. Use for questions about specific invoices, what is unpaid, or what is overdue. get_finances is only the high-level budget summary.", { status: { type: "string", enum: [...INVOICE_WORKFLOW_STATUSES], description: "Optional workflow status filter" } }), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const status = optionalString(args.status, 20) ?? undefined;

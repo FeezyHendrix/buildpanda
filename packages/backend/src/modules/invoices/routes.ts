@@ -1,7 +1,12 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { materialsEquipmentRepository } from "../materials-equipment/repository.ts";
+import { materialsEquipmentService } from "../materials-equipment/service.ts";
+import { materialsLedgerRepository } from "../materials-ledger/repository.ts";
+import { materialsLedgerService } from "../materials-ledger/service.ts";
 import { INVOICE_EMAIL_QUEUE, type InvoiceEmailJobData } from "./invoice-send-job.ts";
+import { invoiceMaterialSyncer } from "./invoice-material-sync.ts";
 import { renderInvoicePdf } from "./invoice-pdf.ts";
 import { invoicesRepository } from "./repository.ts";
 import { invoicesScanService } from "./scan-service.ts";
@@ -188,6 +193,11 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
   const service = invoicesService(invoicesRepository(fastify.db));
   const repository = invoicesRepository(fastify.db);
   const scanService = invoicesScanService(fastify.db);
+  const materialSyncer = invoiceMaterialSyncer({
+    db: fastify.db,
+    materialsEquipment: materialsEquipmentService(materialsEquipmentRepository(fastify.db)),
+    materialsLedger: materialsLedgerService(materialsLedgerRepository(fastify.db)),
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/invoices",
@@ -219,6 +229,22 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }
       const invoice = await service.create(project.id, request.body);
+      if (invoice.invoiceType === "material") {
+        try {
+          const syncResult = await materialSyncer.sync(project.id, invoice, user.id);
+          if (syncResult.warnings.length > 0) {
+            request.log.warn(
+              { invoiceId: invoice.id, syncResult },
+              "Invoice → materials sync completed with warnings",
+            );
+          }
+        } catch (err) {
+          request.log.error(
+            { err, invoiceId: invoice.id },
+            "Invoice → materials sync failed; invoice was still saved",
+          );
+        }
+      }
       return reply.status(201).send(invoice);
     },
   );

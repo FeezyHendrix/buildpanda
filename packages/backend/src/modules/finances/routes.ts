@@ -11,8 +11,14 @@ import {
   type RaiseDisputeInput,
   type RecordVariationInput,
   type UpdateContractSumInput,
+  type UpdateContractTermsInput,
   type UpdateMilestoneInput,
 } from "./service.ts";
+import {
+  ADVANCE_RECOVERY_MODES,
+  CONTRACT_TYPES,
+  RETENTION_RELEASE_MODES,
+} from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -101,6 +107,24 @@ const milestonePatchBody = {
   type: "object",
   additionalProperties: false,
   properties: milestoneBody.properties,
+} as const;
+
+const contractTermsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    contractSum: { type: "number", minimum: 0 },
+    contractType: { type: "string", enum: [...CONTRACT_TYPES] },
+    retentionRate: { type: "number", minimum: 0, maximum: 1 },
+    retentionReleaseMode: { type: "string", enum: [...RETENTION_RELEASE_MODES] },
+    advancePercentage: { type: "number", minimum: 0, maximum: 1 },
+    advanceRecoveryMode: { type: "string", enum: [...ADVANCE_RECOVERY_MODES] },
+    advanceRecoveryRate: { type: "number", minimum: 0 },
+    paymentTermsDays: { type: "integer", minimum: 0 },
+    defectsLiabilityDays: { type: "integer", minimum: 0 },
+    contractNotes: { type: ["string", "null"], maxLength: 2000 },
+  },
 } as const;
 
 const financeRoutes: FastifyPluginAsync = async (fastify) => {
@@ -286,6 +310,21 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
       const user = request.requireAuth();
       const finances = await service.recordVariation(
+        project.id,
+        request.body,
+        { id: user.id, name: user.name },
+      );
+      return reply.status(200).send(finances);
+    },
+  );
+
+  fastify.put<{ Params: { id: string }; Body: UpdateContractTermsInput }>(
+    "/projects/:id/finances/contract-terms",
+    { schema: { params: projectIdParams, body: contractTermsBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      const user = request.requireAuth();
+      const finances = await service.updateContractTerms(
         project.id,
         request.body,
         { id: user.id, name: user.name },

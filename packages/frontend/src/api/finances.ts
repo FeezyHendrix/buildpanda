@@ -8,6 +8,7 @@ import type {
   MilestonePayment,
   ProjectFinances,
   SignOffStatus,
+  UpdateContractTermsInput,
 } from "@/lib/project-types";
 
 export interface AddCashFlowVariables {
@@ -103,4 +104,9 @@ export const financesApi = {
 
   recordVariation: (projectId: string, amount: number, description: string) =>
     api.post<ProjectFinances>(`/projects/${projectId}/finances/variations`, { amount, description }).then((r) => r.data),
+
+  updateContractTerms: (projectId: string, body: UpdateContractTermsInput) =>
+    api
+      .put<ProjectFinances>(`/projects/${projectId}/finances/contract-terms`, body)
+      .then((r) => r.data),
 };

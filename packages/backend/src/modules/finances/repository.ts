@@ -226,6 +226,26 @@ export function financesRepository(db: Knex) {
         .update({ contract_sum: contractSum });
     },
 
+    async updateContractTerms(
+      projectId: string,
+      patch: Partial<{
+        contract_type: string;
+        retention_rate: number;
+        retention_release_mode: string;
+        advance_percentage: number;
+        advance_recovery_mode: string;
+        advance_recovery_rate: number;
+        payment_terms_days: number;
+        defects_liability_days: number;
+        contract_notes: string | null;
+      }>,
+    ): Promise<void> {
+      if (Object.keys(patch).length === 0) return;
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update(patch);
+    },
+
     async recordVariation(
       projectId: string,
       amount: number,
