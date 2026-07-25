@@ -104,10 +104,10 @@ export const config = {
   },
 
   mail: {
-    token: optional("ZEPTOMAIL_TOKEN", ""),
-    fromAddress: optional("ZEPTOMAIL_FROM_ADDRESS", "noreply@buildpanda.io"),
-    fromName: optional("ZEPTOMAIL_FROM_NAME", "BuildPanda"),
-    replyToAddress: optional("ZEPTOMAIL_REPLY_TO", "hello@buildpanda.ai"),
+    token: optional("SENDBYTE_API_KEY", ""),
+    fromAddress: optional("SENDBYTE_FROM_ADDRESS", "noreply@buildpanda.io"),
+    fromName: optional("SENDBYTE_FROM_NAME", "BuildPanda"),
+    replyToAddress: optional("SENDBYTE_REPLY_TO", "hello@buildpanda.ai"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),
@@ -164,6 +164,7 @@ export const config = {
     apiKey: optional("OPENAI_API_KEY", ""),
     baseUrl: optional("OPENAI_BASE_URL", "https://api.openai.com/v1"),
     model: optional("OPENAI_MODEL", "gpt-4o-mini"),
+    embedModel: optional("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
     timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
   },
 

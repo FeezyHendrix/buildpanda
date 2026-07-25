@@ -423,6 +423,7 @@ export type StageStatus = PhaseStatus;
 
 export type KnownParticipantRole =
   | "client"
+  | "project_manager"
   | "architect"
   | "inspector"
   | "guest"
@@ -442,6 +443,7 @@ export interface ProjectParticipant {
   role: ParticipantRole | "owner";
   status: ParticipantStatus;
   permissions: ParticipantPermissions;
+  grants: Record<string, string[]> | null;
   createdAt: string;
 }
 
@@ -468,29 +470,18 @@ export interface ProjectAccess {
 }
 
 /**
- * Whether a nav entry / page (identified by its dotted section key) is visible.
- * If the participant has an explicit section matrix, it is authoritative:
- * view/edit shows, hidden/absent hides. Without a matrix (company members,
- * owners, or role-only participants) we fall back to the resource check so
- * existing behaviour is unchanged. Presentation only — backend enforces.
+ * Whether a nav entry / page is visible. The effective RBAC map
+ * (`access.permissions`) is the single source of truth: the backend already
+ * folds org role, participant role defaults and the per-participant section
+ * matrix (including `hidden` revocation) into it, so visibility here matches
+ * exactly what the API authorizes. Entries without a resource are unrestricted.
+ * Presentation only — backend enforces regardless.
  */
 export function canViewSection(
   access: ProjectAccess | undefined,
-  sectionKey: string | undefined,
+  _sectionKey: string | undefined,
   resource?: string,
 ): boolean {
-  if (!access) return true;
-  if (access.sections) {
-    if (!sectionKey) return canViewResource(access, resource);
-    const value = access.sections[sectionKey];
-    if (value === "view" || value === "edit") return true;
-    // Org/company permissions are additive across the project. A user can be an
-    // employee participant on a specific project AND have an org custom role
-    // (e.g. COO) granting broader project access; the participant matrix must
-    // not hide what the org role grants. For external participants, the matrix
-    // remains the source of truth.
-    return access.relationship === "company" && canViewResource(access, resource);
-  }
   return canViewResource(access, resource);
 }
 

@@ -14,6 +14,7 @@ import type {
 export interface NewTaskRecord {
   id: string;
   project_id: string;
+  building_id: string;
   board_id: string;
   column_id: string;
   title: string;
@@ -55,6 +56,7 @@ export interface NewColumnRecord {
 const TASK_SELECT = [
   "t.id",
   "t.project_id",
+  "t.building_id",
   "t.board_id",
   "t.column_id",
   "t.title",
@@ -95,9 +97,9 @@ export function tasksRepository(db: Knex) {
   }
 
   return {
-    findDefaultBoard(projectId: string): Promise<TaskBoardRow | undefined> {
+    findDefaultBoard(projectId: string, buildingId: string): Promise<TaskBoardRow | undefined> {
       return db<TaskBoardRow>("task_boards")
-        .where({ project_id: projectId, is_default: true })
+        .where({ project_id: projectId, building_id: buildingId, is_default: true })
         .first();
     },
 
@@ -106,7 +108,7 @@ export function tasksRepository(db: Knex) {
     },
 
     async createBoardWithColumns(
-      board: { id: string; project_id: string; name: string; is_default: boolean; created_by_id: string | null },
+      board: { id: string; project_id: string; building_id: string; name: string; is_default: boolean; created_by_id: string | null },
       columns: NewColumnRecord[],
     ): Promise<void> {
       await db.transaction(async (trx) => {

@@ -42,6 +42,7 @@ export interface ReleaseOperation {
 export interface NewMilestoneRecord {
   id: string;
   project_id: string;
+  building_id?: string;
   name: string;
   phase: string;
   status: MilestonePaymentRow["status"];
@@ -110,8 +111,9 @@ export function financesRepository(db: Knex) {
           )?.max ?? -1,
         ) + 1;
 
+      const buildingId = record.building_id ?? (await sharedBuildingId(db, record.project_id));
       const [row] = await db<MilestonePaymentRow>("milestone_payments")
-        .insert({ ...record, sort_order: nextSortOrder })
+        .insert({ ...record, building_id: buildingId, sort_order: nextSortOrder })
         .returning("*");
       if (!row) throw new Error("Failed to insert milestone");
       return row;
@@ -317,10 +319,20 @@ export function financesRepository(db: Knex) {
 interface LedgerAppend {
   ledgerId: string;
   projectId: string;
+  buildingId?: string;
   entryDate: string;
   description: string;
   amount: number;
   type: LedgerType;
+}
+
+async function sharedBuildingId(db: Knex, projectId: string): Promise<string> {
+  const row = await db("buildings")
+    .where({ project_id: projectId, kind: "shared" })
+    .select("id")
+    .first();
+  if (!row) throw new Error(`No shared building for project ${projectId}`);
+  return row.id;
 }
 
 async function appendLedger(trx: Knex.Transaction, entry: LedgerAppend): Promise<void> {
@@ -337,6 +349,7 @@ async function appendLedger(trx: Knex.Transaction, entry: LedgerAppend): Promise
   await trx("payment_ledger").insert({
     id: entry.ledgerId,
     project_id: entry.projectId,
+    building_id: entry.buildingId ?? (await sharedBuildingId(trx, entry.projectId)),
     entry_date: entry.entryDate,
     description: entry.description,
     amount: entry.amount,

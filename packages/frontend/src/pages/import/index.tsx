@@ -11,6 +11,7 @@ import { DrawingsStep } from "@/components/molecules/import-wizard/drawings-step
 import { ReviewStep } from "@/components/molecules/import-wizard/review-step";
 import { ProjectFileStep } from "@/components/molecules/import-wizard/project-file-step";
 import { useCreateImportSession } from "@/hooks/use-import-session";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
 
 export type ImportMode = "programme" | "shell" | "file" | null;
 
@@ -34,6 +35,9 @@ export default function ImportWizardPage() {
   const [mode, setMode] = useState<ImportMode>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+
+  const isProgrammeImportEnabled = useFeatureFlag("ai.programmeImport");
+  const isProjectFileImportEnabled = useFeatureFlag("ai.projectFileImport");
   
   const activeSteps = ALL_STEPS.filter(s => s.path === "both" || s.path === mode);
   const totalSteps = activeSteps.length || 7; 
@@ -106,14 +110,14 @@ export default function ImportWizardPage() {
       {currentStepDef.id === "start" && (
         <StartStep onSelect={handleStart} isCreating={createSession.isPending} />
       )}
-      {currentStepDef.id === "projectfile" && sessionId && (
+      {currentStepDef.id === "projectfile" && sessionId && isProjectFileImportEnabled && (
         <ProjectFileStep
           sessionId={sessionId}
           onProjectCreated={setProjectId}
           onNext={handleNext}
         />
       )}
-      {currentStepDef.id === "programme" && sessionId && (
+      {currentStepDef.id === "programme" && sessionId && isProgrammeImportEnabled && (
         <ProgrammeStep 
           sessionId={sessionId} 
           onProjectCreated={setProjectId} 

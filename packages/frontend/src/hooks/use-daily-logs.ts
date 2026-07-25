@@ -13,12 +13,13 @@ import type { ReportPeriod } from "@/lib/project-types";
 export function useProjectDailyDays(
   projectId: string | undefined,
   range?: { from?: string; to?: string },
+  buildingId?: string,
 ) {
   return useQuery({
     queryKey: projectId
-      ? dailyLogKeys.list(projectId, range)
+      ? dailyLogKeys.list(projectId, range, buildingId)
       : dailyLogKeys.list("__none__"),
-    queryFn: () => dailyLogsApi.list(projectId!, range),
+    queryFn: () => dailyLogsApi.list(projectId!, range, buildingId),
     enabled: Boolean(projectId),
   });
 }
@@ -26,12 +27,13 @@ export function useProjectDailyDays(
 export function useProjectDailyLogs(
   projectId: string | undefined,
   range?: { from?: string; to?: string },
+  buildingId?: string,
 ) {
   return useQuery({
     queryKey: projectId
-      ? dailyLogKeys.list(projectId, range)
+      ? dailyLogKeys.list(projectId, range, buildingId)
       : dailyLogKeys.list("__none__"),
-    queryFn: () => dailyLogsApi.list(projectId!, range),
+    queryFn: () => dailyLogsApi.list(projectId!, range, buildingId),
     enabled: Boolean(projectId),
   });
 }

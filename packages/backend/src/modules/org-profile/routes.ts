@@ -9,10 +9,10 @@ const patchBody = {
   minProperties: 1,
   properties: {
     name: { type: "string", minLength: 1, maxLength: 120 },
-    phone: { type: "string", maxLength: 50 },
-    address: { type: "string", maxLength: 500 },
-    contactEmail: { type: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", maxLength: 320 },
-    website: { type: "string", maxLength: 200 },
+    phone: { type: ["string", "null"], maxLength: 50 },
+    address: { type: ["string", "null"], maxLength: 500 },
+    contactEmail: { type: ["string", "null"], pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", maxLength: 320 },
+    website: { type: ["string", "null"], maxLength: 200 },
     defaultCurrency: currencyCodeSchema,
     defaultTaxLabel: { type: "string", maxLength: 50 },
     defaultTaxPct: { type: "number", minimum: 0, maximum: 100 },
@@ -22,10 +22,10 @@ const patchBody = {
 
 interface OrgProfilePatch {
   name?: string;
-  phone?: string;
-  address?: string;
-  contactEmail?: string;
-  website?: string;
+  phone?: string | null;
+  address?: string | null;
+  contactEmail?: string | null;
+  website?: string | null;
   defaultCurrency?: string;
   defaultTaxLabel?: string;
   defaultTaxPct?: number;
@@ -87,10 +87,10 @@ const orgProfileRoutes: FastifyPluginAsync = async (fastify) => {
 
       const patch: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (name !== undefined) patch["name"] = name.trim();
-      if (phone !== undefined) patch["phone"] = phone;
-      if (address !== undefined) patch["address"] = address;
-      if (contactEmail !== undefined) patch["contact_email"] = contactEmail;
-      if (website !== undefined) patch["website"] = website;
+      if (phone !== undefined) patch["phone"] = phone?.trim() || null;
+      if (address !== undefined) patch["address"] = address?.trim() || null;
+      if (contactEmail !== undefined) patch["contact_email"] = contactEmail?.trim().toLowerCase() || null;
+      if (website !== undefined) patch["website"] = website?.trim() || null;
       if (defaultCurrency !== undefined) patch["default_currency"] = defaultCurrency;
       if (defaultTaxLabel !== undefined) patch["default_tax_label"] = defaultTaxLabel;
       if (defaultTaxPct !== undefined) patch["default_tax_pct"] = defaultTaxPct;

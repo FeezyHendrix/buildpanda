@@ -102,9 +102,8 @@ function defaultUntil(): string {
 
 export default function ProjectEquipmentRequests() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const canRequest = canManage && canResourceAction(access, "materials", "request");
-  const canApprove = canManage && canResourceAction(access, "materials", "approve");
+  const canRequest = canResourceAction(access, "materials", "request");
+  const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
   const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
     ? params.bucket
@@ -243,9 +242,11 @@ export default function ProjectEquipmentRequests() {
             title="No equipment requests here"
             description="Create a rental request or move existing equipment through the lifecycle."
             action={
-              <Button onClick={() => setCreateOpen(true)}>
-                Create request
-              </Button>
+              canRequest ? (
+                <Button onClick={() => setCreateOpen(true)}>
+                  Create request
+                </Button>
+              ) : undefined
             }
             className="py-10"
           />

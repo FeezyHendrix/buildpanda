@@ -4,6 +4,7 @@ import type { LookAheadActivityRow, LookAheadRow, LookAheadStatus } from "./type
 export interface NewLookAheadRecord {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   description: string | null;
   status: LookAheadStatus;
@@ -19,9 +20,10 @@ export type LookAheadPatch = Partial<
 
 export function lookAheadsRepository(db: Knex) {
   return {
-    listByProject(projectId: string, status?: LookAheadStatus): Promise<LookAheadRow[]> {
+    listByProject(projectId: string, status?: LookAheadStatus, buildingId?: string): Promise<LookAheadRow[]> {
       const query = db<LookAheadRow>("look_aheads").where({ project_id: projectId });
       if (status) query.andWhere({ status });
+      if (buildingId) query.andWhere({ building_id: buildingId });
       return query.orderBy("start_date", "desc");
     },
 
@@ -49,19 +51,25 @@ export function lookAheadsRepository(db: Knex) {
     /** Activity summaries for a set of look-aheads, joined with `activities`. */
     activitiesFor(lookAheadIds: string[]): Promise<LookAheadActivityRow[]> {
       if (lookAheadIds.length === 0) return Promise.resolve([]);
-      return db("look_ahead_activities as la")
+  return db("look_ahead_activities as la")
         .join("activities as a", "a.id", "la.activity_id")
         .whereIn("la.look_ahead_id", lookAheadIds)
         .orderBy("a.planned_start_at", "asc")
         .select(
           "la.look_ahead_id",
           "la.activity_id",
+          "a.building_id",
           "a.name",
           "a.status",
           "a.planned_start_at",
           "a.planned_end_at",
           "a.worker_count_planned",
         );
+    },
+
+    activitiesByIds(activityIds: string[]): Promise<{ id: string; project_id: string; building_id: string }[]> {
+      if (activityIds.length === 0) return Promise.resolve([]);
+      return db("activities").whereIn("id", activityIds).select("id", "project_id", "building_id");
     },
 
     async setActivities(lookAheadId: string, activityIds: string[]): Promise<void> {

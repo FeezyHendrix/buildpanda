@@ -1,5 +1,13 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { adminRepository, type ListParams } from "./repository.ts";
+import { adminAuditRepository } from "./audit-repository.ts";
+import {
+  adminMetricsRepository,
+  priorRange,
+  deltaPct,
+  funnelConversions,
+  type MetricRange,
+} from "./metrics-repository.ts";
 import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 
@@ -39,14 +47,62 @@ function toListParams(query: ListQuery): ListParams {
   };
 }
 
+const rangeQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    from: { type: "string", maxLength: 40 },
+    to: { type: "string", maxLength: 40 },
+  },
+} as const;
+
+function toRange(query: { from?: string; to?: string }): MetricRange {
+  const to = query.to ? new Date(query.to) : new Date();
+  const from = query.from
+    ? new Date(query.from)
+    : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  return { from, to };
+}
+
+
+
 const adminRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = adminRepository(fastify.db);
+  const audit = adminAuditRepository(fastify.db);
+  const metrics = adminMetricsRepository(fastify.db);
 
   // Gate every /admin route behind the global admin role.
   fastify.addHook("preHandler", async (request: FastifyRequest) => {
     if (request.url.startsWith("/admin")) {
       request.requireAdmin();
     }
+  });
+
+  // Fire-and-forget audit of every admin read + write. done() first so the
+  // insert never adds latency to the response.
+  fastify.addHook("onResponse", (request, reply, done) => {
+    done();
+    const path = request.url.split("?")[0] ?? request.url;
+    if (!path.startsWith("/admin") || request.user?.role !== "admin") return;
+    const cfg = request.routeOptions?.config ?? {};
+    if (cfg.audit === false) return;
+    const params = (request.params ?? {}) as Record<string, string>;
+    const targetId = cfg.auditTargetParam ? params[cfg.auditTargetParam] : (params["id"] ?? null);
+    const route = request.routeOptions?.url ?? null;
+    void audit
+      .insert({
+        adminUserId: request.user.id,
+        action: cfg.auditAction ?? `${request.method} ${route ?? path}`,
+        targetType: cfg.auditTargetType ?? null,
+        targetId: targetId ?? null,
+        method: request.method,
+        path,
+        route,
+        ip: request.ip ?? null,
+        statusCode: reply.statusCode,
+        metadata: Object.keys(params).length > 0 ? { params } : null,
+      })
+      .catch((err) => fastify.log.warn({ err }, "admin_audit_log insert failed"));
   });
 
   // Lightweight check used by the admin UI to confirm admin access. Reaching
@@ -57,6 +113,127 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.get("/admin/overview", async () => repo.overview());
+
+  fastify.get<{ Querystring: { from?: string; to?: string } }>(
+    "/admin/metrics/overview",
+    { schema: { querystring: rangeQuery } },
+    async (request) => {
+      const range = toRange(request.query);
+      const prior = priorRange(range);
+      const dayMs = 24 * 60 * 60 * 1000;
+      const now = new Date();
+      const [
+        signups,
+        signupsPrior,
+        signupSeries,
+        activeSeries,
+        wau,
+        mau,
+        dau,
+        tokenSeries,
+        jobHealth,
+        value,
+      ] = await Promise.all([
+        metrics.totalSignups(range),
+        metrics.totalSignups(prior),
+        metrics.signupSeries(range),
+        metrics.activeUserSeries(range),
+        metrics.activeUsers(new Date(now.getTime() - 7 * dayMs), now),
+        metrics.activeUsers(new Date(now.getTime() - 30 * dayMs), now),
+        metrics.activeUsers(new Date(now.getTime() - dayMs), now),
+        metrics.aiTokenSeries(range),
+        metrics.aiJobHealth(range),
+        metrics.valueTracked(),
+      ]);
+      const totalTokens = tokenSeries.reduce((s, p) => s + p.tokensIn + p.tokensOut, 0);
+      const totalCost = tokenSeries.reduce((s, p) => s + p.costUsd, 0);
+      const jobTotals = jobHealth.reduce(
+        (acc, j) => ({ total: acc.total + j.total, completed: acc.completed + j.completed }),
+        { total: 0, completed: 0 },
+      );
+      return {
+        asOf: new Date().toISOString(),
+        range: { from: range.from.toISOString(), to: range.to.toISOString() },
+        signups: { value: signups, deltaPct: deltaPct(signups, signupsPrior), series: signupSeries },
+        activeUsers: { dau, wau, mau, stickiness: mau > 0 ? (dau / mau) * 100 : 0, series: activeSeries },
+        aiJobs: {
+          total: jobTotals.total,
+          successRate: jobTotals.total > 0 ? (jobTotals.completed / jobTotals.total) * 100 : 0,
+        },
+        aiSpend: { costUsd: totalCost, tokens: totalTokens, series: tokenSeries },
+        valueTracked: value,
+      };
+    },
+  );
+
+  fastify.get<{ Querystring: { from?: string; to?: string } }>(
+    "/admin/metrics/growth",
+    { schema: { querystring: rangeQuery } },
+    async (request) => {
+      const range = toRange(request.query);
+      const [signupSeries, funnelSteps] = await Promise.all([
+        metrics.signupSeries(range),
+        metrics.activationFunnel(range),
+      ]);
+      return {
+        asOf: new Date().toISOString(),
+        signupSeries,
+        funnel: funnelConversions(funnelSteps),
+      };
+    },
+  );
+
+  fastify.get<{ Querystring: { from?: string; to?: string } }>(
+    "/admin/metrics/engagement",
+    { schema: { querystring: rangeQuery } },
+    async (request) => {
+      const range = toRange(request.query);
+      const dayMs = 24 * 60 * 60 * 1000;
+      const now = new Date();
+      const [activeSeries, dau, wau, mau] = await Promise.all([
+        metrics.activeUserSeries(range),
+        metrics.activeUsers(new Date(now.getTime() - dayMs), now),
+        metrics.activeUsers(new Date(now.getTime() - 7 * dayMs), now),
+        metrics.activeUsers(new Date(now.getTime() - 30 * dayMs), now),
+      ]);
+      return {
+        asOf: new Date().toISOString(),
+        activeSeries,
+        dau,
+        wau,
+        mau,
+        stickiness: mau > 0 ? (dau / mau) * 100 : 0,
+      };
+    },
+  );
+
+  fastify.get<{ Querystring: { from?: string; to?: string } }>(
+    "/admin/metrics/ai-ops",
+    { schema: { querystring: rangeQuery } },
+    async (request) => {
+      const range = toRange(request.query);
+      const [tokenSeries, costByOrg, jobHealth, uncosted] = await Promise.all([
+        metrics.aiTokenSeries(range),
+        metrics.aiCostByOrg(range),
+        metrics.aiJobHealth(range),
+        metrics.uncostedTokens(range),
+      ]);
+      const totalTokens = tokenSeries.reduce((s, p) => s + p.tokensIn + p.tokensOut, 0);
+      const totalCost = tokenSeries.reduce((s, p) => s + p.costUsd, 0);
+      return {
+        asOf: new Date().toISOString(),
+        platform: {
+          totalTokens,
+          totalCostUsd: totalCost,
+          uncostedTokens: uncosted.tokens,
+          unpricedModels: uncosted.models,
+          series: tokenSeries,
+        },
+        costByOrg,
+        jobHealth,
+      };
+    },
+  );
 
   // --- Users ---
   fastify.get<{ Querystring: ListQuery }>(
@@ -243,6 +420,44 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
     "/admin/projects/:id/risks",
     { schema: { params: idParams } },
     async (request) => repo.projectCollection("risk_factors", request.params.id, "created_at"),
+  );
+
+  fastify.get<{
+    Querystring: {
+      adminUserId?: string;
+      action?: string;
+      targetType?: string;
+      targetId?: string;
+      limit?: number;
+      offset?: number;
+    };
+  }>(
+    "/admin/audit-log",
+    {
+      config: { audit: false },
+      schema: {
+        querystring: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            adminUserId: { type: "string", maxLength: 100 },
+            action: { type: "string", maxLength: 200 },
+            targetType: { type: "string", maxLength: 50 },
+            targetId: { type: "string", maxLength: 100 },
+            ...paginationProperties,
+          },
+        } as const,
+      },
+    },
+    async (request) =>
+      audit.list({
+        adminUserId: request.query.adminUserId?.trim() || undefined,
+        action: request.query.action?.trim() || undefined,
+        targetType: request.query.targetType?.trim() || undefined,
+        targetId: request.query.targetId?.trim() || undefined,
+        limit: request.query.limit ?? 50,
+        offset: request.query.offset ?? 0,
+      }),
   );
 };
 

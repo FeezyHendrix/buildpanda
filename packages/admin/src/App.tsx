@@ -3,6 +3,9 @@ import { RequireAdmin } from "@/components/require-admin";
 import { Layout } from "@/components/layout";
 import SignInPage from "@/pages/sign-in";
 import DashboardPage from "@/pages/dashboard";
+import GrowthPage from "@/pages/growth";
+import EngagementPage from "@/pages/engagement";
+import AiOpsPage from "@/pages/ai-ops";
 import UsersPage from "@/pages/users";
 import UserDetailPage from "@/pages/user-detail";
 import OrganizationsPage from "@/pages/organizations";
@@ -22,6 +25,9 @@ export default function App() {
         <Route element={<RequireAdmin />}>
           <Route element={<Layout />}>
             <Route index element={<DashboardPage />} />
+            <Route path="growth" element={<GrowthPage />} />
+            <Route path="engagement" element={<EngagementPage />} />
+            <Route path="ops" element={<AiOpsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
             <Route path="organizations" element={<OrganizationsPage />} />

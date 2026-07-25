@@ -28,6 +28,7 @@ import {
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
 import { cn } from "@/lib/utils";
+import { canResourceAction } from "@/lib/project-types";
 import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
 import { formatWholeCurrency } from "@/lib/formatters";
 
@@ -45,7 +46,7 @@ function money(amount: number, currency: string): string {
 
 export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "change-requests", "manage");
   const [filter, setFilter] = useState<ChangeStatus | "all">("all");
   const [view, setView] = useState<"list" | "board">("list");
   const { data: items = [], isLoading } = useChangeRequests(
@@ -231,22 +232,24 @@ export default function ProjectChangeRequests() {
                     )}
                   </div>
                 </button>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditItem(cr)}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-900"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteId(cr.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
+                {canManage && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditItem(cr)}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(cr.id)}
+                      className="text-xs font-medium text-red-500 hover:text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </Card>
             ))
           )}

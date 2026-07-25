@@ -14,6 +14,8 @@ export const statement = {
   finances: ["view", "manage", "approve", "dispute"],
   transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
   materials: ["view", "manage", "report", "request", "approve"],
@@ -71,6 +73,8 @@ const constructionFull = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionContributor = {
@@ -100,6 +104,8 @@ const constructionContributor = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionReadOnly = {
@@ -129,6 +135,8 @@ const constructionReadOnly = {
   "key-dates": ["view"],
   permits: ["view"],
   risks: ["view"],
+  stages: ["view"],
+  buildings: ["view"],
 } as const satisfies PresetShape;
 
 export const owner = ac.newRole({

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { channelKeys, messageKeys, notificationKeys } from "@/hooks/query-keys";
+import { participantKeys } from "@/hooks/use-participants";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import { playMessageChime } from "@/lib/notification-sound";
 import {
@@ -28,7 +29,13 @@ type RealtimeEvent =
   | "read.updated"
   | "channel.updated"
   | "unread.changed"
-  | "notification.created";
+  | "notification.created"
+  | "row.updated"
+  | "row.verified"
+  | "row.rejected"
+  | "geometry.updated"
+  | "precon.progress"
+  | "access.updated";
 
 interface RealtimePayload {
   event: RealtimeEvent;
@@ -239,6 +246,27 @@ function handleEvent(
     return;
   }
 
+  if (
+    payload.event === "row.updated" ||
+    payload.event === "row.verified" ||
+    payload.event === "row.rejected" ||
+    payload.event === "geometry.updated" ||
+    payload.event === "precon.progress"
+  ) {
+    const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
+    if (!sessionId) return;
+    if (payload.event === "precon.progress") {
+      const message = (payload.data as { message?: string }).message ?? "";
+      queryClient.setQueryData<string[]>(["precon", "progress-feed", sessionId], (prev) =>
+        [...(prev ?? []), message].slice(-50),
+      );
+    }
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey.includes("snapshot") && query.queryKey.includes(sessionId),
+    });
+    return;
+  }
+
   if (payload.event === "notification.created") {
     const data = payload.data as { title?: string; body?: string };
     if (data.title) showDesktopNotification(data.title, data.body);
@@ -248,6 +276,15 @@ function handleEvent(
 
   if (payload.event === "unread.changed") {
     void queryClient.invalidateQueries({ queryKey: channelKeys.all });
+    return;
+  }
+
+  if (payload.event === "access.updated") {
+    const data = payload.data as { projectId?: string };
+    if (data.projectId) {
+      void queryClient.invalidateQueries({ queryKey: participantKeys.access(data.projectId) });
+      void queryClient.invalidateQueries({ queryKey: participantKeys.myProjects() });
+    }
   }
 }
 

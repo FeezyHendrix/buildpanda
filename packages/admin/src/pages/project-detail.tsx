@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -67,7 +68,7 @@ export default function ProjectDetailPage() {
   const currency = (project.currency as string) ?? "NGN";
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Link to="/projects" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
         <ChevronLeftIcon className="h-4 w-4" /> Projects
       </Link>
@@ -133,7 +134,7 @@ export default function ProjectDetailPage() {
       ) : (
         <CollectionTab id={id} tab={tab} />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

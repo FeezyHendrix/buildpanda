@@ -10,8 +10,12 @@ export interface KeyDateInput {
 }
 
 export const keyDatesApi = {
-  list: (projectId: string) =>
-    api.get<KeyDate[]>(`/projects/${projectId}/key-dates`).then((r) => r.data),
+  list: (projectId: string, buildingId?: string) =>
+    api
+      .get<KeyDate[]>(`/projects/${projectId}/key-dates`, {
+        params: buildingId ? { buildingId } : undefined,
+      })
+      .then((r) => r.data),
 
   create: (projectId: string, body: KeyDateInput) =>
     api.post<KeyDate>(`/projects/${projectId}/key-dates`, body).then((r) => r.data),

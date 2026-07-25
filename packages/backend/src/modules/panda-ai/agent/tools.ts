@@ -3,7 +3,11 @@ import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
 import { chatVision, type LlmTool } from "../../../lib/llm.ts";
-import { assertCanActAsClient, assertCanModifyProject } from "../../../lib/authorization.ts";
+import {
+  assertProjectPermission,
+  type ProjectSectionPermissions,
+} from "../../../lib/authorization.ts";
+import type { PermissionMap } from "../../../lib/permissions.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { tasksRepository } from "../../tasks/repository.ts";
 import { tasksService } from "../../tasks/service.ts";
@@ -31,6 +35,9 @@ export interface AgentCaller {
   project: { id: string; ownerId: string | null; organizationId: string | null };
   orgRoles: ReadonlyMap<string, string>;
   projectRoles: ReadonlyMap<string, string>;
+  orgPermissions: ReadonlyMap<string, PermissionMap>;
+  projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
+  projectGrants: ReadonlyMap<string, Record<string, readonly string[]>>;
 }
 
 export interface ToolContext {
@@ -38,6 +45,17 @@ export interface ToolContext {
   projectId: string;
   caller: AgentCaller;
   queue?: QueueManager;
+}
+
+function callerAccessContext(ctx: ToolContext) {
+  return {
+    userId: ctx.caller.user.id,
+    orgRoles: ctx.caller.orgRoles,
+    projectRoles: ctx.caller.projectRoles,
+    orgPermissions: ctx.caller.orgPermissions,
+    projectSectionPermissions: ctx.caller.projectSectionPermissions,
+    projectGrants: ctx.caller.projectGrants,
+  };
 }
 
 interface AgentTool {
@@ -149,6 +167,22 @@ export function buildTools(): AgentTool[] {
               overdue: end !== null && end < now && a.status !== "Completed",
             };
           }),
+        },
+      };
+    }),
+
+    tool(fn("get_buildings", "Get the buildings (blocks/structures) in this project with their status and progress. A project may contain several buildings that share one funding pool but each have their own programme of work. Use for questions like 'how is Block B tracking' or 'which building is furthest along'."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const buildings = await repo.buildings(ctx.projectId);
+      return {
+        output: {
+          buildings: buildings.map((b) => ({
+            id: b.id,
+            name: b.name,
+            code: b.code,
+            status: b.status,
+            progressPercent: Number(b.progress_percent ?? 0),
+          })),
         },
       };
     }),
@@ -519,6 +553,42 @@ export function buildTools(): AgentTool[] {
       return { output: materials.map((m) => ({ material: m.material_name, quantity: m.quantity, unit: m.unit, supplier: m.supplier, status: m.status, neededBy: m.needed_by, estimatedCost: m.estimated_cost })) };
     }),
 
+    tool(fn("get_precon_boq", "Get the draft preconstruction Bill of Quantities rows measured by Panda AI from uploaded drawings, including element group, code, description, quantity, unit, rate, amount, review status (ai_generated/needs_review/verified/rejected) and confidence. Use for questions about the draft/AI-measured BOQ, takeoff quantities from drawings, review progress, or draft bid totals. The accepted contractual BoQ lives in get_boq_items."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.preconBoqRows(ctx.projectId);
+      return {
+        output: rows.map((row) => ({
+          sessionTitle: row.session_title,
+          sessionStatus: row.session_status,
+          elementGroup: row.element_group,
+          code: row.code,
+          description: row.description,
+          quantity: row.qty === null ? null : Number(row.qty),
+          unit: row.unit,
+          rate: row.rate === null ? null : Number(row.rate),
+          amount: row.amount === null ? null : Number(row.amount),
+          reviewStatus: row.status,
+          confidence: row.confidence,
+        })),
+      };
+    }),
+
+    tool(fn("get_boq_items", "Get Bill of Quantities (BoQ) line items from the accepted/converted proposal for this project, including description, group, quantity and unit. Use for BoQ quantity questions such as total doors, blocks, tiles, fixtures, or any 'how many/how much is in the BoQ' question. This is the planned BoQ, not procurement orders or live stock."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const items = await repo.boqItems(ctx.projectId);
+      return {
+        output: items.map((item) => ({
+          proposalId: item.proposal_id,
+          proposalTitle: item.proposal_title,
+          proposalStatus: item.proposal_status,
+          group: item.group_label,
+          description: item.description,
+          quantity: Number(item.qty ?? 0),
+          unit: item.unit,
+        })),
+      };
+    }),
+
     tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const stock = await repo.materialStock(ctx.projectId);
@@ -766,11 +836,8 @@ export function buildTools(): AgentTool[] {
       assigneeId: { type: "string", description: "Optional user id to assign — only if a user id is known; do not guess" },
       dueDate: { type: "string", description: "Optional due date, YYYY-MM-DD" },
     }, ["title"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/tasks (requireProjectWrite).
-      assertCanModifyProject(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-      });
+      // Same check as POST /projects/:id/tasks (tasks:add).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "tasks", "add");
       const service = tasksService(tasksRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });
@@ -800,12 +867,8 @@ export function buildTools(): AgentTool[] {
       subject: { type: "string", description: "Short query subject (required)" },
       question: { type: "string", description: "The question body (required)" },
     }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/queries (staff with write access or client participant).
-      assertCanActAsClient(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-        projectRoles: ctx.caller.projectRoles,
-      });
+      // Same check as POST /projects/:id/queries (queries:raise).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "queries", "raise");
       const service = queriesService(queriesRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });
@@ -832,12 +895,8 @@ export function buildTools(): AgentTool[] {
       subject: { type: "string", description: "Short RFI subject (required)" },
       question: { type: "string", description: "The full question being asked (required)" },
     }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/rfis (staff with write access or client participant).
-      assertCanActAsClient(ctx.caller.project, {
-        userId: ctx.caller.user.id,
-        orgRoles: ctx.caller.orgRoles,
-        projectRoles: ctx.caller.projectRoles,
-      });
+      // Same check as POST /projects/:id/rfis (rfis:create).
+      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "rfis", "create");
       const service = rfisService(rfisRepository(ctx.db), {
         notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
       });

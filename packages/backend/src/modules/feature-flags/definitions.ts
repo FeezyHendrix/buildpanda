@@ -21,9 +21,14 @@ export const FEATURE_FLAGS = [
     key: "ai.automatedTakeoff",
     label: "Automated take-off",
     group: "Pre-construction AI",
-    description: "DWG-driven automated take-off jobs and proposal BoQ generation.",
+    description:
+      "Drawings-to-BoQ take-off in proposals: automated DWG jobs plus the QS review workspace and proposal BoQ generation.",
     enabledByDefault: true,
-    routePrefixes: ["/proposals/:id/plans/:planId/automated-takeoff", "/proposals/:id/automated-takeoff"],
+    routePrefixes: [
+      "/proposals/:id/plans/:planId/automated-takeoff",
+      "/proposals/:id/automated-takeoff",
+      "/precon",
+    ],
   },
   {
     key: "ai.programmeImport",
@@ -71,7 +76,21 @@ export const FEATURE_FLAGS = [
     group: "Project controls",
     description: "Stages, activities, tasks, schedule boards and progress recompute.",
     enabledByDefault: true,
-    routePrefixes: ["/projects/:id/stages", "/projects/:id/activities", "/projects/:id/tasks"],
+    routePrefixes: [
+      "/projects/:id/stages",
+      "/projects/:id/activities",
+      "/projects/:id/tasks",
+      "/projects/:id/look-aheads",
+    ],
+  },
+  {
+    key: "projects.multiBuilding",
+    label: "Multiple buildings",
+    group: "Project controls",
+    description:
+      "Split a project into multiple buildings that share one funding pool but each run their own programme of work.",
+    enabledByDefault: false,
+    routePrefixes: ["/projects/:id/buildings"],
   },
   {
     key: "projects.bim",
@@ -88,7 +107,7 @@ export const FEATURE_FLAGS = [
     description:
       "Experimental issue-detail dashboard inside the BIM viewer: a flagged element opens a coordination panel with status, due date and location. Future concept.",
     enabledByDefault: false,
-    routePrefixes: ["/projects/:id/bim"],
+    routePrefixes: [],
   },
   {
     key: "projects.selections",
@@ -192,7 +211,7 @@ export const FEATURE_FLAGS = [
     group: "Commercial",
     description: "Material orders, BoQ import, equipment requests and procurement tracking.",
     enabledByDefault: true,
-    routePrefixes: ["/projects/:id/materials", "/projects/:id/equipment-requests"],
+    routePrefixes: ["/projects/:id/materials", "/projects/:id/equipment-requests", "/projects/:id/suppliers"],
   },
   {
     key: "commercial.materialsLedger",

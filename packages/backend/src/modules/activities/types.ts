@@ -64,6 +64,7 @@ export interface Activity {
 export interface ActivityRow {
   id: string;
   project_id: string;
+  building_id: string;
   phase_id: string | null;
   name: string;
   activity_type: string;
@@ -116,6 +117,7 @@ export interface DelayReasonRow {
 export interface CreateActivityInput {
   name: string;
   activityType: string;
+  buildingId?: string | null;
   phaseId?: string | null;
   location?: string;
   status?: ActivityStatus;

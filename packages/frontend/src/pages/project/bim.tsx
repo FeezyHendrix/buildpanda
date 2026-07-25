@@ -16,6 +16,7 @@ import {
 } from "@/hooks/use-bim";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
 import { useParticipants } from "@/hooks/use-participants";
+import { canResourceAction } from "@/lib/project-types";
 import type { BimModel } from "@/lib/project-types";
 
 const BimViewer = lazy(() => import("@/components/molecules/bim-viewer"));
@@ -81,8 +82,8 @@ const BimIssueDashboard = lazy(() =>
 );
 
 export default function ProjectBim() {
-  const { project } = useProjectContext();
-  // const canUpload = access?.capabilities?.canManage ?? false;
+  const { project, access } = useProjectContext();
+  const canManage = canResourceAction(access, "bim", "manage");
   const dashboardPreview = useFeatureFlag("projects.bimDashboard");
 
   const { data: models = [], isLoading } = useBimModels(project.id);
@@ -277,39 +278,41 @@ export default function ProjectBim() {
                     )}
                   </div>
 
-                  <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                      Assign this element
-                    </p>
-                    <input
-                      value={issueTitle}
-                      onChange={(e) => setIssueTitle(e.target.value)}
-                      placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
-                      className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
-                    />
-                    <select
-                      value={issueAssignee}
-                      onChange={(e) => setIssueAssignee(e.target.value)}
-                      className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
-                    >
-                      <option value="">Select a person…</option>
-                      {assigneeOptions.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="w-full"
-                      onClick={addIssue}
-                      loading={createIssue.isPending}
-                      disabled={issueTitle.trim() === ""}
-                    >
-                      Assign element
-                    </Button>
-                  </div>
+                  {canManage && (
+                    <div className="mt-auto border-t border-gray-100 bg-gray-50/60 px-5 py-4">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                        Assign this element
+                      </p>
+                      <input
+                        value={issueTitle}
+                        onChange={(e) => setIssueTitle(e.target.value)}
+                        placeholder={`e.g. Check ${selected.ifcType?.replace(/^Ifc/, "") ?? "element"}`}
+                        className="mb-2 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                      />
+                      <select
+                        value={issueAssignee}
+                        onChange={(e) => setIssueAssignee(e.target.value)}
+                        className="mb-3 h-10 w-full rounded-lg bg-white px-3 text-sm text-gray-900 ring-1 ring-gray-200 outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/30"
+                      >
+                        <option value="">Select a person…</option>
+                        {assigneeOptions.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="w-full"
+                        onClick={addIssue}
+                        loading={createIssue.isPending}
+                        disabled={issueTitle.trim() === ""}
+                      >
+                        Assign element
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">

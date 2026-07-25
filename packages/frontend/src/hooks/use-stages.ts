@@ -4,10 +4,10 @@ import { stageKeys } from "./query-keys";
 
 export type { StageInput };
 
-export function useStages(projectId: string | undefined) {
+export function useStages(projectId: string | undefined, buildingId?: string) {
   return useQuery({
-    queryKey: stageKeys.list(projectId ?? "__none__"),
-    queryFn: () => stagesApi.list(projectId!),
+    queryKey: stageKeys.list(projectId ?? "__none__", buildingId),
+    queryFn: () => stagesApi.list(projectId!, buildingId),
     enabled: Boolean(projectId),
   });
 }

@@ -12,6 +12,7 @@ import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-di
 import { AddDailyLogEntryDialog } from "@/components/molecules/add-daily-log-entry-dialog";
 import { VoidDailyLogEntryDialog } from "@/components/molecules/void-daily-log-entry-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useSession } from "@/stores/auth";
 import {
   useProjectDailyDays,
@@ -64,18 +65,20 @@ function formatTime(iso: string): string {
 
 export default function ProjectDailyLog() {
   const { project, access } = useProjectContext();
+  const { selectedBuildingId } = useBuildingScope();
   const { data: session } = useSession();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canCreateEntry = Boolean(access && canResourceAction(access, "dailyLog", "create"));
+  const canVoidEntry = Boolean(access && canResourceAction(access, "dailyLog", "void"));
   const userId = session?.user?.id ?? null;
 
-  const { data: days = [], isPending } = useProjectDailyDays(project.id);
+  const { data: days = [], isPending } = useProjectDailyDays(project.id, undefined, selectedBuildingId);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
   const [periodDate, setPeriodDate] = useState(todayIso());
 
-  const canGenerateReport = canResourceAction(access, "dailyLog", "report");
+  const canGenerateReport = Boolean(access && canResourceAction(access, "dailyLog", "report"));
   const downloadPeriodReport = useDownloadPeriodReport();
 
   const upsert = useUpsertDailyLog();
@@ -105,14 +108,16 @@ export default function ProjectDailyLog() {
         title="Daily Log"
         description="Everyone on the team logs what they did each day. The report covers the whole day."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setEntryDate(today)}
-          >
-            <PlusIcon className="size-4" />
-            Add my log
-          </Button>
+          canCreateEntry ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setEntryDate(today)}
+            >
+              <PlusIcon className="size-4" />
+              Add my log
+            </Button>
+          ) : undefined
         }
       />
 
@@ -196,14 +201,16 @@ export default function ProjectDailyLog() {
             title="No daily logs yet"
             description="Add your first log to start the project diary. Anyone on the team can contribute."
             action={
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setEntryDate(today)}
-              >
-                <PlusIcon className="size-4" />
-                Add my log
-              </Button>
+              canCreateEntry ? (
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => setEntryDate(today)}
+                >
+                  <PlusIcon className="size-4" />
+                  Add my log
+                </Button>
+              ) : undefined
             }
           />
         ) : (
@@ -213,7 +220,9 @@ export default function ProjectDailyLog() {
               projectId={project.id}
               day={day}
               userId={userId}
-              canManage={canManage}
+              canCreateEntry={canCreateEntry}
+              canVoidEntry={canVoidEntry}
+              canGenerateReport={canGenerateReport}
               onAddEntry={() => setEntryDate(day.logDate)}
               onEditHeader={() => openHeader(day.logDate)}
             />
@@ -276,14 +285,18 @@ function DayCard({
   projectId,
   day,
   userId,
-  canManage,
+  canCreateEntry,
+  canVoidEntry,
+  canGenerateReport,
   onAddEntry,
   onEditHeader,
 }: {
   projectId: string;
   day: DailyLogDay;
   userId: string | null;
-  canManage: boolean;
+  canCreateEntry: boolean;
+  canVoidEntry: boolean;
+  canGenerateReport: boolean;
   onAddEntry: () => void;
   onEditHeader: () => void;
 }) {
@@ -316,7 +329,7 @@ function DayCard({
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          {canManage && (
+          {canCreateEntry && (
             <Button
               type="button"
               variant="ghost"
@@ -327,49 +340,55 @@ function DayCard({
               Conditions
             </Button>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-            loading={downloadReport.isPending}
-            onClick={() =>
-              downloadReport.mutate(
-                { projectId, logDate: day.logDate },
-                { onError: () => toast("Could not download report") },
-              )
-            }
-          >
-            Download report
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-            loading={emailReport.isPending}
-            onClick={() =>
-              emailReport.mutate(
-                { projectId, logDate: day.logDate },
-                {
-                  onSuccess: (res) =>
-                    toast(`Report sent to ${res.sentTo}`, "success"),
-                  onError: () => toast("Could not email report"),
-                },
-              )
-            }
-          >
-            Email me
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            className="h-10 sm:h-8 px-3 text-xs"
-            onClick={onAddEntry}
-          >
-            <PlusIcon className="size-3.5" />
-            Add log
-          </Button>
+          {canGenerateReport && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
+              loading={downloadReport.isPending}
+              onClick={() =>
+                downloadReport.mutate(
+                  { projectId, logDate: day.logDate },
+                  { onError: () => toast("Could not download report") },
+                )
+              }
+            >
+              Download report
+            </Button>
+          )}
+          {canGenerateReport && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
+              loading={emailReport.isPending}
+              onClick={() =>
+                emailReport.mutate(
+                  { projectId, logDate: day.logDate },
+                  {
+                    onSuccess: (res) =>
+                      toast(`Report sent to ${res.sentTo}`, "success"),
+                    onError: () => toast("Could not email report"),
+                  },
+                )
+              }
+            >
+              Email me
+            </Button>
+          )}
+          {canCreateEntry && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-10 sm:h-8 px-3 text-xs"
+              onClick={onAddEntry}
+            >
+              <PlusIcon className="size-3.5" />
+              Add log
+            </Button>
+          )}
         </div>
       </header>
 
@@ -386,7 +405,7 @@ function DayCard({
               logDate={day.logDate}
               entry={entry}
               userId={userId}
-              canManage={canManage}
+              canVoidEntry={canVoidEntry}
             />
           ))
         )}
@@ -400,13 +419,13 @@ function EntryRow({
   logDate,
   entry,
   userId,
-  canManage,
+  canVoidEntry,
 }: {
   projectId: string;
   logDate: string;
   entry: DailyLogEntry;
   userId: string | null;
-  canManage: boolean;
+  canVoidEntry: boolean;
 }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -423,7 +442,7 @@ function EntryRow({
     });
     return () => cancelAnimationFrame(id);
   }, [entry.bodyHtml, expanded]);
-  const canVoid = !entry.voided && (entry.authorId === userId || canManage);
+  const canVoid = !entry.voided && (entry.authorId === userId || canVoidEntry);
   const lastVoid =
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
 
