@@ -8,6 +8,7 @@ import { setLogger } from "./lib/logger.ts";
 import { setLlmCallSink } from "./lib/llm.ts";
 import { llmCallsRepository } from "./modules/llm-calls/repository.ts";
 import databasePlugin from "./plugins/database.ts";
+import accessCachePlugin from "./plugins/access-cache.ts";
 import authContextPlugin from "./plugins/auth-context.ts";
 import errorHandlerPlugin from "./plugins/error-handler.ts";
 import securityPlugin from "./plugins/security.ts";
@@ -17,6 +18,7 @@ import realtimePlugin from "./plugins/realtime.ts";
 import authRoutes from "./modules/auth/routes.ts";
 import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
+import permissionsRoutes from "./modules/permissions/routes.ts";
 import leadRoutes from "./modules/leads/routes.ts";
 import userRoutes from "./modules/users/routes.ts";
 import projectRoutes from "./modules/projects/routes.ts";
@@ -38,6 +40,7 @@ import purchaseOrderRoutes from "./modules/purchase-orders/routes.ts";
 import budgetRoutes from "./modules/budget/routes.ts";
 import adminRoutes from "./modules/admin/routes.ts";
 import stageRoutes from "./modules/stages/routes.ts";
+import buildingRoutes from "./modules/buildings/routes.ts";
 import actionItemRoutes from "./modules/action-items/routes.ts";
 import queryRoutes from "./modules/queries/routes.ts";
 import rfiRoutes from "./modules/rfis/routes.ts";
@@ -61,6 +64,7 @@ import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import automatedTakeoffRoutes from "./modules/panda-ai/automated-takeoff/routes.ts";
+import preconRoutes from "./modules/panda-ai/takeoff/routes.ts";
 import importSessionRoutes from "./modules/import-sessions/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import dataCommitmentRoutes from "./modules/data-commitment/routes.ts";
@@ -73,6 +77,7 @@ import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
 import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 import transactionRoutes from "./modules/transactions/routes.ts";
+import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -135,6 +140,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   await app.register(errorHandlerPlugin);
+  await app.register(accessCachePlugin);
   await app.register(authContextPlugin);
   await app.register(featureFlagsPlugin);
   await app.register(queuePlugin);
@@ -143,6 +149,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(assetRoutes);
   await app.register(healthRoutes);
+  await app.register(permissionsRoutes);
   await app.register(leadRoutes);
   await app.register(userRoutes);
   await app.register(projectRoutes);
@@ -164,6 +171,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(budgetRoutes);
   await app.register(adminRoutes);
   await app.register(stageRoutes);
+  await app.register(buildingRoutes);
   await app.register(actionItemRoutes);
   await app.register(queryRoutes);
   await app.register(rfiRoutes);
@@ -187,6 +195,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(pandaAiAgentRoutes);
   await app.register(programmeImportRoutes);
   await app.register(automatedTakeoffRoutes);
+  await app.register(preconRoutes);
   await app.register(importSessionRoutes);
   await app.register(orgProfileRoutes);
   await app.register(dataCommitmentRoutes);
@@ -205,6 +214,13 @@ export async function buildApp(): Promise<FastifyInstance> {
 
 export async function start(): Promise<void> {
   const app = await buildApp();
+
+  try {
+    const { seeded } = await besmmRag(app.db).ensureSeeded();
+    if (seeded > 0) app.log.info({ seeded }, "Seeded BESMM vector store from committed embeddings");
+  } catch (error) {
+    app.log.warn({ err: error }, "BESMM vector store seed skipped; take-off will use static reference");
+  }
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     app.log.info({ signal }, "Shutting down");

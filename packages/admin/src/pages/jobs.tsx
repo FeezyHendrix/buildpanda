@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { adminApi, type AdminImportJobRow } from "@/api/admin";
@@ -75,7 +76,7 @@ export default function JobsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <PageContainer className="flex flex-col gap-5">
       <PageHeader title="Import jobs" description="Programme and BoQ imports processed by Panda AI." />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchBar
@@ -121,7 +122,7 @@ export default function JobsPage() {
         </>
       )}
       {selected ? <JobDetailDialog job={selected} onClose={() => setSelected(null)} /> : null}
-    </div>
+    </PageContainer>
   );
 }
 

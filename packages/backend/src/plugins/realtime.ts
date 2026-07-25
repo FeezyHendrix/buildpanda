@@ -26,6 +26,19 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
   fastify.decorate("realtime", hub);
   const repo = messagingRepository(fastify.db);
 
+  // precon:<sessionId> channels authorize via membership of the organization
+  // that owns the session (preconstruction is a sales-suite feature).
+  const canJoinPreconChannel = async (sessionId: string, userId: string): Promise<boolean> => {
+    const session = await fastify
+      .db("precon_sessions")
+      .where({ id: sessionId })
+      .select<{ org_id: string }>("org_id")
+      .first();
+    if (!session) return false;
+    const member = await fastify.db("member").where({ organizationId: session.org_id, userId }).first();
+    return Boolean(member);
+  };
+
   await fastify.register(websocket);
 
   fastify.get("/ws", { websocket: true }, (socket, request) => {
@@ -47,12 +60,14 @@ const realtimePlugin: FastifyPluginAsync = async (fastify) => {
       }
       if (msg.action === "subscribe" && msg.channelId) {
         const channelId = msg.channelId;
-        void repo
-          .isMember(channelId, userId)
+        const authorize = channelId.startsWith("precon:")
+          ? canJoinPreconChannel(channelId.slice("precon:".length), userId)
+          : repo.isMember(channelId, userId);
+        void authorize
           .then((member) => {
             if (member && conn) hub.subscribeChannel(conn, channelId);
           })
-          .catch((err) => fastify.log.error({ err }, "ws subscribe isMember failed"));
+          .catch((err) => fastify.log.error({ err }, "ws subscribe authorization failed"));
       } else if (msg.action === "unsubscribe" && msg.channelId && conn) {
         hub.unsubscribeChannel(conn, msg.channelId);
       }

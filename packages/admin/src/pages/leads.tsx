@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useState } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi, type AdminLeadRow, type AdminOrgRow } from "@/api/admin";
@@ -173,7 +174,7 @@ export default function LeadsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <PageContainer className="flex flex-col gap-5">
       <PageHeader
         title="Leads"
         description="Consultation enquiries from the marketing site."
@@ -204,6 +205,6 @@ export default function LeadsPage() {
       {assignTarget && (
         <AssignDialog lead={assignTarget} onClose={() => setAssignTarget(null)} />
       )}
-    </div>
+    </PageContainer>
   );
 }

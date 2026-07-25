@@ -13,6 +13,7 @@ export interface LlmCallRow {
   latency_ms: number | null;
   validation_status: string;
   retry_count: number;
+  org_id: string | null;
   created_at: Date | string;
 }
 
@@ -26,11 +27,12 @@ export function llmCallsRepository(db: Knex) {
           prompt_version: record.promptVersion ?? null,
           model_version: record.modelVersion,
           seed: record.seed ?? null,
-          tokens_in: null,
-          tokens_out: null,
+          tokens_in: record.tokensIn ?? null,
+          tokens_out: record.tokensOut ?? null,
           latency_ms: record.latencyMs,
           validation_status: record.validationStatus,
           retry_count: record.retryCount,
+          org_id: record.orgId ?? null,
         })
         .then(() => undefined),
 

@@ -1,6 +1,8 @@
+import { PageContainer } from "@/components/page-container";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
+import { adminKeys } from "@/api/admin-keys";
 import {
   Avatar,
   Badge,
@@ -14,6 +16,7 @@ import {
 import { ChevronLeftIcon, ShieldIcon, BanIcon, TrashIcon } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
 import { formatDate } from "@/lib/utils";
+import { AuditLogTable } from "@/components/audit-log-table";
 
 export default function UserDetailPage() {
   const { id = "" } = useParams();
@@ -22,7 +25,7 @@ export default function UserDetailPage() {
   const { data: session } = authClient.useSession();
 
   const { data: user, isLoading, isError } = useQuery({
-    queryKey: ["admin", "user", id],
+    queryKey: adminKeys.users.detail(id),
     queryFn: () => adminApi.getUser(id),
   });
 
@@ -50,7 +53,7 @@ export default function UserDetailPage() {
   const busy = update.isPending || remove.isPending;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Link to="/users" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
         <ChevronLeftIcon className="h-4 w-4" /> Users
       </Link>
@@ -155,7 +158,14 @@ export default function UserDetailPage() {
           )}
         </Card>
       </div>
-    </div>
+
+      <Card className="flex flex-col overflow-hidden">
+        <div className="p-5 pb-0">
+          <h2 className="text-sm font-semibold text-ink">Action History</h2>
+        </div>
+        <AuditLogTable adminUserId={user.id} targetId={user.id} />
+      </Card>
+    </PageContainer>
   );
 }
 

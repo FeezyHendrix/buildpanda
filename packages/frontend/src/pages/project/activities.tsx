@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
@@ -26,8 +27,9 @@ import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
   const { project, access } = useProjectContext();
+  const { selectedBuildingId } = useBuildingScope();
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
-  const { data: activities = [], isPending } = useProjectActivities(project.id);
+  const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
   const { data: reasons = [] } = useDelayReasons();
 
   const [createOpen, setCreateOpen] = useState(false);

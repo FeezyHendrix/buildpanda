@@ -11,6 +11,7 @@ export const PROGRAMME_IMPORT_QUEUE = "programme-import-extraction";
 
 export interface ProgrammeImportJobData {
   jobId: string;
+  orgId?: string;
 }
 
 export async function runProgrammeImport(db: Knex, data: ProgrammeImportJobData): Promise<void> {

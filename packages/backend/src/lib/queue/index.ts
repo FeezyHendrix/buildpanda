@@ -2,10 +2,18 @@ import { Queue, Worker, type Job } from "bullmq";
 import IORedis, { type Redis } from "ioredis";
 import type { FastifyBaseLogger } from "fastify";
 import { captureBug } from "../sentry.ts";
+import { runWithLlmContext } from "../llm-context.ts";
 
 export type JobProcessor<TData = unknown> = (data: TData) => Promise<void>;
 
 export type QueueMode = "redis" | "inline";
+
+function orgIdFromJobData(data: unknown): string | undefined {
+  if (typeof data !== "object" || data === null) return undefined;
+  const record = data as Record<string, unknown>;
+  const candidate = record["orgId"] ?? record["organizationId"] ?? record["org_id"];
+  return typeof candidate === "string" ? candidate : undefined;
+}
 
 const DEFAULT_JOB_OPTS = {
   attempts: 3,
@@ -76,7 +84,10 @@ export class QueueManager {
       const worker = new Worker(
         queueName,
         async (job: Job) => {
-          await processor(job.data);
+          await runWithLlmContext(
+            { orgId: orgIdFromJobData(job.data), jobId: job.id, source: "job" },
+            () => processor(job.data),
+          );
         },
         { connection: this.connection, concurrency: 2 },
       );
@@ -142,7 +153,11 @@ export class QueueManager {
       throw new Error(`No processor registered for queue "${queueName}"`);
     }
     const run = () => {
-      void processor(data).catch((err) => {
+      void Promise.resolve(
+        runWithLlmContext({ orgId: orgIdFromJobData(data), source: "job" }, () =>
+          processor(data),
+        ),
+      ).catch((err) => {
         this.logger.error(
           { err, queue: queueName },
           "Inline background job failed",

@@ -4,6 +4,7 @@ import type { StageRow, StageStatus } from "./types.ts";
 export interface NewStageRecord {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   status: StageStatus;
   date_range: string | null;
@@ -26,6 +27,7 @@ export interface StageUpdatePatch {
 const COLUMNS = [
   "id",
   "project_id",
+  "building_id",
   "name",
   "status",
   "date_range",
@@ -37,9 +39,11 @@ const COLUMNS = [
 
 export function stagesRepository(db: Knex) {
   return {
-    listByProject(projectId: string): Promise<StageRow[]> {
+    listByProject(projectId: string, buildingId?: string): Promise<StageRow[]> {
+      const where: Record<string, string> = { project_id: projectId };
+      if (buildingId) where.building_id = buildingId;
       return db<StageRow>("project_phases")
-        .where({ project_id: projectId })
+        .where(where)
         .select(...COLUMNS)
         .orderBy("sort_order", "asc");
     },

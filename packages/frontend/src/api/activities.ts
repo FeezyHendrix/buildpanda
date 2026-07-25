@@ -57,8 +57,12 @@ export interface ResolveDelayInput {
 }
 
 export const activitiesApi = {
-  list: (projectId: string) =>
-    api.get<Activity[]>(`/projects/${projectId}/activities`).then((r) => r.data),
+  list: (projectId: string, buildingId?: string) =>
+    api
+      .get<Activity[]>(`/projects/${projectId}/activities`, {
+        params: buildingId ? { buildingId } : undefined,
+      })
+      .then((r) => r.data),
 
   detail: (projectId: string, activityId: string) =>
     api.get<Activity>(`/projects/${projectId}/activities/${activityId}`).then((r) => r.data),

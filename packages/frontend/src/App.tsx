@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import {
   HomeRedirect,
   RequireAuth,
@@ -63,6 +64,7 @@ const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
 const SalesDashboard = lazy(() => import("@/pages/sales/index"));
 const SalesLeads = lazy(() => import("@/pages/sales/leads"));
 const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
+const SalesPreconSession = lazy(() => import("@/pages/sales/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
@@ -109,6 +111,7 @@ const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
+const ProjectBuildings = lazy(() => import("@/pages/project/buildings"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
@@ -129,18 +132,18 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
-function pf(flag: string, el: ReactElement) {
+function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
 /** Feature flag + resource permission (RBAC) gate for project routes. */
-function pfr(flag: string, resource: string, el: ReactElement) {
+function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
   return (
     <ProjectFeatureFlagGate flag={flag}>
       <ProjectPermissionGate resource={resource}>{el}</ProjectPermissionGate>
     </ProjectFeatureFlagGate>
   );
 }
-function sf(flag: string, el: ReactElement) {
+function sf(flag: FeatureFlagKey, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
 
@@ -197,6 +200,7 @@ export const router = createBrowserRouter([
       { path: "leads", element: sf("sales.leads", <SalesLeads />) },
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
+      { path: "takeoff/:sessionId", element: sf("ai.automatedTakeoff", <SalesPreconSession />) },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
@@ -315,6 +319,7 @@ export const router = createBrowserRouter([
       { path: "equipment-requests/:bucket", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },
       { path: "suppliers", element: pf("commercial.materialsEquipment", <ProjectSuppliers />) },
 
+      { path: "schedules", element: <Navigate to="stages" replace /> },
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/milestones", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
@@ -323,6 +328,9 @@ export const router = createBrowserRouter([
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+
+      { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
+      { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },
 
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },

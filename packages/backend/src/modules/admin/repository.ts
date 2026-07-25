@@ -440,19 +440,38 @@ export function adminRepository(db: Knex) {
         "p.name as organizationName",
         db.raw("j.material_count as item_count"),
       );
+    const takeoff = db("takeoff_jobs as j")
+      .leftJoin("projects as p", "p.id", "j.project_id")
+      .leftJoin("user as u", "u.id", "j.requested_by")
+      .select(
+        "j.id",
+        db.raw("'takeoff' as kind"),
+        "j.status",
+        "j.file_name as fileName",
+        db.raw("false as usedAi"),
+        "j.error",
+        "j.created_at as createdAt",
+        "j.updated_at as updatedAt",
+        "u.name as requestedByName",
+        "u.email as requestedByEmail",
+        "p.name as organizationName",
+        db.raw("j.element_count as item_count"),
+      );
 
     if (params.status) {
       programme.where("j.status", params.status);
       boq.where("j.status", params.status);
+      takeoff.where("j.status", params.status);
     }
     if (params.search) {
       const like = `%${params.search}%`;
       programme.whereILike("j.file_name", like);
       boq.whereILike("j.file_name", like);
+      takeoff.whereILike("j.file_name", like);
     }
 
     const union = db
-      .unionAll([programme, boq], true)
+      .unionAll([programme, boq, takeoff], true)
       .as("jobs");
     const base = db.from(union);
 

@@ -40,9 +40,11 @@ export default function ProjectSettings() {
               budget across dashboards.
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-            Edit
-          </Button>
+          {canManage && (
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+              Edit
+            </Button>
+          )}
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -74,26 +76,25 @@ export default function ProjectSettings() {
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="project-currency" className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Project currency
-            </label>
-            <select
-              id="project-currency"
-              value={currency}
-              disabled={!canManage}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="h-11 w-72 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
-            >
-              {SUPPORTED_CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {currencyLabel(c.code)}
-                </option>
-              ))}
-            </select>
-          </div>
-          {canManage && (
+        {canManage && (
+          <div className="mt-5 flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="project-currency" className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Project currency
+              </label>
+              <select
+                id="project-currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="h-11 w-72 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {currencyLabel(c.code)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Button
               variant="primary"
               size="md"
@@ -108,8 +109,8 @@ export default function ProjectSettings() {
             >
               Save currency
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </section>
 
       <EditBudgetDrawer

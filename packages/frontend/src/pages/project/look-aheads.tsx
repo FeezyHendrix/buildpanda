@@ -13,6 +13,7 @@ import {
   type LookAheadFormValues,
 } from "@/components/molecules/upsert-look-ahead-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
   useAutoWindow,
   useCreateLookAhead,
@@ -44,12 +45,16 @@ function formatDate(iso: string): string {
 
 export default function ProjectLookAheads() {
   const { project, access } = useProjectContext();
+  const { selectedBuildingId } = useBuildingScope();
   const canManage = canResourceAction(access, "schedule", "manage");
 
   const [filter, setFilter] = useState<LookAheadStatus | "all">("all");
   const { data: lookAheads = [], isLoading } = useLookAheads(
     project.id,
-    filter === "all" ? {} : { status: filter },
+    {
+      ...(filter === "all" ? {} : { status: filter }),
+      ...(selectedBuildingId ? { buildingId: selectedBuildingId } : {}),
+    },
   );
   const { data: autoWindow, isLoading: autoWindowLoading } = useAutoWindow(project.id, 4);
   const { data: stock = [] } = useMaterialStock(project.id);

@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { auth } from "../lib/auth.ts";
 import { config } from "../config/index.ts";
+import { enterLlmContext } from "../lib/llm-context.ts";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../lib/errors.ts";
 import {
   BUILTIN_ROLES,
@@ -16,6 +17,7 @@ import {
   type ProjectSectionPermissions,
 } from "../lib/authorization.ts";
 import type { ProjectRow } from "../modules/projects/types.ts";
+import type { AccessContextRows } from "./access-cache.ts";
 
 export interface AuthUser {
   id: string;
@@ -26,6 +28,22 @@ export interface AuthUser {
   role: string;
 }
 
+const ACTIVITY_THROTTLE_MS = 5 * 60 * 1000;
+const lastActivityWrites = new Map<string, number>();
+
+// Throttled to one write per user per window — a per-request UPDATE would not
+// scale under load.
+function touchLastActivity(db: import("knex").Knex, userId: string): void {
+  const now = Date.now();
+  const last = lastActivityWrites.get(userId);
+  if (last && now - last < ACTIVITY_THROTTLE_MS) return;
+  lastActivityWrites.set(userId, now);
+  void db("user")
+    .where({ id: userId })
+    .update({ last_activity_at: new Date() })
+    .catch(() => lastActivityWrites.delete(userId));
+}
+
 declare module "fastify" {
   interface FastifyRequest {
     user: AuthUser | null;
@@ -33,6 +51,7 @@ declare module "fastify" {
     orgPermissions: ReadonlyMap<string, PermissionMap>;
     projectRoles: ReadonlyMap<string, string>;
     projectSectionPermissions: ReadonlyMap<string, ProjectSectionPermissions>;
+    projectGrants: ReadonlyMap<string, Record<string, readonly string[]>>;
     activeOrganizationId: string | null;
     requireAuth(): AuthUser;
     requireAdmin(): AuthUser;
@@ -57,6 +76,7 @@ interface ParticipantRoleRow {
   project_id: string;
   role: string;
   permissions: Record<string, string> | null;
+  grants: Record<string, string[]> | null;
 }
 
 interface OrgRoleRow {
@@ -82,6 +102,27 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     const project = await fastify.db<ProjectRow>("projects").where({ id }).first();
     if (!project) throw new NotFoundError("Project");
     return project;
+  }
+
+  async function loadAccessContextRows(userId: string): Promise<AccessContextRows> {
+    const memberRows = await fastify.db<MemberRoleRow>("member")
+      .where({ userId })
+      .select("organizationId", "role");
+
+    // Skips the custom-role DB query when all roles are built-in (common path).
+    const allBuiltin = memberRows.every((r) => BUILTIN_ROLES.has(r.role));
+    const orgIds = memberRows.map((r) => r.organizationId);
+    const customRoleRows: OrgRoleRow[] = !allBuiltin && orgIds.length
+      ? await fastify.db<OrgRoleRow>("organizationRole")
+          .whereIn("organizationId", orgIds)
+          .select("organizationId", "role", "permission")
+      : [];
+
+    const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
+      .where({ user_id: userId, status: "active" })
+      .select("project_id", "role", "permissions", "grants");
+
+    return { memberRows, customRoleRows, participantRows };
   }
   fastify.decorateRequest("requireAuth", function requireAuth(this: FastifyRequest) {
     if (!this.user) {
@@ -181,6 +222,7 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
     request.orgPermissions = new Map<string, PermissionMap>();
     request.projectRoles = new Map<string, string>();
     request.projectSectionPermissions = new Map<string, ProjectSectionPermissions>();
+    request.projectGrants = new Map<string, Record<string, readonly string[]>>();
     if (request.url.startsWith("/api/auth/")) return;
 
     try {
@@ -205,44 +247,48 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         };
         request.activeOrganizationId = session.session.activeOrganizationId ?? null;
 
-        const rows = await fastify.db<MemberRoleRow>("member")
-          .where({ userId: session.user.id })
-          .select("organizationId", "role");
-        request.orgRoles = new Map(rows.map((row) => [row.organizationId, row.role]));
+        enterLlmContext({
+          orgId: request.activeOrganizationId ?? undefined,
+          userId: session.user.id,
+          source: "request",
+        });
 
-        // Pre-resolve effective permission maps for each org the user belongs to.
-        // Skips the custom-role DB query when all roles are built-in (common path).
-        const allBuiltin = rows.every((r) => BUILTIN_ROLES.has(r.role));
-        const orgIds = rows.map((r) => r.organizationId);
+        touchLastActivity(fastify.db, session.user.id);
 
-        const customRows: OrgRoleRow[] = !allBuiltin && orgIds.length
-          ? await fastify.db<OrgRoleRow>("organizationRole")
-              .whereIn("organizationId", orgIds)
-              .select("organizationId", "role", "permission")
-          : [];
+        // Role/permission rows are served from the access cache (Redis-backed
+        // when configured) and re-read only after an explicit invalidation on
+        // write or the TTL safety net elapses.
+        const { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
+          session.user.id,
+          () => loadAccessContextRows(session.user.id),
+        );
+
+        request.orgRoles = new Map(memberRows.map((row) => [row.organizationId, row.role]));
 
         const byOrg = new Map<string, OrgRoleRow[]>();
-        for (const r of customRows) {
+        for (const r of customRoleRows) {
           const list = byOrg.get(r.organizationId);
           if (list) list.push(r);
           else byOrg.set(r.organizationId, [r]);
         }
 
         request.orgPermissions = new Map(
-          rows.map((r) => [
+          memberRows.map((r) => [
             r.organizationId,
             resolvePermissionMap(r.role, byOrg.get(r.organizationId) ?? []),
           ]),
         );
 
-        const participantRows = await fastify.db<ParticipantRoleRow>("project_participants")
-          .where({ user_id: session.user.id, status: "active" })
-          .select("project_id", "role", "permissions");
         request.projectRoles = new Map(participantRows.map((row) => [row.project_id, row.role]));
         request.projectSectionPermissions = new Map(
           participantRows
             .filter((row) => row.permissions && Object.keys(row.permissions).length > 0)
             .map((row) => [row.project_id, row.permissions as ProjectSectionPermissions]),
+        );
+        request.projectGrants = new Map(
+          participantRows
+            .filter((row) => row.grants && Object.keys(row.grants).length > 0)
+            .map((row) => [row.project_id, row.grants as Record<string, readonly string[]>]),
         );
       }
     } catch (error) {
@@ -271,5 +317,5 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
 
 export default fp(authContextPlugin, {
   name: "auth-context",
-  dependencies: ["database"],
+  dependencies: ["database", "access-cache"],
 });

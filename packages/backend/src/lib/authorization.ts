@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { isEmployeeRole, mapAllows, type PermissionMap } from "./permissions.ts";
+import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -20,6 +20,10 @@ export interface AccessContext {
   // the source of truth for that participant (overrides role defaults); absent
   // means fall back to the role default.
   projectSectionPermissions?: ReadonlyMap<string, ProjectSectionPermissions>;
+  // Raw resource->actions[] grants keyed by project id — the new source of
+  // truth. When a project has an entry here it is authoritative and the legacy
+  // (role default ∪ section matrix) path is skipped entirely.
+  projectGrants?: ReadonlyMap<string, Record<string, readonly string[]>>;
 }
 
 export interface EnrichedAccessContext extends AccessContext {
@@ -111,6 +115,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     "change-requests": ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -126,6 +131,34 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     rfis: ["view", "create"],
     bim: ["view"],
   },
+  project_manager: {
+    project: ["view"],
+    tasks: ["view", "add", "remove"],
+    finances: ["view"],
+    schedule: ["view", "manage"],
+    documents: ["view", "upload"],
+    inspections: ["view", "request", "manage"],
+    materials: ["view", "manage", "report", "request"],
+    contractors: ["view"],
+    dailyLog: ["view", "create", "report"],
+    updates: ["view", "post"],
+    messages: ["view", "send"],
+    comments: ["view", "post"],
+    participants: ["view"],
+    teamMembers: ["view"],
+    stages: ["view"],
+    buildings: ["view", "manage"],
+    "key-dates": ["view", "manage"],
+    queries: ["view", "raise", "manage"],
+    rfis: ["view", "create", "respond", "manage"],
+    approvals: ["view"],
+    selections: ["view"],
+    "change-requests": ["view", "manage"],
+    "action-items": ["view", "manage"],
+    permits: ["view", "manage"],
+    risks: ["view", "manage"],
+    bim: ["view", "upload"],
+  },
   architect: {
     project: ["view"],
     tasks: ["view"],
@@ -136,6 +169,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     "change-requests": ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -160,6 +194,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -188,6 +223,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     participants: ["view"],
     schedule: ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
   },
   materials_requester: {
@@ -198,6 +234,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view", "raise"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -221,6 +258,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view", "raise"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -247,10 +285,16 @@ export type ProjectSectionPermissions = Record<string, SectionValue>;
 // approve, decide or delete (those stay privileged, off the UI matrix).
 const SECTION_MAP: Record<
   string,
-  { resource: string; view: string[]; edit: string[]; editExtra?: Record<string, string[]> }
+  { resource: string; view: string[]; edit: string[]; viewExtra?: Record<string, string[]>; editExtra?: Record<string, string[]> }
 > = {
   "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
-  "projects.schedule": { resource: "schedule", view: ["view"], edit: ["view", "manage"] },
+  "projects.schedule": {
+    resource: "schedule",
+    view: ["view"],
+    edit: ["view", "manage"],
+    viewExtra: { stages: ["view"], buildings: ["view"] },
+    editExtra: { stages: ["view", "manage"], buildings: ["view", "manage"] },
+  },
   "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
   "quality.inspections": { resource: "inspections", view: ["view"], edit: ["view", "request"] },
   "quality.dailyLogs": { resource: "dailyLog", view: ["view", "report"], edit: ["view", "create", "report"] },
@@ -288,6 +332,11 @@ export function sectionsToPermissions(
     if (!entry || value === "hidden") continue;
     const actions = value === "edit" ? entry.edit : entry.view;
     out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
+    if (entry.viewExtra) {
+      for (const [res, extra] of Object.entries(entry.viewExtra)) {
+        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
+      }
+    }
     if (value === "edit" && entry.editExtra) {
       for (const [res, extra] of Object.entries(entry.editExtra)) {
         out[res] = [...new Set([...(out[res] ?? []), ...extra])];
@@ -297,17 +346,77 @@ export function sectionsToPermissions(
   return out;
 }
 
-// True when the participant matrix explicitly grants (view or edit) the section
-// whose resource+action is being checked. Used to overlay per-participant grants
-// on top of role defaults inside canProjectPermission.
-function matrixAllows(
+// Actions the section matrix is capable of granting per resource (union of all
+// view/edit bridges). The matrix may only revoke what it could have granted:
+// actions outside this vocabulary (e.g. finances:dispute, materials:approve)
+// stay governed by the participant's role default even when the matrix names
+// the resource. editExtra grants are additive side-effects, never revocations.
+const MATRIX_EXPRESSIBLE: Record<string, ReadonlySet<string>> = (() => {
+  const map: Record<string, Set<string>> = {};
+  for (const entry of Object.values(SECTION_MAP)) {
+    const set = (map[entry.resource] ??= new Set());
+    for (const action of [...entry.view, ...entry.edit]) set.add(action);
+  }
+  return map;
+})();
+
+/**
+ * Effective participant permissions: role defaults overlaid with the
+ * per-participant section matrix. When the matrix names a resource it is the
+ * source of truth for that resource's matrix-expressible actions — "hidden"
+ * genuinely revokes them. Resources (and non-expressible actions) the matrix
+ * does not name fall through to the role default. Org permissions are NOT
+ * composed here; callers keep them additive.
+ */
+export function composeParticipantPermissions(
+  roleDefaults: Record<string, readonly string[]> | undefined,
   sections: ProjectSectionPermissions | undefined,
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  if (sections) {
+    for (const [res, actions] of Object.entries(sectionsToPermissions(sections))) {
+      out[res] = [...actions];
+    }
+  }
+  if (!roleDefaults) return out;
+
+  const covered = new Set<string>();
+  if (sections) {
+    for (const key of Object.keys(sections)) {
+      const entry = SECTION_MAP[key];
+      if (entry) covered.add(entry.resource);
+    }
+  }
+  for (const [resource, actions] of Object.entries(roleDefaults)) {
+    const retained = covered.has(resource)
+      ? actions.filter((action) => !MATRIX_EXPRESSIBLE[resource]?.has(action))
+      : actions;
+    if (retained.length > 0) {
+      out[resource] = [...new Set([...(out[resource] ?? []), ...retained])];
+    }
+  }
+  return out;
+}
+
+export function effectiveParticipantGrants(
+  project: ProjectScope & { id: string },
+  ctx: AccessContext,
+): Record<string, readonly string[]> {
+  const stored = ctx.projectGrants?.get(project.id);
+  if (stored) return stored;
+  const pRole = participantRole(project, ctx);
+  const roleDefaults = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
+  const sections = ctx.projectSectionPermissions?.get(project.id);
+  return composeParticipantPermissions(roleDefaults, sections);
+}
+
+function participantAllows(
+  project: ProjectScope & { id: string },
+  ctx: AccessContext,
   resource: string,
   action: string,
 ): boolean {
-  if (!sections) return false;
-  const perms = sectionsToPermissions(sections);
-  return (perms[resource] ?? []).includes(action);
+  return (effectiveParticipantGrants(project, ctx)[resource] ?? []).includes(action);
 }
 
 /**
@@ -332,18 +441,9 @@ export function assertProjectPermission(
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   const orgAllowed = orgPerms ? mapAllows(orgPerms, resource, action) : false;
 
-  // Per-participant section matrix: a trusted grant whose SECTION_MAP bridge only
-  // yields safe read/author actions (never manage/approve/decide/delete), so
-  // honoring it here keeps backend enforcement in parity with canProjectPermission.
-  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
-  const matrixAllowed = matrixAllows(sections, resource, action);
-
-  // Participant-role overlay (additive)
-  const pRole = participantRole(project, ctx);
-  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-  const participantAllowed = pPerms ? (pPerms[resource] ?? []).includes(action) : false;
-
-  if (!orgAllowed && !matrixAllowed && !participantAllowed) {
+  // Participant overlay: role defaults + section matrix composed with
+  // matrix-override semantics (see composeParticipantPermissions).
+  if (!orgAllowed && !participantAllows(project, ctx, resource, action)) {
     throw new ForbiddenError(`Your role does not allow you to ${action} ${resource}`);
   }
 }
@@ -360,10 +460,105 @@ export function canProjectPermission(
   const orgPerms = orgId ? ctx.orgPermissions.get(orgId) : undefined;
   if (orgPerms && mapAllows(orgPerms, resource, action)) return true;
 
-  const sections = project.id ? ctx.projectSectionPermissions?.get(project.id) : undefined;
-  if (matrixAllows(sections, resource, action)) return true;
+  return participantAllows(project, ctx, resource, action);
+}
 
-  const pRole = participantRole(project, ctx);
-  const pPerms = pRole ? PARTICIPANT_PERMISSIONS[pRole] : undefined;
-  return pPerms ? (pPerms[resource] ?? []).includes(action) : false;
+// Resources that are org/sales surfaces, never a project-participant grant.
+const NON_PARTICIPANT_RESOURCES: ReadonlySet<string> = new Set([
+  "orgProfile",
+  "teamMembers",
+  "proposals",
+  "leads",
+]);
+
+// Verbs that are destructive, authoritative, or financial sign-off. Granting any
+// of these to a participant requires org owner/admin (see assertCanGrant).
+const PRIVILEGED_VERBS: ReadonlySet<string> = new Set([
+  "manage",
+  "approve",
+  "decide",
+  "delete",
+  "remove",
+  "void",
+]);
+
+// Actions privileged beyond the verb rule: project:update mutates project scope;
+// participants:manage would let the grantee re-grant (delegation of escalation).
+const PRIVILEGED_OVERRIDES: ReadonlySet<string> = new Set([
+  "project:update",
+  "participants:manage",
+]);
+
+export function isPrivilegedGrant(resource: string, action: string): boolean {
+  return PRIVILEGED_VERBS.has(action) || PRIVILEGED_OVERRIDES.has(`${resource}:${action}`);
+}
+
+/** The resource->actions catalog a participant editor may offer (org surfaces removed). */
+export function grantableCatalog(): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [resource, actions] of Object.entries(statement)) {
+    if (NON_PARTICIPANT_RESOURCES.has(resource)) continue;
+    out[resource] = [...actions];
+  }
+  return out;
+}
+
+/**
+ * Starter role presets as grant maps (resource->actions). The editor offers
+ * these as a one-click starting point; the inviter then extends or trims the
+ * grants freely. Sourced from PARTICIPANT_PERMISSIONS so presets never drift
+ * from the roles the system already understands. Org surfaces are filtered out.
+ */
+export function rolePresets(): Record<string, Record<string, string[]>> {
+  const out: Record<string, Record<string, string[]>> = {};
+  for (const [role, perms] of Object.entries(PARTICIPANT_PERMISSIONS)) {
+    const grants: Record<string, string[]> = {};
+    for (const [resource, actions] of Object.entries(perms)) {
+      if (NON_PARTICIPANT_RESOURCES.has(resource)) continue;
+      grants[resource] = [...actions];
+    }
+    out[role] = grants;
+  }
+  return out;
+}
+
+export interface GrantValidationContext extends EnrichedAccessContext {
+  isOrgAdmin: boolean;
+}
+
+/**
+ * Validates a proposed participant grant map before persist. Rejects unknown or
+ * non-participant resource:action pairs, and privileged grants when the inviter
+ * is not org owner/admin. Returns nothing; throws ForbiddenError/BadRequest-style
+ * ForbiddenError listing every offending pair.
+ */
+export function assertCanGrant(
+  ctx: GrantValidationContext,
+  grants: Record<string, readonly string[]>,
+): void {
+  const catalog = grantableCatalog();
+  const unknown: string[] = [];
+  const privileged: string[] = [];
+
+  for (const [resource, actions] of Object.entries(grants)) {
+    const allowed = catalog[resource];
+    for (const action of actions) {
+      if (!allowed || !allowed.includes(action)) {
+        unknown.push(`${resource}:${action}`);
+        continue;
+      }
+      if (!ctx.isOrgAdmin && isPrivilegedGrant(resource, action)) {
+        privileged.push(`${resource}:${action}`);
+      }
+    }
+  }
+
+  if (unknown.length > 0) {
+    throw new ForbiddenError(`Unknown or non-grantable permissions: ${unknown.join(", ")}`);
+  }
+  if (privileged.length > 0) {
+    throw new ForbiddenError(
+      `Only an organization owner or admin can grant: ${privileged.join(", ")}`,
+    );
+  }
 }

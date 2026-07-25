@@ -102,7 +102,7 @@ const programmeImportRoutes: FastifyPluginAsync = async (fastify) => {
         requested_by: user.id,
       });
 
-      const jobData: ProgrammeImportJobData = { jobId: job.id };
+      const jobData: ProgrammeImportJobData = { jobId: job.id, orgId: organizationId ?? undefined };
       await fastify.queue.enqueue(PROGRAMME_IMPORT_QUEUE, "extract", jobData);
 
       return reply.status(202).send(toJobDto(job));

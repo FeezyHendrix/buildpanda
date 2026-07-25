@@ -9,7 +9,7 @@ export function pandaAiService(
   queue: QueueManager,
 ) {
   return {
-    async trigger(projectId: string, userId: string): Promise<Insight> {
+    async trigger(projectId: string, userId: string, orgId?: string): Promise<Insight> {
       const row = await repo.create({
         id: generateId("ai"),
         project_id: projectId,
@@ -19,6 +19,7 @@ export function pandaAiService(
       const jobData: AnalysisJobData = {
         insightId: row.id,
         projectId,
+        orgId,
       };
       await queue.enqueue(PANDA_AI_QUEUE, "analyze", jobData);
       return toInsight(row);

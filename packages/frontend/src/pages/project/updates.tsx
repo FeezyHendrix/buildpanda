@@ -14,7 +14,7 @@ import {
   useGenerateAiDraft,
   useProjectUpdates,
 } from "@/hooks/use-updates";
-import type { Person, ProjectUpdate } from "@/lib/project-types";
+import { canResourceAction, type Person, type ProjectUpdate } from "@/lib/project-types";
 
 import { UpdateCard } from "./updates/update-card";
 import {
@@ -25,7 +25,8 @@ import {
 
 export default function ProjectUpdates() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canPost = Boolean(access && canResourceAction(access, "updates", "post"));
+  const canManage = canPost;
   const { data: updates = [] } = useProjectUpdates(project.id);
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [createOpen, setCreateOpen] = useState(false);
@@ -81,7 +82,7 @@ export default function ProjectUpdates() {
         title="Updates"
         description="Track construction progress with real-time reports from the site."
         actions={
-          canManage ? (
+          canPost ? (
             <>
               <Button
                 variant="secondary"

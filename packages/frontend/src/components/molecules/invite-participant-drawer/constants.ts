@@ -2,6 +2,7 @@ import type { KnownParticipantRole, ParticipantPermissions } from "@/lib/project
 
 export const KNOWN_ROLES: KnownParticipantRole[] = [
   "client",
+  "project_manager",
   "architect",
   "inspector",
   "guest",
@@ -14,6 +15,11 @@ export const ROLE_META: Record<KnownParticipantRole, { label: string; descriptio
     label: "Client",
     description:
       "Views progress, raises queries and approves milestone payments. Finance details hidden by default.",
+  },
+  project_manager: {
+    label: "Project Manager",
+    description:
+      "Runs the project day to day: manages schedule, tasks, RFIs, queries, materials and compliance. Cannot approve payments or manage participants.",
   },
   architect: {
     label: "Architect",
@@ -118,6 +124,28 @@ export const ROLE_DEFAULTS: Record<KnownParticipantRole, ParticipantPermissions>
     "compliance.permits": "hidden",
     "compliance.keyDates": "view",
     "project.updates": "view",
+    "collaboration.messaging": "edit",
+  },
+  project_manager: {
+    "projects.documents": "edit",
+    "projects.schedule": "edit",
+    "projects.bim": "edit",
+    "quality.inspections": "edit",
+    "quality.dailyLogs": "edit",
+    "quality.risks": "edit",
+    "commercial.finances": "view",
+    "commercial.budget": "view",
+    "commercial.invoices": "view",
+    "commercial.materialsEquipment": "edit",
+    "commercial.materialsLedger": "edit",
+    "workflow.rfis": "edit",
+    "workflow.queries": "edit",
+    "workflow.approvals": "view",
+    "workflow.changeRequests": "edit",
+    "workflow.actionItems": "edit",
+    "compliance.permits": "edit",
+    "compliance.keyDates": "edit",
+    "project.updates": "edit",
     "collaboration.messaging": "edit",
   },
   architect: {

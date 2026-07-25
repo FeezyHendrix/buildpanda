@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-purchase-orders";
 import { useProjectContext } from "@/layouts/project-layout";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 const STATUSES: PurchaseOrderStatus[] = [
@@ -391,10 +392,12 @@ function PurchaseOrderCard({
   purchaseOrder,
   projectId,
   currency,
+  canManage,
 }: {
   purchaseOrder: PurchaseOrder;
   projectId: string;
   currency: string;
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -426,10 +429,12 @@ function PurchaseOrderCard({
             {purchaseOrder.expectedDate ? ` · Expected ${purchaseOrder.expectedDate}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -494,7 +499,7 @@ function PurchaseOrderCard({
 
 export default function ProjectPurchaseOrders() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: purchaseOrders = [], isPending } = usePurchaseOrders(project.id);
   const createPurchaseOrder = useCreatePurchaseOrder();
@@ -596,6 +601,7 @@ export default function ProjectPurchaseOrders() {
                 purchaseOrder={purchaseOrder}
                 projectId={project.id}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>

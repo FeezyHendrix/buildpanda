@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectInvoices } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
+import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "./invoices/invoice-card";
 import { SummaryTile } from "./invoices/summary-tile";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
@@ -21,7 +22,7 @@ export default function ProjectInvoices() {
   const { project, access } = useProjectContext();
   const navigate = useNavigate();
   const [scanOpen, setScanOpen] = useState(false);
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
@@ -141,6 +142,7 @@ export default function ProjectInvoices() {
                 projectId={project.id}
                 invoice={invoice}
                 currency={currency}
+                canManage={canManage}
               />
             ))}
           </div>

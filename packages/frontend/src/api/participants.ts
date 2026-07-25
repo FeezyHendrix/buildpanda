@@ -7,16 +7,26 @@ import type {
   ProjectParticipant,
 } from "@/lib/project-types";
 
+export type ParticipantGrants = Record<string, string[]>;
+
 export interface InviteParticipantInput {
   email: string;
   name?: string;
   role?: string;
   permissions?: ParticipantPermissions;
+  grants?: ParticipantGrants;
 }
 
 export interface UpdateParticipantInput {
   role?: string;
   permissions?: ParticipantPermissions;
+  grants?: ParticipantGrants;
+}
+
+export interface PermissionCatalog {
+  resources: Record<string, string[]>;
+  privileged: Record<string, string[]>;
+  presets: Record<string, Record<string, string[]>>;
 }
 
 export interface ProjectInvitePreview {
@@ -28,6 +38,9 @@ export interface ProjectInvitePreview {
 }
 
 export const participantsApi = {
+  getCatalog: () =>
+    api.get<PermissionCatalog>("/permissions/catalog").then((r) => r.data),
+
   getAccess: (projectId: string) =>
     api.get<ProjectAccess>(`/projects/${projectId}/access`).then((r) => r.data),
 

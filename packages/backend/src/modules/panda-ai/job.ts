@@ -14,6 +14,7 @@ const HEALTH_DROP_THRESHOLD = 10;
 export interface AnalysisJobData {
   insightId: string;
   projectId: string;
+  orgId?: string;
 }
 
 async function notifyProjectInsights(

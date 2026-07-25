@@ -3,6 +3,7 @@ import type { Stage, StageStatus } from "@/lib/project-types";
 
 export interface StageInput {
   name: string;
+  buildingId?: string;
   status?: StageStatus;
   startDate?: string | null;
   endDate?: string | null;
@@ -10,8 +11,8 @@ export interface StageInput {
 }
 
 export const stagesApi = {
-  list: (projectId: string) =>
-    api.get<Stage[]>(`/projects/${projectId}/stages`).then((r) => r.data),
+  list: (projectId: string, buildingId?: string) =>
+    api.get<Stage[]>(`/projects/${projectId}/stages`, { params: buildingId ? { buildingId } : undefined }).then((r) => r.data),
 
   create: (projectId: string, body: StageInput) =>
     api.post<Stage>(`/projects/${projectId}/stages`, body).then((r) => r.data),

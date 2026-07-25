@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { adminApi, type AdminUserRow } from "@/api/admin";
@@ -54,7 +55,7 @@ export default function UsersPage() {
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <PageContainer className="flex flex-col gap-5">
       <PageHeader title="Users" description="Every account on the platform." />
       <SearchBar
         value={search}
@@ -74,6 +75,6 @@ export default function UsersPage() {
           <Pagination total={data.total} limit={DEFAULT_PAGE_SIZE} offset={offset} onChange={setOffset} />
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

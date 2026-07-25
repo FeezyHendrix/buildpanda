@@ -25,6 +25,7 @@ import {
 } from "@/hooks/use-payment-claims";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
 import type { MilestonePayment } from "@/lib/project-types";
+import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
 interface PaymentClaimValues {
@@ -288,11 +289,13 @@ function PaymentClaimCard({
   claim,
   currency,
   milestones,
+  canManage,
 }: {
   projectId: string;
   claim: PaymentClaim;
   currency: string;
   milestones: MilestonePayment[];
+  canManage: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -320,10 +323,12 @@ function PaymentClaimCard({
             {claim.milestonePaymentId ? ` · Milestone ${milestoneName ?? claim.milestonePaymentId}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -376,7 +381,7 @@ function Metric({ label, value, accent = false }: { label: string; value: string
 
 export default function ProjectPaymentClaims() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
+  const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: claims = [], isPending } = usePaymentClaims(project.id);
   const { data: finances } = useProjectFinances(project.id);
@@ -461,6 +466,7 @@ export default function ProjectPaymentClaims() {
                 claim={claim}
                 currency={currency}
                 milestones={finances?.milestones ?? []}
+                canManage={canManage}
               />
             ))}
           </div>

@@ -263,7 +263,7 @@ const materialsEquipmentRoutes: FastifyPluginAsync = async (fastify) => {
         requested_by: user.id,
       });
 
-      const jobData: BoqImportJobData = { jobId: job.id };
+      const jobData: BoqImportJobData = { jobId: job.id, orgId: project.organization_id ?? undefined };
       await fastify.queue.enqueue(BOQ_IMPORT_QUEUE, "extract", jobData);
 
       return reply.status(202).send(toJobDto(job));

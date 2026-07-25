@@ -3,12 +3,12 @@ import { activityKeys, projectKeys, stageKeys } from "./query-keys";
 import { participantKeys } from "./use-participants";
 import { activitiesApi, type CreateActivityInput, type UpdateActivityInput, type DeleteActivityInput, type RaiseDelayInput, type ResolveDelayInput } from "@/api/activities";
 
-export function useProjectActivities(projectId: string | undefined) {
+export function useProjectActivities(projectId: string | undefined, buildingId?: string) {
   return useQuery({
     queryKey: projectId
-      ? activityKeys.list(projectId)
+      ? activityKeys.list(projectId, buildingId)
       : activityKeys.list("__none__"),
-    queryFn: () => activitiesApi.list(projectId!),
+    queryFn: () => activitiesApi.list(projectId!, buildingId),
     enabled: Boolean(projectId),
   });
 }

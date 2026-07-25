@@ -9,6 +9,7 @@ import {
   UpsertStageDialog,
   type UpsertStageValues,
 } from "@/components/molecules/upsert-stage-dialog";
+import { useParams } from "react-router-dom";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateStage,
@@ -18,7 +19,7 @@ import {
   useUpdateStage,
 } from "@/hooks/use-stages";
 import { cn } from "@/lib/utils";
-import type { Stage, StageStatus } from "@/lib/project-types";
+import { canResourceAction, type Stage, type StageStatus } from "@/lib/project-types";
 import { KpiCard, ProgressBar } from "@/components";
 import { icons } from "@/assets/icons/icons";
 
@@ -59,8 +60,9 @@ const TABS: { key: FilterTab; label: string }[] = [
 
 export default function ProjectStages() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const { data: stages = [], isLoading } = useStages(project.id);
+  const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
+  const { buildingId } = useParams<{ buildingId?: string }>();
+  const { data: stages = [], isLoading } = useStages(project.id, buildingId);
   const createStage = useCreateStage();
   const updateStage = useUpdateStage();
   const deleteStage = useDeleteStage();
@@ -92,7 +94,7 @@ export default function ProjectStages() {
 
   function handleCreate(values: UpsertStageValues): void {
     createStage.mutate(
-      { projectId: project.id, ...values },
+      { projectId: project.id, buildingId, ...values },
       { onSuccess: () => setCreateOpen(false) },
     );
   }

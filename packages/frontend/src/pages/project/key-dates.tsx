@@ -11,6 +11,7 @@ import {
   type UpsertKeyDateValues,
 } from "@/components/molecules/upsert-key-date-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
   useCreateKeyDate,
   useDeleteKeyDate,
@@ -20,7 +21,7 @@ import {
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { icons } from "@/assets/icons/icons";
-import type { KeyDate, KeyDateStatus } from "@/lib/project-types";
+import { canResourceAction, type KeyDate, type KeyDateStatus } from "@/lib/project-types";
 
 function fmt(value: string | null): string {
   return formatShortDate(value) || "—";
@@ -288,8 +289,9 @@ const DATE_VIEW_OPTIONS: DropdownOption<DateView>[] = [
 
 export default function ProjectKeyDates() {
   const { project, access } = useProjectContext();
-  const canManage = access?.capabilities?.canManage ?? false;
-  const { data: keyDates = [], isLoading } = useKeyDates(project.id);
+  const { selectedBuildingId } = useBuildingScope();
+  const canManage = Boolean(access && canResourceAction(access, "key-dates", "manage"));
+  const { data: keyDates = [], isLoading } = useKeyDates(project.id, selectedBuildingId);
   const createKd = useCreateKeyDate();
   const updateKd = useUpdateKeyDate();
   const deleteKd = useDeleteKeyDate();

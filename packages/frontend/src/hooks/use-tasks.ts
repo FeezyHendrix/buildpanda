@@ -10,10 +10,15 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import type { TaskLinkType, TaskEntityType } from "@/lib/project-types";
 
-export function useTaskBoard(projectId: string, scope: "all" | "assigned" = "all", enabled = true) {
+export function useTaskBoard(
+  projectId: string,
+  scope: "all" | "assigned" = "all",
+  enabled = true,
+  buildingId?: string,
+) {
   return useQuery({
-    queryKey: taskKeys.board(projectId, scope),
-    queryFn: () => taskApi.board(projectId, scope),
+    queryKey: taskKeys.board(projectId, scope, buildingId),
+    queryFn: () => taskApi.board(projectId, scope, buildingId),
     enabled: Boolean(projectId) && enabled,
   });
 }

@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/page-container";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { adminApi, type AdminOrgRow } from "@/api/admin";
@@ -33,7 +34,7 @@ export default function OrganizationsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-5">
+    <PageContainer className="flex flex-col gap-5">
       <PageHeader title="Organizations" description="Companies and teams using BuildPanda." />
       <SearchBar
         value={search}
@@ -58,6 +59,6 @@ export default function OrganizationsPage() {
           <Pagination total={data.total} limit={DEFAULT_PAGE_SIZE} offset={offset} onChange={setOffset} />
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

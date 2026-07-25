@@ -11,7 +11,6 @@ import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { ReadOnlyBanner } from "@/components/molecules/read-only-banner";
 import { Navbar } from "@/components/organisms/navbar";
 import { ProjectSidebar } from "@/components/organisms/project-sidebar";
 import { PandaAiPane } from "@/components/organisms/panda-ai-pane";
@@ -20,7 +19,8 @@ import { UserMenu } from "@/components/molecules/user-menu";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
-import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
+import { BuildingScopeProvider } from "@/contexts/building-scope-context";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 
@@ -41,6 +41,9 @@ export default function ProjectLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: featureFlags } = useFeatureFlags();
+  const pandaAiChatEnabled =
+    featureFlags?.flags.some((flag) => flag.key === "ai.chatAgent" && flag.enabled) ?? false;
 
   if (projectId === "marbella") {
     return (
@@ -78,6 +81,7 @@ export default function ProjectLayout() {
   }
 
   return (
+    <BuildingScopeProvider projectId={project.id}>
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
         <ProjectSidebar
@@ -88,12 +92,11 @@ export default function ProjectLayout() {
           onOpen={() => setSidebarOpen(true)}
         />
         <main className="relative flex-1 overflow-y-auto no-scrollbar">
-          {access && <ReadOnlyBanner access={access} />}
           <ErrorBoundary>
             <Outlet context={{ project, access } satisfies ProjectOutletContext} />
           </ErrorBoundary>
         </main>
-        {!location.pathname.endsWith("/chat") && (
+        {pandaAiChatEnabled && !location.pathname.endsWith("/chat") && (
           <PandaAiPane projectId={project.id} />
         )}
         {access &&
@@ -104,6 +107,7 @@ export default function ProjectLayout() {
           )}
       </div>
     </AppShell>
+    </BuildingScopeProvider>
   );
 }
 
