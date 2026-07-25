@@ -72,6 +72,20 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
             options={STATUSES.map((s) => ({ value: s, label: s }))}
           />
         </div>
+        {values.invoiceType === "material" && (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-900">
+            <span aria-hidden="true" className="text-base leading-none">📦</span>
+            <div>
+              <p className="font-semibold">Materials will sync to stock</p>
+              <p className="mt-0.5 text-blue-800/80">
+                Each line item below will be recorded as a delivered material
+                order and posted as an <span className="font-medium">IN</span>{" "}
+                entry in your materials ledger when you save. Line items need a
+                description, quantity and unit for the sync to run.
+              </p>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section

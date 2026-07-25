@@ -32,6 +32,8 @@ export interface NewMaterialOrderRecord {
   currency: CurrencyCode;
   delivery_location: string | null;
   notes: string | null;
+  invoice_id: string | null;
+  invoice_line_item_id: string | null;
 }
 
 export type MaterialOrderPatch = Partial<Omit<NewMaterialOrderRecord, "id" | "project_id" | "requested_by_id">> & {

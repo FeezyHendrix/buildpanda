@@ -808,6 +808,7 @@ export interface ProjectFinances {
   adjustedContract: number;
   certifiedGrossToDate: number;
   amountPaidToDate: number;
+  contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
   materialsProcured: MaterialProcurement[];
   milestones: MilestonePayment[];
@@ -1371,6 +1372,8 @@ export interface StockLevel {
   unit: string;
   locationKey: string;
   onHandQty: number;
+  totalReceived: number;
+  totalUsed: number;
   lowStockThreshold: number | null;
   lowStock: boolean;
 }
@@ -1466,3 +1469,134 @@ export interface UpdateLookAheadInput {
   assignActivityIds?: string[];
   unassignActivityIds?: string[];
 }
+
+export type TransactionCategoryType = "preset" | "custom";
+
+export interface Transaction {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  category: string;
+  categoryLabel: string;
+  categoryColor: string | null;
+  categoryType: TransactionCategoryType;
+  amount: number;
+  transactedAt: string;
+  vendor: string | null;
+  reference: string | null;
+  receiptFileId: string | null;
+  createdById: string | null;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransactionCategoryInfo {
+  key: string;
+  label: string;
+  color: string | null;
+  type: TransactionCategoryType;
+  categoryId: string | null;
+}
+
+export interface TransactionAnalyticsCategory {
+  key: string;
+  label: string;
+  color: string | null;
+  type: TransactionCategoryType;
+  total: number;
+  count: number;
+}
+
+export interface TransactionAnalyticsMonth {
+  month: string;
+  total: number;
+}
+
+export interface TransactionAnalytics {
+  totalAmount: number;
+  count: number;
+  byCategory: TransactionAnalyticsCategory[];
+  byMonth: TransactionAnalyticsMonth[];
+}
+
+export interface TransactionListFilters {
+  category?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}
+
+export interface CreateTransactionInput {
+  title: string;
+  description?: string | null;
+  category: string;
+  amount: number;
+  transactedAt: string;
+  vendor?: string | null;
+  reference?: string | null;
+  receiptFileId?: string | null;
+}
+
+export interface UpdateTransactionInput {
+  title?: string;
+  description?: string | null;
+  category?: string;
+  amount?: number;
+  transactedAt?: string;
+  vendor?: string | null;
+  reference?: string | null;
+  receiptFileId?: string | null;
+}
+
+export interface CreateCustomCategoryInput {
+  label: string;
+  color?: string | null;
+}
+
+export const CONTRACT_TYPES = [
+  "lump_sum",
+  "cost_plus",
+  "unit_rate",
+  "gmp",
+  "design_build",
+  "target_cost",
+] as const;
+export type ContractType = (typeof CONTRACT_TYPES)[number];
+
+export const RETENTION_RELEASE_MODES = [
+  "all_at_practical_completion",
+  "staged_pc_dlp",
+  "all_at_dlp",
+] as const;
+export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
+
+export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
+export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
+
+export interface ContractTerms {
+  contractType: ContractType;
+  retentionRate: number;
+  retentionReleaseMode: RetentionReleaseMode;
+  advancePercentage: number;
+  advanceRecoveryMode: AdvanceRecoveryMode;
+  advanceRecoveryRate: number;
+  paymentTermsDays: number;
+  defectsLiabilityDays: number;
+  contractNotes: string | null;
+}
+
+export interface UpdateContractTermsInput {
+  contractSum?: number;
+  contractType?: ContractType;
+  retentionRate?: number;
+  retentionReleaseMode?: RetentionReleaseMode;
+  advancePercentage?: number;
+  advanceRecoveryMode?: AdvanceRecoveryMode;
+  advanceRecoveryRate?: number;
+  paymentTermsDays?: number;
+  defectsLiabilityDays?: number;
+  contractNotes?: string | null;
+}
+

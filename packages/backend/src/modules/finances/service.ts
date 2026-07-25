@@ -2,25 +2,31 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { FinancesRepository } from "./repository.ts";
-import type {
-  BudgetPhase,
-  BudgetPhaseRow,
-  CashFlowCategory,
-  CashFlowEntry,
-  CashFlowEntryRow,
-  FinanceEvent,
-  FinanceEventRow,
-  FinanceEventType,
-  FinancesRow,
-  MaterialProcurement,
-  MaterialProcurementRow,
-  MilestoneDispute,
-  MilestoneDisputeRow,
-  MilestonePayment,
-  MilestonePaymentRow,
-  PaymentLedgerEntry,
-  PaymentLedgerRow,
-  ProjectFinances,
+import {
+  ADVANCE_RECOVERY_MODES,
+  CONTRACT_TYPES,
+  RETENTION_RELEASE_MODES,
+  type AdvanceRecoveryMode,
+  type BudgetPhase,
+  type BudgetPhaseRow,
+  type CashFlowCategory,
+  type CashFlowEntry,
+  type CashFlowEntryRow,
+  type ContractType,
+  type FinanceEvent,
+  type FinanceEventRow,
+  type FinanceEventType,
+  type FinancesRow,
+  type MaterialProcurement,
+  type MaterialProcurementRow,
+  type MilestoneDispute,
+  type MilestoneDisputeRow,
+  type MilestonePayment,
+  type MilestonePaymentRow,
+  type PaymentLedgerEntry,
+  type PaymentLedgerRow,
+  type ProjectFinances,
+  type RetentionReleaseMode,
 } from "./types.ts";
 
 export interface FinanceActor {
@@ -221,6 +227,17 @@ function toFinances(
     adjustedContract: contractSum + variationsTotal,
     certifiedGrossToDate: num(summary.certified_gross_to_date),
     amountPaidToDate: num(summary.amount_paid_to_date),
+    contractTerms: {
+      contractType: summary.contract_type,
+      retentionRate: num(summary.retention_rate),
+      retentionReleaseMode: summary.retention_release_mode,
+      advancePercentage: num(summary.advance_percentage),
+      advanceRecoveryMode: summary.advance_recovery_mode,
+      advanceRecoveryRate: num(summary.advance_recovery_rate),
+      paymentTermsDays: summary.payment_terms_days,
+      defectsLiabilityDays: summary.defects_liability_days,
+      contractNotes: summary.contract_notes,
+    },
     budgetAllocation: budgetPhases.map(toBudgetPhase),
     materialsProcured: materials.map(toMaterial),
     milestones: milestones.map(toMilestone),
@@ -509,7 +526,98 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       );
       return this.getByProject(projectId);
     },
+
+    async updateContractTerms(
+      projectId: string,
+      input: UpdateContractTermsInput,
+      actor?: FinanceActor,
+    ): Promise<ProjectFinances> {
+      if (input.contractSum !== undefined) {
+        if (!Number.isFinite(input.contractSum) || input.contractSum < 0) {
+          throw new BadRequestError("Contract sum cannot be negative");
+        }
+        await repository.updateContractSum(projectId, input.contractSum);
+      }
+
+      const patch: Parameters<typeof repository.updateContractTerms>[1] = {};
+
+      if (input.contractType !== undefined) {
+        if (!(CONTRACT_TYPES as readonly string[]).includes(input.contractType)) {
+          throw new BadRequestError("Unknown contract type");
+        }
+        patch.contract_type = input.contractType;
+      }
+      if (input.retentionRate !== undefined) {
+        if (input.retentionRate < 0 || input.retentionRate > 1) {
+          throw new BadRequestError("Retention rate must be between 0 and 1");
+        }
+        patch.retention_rate = input.retentionRate;
+      }
+      if (input.retentionReleaseMode !== undefined) {
+        if (!(RETENTION_RELEASE_MODES as readonly string[]).includes(input.retentionReleaseMode)) {
+          throw new BadRequestError("Unknown retention release mode");
+        }
+        patch.retention_release_mode = input.retentionReleaseMode;
+      }
+      if (input.advancePercentage !== undefined) {
+        if (input.advancePercentage < 0 || input.advancePercentage > 1) {
+          throw new BadRequestError("Advance percentage must be between 0 and 1");
+        }
+        patch.advance_percentage = input.advancePercentage;
+      }
+      if (input.advanceRecoveryMode !== undefined) {
+        if (!(ADVANCE_RECOVERY_MODES as readonly string[]).includes(input.advanceRecoveryMode)) {
+          throw new BadRequestError("Unknown advance recovery mode");
+        }
+        patch.advance_recovery_mode = input.advanceRecoveryMode;
+      }
+      if (input.advanceRecoveryRate !== undefined) {
+        if (input.advanceRecoveryRate < 0) {
+          throw new BadRequestError("Advance recovery rate cannot be negative");
+        }
+        patch.advance_recovery_rate = input.advanceRecoveryRate;
+      }
+      if (input.paymentTermsDays !== undefined) {
+        if (input.paymentTermsDays < 0 || !Number.isInteger(input.paymentTermsDays)) {
+          throw new BadRequestError("Payment terms must be a non-negative integer");
+        }
+        patch.payment_terms_days = input.paymentTermsDays;
+      }
+      if (input.defectsLiabilityDays !== undefined) {
+        if (input.defectsLiabilityDays < 0 || !Number.isInteger(input.defectsLiabilityDays)) {
+          throw new BadRequestError("Defects liability must be a non-negative integer");
+        }
+        patch.defects_liability_days = input.defectsLiabilityDays;
+      }
+      if (input.contractNotes !== undefined) {
+        const trimmed = input.contractNotes?.trim();
+        patch.contract_notes = trimmed && trimmed.length > 0 ? trimmed : null;
+      }
+
+      await repository.updateContractTerms(projectId, patch);
+      await recordEvent(
+        projectId,
+        "milestone_updated",
+        actor ?? null,
+        "Updated contract terms",
+        null,
+      );
+      return this.getByProject(projectId);
+    },
   };
+}
+
+export interface UpdateContractTermsInput {
+  contractSum?: number;
+  contractType?: ContractType;
+  retentionRate?: number;
+  retentionReleaseMode?: RetentionReleaseMode;
+  advancePercentage?: number;
+  advanceRecoveryMode?: AdvanceRecoveryMode;
+  advanceRecoveryRate?: number;
+  paymentTermsDays?: number;
+  defectsLiabilityDays?: number;
+  contractNotes?: string | null;
 }
 
 export type FinancesService = ReturnType<typeof financesService>;

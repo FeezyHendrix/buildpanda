@@ -4,6 +4,38 @@ export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 
+export const CONTRACT_TYPES = [
+  "lump_sum",
+  "cost_plus",
+  "unit_rate",
+  "gmp",
+  "design_build",
+  "target_cost",
+] as const;
+export type ContractType = (typeof CONTRACT_TYPES)[number];
+
+export const RETENTION_RELEASE_MODES = [
+  "all_at_practical_completion",
+  "staged_pc_dlp",
+  "all_at_dlp",
+] as const;
+export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
+
+export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
+export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
+
+export interface ContractTerms {
+  contractType: ContractType;
+  retentionRate: number;
+  retentionReleaseMode: RetentionReleaseMode;
+  advancePercentage: number;
+  advanceRecoveryMode: AdvanceRecoveryMode;
+  advanceRecoveryRate: number;
+  paymentTermsDays: number;
+  defectsLiabilityDays: number;
+  contractNotes: string | null;
+}
+
 export interface BudgetPhase {
   id: string;
   name: string;
@@ -49,6 +81,7 @@ export interface ProjectFinances {
   adjustedContract: number;
   certifiedGrossToDate: number;
   amountPaidToDate: number;
+  contractTerms: ContractTerms;
   budgetAllocation: BudgetPhase[];
   materialsProcured: MaterialProcurement[];
   milestones: MilestonePayment[];
@@ -63,6 +96,16 @@ export interface FinancesRow {
   variations_total: string;
   certified_gross_to_date: string;
   amount_paid_to_date: string;
+  contract_type: ContractType;
+  retention_rate: string;
+  retention_release_mode: RetentionReleaseMode;
+  advance_percentage: string;
+  advance_recovery_mode: AdvanceRecoveryMode;
+  advance_recovery_rate: string;
+  advance_recovered: string;
+  payment_terms_days: number;
+  defects_liability_days: number;
+  contract_notes: string | null;
 }
 
 export interface BudgetPhaseRow {

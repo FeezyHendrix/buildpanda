@@ -10,6 +10,7 @@ import {
   type UpdateContractSumVariables,
   type RecordVariationVariables,
 } from "@/api/finances";
+import type { UpdateContractTermsInput } from "@/lib/project-types";
 import { financeKeys } from "./query-keys";
 
 export function useProjectFinances(projectId: string | undefined) {
@@ -157,6 +158,22 @@ export function useRecordVariation() {
   return useMutation({
     mutationFn: ({ projectId, amount, description }: RecordVariationVariables) =>
       financesApi.recordVariation(projectId, amount, description),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
+    },
+  });
+}
+
+export interface UpdateContractTermsVariables extends UpdateContractTermsInput {
+  projectId: string;
+}
+
+export function useUpdateContractTerms() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, ...body }: UpdateContractTermsVariables) =>
+      financesApi.updateContractTerms(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: financeKeys.all(projectId) });
     },

@@ -175,8 +175,24 @@ export function materialsLedgerRepository(db: Knex) {
     },
 
     listStock(projectId: string): Promise<StockRow[]> {
+      const agg = db("material_ledger_entries")
+        .select("material_id")
+        .select(
+          db.raw(
+            "COALESCE(SUM(CASE WHEN entry_type = 'IN' THEN quantity ELSE 0 END), 0) as total_received",
+          ),
+        )
+        .select(
+          db.raw(
+            "COALESCE(SUM(CASE WHEN entry_type = 'USED' THEN quantity ELSE 0 END), 0) as total_used",
+          ),
+        )
+        .where({ project_id: projectId })
+        .groupBy("material_id");
+
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")
+        .leftJoin(agg.as("agg"), "agg.material_id", "s.material_id")
         .where("s.project_id", projectId)
         .select(
           "s.project_id",
@@ -186,6 +202,8 @@ export function materialsLedgerRepository(db: Knex) {
           "s.location_key",
           "s.on_hand_qty",
           "c.low_stock_threshold",
+          db.raw("COALESCE(agg.total_received, 0) as total_received"),
+          db.raw("COALESCE(agg.total_used, 0) as total_used"),
         )
         .orderBy("c.name", "asc");
     },
