@@ -8,14 +8,16 @@ ENV _JAVA_OPTIONS="-Djava.awt.headless=true"
 
 FROM base AS dev
 COPY package.json ./
-RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
+# RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
+RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
 COPY . ./
 EXPOSE 3000
 CMD ["npx", "tsx", "watch", "src/server.ts"]
 
 FROM base AS build
 COPY package.json ./
-RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
+# RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc
+RUN npm install --include=optional --os=linux --cpu=x64 --libc=glibc --legacy-peer-deps
 COPY . ./
 RUN npx tsup src/cluster.ts src/server.ts --format esm
 RUN node -e "const p=require('path'),f=require('fs');const pkg=require.resolve('@byteink/mppjs-linux-x64/package.json');const bin=p.join(p.dirname(pkg),'bin','mpxj-convert');if(!f.existsSync(bin)){console.error('missing native binary',bin);process.exit(1)}f.accessSync(bin,f.constants.X_OK);console.log('mppjs native binary ok',bin)"

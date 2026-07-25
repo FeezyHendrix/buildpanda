@@ -357,6 +357,84 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    transactionCategoryAnalytics(projectId: string) {
+      return db("project_transactions as t")
+        .join("project_transaction_categories as c", "c.id", "t.category_id")
+        .where("t.project_id", projectId)
+        .groupBy("c.id", "c.name")
+        .orderByRaw("SUM(t.amount) DESC")
+        .select("c.name as category_name", db.raw("COALESCE(SUM(t.amount), 0) as total"), db.raw("COUNT(t.id) as count"));
+    },
+
+    transactionRecent(projectId: string, limit: number) {
+      return db("project_transactions as t")
+        .join("project_transaction_categories as c", "c.id", "t.category_id")
+        .where("t.project_id", projectId)
+        .orderBy("t.created_at", "desc")
+        .limit(limit)
+        .select("t.id", "t.title", "t.amount", "c.name as category_name", "t.transaction_date");
+    },
+
+    transactionTotal(projectId: string): Promise<number> {
+      return db("project_transactions")
+        .where({ project_id: projectId })
+        .sum<{ total: string | null }[]>("amount as total")
+        .first()
+        .then((r) => Number(r?.total ?? 0));
+    },
+
+    paymentSettings(projectId: string) {
+      return db("project_finances")
+        .where({ project_id: projectId })
+        .first(
+          "currency",
+          "payment_models",
+          "mobilization_advance",
+          "mobilization_outstanding",
+          "mobilization_amort_type",
+          "mobilization_amort_value",
+          "retention_held",
+          "retention_rate",
+          "retention_released_pc",
+          "retention_released_dl",
+        );
+    },
+
+    retentionReleases(projectId: string) {
+      return db("retention_releases")
+        .where({ project_id: projectId })
+        .orderBy("created_at", "desc")
+        .limit(50)
+        .select("stage", "amount", "status", "released_at", "released_by", "notes");
+    },
+
+    advanceAmortizations(projectId: string) {
+      return db("advance_amortizations as aa")
+        .leftJoin("milestone_payments as mp", "mp.id", "aa.milestone_id")
+        .where("aa.project_id", projectId)
+        .orderBy("aa.recovered_at", "desc")
+        .limit(100)
+        .select("aa.amount", "aa.recovered_at", "mp.name as milestone_name");
+    },
+
+    measuredWork(projectId: string) {
+      return db("measured_work_records")
+        .where({ project_id: projectId })
+        .orderBy("created_at", "desc")
+        .limit(200)
+        .select(
+          "description",
+          "unit",
+          "quantity",
+          "unit_rate",
+          "amount",
+          "period_start",
+          "period_end",
+          "status",
+          "certified_at",
+        );
+    },
+
     paymentClaims(projectId: string) {
       return db("payment_claims as pc")
         .leftJoin("milestone_payments as mp", "mp.id", "pc.milestone_payment_id")

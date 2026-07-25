@@ -151,10 +151,10 @@ export async function applyProgramme(
         project_id: projectId,
         currency: options.currency,
         total_budget: options.budgetTotal,
-        funds_deposited: 0,
-        funds_released: 0,
-        locked_in_escrow: 0,
-        remaining_balance: options.budgetTotal,
+        amount_paid_to_date: 0,
+        contract_sum: options.budgetTotal,
+        variations_total: 0,
+        certified_gross_to_date: 0,
       });
     } else {
       await trx("activities").where({ project_id: projectId, source: "programme-import" }).del();

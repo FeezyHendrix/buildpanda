@@ -83,8 +83,8 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
         budget: {
           currency: (finance as { currency?: string } | undefined)?.currency ?? "NGN",
           total: Number((finance as { total_budget?: string } | undefined)?.total_budget ?? 0),
-          released: Number((finance as { funds_released?: string } | undefined)?.funds_released ?? 0),
-          remaining: Number((finance as { remaining_balance?: string } | undefined)?.remaining_balance ?? 0),
+          released: Number((finance as { amount_paid_to_date?: string } | undefined)?.amount_paid_to_date ?? 0),
+          remaining: Number((finance as { total_budget?: string } | undefined)?.total_budget ?? 0) - Number((finance as { amount_paid_to_date?: string } | undefined)?.amount_paid_to_date ?? 0),
           approvedChangeCost: num(approvedChangeCost, "sum"),
         },
         scheduleRisk: {

@@ -46,6 +46,16 @@ export const financeKeys = {
     ] as const,
 };
 
+export const transactionKeys = {
+  all: (projectId: string) => ["projects", projectId, "transactions"] as const,
+  categories: (projectId: string) => [...transactionKeys.all(projectId), "categories"] as const,
+  list: (projectId: string, params?: unknown) =>
+    [...transactionKeys.all(projectId), "list", params ?? {}] as const,
+  detail: (projectId: string, transactionId: string) =>
+    [...transactionKeys.all(projectId), "detail", transactionId] as const,
+  analytics: (projectId: string) => [...transactionKeys.all(projectId), "analytics"] as const,
+};
+
 export const materialKeys = {
   all: (projectId: string) => ["projects", projectId, "materials"] as const,
   orders: (projectId: string, status?: string) =>

@@ -47,10 +47,10 @@ export interface NewFinancesRecord {
   project_id: string;
   currency: CurrencyCode;
   total_budget: number;
-  funds_deposited: number;
-  funds_released: number;
-  locked_in_escrow: number;
-  remaining_balance: number;
+  amount_paid_to_date?: number;
+  contract_sum?: number;
+  variations_total?: number;
+  certified_gross_to_date?: number;
 }
 
 /**

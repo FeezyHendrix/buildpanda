@@ -203,6 +203,15 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/projects/:id/materials-ledger"],
   },
   {
+    key: "commercial.transactions",
+    label: "Transactions",
+    group: "Commercial",
+    description:
+      "Photo-backed transaction ledger: record project expenses by category with optional receipt uploads, category breakdown charts and CSV export.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/transactions"],
+  },
+  {
     key: "collaboration.messaging",
     label: "Messaging",
     group: "Collaboration",

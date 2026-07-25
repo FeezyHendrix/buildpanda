@@ -56,7 +56,7 @@ export function adminRepository(db: Knex) {
       db("project_finances")
         .sum<{ budget: string; released: string }[]>({
           budget: "total_budget",
-          released: "funds_released",
+          released: "amount_paid_to_date",
         })
         .first(),
       db("leads").whereNull("org_id").count<{ count: string }[]>("id as count").first(),

@@ -5,9 +5,12 @@ import { notificationsService } from "../notifications/service.ts";
 import { financesRepository } from "./repository.ts";
 import {
   financesService,
+  type CashFlowInput,
   type CreateMilestoneInput,
   type DepositInput,
   type RaiseDisputeInput,
+  type RecordVariationInput,
+  type UpdateContractSumInput,
   type UpdateMilestoneInput,
 } from "./service.ts";
 
@@ -39,6 +42,19 @@ const depositBody = {
   },
 } as const;
 
+const cashFlowBody = {
+  type: "object",
+  required: ["category", "amount"],
+  additionalProperties: false,
+  properties: {
+    category: { type: "string", enum: ["valuation", "milestone_payment", "claims_payment"] },
+    amount: { type: "number", exclusiveMinimum: 0 },
+    isCredit: { type: "boolean" },
+    description: { type: "string", minLength: 1, maxLength: 500 },
+    entryDate: { type: "string", minLength: 1, maxLength: 30 },
+  },
+} as const;
+
 const disputeBody = {
   type: "object",
   required: ["reason"],
@@ -59,6 +75,25 @@ const milestoneBody = {
     percentComplete: { type: "integer", minimum: 0, maximum: 100 },
     status: { type: "string", enum: ["Completed", "InProgress", "Pending"] },
     inspectorSignOff: { type: "string", enum: ["Verified", "Scheduled", "Pending"] },
+  },
+} as const;
+
+const contractSumBody = {
+  type: "object",
+  required: ["contractSum"],
+  additionalProperties: false,
+  properties: {
+    contractSum: { type: "number", minimum: 0 },
+  },
+} as const;
+
+const variationBody = {
+  type: "object",
+  required: ["amount", "description"],
+  additionalProperties: false,
+  properties: {
+    amount: { type: "number" },
+    description: { type: "string", minLength: 1, maxLength: 500 },
   },
 } as const;
 
@@ -105,6 +140,26 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
       );
       const finances = await service.deposit(project.id, request.body, { id: user.id, name: user.name });
       return reply.status(201).send(finances);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/finances/cash-flow",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
+      return service.listCashFlowEntries(project.id);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: CashFlowInput }>(
+    "/projects/:id/finances/cash-flow",
+    { schema: { params: projectIdParams, body: cashFlowBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      const user = request.requireAuth();
+      const entry = await service.addCashFlowEntry(project.id, request.body, { id: user.id, name: user.name });
+      return reply.status(201).send(entry);
     },
   );
 
@@ -206,6 +261,36 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
         { id: user.id, name: user.name },
       );
       return reply.status(201).send(dispute);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: UpdateContractSumInput }>(
+    "/projects/:id/finances/contract-sum",
+    { schema: { params: projectIdParams, body: contractSumBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      const user = request.requireAuth();
+      const finances = await service.updateContractSum(
+        project.id,
+        request.body,
+        { id: user.id, name: user.name },
+      );
+      return reply.status(200).send(finances);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: RecordVariationInput }>(
+    "/projects/:id/finances/variations",
+    { schema: { params: projectIdParams, body: variationBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      const user = request.requireAuth();
+      const finances = await service.recordVariation(
+        project.id,
+        request.body,
+        { id: user.id, name: user.name },
+      );
+      return reply.status(200).send(finances);
     },
   );
 };
