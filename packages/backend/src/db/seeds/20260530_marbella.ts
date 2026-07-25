@@ -460,10 +460,9 @@ export async function seed(knex: Knex): Promise<void> {
     project_id: PROJECT_ID,
     currency: "NGN",
     total_budget: 45_300_500,
-    funds_deposited: 23_300_500,
-    funds_released: 13_300_500,
-    locked_in_escrow: 10_300_500,
-    remaining_balance: 3_300_500,
+    contract_sum: 45_300_500,
+    amount_paid_to_date: 13_300_500,
+    retention_held: 10_300_500,
   });
 
   await knex("budget_phases").insert([

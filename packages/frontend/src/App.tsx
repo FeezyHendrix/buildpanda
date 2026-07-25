@@ -92,6 +92,12 @@ const ProjectInvoiceNew = lazy(() => import("@/pages/project/invoices/new"));
 const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
 const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
+const ProjectContractSettings = lazy(() => import("@/pages/project/contract"));
+const ProjectAdvance = lazy(() => import("@/pages/project/advance"));
+const ProjectRetention = lazy(() => import("@/pages/project/retention"));
+const ProjectMeasuredWork = lazy(() => import("@/pages/project/measured-work"));
+const ProjectFinalAccount = lazy(() => import("@/pages/project/final-account"));
+const ProjectTransactions = lazy(() => import("@/pages/project/transactions"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -300,6 +306,12 @@ export const router = createBrowserRouter([
       { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
       { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
+      { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContractSettings />) },
+      { path: "finances/advance", element: pfr("commercial.finances", "finances", <ProjectAdvance />) },
+      { path: "finances/retention", element: pfr("commercial.finances", "finances", <ProjectRetention />) },
+      { path: "finances/measured-work", element: pfr("commercial.finances", "finances", <ProjectMeasuredWork />) },
+      { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
+      { path: "finances/transactions", element: pfr("commercial.transactions", "transactions", <ProjectTransactions />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },

@@ -3,12 +3,14 @@ import { ConflictError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type {
   BudgetPhaseRow,
+  CashFlowEntryRow,
   FinanceEventRow,
   FinancesRow,
   LedgerType,
   MaterialProcurementRow,
   MilestoneDisputeRow,
   MilestonePaymentRow,
+  NewCashFlowEntryRecord,
   NewFinanceEventRecord,
   PaymentLedgerRow,
 } from "./types.ts";
@@ -158,8 +160,7 @@ export function financesRepository(db: Knex) {
         await trx("project_finances")
           .where({ project_id: operation.projectId })
           .update({
-            funds_deposited: trx.raw("funds_deposited + ?", [operation.amount]),
-            locked_in_escrow: trx.raw("locked_in_escrow + ?", [operation.amount]),
+            amount_paid_to_date: trx.raw("amount_paid_to_date + ?", [operation.amount]),
           });
 
         await appendLedger(trx, {
@@ -191,15 +192,6 @@ export function financesRepository(db: Knex) {
 
         const amount = Number(milestone.amount);
 
-        const summary = await trx<FinancesRow>("project_finances")
-          .where({ project_id: operation.projectId })
-          .forUpdate()
-          .first();
-        if (!summary) throw new ConflictError("Project finances not initialized");
-        if (Number(summary.locked_in_escrow) < amount) {
-          throw new ConflictError("Insufficient escrow balance to release milestone");
-        }
-
         await trx("milestone_payments")
           .where({ id: operation.milestoneId })
           .update({ status: "Completed", percent_complete: 100 });
@@ -207,11 +199,8 @@ export function financesRepository(db: Knex) {
         await trx("project_finances")
           .where({ project_id: operation.projectId })
           .update({
-            funds_released: trx.raw("funds_released + ?", [amount]),
-            locked_in_escrow: trx.raw("locked_in_escrow - ?", [amount]),
-            remaining_balance: trx.raw("total_budget - (funds_released + ?)", [
-              amount,
-            ]),
+            certified_gross_to_date: trx.raw("certified_gross_to_date + ?", [amount]),
+            amount_paid_to_date: trx.raw("amount_paid_to_date + ?", [amount]),
           });
 
         await appendLedger(trx, {
@@ -229,6 +218,58 @@ export function financesRepository(db: Knex) {
         if (!updated) throw new ConflictError("Milestone disappeared after update");
         return updated;
       });
+    },
+
+    async updateContractSum(projectId: string, contractSum: number): Promise<void> {
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update({ contract_sum: contractSum });
+    },
+
+    async recordVariation(
+      projectId: string,
+      amount: number,
+    ): Promise<void> {
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update({
+          variations_total: db.raw("variations_total + ?", [amount]),
+        });
+    },
+
+    listCashFlowEntries(projectId: string): Promise<CashFlowEntryRow[]> {
+      return db<CashFlowEntryRow>("cash_flow_entries")
+        .where({ project_id: projectId })
+        .orderBy("sort_order", "asc");
+    },
+
+    async insertCashFlowEntry(record: NewCashFlowEntryRecord): Promise<void> {
+      await db("cash_flow_entries").insert(record);
+    },
+
+    async findRetentionRate(projectId: string): Promise<number> {
+      const row = await db<{ retention_rate: string | null }>("project_finances")
+        .where({ project_id: projectId })
+        .select("retention_rate")
+        .first();
+      const raw = row?.retention_rate;
+      return raw ? Number(raw) : 0;
+    },
+
+    async accrueRetention(projectId: string, amount: number): Promise<void> {
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update({
+          retention_held: db.raw("retention_held + ?", [amount]),
+        });
+    },
+
+    async updateCertifiedGrossToDate(projectId: string, amount: number): Promise<void> {
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update({
+          certified_gross_to_date: db.raw("certified_gross_to_date + ?", [amount]),
+        });
     },
 
     listEvents(projectId: string, limit = 100): Promise<FinanceEventRow[]> {

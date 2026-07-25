@@ -11,7 +11,8 @@ export const statement = {
   // Construction suite
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve"],
+  finances: ["view", "manage", "approve", "dispute"],
+  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
@@ -46,7 +47,8 @@ type PresetShape = Partial<Record<keyof typeof statement, readonly string[]>>;
 const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage", "approve"],
+  finances: ["view", "manage", "approve", "dispute"],
+  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
@@ -74,7 +76,8 @@ const constructionFull = {
 const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
-  finances: ["view", "manage"],
+  finances: ["view", "manage", "dispute"],
+  transactions: ["view", "create", "edit", "export"],
   schedule: ["view", "manage"],
   documents: ["view", "upload"],
   inspections: ["view", "request", "manage"],
@@ -103,6 +106,7 @@ const constructionReadOnly = {
   project: ["view"],
   tasks: ["view"],
   finances: ["view"],
+  transactions: ["view"],
   schedule: ["view"],
   documents: ["view"],
   inspections: ["view"],

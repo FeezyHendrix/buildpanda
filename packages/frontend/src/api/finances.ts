@@ -1,5 +1,7 @@
 import api from "./client";
 import type {
+  CashFlowCategory,
+  CashFlowEntry,
   FinanceEvent,
   MilestoneStatus,
   MilestoneDispute,
@@ -7,6 +9,15 @@ import type {
   ProjectFinances,
   SignOffStatus,
 } from "@/lib/project-types";
+
+export interface AddCashFlowVariables {
+  projectId: string;
+  category: CashFlowCategory;
+  amount: number;
+  isCredit: boolean;
+  description?: string;
+  entryDate?: string;
+}
 
 export interface DepositVariables {
   projectId: string;
@@ -41,7 +52,26 @@ export interface RaiseDisputeVariables {
   reason: string;
 }
 
+export interface UpdateContractSumVariables {
+  projectId: string;
+  contractSum: number;
+}
+
+export interface RecordVariationVariables {
+  projectId: string;
+  amount: number;
+  description: string;
+}
+
 export const financesApi = {
+  cashFlow: {
+    list: (projectId: string) =>
+      api.get<CashFlowEntry[]>(`/projects/${projectId}/finances/cash-flow`).then((r) => r.data),
+
+    create: (projectId: string, body: Omit<AddCashFlowVariables, "projectId">) =>
+      api.post<CashFlowEntry>(`/projects/${projectId}/finances/cash-flow`, body).then((r) => r.data),
+  },
+
   summary: (projectId: string) =>
     api.get<ProjectFinances>(`/projects/${projectId}/finances`).then((r) => r.data),
 
@@ -67,4 +97,10 @@ export const financesApi = {
 
   raiseDispute: (projectId: string, milestoneId: string, body: { reason: string }) =>
     api.post<MilestoneDispute>(`/projects/${projectId}/finances/milestones/${milestoneId}/disputes`, body).then((r) => r.data),
+
+  updateContractSum: (projectId: string, contractSum: number) =>
+    api.post<ProjectFinances>(`/projects/${projectId}/finances/contract-sum`, { contractSum }).then((r) => r.data),
+
+  recordVariation: (projectId: string, amount: number, description: string) =>
+    api.post<ProjectFinances>(`/projects/${projectId}/finances/variations`, { amount, description }).then((r) => r.data),
 };

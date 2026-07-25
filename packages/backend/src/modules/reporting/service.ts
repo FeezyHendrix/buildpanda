@@ -147,8 +147,8 @@ export function reportingService(db: Knex) {
         .groupBy("status"),
       db("project_finances")
         .where({ project_id: projectId })
-        .select("locked_in_escrow")
-        .first<{ locked_in_escrow: string } | undefined>(),
+        .select("retention_held")
+        .first<{ retention_held: string } | undefined>(),
       db("change_requests")
         .where({ project_id: projectId, status: "Approved" })
         .sum<{ sum: string | null }>("cost_impact as sum")
@@ -386,7 +386,7 @@ export function reportingService(db: Knex) {
           completed: milestoneCount("Completed"),
           inProgress: milestoneCount("InProgress"),
           pending: milestoneCount("Pending"),
-          lockedInEscrow: toNumber(escrowRow?.locked_in_escrow),
+          lockedInEscrow: toNumber(escrowRow?.retention_held),
         },
         changeRequests: {
           approvedCostImpact: toNumber(changeApproved?.sum),

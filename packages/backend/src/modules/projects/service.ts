@@ -272,14 +272,14 @@ export function projectsService(repository: ProjectsRepository) {
         project,
         phases,
         {
-          project_id: project.id,
-          currency: financesCurrency,
-          total_budget: project.budget_total,
-          funds_deposited: 0,
-          funds_released: 0,
-          locked_in_escrow: 0,
-          remaining_balance: project.budget_total,
-        },
+      project_id: project.id,
+      currency: financesCurrency,
+      total_budget: project.budget_total,
+      amount_paid_to_date: 0,
+      contract_sum: project.budget_total,
+      variations_total: 0,
+      certified_gross_to_date: 0,
+    },
         taskSeed,
       );
       return this.getById(project.id);

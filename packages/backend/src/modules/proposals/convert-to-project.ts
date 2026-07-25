@@ -154,10 +154,10 @@ export async function convertProposalToProject(
       project_id: projectId,
       currency,
       total_budget: estimate?.total ?? 0,
-      funds_deposited: 0,
-      funds_released: 0,
-      locked_in_escrow: 0,
-      remaining_balance: estimate?.total ?? 0,
+      amount_paid_to_date: 0,
+      contract_sum: estimate?.total ?? 0,
+      variations_total: 0,
+      certified_gross_to_date: 0,
     });
 
     const budgetCategories = estimate
