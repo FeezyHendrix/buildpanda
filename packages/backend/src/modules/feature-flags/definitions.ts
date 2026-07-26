@@ -110,6 +110,15 @@ export const FEATURE_FLAGS = [
     routePrefixes: [],
   },
   {
+    key: "projects.bimIfcUpload",
+    label: "BIM IFC upload (in-app conversion)",
+    group: "Project controls",
+    description:
+      "Let users upload a native IFC model in-app and convert it to XKT for viewing. Off by default while pre-baked XKT models are the supported path; enable to expose the Import model flow.",
+    enabledByDefault: false,
+    routePrefixes: [],
+  },
+  {
     key: "projects.selections",
     label: "Selections & allowances",
     group: "Project controls",

@@ -2,9 +2,9 @@ import { lazy, Suspense, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-// import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
-// import { UploadBimDialog } from "@/components/molecules/upload-bim-dialog";
+import { UploadBimDialog } from "@/components/molecules/upload-bim-dialog";
 import type { SelectedElement } from "@/components/molecules/bim-viewer";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -14,7 +14,7 @@ import {
   useBimModelIssues,
   useCreateBimIssue,
 } from "@/hooks/use-bim";
-import { useFeatureFlag } from "@/hooks/use-feature-flags";
+import { useFeatureFlag, useFeatureFlagState } from "@/hooks/use-feature-flags";
 import { useParticipants } from "@/hooks/use-participants";
 import { canResourceAction } from "@/lib/project-types";
 import type { BimModel } from "@/lib/project-types";
@@ -85,6 +85,8 @@ export default function ProjectBim() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "bim", "manage");
   const dashboardPreview = useFeatureFlag("projects.bimDashboard");
+  const ifcUpload = useFeatureFlagState("projects.bimIfcUpload");
+  const canUpload = canManage && ifcUpload.enabled && !ifcUpload.isLoading;
 
   const { data: models = [], isLoading } = useBimModels(project.id);
   const fileUrl = useBimModelFileUrl();
@@ -95,7 +97,7 @@ export default function ProjectBim() {
     .filter((p) => p.userId)
     .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
 
-  // const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [active, setActive] = useState<BimModel | null>(null);
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [xktModelUrl, setXktModelUrl] = useState<string | null>(null);
@@ -338,14 +340,12 @@ export default function ProjectBim() {
         title="BIM models"
         description="Import your Revit, ArchiCAD or Navisworks model (via IFC) and view it in 3D. Anchor coordination issues to elements and promote them to RFIs."
         actions={
-          // IFC upload temporarily disabled.
-          // canUpload ? (
-          //   <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
-          //     <PlusIcon className="size-4" />
-          //     Import model
-          //   </Button>
-          // ) : undefined
-          undefined
+          canUpload ? (
+            <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>
+              <PlusIcon className="size-4" />
+              Import model
+            </Button>
+          ) : undefined
         }
       />
 
@@ -358,7 +358,6 @@ export default function ProjectBim() {
             <p className="mt-1 text-xs text-gray-400">
               Import from Revit, ArchiCAD, Navisworks and more.
             </p>
-            {/* IFC upload temporarily disabled.
             {canUpload && (
               <Button
                 variant="secondary"
@@ -368,7 +367,7 @@ export default function ProjectBim() {
               >
                 Import your first model
               </Button>
-            )} */}
+            )}
           </Card>
         ) : (
           models.map((model) => (
@@ -382,8 +381,9 @@ export default function ProjectBim() {
         )}
       </div>
 
-      {/* IFC upload temporarily disabled.
-      <UploadBimDialog open={uploadOpen} onOpenChange={setUploadOpen} projectId={project.id} /> */}
+      {canUpload && (
+        <UploadBimDialog open={uploadOpen} onOpenChange={setUploadOpen} projectId={project.id} />
+      )}
     </div>
   );
 }

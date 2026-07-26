@@ -11,6 +11,7 @@ export const FEATURE_FLAGS = [
   "projects.multiBuilding",
   "projects.bim",
   "projects.bimDashboard",
+  "projects.bimIfcUpload",
   "projects.selections",
   "projects.reporting",
   "projects.weather",
