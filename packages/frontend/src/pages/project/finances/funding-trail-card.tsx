@@ -17,6 +17,7 @@ const EVENT_STYLES: Record<FinanceEventType, { dot: string; bg: string }> = {
   milestone_updated: { dot: "bg-gray-400", bg: "bg-gray-100" },
   milestone_deleted: { dot: "bg-red-500", bg: "bg-red-100" },
   dispute_raised: { dot: "bg-amber-500", bg: "bg-amber-100" },
+  cash_flow_entry: { dot: "bg-purple-500", bg: "bg-purple-100" },
 };
 
 function EventIcon({ type }: { type: FinanceEventType }) {

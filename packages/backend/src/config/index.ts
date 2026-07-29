@@ -164,6 +164,7 @@ export const config = {
     apiKey: optional("OPENAI_API_KEY", ""),
     baseUrl: optional("OPENAI_BASE_URL", "https://api.openai.com/v1"),
     model: optional("OPENAI_MODEL", "gpt-4o-mini"),
+    embedModel: optional("OPENAI_EMBED_MODEL", "text-embedding-3-small"),
     timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
   },
 

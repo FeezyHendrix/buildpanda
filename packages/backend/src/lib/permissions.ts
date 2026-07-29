@@ -12,7 +12,10 @@ export const statement = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve", "dispute"],
+  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
   materials: ["view", "manage", "report", "request", "approve"],
@@ -34,7 +37,6 @@ export const statement = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
@@ -48,6 +50,7 @@ const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve", "dispute"],
+  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete"],
   inspections: ["view", "request", "manage"],
@@ -70,13 +73,15 @@ const constructionFull = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "dispute"],
+  transactions: ["view", "create", "edit", "export"],
   schedule: ["view", "manage"],
   documents: ["view", "upload"],
   inspections: ["view", "request", "manage"],
@@ -99,13 +104,15 @@ const constructionContributor = {
   "key-dates": ["view", "manage"],
   permits: ["view", "manage"],
   risks: ["view", "manage"],
-  stages: ["view"],
+  stages: ["view", "manage"],
+  buildings: ["view", "manage"],
 } as const satisfies PresetShape;
 
 const constructionReadOnly = {
   project: ["view"],
   tasks: ["view"],
   finances: ["view"],
+  transactions: ["view"],
   schedule: ["view"],
   documents: ["view"],
   inspections: ["view"],
@@ -129,6 +136,7 @@ const constructionReadOnly = {
   permits: ["view"],
   risks: ["view"],
   stages: ["view"],
+  buildings: ["view"],
 } as const satisfies PresetShape;
 
 export const owner = ac.newRole({

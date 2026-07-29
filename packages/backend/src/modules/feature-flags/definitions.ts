@@ -18,20 +18,17 @@ export const FEATURE_FLAGS = [
     routePrefixes: ["/proposals"],
   },
   {
-    key: "ai.preconstruction",
-    label: "Preconstruction OS",
-    group: "Pre-construction AI",
-    description: "Drawings-to-BOQ takeoff, QS review workspace and bid pack output.",
-    enabledByDefault: false,
-    routePrefixes: ["/precon"],
-  },
-  {
     key: "ai.automatedTakeoff",
     label: "Automated take-off",
     group: "Pre-construction AI",
-    description: "DWG-driven automated take-off jobs and proposal BoQ generation.",
+    description:
+      "Drawings-to-BoQ take-off in proposals: automated DWG jobs plus the QS review workspace and proposal BoQ generation.",
     enabledByDefault: true,
-    routePrefixes: ["/proposals/:id/plans/:planId/automated-takeoff", "/proposals/:id/automated-takeoff"],
+    routePrefixes: [
+      "/proposals/:id/plans/:planId/automated-takeoff",
+      "/proposals/:id/automated-takeoff",
+      "/precon",
+    ],
   },
   {
     key: "ai.programmeImport",
@@ -87,6 +84,15 @@ export const FEATURE_FLAGS = [
     ],
   },
   {
+    key: "projects.multiBuilding",
+    label: "Multiple buildings",
+    group: "Project controls",
+    description:
+      "Split a project into multiple buildings that share one funding pool but each run their own programme of work.",
+    enabledByDefault: false,
+    routePrefixes: ["/projects/:id/buildings"],
+  },
+  {
     key: "projects.bim",
     label: "BIM coordination",
     group: "Project controls",
@@ -100,6 +106,15 @@ export const FEATURE_FLAGS = [
     group: "Project controls",
     description:
       "Experimental issue-detail dashboard inside the BIM viewer: a flagged element opens a coordination panel with status, due date and location. Future concept.",
+    enabledByDefault: false,
+    routePrefixes: [],
+  },
+  {
+    key: "projects.bimIfcUpload",
+    label: "BIM IFC upload (in-app conversion)",
+    group: "Project controls",
+    description:
+      "Let users upload a native IFC model in-app and convert it to XKT for viewing. Off by default while pre-baked XKT models are the supported path; enable to expose the Import model flow.",
     enabledByDefault: false,
     routePrefixes: [],
   },
@@ -214,6 +229,15 @@ export const FEATURE_FLAGS = [
     description: "Stock ledger, catalog, receipts, issues and adjustments.",
     enabledByDefault: true,
     routePrefixes: ["/projects/:id/materials-ledger"],
+  },
+  {
+    key: "commercial.transactions",
+    label: "Transactions",
+    group: "Commercial",
+    description:
+      "Photo-backed transaction ledger: record project expenses by category with optional receipt uploads, category breakdown charts and CSV export.",
+    enabledByDefault: true,
+    routePrefixes: ["/projects/:id/transactions"],
   },
   {
     key: "collaboration.messaging",

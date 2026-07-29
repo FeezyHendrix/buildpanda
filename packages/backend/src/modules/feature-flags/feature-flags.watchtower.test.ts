@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { FEATURE_FLAGS } from "./definitions.ts";
 
@@ -92,5 +94,32 @@ describe("feature flag watchtower", () => {
 
   it("treats BIM issue dashboard preview as frontend-only unless it gets dedicated API routes", () => {
     assert.deepEqual(routePrefixesFor("projects.bimDashboard"), []);
+  });
+
+  it("keeps the frontend feature-flag catalogue exactly in sync with backend definitions", () => {
+    const frontendPath = fileURLToPath(
+      new URL("../../../../frontend/src/lib/feature-flags.ts", import.meta.url),
+    );
+    const source = readFileSync(frontendPath, "utf8");
+    const frontendKeys = new Set(
+      [...source.matchAll(/"([a-z]+\.[a-zA-Z]+)"/g)].map((match) => match[1]),
+    );
+    const backendKeys = new Set<string>(FEATURE_FLAGS.map((flag) => flag.key));
+
+    const missingFromFrontend = [...backendKeys].filter((key) => !frontendKeys.has(key));
+    const staleInFrontend = [...frontendKeys].filter(
+      (key): key is string => key !== undefined && !backendKeys.has(key),
+    );
+
+    assert.deepEqual(
+      missingFromFrontend,
+      [],
+      `Backend defines flags the frontend catalogue (feature-flags.ts) is missing: ${missingFromFrontend.join(", ")}. Add them so FeatureFlagKey stays complete.`,
+    );
+    assert.deepEqual(
+      staleInFrontend,
+      [],
+      `Frontend catalogue lists flags absent from backend definitions: ${staleInFrontend.join(", ")}. The backend is the source of truth — remove them.`,
+    );
   });
 });

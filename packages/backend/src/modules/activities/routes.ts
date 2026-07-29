@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { activitiesRepository } from "./repository.ts";
 import { activitiesService } from "./service.ts";
 import { runProgressRecompute } from "./progress-job.ts";
@@ -41,6 +42,12 @@ const delayParams = {
 
 const isoString = { type: "string", minLength: 1, maxLength: 40 } as const;
 
+const buildingQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { buildingId: { type: "string", minLength: 1 } },
+} as const;
+
 const createActivityBody = {
   type: "object",
   required: ["name", "activityType", "plannedStartAt", "plannedEndAt"],
@@ -48,6 +55,7 @@ const createActivityBody = {
   properties: {
     name: { type: "string", minLength: 1, maxLength: 200 },
     activityType: { type: "string", minLength: 1, maxLength: 100 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     phaseId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     location: { type: "string", minLength: 1, maxLength: 200 },
     plannedStartAt: isoString,
@@ -117,21 +125,23 @@ const resolveDelayBody = {
 } as const;
 
 const activityRoutes: FastifyPluginAsync = async (fastify) => {
+  const buildings = buildingsRepository(fastify.db);
   const service = activitiesService(
     activitiesRepository(fastify.db),
     // Synchronous on purpose: interactive edits must see progress_percent
     // updated before the response returns, or the UI refetch races the job.
     // Bulk paths (programme import, daily logs) still go through the queue.
     (projectId) => runProgressRecompute(fastify.db, { projectId }),
+    (projectId) => buildings.soleRealBuildingId(projectId),
     { notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue) },
   );
 
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/activities",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
-      return service.listByProject(project.id);
+      return service.listByProject(project.id, request.query.buildingId);
     },
   );
 

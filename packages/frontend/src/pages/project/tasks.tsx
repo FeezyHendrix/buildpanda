@@ -22,6 +22,7 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
   useTaskBoard,
   useAssignableUsers,
@@ -45,13 +46,14 @@ type TaskBoardScope = "assigned" | "all";
 
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
+  const { selectedBuildingId } = useBuildingScope();
   const canAddTasks = Boolean(access && canResourceAction(access, "tasks", "add"));
   const canRemoveTasks = Boolean(access && canResourceAction(access, "tasks", "remove"));
   const canManage = canAddTasks;
   const canSeeAllTasks = canRemoveTasks;
   const [boardScope, setBoardScope] = useState<TaskBoardScope>("all");
   const requestedScope: TaskBoardScope = canSeeAllTasks ? boardScope : "assigned";
-  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope, Boolean(access));
+  const { data: board, isLoading } = useTaskBoard(project.id, requestedScope, Boolean(access), selectedBuildingId);
   const { data: assignable = [] } = useAssignableUsers(project.id);
 
   const createTask = useCreateTask(project.id);

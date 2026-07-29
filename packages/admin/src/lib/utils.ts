@@ -33,6 +33,16 @@ export function formatMoney(
   }
 }
 
+export function formatUsd(amount: number | null | undefined): string {
+  const value = Number(amount ?? 0);
+  if (Number.isNaN(value)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value < 100 ? 2 : 0,
+  }).format(value);
+}
+
 export function initials(name: string | null | undefined): string {
   if (!name) return "?";
   return name

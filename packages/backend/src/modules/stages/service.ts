@@ -1,10 +1,11 @@
-import { NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { StagesRepository, StageUpdatePatch } from "./repository.ts";
 import type { Stage, StageRow, StageStatus } from "./types.ts";
 
 export interface CreateStageInput {
   name: string;
+  buildingId?: string | null;
   status?: StageStatus;
   startDate?: string | null;
   endDate?: string | null;
@@ -54,20 +55,32 @@ function toStage(row: StageRow): Stage {
   };
 }
 
-export function stagesService(repository: StagesRepository) {
+export function stagesService(
+  repository: StagesRepository,
+  soleRealBuildingId: (projectId: string) => Promise<string | undefined>,
+) {
+  async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
+    if (explicit) return explicit;
+    const buildingId = await soleRealBuildingId(projectId);
+    if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+    return buildingId;
+  }
+
   return {
-    async list(projectId: string): Promise<Stage[]> {
-      const rows = await repository.listByProject(projectId);
+    async list(projectId: string, buildingId?: string): Promise<Stage[]> {
+      const rows = await repository.listByProject(projectId, buildingId);
       return rows.map(toStage);
     },
 
     async create(projectId: string, input: CreateStageInput): Promise<Stage> {
       const startDate = input.startDate ?? null;
       const endDate = input.endDate ?? null;
+      const buildingId = await resolveBuildingId(projectId, input.buildingId);
       const sortOrder = await repository.nextSortOrder(projectId);
       const row = await repository.create({
         id: generateId("stage"),
         project_id: projectId,
+        building_id: buildingId,
         name: input.name,
         status: input.status ?? "Pending",
         date_range: deriveDateRange(startDate, endDate),

@@ -1,8 +1,9 @@
 import type { Knex } from "knex";
 import type { FastifyPluginAsync } from "fastify";
-import { NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { idParams as projectIdParams, buildingQuery } from "../../lib/schemas.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 
 export type KeyDateStatus = "Upcoming" | "Met" | "Missed";
 
@@ -22,6 +23,7 @@ export interface KeyDate {
 interface KeyDateRow {
   id: string;
   project_id: string;
+  building_id: string;
   label: string;
   target_date: string | null;
   actual_date: string | null;
@@ -61,6 +63,7 @@ const kdParams = {
 
 const bodyProps = {
   label: { type: "string", minLength: 1, maxLength: 200 },
+  buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
   targetDate: { type: ["string", "null"], maxLength: 40 },
   actualDate: { type: ["string", "null"], maxLength: 40 },
   status: { type: "string", enum: STATUS },
@@ -72,6 +75,7 @@ const updateBody = { type: "object", additionalProperties: false, minProperties:
 
 interface KeyDateInput {
   label?: string;
+  buildingId?: string | null;
   targetDate?: string | null;
   actualDate?: string | null;
   status?: KeyDateStatus;
@@ -90,14 +94,24 @@ function toPatch(input: KeyDateInput): Record<string, unknown> {
 
 const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
+  const buildings = buildingsRepository(db);
 
-  fastify.get<{ Params: { id: string } }>(
+  async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
+    if (explicit) return explicit;
+    const buildingId = await buildings.soleRealBuildingId(projectId);
+    if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+    return buildingId;
+  }
+
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
     "/projects/:id/key-dates",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "key-dates", "view");
+      const where: Record<string, string> = { project_id: project.id };
+      if (request.query.buildingId) where.building_id = request.query.buildingId;
       const rows = await db<KeyDateRow>("key_dates")
-        .where({ project_id: project.id })
+        .where(where)
         .orderBy([{ column: "target_date", order: "asc" }, { column: "sort_order", order: "asc" }]);
       return rows.map(toKeyDate);
     },
@@ -108,9 +122,11 @@ const keyDateRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams, body: createBody } },
     async (request, reply) => {
       const project = await request.requireProjectPermission(request.params.id, "key-dates", "manage");
+      const buildingId = await resolveBuildingId(project.id, request.body.buildingId);
       const record = {
         id: generateId("kd"),
         project_id: project.id,
+        building_id: buildingId,
         label: request.body.label!,
         target_date: request.body.targetDate ?? null,
         actual_date: request.body.actualDate ?? null,

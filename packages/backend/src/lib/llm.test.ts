@@ -7,7 +7,7 @@ const schema = z.object({ answer: z.number() });
 const messages: LlmMessage[] = [{ role: "user", content: "q" }];
 
 test("valid JSON resolves to a typed value with retryCount 0", async () => {
-  const restore = setJsonTransportForTests(async () => JSON.stringify({ answer: 42 }));
+  const restore = setJsonTransportForTests(async () => ({ content: JSON.stringify({ answer: 42 }) }));
   try {
     const result = await chatJsonValidated(messages, schema);
     assert.ok(result);
@@ -22,7 +22,9 @@ test("schema-violating JSON once then valid resolves after exactly one repair re
   let call = 0;
   const restore = setJsonTransportForTests(async () => {
     call += 1;
-    return call === 1 ? JSON.stringify({ answer: "not a number" }) : JSON.stringify({ answer: 7 });
+    return {
+      content: call === 1 ? JSON.stringify({ answer: "not a number" }) : JSON.stringify({ answer: 7 }),
+    };
   });
   try {
     const result = await chatJsonValidated(messages, schema);
@@ -36,7 +38,7 @@ test("schema-violating JSON once then valid resolves after exactly one repair re
 });
 
 test("invalid twice throws LLMValidationError carrying the raw output", async () => {
-  const restore = setJsonTransportForTests(async () => JSON.stringify({ answer: "still bad" }));
+  const restore = setJsonTransportForTests(async () => ({ content: JSON.stringify({ answer: "still bad" }) }));
   try {
     await assert.rejects(
       () => chatJsonValidated(messages, schema),
@@ -58,7 +60,7 @@ test("non-JSON string is treated as a schema failure and repaired", async () => 
   let call = 0;
   const restore = setJsonTransportForTests(async () => {
     call += 1;
-    return call === 1 ? "this is not json" : JSON.stringify({ answer: 1 });
+    return { content: call === 1 ? "this is not json" : JSON.stringify({ answer: 1 }) };
   });
   try {
     const result = await chatJsonValidated(messages, schema);
@@ -71,7 +73,7 @@ test("non-JSON string is treated as a schema failure and repaired", async () => 
 });
 
 test("null transport output (no provider) resolves to null, not an error", async () => {
-  const restore = setJsonTransportForTests(async () => null);
+  const restore = setJsonTransportForTests(async () => ({ content: null }));
   try {
     const result = await chatJsonValidated(messages, schema);
     assert.equal(result, null);

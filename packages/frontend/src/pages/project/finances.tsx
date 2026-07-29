@@ -1,40 +1,159 @@
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 
-import { useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { FundProjectDialog } from "@/components/molecules/fund-project-dialog";
+import { AddCashFlowDialog } from "@/components/molecules/add-cash-flow-dialog";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
-  useFundProject,
+  useAddCashFlowEntry,
+  useCashFlowEntries,
   useProjectFinances,
   useRaiseDispute,
   useReleaseMilestone,
 } from "@/hooks/use-finances";
-import { formatCurrency } from "@/lib/formatters";
-import type { MilestonePayment } from "@/lib/project-types";
+import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import type { CashFlowEntry, MilestonePayment } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { BudgetAllocationCard } from "./finances/budget-allocation-card";
+import { ContractOverviewCard } from "./finances/contract-overview-card";
 import { MaterialsProcurementCard } from "./finances/materials-procurement-card";
 import { MilestonePaymentsCard } from "./finances/milestone-payments-card";
 import { FundingTrailCard } from "./finances/funding-trail-card";
 import { BillingAuditCard } from "./finances/billing-audit-card";
+
+function CashFlowChronology({
+  entries,
+  currency,
+}: {
+  entries: CashFlowEntry[];
+  currency: string;
+}) {
+  const valuations = useMemo(
+    () => entries.filter((e) => e.category === "valuation"),
+    [entries],
+  );
+  const milestones = useMemo(
+    () => entries.filter((e) => e.category === "milestone_payment"),
+    [entries],
+  );
+  const claims = useMemo(
+    () => entries.filter((e) => e.category === "claims_payment"),
+    [entries],
+  );
+
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <ChronologyCard
+        title="Valuation"
+        entries={valuations}
+        accent="bg-blue-500"
+        formatAmount={(e) => `+${formatCurrency(e.amount, currency)}`}
+        renderExtra={(e) =>
+          e.retentionAccrued > 0 ? (
+            <p className="text-[11px] text-amber-600">
+              Retention: {formatCurrency(e.retentionAccrued, currency)}
+            </p>
+          ) : null
+        }
+      />
+      <ChronologyCard
+        title="Milestone Payments"
+        entries={milestones}
+        accent="bg-green-500"
+        formatAmount={(e) => formatCurrency(e.amount, currency)}
+      />
+      <ChronologyCard
+        title="Claims"
+        entries={claims}
+        accent="bg-amber-500"
+        formatAmount={(e) =>
+          e.isCredit
+            ? `−${formatCurrency(e.amount, currency)}`
+            : `+${formatCurrency(e.amount, currency)}`
+        }
+        amountClass={(e) => (e.isCredit ? "text-red-600" : "text-green-600")}
+      />
+    </div>
+  );
+}
+
+function ChronologyCard({
+  title,
+  entries,
+  accent,
+  formatAmount,
+  amountClass,
+  renderExtra,
+}: {
+  title: string;
+  entries: CashFlowEntry[];
+  accent: string;
+  formatAmount: (e: CashFlowEntry) => string;
+  amountClass?: (e: CashFlowEntry) => string | undefined;
+  renderExtra?: (e: CashFlowEntry) => ReactNode;
+}) {
+  return (
+    <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full">
+      <h4 className="mb-0 text-sm font-semibold text-gray-900">{title}</h4>
+      <p className="mb-4 text-xs text-gray-500">
+        {entries.length === 0
+          ? "No entries recorded yet."
+          : `${entries.length} entries`}
+      </p>
+      {entries.length > 0 && (
+        <div className="relative flex-1">
+          <div className="absolute bottom-0 left-[7px] top-0 w-px bg-[#EDEDED]" />
+          <div className="space-y-3">
+            {entries.map((entry) => (
+              <div key={entry.id} className="relative flex items-start gap-3">
+                <div
+                  className={`z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ${accent}`}
+                />
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-medium text-gray-900">
+                      {entry.description ?? formatShortDate(entry.entryDate)}
+                    </p>
+                    <span
+                      className={`shrink-0 text-xs font-semibold tabular-nums ${
+                        amountClass ? amountClass(entry) : "text-gray-900"
+                      }`}
+                    >
+                      {formatAmount(entry)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    {formatShortDate(entry.createdAt)}
+                    {entry.createdBy ? ` · by ${entry.createdBy.name}` : ""}
+                  </p>
+                  {renderExtra?.(entry)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export default function ProjectFinances() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const canDispute = canManage || canResourceAction(access, "finances", "dispute");
   const { data: finances, isPending } = useProjectFinances(project.id);
+  const { data: cashFlowEntries, isPending: cfPending } = useCashFlowEntries(project.id);
   const { data: snapshot } = useReportingSnapshot(project.id);
 
-  const [fundOpen, setFundOpen] = useState(false);
+  const [cfOpen, setCfOpen] = useState(false);
   const [releaseTarget, setReleaseTarget] = useState<MilestonePayment | null>(
     null,
   );
@@ -42,7 +161,7 @@ export default function ProjectFinances() {
     null,
   );
 
-  const fundProject = useFundProject();
+  const addCashFlow = useAddCashFlowEntry();
   const releaseMilestone = useReleaseMilestone();
   const raiseDispute = useRaiseDispute();
 
@@ -79,20 +198,30 @@ export default function ProjectFinances() {
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => setFundOpen(true)}
+                onClick={() => setCfOpen(true)}
                 className="cursor-pointer"
               >
                 <ReactSVG src={icons.plusCircle} />
-                Fund Project
+                Add Cash flow
               </Button>
             </div>
           ) : undefined
         }
       />
 
+      <ContractOverviewCard
+        projectId={project.id}
+        contractSum={finances.contractSum}
+        variationsTotal={finances.variationsTotal}
+        adjustedContract={finances.adjustedContract}
+        certifiedGrossToDate={finances.certifiedGrossToDate}
+        currency={finances.currency}
+        canManage={canManage}
+      />
+
       <section
         aria-label="Finance summary"
-        className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-3"
+        className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-3"
       >
         <KpiCard
           title="Total Budget"
@@ -101,26 +230,18 @@ export default function ProjectFinances() {
           className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px]"
         />
         <KpiCard
-          title="Funds Deposited"
-          icon={icons.money}
-          value={formatCurrency(finances.fundsDeposited, finances.currency)}
+          title="Certified to Date"
+          icon={icons.verified}
+          value={formatCurrency(finances.certifiedGrossToDate, finances.currency)}
         />
         <KpiCard
-          title="Funds Released"
-          icon={icons.hand}
-          value={formatCurrency(finances.fundsReleased, finances.currency)}
-          className='rounded-tr-[16px]'
-        />
-        <KpiCard
-          title="Locked In Escrow"
-          icon={icons.safeSquare}
-          value={formatCurrency(finances.lockedInEscrow, finances.currency)}
-          className='rounded-bl-[16px]'
-        />
-        <KpiCard
-          title="Remaining Balance"
+          title="Remaining to Certify"
           icon={icons.wallet}
-          value={formatCurrency(finances.remainingBalance, finances.currency)}
+          value={formatCurrency(
+            Math.max(0, finances.adjustedContract - finances.certifiedGrossToDate),
+            finances.currency,
+          )}
+          className="rounded-tr-[16px] rounded-bl-[16px]"
         />
         {snapshot?.finance?.invoices ? (
           <KpiCard
@@ -133,7 +254,7 @@ export default function ProjectFinances() {
             className="rounded-tl-[1px] rounded-br-[16px] rounded-bl-[1px]"
           />
         ) : (
-          <div className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]" />
+          <div className="rounded-tl-[1px] rounded-br-[16px] rounded-bl-[1px]" />
         )}
       </section>
 
@@ -187,7 +308,6 @@ export default function ProjectFinances() {
       </div>
 
       <div className="mt-6">
-        {/* <AiInsightsCard insights={INSIGHTS} className="lg:col-span-1" /> */}
         <MilestonePaymentsCard
           projectId={project.id}
           milestones={finances.milestones}
@@ -198,20 +318,27 @@ export default function ProjectFinances() {
         />
       </div>
 
+      {!cfPending && cashFlowEntries && cashFlowEntries.length > 0 && (
+        <CashFlowChronology
+          entries={cashFlowEntries}
+          currency={finances.currency}
+        />
+      )}
+
       <FundingTrailCard projectId={project.id} currency={finances.currency} />
 
       <BillingAuditCard />
 
-      <FundProjectDialog
-        open={fundOpen}
-        onOpenChange={setFundOpen}
+      <AddCashFlowDialog
+        open={cfOpen}
+        onOpenChange={setCfOpen}
         currency={finances.currency}
-        isSubmitting={fundProject.isPending}
-        error={fundProject.error ? (fundProject.error as Error).message : null}
+        isSubmitting={addCashFlow.isPending}
+        error={addCashFlow.error ? (addCashFlow.error as Error).message : null}
         onSubmit={(input) => {
-          fundProject.mutate(
+          addCashFlow.mutate(
             { projectId: project.id, ...input },
-            { onSuccess: () => setFundOpen(false) },
+            { onSuccess: () => setCfOpen(false) },
           );
         }}
       />

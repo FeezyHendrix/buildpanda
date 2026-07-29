@@ -11,11 +11,13 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
+import { useFeatureFlag } from "@/hooks/use-feature-flags";
 
 import {
   buildReport,
@@ -27,12 +29,15 @@ import { ScheduleReportPanel } from "./schedule/schedule-report-panel";
 
 export default function ProjectSchedule() {
   const { project, access } = useProjectContext();
-  const { data: activities = [], isPending } = useProjectActivities(project.id);
+  const { selectedBuildingId } = useBuildingScope();
+
+  const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const canEdit = Boolean(access && canResourceAction(access, "schedule", "manage"));
+  const isProgrammeImportEnabled = useFeatureFlag("ai.programmeImport");
   const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
   const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(
@@ -94,7 +99,7 @@ export default function ProjectSchedule() {
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
-              {canEdit && (
+              {canEdit && isProgrammeImportEnabled && (
                 <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
                   Import programme
                 </Button>
@@ -133,7 +138,7 @@ export default function ProjectSchedule() {
               title="No scheduled activities"
               description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
               action={
-                canEdit ? (
+                canEdit && isProgrammeImportEnabled ? (
                   <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
                     Import programme of works
                   </Button>

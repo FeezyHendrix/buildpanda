@@ -20,7 +20,6 @@ import {
 } from "@/hooks/use-materials-ledger";
 import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { LedgerRow } from "./material-log/ledger-row";
@@ -56,18 +55,6 @@ export default function ProjectMaterialLog() {
     for (const o of orders) add(o.materialName, o.unit);
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [catalog, orders]);
-
-  const totals = useMemo(() => {
-    let received = 0;
-    let used = 0;
-    for (const e of entries) {
-      if (e.status === "Voided") continue;
-      if (e.entryType === "IN") received += e.quantity;
-      else if (e.entryType === "USED") used += e.quantity;
-    }
-    const onHand = stock.reduce((sum, s) => sum + s.onHandQty, 0);
-    return { received, used, onHand };
-  }, [entries, stock]);
 
   if (stockLoading || ledgerLoading) {
     return (
@@ -130,49 +117,27 @@ export default function ProjectMaterialLog() {
         }
       />
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        <Card padding="md" className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-gray-500">Total stocked received</span>
-          <span className="text-2xl font-semibold tabular-nums text-gray-900">
-            {totals.received.toLocaleString()}
-          </span>
-        </Card>
-        <Card padding="md" className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-gray-500">Total used</span>
-          <span className="text-2xl font-semibold tabular-nums text-gray-900">
-            {totals.used.toLocaleString()}
-          </span>
-        </Card>
-        <Card
-          padding="md"
-          className="flex flex-col gap-1 bg-[#004DE7] text-white shadow-md shadow-blue-900/10"
-        >
-          <span className="text-xs font-medium text-white/80">Stock in hand</span>
-          <span
-            className={cn(
-              "text-3xl font-bold tabular-nums",
-              totals.onHand < 0 ? "text-red-200" : "text-white",
-            )}
-          >
-            {totals.onHand.toLocaleString()}
-          </span>
-        </Card>
-      </section>
 
       <section className="mt-6">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">Stock by material</h2>
         {stock.length === 0 ? (
           <Card padding="md" className="text-sm text-gray-500">No materials logged yet.</Card>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {stock.map((s) => (
-              <StockCard
-                key={`${s.materialId}-${s.locationKey}`}
-                stock={s}
-                canManage={canManage}
-                onEditPolicy={() => setPolicyMaterialId(s.materialId)}
-              />
-            ))}
+          <div className="-mx-4 overflow-x-auto pb-2 sm:-mx-10">
+            <div className="flex gap-3 px-4 sm:px-10">
+              {stock.map((s) => (
+                <div
+                  key={`${s.materialId}-${s.locationKey}`}
+                  className="w-[280px] shrink-0"
+                >
+                  <StockCard
+                    stock={s}
+                    canManage={canManage}
+                    onEditPolicy={() => setPolicyMaterialId(s.materialId)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

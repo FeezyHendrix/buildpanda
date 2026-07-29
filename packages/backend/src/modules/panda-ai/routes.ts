@@ -86,7 +86,7 @@ const pandaAiRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectWrite(request.params.id);
       const user = request.requireAuth();
-      const insight = await service.trigger(project.id, user.id);
+      const insight = await service.trigger(project.id, user.id, project.organization_id ?? undefined);
       return reply.status(202).send({ insight });
     },
   );

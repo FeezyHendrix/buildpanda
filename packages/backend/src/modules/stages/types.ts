@@ -17,6 +17,7 @@ export interface Stage {
 export interface StageRow {
   id: string;
   project_id: string;
+  building_id: string;
   name: string;
   status: StageStatus;
   date_range: string | null;

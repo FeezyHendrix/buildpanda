@@ -115,6 +115,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     "change-requests": ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -146,6 +147,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     participants: ["view"],
     teamMembers: ["view"],
     stages: ["view"],
+    buildings: ["view", "manage"],
     "key-dates": ["view", "manage"],
     queries: ["view", "raise", "manage"],
     rfis: ["view", "create", "respond", "manage"],
@@ -167,6 +169,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     "change-requests": ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -191,6 +194,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -219,6 +223,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     participants: ["view"],
     schedule: ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
   },
   materials_requester: {
@@ -229,6 +234,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view", "raise"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -252,6 +258,7 @@ export const PARTICIPANT_PERMISSIONS: Record<string, Record<string, readonly str
     queries: ["view", "raise"],
     "action-items": ["view"],
     stages: ["view"],
+    buildings: ["view"],
     "key-dates": ["view"],
     comments: ["view", "post"],
     updates: ["view"],
@@ -278,10 +285,16 @@ export type ProjectSectionPermissions = Record<string, SectionValue>;
 // approve, decide or delete (those stay privileged, off the UI matrix).
 const SECTION_MAP: Record<
   string,
-  { resource: string; view: string[]; edit: string[]; editExtra?: Record<string, string[]> }
+  { resource: string; view: string[]; edit: string[]; viewExtra?: Record<string, string[]>; editExtra?: Record<string, string[]> }
 > = {
   "projects.documents": { resource: "documents", view: ["view"], edit: ["view", "upload"] },
-  "projects.schedule": { resource: "schedule", view: ["view"], edit: ["view", "manage"] },
+  "projects.schedule": {
+    resource: "schedule",
+    view: ["view"],
+    edit: ["view", "manage"],
+    viewExtra: { stages: ["view"], buildings: ["view"] },
+    editExtra: { stages: ["view", "manage"], buildings: ["view", "manage"] },
+  },
   "projects.bim": { resource: "bim", view: ["view"], edit: ["view", "upload"] },
   "quality.inspections": { resource: "inspections", view: ["view"], edit: ["view", "request"] },
   "quality.dailyLogs": { resource: "dailyLog", view: ["view", "report"], edit: ["view", "create", "report"] },
@@ -291,6 +304,7 @@ const SECTION_MAP: Record<
   "commercial.invoices": { resource: "finances", view: ["view"], edit: ["view"] },
   "commercial.paymentClaims": { resource: "finances", view: ["view"], edit: ["view"] },
   "commercial.purchaseOrders": { resource: "finances", view: ["view"], edit: ["view"] },
+  "commercial.transactions": { resource: "transactions", view: ["view"], edit: ["view", "create", "delete", "export"] },
   "commercial.materialsEquipment": { resource: "materials", view: ["view"], edit: ["view", "request"] },
   "commercial.materialsLedger": { resource: "materials", view: ["view", "report"], edit: ["view", "report"] },
   "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"], editExtra: { comments: ["view", "post"] } },
@@ -318,6 +332,11 @@ export function sectionsToPermissions(
     if (!entry || value === "hidden") continue;
     const actions = value === "edit" ? entry.edit : entry.view;
     out[entry.resource] = [...new Set([...(out[entry.resource] ?? []), ...actions])];
+    if (entry.viewExtra) {
+      for (const [res, extra] of Object.entries(entry.viewExtra)) {
+        out[res] = [...new Set([...(out[res] ?? []), ...extra])];
+      }
+    }
     if (value === "edit" && entry.editExtra) {
       for (const [res, extra] of Object.entries(entry.editExtra)) {
         out[res] = [...new Set([...(out[res] ?? []), ...extra])];

@@ -50,10 +50,27 @@ function timelineOf(row: LookAheadRow, today: string): "past" | "current" | "fut
   return "current";
 }
 
-export function lookAheadsService(repository: LookAheadsRepository) {
+export function lookAheadsService(
+  repository: LookAheadsRepository,
+  soleRealBuildingId: (projectId: string) => Promise<string | undefined>,
+) {
+  async function ensureActivitiesInBuilding(
+    projectId: string,
+    buildingId: string,
+    activityIds: string[],
+  ): Promise<void> {
+    if (activityIds.length === 0) return;
+    const uniqueIds = [...new Set(activityIds)];
+    const activities = await repository.activitiesByIds(uniqueIds);
+    if (activities.length !== uniqueIds.length) throw new BadRequestError("activityIds must belong to this project");
+    if (activities.some((a) => a.project_id !== projectId || a.building_id !== buildingId)) {
+      throw new BadRequestError("activityIds must belong to the look-ahead building");
+    }
+  }
+
   return {
     async list(projectId: string, filters: LookAheadListFilters): Promise<LookAhead[]> {
-      let rows = await repository.listByProject(projectId, filters.status);
+      let rows = await repository.listByProject(projectId, filters.status, filters.buildingId);
 
       const today = new Date().toISOString().slice(0, 10);
       if (filters.timeline) {
@@ -93,10 +110,15 @@ export function lookAheadsService(repository: LookAheadsRepository) {
       if (input.totalWorkers !== undefined && input.totalWorkers !== null && input.totalWorkers < 0) {
         throw new BadRequestError("totalWorkers must be zero or more");
       }
+      const buildingId = input.buildingId ?? (await soleRealBuildingId(projectId));
+      if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
+      const activityIds = input.activityIds ?? [];
+      await ensureActivitiesInBuilding(projectId, buildingId, activityIds);
 
       const row = await repository.insert({
         id: generateId("la"),
         project_id: projectId,
+        building_id: buildingId,
         name,
         description: input.description?.trim() || null,
         status: input.status ?? "Draft",
@@ -106,7 +128,6 @@ export function lookAheadsService(repository: LookAheadsRepository) {
         created_by_id: actorId,
       });
 
-      const activityIds = input.activityIds ?? [];
       if (activityIds.length > 0) await repository.setActivities(row.id, activityIds);
 
       const activities = await repository.activitiesFor([row.id]);
@@ -147,7 +168,10 @@ export function lookAheadsService(repository: LookAheadsRepository) {
       const row = hasFieldUpdates ? await repository.update(id, patch) : existing;
       if (!row) throw new NotFoundError("Look ahead");
 
-      if (input.assignActivityIds?.length) await repository.assignActivities(id, input.assignActivityIds);
+      if (input.assignActivityIds?.length) {
+        await ensureActivitiesInBuilding(projectId, existing.building_id, input.assignActivityIds);
+        await repository.assignActivities(id, input.assignActivityIds);
+      }
       if (input.unassignActivityIds?.length) await repository.unassignActivities(id, input.unassignActivityIds);
 
       const activities = await repository.activitiesFor([id]);

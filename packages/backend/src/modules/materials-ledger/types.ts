@@ -61,6 +61,8 @@ export interface StockLevel {
   unit: string;
   locationKey: string;
   onHandQty: number;
+  totalReceived: number;
+  totalUsed: number;
   lowStockThreshold: number | null;
   lowStock: boolean;
 }
@@ -123,4 +125,6 @@ export interface StockRow {
   location_key: string;
   on_hand_qty: string;
   low_stock_threshold: string | null;
+  total_received: string;
+  total_used: string;
 }

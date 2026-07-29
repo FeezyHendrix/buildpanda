@@ -66,6 +66,23 @@ test("calibrate: refuses noise", () => {
   assert.equal(calibrate(texts, segments), null);
 });
 
+test("calibrate: snaps a slightly-off ratio to the exact standard scale", () => {
+  const trueScale = 35.28; // 1:100
+  const drawn = trueScale * 0.96; // dimension lines drawn ~4% short (imprecise CAD/scan)
+  const segments: Segment[] = [];
+  const texts: TextRun[] = [];
+  for (const [i, v] of [3600, 4500, 2400, 1200, 5100, 900].entries()) {
+    const lenPt = v / drawn;
+    const y = 50 + i * 25;
+    segments.push(seg(10, y, 10 + lenPt, y, 0.13));
+    texts.push(text(String(v), 10 + lenPt / 2 - 4, y + 2));
+  }
+  const result = calibrate(texts, segments);
+  assert.ok(result);
+  // Snapped to the exact 1:100 scale, NOT the ~4%-off measured value.
+  assert.ok(Math.abs(result.mmPerPt - trueScale) < 0.01, `expected snap to ${trueScale}, got ${result.mmPerPt}`);
+});
+
 // ---------- walls ----------
 
 test("measureWalls: 4x3m room in 225mm double-line walls", () => {
@@ -99,6 +116,28 @@ test("measureWalls: ignores thin pens and isolated lines", () => {
     seg(0, 300, 500, 300), // no parallel partner in range
   ];
   assert.equal(measureWalls(segments, 17.64).centrelineM, 0);
+});
+
+test("measureWalls: a wall face split by openings is annotated as one full run", () => {
+  const mmPerPt = 17.64;
+  const t = 225 / mmPerPt; // wall thickness in pt
+  const total = 8000 / mmPerPt; // 8m wall
+  const door = 900 / mmPerPt; // a door opening splits the face
+  // Each face is drawn as three collinear fragments broken by a door gap.
+  const frag = (y: number) => [
+    seg(0, y, 3000 / mmPerPt, y),
+    seg(3000 / mmPerPt + door, y, 5500 / mmPerPt, y),
+    seg(5500 / mmPerPt + door, y, total, y),
+  ];
+  const segments = [...frag(0), ...frag(t)];
+  const walls = measureWalls(segments, mmPerPt);
+  // Fragments merge into ONE run per face, then pair into one wall.
+  assert.equal(walls.pairs.length, 1, `expected 1 merged wall, got ${walls.pairs.length}`);
+  const [p] = walls.pairs;
+  // Annotation must span the whole wall (~8m), not just a 3m fragment.
+  const spanPt = p!.vertices[1]![0]! - p!.vertices[0]![0]!;
+  const spanM = (spanPt * mmPerPt) / 1000;
+  assert.ok(spanM > 7.5 && spanM <= 8.1, `annotation span should cover full wall, got ${spanM}m`);
 });
 
 // ---------- doors + tags ----------

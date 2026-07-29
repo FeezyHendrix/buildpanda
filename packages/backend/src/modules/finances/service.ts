@@ -2,22 +2,31 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { FinancesRepository } from "./repository.ts";
-import type {
-  BudgetPhase,
-  BudgetPhaseRow,
-  FinanceEvent,
-  FinanceEventRow,
-  FinanceEventType,
-  FinancesRow,
-  MaterialProcurement,
-  MaterialProcurementRow,
-  MilestoneDispute,
-  MilestoneDisputeRow,
-  MilestonePayment,
-  MilestonePaymentRow,
-  PaymentLedgerEntry,
-  PaymentLedgerRow,
-  ProjectFinances,
+import {
+  ADVANCE_RECOVERY_MODES,
+  CONTRACT_TYPES,
+  RETENTION_RELEASE_MODES,
+  type AdvanceRecoveryMode,
+  type BudgetPhase,
+  type BudgetPhaseRow,
+  type CashFlowCategory,
+  type CashFlowEntry,
+  type CashFlowEntryRow,
+  type ContractType,
+  type FinanceEvent,
+  type FinanceEventRow,
+  type FinanceEventType,
+  type FinancesRow,
+  type MaterialProcurement,
+  type MaterialProcurementRow,
+  type MilestoneDispute,
+  type MilestoneDisputeRow,
+  type MilestonePayment,
+  type MilestonePaymentRow,
+  type PaymentLedgerEntry,
+  type PaymentLedgerRow,
+  type ProjectFinances,
+  type RetentionReleaseMode,
 } from "./types.ts";
 
 export interface FinanceActor {
@@ -33,6 +42,23 @@ export interface DepositInput {
 
 export interface RaiseDisputeInput {
   reason: string;
+}
+
+export interface UpdateContractSumInput {
+  contractSum: number;
+}
+
+export interface RecordVariationInput {
+  amount: number;
+  description: string;
+}
+
+export interface CashFlowInput {
+  category: CashFlowCategory;
+  amount: number;
+  isCredit: boolean;
+  description?: string;
+  entryDate?: string;
 }
 
 export interface CreateMilestoneInput {
@@ -154,6 +180,23 @@ function toLedgerEntry(row: PaymentLedgerRow): PaymentLedgerEntry {
   };
 }
 
+function toCashFlowEntry(row: CashFlowEntryRow): CashFlowEntry {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    category: row.category,
+    amount: num(row.amount),
+    isCredit: row.is_credit,
+    description: row.description,
+    entryDate: row.entry_date,
+    createdBy: row.created_by_id
+      ? { id: row.created_by_id, name: row.created_by_name ?? "" }
+      : null,
+    createdAt: new Date(row.created_at).toISOString(),
+    retentionAccrued: num(row.retention_accrued),
+  };
+}
+
 function toEvent(row: FinanceEventRow): FinanceEvent {
   return {
     id: row.id,
@@ -173,14 +216,28 @@ function toFinances(
   milestones: MilestonePaymentRow[],
   ledger: PaymentLedgerRow[],
 ): ProjectFinances {
+  const contractSum = num(summary.contract_sum);
+  const variationsTotal = num(summary.variations_total);
   return {
     projectId: summary.project_id,
     currency: summary.currency,
     totalBudget: num(summary.total_budget),
-    fundsDeposited: num(summary.funds_deposited),
-    fundsReleased: num(summary.funds_released),
-    lockedInEscrow: num(summary.locked_in_escrow),
-    remainingBalance: num(summary.remaining_balance),
+    contractSum,
+    variationsTotal,
+    adjustedContract: contractSum + variationsTotal,
+    certifiedGrossToDate: num(summary.certified_gross_to_date),
+    amountPaidToDate: num(summary.amount_paid_to_date),
+    contractTerms: {
+      contractType: summary.contract_type,
+      retentionRate: num(summary.retention_rate),
+      retentionReleaseMode: summary.retention_release_mode,
+      advancePercentage: num(summary.advance_percentage),
+      advanceRecoveryMode: summary.advance_recovery_mode,
+      advanceRecoveryRate: num(summary.advance_recovery_rate),
+      paymentTermsDays: summary.payment_terms_days,
+      defectsLiabilityDays: summary.defects_liability_days,
+      contractNotes: summary.contract_notes,
+    },
     budgetAllocation: budgetPhases.map(toBudgetPhase),
     materialsProcured: materials.map(toMaterial),
     milestones: milestones.map(toMilestone),
@@ -232,6 +289,74 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       if (!summary) throw new NotFoundError("Project finances");
 
       return toFinances(summary, budgetPhases, materials, milestones, ledger);
+    },
+
+    async listCashFlowEntries(projectId: string): Promise<CashFlowEntry[]> {
+      const rows = await repository.listCashFlowEntries(projectId);
+      return rows.map(toCashFlowEntry);
+    },
+
+    async addCashFlowEntry(
+      projectId: string,
+      input: CashFlowInput,
+      actor?: FinanceActor,
+    ): Promise<CashFlowEntry> {
+      if (input.amount <= 0) {
+        throw new BadRequestError("Cash flow amount must be positive");
+      }
+
+      const entryDate = input.entryDate ?? new Date().toISOString().slice(0, 10);
+      const nextSortOrder =
+        (
+          await repository.listCashFlowEntries(projectId)
+        ).length;
+
+      let retentionAccrued = 0;
+      if (input.category === "valuation") {
+        const rate = await repository.findRetentionRate(projectId);
+        if (rate > 0) {
+          retentionAccrued = Math.round((input.amount * rate) / 100);
+          await repository.accrueRetention(projectId, retentionAccrued);
+        }
+      }
+
+      const id = generateId("cfe");
+      await repository.insertCashFlowEntry({
+        id,
+        project_id: projectId,
+        category: input.category,
+        amount: input.amount,
+        is_credit: input.isCredit,
+        description: input.description ?? null,
+        entry_date: entryDate,
+        created_by_id: actor?.id ?? null,
+        created_by_name: actor?.name ?? null,
+        sort_order: nextSortOrder,
+        retention_accrued: retentionAccrued,
+      });
+
+      if (input.category === "valuation") {
+        await repository.updateCertifiedGrossToDate(projectId, input.amount);
+      }
+
+      const catLabel =
+        input.category === "valuation"
+          ? "Valuation"
+          : input.category === "claims_payment"
+            ? input.isCredit ? "Claims credit" : "Claims payment"
+            : "Milestone payment";
+      await recordEvent(
+        projectId,
+        "cash_flow_entry",
+        actor ?? null,
+        `${catLabel} · ${input.description ?? entryDate}${retentionAccrued > 0 ? ` (retention: ${retentionAccrued})` : ""}`,
+        input.isCredit ? -input.amount : input.amount,
+      );
+
+      const row = (await repository.listCashFlowEntries(projectId))
+        .find((r) => r.id === id);
+      if (!row) throw new Error("Failed to read back cash flow entry");
+      return toCashFlowEntry(row);
     },
 
     async deposit(projectId: string, input: DepositInput, actor?: FinanceActor): Promise<ProjectFinances> {
@@ -368,7 +493,131 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       await recordEvent(projectId, "dispute_raised", actor, `Raised dispute · ${milestone.name}`, num(milestone.amount), milestoneId);
       return toDispute(row);
     },
+
+    async updateContractSum(
+      projectId: string,
+      input: UpdateContractSumInput,
+      actor?: FinanceActor,
+    ): Promise<ProjectFinances> {
+      if (input.contractSum < 0) {
+        throw new BadRequestError("Contract sum cannot be negative");
+      }
+      await repository.updateContractSum(projectId, input.contractSum);
+      await recordEvent(projectId, "milestone_updated", actor ?? null, `Updated contract sum · ${input.contractSum}`, input.contractSum);
+      return this.getByProject(projectId);
+    },
+
+    async recordVariation(
+      projectId: string,
+      input: RecordVariationInput,
+      actor?: FinanceActor,
+    ): Promise<ProjectFinances> {
+      if (input.amount === 0) {
+        throw new BadRequestError("Variation amount cannot be zero");
+      }
+      await repository.recordVariation(projectId, input.amount);
+      const sign = input.amount > 0 ? "+" : "";
+      await recordEvent(
+        projectId,
+        "milestone_updated",
+        actor ?? null,
+        `Recorded variation · ${sign}${input.amount} (${input.description})`,
+        input.amount,
+      );
+      return this.getByProject(projectId);
+    },
+
+    async updateContractTerms(
+      projectId: string,
+      input: UpdateContractTermsInput,
+      actor?: FinanceActor,
+    ): Promise<ProjectFinances> {
+      if (input.contractSum !== undefined) {
+        if (!Number.isFinite(input.contractSum) || input.contractSum < 0) {
+          throw new BadRequestError("Contract sum cannot be negative");
+        }
+        await repository.updateContractSum(projectId, input.contractSum);
+      }
+
+      const patch: Parameters<typeof repository.updateContractTerms>[1] = {};
+
+      if (input.contractType !== undefined) {
+        if (!(CONTRACT_TYPES as readonly string[]).includes(input.contractType)) {
+          throw new BadRequestError("Unknown contract type");
+        }
+        patch.contract_type = input.contractType;
+      }
+      if (input.retentionRate !== undefined) {
+        if (input.retentionRate < 0 || input.retentionRate > 1) {
+          throw new BadRequestError("Retention rate must be between 0 and 1");
+        }
+        patch.retention_rate = input.retentionRate;
+      }
+      if (input.retentionReleaseMode !== undefined) {
+        if (!(RETENTION_RELEASE_MODES as readonly string[]).includes(input.retentionReleaseMode)) {
+          throw new BadRequestError("Unknown retention release mode");
+        }
+        patch.retention_release_mode = input.retentionReleaseMode;
+      }
+      if (input.advancePercentage !== undefined) {
+        if (input.advancePercentage < 0 || input.advancePercentage > 1) {
+          throw new BadRequestError("Advance percentage must be between 0 and 1");
+        }
+        patch.advance_percentage = input.advancePercentage;
+      }
+      if (input.advanceRecoveryMode !== undefined) {
+        if (!(ADVANCE_RECOVERY_MODES as readonly string[]).includes(input.advanceRecoveryMode)) {
+          throw new BadRequestError("Unknown advance recovery mode");
+        }
+        patch.advance_recovery_mode = input.advanceRecoveryMode;
+      }
+      if (input.advanceRecoveryRate !== undefined) {
+        if (input.advanceRecoveryRate < 0) {
+          throw new BadRequestError("Advance recovery rate cannot be negative");
+        }
+        patch.advance_recovery_rate = input.advanceRecoveryRate;
+      }
+      if (input.paymentTermsDays !== undefined) {
+        if (input.paymentTermsDays < 0 || !Number.isInteger(input.paymentTermsDays)) {
+          throw new BadRequestError("Payment terms must be a non-negative integer");
+        }
+        patch.payment_terms_days = input.paymentTermsDays;
+      }
+      if (input.defectsLiabilityDays !== undefined) {
+        if (input.defectsLiabilityDays < 0 || !Number.isInteger(input.defectsLiabilityDays)) {
+          throw new BadRequestError("Defects liability must be a non-negative integer");
+        }
+        patch.defects_liability_days = input.defectsLiabilityDays;
+      }
+      if (input.contractNotes !== undefined) {
+        const trimmed = input.contractNotes?.trim();
+        patch.contract_notes = trimmed && trimmed.length > 0 ? trimmed : null;
+      }
+
+      await repository.updateContractTerms(projectId, patch);
+      await recordEvent(
+        projectId,
+        "milestone_updated",
+        actor ?? null,
+        "Updated contract terms",
+        null,
+      );
+      return this.getByProject(projectId);
+    },
   };
+}
+
+export interface UpdateContractTermsInput {
+  contractSum?: number;
+  contractType?: ContractType;
+  retentionRate?: number;
+  retentionReleaseMode?: RetentionReleaseMode;
+  advancePercentage?: number;
+  advanceRecoveryMode?: AdvanceRecoveryMode;
+  advanceRecoveryRate?: number;
+  paymentTermsDays?: number;
+  defectsLiabilityDays?: number;
+  contractNotes?: string | null;
 }
 
 export type FinancesService = ReturnType<typeof financesService>;

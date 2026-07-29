@@ -8,6 +8,11 @@ import type { MeasuredBoqItem, TextRun } from "../types.ts";
 // cross-checked against the deterministic tag census, and disagreements are
 // surfaced, never silently resolved.
 
+export interface DiagramSize {
+  width: number;
+  height: number;
+}
+
 const scheduleEntrySchema = z.object({
   type: z.string().min(2).max(8),
   quantity: z.number().int().positive().max(2000).nullable(),
@@ -20,6 +25,7 @@ const scheduleEntrySchema = z.object({
 const scheduleSchema = z.object({
   windows: z.array(scheduleEntrySchema).max(40),
   doors: z.array(scheduleEntrySchema).max(40),
+  vents: z.array(scheduleEntrySchema).max(40).default([]),
 });
 
 export type DrawingSchedules = z.infer<typeof scheduleSchema>;
@@ -49,7 +55,7 @@ export function looksLikeScheduleSheet(texts: TextRun[]): boolean {
 }
 
 function normalizeType(raw: string): string | null {
-  const match = raw.toUpperCase().replace(/[\s-]/g, "").match(/^([WD])(\d{1,2})$/);
+  const match = raw.toUpperCase().replace(/[\s-]/g, "").match(/^([WDV])(\d{1,2})$/);
   return match ? `${match[1]}${match[2]}` : null;
 }
 
@@ -62,13 +68,13 @@ export async function readSchedules(
     {
       role: "system",
       content: [
-        "You transcribe door and window schedule tables from architectural drawing text.",
+        "You transcribe door, window and ventilation (vent/louvre) schedule tables from architectural drawing text.",
         "The text below is reconstructed line-by-line from the sheet; ' | ' separates cells on a row. Table columns may include: name/type, quantity, size (width x height mm), frame material, finish, glazing, remarks.",
         "HARD RULES:",
         "1. TRANSCRIBE ONLY. Output values that appear in the text. If a cell is absent or ambiguous for an entry, use null — never estimate.",
-        "2. Types look like W-1/W4/D-10; keep every distinct type you can see.",
+        "2. Types look like W-1/W4/D-10/V-1/V2; keep every distinct type you can see. Vent/louvre/ventilation-block rows go in vents.",
         "3. Sizes: only when an explicit width x height appears near the type; convert cm/m to mm only when the unit is written.",
-        'Respond with JSON only: {"windows":[{"type","quantity","widthMm","heightMm","material","remarks"}],"doors":[...]} — nulls where unknown.',
+        'Respond with JSON only: {"windows":[{"type","quantity","widthMm","heightMm","material","remarks"}],"doors":[...],"vents":[...]} — nulls where unknown.',
       ].join("\n"),
     },
     {
@@ -91,7 +97,11 @@ export async function readSchedules(
     }
     return [...seen.values()];
   };
-  return { windows: clean(result.data.windows), doors: clean(result.data.doors) };
+  return {
+    windows: clean(result.data.windows),
+    doors: clean(result.data.doors),
+    vents: clean(result.data.vents ?? []),
+  };
 }
 
 // Schedules frequently write sizes in cm without saying so. No opening on a
@@ -149,6 +159,129 @@ export function applySchedules(items: MeasuredBoqItem[], schedules: DrawingSched
       measurementBasis: agrees
         ? `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census agrees (${item.qty})${unitNote}`
         : `${entry.quantity} per ${kind.toLowerCase()} schedule; tag census found ${item.qty} — DISCREPANCY, verify against drawings${unitNote}`,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Schedule DIAGRAM measurement: each window/door type is drawn as a small
+// elevation with vector dimension annotations. Measuring those is
+// deterministic — it needs no transcription trust. The type label sits by its
+// diagram, so dimensions are taken from a local window around each tag:
+// width = largest horizontal dimension figure, height = largest rotated one
+// (panel sub-dimensions like 69+69 under an overall 138 lose to the max).
+// ---------------------------------------------------------------------------
+
+const DIAGRAM_WINDOW_X = 160;
+const DIAGRAM_WINDOW_ABOVE = 320;
+const DIAGRAM_WINDOW_BELOW = 60;
+
+export function measureDiagramSizes(texts: TextRun[]): Map<string, DiagramSize> {
+  const sizes = new Map<string, DiagramSize>();
+  const tags = texts.filter((t) => /^[WDV][\s-]?\d{1,2}$/i.test(t.str.trim()));
+  const numeric = texts
+    .map((t) => ({ ...t, value: Number(t.str.trim()) }))
+    .filter((t) => /^\d{2,4}$/.test(t.str.trim()) && t.value >= 20 && t.value <= 4000);
+
+  for (const tag of tags) {
+    const type = tag.str.toUpperCase().replace(/[\s-]/g, "");
+    const local = numeric.filter(
+      (t) =>
+        Math.abs(t.x - tag.x) <= DIAGRAM_WINDOW_X &&
+        t.y >= tag.y - DIAGRAM_WINDOW_BELOW &&
+        t.y <= tag.y + DIAGRAM_WINDOW_ABOVE,
+    );
+    const widths = local.filter((t) => !t.rotated).map((t) => t.value);
+    const heights = local.filter((t) => t.rotated).map((t) => t.value);
+    if (widths.length === 0 || heights.length === 0) continue;
+    const size = { width: Math.max(...widths), height: Math.max(...heights) };
+    const existing = sizes.get(type);
+    // a type can appear in several regions (table row + elevation); keep the
+    // reading with the larger height — elevations carry the full storey dim
+    if (!existing || size.height > existing.height) sizes.set(type, size);
+  }
+  return sizes;
+}
+
+// Deterministic diagram sizes override table-transcribed ones.
+export function mergeDiagramSizes(schedules: DrawingSchedules, diagram: Map<string, DiagramSize>): DrawingSchedules {
+  const apply = (entries: ScheduleEntry[]): ScheduleEntry[] =>
+    entries.map((entry) => {
+      const measured = diagram.get(entry.type);
+      return measured ? { ...entry, widthMm: measured.width, heightMm: measured.height } : entry;
+    });
+  // types drawn on the sheet but missing from the transcribed table still count
+  const known = new Set(
+    [...schedules.windows, ...schedules.doors, ...schedules.vents].map((e) => e.type),
+  );
+  const extras: ScheduleEntry[] = [...diagram.entries()]
+    .filter(([type]) => !known.has(type))
+    .map(([type, size]) => ({ type, quantity: null, widthMm: size.width, heightMm: size.height, material: null, remarks: null }));
+  return {
+    windows: [...apply(schedules.windows), ...extras.filter((e) => e.type.startsWith("W"))],
+    doors: [...apply(schedules.doors), ...extras.filter((e) => e.type.startsWith("D"))],
+    vents: [...apply(schedules.vents), ...extras.filter((e) => e.type.startsWith("V"))],
+  };
+}
+
+// BESMM4 void-deduction minimums are section-specific (General Rule 1.5.4).
+// Values cite the corpus clause that fixes each number, for QS traceability.
+const VOID_DEDUCT_MIN = {
+  masonry: 0.5, // BESMM4 p183 "voids...cross sectional area equals to or less than 0.50m2"
+  formwork: 5.0, // BESMM4 p168
+  finishings: 1.0, // BESMM4 p247
+  concreteM3: 0.05, // BESMM4 p146 M1
+} as const;
+// The deduction is capped — if openings exceed 60% of gross something upstream
+// is wrong and we flag instead of producing a nonsense net.
+export function applyOpeningDeductions(items: MeasuredBoqItem[], schedules: DrawingSchedules): MeasuredBoqItem[] {
+  const scale = inferScheduleScale([...schedules.windows, ...schedules.doors, ...schedules.vents]);
+  const countByType = new Map<string, number>();
+  for (const item of items) {
+    const match = item.description.match(/type ([WDV]\d{1,2})/i);
+    if (match && (item.code === "L11" || item.code === "L20")) countByType.set(match[1]!.toUpperCase(), item.qty);
+  }
+  const openingArea = (entries: ScheduleEntry[]): { area: number; counted: number } => {
+    let area = 0;
+    let counted = 0;
+    for (const entry of entries) {
+      if (!entry.widthMm || !entry.heightMm) continue;
+      const count = entry.quantity ?? countByType.get(entry.type) ?? 0;
+      if (count === 0) continue;
+      const eachM2 = ((entry.widthMm * scale) / 1000) * ((entry.heightMm * scale) / 1000);
+      if (eachM2 <= VOID_DEDUCT_MIN.masonry) continue;
+      area += eachM2 * count;
+      counted += count;
+    }
+    return { area: Math.round(area * 100) / 100, counted };
+  };
+  const windows = openingArea(schedules.windows);
+  const doors = openingArea(schedules.doors);
+  const vents = openingArea(schedules.vents);
+  if (windows.area + doors.area + vents.area === 0) return items;
+
+  return items.map((item) => {
+    if (item.code !== "F10/125") return item;
+    const gross = item.qtyGross;
+    const totalOpenings = Math.round((windows.area + doors.area + vents.area) * 100) / 100;
+    if (totalOpenings > gross * 0.6) {
+      return {
+        ...item,
+        confidence: "low" as const,
+        measurementBasis: `${item.measurementBasis}; openings (${totalOpenings} m2) exceed 60% of gross wall — deduction NOT applied, verify storey coverage`,
+      };
+    }
+    const deductions = [
+      ...(windows.area > 0 ? [{ label: `Window openings (${windows.counted} nr per schedule)`, qty: windows.area }] : []),
+      ...(doors.area > 0 ? [{ label: `Door openings (${doors.counted} nr per schedule)`, qty: doors.area }] : []),
+      ...(vents.area > 0 ? [{ label: `Ventilation openings (${vents.counted} nr per schedule)`, qty: vents.area }] : []),
+    ];
+    const net = Math.round((gross - totalOpenings) * 100) / 100;
+    return {
+      ...item,
+      deductions,
+      qty: net,
+      measurementBasis: `${item.measurementBasis}; less ${totalOpenings} m2 openings from schedule sizes x counts = ${net} m2 net`,
     };
   });
 }

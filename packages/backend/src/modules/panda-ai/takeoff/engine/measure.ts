@@ -10,8 +10,10 @@ import type {
 export const WALL_GAP_MIN_MM = 120;
 export const WALL_GAP_MAX_MM = 280;
 const WALL_MIN_OVERLAP_M = 0.4;
-const WALL_SEG_MIN_M = 0.4;
 const WALL_SEG_MAX_M = 25;
+const WALL_COLLINEAR_TOL_PT = 0.5;
+const WALL_JOINT_MAX_M = 1.2;
+const WALL_RUN_MIN_M = 0.6;
 const DOOR_RADIUS_MIN_MM = 600;
 const DOOR_RADIUS_MAX_MM = 1200;
 const DOOR_DEDUPE_MM = 300;
@@ -25,6 +27,58 @@ interface Span {
   fixed: number; // the shared axis coordinate
   lo: number;
   hi: number;
+}
+
+interface RunSpan extends Span {
+  parts: { lo: number; hi: number }[];
+}
+
+// A block/sandcrete wall face is often drawn as several collinear segments split
+// by door/window openings or CAD joints. Joining them into one continuous run —
+// bridging joints up to WALL_JOINT_MAX_M — lets pairing annotate the whole wall
+// instead of a single fragment's overlap.
+function mergeCollinearSpans(spans: Span[], mmPerPt: number): RunSpan[] {
+  if (spans.length === 0) return [];
+  const toM = mmPerPt / 1000;
+  const jointMaxPt = WALL_JOINT_MAX_M / toM;
+  const sorted = [...spans].sort((a, b) => a.fixed - b.fixed || a.lo - b.lo);
+
+  const runs: RunSpan[] = [];
+  let g = 0;
+  while (g < sorted.length) {
+    let h = g;
+    while (h + 1 < sorted.length && Math.abs(sorted[h + 1]!.fixed - sorted[g]!.fixed) <= WALL_COLLINEAR_TOL_PT) {
+      h++;
+    }
+    const group = sorted.slice(g, h + 1).sort((a, b) => a.lo - b.lo);
+    g = h + 1;
+
+    let cur: RunSpan | null = null;
+    for (const s of group) {
+      if (!cur) {
+        cur = { fixed: s.fixed, lo: s.lo, hi: s.hi, parts: [{ lo: s.lo, hi: s.hi }] };
+        continue;
+      }
+      const gap = s.lo - cur.hi;
+      if (gap <= jointMaxPt) {
+        const curLen = cur.hi - cur.lo;
+        const sLen = s.hi - s.lo;
+        cur.fixed = (cur.fixed * curLen + s.fixed * sLen) / (curLen + sLen || 1);
+        if (gap > 0) {
+          cur.parts.push({ lo: s.lo, hi: s.hi });
+        } else {
+          const last = cur.parts[cur.parts.length - 1]!;
+          last.hi = Math.max(last.hi, s.hi);
+        }
+        cur.hi = Math.max(cur.hi, s.hi);
+      } else {
+        runs.push(cur);
+        cur = { fixed: s.fixed, lo: s.lo, hi: s.hi, parts: [{ lo: s.lo, hi: s.hi }] };
+      }
+    }
+    if (cur) runs.push(cur);
+  }
+  return runs;
 }
 
 function toSpansH(segments: Segment[]): Span[] {
@@ -45,9 +99,9 @@ function pairSpans(
   horizontal: boolean,
 ): { vertices: number[][]; lengthM: number; gapMm: number }[] {
   const toM = mmPerPt / 1000;
-  const eligible = spans.filter((s) => {
-    const lenM = (s.hi - s.lo) * toM;
-    return lenM >= WALL_SEG_MIN_M && lenM <= WALL_SEG_MAX_M;
+  const eligible = mergeCollinearSpans(spans, mmPerPt).filter((r) => {
+    const lenM = (r.hi - r.lo) * toM;
+    return lenM >= WALL_RUN_MIN_M && lenM <= WALL_SEG_MAX_M;
   });
   eligible.sort((a, b) => a.fixed - b.fixed);
   const used = new Array<boolean>(eligible.length).fill(false);
@@ -61,6 +115,7 @@ function pairSpans(
       const gapMm = Math.abs(a.fixed - b.fixed) * mmPerPt;
       if (gapMm > WALL_GAP_MAX_MM) break; // sorted by fixed axis: no closer partner further on
       if (gapMm < WALL_GAP_MIN_MM) continue;
+      // Annotate the full overlap of the two merged runs — the whole wall span.
       const lo = Math.max(a.lo, b.lo);
       const hi = Math.min(a.hi, b.hi);
       const overlapM = (hi - lo) * toM;
@@ -241,6 +296,10 @@ export function measureRoomAreas(
 
   const inRegion = (t: TextRun): boolean =>
     t.x >= region.minX && t.x <= region.maxX && t.y >= region.minY && t.y <= region.maxY;
+  // A room seed must be an actual room NAME (a known room word), not any text
+  // that merely looks like a word. Otherwise annotation/material labels
+  // ("BRICKWORK", "REFER TO ENGINEERS", "SITE BOUNDARY", "AGGREGATE") get
+  // flood-filled as rooms and produce garbage areas. Refuse rather than guess.
   const isLabel = (t: TextRun): boolean => {
     if (t.rotated || !inRegion(t)) return false;
     const str = t.str.trim();
@@ -248,24 +307,18 @@ export function measureRoomAreas(
     if (!ROOM_LABEL.test(str) || str.length < 3) return false;
     if (ROOM_LABEL_BLOCKLIST.test(str)) return false;
     if (/^[wd]-?\d{1,2}$/i.test(str)) return false; // opening tags
-    return true;
+    return ROOM_WORDS.test(str);
   };
   // known room words seed first so they win the naming race for their room
   const labels = texts
     .filter(isLabel)
     .sort((a, b) => Number(ROOM_WORDS.test(b.str)) - Number(ROOM_WORDS.test(a.str)) || b.str.length - a.str.length);
 
-  const filled = new Uint8Array(cols * rowsN);
   const results: RoomArea[] = [];
   const cellAreaM2 = (GRID_MM / 1000) ** 2;
 
-  for (const label of labels) {
-    const sx = Math.floor((label.x + label.w / 2 - region.minX) / cellPt);
-    const sy = Math.floor((label.y - region.minY) / cellPt);
-    if (sx < 0 || sx >= cols || sy < 0 || sy >= rowsN) continue;
-    const startIdx = sy * cols + sx;
-    if (dilated[startIdx] || filled[startIdx]) continue;
-
+  const floodFrom = (wallMask: Uint8Array, startIdx: number): { cells: number[]; leaked: boolean } => {
+    const filled = new Uint8Array(cols * rowsN);
     const stack = [startIdx];
     const cells: number[] = [];
     filled[startIdx] = 1;
@@ -290,14 +343,34 @@ export function measureRoomAreas(
         const ny = y + dy;
         if (nx < 0 || nx >= cols || ny < 0 || ny >= rowsN) continue;
         const nIdx = ny * cols + nx;
-        if (dilated[nIdx] || filled[nIdx]) continue;
+        if (wallMask[nIdx] || filled[nIdx]) continue;
         filled[nIdx] = 1;
         stack.push(nIdx);
       }
     }
+    return { cells, leaked };
+  };
+
+  const claimed = new Uint8Array(cols * rowsN);
+  for (const label of labels) {
+    const sx = Math.floor((label.x + label.w / 2 - region.minX) / cellPt);
+    const sy = Math.floor((label.y - region.minY) / cellPt);
+    if (sx < 0 || sx >= cols || sy < 0 || sy >= rowsN) continue;
+    const startIdx = sy * cols + sx;
+    if (claimed[startIdx]) continue;
+
+    // Fill on the raw walls first — most residential rooms are already sealed
+    // there, and the door-sealing dilation, if applied up front, floods narrow
+    // rooms shut (a 10-pass closing swallows every seed on a compact bungalow).
+    // Only when the raw fill leaks (a real door gap to outside) do we retry on
+    // the sealed grid, which closes openings up to ~1m.
+    let { cells, leaked } = grid[startIdx] ? { cells: [], leaked: true } : floodFrom(grid, startIdx);
+    if (leaked && !dilated[startIdx]) ({ cells, leaked } = floodFrom(dilated, startIdx));
     if (leaked) continue;
+
     const areaM2 = Math.round(cells.length * cellAreaM2 * 100) / 100;
     if (areaM2 < 1 || areaM2 > 400) continue;
+    for (const c of cells) claimed[c] = 1;
     results.push({ name: label.str, areaM2, seed: [label.x, label.y] });
   }
   return results;

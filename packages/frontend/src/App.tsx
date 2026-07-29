@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import {
   HomeRedirect,
   RequireAuth,
@@ -93,6 +94,9 @@ const ProjectInvoiceNew = lazy(() => import("@/pages/project/invoices/new"));
 const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
 const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
+const ProjectTransactions = lazy(() => import("@/pages/project/transactions"));
+const ProjectFinalAccount = lazy(() => import("@/pages/project/final-account"));
+const ProjectContract = lazy(() => import("@/pages/project/contract"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -107,6 +111,7 @@ const ProjectActivities = lazy(() => import("@/pages/project/activities"));
 const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
+const ProjectBuildings = lazy(() => import("@/pages/project/buildings"));
 const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
 const ProjectQueries = lazy(() => import("@/pages/project/queries"));
@@ -127,18 +132,18 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
-function pf(flag: string, el: ReactElement) {
+function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
 /** Feature flag + resource permission (RBAC) gate for project routes. */
-function pfr(flag: string, resource: string, el: ReactElement) {
+function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
   return (
     <ProjectFeatureFlagGate flag={flag}>
       <ProjectPermissionGate resource={resource}>{el}</ProjectPermissionGate>
     </ProjectFeatureFlagGate>
   );
 }
-function sf(flag: string, el: ReactElement) {
+function sf(flag: FeatureFlagKey, el: ReactElement) {
   return <SalesFeatureFlagGate flag={flag}>{el}</SalesFeatureFlagGate>;
 }
 
@@ -195,7 +200,7 @@ export const router = createBrowserRouter([
       { path: "leads", element: sf("sales.leads", <SalesLeads />) },
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
-      { path: "takeoff/:sessionId", element: sf("ai.preconstruction", <SalesPreconSession />) },
+      { path: "takeoff/:sessionId", element: sf("ai.automatedTakeoff", <SalesPreconSession />) },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
@@ -302,6 +307,9 @@ export const router = createBrowserRouter([
       { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
       { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
+      { path: "finances/transactions", element: pfr("commercial.transactions", "transactions", <ProjectTransactions />) },
+      { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
+      { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContract />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
@@ -320,6 +328,9 @@ export const router = createBrowserRouter([
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+
+      { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
+      { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },
 
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },

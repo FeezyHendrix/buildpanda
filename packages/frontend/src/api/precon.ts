@@ -6,6 +6,25 @@ export type PreconRowStatus = (typeof PRECON_ROW_STATUSES)[number];
 export const PRECON_GEOMETRY_KINDS = ["area", "linear", "count", "deduction"] as const;
 export type PreconGeometryKind = (typeof PRECON_GEOMETRY_KINDS)[number];
 
+export const STRUCTURE_CLASSES = ["building", "road", "bridge", "airport", "infrastructure", "unknown"] as const;
+export type StructureClass = (typeof STRUCTURE_CLASSES)[number];
+
+export const STRUCTURAL_SYSTEMS = ["load-bearing-masonry", "reinforced-concrete-frame", "steel-frame", "composite", "unknown"] as const;
+export type StructuralSystem = (typeof STRUCTURAL_SYSTEMS)[number];
+
+export const FOUNDATION_TYPES = ["strip", "raft", "pad", "pile", "unknown"] as const;
+export type FoundationType = (typeof FOUNDATION_TYPES)[number];
+
+export interface StructureContext {
+  structureClass: StructureClass;
+  buildingType: string | null;
+  storeys: number | null;
+  structuralSystem: StructuralSystem;
+  foundationType: FoundationType;
+  confidence: "high" | "low";
+  signals: string[];
+}
+
 export type PreconSessionStatus = "uploading" | "generating" | "reviewing" | "output" | "failed";
 export type PreconSheetKind = "floor-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
 export type PreconRowType = "heading" | "work_section" | "spec_note" | "item" | "provisional_sum";
@@ -18,6 +37,7 @@ export interface PreconSession {
   status: PreconSessionStatus;
   title: string;
   error: string | null;
+  structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
 }

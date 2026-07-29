@@ -15,6 +15,7 @@ export const TAKEOFF_QUEUE = "automated-takeoff";
 
 export interface TakeoffJobData {
   jobId: string;
+  orgId?: string;
 }
 
 // LibreDWG reads from a file path, so the stored object is streamed to a temp
