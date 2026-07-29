@@ -19,9 +19,18 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("projects").where({ id: PROJECT_ID }).del();
   await knex("document_categories").del();
 
+  // Attach the Sample Project to the first real org so members see it in
+  // /me/projects and get a company-level /access. Null on a fresh DB with no
+  // orgs yet — re-run `pnpm db:seed` after signing up.
+  const firstOrg = await knex("organization")
+    .where("id", "not like", "demo_metrics_%")
+    .orderBy("createdAt", "asc")
+    .first<{ id: string }>("id");
+
   await knex("projects").insert({
     id: PROJECT_ID,
     owner_id: null,
+    organization_id: firstOrg?.id ?? null,
     name: "Sample Project",
     address: "123 Example Street, Sample City",
     status: "On Track",
