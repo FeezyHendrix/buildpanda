@@ -34,6 +34,8 @@ export interface CreateMaterialOrderInput {
   currency?: CurrencyCode;
   deliveryLocation?: string | null;
   notes?: string | null;
+  invoiceId?: string | null;
+  invoiceLineItemId?: string | null;
 }
 
 export type UpdateMaterialOrderInput = Partial<CreateMaterialOrderInput>;
@@ -249,6 +251,8 @@ export function materialsEquipmentService(repository: MaterialsEquipmentReposito
         currency: input.currency ?? "NGN",
         delivery_location: optionalText(input.deliveryLocation) ?? null,
         notes: optionalText(input.notes) ?? null,
+        invoice_id: input.invoiceId ?? null,
+        invoice_line_item_id: input.invoiceLineItemId ?? null,
       });
       if (status === "Delivered") await repository.createMaterialProcurementFromOrder(row);
       return toMaterialOrder(row);

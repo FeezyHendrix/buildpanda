@@ -81,7 +81,9 @@ export function boqJobsRepository(db: Knex) {
     },
 
     async markProcessing(id: string): Promise<void> {
-      await db("boq_import_jobs").where({ id }).update({ status: "processing", updated_at: new Date() });
+      await db("boq_import_jobs")
+        .where({ id })
+        .update({ status: "processing", started_at: new Date(), updated_at: new Date() });
     },
 
     async markComplete(id: string, materials: ParsedMaterial[], usedAi: boolean): Promise<void> {
@@ -91,12 +93,15 @@ export function boqJobsRepository(db: Knex) {
         material_count: materials.length,
         used_ai: usedAi,
         error: null,
+        completed_at: new Date(),
         updated_at: new Date(),
       });
     },
 
     async markFailed(id: string, error: string): Promise<void> {
-      await db("boq_import_jobs").where({ id }).update({ status: "failed", error, updated_at: new Date() });
+      await db("boq_import_jobs")
+        .where({ id })
+        .update({ status: "failed", error, completed_at: new Date(), updated_at: new Date() });
     },
   };
 }

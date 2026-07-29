@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
+import { ProgressBar } from "@/components/atoms/progress-bar";
 import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 import {
@@ -31,13 +32,14 @@ function RowStatusDot({ status }: { status: PreconRowStatus | null }) {
   const meta = STATUS_META[status];
   return (
     <span
+      key={status}
       title={meta.label}
       className={cn(
         "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] leading-none",
-        status === "verified" && "bg-emerald-100 text-emerald-700",
+        status === "verified" && "bg-emerald-100 text-emerald-700 animate-pop motion-reduce:animate-none",
         status === "needs_review" && "bg-amber-100 text-amber-700",
         status === "ai_generated" && "bg-primary-100 text-primary-700",
-        status === "rejected" && "bg-red-100 text-red-600",
+        status === "rejected" && "bg-red-100 text-red-600 animate-pop motion-reduce:animate-none",
       )}
     >
       {meta.mark}
@@ -196,21 +198,16 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
     return map;
   }, [snapshot.rows]);
 
-  const progressPct =
-    snapshot.progress.total > 0 ? Math.round((snapshot.progress.verified / snapshot.progress.total) * 100) : 0;
-
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 p-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between mb-2">
           <h2 className="text-sm font-semibold text-gray-900">Cost verification</h2>
           <span className="text-xs text-gray-500">
             {snapshot.progress.verified}/{snapshot.progress.total} verified
           </span>
         </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
-          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progressPct}%` }} />
-        </div>
+        <ProgressBar value={snapshot.progress.verified} max={snapshot.progress.total} tone="success" size="md" className="mt-2 bg-gray-100" />
       </div>
 
       {conflictNote ? (

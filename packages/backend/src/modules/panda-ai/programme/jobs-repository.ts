@@ -46,7 +46,9 @@ export function programmeJobsRepository(db: Knex) {
     },
 
     async markProcessing(id: string): Promise<void> {
-      await db("programme_import_jobs").where({ id }).update({ status: "processing", updated_at: new Date() });
+      await db("programme_import_jobs")
+        .where({ id })
+        .update({ status: "processing", started_at: new Date(), updated_at: new Date() });
     },
 
     async markComplete(id: string, result: StructuredProgramme): Promise<void> {
@@ -57,6 +59,7 @@ export function programmeJobsRepository(db: Knex) {
         phase_count: result.phases.length,
         used_ai: result.usedAi,
         error: null,
+        completed_at: new Date(),
         updated_at: new Date(),
       });
     },
@@ -70,7 +73,9 @@ export function programmeJobsRepository(db: Knex) {
     },
 
     async markFailed(id: string, error: string): Promise<void> {
-      await db("programme_import_jobs").where({ id }).update({ status: "failed", error, updated_at: new Date() });
+      await db("programme_import_jobs")
+        .where({ id })
+        .update({ status: "failed", error, completed_at: new Date(), updated_at: new Date() });
     },
   };
 }

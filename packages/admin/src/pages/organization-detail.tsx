@@ -1,14 +1,17 @@
+import { PageContainer } from "@/components/page-container";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/api/admin";
+import { adminKeys } from "@/api/admin-keys";
 import { Badge, Card, ErrorState, Loading, StatusBadge } from "@/components/ui";
 import { ChevronLeftIcon } from "@/components/icons";
 import { formatDate } from "@/lib/utils";
+import { AuditLogTable } from "@/components/audit-log-table";
 
 export default function OrganizationDetailPage() {
   const { id = "" } = useParams();
   const { data: org, isLoading, isError } = useQuery({
-    queryKey: ["admin", "organization", id],
+    queryKey: adminKeys.orgs.detail(id),
     queryFn: () => adminApi.getOrganization(id),
   });
 
@@ -16,7 +19,7 @@ export default function OrganizationDetailPage() {
   if (isError || !org) return <ErrorState />;
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Link to="/organizations" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
         <ChevronLeftIcon className="h-4 w-4" /> Organizations
       </Link>
@@ -70,6 +73,13 @@ export default function OrganizationDetailPage() {
           )}
         </Card>
       </div>
-    </div>
+
+      <Card className="flex flex-col overflow-hidden">
+        <div className="p-5 pb-0">
+          <h2 className="text-sm font-semibold text-ink">Audit Log</h2>
+        </div>
+        <AuditLogTable targetId={org.id} />
+      </Card>
+    </PageContainer>
   );
 }

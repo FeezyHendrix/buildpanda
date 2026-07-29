@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { isEmployeeRole } from "../../lib/permissions.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
+import { buildingsRepository } from "../buildings/repository.ts";
 import { tasksRepository } from "./repository.ts";
 import {
   tasksService,
@@ -43,6 +44,7 @@ const boardQuery = {
   additionalProperties: false,
   properties: {
     scope: { type: "string", enum: ["all", "assigned"] },
+    buildingId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -62,6 +64,7 @@ const createBody = {
   additionalProperties: false,
   properties: {
     title: { type: "string", minLength: 1, maxLength: 200 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     description: { type: ["string", "null"], maxLength: 50000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
@@ -210,9 +213,11 @@ const linkParams = {
 } as const;
 
 const taskRoutes: FastifyPluginAsync = async (fastify) => {
+  const buildings = buildingsRepository(fastify.db);
   const service = tasksService(tasksRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
-  });
+  }, async (projectId) =>
+    (await buildings.soleRealBuildingId(projectId)) ?? (await buildings.firstRealBuildingId(projectId)));
 
   function canSeeFullTaskBoard(request: FastifyRequest, project: ProjectRow): boolean {
     const user = request.requireAuth();
@@ -258,7 +263,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
     throw new ForbiddenError("You can only access tasks assigned to you");
   }
 
-  fastify.get<{ Params: { id: string }; Querystring: { scope?: "all" | "assigned" } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { scope?: "all" | "assigned"; buildingId?: string } }>(
     "/projects/:id/tasks/board",
     { schema: { params: projectIdParams, querystring: boardQuery } },
     async (request) => {
@@ -267,7 +272,7 @@ const taskRoutes: FastifyPluginAsync = async (fastify) => {
       assertCompanyTaskAccess(request, project);
       const fullBoard = canSeeFullTaskBoard(request, project);
       const assigneeId = request.query.scope === "assigned" || !fullBoard ? user.id : undefined;
-      return service.getDefaultBoard(project.id, user.id, assigneeId);
+      return service.getDefaultBoard(project.id, user.id, assigneeId, request.query.buildingId);
     },
   );
 

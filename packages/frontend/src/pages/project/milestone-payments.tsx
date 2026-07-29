@@ -229,40 +229,27 @@ function EscrowSummary({ finances }: { finances: ProjectFinances }) {
     <Card padding="lg" className="mt-8 border-primary border-[4px]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className='flex flex-col gap-2'>
-          <p className="text-[13px] font-semibold text-black-300">Escrow Summary</p>
-          <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.lockedInEscrow, finances.currency)}</p>
+          <p className="text-[13px] font-semibold text-black-300">Contract Summary</p>
+          <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.adjustedContract, finances.currency)}</p>
           <Badge size="md" className='bg-success-50 text-success-700'>
             <ReactSVG src={icons.verified} className='[&svg]:[&>path]:fill-success-500' />
-            Total Verified Funds in Trust
+            Adjusted Contract Value
           </Badge>
         </div>
         <div className='flex gap-6'>
           <div>
-            <p className="text-[13px] font-semibold text-black-300">Next Release</p>
-            <p className="text-black-500">{formatCurrency(finances.lockedInEscrow, finances.currency)}</p>
+            <p className="text-[13px] font-semibold text-black-300">Contract Sum</p>
+            <p className="text-black-500">{formatCurrency(finances.contractSum, finances.currency)}</p>
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-black-300">In Transit</p>
-            <p className="text-black-500">{formatCurrency(finances.lockedInEscrow, finances.currency)}</p>
+            <p className="text-[13px] font-semibold text-black-300">Variations</p>
+            <p className="text-black-500">{formatCurrency(finances.variationsTotal, finances.currency)}</p>
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-black-300">Amount Paid</p>
+            <p className="text-black-500">{formatCurrency(finances.amountPaidToDate, finances.currency)}</p>
           </div>
         </div>
-        {/* <SummaryStat
-          label="Total Budget"
-          value={formatCurrency(finances.totalBudget, finances.currency)}
-        />
-        <SummaryStat
-          label="Locked In Escrow"
-          value={formatCurrency(finances.lockedInEscrow, finances.currency)}
-          accent
-        />
-        <SummaryStat
-          label="Funds Released"
-          value={formatCurrency(finances.fundsReleased, finances.currency)}
-        />
-        <SummaryStat
-          label="Remaining"
-          value={formatCurrency(finances.remainingBalance, finances.currency)}
-        /> */}
       </div>
     </Card>
   );

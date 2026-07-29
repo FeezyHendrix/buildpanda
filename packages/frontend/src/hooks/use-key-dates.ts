@@ -2,10 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { keyDatesApi, type KeyDateInput } from "@/api/key-dates";
 import { keyDateKeys } from "./query-keys";
 
-export function useKeyDates(projectId: string | undefined) {
+export function useKeyDates(projectId: string | undefined, buildingId?: string) {
   return useQuery({
-    queryKey: keyDateKeys.list(projectId ?? "__none__"),
-    queryFn: () => keyDatesApi.list(projectId!),
+    queryKey: keyDateKeys.list(projectId ?? "__none__", buildingId),
+    queryFn: () => keyDatesApi.list(projectId!, buildingId),
     enabled: Boolean(projectId),
   });
 }

@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { CategoryCard } from "./budget/category-card";
 import { PeriodCard } from "./budget/period-card";
 import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
+import { FeatureGate } from "@/components/atoms/feature-gate";
+
 export default function ProjectBudget() {
   const { project, access } = useProjectContext();
   const canManage = Boolean(access && canResourceAction(access, "finances", "manage"));
@@ -178,23 +180,25 @@ export default function ProjectBudget() {
         </div>
       )}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {snapshot && (
-          <>
-            <CashFlowSCurve
-              points={snapshot.finance.cashFlow.points}
-              programmeCurve={snapshot.schedule.programmeCostCurve}
-              currency={snapshot.currency}
-              isLoading={isSnapshotLoading}
-            />
-            <BudgetVsActualBar
-              categories={snapshot.finance.budget.categories}
-              currency={snapshot.currency}
-              isLoading={isSnapshotLoading}
-            />
-          </>
-        )}
-      </div>
+      <FeatureGate flag="projects.reporting">
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {snapshot && (
+            <>
+              <CashFlowSCurve
+                points={snapshot.finance.cashFlow.points}
+                programmeCurve={snapshot.schedule.programmeCostCurve}
+                currency={snapshot.currency}
+                isLoading={isSnapshotLoading}
+              />
+              <BudgetVsActualBar
+                categories={snapshot.finance.budget.categories}
+                currency={snapshot.currency}
+                isLoading={isSnapshotLoading}
+              />
+            </>
+          )}
+        </div>
+      </FeatureGate>
 
       <section className="mt-12">
         <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">

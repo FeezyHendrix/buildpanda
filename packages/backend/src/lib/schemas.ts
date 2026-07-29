@@ -9,3 +9,9 @@ export const paginationProperties = {
   limit: { type: "integer", minimum: 1, maximum: 100 },
   offset: { type: "integer", minimum: 0 },
 } as const;
+
+export const buildingQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { buildingId: { type: "string", minLength: 1 } },
+} as const;

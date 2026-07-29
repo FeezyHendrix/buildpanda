@@ -81,7 +81,10 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         storage_path: stored.storagePath,
         requested_by: user.id,
       });
-      const jobData: TakeoffJobData = { jobId: job.id };
+      const jobData: TakeoffJobData = {
+        jobId: job.id,
+        orgId: project.organization_id ?? undefined,
+      };
       await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", jobData);
       return reply.status(202).send(toDto(job));
     },
@@ -143,7 +146,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         storage_path: plan.storage_path,
         requested_by: user.id,
       });
-      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", { jobId: job.id } satisfies TakeoffJobData);
+      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", { jobId: job.id, orgId } satisfies TakeoffJobData);
       return reply.status(202).send(toDto(job));
     },
   );

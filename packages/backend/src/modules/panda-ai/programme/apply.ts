@@ -1,8 +1,10 @@
 import type { Knex } from "knex";
 import { generateId } from "../../../lib/ids.ts";
+import { BadRequestError } from "../../../lib/errors.ts";
 import type { CurrencyCode } from "../../../lib/currencies.ts";
 import type { StructuredProgramme, StructuredActivity } from "./structure.ts";
 import type { DependencyType } from "./parser.ts";
+import { buildingsRepository } from "../../buildings/repository.ts";
 
 export interface ApplyProgrammeOptions {
   organizationId: string | null;
@@ -90,6 +92,10 @@ export async function applyProgramme(
 ): Promise<ApplyProgrammeResult> {
   const projectId = options.existingProjectId ?? generateId("prj");
   const isNewProject = !options.existingProjectId;
+  const buildingId = isNewProject
+    ? generateId("bld")
+    : await buildingsRepository(db).soleRealBuildingId(projectId);
+  if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
   const name = (options.projectName ?? programme.projectName ?? "Imported Project").trim();
   const address = `${options.city}, ${options.state}`;
   const workActivities = programme.activities.filter((a) => !a.isSummary);
@@ -147,14 +153,35 @@ export async function applyProgramme(
         },
       });
 
+      await trx("buildings").insert([
+        {
+          id: buildingId,
+          project_id: projectId,
+          name,
+          kind: "real",
+          status: "active",
+          sort_order: 0,
+          progress_percent: progressPercent,
+        },
+        {
+          id: `bld_shared_${projectId}`,
+          project_id: projectId,
+          name: "Shared",
+          kind: "shared",
+          status: "active",
+          sort_order: -1,
+          progress_percent: 0,
+        },
+      ]);
+
       await trx("project_finances").insert({
         project_id: projectId,
         currency: options.currency,
         total_budget: options.budgetTotal,
-        funds_deposited: 0,
-        funds_released: 0,
-        locked_in_escrow: 0,
-        remaining_balance: options.budgetTotal,
+        amount_paid_to_date: 0,
+        contract_sum: options.budgetTotal,
+        variations_total: 0,
+        certified_gross_to_date: 0,
       });
     } else {
       await trx("activities").where({ project_id: projectId, source: "programme-import" }).del();
@@ -189,6 +216,7 @@ export async function applyProgramme(
             return {
               id: phaseIdByKey.get(phase.key)!,
               project_id: projectId,
+              building_id: buildingId,
               name: phase.name,
               status: allDone ? "Done" : anyStarted ? "InProgress" : "Pending",
               date_range: span.range,
@@ -204,6 +232,7 @@ export async function applyProgramme(
         programme.activities.map((activity) => ({
           id: activityIdByRef.get(activity.refId)!,
           project_id: projectId,
+          building_id: buildingId,
           phase_id: phaseIdByKey.get(activity.phaseKey) ?? null,
           name: activity.name,
           activity_type: activity.isSummary ? "Summary" : "Construction",
@@ -232,6 +261,7 @@ export async function applyProgramme(
     const keyDateRows: Array<{
       id: string;
       project_id: string;
+      building_id: string;
       label: string;
       target_date: string | null;
       actual_date: null;
@@ -250,6 +280,7 @@ export async function applyProgramme(
       keyDateRows.push({
         id: generateId("kd"),
         project_id: projectId,
+        building_id: buildingId,
         label,
         target_date: target,
         actual_date: null,

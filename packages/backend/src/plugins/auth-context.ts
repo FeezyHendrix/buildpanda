@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { auth } from "../lib/auth.ts";
 import { config } from "../config/index.ts";
+import { enterLlmContext } from "../lib/llm-context.ts";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../lib/errors.ts";
 import {
   BUILTIN_ROLES,
@@ -25,6 +26,22 @@ export interface AuthUser {
   emailVerified: boolean;
   image: string | null;
   role: string;
+}
+
+const ACTIVITY_THROTTLE_MS = 5 * 60 * 1000;
+const lastActivityWrites = new Map<string, number>();
+
+// Throttled to one write per user per window — a per-request UPDATE would not
+// scale under load.
+function touchLastActivity(db: import("knex").Knex, userId: string): void {
+  const now = Date.now();
+  const last = lastActivityWrites.get(userId);
+  if (last && now - last < ACTIVITY_THROTTLE_MS) return;
+  lastActivityWrites.set(userId, now);
+  void db("user")
+    .where({ id: userId })
+    .update({ last_activity_at: new Date() })
+    .catch(() => lastActivityWrites.delete(userId));
 }
 
 declare module "fastify" {
@@ -229,6 +246,14 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           role,
         };
         request.activeOrganizationId = session.session.activeOrganizationId ?? null;
+
+        enterLlmContext({
+          orgId: request.activeOrganizationId ?? undefined,
+          userId: session.user.id,
+          source: "request",
+        });
+
+        touchLastActivity(fastify.db, session.user.id);
 
         // Role/permission rows are served from the access cache (Redis-backed
         // when configured) and re-read only after an explicit invalidation on

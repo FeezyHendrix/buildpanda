@@ -40,6 +40,7 @@ import purchaseOrderRoutes from "./modules/purchase-orders/routes.ts";
 import budgetRoutes from "./modules/budget/routes.ts";
 import adminRoutes from "./modules/admin/routes.ts";
 import stageRoutes from "./modules/stages/routes.ts";
+import buildingRoutes from "./modules/buildings/routes.ts";
 import actionItemRoutes from "./modules/action-items/routes.ts";
 import queryRoutes from "./modules/queries/routes.ts";
 import rfiRoutes from "./modules/rfis/routes.ts";
@@ -75,6 +76,8 @@ import taskRoutes from "./modules/tasks/routes.ts";
 import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
 import lookAheadRoutes from "./modules/look-aheads/routes.ts";
+import transactionRoutes from "./modules/transactions/routes.ts";
+import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -168,6 +171,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(budgetRoutes);
   await app.register(adminRoutes);
   await app.register(stageRoutes);
+  await app.register(buildingRoutes);
   await app.register(actionItemRoutes);
   await app.register(queryRoutes);
   await app.register(rfiRoutes);
@@ -203,12 +207,20 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(materialsLedgerRoutes);
   await app.register(suppliersRoutes);
   await app.register(lookAheadRoutes);
+  await app.register(transactionRoutes);
 
   return app;
 }
 
 export async function start(): Promise<void> {
   const app = await buildApp();
+
+  try {
+    const { seeded } = await besmmRag(app.db).ensureSeeded();
+    if (seeded > 0) app.log.info({ seeded }, "Seeded BESMM vector store from committed embeddings");
+  } catch (error) {
+    app.log.warn({ err: error }, "BESMM vector store seed skipped; take-off will use static reference");
+  }
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     app.log.info({ signal }, "Shutting down");

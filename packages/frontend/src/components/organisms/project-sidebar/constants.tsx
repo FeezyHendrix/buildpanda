@@ -1,6 +1,11 @@
 import type { ComponentType, SVGAttributes } from "react";
+import type { FeatureFlagKey } from "@/lib/feature-flags";
 import {
   AlertIcon,
+  BinocularsIcon,
+  BlocksIcon,
+  ClipboardIcon,
+  GanttIcon,
   CalendarIcon,
   DocumentsIcon,
   FinancesIcon,
@@ -18,7 +23,7 @@ export interface NavEntry {
   label: string;
   slug: string;
   Icon: IconComponent | string;
-  flag?: string;
+  flag?: FeatureFlagKey;
   /** Permission resource from the backend `statement`; shown only with `<resource>:view`. */
   resource?: string;
 }
@@ -83,7 +88,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     label: "Build Stages",
     slug: "schedules/stages",
     resource: "schedule",
-    Icon: OverviewIcon,
+    Icon: BlocksIcon,
     helper: "Phases & progress",
     flag: "projects.schedule",
   },
@@ -107,7 +112,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     label: "Project Chart",
     slug: "schedules/project-chart",
     resource: "schedule",
-    Icon: CalendarIcon,
+    Icon: GanttIcon,
     helper: "Gantt chart",
     flag: "projects.schedule",
   },
@@ -119,7 +124,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       label: "Daily Log",
       slug: "schedules/daily-log",
       resource: "dailyLog",
-      Icon: CalendarIcon,
+      Icon: ClipboardIcon,
       helper: "Field reports",
       flag: "quality.dailyLogs",
     },
@@ -127,7 +132,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       label: "Look Aheads",
       slug: "look-aheads",
       resource: "schedule",
-      Icon: CalendarIcon,
+      Icon: BinocularsIcon,
       helper: "Rolling look-ahead planning",
       flag: "projects.schedule",
     },
@@ -188,6 +193,54 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     resource: "finances",
     Icon: FinancesIcon,
     helper: "Cashflow & escrow",
+    flag: "commercial.finances",
+  },
+  {
+    label: "Contract",
+    slug: "finances/contract",
+    resource: "finances",
+    Icon: FinancesIcon,
+    helper: "Contract settings",
+    flag: "commercial.finances",
+  },
+  {
+    label: "Expendition",
+    slug: "finances/transactions",
+    resource: "transactions",
+    Icon: DocumentsIcon,
+    helper: "Photo-backed expense ledger",
+    flag: "commercial.transactions",
+  },
+  // {
+  //   label: "Advance",
+  //   slug: "finances/advance",
+  //   resource: "finances",
+  //   Icon: FinancesIcon,
+  //   helper: "Mobilization & recovery",
+  //   flag: "commercial.finances",
+  // },
+  // {
+  //   label: "Retention",
+  //   slug: "finances/retention",
+  //   resource: "finances",
+  //   Icon: FinancesIcon,
+  //   helper: "Held & staged releases",
+  //   flag: "commercial.finances",
+  // },
+  // {
+  //   label: "Measured Work",
+  //   slug: "finances/measured-work",
+  //   resource: "finances",
+  //   Icon: FinancesIcon,
+  //   helper: "Unit-rate valuations",
+  //   flag: "commercial.finances",
+  // },
+  {
+    label: "Final Account",
+    slug: "finances/final-account",
+    resource: "finances",
+    Icon: FinancesIcon,
+    helper: "Contract settlement",
     flag: "commercial.finances",
   },
   {

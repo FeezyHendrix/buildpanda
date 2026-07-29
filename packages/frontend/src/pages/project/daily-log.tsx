@@ -12,6 +12,7 @@ import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-di
 import { AddDailyLogEntryDialog } from "@/components/molecules/add-daily-log-entry-dialog";
 import { VoidDailyLogEntryDialog } from "@/components/molecules/void-daily-log-entry-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
+import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useSession } from "@/stores/auth";
 import {
   useProjectDailyDays,
@@ -64,12 +65,13 @@ function formatTime(iso: string): string {
 
 export default function ProjectDailyLog() {
   const { project, access } = useProjectContext();
+  const { selectedBuildingId } = useBuildingScope();
   const { data: session } = useSession();
   const canCreateEntry = Boolean(access && canResourceAction(access, "dailyLog", "create"));
   const canVoidEntry = Boolean(access && canResourceAction(access, "dailyLog", "void"));
   const userId = session?.user?.id ?? null;
 
-  const { data: days = [], isPending } = useProjectDailyDays(project.id);
+  const { data: days = [], isPending } = useProjectDailyDays(project.id, undefined, selectedBuildingId);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);

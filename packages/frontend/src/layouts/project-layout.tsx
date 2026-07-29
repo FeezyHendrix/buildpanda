@@ -20,6 +20,7 @@ import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
+import { BuildingScopeProvider } from "@/contexts/building-scope-context";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
 
@@ -80,6 +81,7 @@ export default function ProjectLayout() {
   }
 
   return (
+    <BuildingScopeProvider projectId={project.id}>
     <AppShell session={session} onLogout={logout}>
       <div className="flex flex-1 overflow-hidden no-scrollbar">
         <ProjectSidebar
@@ -105,6 +107,7 @@ export default function ProjectLayout() {
           )}
       </div>
     </AppShell>
+    </BuildingScopeProvider>
   );
 }
 

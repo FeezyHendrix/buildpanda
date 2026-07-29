@@ -10,18 +10,25 @@ import {
   LogoutIcon,
   LeadsIcon,
   JobsIcon,
-  ShieldIcon,
+  GrowthIcon,
+  EngagementIcon,
+  AiOpsIcon,
+  MaintenanceIcon,
+  FlagIcon,
 } from "@/components/icons";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: DashboardIcon, end: true },
+  { to: "/", label: "Overview", icon: DashboardIcon, end: true },
+  { to: "/growth", label: "Growth", icon: GrowthIcon, end: false },
+  { to: "/engagement", label: "Engagement", icon: EngagementIcon, end: false },
+  { to: "/ops", label: "AI Operations", icon: AiOpsIcon, end: false },
   { to: "/users", label: "Users", icon: UsersIcon, end: false },
   { to: "/organizations", label: "Organizations", icon: OrgIcon, end: false },
   { to: "/projects", label: "Projects", icon: ProjectIcon, end: false },
   { to: "/leads", label: "Leads", icon: LeadsIcon, end: false },
   { to: "/jobs", label: "Import jobs", icon: JobsIcon, end: false },
-  { to: "/maintenance", label: "Maintenance", icon: ShieldIcon, end: false },
-  { to: "/feature-flags", label: "Feature flags", icon: ShieldIcon, end: false },
+  { to: "/maintenance", label: "Maintenance", icon: MaintenanceIcon, end: false },
+  { to: "/feature-flags", label: "Feature flags", icon: FlagIcon, end: false },
 ];
 
 export function Layout() {
@@ -91,7 +98,7 @@ export function Layout() {
           </button>
         </header>
         <main className="flex-1 overflow-y-auto bg-surface-faint">
-          <div className="mx-auto w-full max-w-6xl p-5 sm:p-8">
+          <div className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-8 xl:px-10">
             <Outlet />
           </div>
         </main>

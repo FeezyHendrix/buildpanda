@@ -98,6 +98,8 @@ function toStock(row: StockRow): StockLevel {
     unit: row.unit,
     locationKey: row.location_key,
     onHandQty: onHand,
+    totalReceived: Number(row.total_received),
+    totalUsed: Number(row.total_used),
     lowStockThreshold: threshold,
     lowStock: threshold !== null && onHand <= threshold,
   };

@@ -8,7 +8,7 @@ import { createWriteStream } from "node:fs";
 import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, SheetKind } from "../types.ts";
+import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
 import { calibrate } from "./calibrate.ts";
 import { clusterRegions, segmentsInRegion } from "./cluster.ts";
@@ -23,13 +23,47 @@ import {
   wallConfidence,
 } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
-import { findDuplicatePlans, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
-import { buildUpBill } from "./enrich.ts";
-import { applySchedules, looksLikeScheduleSheet, readSchedules, readingOrderLines } from "./schedule.ts";
+import { measureSheetViaVision, VISION_MAX_SHEETS_PER_SESSION } from "./vision-takeoff.ts";
+import { findDuplicatePlans, applyFloorRepetition, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
+import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
+import { besmmRag } from "../../../../lib/besmm-rag.ts";
+import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
+import { briefsFor } from "./besmm-reference.ts";
+import { classifyStructure } from "./classify.ts";
+import { readBbs, bbsToItems, provisionalRebarItem, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
+import { measureCivil, civilToItems } from "./civil-measure.ts";
+import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
 const DEFAULT_WALL_HEIGHT_M = 2.7;
+
+function besmmResolverFor(db: Knex): BesmmResolver {
+  if (!isEmbeddingConfigured()) return staticBesmmResolver;
+  const rag = besmmRag(db);
+  return async (brief) => {
+    try {
+      const query = brief.retrievalQuery ?? `${brief.element}. ${brief.guidance}`;
+      const matches = await rag.search(query, { sectionCodes: brief.sectionCodes, limit: 6 });
+      if (matches.length === 0) return staticBesmmResolver(brief);
+      const pages = matches.map((m) => m.pageFrom).join(", ");
+      const body = matches.map((m) => `[p.${m.pageFrom}] ${m.content.trim()}`).join("\n\n");
+      return [
+        `<besmm_reference source="BESMM4 NIQS 4th Ed 2015" pages="${pages}">`,
+        body,
+        `</besmm_reference>`,
+        "BESMM REFERENCE RULES:",
+        "- Use these clauses to shape measurement decisions and produce BESMM-conformant description text.",
+        "- PARAPHRASE. Never quote the reference text verbatim into a bill item description.",
+        "- The billing template's unit is AUTHORITATIVE. If the reference implies a different unit, keep the template's unit.",
+        "- The reference is OCR-extracted and table columns may be interleaved. Only rely on a threshold or number when it appears clearly and un-fragmented; otherwise ignore it.",
+        `- For each item you rely on the reference for, set refPages to the page numbers you used, from this list only: ${pages}. Never invent page numbers.`,
+      ].join("\n");
+    } catch {
+      return staticBesmmResolver(brief);
+    }
+  };
+}
 
 export type ProgressFn = (message: string, data?: Record<string, unknown>) => void;
 
@@ -79,6 +113,25 @@ interface SheetMeasurement {
 // One region = one drawing. Measure only floor-plan-looking regions, and only
 // the largest one per sheet — repeated plans on a sheet must not multiply
 // quantities; the QS duplicates verified items per floor in review instead.
+export function regionShareOfSheet(
+  region: { minX: number; minY: number; maxX: number; maxY: number },
+  segments: Segment[],
+): number {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of segments) {
+    minX = Math.min(minX, s.x1, s.x2);
+    maxX = Math.max(maxX, s.x1, s.x2);
+    minY = Math.min(minY, s.y1, s.y2);
+    maxY = Math.max(maxY, s.y1, s.y2);
+  }
+  const sheetArea = (maxX - minX) * (maxY - minY);
+  if (sheetArea <= 0) return 1;
+  return ((region.maxX - region.minX) * (region.maxY - region.minY)) / sheetArea;
+}
+
 function measureSheetRegions(
   extracted: Awaited<ReturnType<typeof extractSheet>>,
   mmPerPt: number,
@@ -86,7 +139,7 @@ function measureSheetRegions(
   pageNumber: number,
   sheetLabel: string,
 ): SheetMeasurement {
-  const regions = clusterRegions(extracted);
+  const regions = clusterRegions(extracted, mmPerPt);
   const items: MeasuredBoqItem[] = [];
   if (regions.length === 0) return { items, fingerprint: null };
 
@@ -94,6 +147,12 @@ function measureSheetRegions(
   const regionSegments = segmentsInRegion(extracted.segments, primary);
   const regionTexts = textsInRegion(extracted.texts, primary);
   const regionCurves = curvesInRegion(extracted.curves, primary);
+
+  // If the isolated region still fills almost the whole sheet, envelope
+  // isolation failed (walls are being measured over title block, notes and
+  // dimension lines). Emit the wall item as provisional — a null-quantity sum
+  // for manual takeoff — rather than silently billing a wrong contract figure.
+  const envelopeUntrustworthy = regionShareOfSheet(primary, extracted.segments) >= 0.85;
 
   const walls = measureWalls(regionSegments, mmPerPt);
   if (walls.centrelineM > 0) {
@@ -108,10 +167,13 @@ function measureSheetRegions(
       qtyGross: grossM2,
       deductions: [],
       qty: grossM2,
-      confidence: wallConfidence(walls.pairs.length, calibrationConfidence),
-      measurementBasis: `${walls.centrelineM.toFixed(1)}m centreline from ${walls.pairs.length} parallel wall pairs x ${DEFAULT_WALL_HEIGHT_M}m assumed height (${sheetLabel})`,
+      confidence: envelopeUntrustworthy ? "low" : wallConfidence(walls.pairs.length, calibrationConfidence),
+      measurementBasis: envelopeUntrustworthy
+        ? `Building could not be isolated from the sheet (measured extent fills the whole drawing); wall quantity left provisional for manual takeoff (${sheetLabel})`
+        : `${walls.centrelineM.toFixed(1)}m centreline from ${walls.pairs.length} parallel wall pairs x ${DEFAULT_WALL_HEIGHT_M}m assumed height (${sheetLabel})`,
       geometries: geometryFromWallPairs(walls.pairs),
       pageNumber,
+      provisional: envelopeUntrustworthy,
     });
   }
 
@@ -218,6 +280,7 @@ function measureSheetRegions(
     });
   }
 
+  for (const item of items) item.scope = "per-floor";
   return { items, fingerprint };
 }
 
@@ -231,9 +294,15 @@ export async function generateForSession(
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   const allItems: MeasuredBoqItem[] = [];
+  const visionBudget = { remainingSheets: VISION_MAX_SHEETS_PER_SESSION };
   const pageFingerprints: PlanFingerprint[] = [];
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
+  const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
+  const classifyTitles: string[] = [];
+  const classifySheets: { kind: SheetKind; title: string }[] = [];
+  const classifyText: string[] = [];
+  const civilSheets: { segments: Segment[]; mmPerPt: number; pageNumber: number }[] = [];
   let nextPageNumber = 1;
 
   for (const placeholder of sheets) {
@@ -277,15 +346,36 @@ export async function generateForSession(
             const page = await doc.getPage(pageNo);
             const extracted = await extractSheet(page as never, pdfjs.OPS as never);
             if (extracted.segments.length < 100) {
-              await repo.updateSheet(sheetId, {
-                status: "unmeasurable",
-                error: "No vector content — likely a scanned/raster drawing; use manual takeoff",
-                page_number: globalPage,
-              });
+              const visionItems = await measureSheetViaVision(
+                {
+                  storagePath: placeholder.storage_path,
+                  pageNumber: pageNo,
+                  globalPage,
+                  sheetLabel: `${placeholder.file_name} p${pageNo}`,
+                },
+                visionBudget,
+              );
+              if (visionItems && visionItems.length > 0) {
+                allItems.push(...visionItems);
+                await repo.updateSheet(sheetId, {
+                  code: `SHT-${String(globalPage).padStart(2, "0")}`,
+                  title: placeholder.file_name,
+                  kind: "floor-plan",
+                  status: "measured",
+                  page_number: globalPage,
+                });
+              } else {
+                await repo.updateSheet(sheetId, {
+                  status: "unmeasurable",
+                  error: "No vector content — likely a scanned/raster drawing; use manual takeoff",
+                  page_number: globalPage,
+                });
+              }
               continue;
             }
             if (looksLikeScheduleSheet(extracted.texts)) {
               scheduleSheets.push({ pageNumber: globalPage, lines: readingOrderLines(extracted.texts) });
+              scheduleTexts.push(...extracted.texts);
             }
             const calibration = calibrate(extracted.texts, extracted.segments);
             const doorProbe = countDoorArcs(extracted.curves, calibration?.mmPerPt ?? 17.68);
@@ -294,6 +384,11 @@ export async function generateForSession(
               doorProbe.count > 0,
               /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" ")),
             );
+            if (title) {
+              classifyTitles.push(title);
+              classifySheets.push({ kind, title });
+            }
+            if (classifyText.length < 40) classifyText.push(extracted.texts.map((t) => t.str).join(" ").slice(0, 2000));
             const sheetLabel = `${placeholder.file_name} p${pageNo}`;
             const code = `SHT-${String(globalPage).padStart(2, "0")}`;
 
@@ -309,6 +404,9 @@ export async function generateForSession(
               snap_index: buildSnapIndex(extracted.segments),
             });
 
+            if (calibration && extracted.segments.length >= 20) {
+              civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
+            }
             if (calibration && kind === "floor-plan") {
               const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel);
               if (measured.fingerprint) pageFingerprints.push(measured.fingerprint);
@@ -338,14 +436,14 @@ export async function generateForSession(
     }
   }
 
-  // Repeated-floor detection: drop items measured from pages whose plan
-  // geometry duplicates an earlier page — same floor drawn twice must not sum.
-  const duplicateOf = findDuplicatePlans(pageFingerprints);
-  let dedupedItems = allItems;
-  if (duplicateOf.size > 0) {
-    dedupedItems = allItems.filter((item) => !duplicateOf.has(item.pageNumber));
-    for (const [dup, rep] of duplicateOf) {
-      progress(`Page ${dup} duplicates the plan on page ${rep} — measured once`);
+  // Repeated-floor handling: identical typical floors are one drawing repeated.
+  // Drop the duplicate pages, but MULTIPLY the representative's per-floor items
+  // by the group size so the building is not under-counted (measure once x N).
+  const dup = findDuplicatePlans(pageFingerprints);
+  const dedupedItems = applyFloorRepetition(allItems, dup);
+  for (const group of dup.groups.values()) {
+    if (group.groupSize > 1) {
+      progress(`Floors on pages ${group.members.join(", ")} are identical — measured once x ${group.groupSize}`);
     }
   }
 
@@ -376,6 +474,31 @@ export async function generateForSession(
 
   let billItems: MeasuredBoqItem[] = [...merged.values()];
 
+  for (const sheet of scheduleSheets) {
+    const reading = readBbs(sheet.lines);
+    if (reading) {
+      if (reading.unreadable) {
+        billItems.push(provisionalRebarItem(sheet.pageNumber));
+        progress(`Bar bending schedule on page ${sheet.pageNumber} could not be read reliably — rebar left provisional`);
+      } else {
+        const rebarItems = bbsToItems(reading, sheet.pageNumber);
+        if (rebarItems.length > 0) {
+          billItems.push(...rebarItems);
+          progress(`Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
+        }
+      }
+    }
+    const piles = readPileSchedule(sheet.lines);
+    if (piles) {
+      const pileItems = pileScheduleToItems(piles, sheet.pageNumber);
+      if (pileItems.length > 0) {
+        billItems.push(...pileItems);
+        const totalPiles = Object.values(piles.byDiameter).reduce((s, d) => s + d.number, 0);
+        progress(`Read pile schedule on page ${sheet.pageNumber}: ${totalPiles} piles`);
+      }
+    }
+  }
+
   // Schedule pass: the architect's door/window schedule tables are the
   // authoritative counts and carry sizes/materials; the tag census becomes
   // the cross-check and disagreements are flagged for review.
@@ -383,11 +506,18 @@ export async function generateForSession(
   if (isLlmConfigured() && scheduleSheets.length > 0) {
     progress(`Reading ${scheduleSheets.length} schedule sheet(s)`);
     try {
-      const schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
+      let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
         chatJsonValidated(messages, schema),
       );
       if (schedules) {
+        // deterministic diagram dimensions beat transcribed table cells
+        const diagramSizes = measureDiagramSizes(scheduleTexts);
+        if (diagramSizes.size > 0) {
+          schedules = mergeDiagramSizes(schedules, diagramSizes);
+          progress(`Measured ${diagramSizes.size} type elevations on the schedule sheet`);
+        }
         billItems = applySchedules(billItems, schedules);
+        billItems = applyOpeningDeductions(billItems, schedules);
         const specs = [...schedules.windows, ...schedules.doors]
           .filter((e) => e.material || e.remarks)
           .map((e) => `${e.type}: ${[e.material, e.remarks].filter(Boolean).join(", ")}`)
@@ -400,17 +530,37 @@ export async function generateForSession(
     }
   }
 
+  const structure = classifyStructure({ sheetTitles: classifyTitles, sheets: classifySheets, text: classifyText.join(" \n ") });
+  await repo.updateSessionStructure(sessionId, structure);
+  progress(
+    `Detected structure: ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`,
+    { structure },
+  );
+
+  const CIVIL_CLASSES = new Set(["road", "airport", "bridge", "infrastructure"]);
+  if (CIVIL_CLASSES.has(structure.structureClass) && civilSheets.length > 0) {
+    const best = civilSheets.reduce((a, b) => (b.segments.length > a.segments.length ? b : a));
+    const civilItems = civilToItems(measureCivil(best.segments, best.mmPerPt), best.pageNumber);
+    if (civilItems.length > 0) {
+      billItems.push(...civilItems);
+      progress(`Measured civil surface geometry on page ${best.pageNumber}: ${civilItems.length} anchors`);
+    }
+  }
+
   // Build-up stage: parallel per-element QS agents expand the measured
   // anchors into a BESMM-granular bill. Quantities stay engine-computed —
   // agents only name anchors or formulas; provisional items carry none.
   if (isLlmConfigured() && billItems.length > 0) {
     progress("Building up the bill with parallel QS agents");
     const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
+    const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(
       billItems,
       sheetContext,
       async (messages, schema) => chatJsonValidated(messages, schema),
       (message) => progress(message),
+      briefsFor(structure.structureClass, { storeys: structure.storeys, foundationType: structure.foundationType }),
+      resolveBesmm,
     );
     const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);
     if (failed.length > 0) progress(`Elements left for manual billing: ${failed.join(", ")}`);

@@ -11,6 +11,7 @@ import type {
 export interface LookAheadFilters {
   status?: LookAheadStatus;
   timeline?: LookAheadTimeline;
+  buildingId?: string;
 }
 
 export const lookAheadsApi = {

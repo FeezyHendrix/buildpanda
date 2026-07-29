@@ -8,6 +8,7 @@ export const PRECON_GENERATE_QUEUE = "precon-generate";
 
 export interface PreconGenerateJobData {
   sessionId: string;
+  orgId?: string;
 }
 
 export type RealtimePublish = (payload: RealtimePayload) => void;

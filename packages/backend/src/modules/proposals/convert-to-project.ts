@@ -103,6 +103,7 @@ export async function convertProposalToProject(
   const currency: CurrencyCode = proposalRow.currency === "USD" ? "USD" : "NGN";
 
   const projectId = generateId("prj");
+  const buildingId = generateId("bld");
   const now = new Date().toISOString();
 
   // The proposal has no programme entity, so stages seed from the standard
@@ -137,12 +138,34 @@ export async function convertProposalToProject(
         involvementLevel: "Hands-on",
         riskOptions: [],
       },
-    });
+      });
 
-    await trx("project_phases").insert(
-      DEFAULT_PHASES.map((phase, idx) => ({
-        id: generateId("phase"),
-        project_id: projectId,
+      await trx("buildings").insert([
+        {
+          id: buildingId,
+          project_id: projectId,
+          name: proposalRow.title,
+          kind: "real",
+          status: "active",
+          sort_order: 0,
+          progress_percent: 0,
+        },
+        {
+          id: `bld_shared_${projectId}`,
+          project_id: projectId,
+          name: "Shared",
+          kind: "shared",
+          status: "active",
+          sort_order: -1,
+          progress_percent: 0,
+        },
+      ]);
+
+      await trx("project_phases").insert(
+        DEFAULT_PHASES.map((phase, idx) => ({
+          id: generateId("phase"),
+          project_id: projectId,
+          building_id: buildingId,
         name: phase.name,
         status: "Pending",
         date_range: phase.date_range,
@@ -154,10 +177,10 @@ export async function convertProposalToProject(
       project_id: projectId,
       currency,
       total_budget: estimate?.total ?? 0,
-      funds_deposited: 0,
-      funds_released: 0,
-      locked_in_escrow: 0,
-      remaining_balance: estimate?.total ?? 0,
+      amount_paid_to_date: 0,
+      contract_sum: estimate?.total ?? 0,
+      variations_total: 0,
+      certified_gross_to_date: 0,
     });
 
     const budgetCategories = estimate
@@ -172,6 +195,7 @@ export async function convertProposalToProject(
         schedule.map((s, idx) => ({
           id: generateId("mlst"),
           project_id: projectId,
+          building_id: `bld_shared_${projectId}`,
           name: s.label,
           phase: "General",
           status: "Pending",

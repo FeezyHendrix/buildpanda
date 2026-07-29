@@ -127,7 +127,7 @@ export function weatherService(db: Knex) {
       ? {
           currency: finance.currency,
           totalBudget: finance.totalBudget,
-          remainingBalance: finance.remainingBalance,
+          contractSum: finance.contractSum,
           nextMilestone: nextMilestone
             ? { name: nextMilestone.name, amount: nextMilestone.amount, status: nextMilestone.status }
             : null,

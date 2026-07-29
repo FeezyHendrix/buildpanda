@@ -10,6 +10,7 @@ import {
 } from "../../lib/authorization.ts";
 import type {
   NewPhaseRecord,
+  NewProjectBuildingRecord,
   NewProjectRecord,
   ProjectsRepository,
   TaskSeed,
@@ -96,6 +97,7 @@ function templatePhases(projectId: string, template: ProjectTemplate): NewPhaseR
   return template.stages.map((stage, idx) => ({
     id: generateId("phase"),
     project_id: projectId,
+    building_id: "",
     name: stage.name,
     status: "Pending",
     date_range: ranges[idx]!,
@@ -115,6 +117,7 @@ const TEMPLATE_BOARD_COLUMNS = [
  */
 function templateTaskSeed(
   projectId: string,
+  buildingId: string,
   template: ProjectTemplate,
   ownerId: string | null,
 ): TaskSeed {
@@ -134,6 +137,7 @@ function templateTaskSeed(
     board: {
       id: boardId,
       project_id: projectId,
+      building_id: buildingId,
       name: "Tasks",
       is_default: true,
       created_by_id: ownerId,
@@ -142,6 +146,7 @@ function templateTaskSeed(
     tasks: tasks.map((task, idx) => ({
       id: generateId("task"),
       project_id: projectId,
+      building_id: buildingId,
       board_id: boardId,
       column_id: todoColumnId,
       title: task.title,
@@ -166,11 +171,13 @@ function buildCreate(
   organizationId: string | null,
 ): {
   project: NewProjectRecord;
+  buildings: NewProjectBuildingRecord[];
   phases: NewPhaseRecord[];
   financesCurrency: CurrencyCode;
   taskSeed?: TaskSeed;
 } {
   const projectId = generateId("prj");
+  const realBuildingId = generateId("bld");
   const address = `${input.location.city}, ${input.location.state}`;
 
   const project: NewProjectRecord = {
@@ -201,6 +208,27 @@ function buildCreate(
     },
   };
 
+  const buildings: NewProjectBuildingRecord[] = [
+    {
+      id: realBuildingId,
+      project_id: projectId,
+      name: input.title,
+      kind: "real",
+      status: "active",
+      sort_order: 0,
+      progress_percent: 0,
+    },
+    {
+      id: `bld_shared_${projectId}`,
+      project_id: projectId,
+      name: "Shared",
+      kind: "shared",
+      status: "active",
+      sort_order: -1,
+      progress_percent: 0,
+    },
+  ];
+
   const template = input.templateId ? findTemplate(input.templateId) : undefined;
   if (input.templateId && !template) {
     throw new BadRequestError("Unknown project template.");
@@ -211,15 +239,18 @@ function buildCreate(
     : phasesForProjectType(input.projectType).map((phase, idx) => ({
         id: generateId("phase"),
         project_id: projectId,
+        building_id: realBuildingId,
         name: phase.name,
         status: "Pending",
         date_range: phase.date_range,
         sort_order: idx,
       }));
 
-  const taskSeed = template ? templateTaskSeed(projectId, template, ownerId) : undefined;
+  for (const phase of phases) phase.building_id = realBuildingId;
 
-  return { project, phases, financesCurrency: input.details.currency, taskSeed };
+  const taskSeed = template ? templateTaskSeed(projectId, realBuildingId, template, ownerId) : undefined;
+
+  return { project, buildings, phases, financesCurrency: input.details.currency, taskSeed };
 }
 
 export function projectsService(repository: ProjectsRepository) {
@@ -263,23 +294,24 @@ export function projectsService(repository: ProjectsRepository) {
       ownerId: string | null,
       organizationId: string | null,
     ): Promise<Project> {
-      const { project, phases, financesCurrency, taskSeed } = buildCreate(
+      const { project, buildings, phases, financesCurrency, taskSeed } = buildCreate(
         input,
         ownerId,
         organizationId,
       );
       await repository.create(
         project,
+        buildings,
         phases,
         {
-          project_id: project.id,
-          currency: financesCurrency,
-          total_budget: project.budget_total,
-          funds_deposited: 0,
-          funds_released: 0,
-          locked_in_escrow: 0,
-          remaining_balance: project.budget_total,
-        },
+      project_id: project.id,
+      currency: financesCurrency,
+      total_budget: project.budget_total,
+      amount_paid_to_date: 0,
+      contract_sum: project.budget_total,
+      variations_total: 0,
+      certified_gross_to_date: 0,
+    },
         taskSeed,
       );
       return this.getById(project.id);
