@@ -53,17 +53,29 @@ interface TransactionSpec {
 
 const TRANSACTIONS: TransactionSpec[] = [
   { title: "Cement delivery — 200 bags", description: "First delivery for slab pour and ground-floor block work", category: "materials", amount: 900000, daysAgo: 18, vendor: "Julius Berger Materials Depot", reference: "MAT-INV-2026-011" },
+  { title: "Reinforcement steel — 320 lengths", description: "Rebar cages for slabs and columns (12mm + 16mm)", category: "materials", amount: 6820000, daysAgo: 12, vendor: "Julius Berger Materials Depot", reference: "MAT-INV-2026-014" },
+  { title: "Sandcrete blocks — 3,000 blocks", description: "Second block delivery for first-floor superstructure", category: "materials", amount: 1440000, daysAgo: 9, vendor: "Lekki Building Supplies", reference: "MAT-INV-2026-018" },
+  { title: "Granite chippings — 25 tonnes", description: "3/4 aggregate for GF slab pour", category: "materials", amount: 550000, daysAgo: 32, vendor: "Kolo Aggregates", reference: "AGG-2026-071" },
+  { title: "Sharp sand — 40 tonnes", description: "Bedding and mortar sand", category: "materials", amount: 480000, daysAgo: 40, vendor: "Kolo Aggregates", reference: "AGG-2026-064" },
+  { title: "Site labour — week 1", description: "Weekly wages, 12 workers, 6 days", category: "labour", amount: 700000, daysAgo: 42, vendor: "Adeyemi Crew", reference: "PAY-W01" },
+  { title: "Site labour — week 2", description: "Weekly wages, 14 workers, 6 days", category: "labour", amount: 820000, daysAgo: 35, vendor: "Adeyemi Crew", reference: "PAY-W02" },
   { title: "Site labour — week 3", description: "Weekly wages, 14 workers, 6 days", category: "labour", amount: 820000, daysAgo: 14, vendor: "Adeyemi Crew", reference: "PAY-W03" },
-  { title: "Excavator hire — 3 days", description: "Bulk excavation for substructure", category: "equipment", amount: 450000, daysAgo: 22, vendor: "Heavy Plant NG", reference: "HIRE-1109" },
   { title: "Site labour — week 4", description: "Weekly wages, 18 workers, 6 days", category: "labour", amount: 1060000, daysAgo: 7, vendor: "Adeyemi Crew", reference: "PAY-W04" },
-  { title: "Reinforcement steel — 320 lengths", description: "Rebar cages for slabs and columns", category: "materials", amount: 6820000, daysAgo: 12, vendor: "Julius Berger Materials Depot", reference: "MAT-INV-2026-014" },
+  { title: "Excavator hire — 3 days", description: "Bulk excavation for substructure", category: "equipment", amount: 450000, daysAgo: 22, vendor: "Heavy Plant NG", reference: "HIRE-1109" },
+  { title: "Concrete pump hire — GF slab pour", description: "Boom pump, one-day hire including operator", category: "equipment", amount: 380000, daysAgo: 34, vendor: "Heavy Plant NG", reference: "HIRE-1112" },
   { title: "Scaffolding hire — month 1", description: "Perimeter scaffolding — Q3 mobilisation", category: "subcontractor", amount: 210000, daysAgo: 20, vendor: "ScaffoldPro NG", reference: "HIRE-448" },
-  { title: "Diesel — generator run", description: "150L for tower crane + site office genset", category: "utilities", amount: 195000, daysAgo: 5, vendor: "Total Depot Ikoyi", reference: "DZ-77213" },
-  { title: "Site office rental — month 2", description: "Prefab office + welfare cabin", category: "preliminaries", amount: 280000, daysAgo: 30, vendor: "Portakabin Lagos", reference: "RENT-Feb" },
-  { title: "Building permit — annex extension", description: "Filed with Lagos State Physical Planning Permit Authority", category: "permits_fees", amount: 350000, daysAgo: 45, vendor: "LASPPPA", reference: "LSPPA/2026/1044" },
+  { title: "Formwork sub — GF slab", description: "Panel + prop supply and labour, ground-floor slab", category: "subcontractor", amount: 1250000, daysAgo: 30, vendor: "Fabrique Formworks", reference: "FF-INV-2026-19" },
   { title: "Structural engineer — site visits", description: "Weekly structural inspections during shell works", category: "professional_services", amount: 500000, daysAgo: 10, vendor: "Ove Arup & Associates", reference: "OA-INV-77" },
+  { title: "Diesel — generator run", description: "150L for tower crane + site office genset", category: "utilities", amount: 195000, daysAgo: 5, vendor: "Total Depot Ikoyi", reference: "DZ-77213" },
+  { title: "Water tanker — 20,000L", description: "Site water for curing and mortar", category: "utilities", amount: 65000, daysAgo: 11, vendor: "H2O Logistics", reference: "H2O-2231" },
+  { title: "Site office rental — month 1", description: "Prefab office + welfare cabin", category: "preliminaries", amount: 280000, daysAgo: 60, vendor: "Portakabin Lagos", reference: "RENT-Apr" },
+  { title: "Site office rental — month 2", description: "Prefab office + welfare cabin", category: "preliminaries", amount: 280000, daysAgo: 30, vendor: "Portakabin Lagos", reference: "RENT-May" },
+  { title: "Site security — month 1", description: "24/7 guard service + patrol", category: "overhead", amount: 420000, daysAgo: 55, vendor: "Sentinel Security", reference: "SS-M01" },
+  { title: "Site security — month 2", description: "24/7 guard service + patrol", category: "overhead", amount: 420000, daysAgo: 28, vendor: "Sentinel Security", reference: "SS-M02" },
+  { title: "Building permit — annex extension", description: "Filed with Lagos State Physical Planning Permit Authority", category: "permits_fees", amount: 350000, daysAgo: 45, vendor: "LASPPPA", reference: "LSPPA/2026/1044" },
+  { title: "Soil test report", description: "Geotechnical investigation & bearing capacity report", category: "professional_services", amount: 480000, daysAgo: 90, vendor: "GeoNigeria Labs", reference: "GNL-2026-11" },
   { title: "Material transport — Lekki delivery", description: "Two-truck haul from Ojota depot to site", category: "transport", amount: 85000, daysAgo: 6, vendor: "Fastway Logistics", reference: "FL-1044" },
-  { title: "Site security — month 1", description: "24/7 guard service + patrol", category: "overhead", amount: 420000, daysAgo: 28, vendor: "Sentinel Security", reference: "SS-MO1" },
+  { title: "PPE and safety kit refill", description: "Helmets, gloves, harnesses, first-aid restock", category: "overhead", amount: 240000, daysAgo: 26, vendor: "SafeGear Nigeria", reference: "SG-8817" },
   { title: "Petty cash reimbursement", description: "Sundry site expenses (water, safety consumables)", category: "miscellaneous", amount: 45000, daysAgo: 3, vendor: null, reference: null },
 ];
 
@@ -76,12 +88,19 @@ interface CashFlowSpec {
 }
 
 const CASH_FLOW: CashFlowSpec[] = [
-  { category: "valuation", amount: 8500000, isCredit: false, description: "Interim valuation #1 — substructure completed", daysAgo: 35 },
-  { category: "milestone_payment", amount: 6800000, isCredit: false, description: "Milestone 1 release — foundations signed off", daysAgo: 32 },
-  { category: "valuation", amount: 12200000, isCredit: false, description: "Interim valuation #2 — slab and columns", daysAgo: 20 },
-  { category: "milestone_payment", amount: 10500000, isCredit: false, description: "Milestone 2 release — structural shell 45%", daysAgo: 15 },
-  { category: "claims_payment", amount: 750000, isCredit: false, description: "Approved claim — additional dewatering during rains", daysAgo: 12 },
-  { category: "valuation", amount: 4900000, isCredit: false, description: "Interim valuation #3 (partial) — roofing prep", daysAgo: 4 },
+  { category: "milestone_payment", amount: 6000000, isCredit: false, description: "Milestone release — mobilisation & site setup certified", daysAgo: 120 },
+  { category: "valuation", amount: 4200000, isCredit: false, description: "Interim valuation #1 — early substructure & site strip", daysAgo: 95 },
+  { category: "valuation", amount: 8500000, isCredit: false, description: "Interim valuation #2 — substructure completed", daysAgo: 75 },
+  { category: "milestone_payment", amount: 9500000, isCredit: false, description: "Milestone release — substructure & foundations signed off", daysAgo: 70 },
+  { category: "claims_payment", amount: 750000, isCredit: false, description: "Approved claim — additional dewatering during May rains", daysAgo: 65 },
+  { category: "valuation", amount: 6800000, isCredit: false, description: "Interim valuation #3 — columns cast, formwork struck", daysAgo: 55 },
+  { category: "valuation", amount: 12200000, isCredit: false, description: "Interim valuation #4 — ground floor slab poured", daysAgo: 35 },
+  { category: "milestone_payment", amount: 5800000, isCredit: false, description: "Interim release — ground floor slab at 65%", daysAgo: 28 },
+  { category: "claims_payment", amount: 420000, isCredit: false, description: "Approved claim — extra rebar coupling on GF columns", daysAgo: 24 },
+  { category: "valuation", amount: 5400000, isCredit: false, description: "Interim valuation #5 — first floor formwork", daysAgo: 18 },
+  { category: "valuation", amount: 4900000, isCredit: false, description: "Interim valuation #6 — roofing prep", daysAgo: 8 },
+  { category: "claims_payment", amount: 285000, isCredit: false, description: "Approved claim — night pour supervision (safety)", daysAgo: 6 },
+  { category: "valuation", amount: 3100000, isCredit: false, description: "Interim valuation #7 (partial) — MEP first-fix mobilisation", daysAgo: 3 },
 ];
 
 interface InvoiceSpec {
@@ -152,6 +171,45 @@ const INVOICES: InvoiceSpec[] = [
     ],
   },
   {
+    number: "SUB-INV-2026-012",
+    invoiceType: "vendor",
+    vendorName: "Fabrique Formworks",
+    trade: "Formwork subcontract",
+    status: "Approved",
+    daysAgoIssued: 30,
+    daysAgoDue: 0,
+    lineItems: [
+      { description: "Formwork panels + labour — ground floor slab", quantity: 1, unit: "lot", unitRate: 1250000 },
+    ],
+    paidPortion: 1250000,
+  },
+  {
+    number: "MAT-INV-2026-018",
+    invoiceType: "material",
+    vendorName: "Lekki Building Supplies",
+    trade: "Blocks & finishes",
+    status: "Approved",
+    daysAgoIssued: 9,
+    daysAgoDue: -21,
+    lineItems: [
+      { description: "Sandcrete blocks 9-inch", quantity: 3000, unit: "block", unitRate: 480 },
+    ],
+  },
+  {
+    number: "SUB-INV-2026-016",
+    invoiceType: "vendor",
+    vendorName: "PipesPro Nigeria",
+    trade: "Plumbing supply — first fix",
+    status: "Submitted",
+    daysAgoIssued: 15,
+    daysAgoDue: -15,
+    lineItems: [
+      { description: "PVC pipe 4-inch (6m)", quantity: 60, unit: "length", unitRate: 5200 },
+      { description: "PVC pipe 2-inch (6m)", quantity: 45, unit: "length", unitRate: 2800 },
+      { description: "PVC fittings assorted", quantity: 1, unit: "set", unitRate: 180000 },
+    ],
+  },
+  {
     number: "PRG-INV-2026-002",
     invoiceType: "progress",
     vendorName: "Adeyemi Crew (Main contractor)",
@@ -160,7 +218,7 @@ const INVOICES: InvoiceSpec[] = [
     daysAgoIssued: 3,
     daysAgoDue: -27,
     lineItems: [
-      { description: "Interim payment application #3 — structural shell 45%", quantity: 1, unit: "application", unitRate: 12500000 },
+      { description: "Interim payment application #7 — MEP first-fix mobilisation", quantity: 1, unit: "application", unitRate: 3100000 },
     ],
   },
 ];
@@ -174,8 +232,13 @@ interface PurchaseOrderSpec {
 }
 
 const PURCHASE_ORDERS: PurchaseOrderSpec[] = [
+  { number: "PO-2026-008", vendorName: "Julius Berger Materials Depot", status: "Received", daysAgo: 42, items: [{ description: "Cement OPC 42.5 (bags)", quantity: 500, unitPrice: 4500 }, { description: "Sandcrete blocks 9-inch", quantity: 2500, unitPrice: 480 }] },
+  { number: "PO-2026-013", vendorName: "Kolo Aggregates", status: "Received", daysAgo: 38, items: [{ description: "Sharp sand", quantity: 60, unitPrice: 12000 }, { description: "Granite chippings 3/4", quantity: 40, unitPrice: 22000 }] },
+  { number: "PO-2026-017", vendorName: "Julius Berger Materials Depot", status: "Received", daysAgo: 30, items: [{ description: "Reinforcement steel 12mm (12m)", quantity: 200, unitPrice: 22000 }, { description: "Reinforcement steel 16mm (12m)", quantity: 120, unitPrice: 28500 }, { description: "Binding wire 16 gauge", quantity: 20, unitPrice: 8500 }] },
   { number: "PO-2026-021", vendorName: "Lekki Building Supplies", status: "Received", daysAgo: 25, items: [{ description: "Hardwood 2x4 (12ft)", quantity: 300, unitPrice: 3200 }, { description: "Plywood marine 18mm", quantity: 40, unitPrice: 18500 }] },
+  { number: "PO-2026-029", vendorName: "PipesPro Nigeria", status: "PartiallyReceived", daysAgo: 15, items: [{ description: "PVC pipe 4-inch (6m)", quantity: 60, unitPrice: 5200 }, { description: "PVC pipe 2-inch (6m)", quantity: 45, unitPrice: 2800 }, { description: "PVC fittings assorted", quantity: 1, unitPrice: 180000 }] },
   { number: "PO-2026-034", vendorName: "Roofmasters Nigeria", status: "PartiallyReceived", daysAgo: 8, items: [{ description: "Roofing sheet Aluzinc 0.55mm", quantity: 200, unitPrice: 6500 }, { description: "Roofing accessories set", quantity: 1, unitPrice: 180000 }] },
+  { number: "PO-2026-039", vendorName: "Ikorodu Ceramics", status: "Issued", daysAgo: 4, items: [{ description: "Vitrified floor tile 600x600", quantity: 250, unitPrice: 9500 }, { description: "Tile adhesive (25kg bags)", quantity: 30, unitPrice: 3800 }, { description: "Grout, colour matched (5kg)", quantity: 25, unitPrice: 2200 }] },
   { number: "PO-2026-041", vendorName: "PaintCo NG", status: "Issued", daysAgo: 2, items: [{ description: "Emulsion paint white 20L", quantity: 40, unitPrice: 11500 }, { description: "Emulsion paint accent — Sage", quantity: 12, unitPrice: 13800 }, { description: "Roller + brush set", quantity: 30, unitPrice: 3200 }] },
 ];
 
@@ -191,18 +254,28 @@ interface PaymentClaimSpec {
 }
 
 const PAYMENT_CLAIMS: PaymentClaimSpec[] = [
-  { number: "PC-2026-001", amount: 8500000, status: "Paid", periodStart: "2026-04-01", periodEnd: "2026-04-30", daysAgoSubmitted: 35, daysAgoApproved: 32, notes: "First interim claim — substructure" },
-  { number: "PC-2026-002", amount: 12200000, status: "Approved", periodStart: "2026-05-01", periodEnd: "2026-05-31", daysAgoSubmitted: 20, daysAgoApproved: 15, notes: "Slab and column work certified" },
-  { number: "PC-2026-003", amount: 6900000, status: "Submitted", periodStart: "2026-06-01", periodEnd: "2026-06-30", daysAgoSubmitted: 4, notes: "Interim #3 — partial: roofing prep only" },
+  { number: "PC-2026-001", amount: 4200000, status: "Paid", periodStart: "2026-03-15", periodEnd: "2026-03-31", daysAgoSubmitted: 95, daysAgoApproved: 92, notes: "Early substructure & site strip — interim #1" },
+  { number: "PC-2026-002", amount: 8500000, status: "Paid", periodStart: "2026-04-01", periodEnd: "2026-04-30", daysAgoSubmitted: 75, daysAgoApproved: 70, notes: "Substructure completed — interim #2" },
+  { number: "PC-2026-003", amount: 6800000, status: "Paid", periodStart: "2026-05-01", periodEnd: "2026-05-20", daysAgoSubmitted: 55, daysAgoApproved: 50, notes: "Columns cast, formwork struck — interim #3" },
+  { number: "PC-2026-004", amount: 12200000, status: "Approved", periodStart: "2026-05-21", periodEnd: "2026-06-20", daysAgoSubmitted: 35, daysAgoApproved: 28, notes: "Ground floor slab poured — interim #4" },
+  { number: "PC-2026-005", amount: 5400000, status: "Approved", periodStart: "2026-06-21", periodEnd: "2026-07-15", daysAgoSubmitted: 18, daysAgoApproved: 12, notes: "First floor formwork — interim #5" },
+  { number: "PC-2026-006", amount: 4900000, status: "Submitted", periodStart: "2026-07-16", periodEnd: "2026-07-25", daysAgoSubmitted: 8, notes: "Roofing prep — interim #6" },
+  { number: "PC-2026-007", amount: 3100000, status: "Draft", periodStart: "2026-07-26", periodEnd: "2026-07-29", daysAgoSubmitted: 3, notes: "MEP first-fix mobilisation — interim #7 (partial)" },
 ];
 
 const SUPPLIERS = [
   { name: "Julius Berger Materials Depot", contact: "Chidi Okoro", email: "chidi@julius-berger.ng", phone: "+234 803 501 2233", address: "Ojota Industrial, Lagos" },
   { name: "Lekki Building Supplies", contact: "Uche Nnamdi", email: "sales@lekkibuild.ng", phone: "+234 807 442 8811", address: "Lekki Phase 1, Lagos" },
+  { name: "Kolo Aggregates", contact: "Musa Bello", email: "orders@koloagg.ng", phone: "+234 805 118 7723", address: "Mowe-Ibafo, Ogun" },
   { name: "Roofmasters Nigeria", contact: "Segun Adeyemi", email: "info@roofmasters.ng", phone: "+234 812 337 9900", address: "Isolo, Lagos" },
+  { name: "PipesPro Nigeria", contact: "Adebayo Salami", email: "sales@pipespro.ng", phone: "+234 803 448 6612", address: "Amuwo Odofin, Lagos" },
+  { name: "Ikorodu Ceramics", contact: "Ngozi Eze", email: "trade@ikoroduceramics.ng", phone: "+234 806 771 2255", address: "Ikorodu, Lagos" },
   { name: "PaintCo NG", contact: "Kemi Balogun", email: "orders@paintco.ng", phone: "+234 802 118 6420", address: "Apapa, Lagos" },
   { name: "ScaffoldPro NG", contact: "Emeka Ibe", email: "hire@scaffoldpro.ng", phone: "+234 809 271 3355", address: "Ikorodu, Lagos" },
-  { name: "Heavy Plant NG", contact: "Tunde Okafor", email: "dispatch@heavyplant.ng", phone: "+234 806 990 1120", address: "Sango Ota" },
+  { name: "Heavy Plant NG", contact: "Tunde Okafor", email: "dispatch@heavyplant.ng", phone: "+234 806 990 1120", address: "Sango Ota, Ogun" },
+  { name: "Fabrique Formworks", contact: "Ibrahim Danjuma", email: "quotes@fabrique.ng", phone: "+234 703 995 4488", address: "Ilupeju, Lagos" },
+  { name: "Adeyemi Crew (main contractor labour)", contact: "Yusuf Adeyemi", email: "yusuf@adeyemicrew.ng", phone: "+234 803 771 4409", address: "Ikeja, Lagos" },
+  { name: "Sentinel Security", contact: "Ada Chukwu", email: "ops@sentinel-sec.ng", phone: "+234 810 552 7788", address: "Yaba, Lagos" },
   { name: "Ove Arup & Associates", contact: "Dr. Angela Bello", email: "abello@arup.com", phone: "+234 703 220 5544", address: "Victoria Island, Lagos" },
 ];
 
@@ -258,16 +331,16 @@ export async function seed(knex: Knex): Promise<void> {
     .update({
       contract_sum: 120000000,
       variations_total: 2000000,
-      certified_gross_to_date: 32900000,
-      amount_paid_to_date: 17300000,
+      certified_gross_to_date: 45100000,
+      amount_paid_to_date: 19500000,
       retention_rate: 0.05,
-      retention_held: 1645000,
+      retention_held: 2255000,
       contract_type: "gmp",
       retention_release_mode: "staged_pc_dlp",
       advance_percentage: 0.1,
       advance_recovery_mode: "percentage",
       advance_recovery_rate: 0.1,
-      advance_recovered: 1200000,
+      advance_recovered: 1950000,
       payment_terms_days: 30,
       defects_liability_days: 365,
       contract_notes:
