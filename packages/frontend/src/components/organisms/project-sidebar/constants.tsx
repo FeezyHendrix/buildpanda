@@ -227,14 +227,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   //   helper: "Held & staged releases",
   //   flag: "commercial.finances",
   // },
-  {
-    label: "Measured Work",
-    slug: "finances/measured-work",
-    resource: "finances",
-    Icon: FinancesIcon,
-    helper: "Unit-rate valuations",
-    flag: "commercial.finances",
-  },
+  // {
+  //   label: "Measured Work",
+  //   slug: "finances/measured-work",
+  //   resource: "finances",
+  //   Icon: FinancesIcon,
+  //   helper: "Unit-rate valuations",
+  //   flag: "commercial.finances",
+  // },
   {
     label: "Final Account",
     slug: "finances/final-account",
