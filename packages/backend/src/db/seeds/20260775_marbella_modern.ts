@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Knex } from "knex";
 
 const PROJECT_ID = "sample-project";
+const BUILDING_ID = `bld_${PROJECT_ID}`;
 
 function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -538,6 +539,7 @@ export async function seed(knex: Knex): Promise<void> {
   await knex("task_boards").insert({
     id: boardId,
     project_id: PROJECT_ID,
+    building_id: BUILDING_ID,
     name: "Site tasks",
     is_default: true,
     created_by_id: null,
@@ -565,6 +567,7 @@ export async function seed(knex: Knex): Promise<void> {
     await knex("tasks").insert({
       id: `tsk_${randomUUID()}`,
       project_id: PROJECT_ID,
+      building_id: BUILDING_ID,
       board_id: boardId,
       column_id: columnsByStatus.get(task.columnStatus)!,
       title: task.title,
