@@ -77,6 +77,7 @@ import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
 import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 import transactionRoutes from "./modules/transactions/routes.ts";
+import onboardingRoutes from "./modules/onboarding/routes.ts";
 import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -208,6 +209,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(suppliersRoutes);
   await app.register(lookAheadRoutes);
   await app.register(transactionRoutes);
+  await app.register(onboardingRoutes);
 
   return app;
 }

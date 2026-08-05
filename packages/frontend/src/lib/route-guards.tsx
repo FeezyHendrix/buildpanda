@@ -7,6 +7,7 @@ import { useOrgPermissions } from "@/hooks/use-organization";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { canViewResource } from "@/lib/project-types";
 import { DataCommitmentGate } from "@/components/molecules/data-commitment-gate";
+import { useOnboardingStatus } from "@/hooks/use-onboarding";
 
 /**
  * Route guards for the owner/company split.
@@ -31,9 +32,15 @@ const ONBOARDING_KEY = (userId: string) =>
 
 /**
  * Returns true when the user has completed onboarding.
- * Swap the body of this function for a backend-derived flag when the field is ready.
+ * Checks the server-side flag first (via the React Query cache written by
+ * useOnboardingStatus), falls back to the localStorage stopgap so the guard
+ * works before the query settles on fresh page loads.
  */
-export function isOnboardingComplete(userId: string | null | undefined): boolean {
+export function isOnboardingComplete(
+  userId: string | null | undefined,
+  serverCompleted?: boolean,
+): boolean {
+  if (serverCompleted) return true;
   if (!userId) return false;
   try {
     return localStorage.getItem(ONBOARDING_KEY(userId)) === "true";
@@ -77,11 +84,10 @@ export const PENDING_ORG_INVITE_KEY = "buildpanda:pending-org-invite";
 export function homePathFor(
   accountType: string | null | undefined,
   userId?: string | null,
+  serverOnboardingCompleted?: boolean,
 ): string {
   if (accountType === "project_owner") return "/my-build";
-  // Send company users through onboarding on first login
-  if (!isOnboardingComplete(userId)) return "/onboarding";
-  // Company users return to whichever suite they were last in
+  if (!isOnboardingComplete(userId, serverOnboardingCompleted)) return "/onboarding";
   const lastSuite = localStorage.getItem(LAST_SUITE_KEY);
   return lastSuite === "sales" ? "/sales" : "/dashboard";
 }
@@ -117,11 +123,12 @@ export function RequireOnboarding({ children }: { children: ReactNode }) {
   const { isPending, signedIn, accountType } = useGuardSession();
   const { data } = authClient.useSession();
   const userId = (data?.user as SessionUser | undefined)?.id ?? null;
+  const { data: onboardingStatus, isPending: onboardingPending } = useOnboardingStatus();
 
-  if (isPending) return <FullScreenLoader />;
+  if (isPending || onboardingPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
-  if (isOnboardingComplete(userId)) {
-    return <Navigate to={homePathFor(accountType, userId)} replace />;
+  if (isOnboardingComplete(userId, onboardingStatus?.completed)) {
+    return <Navigate to={homePathFor(accountType, userId, onboardingStatus?.completed)} replace />;
   }
   return <>{children}</>;
 }
@@ -193,7 +200,8 @@ export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey;
 /** Root landing: sends each account type to its home. */
 export function HomeRedirect() {
   const { isPending, signedIn, accountType, userId } = useGuardSession();
-  if (isPending) return <FullScreenLoader />;
+  const { data: onboardingStatus, isPending: onboardingPending } = useOnboardingStatus();
+  if (isPending || onboardingPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
   const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
   if (pendingProjectInvite) {
@@ -203,5 +211,5 @@ export function HomeRedirect() {
   if (pendingOrgInvite) {
     return <Navigate to={`/accept-invitation/${pendingOrgInvite}`} replace />;
   }
-  return <Navigate to={homePathFor(accountType, userId)} replace />;
+  return <Navigate to={homePathFor(accountType, userId, onboardingStatus?.completed)} replace />;
 }

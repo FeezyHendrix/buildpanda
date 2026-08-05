@@ -19,6 +19,11 @@ RUN npm run build
 
 FROM nginx:stable-alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Ship the config as a TEMPLATE so the entrypoint expands ${NGINX_LOCAL_RESOLVERS}
+# into it (20-envsubst-on-templates.sh writes /etc/nginx/templates/*.template ->
+# /etc/nginx/conf.d/). NGINX_ENTRYPOINT_LOCAL_RESOLVERS must be set or
+# 15-local-resolvers.envsh early-returns and the variable is never populated.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

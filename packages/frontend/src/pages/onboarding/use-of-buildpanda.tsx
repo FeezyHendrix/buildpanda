@@ -3,6 +3,9 @@ import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import { useOnboardingContext } from "@/layouts/onboarding-layout";
 import { markOnboardingComplete } from "@/lib/route-guards";
+import { useCompleteOnboarding } from "@/hooks/use-onboarding";
+import { toast } from "@/lib/toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/atoms/button";
 import { icons2 } from "@/assets/icons2/icon2";
 import { ReactSVG } from "react-svg";
@@ -126,6 +129,7 @@ export default function OnboardingUsage() {
   const { data, update } = useOnboardingContext();
   const navigate = useNavigate();
   const { data: sessionData } = authClient.useSession();
+  const completeOnboarding = useCompleteOnboarding();
   const { usage } = data;
 
   function toggle(id: string) {
@@ -138,8 +142,31 @@ export default function OnboardingUsage() {
 
   function handleComplete() {
     const userId = (sessionData?.user as { id?: string } | undefined)?.id;
-    if (userId) markOnboardingComplete(userId);
-    navigate("/dashboard");
+
+    completeOnboarding.mutate(
+      {
+        companyName: data.companyName,
+        country: data.country?.code ?? "",
+        state: data.state,
+        companySize: data.companySize ?? "",
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneCountryCode: data.phoneCountryCode,
+        phone: data.phone,
+        usage: data.usage,
+      },
+      {
+        onSuccess: () => {
+          // Keep the localStorage fallback so the guard works even if the
+          // status query hasn't settled yet on the next navigation.
+          if (userId) markOnboardingComplete(userId);
+          navigate("/dashboard");
+        },
+        onError: (err) => {
+          toast.error(getApiErrorMessage(err, "Could not save onboarding data"));
+        },
+      },
+    );
   }
 
   return (
@@ -195,6 +222,7 @@ export default function OnboardingUsage() {
         <Button
           className="w-full h-[46px] disabled:bg-grey-50 disabled:text-black-500"
           disabled={usage.length === 0}
+          loading={completeOnboarding.isPending}
           onClick={handleComplete}
         >
           Continue
