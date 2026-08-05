@@ -24,6 +24,7 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # /etc/nginx/conf.d/). NGINX_ENTRYPOINT_LOCAL_RESOLVERS must be set or
 # 15-local-resolvers.envsh early-returns and the variable is never populated.
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+ENV PORT=80
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
