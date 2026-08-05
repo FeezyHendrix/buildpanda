@@ -1,6 +1,6 @@
 import { Outlet, Link } from "react-router-dom";
 import whiteLogo from "@/assets/images/logo.white.svg";
-import AuthIllustration from '@/assets/images/authillustration.gif'
+import AuthIllustration from '@/assets/images/authIllustration.gif'
 import { Button } from "@/components/atoms/button";
 
 
