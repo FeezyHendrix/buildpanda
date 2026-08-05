@@ -18,21 +18,69 @@ import { DataCommitmentGate } from "@/components/molecules/data-commitment-gate"
  * authorization mechanism.
  */
 
-type SessionUser = { accountType?: string | null };
+type SessionUser = { accountType?: string | null; id?: string | null };
+
+// ─── Onboarding completion (temporary localStorage strategy) ───────────────────
+//
+// This is a stopgap until the backend exposes an `isOnboarded` field on the
+// user record. See docs/onboarding-backend-migration.md for the migration plan.
+//
+// Key is scoped to the userId so multiple users on the same device are isolated.
+const ONBOARDING_KEY = (userId: string) =>
+  `buildpanda:onboarding-complete:${userId}`;
+
+/**
+ * Returns true when the user has completed onboarding.
+ * Swap the body of this function for a backend-derived flag when the field is ready.
+ */
+export function isOnboardingComplete(userId: string | null | undefined): boolean {
+  if (!userId) return false;
+  try {
+    return localStorage.getItem(ONBOARDING_KEY(userId)) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Marks the current user's onboarding as complete in localStorage.
+ * Call this at the end of the onboarding flow before navigating to the app.
+ */
+export function markOnboardingComplete(userId: string): void {
+  try {
+    localStorage.setItem(ONBOARDING_KEY(userId), "true");
+  } catch {
+    // localStorage unavailable (private mode / quota) — silently ignore
+  }
+}
 
 function useGuardSession() {
   const { data, isPending } = authClient.useSession();
-  const accountType =
-    (data?.user as SessionUser | undefined)?.accountType ?? null;
-  return { isPending, signedIn: Boolean(data?.user), accountType };
+  const user = data?.user as SessionUser | undefined;
+  return {
+    isPending,
+    signedIn: Boolean(user),
+    accountType: user?.accountType ?? null,
+    userId: user?.id ?? null,
+  };
 }
 
 const LAST_SUITE_KEY = "buildpanda:last-suite";
 export const PENDING_PROJECT_INVITE_KEY = "buildpanda:pending-project-invite";
 export const PENDING_ORG_INVITE_KEY = "buildpanda:pending-org-invite";
 
-export function homePathFor(accountType: string | null | undefined): string {
+/**
+ * Returns the correct home path for a user after sign-in.
+ * @param accountType - value from the session user
+ * @param userId - used to check the localStorage onboarding flag
+ */
+export function homePathFor(
+  accountType: string | null | undefined,
+  userId?: string | null,
+): string {
   if (accountType === "project_owner") return "/my-build";
+  // Send company users through onboarding on first login
+  if (!isOnboardingComplete(userId)) return "/onboarding";
   // Company users return to whichever suite they were last in
   const lastSuite = localStorage.getItem(LAST_SUITE_KEY);
   return lastSuite === "sales" ? "/sales" : "/dashboard";
@@ -57,6 +105,25 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       <DataCommitmentGate />
     </>
   );
+}
+
+/**
+ * Gate for the /onboarding route:
+ * - Not signed in → sign-in page
+ * - Already onboarded → home (skip re-entry)
+ * - Otherwise → render the onboarding layout
+ */
+export function RequireOnboarding({ children }: { children: ReactNode }) {
+  const { isPending, signedIn, accountType } = useGuardSession();
+  const { data } = authClient.useSession();
+  const userId = (data?.user as SessionUser | undefined)?.id ?? null;
+
+  if (isPending) return <FullScreenLoader />;
+  if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
+  if (isOnboardingComplete(userId)) {
+    return <Navigate to={homePathFor(accountType, userId)} replace />;
+  }
+  return <>{children}</>;
 }
 
 /** Company-only routes (dashboard, project creation). Owners → their portal. */
@@ -125,7 +192,7 @@ export function SalesFeatureFlagGate({ flag, children }: { flag: FeatureFlagKey;
 
 /** Root landing: sends each account type to its home. */
 export function HomeRedirect() {
-  const { isPending, signedIn, accountType } = useGuardSession();
+  const { isPending, signedIn, accountType, userId } = useGuardSession();
   if (isPending) return <FullScreenLoader />;
   if (!signedIn) return <Navigate to="/auth/sign-in" replace />;
   const pendingProjectInvite = localStorage.getItem(PENDING_PROJECT_INVITE_KEY);
@@ -136,5 +203,5 @@ export function HomeRedirect() {
   if (pendingOrgInvite) {
     return <Navigate to={`/accept-invitation/${pendingOrgInvite}`} replace />;
   }
-  return <Navigate to={homePathFor(accountType)} replace />;
+  return <Navigate to={homePathFor(accountType, userId)} replace />;
 }

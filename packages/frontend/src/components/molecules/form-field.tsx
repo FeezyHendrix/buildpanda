@@ -32,7 +32,7 @@ function FormField({
 
   return (
     <div className={cn("flex flex-col gap-1.5", wrapperClassName)}>
-      <Label htmlFor={id} {...labelProps}>
+      <Label htmlFor={id} {...labelProps} className='text-caption-l text-black-500'>
         {label}
       </Label>
 

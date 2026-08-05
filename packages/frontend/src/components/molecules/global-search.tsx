@@ -154,7 +154,7 @@ function GlobalSearch({ placeholder, className }: GlobalSearchProps) {
       />
 
       {open && hasQuery && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[80vw] overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[80vw] overflow-hidden border border-[#EBEBEB] bg-white shadow-sm">
           {totalHits === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-500">
               {isFetching ? "Searching…" : `No results for "${debounced}".`}

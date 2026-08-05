@@ -2,82 +2,152 @@
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  /* ─── Type scale ─────────────────────────────────────────────────────────
+     Usage: text-h1 font-bold  /  text-body-m font-medium  etc.
+     Every step sets font-size + line-height + letter-spacing (-2%) in one
+     utility. Pair with font-{light|normal|medium|semibold|bold} for weight.
+  ──────────────────────────────────────────────────────────────────────── */
+
+  /* Headings (Archivo) */
+  --text-h1: 72px;
+  --text-h1--line-height: 80px;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h2: 64px;
+  --text-h2--line-height: 72px;
+  --text-h2--letter-spacing: -0.02em;
+
+  --text-h3: 48px;
+  --text-h3--line-height: 56px;
+  --text-h3--letter-spacing: -0.02em;
+
+  --text-h4: 36px;
+  --text-h4--line-height: 44px;
+  --text-h4--letter-spacing: -0.02em;
+
+  --text-h5: 30px;
+  --text-h5--line-height: 36px;
+  --text-h5--letter-spacing: -0.02em;
+
+  --text-h6: 24px;
+  --text-h6--line-height: 32px;
+  --text-h6--letter-spacing: -0.02em;
+
+  /* Body (Inter) */
+  --text-body-l: 20px;
+  --text-body-l--line-height: 28px;
+  --text-body-l--letter-spacing: -0.02em;
+
+  --text-body-m: 18px;
+  --text-body-m--line-height: 26px;
+  --text-body-m--letter-spacing: -0.02em;
+
+  --text-body-s: 16px;
+  --text-body-s--line-height: 24px;
+  --text-body-s--letter-spacing: -0.02em;
+
+  /* Caption (Inter) */
+  --text-caption-l: 14px;
+  --text-caption-l--line-height: 20px;
+  --text-caption-l--letter-spacing: -0.02em;
+
+  --text-caption-m: 12px;
+  --text-caption-m--line-height: 16px;
+  --text-caption-m--letter-spacing: -0.02em;
+
+  --text-caption-s: 10px;
+  --text-caption-s--line-height: 14px;
+  --text-caption-s--letter-spacing: -0.02em;
 
   /* primary */
   --color-primary-50:  #E6EDFD;
   --color-primary-100: #B0C8F8;
+  --color-primary-150: #6690E3;
   --color-primary-200: #8BACF1;
   --color-primary-300: #5488EF;
   --color-primary-400: #3371EE;
   --color-primary-500: #004DE7;
   --color-primary-600: #0046D2;
   --color-primary-700: #0037A4;
-  --color-primary-800: #002A7F;
+  --color-primary-800: #053DAB;
   --color-primary-900: #002061;
 
   /* brand — alias of primary-500 (BuildPanda blue) */
   --color-brand: #004DE7;
 
-  /* success */
-  --color-success-50:  #E8FCF4;
-  --color-success-100: #B8F7DD;
-  --color-success-200: #96F3CD;
-  --color-success-300: #66EEB6;
-  --color-success-400: #48EAA8;
-  --color-success-500: #1AE592;
-  --color-success-600: #18D085;
-  --color-success-700: #13A368;
-  --color-success-800: #0E7E50;
-  --color-success-900: #0B603D;
+  /* primary-dark — use as bg-primary-dark / text-primary-dark */
+  --color-primary-dark: #053DAB;
 
-  /* error */
-  --color-error-50:  #FDEAE8;
-  --color-error-100: #F8BFB9;
-  --color-error-200: #F5A097;
-  --color-error-300: #F07467;
-  --color-error-400: #ED5949;
-  --color-error-500: #E9301C;
-  --color-error-600: #D42C19;
-  --color-error-700: #A52214;
-  --color-error-800: #801A0F;
-  --color-error-900: #62140C;
+  /* secondary — brand yellow */
+  --color-secondary: #FFE607;
 
-  /* black */
-  --color-black-50:  #E7E7E7;
-  --color-black-100: #B5B5B5;
-  --color-black-200: #929292;
-  --color-black-300: #606060;
-  --color-black-400: #414141;
-  --color-black-500: #111111;
-  --color-black-600: #0F0F0F;
-  --color-black-700: #0C0C0C;
-  --color-black-800: #090909;
-  --color-black-900: #070707;
+  /* success — design system green scale */
+  --color-success-50:  #F0FDF4;
+  --color-success-100: #DCFCE7;
+  --color-success-200: #BBF7D0;
+  --color-success-300: #86EFAC;
+  --color-success-400: #4ADE80;
+  --color-success-500: #008236;
+  --color-success-600: #006B2C;
+  --color-success-700: #005422;
+  --color-success-800: #003D19;
+  --color-success-900: #002610;
 
-  /* grey */
-  --color-grey-50:  #EDEDED;
-  --color-grey-100: #C8C8C8;
-  --color-grey-200: #ADADAD;
-  --color-grey-300: #888888;
-  --color-grey-400: #717171;
-  --color-grey-500: #4D4D4D;
-  --color-grey-600: #464646;
-  --color-grey-700: #373737;
-  --color-grey-800: #2A2A2A;
-  --color-grey-900: #202020;
+  /* error — design system red scale */
+  --color-error-50:  #FEF2F2;
+  --color-error-100: #FEE2E2;
+  --color-error-200: #FECACA;
+  --color-error-300: #FCA5A5;
+  --color-error-400: #E7000B;
+  --color-error-500: #C10007;
+  --color-error-600: #A30006;
+  --color-error-700: #850005;
+  --color-error-800: #670004;
+  --color-error-900: #490003;
 
-  /* warning */
-  --color-warning-50:  #FAFFE6;
-  --color-warning-100: #EEFFB0;
-  --color-warning-200: #E6FF8A;
-  --color-warning-300: #D8FF54;
-  --color-warning-400: #D3FF33;
-  --color-warning-500: #C8FF00;
-  --color-warning-600: #B6E800;
-  --color-warning-700: #8EB500;
-  --color-warning-800: #6E8C00;
-  --color-warning-900: #546B00;
+  /* warning — design system amber scale */
+  --color-warning-50:  #FFFBEB;
+  --color-warning-100: #FEF3C7;
+  --color-warning-200: #FDE68A;
+  --color-warning-300: #FCD34D;
+  --color-warning-400: #E17100;
+  --color-warning-500: #BB4D00;
+  --color-warning-600: #9A3F00;
+  --color-warning-700: #793200;
+  --color-warning-800: #582400;
+  --color-warning-900: #371700;
+
+  /* black — design system text / ink */
+  --color-black-50:  #F5F5F5;
+  --color-black-100: #EBEBEB;
+  --color-black-200: #D6D6D6;
+  --color-black-300: #B0B0B0;
+  --color-black-400: #767676;
+  --color-black-500: #1E1E1E;
+  --color-black-600: #1A1A1A;
+  --color-black-700: #141414;
+  --color-black-800: #0E0E0E;
+  --color-black-900: #080808;
+
+  /* grey — neutral surface scale */
+  --color-grey-50:  #F5F5F5;
+  --color-grey-100: #EBEBEB;
+  --color-grey-200: #D6D6D6;
+  --color-grey-300: #B0B0B0;
+  --color-grey-400: #767676;
+  --color-grey-450: #737373;
+  --color-grey-500: #262626;
+  --color-grey-600: #1F1F1F;
+  --color-grey-700: #181818;
+  --color-grey-800: #111111;
+  --color-grey-900: #0A0A0A;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
 }
 
 button:not(:disabled),
@@ -108,9 +178,9 @@ button:disabled,
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: #E9301C;
+  --destructive: #C10007;
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(92.191% 0.0001 271.152 / 0.618);
+  --border: #DDDDDD;
   --input: oklch(0.922 0 0);
   --ring: #3371EE;
   --chart-1: oklch(0.646 0.222 41.116);
@@ -174,8 +244,8 @@ button:disabled,
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: #FFE607;
+  --color-secondary-foreground: #1E1E1E;
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
