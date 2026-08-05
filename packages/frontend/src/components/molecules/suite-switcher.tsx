@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 
 const LAST_SUITE_KEY = "buildpanda:last-suite";
 const SUITE_SALES = "sales";
@@ -26,8 +28,10 @@ const SUITES = [
   },
 ] as const;
 
+const MY_TEAM_HREF = "/dashboard/settings/team";
+
 interface SuiteSwitcherProps {
-  variant?: "sidebar" | "navbar" | "segmented" | "tabs";
+  variant?: "sidebar" | "navbar" | "segmented" | "tabs" | "underline-tabs";
   className?: string;
 }
 
@@ -45,6 +49,59 @@ function SuiteSwitcher({ variant = "navbar", className }: SuiteSwitcherProps) {
     if (open) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
+
+  // Underline tabs — full-height nav tabs for the dashboard navbar.
+  if (variant === "underline-tabs") {
+    const isMyTeam = location.pathname.startsWith(MY_TEAM_HREF);
+    return (
+      <div className={cn("flex h-full items-stretch", className)}>
+        {SUITES.map((suite) => {
+          const isActive = suite.id === active.id && !isMyTeam;
+          const iconSrc = suite.id === SUITE_CONSTRUCTION ? icons2.construction : icons2.preConstruction;
+          return (
+            <Link
+              key={suite.id}
+              to={suite.href}
+              onClick={() => localStorage.setItem(LAST_SUITE_KEY, suite.id)}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "relative flex items-center gap-1.5 px-4 text-[14px] font-medium transition-colors",
+                "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/20",
+                isActive ? "text-[#004DE7]" : "text-[#767676] hover:text-[#1E1E1E]",
+              )}
+            >
+              <ReactSVG
+                src={iconSrc}
+                className={cn("shrink-0 [&_svg]:size-[18px]", isActive ? "[&_path]:fill-primary" : "[&_path]:fill-grey-450")}
+              />
+              <span>{suite.label}</span>
+              {isActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary" />
+              )}
+            </Link>
+          );
+        })}
+        <Link
+          to={MY_TEAM_HREF}
+          aria-current={isMyTeam ? "page" : undefined}
+          className={cn(
+            "relative flex items-center gap-1.5 px-4 text-[14px] font-medium transition-colors",
+            "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/20",
+            isMyTeam ? "text-[#004DE7]" : "text-[#767676] hover:text-[#1E1E1E]",
+          )}
+        >
+          <ReactSVG
+            src={icons2.myTeam}
+            className={cn("shrink-0 [&_svg]:size-[18px]", isMyTeam ? "[&_path]:fill-primary" : "[&_path]:fill-grey-450")}
+          />
+          <span>My Team</span>
+          {isMyTeam && (
+            <span className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-primary" />
+          )}
+        </Link>
+      </div>
+    );
+  }
 
   // Horizontal pill tabs — used in the dashboard navbar.
   if (variant === "tabs") {

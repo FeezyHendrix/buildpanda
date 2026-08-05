@@ -13,7 +13,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ["@svar-ui/react-gantt"],
+    exclude: ["@svar-ui/react-gantt"],
   },
   server: {
     host: true,

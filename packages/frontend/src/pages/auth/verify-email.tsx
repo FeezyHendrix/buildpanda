@@ -104,9 +104,9 @@ export default function VerifyEmailPage() {
           // automatically instead of asking them to click Continue.
           const { data: session } = await authClient.getSession();
           if (isMounted && session?.user) {
-            const accountType = (session.user as { accountType?: string }).accountType;
+            const user = session.user as { accountType?: string; id?: string };
             const target = continueAfterVerifyPath(redirectTo);
-            navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
+            navigate(target === "/" ? homePathFor(user.accountType, user.id) : target, { replace: true });
           }
         } else {
           setError("Verification failed. The link may have expired.");

@@ -25,17 +25,19 @@ function EmptyState({
     <div className={cn("flex flex-col items-center text-center", className)}>
       {icon && <div className="flex items-center justify-center">{icon}</div>}
 
-      <h2 className="mt-6 text-base font-semibold text-[#131B2E] text-balance">
-        {title}
-      </h2>
+      <div className="flex flex-col -mt-10">
+        <h5 className="mt-6 text-h5 font-semibold text-grey-800">
+          {title}
+        </h5>
 
-      {description && (
-        <p className="mt-3 max-w-md text-[13px] text-black-300 text-pretty">
-          {description}
-        </p>
-      )}
+        {description && (
+          <p className="mt-3 max-w-lg text-caption-l text-grey-450">
+            {description}
+          </p>
+        )}
+      </div>
 
-      {action && <div className="mt-6">{action}</div>}
+      {action && <div className="mt-6 w-full">{action}</div>}
     </div>
   );
 }

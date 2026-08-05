@@ -5,6 +5,7 @@ import {
   HomeRedirect,
   RequireAuth,
   RequireCompany,
+  RequireOnboarding,
   ProjectFeatureFlagGate,
   ProjectPermissionGate,
   OrgPermissionGate,
@@ -58,6 +59,11 @@ const SignIn = lazy(() => import("@/pages/auth/sign-in"));
 const ForgotPassword = lazy(() => import("@/pages/auth/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/auth/reset-password"));
 const VerifyEmail = lazy(() => import("@/pages/auth/verify-email"));
+
+const OnboardingLayout = lazy(() => import("@/layouts/onboarding-layout"));
+const OnboardingCompanyInfo = lazy(() => import("@/pages/onboarding/company-info"));
+const OnboardingRepresentative = lazy(() => import("@/pages/onboarding/representative"));
+const OnboardingUsage = lazy(() => import("@/pages/onboarding/use-of-buildpanda"));
 
 const DashboardLayout = lazy(() => import("@/layouts/dashboard-layout"));
 const SalesLayout = lazy(() => import("@/layouts/sales-layout"));
@@ -132,6 +138,7 @@ const PrivacyPolicyPage = lazy(() => import("@/pages/public/privacy-page"));
 const DataPolicyPage = lazy(() => import("@/pages/public/data-policy-page"));
 const TermsOfServicePage = lazy(() => import("@/pages/public/terms-page"));
 
+
 function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
@@ -155,6 +162,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <HomeRedirect />,
   },
+
   {
     path: "/auth",
     element: <AuthLayout />,
@@ -165,6 +173,19 @@ export const router = createBrowserRouter([
       { path: "forgot-password", element: <ForgotPassword /> },
       { path: "reset-password", element: <ResetPassword /> },
       { path: "verify-email", element: <VerifyEmail /> },
+    ],
+  },
+  {
+    path: "/onboarding",
+    element: (
+      <RequireOnboarding>
+        <OnboardingLayout />
+      </RequireOnboarding>
+    ),
+    children: [
+      { index: true, element: <OnboardingCompanyInfo /> },
+      { path: "representative", element: <OnboardingRepresentative /> },
+      { path: "usage", element: <OnboardingUsage /> },
     ],
   },
   {

@@ -17,24 +17,34 @@ interface SearchableSelectProps {
 function ChevronIcon(props: React.ComponentProps<"svg">) {
   return (
     <svg
-      width="8"
-      height="12"
-      viewBox="0 0 8 12"
+      width="10"
+      height="6"
+      viewBox="0 0 10 6"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       {...props}
     >
-      <path d="M0.5 4.5L4 1.5L7.5 4.5" />
-      <path d="M0.5 7.5L4 10.5L7.5 7.5" />
+      <path d="M1 1l4 4 4-4" />
     </svg>
   );
 }
 
-function CheckIcon(props: React.ComponentProps<"svg">) {
+function SearchIcon(props: React.ComponentProps<"svg">) {
   return (
-    <svg fill="currentColor" width="10" height="10" viewBox="0 0 10 10" {...props}>
-      <path d="M9.1603 1.12218C9.50684 1.34873 9.60427 1.81354 9.37792 2.16038L5.13603 8.66012C5.01614 8.8438 4.82192 8.96576 4.60451 8.99384C4.3871 9.02194 4.1683 8.95335 4.00574 8.80615L1.24664 6.30769C0.939709 6.02975 0.916013 5.55541 1.19372 5.24822C1.47142 4.94102 1.94536 4.91731 2.2523 5.19524L4.36085 7.10461L8.12299 1.33999C8.34934 0.993152 8.81376 0.895638 9.1603 1.12218Z" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
     </svg>
   );
 }
@@ -44,7 +54,7 @@ function SearchableSelect({
   value,
   onChange,
   placeholder = "Select…",
-  searchPlaceholder = "Search…",
+  searchPlaceholder = "Search",
   emptyText = "No results found.",
   className,
   disabled,
@@ -64,10 +74,11 @@ function SearchableSelect({
       <Combobox.Trigger
         id={inputId}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
-          "border-0 outline-none ring-0",
-          "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "flex h-11 w-full items-center justify-between gap-2 bg-white px-3.5 text-[14px] text-[#1E1E1E]",
+          "border border-[#EBEBEB] outline-none",
+          "focus-visible:border-[#004DE7] focus-visible:ring-1 focus-visible:ring-[#004DE7]/10",
           "cursor-default select-none",
+          "disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
       >
@@ -76,11 +87,11 @@ function SearchableSelect({
             selected ? (
               <span>{selected}</span>
             ) : (
-              <span className="text-gray-400">{placeholder}</span>
+              <span className="text-[#B0B0B0]">{placeholder}</span>
             )
           }
         </Combobox.Value>
-        <Combobox.Icon className="flex shrink-0 text-gray-400">
+        <Combobox.Icon className="flex shrink-0 text-[#767676]">
           <ChevronIcon />
         </Combobox.Icon>
       </Combobox.Trigger>
@@ -105,44 +116,46 @@ function SearchableSelectPopup({
       <Combobox.Positioner align="start" sideOffset={4} className="z-[60]">
         <Combobox.Popup
           className={cn(
-            "max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
-            "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
-            "outline outline-1 outline-gray-200",
+            "w-[var(--anchor-width)] min-w-[200px] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
+            "bg-grey-50 border border-[#EBEBEB] p-1",
           )}
         >
-          <div className="p-2">
+          {/* Search input row */}
+          <div className="flex items-center gap-2.5 border-b border-[#EBEBEB] bg-white px-3.5">
+            <SearchIcon className="size-[18px] shrink-0 text-[#1E1E1E]" />
             <Combobox.Input
               placeholder={searchPlaceholder}
               className={cn(
-                "h-9 w-full rounded-md bg-[#F6F6F6] px-3 text-base lg:text-sm text-gray-900",
+                "h-11 flex-1 bg-transparent text-[14px] text-[#1E1E1E]",
                 "border-0 outline-none ring-0",
-                "placeholder:text-gray-400",
-                "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                "placeholder:text-[#B0B0B0]",
               )}
             />
           </div>
 
-          <Combobox.Empty className="px-4 py-2 text-sm text-gray-400">
-            {emptyText}
-          </Combobox.Empty>
+          {/* Items area with gray background */}
+          <div className="bg-grey-50 pt-1">
+            <Combobox.Empty className="empty:hidden px-4 py-3 text-[13px] text-black-500">
+              {emptyText}
+            </Combobox.Empty>
 
-          <Combobox.List className="max-h-[min(16rem,calc(var(--available-height)-3.5rem))] overflow-y-auto overscroll-contain scroll-py-1 py-1">
-            {(item: string) => (
-              <Combobox.Item
-                key={item}
-                value={item}
-                className={cn(
-                  "grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none select-none",
-                  "data-[highlighted]:bg-[#F6F6F6]",
-                )}
-              >
-                <Combobox.ItemIndicator className="col-start-1">
-                  <CheckIcon className="size-2.5" />
-                </Combobox.ItemIndicator>
-                <span className="col-start-2">{item}</span>
-              </Combobox.Item>
-            )}
-          </Combobox.List>
+            <Combobox.List className="max-h-[min(16rem,calc(var(--available-height)-5rem))] overflow-y-auto overscroll-contain space-y-1 no-scrollbar">
+              {(item: string) => (
+                <Combobox.Item
+                  key={item}
+                  value={item}
+                  className={cn(
+                    "w-full cursor-pointer bg-white border border-[#EBEBEB] px-4 py-3",
+                    "text-[14px] font-semibold text-[#1E1E1E] outline-none select-none",
+                    "data-[highlighted]:border-[#004DE7]/20 data-[highlighted]:bg-[#EEF3FF]",
+                    "data-[selected]:text-[#004DE7]",
+                  )}
+                >
+                  {item}
+                </Combobox.Item>
+              )}
+            </Combobox.List>
+          </div>
         </Combobox.Popup>
       </Combobox.Positioner>
     </Combobox.Portal>
