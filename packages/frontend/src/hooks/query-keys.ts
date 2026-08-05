@@ -331,3 +331,8 @@ export const preconKeys = {
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };
+
+export const onboardingKeys = {
+  all: ["onboarding"] as const,
+  status: () => [...onboardingKeys.all, "status"] as const,
+};
