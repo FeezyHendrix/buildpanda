@@ -5,64 +5,9 @@ import { useOnboardingContext } from "@/layouts/onboarding-layout";
 import { markOnboardingComplete } from "@/lib/route-guards";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding";
 import { toast } from "@/lib/toast";
-import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/atoms/button";
 import { icons2 } from "@/assets/icons2/icon2";
 import { ReactSVG } from "react-svg";
-
-// ── Icons ─────────────────────────────────────────────────────────────────────
-
-function ProjectsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="16" height="11" />
-      <path d="M6 7V5a4 4 0 0 1 8 0v2" />
-      <line x1="10" y1="11" x2="10" y2="14" />
-      <line x1="8.5" y1="12.5" x2="11.5" y2="12.5" />
-    </svg>
-  );
-}
-
-function ProposalsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 4H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z" />
-      <path d="M2 9h16" />
-      <path d="M6 4V2" />
-      <path d="M14 4V2" />
-    </svg>
-  );
-}
-
-function BudgetsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="8" />
-      <path d="M10 6v1M10 13v1" />
-      <path d="M7.5 8.5A2.5 2.5 0 0 1 10 7a2.5 2.5 0 0 1 0 5 2.5 2.5 0 0 0 0 5 2.5 2.5 0 0 0 2.5-1.5" />
-    </svg>
-  );
-}
-
-function SiteIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="7" r="3" />
-      <path d="M5 18a5 5 0 0 1 10 0" />
-      <path d="M3 11h2M15 11h2M10 2v2" />
-    </svg>
-  );
-}
-
-function GlobeIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="8" />
-      <path d="M2 10h16" />
-      <path d="M10 2a14 14 0 0 1 4 8 14 14 0 0 1-4 8 14 14 0 0 1-4-8 14 14 0 0 1 4-8Z" />
-    </svg>
-  );
-}
 
 // ── Options ───────────────────────────────────────────────────────────────────
 
@@ -163,7 +108,8 @@ export default function OnboardingUsage() {
           navigate("/dashboard");
         },
         onError: (err) => {
-          toast.error(getApiErrorMessage(err, "Could not save onboarding data"));
+          const msg = err instanceof Error ? err.message : "Could not save onboarding data";
+          toast(msg, "error");
         },
       },
     );
