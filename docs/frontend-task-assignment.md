@@ -16,7 +16,7 @@ first task. It is short, and everything in it is enforced.
   targeting `buildpanda-v2`**.
 - Never push directly to `buildpanda-v2`, `master`, or `prod`.
   - `master` = Railway staging.
-  - `prod` = production. Production changes go through a PR into `prod` (rare, senior-only).
+  - `prod` = production. Production changes go through a PR into `prod`.
 - Keep PRs focused: one feature or one bug per PR. Small diffs review faster and
   conflict less. Update the PR description with what changed and what to QA.
 
@@ -171,9 +171,7 @@ Each holds the real conventions; trust them over this doc when they disagree.
 | `writing-backend-code` | Only if you touch `packages/backend` (rare for a frontend task). |
 | `browser-automation` | Verifying your page actually renders (console errors, screenshots). |
 
-**When in doubt, load the skill before writing code.** The cost is near zero; the
-cost of missing a convention (typo tokens, wrong data-fetching pattern, icon in the
-wrong folder) is a rejected PR.
+**When in doubt, load the skill before writing code.** The cost is near zero;
 
 ---
 
@@ -196,8 +194,6 @@ wrong folder) is a rejected PR.
 - [ ] New icons are in `src/assets/icons2/` **and** registered in `icon2.ts`.
 - [ ] No new `text-[…px]`, `leading-[…]`, `tracking-[…]` one-offs — design tokens used.
 - [ ] No new icons in `src/assets/icons/`.
-- [ ] Tested in light + dark mode (if the UI has surfaces affected by the theme).
-- [ ] Smoke: `pnpm e2e:smoke` still passes if your change touches critical flows.
 - [ ] PR opened against `buildpanda-v2` with a short description.
 
 ---
