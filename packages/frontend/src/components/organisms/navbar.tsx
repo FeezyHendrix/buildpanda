@@ -93,7 +93,7 @@ function Navbar({
       </div>
 
       <div className="flex items-center justify-end">
-        <div className="flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
+        <div className="flex items-center gap-2 rounded-full p-1.5">
           {showNotifications && (
             <div ref={notificationsRef} className="relative">
               <NotificationBell

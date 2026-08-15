@@ -48,7 +48,7 @@ function DropdownMenuContent({
 }) {
   return (
     <Menu.Portal>
-      <Menu.Positioner align={align} sideOffset={sideOffset}>
+      <Menu.Positioner align={align} sideOffset={sideOffset} className="z-50">
         <Menu.Popup
           className={cn(
             "flex flex-col gap-2 z-50 min-w-[160px] overflow-hidden border border-[#EBEBEB] bg-grey-50 p-2 shadow-xl",

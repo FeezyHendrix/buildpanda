@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
 import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
 import {
@@ -13,8 +13,14 @@ import { useOrgProfile } from "@/hooks/use-org-profile";
 import { RISK_OPTIONS_CONFIG } from "@/components/molecules/management-step";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import logo from "@/assets/images/logo.svg";
+import illustration from "@/assets/images/createProjectIllustration.png";
+import { OptionCard } from "@/components/atoms/option-card";
+import { Button } from "@/components/atoms/button";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 
-type Step = 1 | 2;
+type Step = "choice" | "template" | "info";
 
 // All non-coming-soon risk options submitted by default (UI no longer exposes them).
 const DEFAULT_RISK_IDS = RISK_OPTIONS_CONFIG
@@ -23,7 +29,8 @@ const DEFAULT_RISK_IDS = RISK_OPTIONS_CONFIG
 
 export default function CreateProject() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>("choice");
+  const [creationType, setCreationType] = useState<"new" | "import" | null>(null);
   const createProject = useCreateProject();
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,10 +56,10 @@ export default function CreateProject() {
 
   // ── Navigation ───────────────────────────────────────────────────────────────
   const handleCancel = () => navigate("/dashboard");
-  const handlePrev = () => setStep(1);
+  const handlePrev = () => setStep("template");
 
   const canContinue = () => {
-    if (step === 1) return true; // template is optional
+    if (step === "template") return true; // template is optional
     return (
       projectName.trim() !== "" &&
       !!locationState &&
@@ -62,8 +69,8 @@ export default function CreateProject() {
   };
 
   const handleNext = () => {
-    if (step === 1) {
-      setStep(2);
+    if (step === "template") {
+      setStep("info");
     } else {
       void handleFinish();
     }
@@ -108,24 +115,91 @@ export default function CreateProject() {
     }
   }
 
+  if (step === "choice") {
+    return (
+      <div className="flex h-dvh flex-col bg-white">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b border-[#F0F0F0] bg-white px-8">
+          <Link to="/" className="shrink-0">
+            <img src={logo} alt="BuildPanda" className="h-8 lg:h-9" />
+          </Link>
+          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-caption-l font-semibold text-black">
+            Create New Project
+          </span>
+        </header>
+        <div
+          className="flex-1 bg-cover bg-center bg-no-repeat flex items-center justify-center p-6"
+          style={{ backgroundImage: `url(${illustration})` }}
+        >
+          <div className="border border-black-500 bg-white p-12 max-w-[462px] w-full flex flex-col gap-10 shadow-sm">
+            <h4 className="text-h4 font-bold text-grey-800">Create Project</h4>
+
+            <div className="flex flex-col gap-4">
+              <OptionCard
+                icon={<ReactSVG src={icons2.folderAdd} />}
+                title="Start a New Project"
+                subtitle="Spin up a new construction project from scratch"
+                selected={creationType === "new"}
+                onClick={() => setCreationType("new")}
+              />
+              <OptionCard
+                icon={<ReactSVG src={icons2.folderImport} />}
+                title="Import a Project"
+                subtitle="Import a programme, BOQ, drawings or BIM and we'll build the project for you"
+                selected={creationType === "import"}
+                onClick={() => setCreationType("import")}
+              />
+            </div>
+
+            <div className='flex flex-col gap-4'>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full h-11 cursor-pointer"
+                disabled={!creationType}
+                onClick={() => {
+                  if (creationType === "new") {
+                    setStep("template");
+                  } else if (creationType === "import") {
+                    navigate("/import");
+                  }
+                }}
+              >
+                Continue
+              </Button>
+
+              <Button
+                type="button"
+                variant='ghost'
+                className="w-full h-11 cursor-pointer"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <WizardLayout
-      currentStep={step}
+      currentStep={step === "template" ? 1 : 2}
       totalSteps={2}
-      onCancel={handleCancel}
+      onCancel={() => setStep("choice")}
       onBack={handlePrev}
       onContinue={handleNext}
       continueDisabled={!canContinue() || submitting}
-      continueLabel={step === 2 ? (submitting ? "Creating…" : "Next") : "Next"}
-      backLabel={step === 2 ? "Previous" : undefined}
+      continueLabel={step === "info" ? (submitting ? "Creating…" : "Next") : "Next"}
+      backLabel={step === "info" ? "Previous" : undefined}
       title="Create New Project"
       namedSteps={["Project Template", "Project Information"]}
-      activeNamedStep={step === 1 ? 0 : 1}
+      activeNamedStep={step === "template" ? 0 : 1}
     >
-      {step === 1 && (
+      {step === "template" && (
         <ProjectTemplateStep selected={templateId} onSelect={setTemplateId} />
       )}
-      {step === 2 && (
+      {step === "info" && (
         <ProjectInfoStep
           projectName={projectName}
           onProjectNameChange={setProjectName}
