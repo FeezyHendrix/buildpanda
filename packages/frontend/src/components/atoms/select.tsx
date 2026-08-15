@@ -1,4 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SelectOption {
@@ -14,24 +15,6 @@ interface SelectProps {
   className?: string;
   disabled?: boolean;
   id?: string;
-}
-
-function ChevronIcon(props: React.ComponentProps<"svg">) {
-  return (
-    <svg
-      width="10"
-      height="6"
-      viewBox="0 0 10 6"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M1 1l4 4 4-4" />
-    </svg>
-  );
 }
 
 function Select({
@@ -65,7 +48,7 @@ function Select({
       <Combobox.Trigger
         id={id}
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-2 bg-white px-3.5 text-[14px] text-[#1E1E1E]",
+          "flex h-11 w-full min-w-0 items-center justify-between gap-2 bg-white px-3.5 text-[14px] text-[#1E1E1E]",
           "border border-[#EBEBEB] outline-none",
           "focus-visible:border-[#004DE7] focus-visible:ring-1 focus-visible:ring-[#004DE7]/10",
           "cursor-default select-none",
@@ -83,7 +66,7 @@ function Select({
           }
         </Combobox.Value>
         <Combobox.Icon className="flex shrink-0 text-[#767676]">
-          <ChevronIcon />
+          <ChevronDown className='size-3' />
         </Combobox.Icon>
       </Combobox.Trigger>
 

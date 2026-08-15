@@ -24,6 +24,8 @@ import SettingsIcon from '@/assets/icons2/settings.icon.svg';
 import CheckIcon from '@/assets/icons2/check.icon.svg';
 import AgreementIcon from '@/assets/icons2/agreement.icon.svg';
 import PrivacyIcon from '@/assets/icons2/privacy.icon.svg';
+import AddUserIcon from '@/assets/icons2/add-user.icon.svg';
+import PersonIcon from '@/assets/icons2/person.icon.svg';
 
 export const icons2 = {
   folder: FolderIcon,
@@ -51,5 +53,7 @@ export const icons2 = {
   settings: SettingsIcon,
   check: CheckIcon,
   agreement: AgreementIcon,
-  privacy: PrivacyIcon
+  privacy: PrivacyIcon,
+  addUser: AddUserIcon,
+  person: PersonIcon,
 }

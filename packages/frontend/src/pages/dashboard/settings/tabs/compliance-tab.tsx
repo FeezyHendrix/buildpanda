@@ -1,5 +1,4 @@
 import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
 import { FormSection } from "@/components/atoms/form-section";
 import { icons2 } from "@/assets/icons2/icon2";
 

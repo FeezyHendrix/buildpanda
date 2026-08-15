@@ -132,10 +132,10 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h4 className="text-h4 font-bold text-black-500">
             Check your email
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          </h4>
+          <p className="text-caption-l text-grey-450 max-w-[412px]">
             We sent a verification link
             {email ? (
               <>
@@ -160,6 +160,7 @@ export default function VerifyEmailPage() {
 
           <Button
             type="button"
+            size='lg'
             className="w-full"
             onClick={handleResend}
             disabled={!email || resending || cooldown > 0}
@@ -178,7 +179,7 @@ export default function VerifyEmailPage() {
           ) : null}
 
           <Link to="/auth/sign-in">
-            <Button type="button" variant="secondary" className="w-full">
+            <Button type="button" size='lg' className="w-full">
               Back to sign in
             </Button>
           </Link>

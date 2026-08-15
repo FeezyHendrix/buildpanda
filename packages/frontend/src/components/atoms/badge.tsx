@@ -39,12 +39,12 @@ const solidStyles: Record<BadgeTone, string> = {
 };
 
 const outlineStyles: Record<BadgeTone, string> = {
-  neutral: "border border-[#1E1E1E] text-[#1E1E1E]",
-  success: "border border-[#008236] text-[#008236]",
-  warning: "border border-[#BB4D00] text-[#BB4D00]",
-  danger:  "border border-[#C10007] text-[#C10007]",
-  info:    "border border-[#004DE7] text-[#004DE7]",
-  accent:  "border border-[#5A3DD0] text-[#5A3DD0]",
+  neutral: "border-[0.5px] border-border text-[#1E1E1E]",
+  success: "border-[0.5px] border-border text-[#008236]",
+  warning: "border-[0.5px] border-border text-[#BB4D00]",
+  danger:  "border-[0.5px] border-border text-[#C10007]",
+  info:    "border-[0.5px] border-border text-[#004DE7]",
+  accent:  "border-[0.5px] border-border text-[#5A3DD0]",
 };
 
 const dotStyles: Record<BadgeTone, string> = {
@@ -61,7 +61,8 @@ const sizeStyles: Record<BadgeSize, string> = {
   md: "h-6 gap-1.5 rounded-full px-2.5",
 };
 
-const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
+const 
+Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   (
     {
       tone = "neutral",

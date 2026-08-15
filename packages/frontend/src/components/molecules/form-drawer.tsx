@@ -43,7 +43,7 @@ function FormDrawer({
       <Dialog.Portal>
         <Dialog.Backdrop
           className={cn(
-            "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
+            "fixed inset-0 z-50 bg-[#000000]/50 backdrop-blur-[0.5px] transition-opacity duration-300",
             "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
           )}
         />
@@ -55,13 +55,13 @@ function FormDrawer({
             className,
           )}
         >
-          <form onSubmit={handleSubmit} className="flex h-full flex-col">
-            <header className="border-b border-[#F0F0F0] px-6 py-5">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
+          <form onSubmit={handleSubmit} className="flex h-full flex-col px-4 py-4">
+            <header className="px-6 py-5">
+              <Dialog.Title className="text-h4 font-bold text-grey-800">
                 {title}
               </Dialog.Title>
               {description && (
-                <Dialog.Description className="mt-1.5 text-sm text-gray-500 text-pretty">
+                <Dialog.Description className="mt-1.5 text-caption-l font-medium text-grey-450 text-pretty">
                   {description}
                 </Dialog.Description>
               )}
@@ -80,7 +80,7 @@ function FormDrawer({
             <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
               <Dialog.Close
                 render={
-                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                  <Button type="button" variant="ghost" size="lg" className="px-4">
                     {cancelLabel}
                   </Button>
                 }
@@ -88,9 +88,9 @@ function FormDrawer({
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
+                size="lg"
                 disabled={submitting || submitDisabled}
-                className="h-9 px-4 text-sm"
+                className="px-4"
               >
                 {submitting ? "Submitting…" : submitLabel}
               </Button>

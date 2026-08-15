@@ -1,8 +1,10 @@
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { formatRoleLabel } from "./utils";
-import { Section, RowMessage } from "./section";
+import { Section } from "./section";
 import type { Invitation } from "./types";
+import { EmptyState } from "@/components";
+import emptyIcon from "@/assets/images/empty-invitations.png";
 
 interface InvitationsSectionProps {
   invitations: Invitation[];
@@ -15,11 +17,19 @@ export function InvitationsSection({
   isCancelling,
   onCancel,
 }: InvitationsSectionProps) {
+  if (invitations.length === 0) {
+    return (
+      <EmptyState
+        icon={<img src={emptyIcon} alt="" className="w-100 mb-4" />}
+        title="Invitations"
+        description="You haven't sent any invitations yet. Invite team members to collaborate on your projects."
+        className="flex flex-col gap-8 max-w-4xl"
+      />
+    );
+  }
+
   return (
-    <Section title="Pending invitations">
-      {invitations.length === 0 && (
-        <RowMessage>No pending invitations.</RowMessage>
-      )}
+    <Section>
       {invitations.map((invitation) => (
         <div key={invitation.id} className="flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">

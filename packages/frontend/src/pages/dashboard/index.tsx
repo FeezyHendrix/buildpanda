@@ -14,12 +14,19 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
 import { useProjects, useDeleteProject } from "@/hooks/use-projects";
 import { useHasOrgPermission } from "@/hooks/use-organization";
+import { useSession } from "@/stores/auth";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/project-types";
 import emptyIcon from "@/assets/images/empty-dashboard.svg";
 import { icons2 } from "@/assets/icons2/icon2";
 import { ReactSVG } from "react-svg";
+
+function getGreeting(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -46,8 +53,11 @@ function ChevronDownIcon() {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { data: projects, isPending } = useProjects();
+  const { data: session } = useSession();
   const canCreateProject = useHasOrgPermission("project", "create");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const greeting = getGreeting(new Date().getHours());
+  const firstName = (session?.user?.name ?? "").trim().split(" ")[0];
 
   if (isPending) return <LoadingSpinner />;
 
@@ -70,7 +80,10 @@ export default function Dashboard() {
       {/* Page header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h5 className="font-heading text-h5 font-semibold text-black">My Projects</h5>
+          <h5 className="text-h5 font-semibold !text-[#686868]">
+            {greeting}
+            {firstName && <span className="text-black">, {firstName}</span>}
+          </h5>
           <p className="mt-1 text-caption-m font-medium text-black-500 opacity-50">
             {list.length} projects available
           </p>
@@ -161,7 +174,7 @@ export default function Dashboard() {
         className={cn(
           "grid gap-4",
           view === "grid"
-            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
             : "grid-cols-1",
         )}
       >
@@ -245,21 +258,20 @@ function ProjectCard({ project, view }: { project: Project; view: "grid" | "list
   return (
     <div className="relative border-[0.5px] border-[#DDDDDD] bg-white p-5 transition-shadow hover:shadow-md">
       {/* Top row */}
-      <div className="relative z-10 mb-5 flex items-start justify-between">
-        <ReactSVG src={icons2.folder} className="shrink-0" />
+      <div className="relative z-10 mb-8 flex items-center justify-between">
+        <ReactSVG src={icons2.folder} className="[&_svg]:size-[60px] shrink-0" />
         {cardMenu}
       </div>
-
-      {/* Badge */}
-      <Badge tone="danger" variant="soft" size="sm" className="mb-3">
-        {project.progressPercent}% Completed
-      </Badge>
 
       {/* Name + address — full card is clickable via the link */}
       <Link
         to={`/project/${project.id}/overview`}
         className="mt-1 block outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
       >
+        {/* Badge */}
+        <Badge variant="outline" size="sm" className="mb-3">
+          {project.progressPercent}% Completed
+        </Badge>
         <p className="line-clamp-1 text-body-s font-semibold text-black-700">{project.name}</p>
         <p className="mt-0.5 text-caption-m font-medium text-black-500 opacity-50">{project.address}</p>
       </Link>

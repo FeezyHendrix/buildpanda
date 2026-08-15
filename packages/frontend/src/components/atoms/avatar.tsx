@@ -1,5 +1,6 @@
 import { forwardRef, useState, type ImgHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/formatters";
 
 type AvatarSize = "sm" | "md" | "lg";
 
@@ -14,13 +15,6 @@ const sizeStyles: Record<AvatarSize, string> = {
   md: "size-10 text-sm",
   lg: "size-12 text-base",
 };
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0]![0]?.toUpperCase() ?? "";
-  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
-}
 
 const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
   ({ name, src, size = "md", className, ...props }, ref) => {
