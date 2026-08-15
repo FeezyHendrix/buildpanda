@@ -1,19 +1,21 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 
 export interface SectionProps {
-  title: string;
+  title?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function Section({ title, action, children }: SectionProps) {
+export function Section({ title, action, children, className }: SectionProps) {
   return (
     <section className="mt-10">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+      <div className="flex items-center justify-between border-x-[0.5px] border-t-[0.5px] border-border px-6 py-4">
+        {title && <h6 className="text-h6 font-semibold text-black">{title}</h6>}
         {action}
       </div>
-      <div className="mt-4 divide-y divide-[#F6F6F6] overflow-hidden rounded-2xl border border-[#F0F0F0]">
+      <div className={cn("divide-y divide-[#F6F6F6] overflow-hidden px-6 py-4 border border-[#F0F0F0]", className)}>
         {children}
       </div>
     </section>

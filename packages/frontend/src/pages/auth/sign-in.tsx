@@ -46,7 +46,7 @@ export default function SignInForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h4 className="text-h4 font-bold text-grey-900">
+        <h4 className="text-h4 font-bold text-black-500">
           Welcome back
         </h4>
         <p className="text-caption-l text-grey-450 max-w-[412px]">

@@ -8,7 +8,7 @@ import {
   type ConstructionType,
   type ConstructionTimeline,
 } from "@/components/molecules/project-info-step";
-import { useCreateProject } from "@/hooks/use-projects";
+import { useCreateProject, useProjects } from "@/hooks/use-projects";
 import { useOrgProfile } from "@/hooks/use-org-profile";
 import { RISK_OPTIONS_CONFIG } from "@/components/molecules/management-step";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -17,6 +17,7 @@ import logo from "@/assets/images/logo.svg";
 import illustration from "@/assets/images/createProjectIllustration.png";
 import { OptionCard } from "@/components/atoms/option-card";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { ReactSVG } from "react-svg";
 import { icons2 } from "@/assets/icons2/icon2";
 
@@ -29,7 +30,15 @@ const DEFAULT_RISK_IDS = RISK_OPTIONS_CONFIG
 
 export default function CreateProject() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("choice");
+  const { data: existingProjects, isPending: isProjectsPending } = useProjects();
+  // The choice screen (new vs. import) is only for a workspace's very first
+  // project — once there's at least one project, "New Project" always means
+  // starting from scratch (importing has its own entry point on the dashboard).
+  const hasExistingProjects = (existingProjects?.length ?? 0) > 0;
+  const [manualStep, setManualStep] = useState<Step | null>(null);
+  const step: Step | null =
+    manualStep ?? (isProjectsPending ? null : hasExistingProjects ? "template" : "choice");
+  const setStep = setManualStep;
   const [creationType, setCreationType] = useState<"new" | "import" | null>(null);
   const createProject = useCreateProject();
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +124,14 @@ export default function CreateProject() {
     }
   }
 
+  if (step === null) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-white">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
   if (step === "choice") {
     return (
       <div className="flex h-dvh flex-col bg-white">
@@ -186,7 +203,7 @@ export default function CreateProject() {
     <WizardLayout
       currentStep={step === "template" ? 1 : 2}
       totalSteps={2}
-      onCancel={() => setStep("choice")}
+      onCancel={hasExistingProjects ? handleCancel : () => setStep("choice")}
       onBack={handlePrev}
       onContinue={handleNext}
       continueDisabled={!canContinue() || submitting}

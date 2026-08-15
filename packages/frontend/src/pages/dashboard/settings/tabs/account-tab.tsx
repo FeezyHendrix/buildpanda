@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/atoms/button";
-import { Label } from "@/components/atoms/label";
 import { toast } from "@/lib/toast";
 import { FormSection } from "@/components/atoms/form-section";
 import { TextInput } from "@/components/atoms/text-input";
 import { ReactSVG } from "react-svg";
 import { icons2 } from "@/assets/icons2/icon2";
 import { cn } from "@/lib/utils";
+import { FormField } from "@/components";
 
 export function AccountTab() {
   const { data: session } = authClient.useSession();
@@ -81,10 +81,11 @@ export function AccountTab() {
         </p>
       </FormSection>
       <FormSection title="Change password" description='Ensure your account is using a long, random password to stay secure.'>
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
         <TextInput
           label="Current password"
           type="password"
-          placeholder='monskywalker@gmail.com'
+          placeholder='Create a strong password'
           value={currentPassword}
           onChange={setCurrentPassword}
           required
@@ -92,7 +93,7 @@ export function AccountTab() {
         <TextInput
           label="New password"
           type="password"
-          placeholder='monskywalker@gmail.com'
+          placeholder='Create a strong password'
           value={newPassword}
           onChange={setNewPassword}
           required
@@ -100,9 +101,39 @@ export function AccountTab() {
         <TextInput
           label="Confirm new password"
           type="password"
-          placeholder='monskywalker@gmail.com'
+          placeholder='Create a strong password'
           value={confirmPassword}
           onChange={setConfirmPassword}
+          required
+        />
+        <FormField
+          label="Current Password"
+          name="password"
+          type="password"
+          placeholder="Create a strong password"
+          autoComplete="new-password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          required
+        />
+        <FormField
+          label="New Password"
+          name="password"
+          type="password"
+          placeholder="Create a strong password"
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          required
+        />
+        <FormField
+          label="Confirm Password"
+          name="password"
+          type="password"
+          placeholder="Create a strong password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
 
@@ -125,6 +156,7 @@ export function AccountTab() {
             Update password
           </Button>
           </div>
+        </form>
       </FormSection>
     </div>
   );

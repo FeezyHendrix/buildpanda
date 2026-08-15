@@ -5,15 +5,14 @@ import { cn } from "@/lib/utils";
 import {
   useActiveOrganizationId,
   useCreateOrganization,
-  useHasOrgPermission,
   useOrganizations,
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
 import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
 import { Button } from "../atoms";
-import { ChevronDown, ChevronUp, Settings, LogOut, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { icons2 } from "@/assets/icons2/icon2";
+import { getInitials } from "@/lib/formatters";
 
 interface UserMenuProps {
   name: string;
@@ -25,53 +24,6 @@ interface UserMenuProps {
   variant?: "compact" | "full";
 }
 
-type Step = "main" | "org-switcher";
-
-function IconBox({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
-      {children}
-    </span>
-  );
-}
-
-function Row({
-  icon,
-  label,
-  trailing,
-  onClick,
-  danger,
-  asLink,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  trailing?: React.ReactNode;
-  onClick?: () => void;
-  danger?: boolean;
-  asLink?: string;
-}) {
-  const cls = cn(
-    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm outline-none transition-colors hover:bg-[#F6F6F6]",
-    danger ? "text-red-600 hover:bg-red-50" : "text-gray-700",
-  );
-  if (asLink) {
-    return (
-      <Link to={asLink} className={cls} onClick={onClick}>
-        <IconBox>{icon}</IconBox>
-        <span className="flex-1">{label}</span>
-        {trailing}
-      </Link>
-    );
-  }
-  return (
-    <button type="button" className={cls} onClick={onClick}>
-      <IconBox>{icon}</IconBox>
-      <span className="flex-1 text-left">{label}</span>
-      {trailing}
-    </button>
-  );
-}
-
 function UserMenu({
   name,
   email,
@@ -81,13 +33,11 @@ function UserMenu({
   variant = "compact",
 }: UserMenuProps) {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>("main");
   const ref = useRef<HTMLDivElement>(null);
   const { data: organizations } = useOrganizations();
   const activeOrgId = useActiveOrganizationId();
   const setActive = useSetActiveOrganization();
   const createOrg = useCreateOrganization();
-  const canManageTeam = useHasOrgPermission("teamMembers", "manage");
   const [newOrgName, setNewOrgName] = useState("");
 
   const orgs = organizations ?? [];
@@ -98,7 +48,6 @@ function UserMenu({
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
-        setStep("main");
       }
     };
     document.addEventListener("mousedown", handler);
@@ -107,7 +56,6 @@ function UserMenu({
 
   function close() {
     setOpen(false);
-    setStep("main");
   }
 
   const isFull = variant === "full";
@@ -190,7 +138,7 @@ function UserMenu({
                     )}
                   >
                     <div className="flex w-11 shrink-0 items-center justify-center bg-primary-50 text-[13px] font-semibold text-primary select-none border-r border-[#EBEBEB]">
-                      {org.name.slice(0, 2).toUpperCase()}
+                      {getInitials(org.name)}
                     </div>
                     <div className="flex flex-1 items-center justify-between px-3 min-w-0">
                       <span className="truncate text-caption-l font-medium text-black-500">

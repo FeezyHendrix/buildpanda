@@ -18,10 +18,10 @@ export default function ResetPasswordForm() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h4 className="text-h4 font-bold text-black-500">
             Invalid reset link
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          </h4>
+          <p className="text-caption-l text-grey-450 max-w-[412px]">
             Invalid or missing reset link.
           </p>
         </div>
@@ -31,7 +31,7 @@ export default function ResetPasswordForm() {
         </p>
 
         <Link to="/auth/forgot-password">
-          <Button type="button" variant="secondary" className="w-full">
+          <Button type="button" size='lg' className="w-full">
             Back to forgot password
           </Button>
         </Link>
@@ -69,9 +69,9 @@ export default function ResetPasswordForm() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h4 className="text-h4 font-bold text-black-500">
             Password reset successfully
-          </h1>
+          </h4>
           <p className="text-sm text-gray-500 text-pretty">
             Your password has been successfully reset. You can now sign in with
             your new password.
@@ -83,7 +83,7 @@ export default function ResetPasswordForm() {
         </p>
 
         <Link to="/auth/sign-in">
-          <Button type="button" className="w-full">
+          <Button type="button" size='lg' className="w-full">
             Sign in
           </Button>
         </Link>
@@ -94,9 +94,9 @@ export default function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h4 className="text-h4 font-bold text-black-500">
           Set new password
-        </h1>
+        </h4>
         <p className="text-sm text-gray-500 text-pretty">
           Enter your new password below.
         </p>
@@ -129,7 +129,7 @@ export default function ResetPasswordForm() {
         required
       />
 
-      <Button type="submit" className="w-full h-[48px]" disabled={loading}>
+      <Button type="submit" size='lg' className="w-full" disabled={loading || newPassword !== confirmPassword || !newPassword.length || !confirmPassword.length}>
         {loading ? "Resetting..." : "Reset Password"}
       </Button>
     </form>
