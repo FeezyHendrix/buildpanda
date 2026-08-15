@@ -1,4 +1,3 @@
-import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { nigerianStates } from "@/lib/nigerian-states";
 import { SearchableSelect } from "@/components/atoms/searchable-select";
@@ -6,6 +5,8 @@ import { Select } from "@/components/atoms/select";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol } from "@/lib/formatters";
 import CardBg from '@/assets/images/card-bg.png';
+import { FormSection } from "../atoms/form-section";
+import { TextInput } from "../atoms/text-input";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -54,46 +55,6 @@ export interface ProjectInfoStepProps {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="border border-[#EBEBEB]">
-      <div className="border-b border-[#EBEBEB] bg-[#F8F8F8] px-5 py-3.5">
-        <h3 className="text-[13px] font-semibold text-[#1E1E1E]">{title}</h3>
-      </div>
-      <div className="space-y-5 p-5">{children}</div>
-    </div>
-  );
-}
-
-function TextInput({
-  label,
-  placeholder,
-  value,
-  onChange,
-  optional,
-}: {
-  label: string;
-  placeholder?: string;
-  value: string;
-  onChange: (v: string) => void;
-  optional?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[13px] font-medium text-[#1E1E1E]">
-        {label}
-        {optional && <span className="ml-1 font-normal text-[#B0B0B0]">(optional)</span>}
-      </label>
-      <input
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-11 border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none transition-colors focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
-      />
-    </div>
-  );
-}
 
 function SelectionCard({
   title,

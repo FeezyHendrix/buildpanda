@@ -294,7 +294,6 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
             className="text-base font-semibold w-full"
             onClick={onCreate}
           >
-            <ReactSVG src={icons2.plus} className='[&_svg]:size-[14px] [&_path]:fill-white shrink-0' />
             Create your first project
           </Button>
         }

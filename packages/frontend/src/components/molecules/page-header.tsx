@@ -25,13 +25,13 @@ function PageHeader({
     >
       <div className="flex-1 min-w-0 order-2 lg:order-1">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[22px] font-bold leading-tight text-black-900 text-balance">
+          <h1 className="text-h5 font-semibold">
             {title}
           </h1>
           {/* {badges} */}
         </div>
         {description && (
-          <p className="mt-2 max-w-2xl text-[13px] text-black-300 text-pretty">
+          <p className="mt-2 max-w-2xl text-caption-l font-medium text-grey-450 text-pretty">
             {description}
           </p>
         )}
