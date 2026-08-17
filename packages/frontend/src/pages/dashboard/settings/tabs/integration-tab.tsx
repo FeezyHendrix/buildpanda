@@ -1,5 +1,5 @@
 import { Badge, EmptyState } from "@/components";
-import emptyIcon from "@/assets/images/empty-integration.png";
+import emptyIcon from "@/assets/images/empty-Integration.png";
 
 export function IntegrationTab() {
   return (
