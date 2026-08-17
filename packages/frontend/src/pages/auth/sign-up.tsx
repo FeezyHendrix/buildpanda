@@ -35,11 +35,11 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
 
-    // We never ask for a name here — it is collected on the onboarding wizard's
-    // "Representative" step. better-auth's client type still demands the field,
-    // so send it blank; the server derives a stand-in from the email address.
+    // better-auth's core sign-up schema requires `name`; this form collects
+    // it later in onboarding (POST /v2/onboarding overwrites it from
+    // firstName+lastName), so send a placeholder derived from the email.
     const { error: signUpError } = await authClient.signUp.email({
-      name: "",
+      name: email.split("@")[0] ?? email,
       email,
       password,
     });
@@ -110,8 +110,8 @@ export default function SignUpForm() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <Button type="submit" className="w-full h-[48px]" disabled={loading}>
-          {loading ? "Creating account..." : "Create Account"}
+        <Button type="submit" className="w-full h-[48px]" loading={loading}>
+          Create Account
         </Button>
         
         <div className="flex items-center justify-center gap-1">

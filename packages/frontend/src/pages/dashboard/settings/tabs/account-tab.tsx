@@ -82,30 +82,6 @@ export function AccountTab() {
       </FormSection>
       <FormSection title="Change password" description='Ensure your account is using a long, random password to stay secure.'>
         <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-        <TextInput
-          label="Current password"
-          type="password"
-          placeholder='Create a strong password'
-          value={currentPassword}
-          onChange={setCurrentPassword}
-          required
-        />
-        <TextInput
-          label="New password"
-          type="password"
-          placeholder='Create a strong password'
-          value={newPassword}
-          onChange={setNewPassword}
-          required
-        />
-        <TextInput
-          label="Confirm new password"
-          type="password"
-          placeholder='Create a strong password'
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          required
-        />
         <FormField
           label="Current Password"
           name="password"
