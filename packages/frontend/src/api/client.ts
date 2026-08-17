@@ -20,7 +20,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = "/auth/sign-in";
+      // Carry the current location so sign-in returns the user to it, and never
+      // bounce while already on an auth screen — a bare redirect here throws
+      // away whatever they were doing (an open invitation link, for one) and
+      // can loop if the sign-in page itself sees a 401.
+      const { pathname, search } = window.location;
+      if (!pathname.startsWith("/auth/")) {
+        const redirect = encodeURIComponent(`${pathname}${search}`);
+        window.location.href = `/auth/sign-in?redirect=${redirect}`;
+      }
     } else if (error.response?.status === 403) {
       const message =
         (error.response.data as { error?: string } | undefined)?.error ??
