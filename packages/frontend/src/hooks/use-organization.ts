@@ -147,7 +147,11 @@ export function useInvitations(organizationId: string | undefined) {
   });
 }
 
-export function useInvitation(invitationId: string | undefined) {
+// better-auth's get-invitation requires a session (checked inline in its
+// handler, not just via middleware) — pass enabled: false while signed out to
+// skip a request that would only 401. See usePublicInvitation in
+// hooks/use-invitations.ts for the signed-out equivalent.
+export function useInvitation(invitationId: string | undefined, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: invitationId
       ? [...organizationKeys.all, "invitation", invitationId]
@@ -158,7 +162,7 @@ export function useInvitation(invitationId: string | undefined) {
           query: { id: invitationId! },
         }),
       ),
-    enabled: Boolean(invitationId),
+    enabled: Boolean(invitationId) && (options.enabled ?? true),
     retry: false,
   });
 }
