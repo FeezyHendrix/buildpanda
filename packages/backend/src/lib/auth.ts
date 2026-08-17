@@ -248,15 +248,17 @@ export const auth = betterAuth({
     },
   },
 
-  // better-auth's /sign-up/email body schema requires `name`, but the v2 sign-up
-  // form only asks for an email and a password. Fill the gap before better-auth
-  // validates the body, so the request never has to carry a name the UI doesn't
-  // collect. Runs ahead of endpoint validation (before-hooks are middleware).
+  // better-auth's /sign-up/email body schema requires `name`, but the sign-up
+  // form only asks for an email and a password. Derive it here, and do so
+  // unconditionally: any `name` a client sends is discarded, so the placeholder
+  // can never drift between clients and no frontend can reintroduce a worse one
+  // by deriving its own. Must be a before-hook — those run ahead of endpoint
+  // validation, which a databaseHook does not. Social sign-in uses a different
+  // path, so a Google account's real name is left alone.
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/sign-up/email") return;
-      const body = ctx.body as { name?: unknown; email?: unknown };
-      if (typeof body.name === "string" && body.name.trim()) return;
+      const body = ctx.body as { email?: unknown };
       if (typeof body.email !== "string") return;
       return {
         context: {
