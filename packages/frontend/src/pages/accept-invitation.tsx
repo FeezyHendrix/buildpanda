@@ -109,7 +109,7 @@ export default function AcceptInvitation() {
           with the invited email to accept.
         </p>
         <div className="mt-6">
-          <Button size="sm" className="w-full" onClick={() => void switchAccount()}>
+          <Button size="lg" className="w-full" onClick={() => void switchAccount()}>
             Sign out & use a different account
           </Button>
         </div>
@@ -280,18 +280,26 @@ function JoinTeamForm({ invitationId, organizationName, email }: JoinTeamFormPro
         />
 
         <div className="mt-12 flex flex-col gap-4">
-          <Button type="submit" variant="secondary" className="w-full h-[46px]" loading={loading}>
+          <Button 
+            type="submit" 
+            size='lg' 
+            className="w-full h-[46px]" 
+            loading={loading}
+            disabled={loading || !firstName.trim() || !lastName.trim() || !password}
+          >
             Confirm
           </Button>
 
-          <button
+          <Button
+            size='lg'
+            variant='ghost'
             type="button"
             onClick={handleDecline}
             disabled={declineInvitation.isPending}
             className="text-caption-l font-bold text-black-500 hover:text-gray-600 disabled:opacity-50"
           >
             Reject Invitation
-          </button>
+          </Button>
         </div>
       </form>
     </InvitationShell>
@@ -316,7 +324,7 @@ function InvitationShell({ title, organizationName, children }: InvitationShellP
         <img src={logo} alt="BuildPanda" className="h-9" />
       </Link>
 
-      <div className={`w-full max-w-[462px] ${organizationName ? 'min-h-[514px]' : ''} overflow-hidden border border-black-500 bg-white`}>
+      <div className={`w-full max-w-[462px] ${!organizationName ? 'min-h-[514px]' : 'min-h-[200px]'} overflow-hidden border border-black-500 bg-white`}>
         {organizationName && (
           <div className="flex items-center gap-2 bg-secondary px-8 py-3">
             <ReactSVG src={icons2.city} />
