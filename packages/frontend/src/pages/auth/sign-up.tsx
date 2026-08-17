@@ -35,11 +35,16 @@ export default function SignUpForm() {
     setError(null);
     setLoading(true);
 
-    // better-auth's core sign-up schema requires `name`; this form collects
-    // it later in onboarding (POST /v2/onboarding overwrites it from
-    // firstName+lastName), so send a placeholder derived from the email.
+    // better-auth's core sign-up schema requires `name`; this form collects it
+    // later in onboarding (POST /v2/onboarding overwrites it from
+    // firstName+lastName). Send it blank on purpose: the server derives the
+    // placeholder, and it does it better than we can here — it strips the
+    // plus-tag and title-cases, so "jane.doe+builds@x.com" becomes "Jane Doe"
+    // rather than "jane.doe+builds". Deriving it here would win over the
+    // server's version and leak the raw local part into the welcome email and
+    // the workspace name.
     const { error: signUpError } = await authClient.signUp.email({
-      name: email.split("@")[0] ?? email,
+      name: "",
       email,
       password,
     });
