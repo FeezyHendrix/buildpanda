@@ -107,7 +107,9 @@ export const config = {
     token: optional("SENDBYTE_API_KEY", ""),
     fromAddress: optional("SENDBYTE_FROM_ADDRESS", "noreply@buildpanda.io"),
     fromName: optional("SENDBYTE_FROM_NAME", "BuildPanda"),
-    replyToAddress: optional("SENDBYTE_REPLY_TO", "hello@buildpanda.ai"),
+    // Must sit on a domain verified in SendByte, or every send fails with
+    // `domain_not_verified`. buildpanda.io is the only verified domain.
+    replyToAddress: optional("SENDBYTE_REPLY_TO", "hello@buildpanda.io"),
     appUrl: optional("CORS_ORIGIN", "http://localhost:5173")
       .split(",")[0]!
       .trim(),
