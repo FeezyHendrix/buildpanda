@@ -232,7 +232,7 @@ function EscrowSummary({ finances }: { finances: ProjectFinances }) {
           <p className="text-[13px] font-semibold text-black-300">Contract Summary</p>
           <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.adjustedContract, finances.currency)}</p>
           <Badge size="md" className='bg-success-50 text-success-700'>
-            <ReactSVG src={icons.verified} className='[&svg]:[&>path]:fill-success-500' />
+            <ReactSVG src={icons.verified} className='[&_path]:fill-success-500' />
             Adjusted Contract Value
           </Badge>
         </div>
