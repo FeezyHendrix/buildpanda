@@ -137,16 +137,18 @@ export default function Dashboard() {
                 New Project
               </Button>
               <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="flex items-center justify-center border-l border-[#3371EE] bg-[#004DE7] px-2.5 text-white transition-colors hover:bg-[#053DAB]"
-                    aria-label="More project options"
-                  >
-                    <ChevronDownIcon />
-                  </Button>
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="primary"
+                      size="md"
+                      className="flex items-center justify-center border-l border-[#3371EE] bg-[#004DE7] px-2.5 text-white transition-colors hover:bg-[#053DAB]"
+                      aria-label="More project options"
+                    >
+                      <ChevronDownIcon />
+                    </Button>
+                  }
+                />
                 <DropdownMenuContent align="end" className='p-2 w-[380px]'>
                   <DropdownMenuItem onSelect={() => navigate("/project/create")} className='flex items-center gap-2'>
                     <ReactSVG src={icons2.folderAdd} />
@@ -202,16 +204,17 @@ function ProjectCard({ project, view }: { project: Project; view: "grid" | "list
   const cardMenu = (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger>
-          <button
-            type="button"
-            aria-label="Project options"
-            className="flex size-7 items-center justify-center transition-colors hover:bg-[#F5F5F5]"
-            onClick={(e) => e.preventDefault()}
-          >
-            <DotsMenuIcon />
-          </button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Project options"
+              className="flex size-7 items-center justify-center transition-colors hover:bg-[#F5F5F5]"
+            >
+              <DotsMenuIcon />
+            </button>
+          }
+        />
         <DropdownMenuContent align="end" className='p-1 gap-1'>
           <DropdownMenuItem className='py-1.5 cursor-pointer' onSelect={() => window.location.assign(`/project/${project.id}/overview`)}>
             Edit Project
