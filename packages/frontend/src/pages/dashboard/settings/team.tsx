@@ -176,8 +176,10 @@ export default function TeamSettings() {
             {(canManage || pendingInvitations.length > 0) && (
               <InvitationsSection
                 invitations={pendingInvitations}
+                isLoading={invitationsQuery.isPending}
+                canManage={canManage}
                 isCancelling={cancelInvitation.isPending}
-                onCancel={(id) => cancelInvitation.mutate(id)}
+                onCancel={(id, options) => cancelInvitation.mutate(id, options)}
               />
             )}
           </>
