@@ -5,6 +5,7 @@ import { FormField } from "@/components/molecules";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/stores/auth";
 import { homePathFor } from "@/lib/route-guards";
+import { onboardingApi } from "@/api/onboarding";
 
 export default function SignInForm() {
   const [email, setEmail] = useState("");
@@ -31,9 +32,19 @@ export default function SignInForm() {
     await authClient.signIn.email(
       { email, password },
       {
-        onSuccess: (ctx) => {
+        onSuccess: async (ctx) => {
           const user = ctx.data?.user as { accountType?: string; id?: string } | undefined;
-          setPendingRedirect(redirectTo ?? homePathFor(user?.accountType, user?.id));
+          // homePathFor falls back to a localStorage flag when the server
+          // status is unknown; fetch it so an already-onboarded user signing
+          // in on a fresh browser lands in-app instead of back at onboarding.
+          // Project owners skip onboarding entirely, so skip the fetch too.
+          const status =
+            user?.accountType === "project_owner"
+              ? null
+              : await onboardingApi.status().catch(() => null);
+          setPendingRedirect(
+            redirectTo ?? homePathFor(user?.accountType, user?.id, status?.completed),
+          );
         },
         onError: (ctx) => {
           setLoading(false);
