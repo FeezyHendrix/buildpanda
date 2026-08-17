@@ -68,12 +68,19 @@ function DropdownMenuContent({
 function DropdownMenuTrigger({
   children,
   className,
+  render,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
+  /**
+   * Renders the trigger *as* this element instead of wrapping it. Pass it
+   * whenever the trigger is itself a button — Menu.Trigger renders a <button>,
+   * so nesting one inside produces invalid HTML that React rejects at runtime.
+   */
+  render?: React.ReactElement<Record<string, unknown>>;
 }) {
   return (
-    <Menu.Trigger className={cn("outline-none", className)}>
+    <Menu.Trigger className={cn("outline-none", className)} render={render}>
       {children}
     </Menu.Trigger>
   );

@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { admin, organization } from "better-auth/plugins";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
@@ -23,6 +24,23 @@ function appUrlFor(path: string, params: Record<string, string> = {}): string {
   const url = new URL(path, config.mail.appUrl);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   return url.toString();
+}
+
+/**
+ * Sign-up takes an email and a password only; the real name arrives later, on
+ * the onboarding wizard's "Representative" step, which overwrites `user.name`.
+ * Until then `name` must still hold something — it is NOT NULL and it greets
+ * the user in the verification email and on the dashboard — so derive a
+ * stand-in from the email's local part: "jane.doe+builds@acme.com" -> "Jane Doe".
+ */
+function displayNameFromEmail(email: string): string {
+  const localPart = (email.split("@")[0] ?? "").replace(/\+.*$/, "");
+  const name = localPart
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+  return name || localPart || "New user";
 }
 
 function slugify(value: string): string {
@@ -53,29 +71,23 @@ async function uniqueOrgSlug(base: string): Promise<string> {
 async function ensureUserOrganization(
   userId: string,
   knownName?: string,
-  companyName?: string | null,
 ): Promise<string> {
   const existing = await db("member")
     .where({ userId })
     .first<{ organizationId: string }>();
   if (existing) return existing.organizationId;
 
-  // A construction firm's own company name becomes the workspace name verbatim
-  // (e.g. "Acme Construction"). Otherwise fall back to "<person>'s Workspace".
-  const trimmedCompany = companyName?.trim();
-  let orgName: string;
-  if (trimmedCompany) {
-    orgName = trimmedCompany;
-  } else {
-    let name = knownName;
-    if (!name) {
-      const user = await db("user")
-        .where({ id: userId })
-        .first<{ name: string }>();
-      name = user?.name ?? "My";
-    }
-    orgName = `${name}'s Workspace`;
+  // Sign-up has no company name to work with any more, so the workspace starts
+  // as "<person>'s Workspace"; the onboarding wizard renames it to the real
+  // company (onboarding/repository.ts -> completeOnboarding).
+  let name = knownName;
+  if (!name) {
+    const user = await db("user")
+      .where({ id: userId })
+      .first<{ name: string }>();
+    name = user?.name ?? "My";
   }
+  const orgName = `${name}'s Workspace`;
   const orgId = generateId("org");
   const slug = await uniqueOrgSlug(slugify(orgName));
   const now = new Date();
@@ -236,6 +248,25 @@ export const auth = betterAuth({
     },
   },
 
+  // better-auth's /sign-up/email body schema requires `name`, but the v2 sign-up
+  // form only asks for an email and a password. Fill the gap before better-auth
+  // validates the body, so the request never has to carry a name the UI doesn't
+  // collect. Runs ahead of endpoint validation (before-hooks are middleware).
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+      const body = ctx.body as { name?: unknown; email?: unknown };
+      if (typeof body.name === "string" && body.name.trim()) return;
+      if (typeof body.email !== "string") return;
+      return {
+        context: {
+          ...ctx,
+          body: { ...body, name: displayNameFromEmail(body.email) },
+        },
+      };
+    }),
+  },
+
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -286,32 +317,36 @@ export const auth = betterAuth({
     },
   },
 
+  // Declared so they ride on the session user (route guards read accountType),
+  // but `input: false` — sign-up no longer submits any of them: `country`/`phone`
+  // are written by the onboarding module, and `accountType` is derived from the
+  // invitation accepted, never self-declared by the client.
   user: {
     additionalFields: {
       country: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
       phone: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
       accountType: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
       profession: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
       companyName: {
         type: "string",
         required: false,
-        input: true,
+        input: false,
       },
     },
   },
@@ -359,8 +394,7 @@ export const auth = betterAuth({
           // invite, so an invited employee never lands in their own empty org.
           const invited = await hasPendingInvitation(user.email);
           if (!invited) {
-            const companyName = (user as { companyName?: string | null }).companyName ?? null;
-            await ensureUserOrganization(user.id, user.name, companyName);
+            await ensureUserOrganization(user.id, user.name);
           }
           const ctx = getRequestContext();
           if (ctx && (ctx.ip || ctx.country)) {

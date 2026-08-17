@@ -3,65 +3,17 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { FormField } from "@/components/molecules";
 import { authClient } from "@/lib/auth-client";
-import { PENDING_ORG_INVITE_KEY, PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
-// import type { Country } from "@/lib/countries";
-
-// const ACCOUNT_TYPES = [
-//   {
-//     id: "construction_company",
-//     title: "Construction Company",
-//     description: "You are the construction team delivering the build.",
-//   },
-//   {
-//     id: "project_manager",
-//     title: "Project Manager",
-//     description: "You manage delivery as a builder, QS, architect, or similar.",
-//   },
-// ] as const;
-
-// const PROFESSIONS = [
-//   "Builder",
-//   "Quantity Surveyor",
-//   "Architect",
-//   "Engineer",
-//   "Site Supervisor",
-//   "Other",
-// ] as const;
-
-// type AccountType = (typeof ACCOUNT_TYPES)[number]["id"];
+import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
 
 export default function SignUpForm() {
-  // const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // const [accountType, setAccountType] = useState<AccountType | null>(null);
-  // const [companyName, setCompanyName] = useState("");
-  // const [profession, setProfession] = useState<string | null>(null);
-  // const [country, setCountry] = useState<Country | null>(null);
-  // const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect");
   const invitedEmail = searchParams.get("email");
-  // const invitedViaOrg =
-  //   (redirectTo?.startsWith("/accept-invitation/") ?? false) ||
-  //   (typeof window !== "undefined" &&
-  //     Boolean(window.localStorage.getItem(PENDING_ORG_INVITE_KEY)));
-
-  // const isProjectManager = accountType === "project_manager";
-  // const isConstructionCompany = accountType === "construction_company";
-  // const personaComplete =
-  //   invitedViaOrg ||
-  //   (accountType !== null && (!isProjectManager || profession !== null));
-
-  // function selectAccountType(value: AccountType) {
-  //   setAccountType(value);
-  //   if (value !== "project_manager") {
-  //     setProfession(null);
-  //   }
-  // }
 
   useEffect(() => {
     if (invitedEmail) setEmail(invitedEmail);
@@ -81,41 +33,15 @@ export default function SignUpForm() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-
-    // const effectiveAccountType = invitedViaOrg
-    //   ? "construction_company"
-    //   : accountType;
-
-    // if (!effectiveAccountType) {
-    //   setError("Please select who is creating this account.");
-    //   return;
-    // }
-    // if (
-    //   !invitedViaOrg &&
-    //   effectiveAccountType === "project_manager" &&
-    //   !profession
-    // ) {
-    //   setError("Please select your profession.");
-    //   return;
-    // }
-
     setLoading(true);
 
+    // We never ask for a name here — it is collected on the onboarding wizard's
+    // "Representative" step. better-auth's client type still demands the field,
+    // so send it blank; the server derives a stand-in from the email address.
     const { error: signUpError } = await authClient.signUp.email({
-      // name,
+      name: "",
       email,
       password,
-      // country: country?.code ?? "",
-      // phone,
-      // accountType: effectiveAccountType,
-      // profession:
-      //   !invitedViaOrg && effectiveAccountType === "project_manager"
-      //     ? (profession ?? "")
-      //     : "",
-      // companyName:
-      //   !invitedViaOrg && effectiveAccountType === "construction_company"
-      //     ? companyName.trim()
-      //     : "",
     });
 
     setLoading(false);
@@ -184,7 +110,7 @@ export default function SignUpForm() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <Button type="submit" className="w-full h-[48px]" disabled={loading || !personaComplete}>
+        <Button type="submit" className="w-full h-[48px]" disabled={loading}>
           {loading ? "Creating account..." : "Create Account"}
         </Button>
         

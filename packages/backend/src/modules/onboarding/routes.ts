@@ -47,7 +47,7 @@ const onboardingRoutes: FastifyPluginAsync = async (fastify) => {
     "/v2/onboarding/status",
     { schema: { response: statusResponse } },
     async (request) => {
-      const user = request.requireAuth();
+      request.requireAuth();
       const orgId = request.requireOrgScope();
       return service.status(orgId);
     },
