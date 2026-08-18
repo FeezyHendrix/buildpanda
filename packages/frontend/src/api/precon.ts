@@ -135,6 +135,58 @@ export interface UpdateRowInput {
   changes: { description?: string; qty?: number; rate?: number; unit?: string };
 }
 
+export const PROGRAMME_DEPENDENCY_TYPES = ["FS", "SS", "FF", "SF"] as const;
+export type ProgrammeDependencyType = (typeof PROGRAMME_DEPENDENCY_TYPES)[number];
+
+export interface ProgrammeDependency {
+  taskId: string;
+  type: ProgrammeDependencyType;
+  lagDays: number;
+}
+
+/** As stored: durations and links, with no calendar attached — what the task mutations answer with. */
+export interface PreconProgrammeTaskBase {
+  id: string;
+  sessionId: string;
+  sort: number;
+  name: string;
+  elementGroup: string | null;
+  wbsCode: string | null;
+  outlineLevel: number;
+  parentTaskId: string | null;
+  durationDays: number;
+  predecessors: ProgrammeDependency[];
+  isMilestone: boolean;
+  basis: string | null;
+  confidence: "high" | "low" | null;
+  status: PreconRowStatus;
+  version: number;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+}
+
+/** Base plus the dates the server derives from the programme start date. */
+export interface PreconProgrammeTask extends PreconProgrammeTaskBase {
+  startAt: string;
+  finishAt: string;
+}
+
+export interface PreconProgramme {
+  sessionId: string;
+  startDate: string;
+  finishDate: string | null;
+  tasks: PreconProgrammeTask[];
+  progress: { total: number; verified: number };
+}
+
+export interface UpdateProgrammeTaskInput {
+  version: number;
+  name?: string;
+  durationDays?: number;
+  isMilestone?: boolean;
+  basis?: string;
+}
+
 export const preconApi = {
   listSessions: (proposalId?: string) =>
     api
@@ -181,6 +233,29 @@ export const preconApi = {
   sheetFileUrl: (sheetId: string) => `${api.defaults.baseURL ?? ""}/precon/sheets/${sheetId}/file`,
 
   exportUrl: (sessionId: string) => `${api.defaults.baseURL ?? ""}/precon/sessions/${sessionId}/export.xlsx`,
+
+  generateProgramme: (sessionId: string) =>
+    api.post<{ status: "queued" }>(`/precon/sessions/${sessionId}/programme`).then((r) => r.data),
+
+  programme: (sessionId: string) =>
+    api.get<PreconProgramme>(`/precon/sessions/${sessionId}/programme`).then((r) => r.data),
+
+  setProgrammeStart: (sessionId: string, startDate: string) =>
+    api.patch<PreconProgramme>(`/precon/sessions/${sessionId}/programme/start`, { startDate }).then((r) => r.data),
+
+  exportProgrammeXml: (sessionId: string) =>
+    api
+      .get(`/precon/sessions/${sessionId}/programme/export.xml`, { responseType: "blob" })
+      .then((r) => r.data as Blob),
+
+  updateProgrammeTask: (taskId: string, input: UpdateProgrammeTaskInput) =>
+    api.patch<PreconProgrammeTaskBase>(`/precon/programme-tasks/${taskId}`, input).then((r) => r.data),
+
+  verifyProgrammeTask: (taskId: string, version: number) =>
+    api.post<PreconProgrammeTaskBase>(`/precon/programme-tasks/${taskId}/verify`, { version }).then((r) => r.data),
+
+  rejectProgrammeTask: (taskId: string, version: number) =>
+    api.post<PreconProgrammeTaskBase>(`/precon/programme-tasks/${taskId}/reject`, { version }).then((r) => r.data),
 
   applyToProposal: (sessionId: string) =>
     api

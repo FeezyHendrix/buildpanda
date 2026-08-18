@@ -14,6 +14,9 @@ import type {
   PreconBoqRowRow,
   PreconGeometry,
   PreconGeometryRow,
+  PreconProgramme,
+  PreconProgrammeTaskBase,
+  PreconProgrammeTaskRow,
   PreconSession,
   PreconSessionRow,
   PreconSheet,
@@ -21,9 +24,11 @@ import type {
   PreconSnapshot,
   PreconSummary,
   PreconSummarySettings,
+  ProgrammeDependency,
   UpdateGeometryBody,
   UpdateRowBody,
 } from "./types.ts";
+import { scheduleProgramme } from "./programme-schedule.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 
@@ -61,6 +66,31 @@ function toSheet(r: PreconSheetRow): PreconSheet {
 
 function toBill(r: PreconBillRow): PreconBill {
   return { id: r.id, title: r.title, sort: r.sort };
+}
+
+function toProgrammeTask(r: PreconProgrammeTaskRow): PreconProgrammeTaskBase {
+  return {
+    id: r.id,
+    sessionId: r.session_id,
+    sort: r.sort,
+    name: r.name,
+    elementGroup: r.element_group,
+    wbsCode: r.wbs_code,
+    outlineLevel: r.outline_level,
+    parentTaskId: r.parent_task_id,
+    durationDays: Number(r.duration_days),
+    predecessors:
+      typeof r.predecessors === "string"
+        ? (JSON.parse(r.predecessors) as ProgrammeDependency[])
+        : r.predecessors,
+    isMilestone: r.is_milestone,
+    basis: r.basis,
+    confidence: r.confidence,
+    status: r.status,
+    version: r.version,
+    verifiedBy: r.verified_by,
+    verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
+  };
 }
 
 function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
@@ -299,6 +329,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return sessionId;
     },
 
+    async assertProgrammeTaskOrg(taskId: string, orgId: string) {
+      const task = await repo.programmeTaskById(taskId);
+      if (!task) throw new NotFoundError("Programme task");
+      const session = await repo.sessionById(task.session_id);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Programme task");
+      return task.session_id;
+    },
+
     async getSnapshot(sessionId: string): Promise<PreconSnapshot> {
       const session = await repo.sessionById(sessionId);
       if (!session) throw new NotFoundError("Preconstruction session");
@@ -516,6 +554,152 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const buffer = await buildBoqWorkbookBuffer(snapshot, projectName ?? snapshot.session.title);
       const safeTitle = snapshot.session.title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
       return { fileName: `BOQ-${safeTitle}.xlsx`, buffer };
+    },
+
+    async getProgramme(sessionId: string): Promise<PreconProgramme> {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
+      const [rows, statusCounts] = await Promise.all([
+        repo.programmeTasksBySession(sessionId),
+        repo.programmeStatusCounts(sessionId),
+      ]);
+
+      const startDate = session.programme_start_date
+        ? new Date(`${String(session.programme_start_date).slice(0, 10)}T00:00:00Z`)
+        : new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+
+      const tasks = rows.map(toProgrammeTask);
+      const dates = scheduleProgramme(
+        tasks.map((t) => ({
+          id: t.id,
+          durationDays: t.durationDays,
+          predecessors: t.predecessors,
+          outlineLevel: t.outlineLevel,
+          parentTaskId: t.parentTaskId,
+        })),
+        startDate,
+      );
+
+      const scheduled = tasks.map((task) => {
+        const window = dates.get(task.id);
+        return {
+          ...task,
+          startAt: (window?.start ?? startDate).toISOString(),
+          finishAt: (window?.finish ?? startDate).toISOString(),
+        };
+      });
+
+      const total = statusCounts.reduce((sum, c) => sum + c.count, 0);
+      const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
+      const finish = scheduled.reduce<string | null>(
+        (max, t) => (!max || t.finishAt > max ? t.finishAt : max),
+        null,
+      );
+
+      return {
+        sessionId,
+        startDate: startDate.toISOString(),
+        finishDate: finish,
+        tasks: scheduled,
+        progress: { total, verified },
+      };
+    },
+
+    async setProgrammeStart(sessionId: string, startDate: string): Promise<PreconProgramme> {
+      await repo.setProgrammeStartDate(sessionId, startDate);
+      return this.getProgramme(sessionId);
+    },
+
+    async updateProgrammeTask(
+      taskId: string,
+      version: number,
+      patch: { name?: string; durationDays?: number; isMilestone?: boolean; basis?: string },
+      actor: string,
+    ): Promise<PreconProgrammeTaskBase> {
+      const existing = await repo.programmeTaskById(taskId);
+      if (!existing) throw new NotFoundError("Programme task");
+      const updated = await repo.updateProgrammeTaskVersioned(taskId, version, {
+        ...(patch.name === undefined ? {} : { name: patch.name }),
+        ...(patch.durationDays === undefined ? {} : { duration_days: patch.durationDays }),
+        ...(patch.isMilestone === undefined ? {} : { is_milestone: patch.isMilestone }),
+        ...(patch.basis === undefined ? {} : { basis: patch.basis }),
+        // An edited task is the planner's call now, not the model's.
+        status: "needs_review",
+      });
+      if (!updated) {
+        throw new ConflictError("Task changed since you loaded it; refresh and retry");
+      }
+      await audit(existing.session_id, taskId, actor, "programme.updated", { ...patch }, null);
+      return toProgrammeTask(updated);
+    },
+
+    async setProgrammeTaskStatus(
+      taskId: string,
+      version: number,
+      status: "verified" | "rejected",
+      actor: string,
+    ): Promise<PreconProgrammeTaskBase> {
+      const existing = await repo.programmeTaskById(taskId);
+      if (!existing) throw new NotFoundError("Programme task");
+      const updated = await repo.updateProgrammeTaskVersioned(taskId, version, {
+        status,
+        verified_by: status === "verified" ? actor : null,
+        verified_at: status === "verified" ? new Date() : null,
+      });
+      if (!updated) {
+        throw new ConflictError("Task changed since you loaded it; refresh and retry");
+      }
+      await audit(
+        existing.session_id,
+        taskId,
+        actor,
+        `programme.${status}`,
+        { status: existing.status },
+        { status },
+      );
+      return toProgrammeTask(updated);
+    },
+
+    async exportProgrammeXml(sessionId: string): Promise<{ fileName: string; xml: string }> {
+      const [programme, session] = await Promise.all([
+        this.getProgramme(sessionId),
+        repo.sessionById(sessionId),
+      ]);
+      if (programme.tasks.length === 0) {
+        throw new BadRequestError("Generate the programme before exporting it.");
+      }
+      const title = session?.title ?? "Programme";
+
+      // MS Project keys tasks by integer UID; a rejected task is left out
+      // entirely, so links pointing at one are dropped rather than dangling.
+      const included = programme.tasks.filter((t) => t.status !== "rejected");
+      const uidById = new Map(included.map((t, index) => [t.id, index + 1]));
+
+      const { buildMspdiXml } = await import("../programme/mspdi-writer.ts");
+      const xml = buildMspdiXml({
+        name: title,
+        start: new Date(programme.startDate),
+        finish: programme.finishDate ? new Date(programme.finishDate) : null,
+        tasks: included.map((task) => ({
+          uid: uidById.get(task.id)!,
+          name: task.name,
+          outlineLevel: task.outlineLevel,
+          outlineNumber: task.wbsCode,
+          start: new Date(task.startAt),
+          finish: new Date(task.finishAt),
+          durationDays: task.durationDays,
+          percentComplete: 0,
+          isMilestone: task.isMilestone,
+          isSummary: task.outlineLevel === 1,
+          predecessors: task.predecessors.flatMap((link) => {
+            const uid = uidById.get(link.taskId);
+            return uid === undefined ? [] : [{ uid, type: link.type, lagDays: link.lagDays }];
+          }),
+        })),
+      });
+
+      const safeTitle = title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
+      return { fileName: `Programme-${safeTitle}.xml`, xml };
     },
 
     async listRateCards(orgId: string) {
