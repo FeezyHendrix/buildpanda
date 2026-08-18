@@ -307,6 +307,13 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         (method === "GET" && /^\/proposals\/public\/[^/?]+$/.test(url)) ||
         (method === "POST" && /^\/proposals\/public\/[^/?]+\/respond/.test(url)) ||
         (method === "GET" && /^\/project-invites\/[^/?]+$/.test(url)) ||
+        // An org invitation reaches someone who has no account yet, so there is
+        // no session to check: the opaque invitation id is the credential, as
+        // with the project-invite and password-reset links above. Reading it
+        // returns only the org name, invited email and role, and declining only
+        // moves a pending row to rejected.
+        (method === "GET" && /^\/v2\/invitations\/[^/?]+(\?|$)/.test(url)) ||
+        (method === "POST" && /^\/v2\/invitations\/[^/?]+\/decline(\?|$)/.test(url)) ||
         (method === "GET" && /^\/share\/[^/?]+(\/file)?$/.test(url)) ||
         (method === "POST" && /^\/rfi-reply\/[^/?]+$/.test(url)) ||
         (method === "POST" && url === "/leads/consultation");
