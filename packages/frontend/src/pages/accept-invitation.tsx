@@ -52,7 +52,7 @@ export default function AcceptInvitation() {
           already used.
         </p>
         <Link to="/" className="mt-6 inline-block">
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="lg">
             Go to dashboard
           </Button>
         </Link>
@@ -73,7 +73,7 @@ export default function AcceptInvitation() {
           This invitation has already been {invitation.status}.
         </p>
         <Link to="/" className="mt-6 inline-block">
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="lg">
             Go to dashboard
           </Button>
         </Link>
@@ -160,7 +160,7 @@ export default function AcceptInvitation() {
 
       <div className="mt-6 flex gap-2">
         <Button
-          size="sm"
+          size="lg"
           onClick={handleAccept}
           disabled={isActing}
           className="flex-1"
@@ -169,7 +169,7 @@ export default function AcceptInvitation() {
         </Button>
         <Button
           variant="secondary"
-          size="sm"
+          size="lg"
           onClick={handleReject}
           disabled={isActing}
           className="flex-1"
