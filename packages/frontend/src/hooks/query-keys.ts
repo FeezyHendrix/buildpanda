@@ -328,6 +328,7 @@ export const preconKeys = {
   all: ["precon"] as const,
   sessions: () => [...preconKeys.all, "sessions"] as const,
   snapshot: (sessionId: string) => [...preconKeys.all, "snapshot", sessionId] as const,
+  programme: (sessionId: string) => [...preconKeys.all, "programme", sessionId] as const,
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };

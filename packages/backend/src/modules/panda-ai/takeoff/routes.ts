@@ -8,9 +8,20 @@ import { proposalsRepository } from "../../proposals/repository.ts";
 import { filesRepository } from "../../files/repository.ts";
 import { proposalsService } from "../../proposals/service.ts";
 import { preconService } from "./service.ts";
-import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
+import {
+  PRECON_GENERATE_QUEUE,
+  PRECON_PROGRAMME_QUEUE,
+  type PreconGenerateJobData,
+  type PreconProgrammeJobData,
+} from "./job.ts";
 import { GEOMETRY_KINDS } from "./types.ts";
-import type { AddDeductionBody, PreconSummarySettings, UpdateGeometryBody, UpdateRowBody } from "./types.ts";
+import type {
+  AddDeductionBody,
+  PreconSummarySettings,
+  UpdateGeometryBody,
+  UpdateProgrammeTaskBody,
+  UpdateRowBody,
+} from "./types.ts";
 
 const sessionParams = {
   type: "object",
@@ -31,6 +42,34 @@ const rowParams = {
   required: ["rowId"],
   additionalProperties: false,
   properties: { rowId: { type: "string", minLength: 1 } },
+} as const;
+
+const taskParams = {
+  type: "object",
+  required: ["taskId"],
+  additionalProperties: false,
+  properties: { taskId: { type: "string", minLength: 1 } },
+} as const;
+
+const programmeStartBody = {
+  type: "object",
+  required: ["startDate"],
+  additionalProperties: false,
+  properties: { startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" } },
+} as const;
+
+const updateProgrammeTaskBody = {
+  type: "object",
+  required: ["version"],
+  additionalProperties: false,
+  minProperties: 2,
+  properties: {
+    version: { type: "integer", minimum: 1 },
+    name: { type: "string", minLength: 1, maxLength: 120 },
+    durationDays: { type: "number", minimum: 0, maximum: 400 },
+    isMilestone: { type: "boolean" },
+    basis: { type: "string", maxLength: 200 },
+  },
 } as const;
 
 const updateRowBody = {
@@ -260,6 +299,94 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
       const orgId = request.requireOrgScope();
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.getSnapshot(request.params.sessionId);
+    },
+  );
+
+  // ── Programme of work ──────────────────────────────────────────────────────
+
+  fastify.post<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/programme",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      await fastify.queue.enqueue(PRECON_PROGRAMME_QUEUE, "programme", {
+        sessionId: request.params.sessionId,
+        orgId,
+      } satisfies PreconProgrammeJobData);
+      return reply.status(202).send({ status: "queued" });
+    },
+  );
+
+  fastify.get<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/programme",
+    { schema: { params: sessionParams } },
+    async (request) => {
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      return service.getProgramme(request.params.sessionId);
+    },
+  );
+
+  fastify.patch<{ Params: { sessionId: string }; Body: { startDate: string } }>(
+    "/precon/sessions/:sessionId/programme/start",
+    { schema: { params: sessionParams, body: programmeStartBody } },
+    async (request) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      return service.setProgrammeStart(request.params.sessionId, request.body.startDate);
+    },
+  );
+
+  fastify.get<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/programme/export.xml",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgScope();
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      const { fileName, xml } = await service.exportProgrammeXml(request.params.sessionId);
+      return reply
+        .header("content-type", "application/xml; charset=utf-8")
+        .header("content-disposition", `attachment; filename="${fileName}"`)
+        .send(xml);
+    },
+  );
+
+  fastify.patch<{ Params: { taskId: string }; Body: UpdateProgrammeTaskBody }>(
+    "/precon/programme-tasks/:taskId",
+    { schema: { params: taskParams, body: updateProgrammeTaskBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
+      const { version, ...patch } = request.body;
+      return service.updateProgrammeTask(request.params.taskId, version, patch, user.id);
+    },
+  );
+
+  fastify.post<{ Params: { taskId: string }; Body: { version: number } }>(
+    "/precon/programme-tasks/:taskId/verify",
+    { schema: { params: taskParams, body: versionOnlyBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
+      return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "verified", user.id);
+    },
+  );
+
+  fastify.post<{ Params: { taskId: string }; Body: { version: number } }>(
+    "/precon/programme-tasks/:taskId/reject",
+    { schema: { params: taskParams, body: versionOnlyBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
+      return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "rejected", user.id);
     },
   );
 
