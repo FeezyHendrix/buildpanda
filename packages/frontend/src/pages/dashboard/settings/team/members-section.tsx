@@ -59,7 +59,7 @@ export function MemberRow({
   onRemove,
 }: MemberRowProps) {
   const isOwner = member.role === "owner";
-  const canEditRole = canManage && !isOwner;
+  const canEditRole = canManage && !isOwner && !isSelf;
   const canRemove = canManage && !isOwner && !isSelf;
 
   return (
