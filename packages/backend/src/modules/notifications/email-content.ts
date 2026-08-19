@@ -12,6 +12,7 @@ export interface NotificationEmailInput {
   body: string;
   projectId: string | null;
   ctaUrl: string | null;
+  entityId?: string | null;
 }
 
 interface TypePresentation {
@@ -73,9 +74,83 @@ const GENERIC: TypePresentation = {
   ctaLabel: "Open BuildPanda",
 };
 
-function fallbackUrl(projectId: string | null): string {
+/**
+ * Where each notification type lives, as a path under /project/:id.
+ *
+ * Only tasks (`?task=`) and site activities (path segment) can focus a single
+ * record from the URL today; every other screen opens its detail dialog from
+ * component state. Those entries therefore ignore `entityId` rather than
+ * inventing a parameter the page does not read. To make one of them
+ * item-level: teach the page to read the id from the URL, update its entry
+ * here, and pass `entityId` at that type's notify() call site.
+ *
+ * Total Record on purpose: a new NotificationType fails the build until it is
+ * given a destination, which is how they all ended up on the overview.
+ */
+const SECTION: Record<NotificationType, (entityId: string | null) => string> = {
+  update_posted: () => "updates",
+  update_draft_ready: () => "updates",
+  update_action_required: () => "updates",
+
+  task_assigned: (id) => (id ? `tasks?task=${encodeURIComponent(id)}` : "tasks"),
+  task_high_priority: (id) => (id ? `tasks?task=${encodeURIComponent(id)}` : "tasks"),
+  activity_assigned: (id) => (id ? `schedules/activities/${encodeURIComponent(id)}` : "schedules/activities"),
+
+  action_item_due: () => "action-items",
+  action_item_assigned: () => "action-items",
+  action_item_blocked: () => "action-items",
+  action_item_resolved: () => "action-items",
+
+  rfi_assigned: () => "rfis",
+  rfi_answered: () => "rfis",
+  rfi_due: () => "rfis",
+  query_assigned: () => "queries",
+  query_answered: () => "queries",
+  approval_requested: () => "approvals",
+  approval_decided: () => "approvals",
+  change_request_assigned: () => "change-requests",
+  change_request_decided: () => "change-requests",
+  selection_created: () => "selections",
+  selection_decided: () => "selections",
+  decision_reminder: () => "whats-next",
+  decision_escalated: () => "whats-next",
+
+  inspection_scheduled: () => "inspections",
+  inspection_failed: () => "inspections",
+  document_uploaded: () => "documents",
+  permit_expiring: () => "permits",
+  permit_expired: () => "permits",
+  key_date_approaching: () => "key-dates",
+  key_date_missed: () => "key-dates",
+  risk_high_added: () => "whats-next",
+
+  milestone_released: () => "finances/milestone-payments",
+  milestone_disputed: () => "finances/milestone-payments",
+  invoice_submitted: () => "finances/invoices",
+  invoice_overdue: () => "finances/invoices",
+  budget_overrun: () => "finances/budget",
+
+  material_negative_stock: () => "material-log",
+  material_low_stock: () => "material-log",
+  material_reorder_created: () => "materials",
+
+  chat_mention: () => "chat",
+  chat_dm: () => "chat",
+  bim_issue_assigned: () => "bim",
+  team_member_added: () => "team",
+  ai_health_drop: () => "panda-ai",
+};
+
+function resolveUrl(
+  type: NotificationType,
+  projectId: string | null,
+  entityId: string | null,
+): string {
   const base = config.mail.appUrl.replace(/\/+$/, "");
-  return projectId ? `${base}/project/${projectId}/overview` : `${base}/dashboard`;
+  if (!projectId) return `${base}/dashboard`;
+  const section = SECTION[type];
+  if (!section) return `${base}/project/${projectId}/overview`;
+  return `${base}/project/${projectId}/${section(entityId)}`;
 }
 
 export function buildNotificationEmail(
@@ -90,7 +165,7 @@ export function buildNotificationEmail(
     accent: preset.accent,
     cta: {
       label: preset.ctaLabel,
-      url: input.ctaUrl ?? fallbackUrl(input.projectId),
+      url: input.ctaUrl ?? resolveUrl(input.type, input.projectId, input.entityId ?? null),
     },
   });
 }
@@ -107,14 +182,16 @@ export interface NotificationPushPayload {
  * ctaUrl, else the project overview / dashboard fallback).
  */
 export function buildNotificationPush(input: {
+  type: NotificationType;
   title: string;
   body: string;
   projectId: string | null;
   ctaUrl: string | null;
+  entityId?: string | null;
 }): NotificationPushPayload {
   return {
     title: input.title,
     body: input.body,
-    url: input.ctaUrl ?? fallbackUrl(input.projectId),
+    url: input.ctaUrl ?? resolveUrl(input.type, input.projectId, input.entityId ?? null),
   };
 }

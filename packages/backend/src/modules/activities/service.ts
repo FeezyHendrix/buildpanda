@@ -108,6 +108,7 @@ export function activitiesService(
     projectId: string,
     label: string,
     actorId: string,
+    activityId: string,
   ): void {
     if (!deps.notifications || !assigneeId || assigneeId === actorId) return;
     void deps.notifications
@@ -115,6 +116,7 @@ export function activitiesService(
         title: "An activity was assigned to you",
         body: label,
         projectId,
+        entityId: activityId,
       })
       .catch(() => undefined);
   }
@@ -246,7 +248,7 @@ export function activitiesService(
         created_by_id: actor.id,
       });
       await enqueueRecompute(projectId);
-      notifyAssignee(row.assignee_id, projectId, row.name, actor.id);
+      notifyAssignee(row.assignee_id, projectId, row.name, actor.id, row.id);
       return buildOne(await loadProjectActivity(projectId, row.id));
     },
 
@@ -293,7 +295,7 @@ export function activitiesService(
       if (!updated) throw new ConflictError("Activity update failed");
 
       if (input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id) {
-        notifyAssignee(updated.assignee_id, projectId, updated.name, actorId ?? "");
+        notifyAssignee(updated.assignee_id, projectId, updated.name, actorId ?? "", updated.id);
       }
 
       const affectsSchedule =
