@@ -29,6 +29,8 @@ export interface NotifyInput {
   body: string;
   projectId?: string | null;
   ctaUrl?: string | null;
+  /** The record this notification is about; resolved to a deep link per type. */
+  entityId?: string | null;
   // "skip" creates the in-app notification without sending an email — used by
   // chat, where the email is deferred and only sent if the message stays unread.
   emailMode?: "send" | "skip";
@@ -112,6 +114,7 @@ export function notificationsService(
           body: input.body,
           projectId: input.projectId ?? null,
           ctaUrl: input.ctaUrl ?? null,
+          entityId: input.entityId ?? null,
         };
         await queue
           .enqueue(NOTIFICATION_EMAIL_QUEUE, "send", jobData)

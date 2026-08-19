@@ -16,6 +16,7 @@ export interface NotificationPushJobData {
   body: string;
   projectId: string | null;
   ctaUrl: string | null;
+  entityId?: string | null;
 }
 
 interface PrefRow {
@@ -69,10 +70,12 @@ export async function runNotificationPush(
 
   const payload = JSON.stringify(
     buildNotificationPush({
+      type: data.type,
       title: data.title,
       body: data.body,
       projectId: data.projectId,
       ctaUrl: data.ctaUrl,
+      entityId: data.entityId ?? null,
     }),
   );
 

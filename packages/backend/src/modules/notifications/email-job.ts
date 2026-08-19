@@ -15,6 +15,7 @@ export interface NotificationEmailJobData {
   body: string;
   projectId: string | null;
   ctaUrl: string | null;
+  entityId?: string | null;
 }
 
 interface RecipientRow {
@@ -52,6 +53,7 @@ export async function runNotificationEmail(
     body: data.body,
     projectId: data.projectId,
     ctaUrl: data.ctaUrl,
+    entityId: data.entityId ?? null,
   });
 
   try {
