@@ -81,4 +81,14 @@ export const activitiesApi = {
 
   resolveDelay: (projectId: string, activityId: string, delayId: string, body: Omit<ResolveDelayInput, "projectId" | "activityId" | "delayId">) =>
     api.patch<ActivityDelay>(`/projects/${projectId}/activities/${activityId}/delays/${delayId}`, body).then((r) => r.data),
+
+  // Microsoft Project XML (MSPDI) — the format Project opens directly, and the
+  // same one the programme importer reads back.
+  exportProgramme: (projectId: string, buildingId?: string) =>
+    api
+      .get(`/projects/${projectId}/programme/export.xml`, {
+        params: buildingId ? { buildingId } : undefined,
+        responseType: "blob",
+      })
+      .then((r) => r.data as Blob),
 };
