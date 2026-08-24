@@ -9,6 +9,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
 import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
 import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
+import { PreconProgrammePanel } from "@/components/molecules/precon-programme-panel";
 import { usePreconChannel, usePreconSnapshot } from "@/hooks/use-precon";
 import { preconKeys } from "@/hooks/query-keys";
 import { cn } from "@/lib/utils";
@@ -352,7 +353,10 @@ export default function PreconSessionPage() {
           billsCount={snapshot.bills.length}
         />
       ) : effectiveStep === "output" ? (
-        <PreconOutputPanel snapshot={snapshot} />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
+          <PreconOutputPanel snapshot={snapshot} />
+          <PreconProgrammePanel sessionId={sessionId} sessionTitle={snapshot.session.title} />
+        </div>
       ) : (
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_420px]">
           <PreconSheetViewer

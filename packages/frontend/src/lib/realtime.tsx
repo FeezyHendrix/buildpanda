@@ -262,7 +262,9 @@ function handleEvent(
       );
     }
     void queryClient.invalidateQueries({
-      predicate: (query) => query.queryKey.includes("snapshot") && query.queryKey.includes(sessionId),
+      predicate: (query) =>
+        query.queryKey.includes(sessionId) &&
+        (query.queryKey.includes("snapshot") || query.queryKey.includes("programme")),
     });
     return;
   }

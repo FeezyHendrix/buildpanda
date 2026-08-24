@@ -6,6 +6,7 @@ import type {
   PreconBillRow,
   PreconBoqRowRow,
   PreconGeometryRow,
+  PreconProgrammeTaskRow,
   PreconSessionRow,
   PreconSheetRow,
   PreconSummarySettingsRow,
@@ -20,7 +21,7 @@ export type PreconRepository = ReturnType<typeof preconRepository>;
 export function preconRepository(db: Knex) {
   return {
     // sessions
-    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context">) => {
+    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date">) => {
       const [inserted] = await db<PreconSessionRow>("precon_sessions").insert(row).returning("*");
       return inserted!;
     },
@@ -246,6 +247,67 @@ export function preconRepository(db: Knex) {
       db("precon_rates").where({ id, rate_card_id: rateCardId }).delete(),
     updateRowPricing: (id: string, patch: { rate: number; amount: number | null; rate_source: string }) =>
       db<PreconBoqRowRow>("precon_boq_rows").where({ id }).update({ ...patch, updated_at: db.fn.now() }),
+
+    // programme of work
+    replaceProgrammeTasks: async (
+      sessionId: string,
+      rows: Omit<PreconProgrammeTaskRow, "created_at" | "updated_at">[],
+    ) => {
+      await db.transaction(async (trx) => {
+        // Null the self-references first: the rows reference each other, so a
+        // plain delete trips the parent_task_id foreign key.
+        await trx("precon_programme_tasks").where({ session_id: sessionId }).update({ parent_task_id: null });
+        await trx("precon_programme_tasks").where({ session_id: sessionId }).delete();
+        for (let i = 0; i < rows.length; i += 200) {
+          await trx<PreconProgrammeTaskRow>("precon_programme_tasks").insert(
+            rows.slice(i, i + 200).map((r) => ({
+              ...r,
+              predecessors: JSON.stringify(r.predecessors) as never,
+            })),
+          );
+        }
+      });
+    },
+    programmeTasksBySession: (sessionId: string) =>
+      db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .where({ session_id: sessionId })
+        .orderBy("sort", "asc"),
+    programmeTaskById: (id: string) =>
+      db<PreconProgrammeTaskRow>("precon_programme_tasks").where({ id }).first(),
+    updateProgrammeTaskVersioned: async (
+      id: string,
+      version: number,
+      patch: Partial<
+        Pick<
+          PreconProgrammeTaskRow,
+          "name" | "duration_days" | "predecessors" | "is_milestone" | "basis" | "status" | "verified_by" | "verified_at"
+        >
+      >,
+    ): Promise<PreconProgrammeTaskRow | null> => {
+      const rows = await db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .where({ id, version })
+        .update(
+          {
+            ...patch,
+            predecessors:
+              patch.predecessors === undefined ? undefined : (JSON.stringify(patch.predecessors) as never),
+            version: db.raw("version + 1") as never,
+            updated_at: db.fn.now(),
+          },
+          "*",
+        );
+      return (rows as PreconProgrammeTaskRow[])[0] ?? null;
+    },
+    programmeStatusCounts: async (sessionId: string): Promise<{ status: RowStatus | null; count: number }[]> => {
+      const rows = (await db("precon_programme_tasks")
+        .where({ session_id: sessionId })
+        .groupBy("status")
+        .select("status")
+        .count("* as count")) as unknown as { status: RowStatus | null; count: string }[];
+      return rows.map((r) => ({ status: r.status, count: Number(r.count) }));
+    },
+    setProgrammeStartDate: (sessionId: string, startDate: string) =>
+      db("precon_sessions").where({ id: sessionId }).update({ programme_start_date: startDate, updated_at: db.fn.now() }),
 
     transaction: <T>(fn: (trx: Knex.Transaction) => Promise<T>) => db.transaction(fn),
   };

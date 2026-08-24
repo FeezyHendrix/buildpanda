@@ -159,6 +159,24 @@ const activityRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
+    "/projects/:id/programme/export.xml",
+    { schema: { params: projectIdParams, querystring: buildingQuery } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "schedule", "view");
+      const xml = await service.exportProgrammeXml(
+        project.id,
+        project.name,
+        request.query.buildingId,
+      );
+      const fileName = `${project.name.replace(/[^a-z0-9]+/gi, "-").slice(0, 60)}-programme.xml`;
+      return reply
+        .header("content-type", "application/xml; charset=utf-8")
+        .header("content-disposition", `attachment; filename="${fileName}"`)
+        .send(xml);
+    },
+  );
+
   fastify.get<{ Params: { id: string; activityId: string } }>(
     "/projects/:id/activities/:activityId",
     { schema: { params: activityParams } },
