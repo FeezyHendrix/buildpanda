@@ -19,6 +19,17 @@ RUN npm run build
 
 FROM nginx:stable-alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+
+# Shipped as a TEMPLATE, not as conf.d/default.conf: the platform picks the port
+# at runtime via $PORT and nginx cannot read env vars from its config. The image
+# entrypoint renders /etc/nginx/templates/*.template into /etc/nginx/conf.d/,
+# which also overwrites the stock default.conf.
+#
+# NGINX_ENVSUBST_FILTER is not optional — without it envsubst would also expand
+# $uri, $host, $remote_addr and every other nginx runtime variable in the config
+# into empty strings.
+ENV PORT=8080
+ENV NGINX_ENVSUBST_FILTER=PORT
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
