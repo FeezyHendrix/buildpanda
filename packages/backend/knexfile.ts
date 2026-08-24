@@ -10,6 +10,12 @@ const hosted: Knex.Config = {
   migrations: {
     directory: "./src/db/migrations",
     extension: "ts",
+    // A rolled-back deploy leaves knex_migrations ahead of the files on disk,
+    // which knex reports as "the migration directory is corrupt" — and since the
+    // container boots with `db:migrate && node dist/cluster.js`, that throw takes
+    // the whole API down. Pending migrations still run and recorded ones still
+    // never re-run; only the completeness check is relaxed.
+    disableMigrationsListValidation: true,
   },
 };
 
