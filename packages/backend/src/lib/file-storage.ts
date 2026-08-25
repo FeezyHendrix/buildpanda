@@ -191,16 +191,31 @@ export async function getUploadUrl(
   );
 }
 
+export interface SignedUrlOptions {
+  disposition?: "inline" | "attachment";
+  fileName?: string;
+  contentType?: string;
+}
+
 export async function getDownloadUrl(
   storagePath: string,
   expiresInSeconds = 900,
+  options: SignedUrlOptions = {},
 ): Promise<string> {
   const client = await getClient();
-  return presign(
-    client,
-    new GetObjectCommand({ Bucket: config.storage.bucket, Key: storagePath }),
-    expiresInSeconds,
-  );
+  const command = new GetObjectCommand({
+    Bucket: config.storage.bucket,
+    Key: storagePath,
+    ...(options.disposition
+      ? {
+          ResponseContentDisposition: options.fileName
+            ? `${options.disposition}; filename="${encodeURIComponent(options.fileName)}"`
+            : options.disposition,
+        }
+      : {}),
+    ...(options.contentType ? { ResponseContentType: options.contentType } : {}),
+  });
+  return presign(client, command, expiresInSeconds);
 }
 
 export interface MultipartPartUrl {

@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
@@ -71,29 +71,40 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  // Same access rule as /files/:id/url: project-linked files are readable by
+  // anyone with project access (update photos are viewed by the whole project
+  // team, not just the uploader); unlinked files stay owner-only.
+  async function authorizeRead(request: FastifyRequest<{ Params: { id: string } }>) {
+    const user = request.requireAuth();
+    const row = await service.findRow(request.params.id);
+    if (!row) throw new NotFoundError("File");
+    if (row.project_id) {
+      await request.requireProjectAccess(row.project_id);
+    } else if (row.owner_id !== user.id) {
+      throw new ForbiddenError();
+    }
+    return row;
+  }
+
+  // Both of these redirect to a short-lived presigned URL rather than piping the
+  // bytes through Fastify. Streaming them here answered every request with a
+  // whole-file 200 — no Accept-Ranges, no 206 — so a <video> could not seek and
+  // in most browsers would not play at all. Object storage handles Range natively.
+  fastify.get<{ Params: { id: string } }>(
+    "/files/:id/view",
+    { schema: { params: fileIdParams } },
+    async (request, reply) => {
+      const row = await authorizeRead(request);
+      return reply.redirect(await service.presignViewUrl(row, "inline"), 302);
+    },
+  );
+
   fastify.get<{ Params: { id: string } }>(
     "/files/:id/download",
     { schema: { params: fileIdParams } },
     async (request, reply) => {
-      const user = request.requireAuth();
-      // Same access rule as /files/:id/url: project-linked files are readable
-      // by anyone with project access (update photos are viewed by the whole
-      // project team, not just the uploader); unlinked files stay owner-only.
-      const row = await service.findRow(request.params.id);
-      if (!row) throw new NotFoundError("File");
-      if (row.project_id) {
-        await request.requireProjectAccess(row.project_id);
-      } else if (row.owner_id !== user.id) {
-        throw new ForbiddenError();
-      }
-      const handle = await service.open(row);
-      reply.header("Content-Type", handle.mimeType);
-      reply.header("Content-Length", handle.sizeBytes);
-      reply.header(
-        "Content-Disposition",
-        `attachment; filename="${encodeURIComponent(handle.fileName)}"`,
-      );
-      return reply.send(handle.stream);
+      const row = await authorizeRead(request);
+      return reply.redirect(await service.presignViewUrl(row, "attachment"), 302);
     },
   );
 };
