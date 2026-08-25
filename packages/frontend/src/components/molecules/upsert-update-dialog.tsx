@@ -75,7 +75,7 @@ function UpsertUpdateDialog({
       const type: MediaType = file.type.startsWith("video") ? "video" : "photo";
       setMedia((prev) => [
         ...prev,
-        { type, url: `${API_BASE}/files/${uploaded.id}/download` },
+        { type, url: `${API_BASE}/files/${uploaded.id}/view` },
       ]);
     }
     if (fileInputRef.current) fileInputRef.current.value = "";

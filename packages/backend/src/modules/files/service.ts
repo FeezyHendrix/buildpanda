@@ -17,13 +17,6 @@ export interface IncomingFile {
   data: NodeJS.ReadableStream;
 }
 
-export interface DownloadHandle {
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-  stream: NodeJS.ReadableStream;
-}
-
 export interface FileBytes {
   fileName: string;
   mimeType: string;
@@ -67,18 +60,15 @@ export function filesService(repository: FilesRepository) {
       return repository.findById(id);
     },
 
-    async presignViewUrl(row: UploadedFileRow): Promise<string> {
-      return getDownloadUrl(row.storage_path);
-    },
-
-    async open(row: UploadedFileRow): Promise<DownloadHandle> {
-      const stream = await openStoredFile(row.storage_path);
-      return {
+    async presignViewUrl(
+      row: UploadedFileRow,
+      disposition: "inline" | "attachment" = "inline",
+    ): Promise<string> {
+      return getDownloadUrl(row.storage_path, 900, {
+        disposition,
         fileName: row.file_name,
-        mimeType: row.mime_type,
-        sizeBytes: Number(row.size_bytes),
-        stream,
-      };
+        contentType: row.mime_type,
+      });
     },
 
     // Server-side byte read with no per-user ownership check. Only for trusted
