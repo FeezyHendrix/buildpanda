@@ -14,6 +14,9 @@ import {
 import { db } from "../db/connection.ts";
 import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
+import { captureBug } from "./sentry.ts";
+import { sampleProjectRepository } from "../modules/sample-project/repository.ts";
+import { sampleProjectService } from "../modules/sample-project/service.ts";
 
 const pool =
   "connectionString" in config.db
@@ -107,7 +110,22 @@ async function ensureUserOrganization(
     createdAt: now,
   });
 
+  // Not awaited on purpose: a failure here must never fail the sign-up. Nothing
+  // races it either — sign-in is gated on email verification.
+  void provisionSampleProject(orgId, userId);
+
   return orgId;
+}
+
+async function provisionSampleProject(orgId: string, userId: string): Promise<void> {
+  try {
+    await sampleProjectService(sampleProjectRepository(db)).provisionFor({
+      organizationId: orgId,
+      ownerId: userId,
+    });
+  } catch (error) {
+    captureBug(error, { tags: { area: "sample-project" }, extra: { orgId, userId } });
+  }
 }
 
 /**
