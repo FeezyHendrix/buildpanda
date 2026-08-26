@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
+import { MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/atoms/dropdown-menu";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertLookAheadDialog,
   type LookAheadFormValues,
 } from "@/components/molecules/upsert-look-ahead-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import {
   useAutoWindow,
   useCreateLookAhead,
@@ -21,19 +25,27 @@ import {
   useLookAheads,
   useUpdateLookAhead,
 } from "@/hooks/use-look-aheads";
-import { useMaterialStock } from "@/hooks/use-materials-ledger";
-import { STATUS_META as ORDER_STATUS_META } from "./materials/shared";
 import { canResourceAction } from "@/lib/project-types";
-import type { AutoWindowActivity, LookAhead, LookAheadStatus } from "@/lib/project-types";
+import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 
-const LOOK_AHEAD_STATUS_META: Record<LookAheadStatus, { label: string; tone: "neutral" | "info" | "success" }> = {
+const LOOK_AHEAD_STATUS_META: Record<
+  LookAheadStatus,
+  { label: string; tone: "neutral" | "info" | "success" }
+> = {
   Draft: { label: "Draft", tone: "neutral" },
   UnderReview: { label: "Under Review", tone: "info" },
   Approved: { label: "Approved", tone: "success" },
 };
 
-const STATUS_FILTERS: Array<LookAheadStatus | "all"> = ["all", "Draft", "UnderReview", "Approved"];
+const STATUS_FILTERS: Array<LookAheadStatus | "all"> = [
+  "all",
+  "Draft",
+  "UnderReview",
+  "Approved",
+];
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
@@ -43,22 +55,29 @@ function formatDate(iso: string): string {
   });
 }
 
+function formatRange(from: string, to: string): string {
+  return `${formatDate(from)} - ${formatDate(to)}`;
+}
+
 export default function ProjectLookAheads() {
+  useSetPageTitle(
+    "Look Ahead",
+    "Plan rolling look-ahead periods by picking activities from the programme of work or imported programme, and preview what's coming up next.",
+  );
+
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
   const canManage = canResourceAction(access, "schedule", "manage");
 
   const [filter, setFilter] = useState<LookAheadStatus | "all">("all");
-  const { data: lookAheads = [], isLoading } = useLookAheads(
+  const { data: lookAheads = [], isLoading } = useLookAheads(project.id, {
+    ...(filter === "all" ? {} : { status: filter }),
+    ...(selectedBuildingId ? { buildingId: selectedBuildingId } : {}),
+  });
+  const { data: autoWindow, isLoading: autoWindowLoading } = useAutoWindow(
     project.id,
-    {
-      ...(filter === "all" ? {} : { status: filter }),
-      ...(selectedBuildingId ? { buildingId: selectedBuildingId } : {}),
-    },
+    4,
   );
-  const { data: autoWindow, isLoading: autoWindowLoading } = useAutoWindow(project.id, 4);
-  const { data: stock = [] } = useMaterialStock(project.id);
-  const lowStock = stock.filter((s) => s.lowStock);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<LookAhead | null>(null);
@@ -70,9 +89,13 @@ export default function ProjectLookAheads() {
 
   function handleSubmit(values: LookAheadFormValues): void {
     if (editTarget) {
-      const initialIds = new Set(editTarget.activities.map((a) => a.activityId));
+      const initialIds = new Set(
+        editTarget.activities.map((a) => a.activityId),
+      );
       const nextIds = new Set(values.activityIds);
-      const assignActivityIds = values.activityIds.filter((id) => !initialIds.has(id));
+      const assignActivityIds = values.activityIds.filter(
+        (id) => !initialIds.has(id),
+      );
       const unassignActivityIds = editTarget.activities
         .map((a) => a.activityId)
         .filter((id) => !nextIds.has(id));
@@ -114,169 +137,136 @@ export default function ProjectLookAheads() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs items={[{ label: "Site Control" }, { label: "Look Aheads" }]} className="mb-4" />
-      <PageHeader
-        title="Look Aheads"
-        description="Plan rolling look-ahead periods by picking activities from the project chart or imported programme, and preview what's coming up next."
-        actions={
-          canManage && (
+    <div className="w-full px-4 lg:px-8 py-6">
+      {/* Coming Up */}
+      <section>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-caption-l font-semibold text-black-500">
+            Coming Up
+            {autoWindow
+              ? ` (${formatRange(autoWindow.from, autoWindow.to)})`
+              : " (—)"}
+          </h2>
+          {canManage && (
             <Button
               variant="primary"
-              size="md"
+              size="lg"
               onClick={() => {
                 setEditTarget(null);
                 setFormOpen(true);
               }}
             >
-              <PlusIcon className="size-4" />
-              New look ahead
+              <ReactSVG src={icons2.plus} className="[&_path]:fill-white" />
+              Add Look Ahead
             </Button>
-          )
-        }
-      />
+          )}
+        </div>
 
-      {lowStock.length > 0 && (
-        <section className="mt-8 rounded-[16px] border-none bg-[#FFF7ED] p-5">
-          <p className="text-[13px] font-semibold text-[#9A5B13]">
-            {lowStock.length} material{lowStock.length === 1 ? "" : "s"} running low
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {lowStock.map((s) => (
-              <Badge key={s.materialId} tone="warning" size="sm">
-                {s.materialName}: {s.onHandQty} {s.unit}
-              </Badge>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">
-          Coming up{autoWindow ? ` (${formatDate(autoWindow.from)} – ${formatDate(autoWindow.to)})` : ""}
-        </h2>
-        {autoWindowLoading ? (
-          <div className="flex justify-center py-10">
-            <Spinner size="md" />
-          </div>
-        ) : !autoWindow || autoWindow.activities.length === 0 ? (
-          <Card padding="md" className="text-sm text-gray-500">
-            Nothing scheduled in the next 4 weeks on the project chart.
-          </Card>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {autoWindow.activities.map((activity) => (
-              <AutoWindowCard key={activity.activityId} activity={activity} />
-            ))}
-          </div>
-        )}
+        <div className="mt-4">
+          {autoWindowLoading ? (
+            <div className="flex justify-center border border-dashed border-[#E5E5E5] bg-white py-10">
+              <Spinner size="md" />
+            </div>
+          ) : !autoWindow || autoWindow.activities.length === 0 ? (
+            <div className="border-[0.5px] border-dashed border-[#B9B9B9] bg-[#FAFAFA] px-4 py-6 min-h-[110px]">
+              <p className="text-[13px] text-[#9CA3AF]">
+                Nothing scheduled in the next 4 weeks on the project chart.
+              </p>
+            </div>
+          ) : (
+            <div className="border border-[#EBEBEB] bg-white divide-y divide-[#F0F0F0]">
+              {autoWindow.activities.map((activity) => (
+                <div key={activity.activityId} className="px-4 py-3.5">
+                  <p className="text-[13px] font-medium text-[#1E1E1E]">
+                    {activity.activityName}
+                  </p>
+                  <p className="mt-1 text-xs text-[#9CA3AF]">
+                    {formatRange(
+                      activity.plannedStartAt,
+                      activity.plannedEndAt,
+                    )}
+                    {" · "}
+                    {activity.workerCountPlanned} Crew
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
-      <section className="mt-10 flex flex-col gap-3">
-        <div className="flex flex-col gap-4 lg:gap-0 lg:flex-row items-start lg:items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Your look aheads</h2>
-          <div className="flex gap-1">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setFilter(s)}
-                className={
-                  filter === s
-                    ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-white"
-                    : "rounded-full bg-[#F6F6F6] px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                }
-              >
-                {s === "all" ? "All" : LOOK_AHEAD_STATUS_META[s].label}
-              </button>
-            ))}
+      {/* Your look aheads */}
+      <section className="mt-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-body-s font-semibold text-black-500">
+            Your look aheads
+          </h2>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {STATUS_FILTERS.map((s) => {
+              const isActive = filter === s;
+              const label =
+                s === "all" ? "All" : LOOK_AHEAD_STATUS_META[s].label;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setFilter(s)}
+                  className={
+                    isActive
+                      ? "rounded-full bg-primary px-3 py-1 text-caption-m font-medium text-white"
+                      : "rounded-full border-[0.5px] border-border bg-white px-3 py-1 text-caption-m font-medium text-black-500 hover:bg-[#F6F6F6]"
+                  }
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16">
+          <div className="mt-3 flex justify-center py-16">
             <Spinner size="md" />
           </div>
         ) : lookAheads.length === 0 ? (
-          <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No look aheads yet"
-            description="Create a look-ahead period and pick the activities it covers from the project chart or imported programme."
-            action={
-              canManage && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    setEditTarget(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-4" />
-                  New look ahead
-                </Button>
-              )
-            }
-          />
+          <div className="mt-12 flex min-h-[380px] flex-col items-center justify-center py-12">
+            <EmptyState
+              title="No look aheads yet"
+              description="Create a look-ahead period and pick the activities it covers from the programme."
+              action={
+                canManage && (
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      setEditTarget(null);
+                      setFormOpen(true);
+                    }}
+                  >
+                    <ReactSVG
+                      src={icons2.plus}
+                      className="[&_path]:fill-white"
+                    />
+                    Add Look Ahead
+                  </Button>
+                )
+              }
+            />
+          </div>
         ) : (
-          lookAheads.map((lookAhead) => (
-            <Card
-              key={lookAhead.id}
-              padding="lg"
-              className="flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8]"
-            >
-              <header className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[15px] font-semibold text-black-500">{lookAhead.name}</p>
-                  <Badge tone={LOOK_AHEAD_STATUS_META[lookAhead.status].tone} size="sm">
-                    {LOOK_AHEAD_STATUS_META[lookAhead.status].label}
-                  </Badge>
-                </div>
-                {canManage && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditTarget(lookAhead);
-                        setFormOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => setDeleteTarget(lookAhead)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </header>
-              <p className="text-[12px] text-black-300">
-                {formatDate(lookAhead.startDate)} – {formatDate(lookAhead.endDate)}
-                {lookAhead.totalWorkers != null && ` · Crew ${lookAhead.totalWorkers}`}
-                {" · "}
-                {lookAhead.activities.length} activit{lookAhead.activities.length === 1 ? "y" : "ies"}
-              </p>
-              {lookAhead.description && (
-                <p className="text-[13px] text-black-400">{lookAhead.description}</p>
-              )}
-              {lookAhead.activities.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {lookAhead.activities.map((a) => (
-                    <Badge key={a.activityId} tone="neutral" size="sm">
-                      {a.name}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))
+          <div className="mt-3 flex flex-col">
+            {lookAheads.map((lookAhead) => (
+              <LookAheadRow
+                key={lookAhead.id}
+                lookAhead={lookAhead}
+                canManage={canManage}
+                onEdit={() => {
+                  setEditTarget(lookAhead);
+                  setFormOpen(true);
+                }}
+                onDelete={() => setDeleteTarget(lookAhead)}
+              />
+            ))}
+          </div>
         )}
       </section>
 
@@ -305,7 +295,7 @@ export default function ProjectLookAheads() {
           if (!next) setDeleteTarget(null);
         }}
         title={`Delete ${deleteTarget?.name ?? "this look ahead"}?`}
-        description="This removes the look-ahead period. The activities it referenced stay on the project chart."
+        description="This removes the look-ahead period. The activities it referenced stay on the programme."
         variant="danger"
         confirmLabel="Delete"
         loading={deleteLookAhead.isPending}
@@ -327,45 +317,82 @@ export default function ProjectLookAheads() {
   );
 }
 
-function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
+function LookAheadRow({
+  lookAhead,
+  canManage,
+  onEdit,
+  onDelete,
+}: {
+  lookAhead: LookAhead;
+  canManage: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const meta = LOOK_AHEAD_STATUS_META[lookAhead.status];
   return (
-    <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8]">
-      <header className="flex flex-col gap-2 border-b border-[#EDEDED] pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[15px] font-semibold text-black-500">{activity.activityName}</p>
-            {activity.phaseName && <Badge tone="neutral" size="sm">{activity.phaseName}</Badge>}
-            {activity.fromProgramme && <Badge tone="info" size="sm">From programme</Badge>}
-          </div>
-          <p className="text-[12px] text-black-300">
-            {formatDate(activity.plannedStartAt)} – {formatDate(activity.plannedEndAt)} · Crew{" "}
-            {activity.workerCountPlanned}
-          </p>
-        </div>
-        {!activity.hasMaterialCoverage && (
-          <Badge tone="danger" size="sm">No materials ordered</Badge>
-        )}
-      </header>
+    <div className="flex items-start justify-between gap-4 border border-[#EBEBEB] bg-white px-4 py-4 -mt-px first:mt-0 hover:bg-[#FAFAFA]/60">
+      <div className="min-w-0 flex-1">
+        <Badge
+          tone={meta.tone}
+          size="sm"
+          className="h-5 px-2 !text-caption-m font-medium"
+        >
+          {meta.label}
+        </Badge>
 
-      {activity.materialOrders.length > 0 && (
-        <div className="flex flex-col divide-y divide-[#EDEDED]">
-          {activity.materialOrders.map((order) => (
-            <div key={order.id} className="flex items-center justify-between gap-3 py-3">
-              <div className="flex flex-col gap-0.5">
-                <p className="text-[13px] font-medium text-black-500">
-                  {order.quantity} {order.unit} · {order.materialName}
-                </p>
-                <p className="text-[12px] text-black-300">
-                  {order.supplier ?? "No supplier set"} · Needed by {formatDate(order.neededBy)}
-                </p>
-              </div>
-              <Badge tone={ORDER_STATUS_META[order.status].tone} size="sm">
-                {ORDER_STATUS_META[order.status].label}
-              </Badge>
-            </div>
-          ))}
-        </div>
+        <p className="mt-2 text-caption-l font-semibold !text-black-500">
+          {lookAhead.name}
+        </p>
+
+        {lookAhead.description && (
+          <p className="mt-1.5 line-clamp-2 text-caption-l text-[#404040]">
+            {lookAhead.description}
+          </p>
+        )}
+
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 text-caption-m font-semibold text-grey-450">
+          <span>{formatRange(lookAhead.startDate, lookAhead.endDate)}</span>
+          <span className="h-3 w-px bg-[#E5E5E5]" aria-hidden />
+          <span>
+            {lookAhead.totalWorkers != null
+              ? `${lookAhead.totalWorkers} Crew`
+              : "— Crew"}
+          </span>
+          <span className="h-3 w-px bg-[#E5E5E5]" aria-hidden />
+          <span>
+            {lookAhead.activities.length}{" "}
+            {lookAhead.activities.length === 1 ? "Activity" : "Activities"}
+          </span>
+        </p>
+      </div>
+
+      {canManage && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                aria-label="More actions"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-[#1E1E1E]"
+              >
+                <MoreVertical className="size-4" />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-40 p-1">
+            <DropdownMenuItem onSelect={onEdit} className="text-[13px]">
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              tone="danger"
+              onSelect={onDelete}
+              className="text-[13px]"
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-    </Card>
+    </div>
   );
 }

@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
-import { Label } from "@/components/atoms/label";
+import { Select, type SelectOption } from "@/components/atoms/select";
+import { TextInput } from "@/components/atoms/text-input";
 import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
 import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
-
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 const STATUS_LABEL: Record<LookAheadStatus, string> = {
   Draft: "Draft",
   UnderReview: "Under Review",
   Approved: "Approved",
 };
+
+const STATUS_OPTIONS: SelectOption[] = LOOK_AHEAD_STATUSES.map((s) => ({
+  value: s,
+  label: STATUS_LABEL[s],
+}));
 
 export interface LookAheadFormValues {
   name: string;
@@ -80,7 +83,11 @@ function UpsertLookAheadDialog({
     return activities.filter((a) => a.name.toLowerCase().includes(term));
   }, [activities, activityFilter]);
 
-  const isValid = name.trim().length > 0 && startDate.length > 0 && endDate.length > 0 && endDate >= startDate;
+  const isValid =
+    name.trim().length > 0 &&
+    startDate.length > 0 &&
+    endDate.length > 0 &&
+    endDate >= startDate;
 
   function toggleActivity(activityId: string): void {
     setSelectedActivityIds((prev) => {
@@ -108,103 +115,127 @@ function UpsertLookAheadDialog({
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={initial ? "Edit look ahead" : "New look ahead"}
-      description="Pick the activities from the project chart or imported programme that this look-ahead period covers."
-      submitLabel={initial ? "Save changes" : "Create look ahead"}
+      title={initial ? "Edit look ahead" : "Add Look Ahead"}
+      description="Pick the activities from the project chart or imported programme that this look-ahead period covers"
+      submitLabel={initial ? "Save changes" : "Create Look Ahead"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
+      footerVariant="stacked"
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="la-name">Name</Label>
-        <input
-          id="la-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Week of 14 Jul — Foundations"
-          className={FIELD}
-        />
-      </div>
+      {/* Name */}
+      <TextInput
+        label="Name"
+        value={name}
+        onChange={setName}
+        placeholder="e.g Week of 14 Jul - Foundations"
+        autoFocus
+      />
 
+      {/* Description */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="la-description">Description</Label>
+        <label
+          htmlFor="la-description"
+          className="text-[13px] font-medium leading-none text-[#1E1E1E]"
+        >
+          Description
+        </label>
         <textarea
           id="la-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          placeholder="What is the lookahead about?"
+          rows={4}
+          className={cn(
+            "min-h-[108px] w-full resize-none border border-[#EBEBEB] bg-white px-3.5 py-3 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none transition-colors",
+            "focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10",
+          )}
         />
       </div>
 
+      {/* Start / End Date */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-start">Start date</Label>
+          <label
+            htmlFor="la-start"
+            className="text-[13px] font-medium leading-none text-[#1E1E1E]"
+          >
+            Start Date
+          </label>
           <input
             id="la-start"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className={FIELD}
+            placeholder="DD/MM/YYYY"
+            className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] outline-none placeholder:text-[#B0B0B0] focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-end">End date</Label>
+          <label
+            htmlFor="la-end"
+            className="text-[13px] font-medium leading-none text-[#1E1E1E]"
+          >
+            End Date
+          </label>
           <input
             id="la-end"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className={FIELD}
+            placeholder="DD/MM/YYYY"
+            className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] outline-none placeholder:text-[#B0B0B0] focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
           />
         </div>
       </div>
 
+      {/* Status / Total Workers */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-status">Status</Label>
-          <select
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <p className="text-[13px] font-medium leading-none text-[#1E1E1E]">Status</p>
+          <Select
             id="la-status"
+            options={STATUS_OPTIONS}
             value={status}
-            onChange={(e) => setStatus(e.target.value as LookAheadStatus)}
-            className={FIELD}
-          >
-            {LOOK_AHEAD_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => v && setStatus(v as LookAheadStatus)}
+            placeholder="Select Status"
+          />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-workers">Total workers planned</Label>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <label
+            htmlFor="la-workers"
+            className="text-[13px] font-medium leading-none text-[#1E1E1E]"
+          >
+            Total Workers Planned
+          </label>
           <input
             id="la-workers"
             type="number"
             min={0}
             value={totalWorkers}
             onChange={(e) => setTotalWorkers(e.target.value)}
-            placeholder="e.g. 12"
-            className={FIELD}
+            placeholder="e.g 12"
+            className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
           />
         </div>
       </div>
 
+      {/* Activities */}
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <Label>Activities ({selectedActivityIds.size} selected)</Label>
-        </div>
+        <p className="text-[13px] font-medium leading-none text-[#1E1E1E]">
+          Activities ({selectedActivityIds.size} selected)
+        </p>
         <input
           value={activityFilter}
           onChange={(e) => setActivityFilter(e.target.value)}
-          placeholder="Search activities…"
-          className={FIELD}
+          placeholder="Search for activities"
+          className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
         />
-        <div className="max-h-56 overflow-y-auto rounded-lg border border-[#EDEDED]">
+        <div className="max-h-56 overflow-y-auto border border-[#EBEBEB] bg-white">
           {filteredActivities.length === 0 ? (
-            <p className="px-3 py-4 text-center text-xs text-gray-400">
-              No activities on the project chart yet.
+            <p className="px-3 py-6 text-center text-xs text-[#B0B0B0]">
+              No activities found.
             </p>
           ) : (
             filteredActivities.map((activity) => {
@@ -213,8 +244,8 @@ function UpsertLookAheadDialog({
                 <label
                   key={activity.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2 text-sm transition-colors last:border-b-0",
-                    selected ? "bg-primary-50" : "hover:bg-[#FAFAFA]",
+                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2.5 text-sm transition-colors last:border-b-0",
+                    selected ? "bg-[#EEF3FF]" : "hover:bg-[#FAFAFA]",
                   )}
                 >
                   <input
@@ -225,8 +256,10 @@ function UpsertLookAheadDialog({
                   />
                   <span
                     className={cn(
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition-colors",
-                      selected ? "border-primary-500 bg-primary-500" : "border-gray-300 bg-white",
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                      selected
+                        ? "border-[#004DE7] bg-[#004DE7]"
+                        : "border-[#D6D6D6] bg-white",
                     )}
                   >
                     {selected && (
@@ -243,8 +276,8 @@ function UpsertLookAheadDialog({
                   </span>
                   <span
                     className={cn(
-                      "flex-1 truncate",
-                      selected ? "font-medium text-primary-700" : "text-gray-900",
+                      "flex-1 truncate text-[13px]",
+                      selected ? "font-medium text-[#004DE7]" : "text-[#1E1E1E]",
                     )}
                   >
                     {activity.name}
@@ -252,7 +285,7 @@ function UpsertLookAheadDialog({
                   <span
                     className={cn(
                       "shrink-0 text-xs",
-                      selected ? "text-primary-400" : "text-gray-400",
+                      selected ? "text-[#6B8AFF]" : "text-[#B0B0B0]",
                     )}
                   >
                     {activity.plannedStartAt.slice(0, 10)}

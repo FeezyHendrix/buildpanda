@@ -16,6 +16,7 @@ interface FormDialogProps {
   onSubmit: () => void | Promise<void>;
   children: ReactNode;
   className?: string;
+  footerVariant?: "default" | "stacked";
 }
 
 interface SubmitEventLike {
@@ -35,6 +36,7 @@ function FormDialog({
   onSubmit,
   children,
   className,
+  footerVariant = "default",
 }: FormDialogProps) {
   function handleSubmit(event: SubmitEventLike): void {
     event.preventDefault();
@@ -49,17 +51,17 @@ function FormDialog({
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden bg-white shadow-xl outline-none",
             className,
           )}
         >
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <header className="px-6 pt-6">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
+            <header className="px-6 pt-6 mb-5">
+              <Dialog.Title className="text-h6 font-bold text-grey-800">
                 {title}
               </Dialog.Title>
               {description && (
-                <Dialog.Description className="mt-1.5 text-sm text-gray-500 text-pretty">
+                <Dialog.Description className="mt-1.5 text-caption-l text-grey-450 text-pretty font-medium">
                   {description}
                 </Dialog.Description>
               )}
@@ -73,24 +75,45 @@ function FormDialog({
               </p>
             )}
 
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
-              <Dialog.Close
-                render={
-                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
-                    {cancelLabel}
-                  </Button>
-                }
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={submitting || submitDisabled}
-                className="h-9 px-4 text-sm"
-              >
-                {submitting ? "Submitting…" : submitLabel}
-              </Button>
-            </footer>
+            {footerVariant === "stacked" ? (
+              <footer className="flex shrink-0 flex-col gap-2 px-6 pb-6 pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  disabled={submitting || submitDisabled}
+                  className="w-full"
+                >
+                  {submitting ? "Submitting…" : submitLabel}
+                </Button>
+                <Dialog.Close
+                  render={
+                    <Button type="button" variant="ghost" size="lg" className="w-full">
+                      {cancelLabel}
+                    </Button>
+                  }
+                />
+              </footer>
+            ) : (
+              <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+                <Dialog.Close
+                  render={
+                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                      {cancelLabel}
+                    </Button>
+                  }
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={submitting || submitDisabled}
+                  className="h-9 px-4 text-sm"
+                >
+                  {submitting ? "Submitting…" : submitLabel}
+                </Button>
+              </footer>
+            )}
           </form>
         </Dialog.Popup>
       </Dialog.Portal>

@@ -27,6 +27,23 @@ import PrivacyIcon from '@/assets/icons2/privacy.icon.svg';
 import AddUserIcon from '@/assets/icons2/add-user.icon.svg';
 import PersonIcon from '@/assets/icons2/person.icon.svg';
 import CityIcon from '@/assets/icons2/city.icon.svg';
+import OverviewIcon from '@/assets/icons2/overview.icon.svg';
+import BulbIcon from '@/assets/icons2/bulb.icon.svg';
+import TrendUpIcon from '@/assets/icons2/trend-up.icon.svg';
+import RefreshIcon from '@/assets/icons2/refresh.icon.svg';
+import MoneyIcon from '@/assets/icons2/money.icon.svg';
+import StarsIcon from '@/assets/icons2/stars.icon.svg';
+import TeamIcon from '@/assets/icons2/team.icon.svg';
+import MessagesIcon from '@/assets/icons2/messages.icon.svg';
+import BoldIcon from '@/assets/icons2/bold.icon.svg';
+import ItalicIcon from '@/assets/icons2/italic.icon.svg';
+import UnorderedListIcon from '@/assets/icons2/unordered-list.icon.svg';
+import OrderedListIcon from '@/assets/icons2/ordered-list.icon.svg';
+import ImageIcon from '@/assets/icons2/image.icon.svg';
+import StrikethroughIcon from '@/assets/icons2/strikethrough.icon.svg';
+import CommentIcon from '@/assets/icons2/comment.icon.svg';
+import EditIcon from '@/assets/icons2/edit.icon.svg';
+import DeleteIcon from '@/assets/icons2/delete.icon.svg';
 
 export const icons2 = {
   folder: FolderIcon,
@@ -58,4 +75,21 @@ export const icons2 = {
   addUser: AddUserIcon,
   person: PersonIcon,
   city: CityIcon,
+  overview:OverviewIcon ,
+  trendUp: TrendUpIcon,
+  refresh: RefreshIcon,
+  bulb: BulbIcon,
+  money: MoneyIcon,
+  stars: StarsIcon,
+  team: TeamIcon,
+  messages: MessagesIcon,
+  bold: BoldIcon,
+  italic: ItalicIcon,
+  unorderedList: UnorderedListIcon,
+  orderedList: OrderedListIcon,
+  image: ImageIcon,
+  strikethrough: StrikethroughIcon,
+  comment: CommentIcon,
+  edit: EditIcon,
+  delete:DeleteIcon
 }

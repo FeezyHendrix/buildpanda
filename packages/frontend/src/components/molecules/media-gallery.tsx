@@ -10,6 +10,7 @@ interface MediaGalleryProps {
   maxColumns?: 2 | 3;
   eagerFirst?: boolean;
   className?: string;
+  itemClassName?: string;
 }
 
 const ASPECT: Record<NonNullable<MediaGalleryProps["aspectRatio"]>, string> = {
@@ -23,6 +24,7 @@ function MediaGallery({
   aspectRatio = "4/3",
   eagerFirst = true,
   className,
+  itemClassName,
 }: MediaGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -45,6 +47,7 @@ function MediaGallery({
             className={cn(
               "group relative overflow-hidden rounded-[4px] bg-[#F6F6F6] w-[215.33px] shrink-0 snap-start outline-none",
               ASPECT[aspectRatio],
+              itemClassName,
             )}
           >
             <img

@@ -195,7 +195,7 @@ function UpsertTransactionDialog({
     <FormDrawer
       open
       onOpenChange={(open) => !open && onClose()}
-      title={isEdit ? "Edit expenditure" : "Log expenditure"}
+      title={isEdit ? "Edit payments" : "Log payments"}
       submitLabel={isEdit ? "Save changes" : "Save entry"}
       submitting={mutation.isPending || uploadProgress !== null}
       submitDisabled={!isValid || uploadProgress !== null}
@@ -477,13 +477,14 @@ export default function TransactionsPage() {
       <Breadcrumbs
         items={[
           { label: "Finances", to: `/project/${projectId}/finances` },
-          { label: "Transactions" },
+          { label: "Payments" },
         ]}
         className="mb-4"
       />
       <PageHeader
-        title="Transactions"
-        description="Project finances and expenditure ledger."
+        title="
+        Payments"
+        description="Project finances and payments ledger."
         actions={
           <div className="flex items-center gap-3">
             <Button
@@ -496,7 +497,7 @@ export default function TransactionsPage() {
             <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
               Manage categories
             </Button>
-            <Button onClick={() => setUpsertTarget("new")}>Log expenditure</Button>
+            <Button onClick={() => setUpsertTarget("new")}>Log payments</Button>
           </div>
         }
       />
@@ -504,7 +505,7 @@ export default function TransactionsPage() {
       <div className="mt-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard
-            title="Total expenditure"
+            title="Total payments"
             value={formatCurrency(analytics?.totalAmount || 0, currency)}
             icon={FinancesIcon.name}
           />
@@ -613,9 +614,9 @@ export default function TransactionsPage() {
           ) : isEmpty ? (
             <EmptyState
               icon={<FinancesIcon className="size-12 text-gray-300" />}
-              title="No transactions logged"
-              description="Start recording project expenditure to build your ledger."
-              action={<Button onClick={() => setUpsertTarget("new")}>Log expenditure</Button>}
+              title="No payments logged"
+              description="Start recording project payments to build your ledger."
+              action={<Button onClick={() => setUpsertTarget("new")}>Log payments</Button>}
               className="py-16"
             />
           ) : transactions.length === 0 ? (
