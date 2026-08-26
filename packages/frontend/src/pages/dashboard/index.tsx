@@ -85,7 +85,7 @@ export default function Dashboard() {
             {firstName && <span className="text-black">, {firstName}</span>}
           </h5>
           <p className="mt-1 text-caption-m font-medium text-black-500 opacity-50">
-            {list.length} projects available
+            {list.length} project{list.length !== 1 ? "s" : ""} available
           </p>
         </div>
 

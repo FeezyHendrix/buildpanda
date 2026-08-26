@@ -1,18 +1,32 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { resolveFileUrl } from "@/hooks/use-files";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  MoreVertical,
+  Pencil,
+  Plus,
+  XCircle,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/atoms/dropdown-menu";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { Label } from "@/components/atoms/label";
 import { Spinner } from "@/components/atoms/spinner";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
+import { MediaGallery } from "@/components/molecules/media-gallery";
+import { Select } from "@/components/atoms/select";
 import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-dialog";
 import { AddDailyLogEntryDialog } from "@/components/molecules/add-daily-log-entry-dialog";
 import { VoidDailyLogEntryDialog } from "@/components/molecules/void-daily-log-entry-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
+import { useSetPageTitle } from "@/contexts/page-title-context";
 import { useSession } from "@/stores/auth";
 import {
   useProjectDailyDays,
@@ -21,7 +35,6 @@ import {
   useAddDailyLogEntry,
   useVoidDailyLogEntry,
   useDownloadDailyReport,
-  useEmailDailyReport,
   useDownloadPeriodReport,
 } from "@/hooks/use-daily-logs";
 import {
@@ -30,57 +43,102 @@ import {
   type DailyLogDay,
   type DailyLogEntry,
   type ReportPeriod,
-  type WeatherCondition,
 } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-
-const WEATHER_TONE: Record<
-  WeatherCondition,
-  "info" | "warning" | "danger" | "neutral"
-> = {
-  Sunny: "warning",
-  Cloudy: "neutral",
-  Rain: "info",
-  Storm: "danger",
-  Fog: "neutral",
-  ExtremeHeat: "danger",
-};
+import emptyIcon from "@/assets/images/empty-dashboard.svg";
 
 function todayIso(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatRelative(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins !== 1 ? "s" : ""} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days !== 1 ? "s" : ""} ago`;
+}
+
+function parseHtml(html: string): HTMLDivElement {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  return div;
+}
+
+function extractFileIds(html: string): string[] {
+  return Array.from(
+    parseHtml(html).querySelectorAll<HTMLImageElement>("img[data-file-id]"),
+  )
+    .map((img) => img.getAttribute("data-file-id")!)
+    .filter(Boolean);
+}
+
+function extractDirectSrcs(html: string): string[] {
+  return Array.from(
+    parseHtml(html).querySelectorAll<HTMLImageElement>(
+      "img[src]:not([data-file-id])",
+    ),
+  )
+    .map((img) => img.src)
+    .filter(Boolean);
+}
+
+function stripImages(html: string): string {
+  const div = parseHtml(html);
+  div.querySelectorAll("img").forEach((img) => img.remove());
+  return div.innerHTML;
 }
 
 export default function ProjectDailyLog() {
+  useSetPageTitle(
+    "Daily Log",
+    "Everyone on the team logs what they did each day. The report covers the whole day.",
+  );
+
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
   const { data: session } = useSession();
-  const canCreateEntry = Boolean(access && canResourceAction(access, "dailyLog", "create"));
-  const canVoidEntry = Boolean(access && canResourceAction(access, "dailyLog", "void"));
+  const canCreateEntry = Boolean(
+    access && canResourceAction(access, "dailyLog", "create"),
+  );
+  const canVoidEntry = Boolean(
+    access && canResourceAction(access, "dailyLog", "void"),
+  );
+  const canGenerateReport = Boolean(
+    access && canResourceAction(access, "dailyLog", "report"),
+  );
   const userId = session?.user?.id ?? null;
+  const userProfession =
+    (session?.user as { profession?: string } | undefined)?.profession ?? null;
 
-  const { data: days = [], isPending } = useProjectDailyDays(project.id, undefined, selectedBuildingId);
+  const { data: days = [], isPending } = useProjectDailyDays(
+    project.id,
+    undefined,
+    selectedBuildingId,
+  );
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);
-  const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
-  const [periodDate, setPeriodDate] = useState(todayIso());
+  const [reportPanelOpen, setReportPanelOpen] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState<ReportPeriod>("weekly");
+  const [reportDate, setReportDate] = useState<string>("");
+  const reportPanelRef = useRef<HTMLDivElement>(null);
 
-  const canGenerateReport = Boolean(access && canResourceAction(access, "dailyLog", "report"));
   const downloadPeriodReport = useDownloadPeriodReport();
-
   const upsert = useUpsertDailyLog();
   const addEntry = useAddDailyLogEntry();
   const headerDay = useProjectDailyLog(
@@ -90,145 +148,186 @@ export default function ProjectDailyLog() {
 
   const today = todayIso();
 
+  useEffect(() => {
+    if (!reportPanelOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (!reportPanelRef.current?.contains(e.target as Node)) {
+        setReportPanelOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [reportPanelOpen]);
+
   function openHeader(date: string): void {
     setHeaderDate(date);
     setHeaderOpen(true);
   }
 
-  return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedule", to: `/project/${project.id}/schedule` },
-          { label: "Daily Log" },
-        ]}
-        className="mb-4"
-      />
-      <PageHeader
-        title="Daily Log"
-        description="Everyone on the team logs what they did each day. The report covers the whole day."
-        actions={
-          canCreateEntry ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setEntryDate(today)}
-            >
-              <PlusIcon className="size-4" />
-              Add my log
-            </Button>
-          ) : undefined
-        }
-      />
+  if (isPending) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="md" />
+      </div>
+    );
+  }
 
-      <section
-        aria-label="Project completion"
-        className="mt-8 flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8] p-5"
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-medium text-black-300">
-            Overall project completion
-          </p>
-          <p className="text-[20px] font-semibold tabular-nums text-black-500">
-            {Math.round(project.progressPercent)}%
-          </p>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#E9EDFB]">
-          <div
-            className="h-full rounded-full bg-primary transition-[width]"
-            style={{
-              width: `${Math.max(0, Math.min(100, project.progressPercent))}%`,
-            }}
-          />
-        </div>
-      </section>
-
-      {canGenerateReport && (
-        <section
-          aria-label="Generate report"
-          className="mt-6 flex flex-col gap-3 rounded-[16px] border-none bg-[#F8F8F8] p-5 sm:flex-row sm:items-end sm:justify-between"
-        >
-          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
-            <Label htmlFor="report-period">Report period</Label>
-            <select
-              id="report-period"
-              value={periodType}
-              onChange={(e) => setPeriodType(e.target.value as ReportPeriod)}
-              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            >
-              {REPORT_PERIOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
-            <Label htmlFor="report-date">Any date in period</Label>
-            <input
-              id="report-date"
-              type="date"
-              value={periodDate}
-              onChange={(e) => setPeriodDate(e.target.value)}
-              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            loading={downloadPeriodReport.isPending}
-            onClick={() =>
-              downloadPeriodReport.mutate(
-                { projectId: project.id, period: periodType, date: periodDate },
-                { onError: () => toast("Could not download report") },
-              )
-            }
-          >
-            Download report
-          </Button>
-        </section>
-      )}
-
-      <section className="mt-8 flex flex-col gap-4">
-        {isPending ? (
-          <div className="flex justify-center py-16">
-            <Spinner size="md" />
-          </div>
-        ) : days.length === 0 ? (
+  if (days.length === 0) {
+    return (
+      <>
+        <div className="flex h-full items-center justify-center">
           <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No daily logs yet"
-            description="Add your first log to start the project diary. Anyone on the team can contribute."
+            icon={<img src={emptyIcon} alt="" className="size-90" />}
+            title="No logs have been added yet"
             action={
               canCreateEntry ? (
                 <Button
                   variant="primary"
-                  size="md"
+                  size="lg"
                   onClick={() => setEntryDate(today)}
                 >
-                  <PlusIcon className="size-4" />
-                  Add my log
+                  <Plus className="size-5" />
+                  Create a log
                 </Button>
               ) : undefined
             }
           />
-        ) : (
-          days.map((day) => (
-            <DayCard
+        </div>
+        <AddDailyLogEntryDialog
+          open={entryDate !== null}
+          onOpenChange={(next) => {
+            if (!next) setEntryDate(null);
+          }}
+          logDate={entryDate ?? today}
+          projectId={project.id}
+          submitting={addEntry.isPending}
+          error={addEntry.error ? (addEntry.error as Error).message : null}
+          onSubmit={(bodyHtml, bodyText) => {
+            if (!entryDate) return;
+            addEntry.mutate(
+              { projectId: project.id, logDate: entryDate, bodyHtml, bodyText },
+              {
+                onSuccess: () => {
+                  setEntryDate(null);
+                  toast("Your log was added", "success");
+                },
+                onError: () => toast("Could not add your log"),
+              },
+            );
+          }}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col overflow-y-auto bg-white">
+      <div className="mx-auto w-full max-w-[738px] px-6 py-5">
+        {/* Action bar */}
+        <div className="mb-6 flex items-center justify-end gap-3">
+          {canGenerateReport && (
+            <div className="relative" ref={reportPanelRef}>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setReportPanelOpen((v) => !v)}
+                className="flex items-center justify-between gap-6"
+              >
+                <div className="flex items-center gap-2">
+                  <Download className="size-[15px] text-black-500" />
+                  Download Report
+                </div>
+
+                {reportPanelOpen ? (
+                  <ChevronUp className="size-[15px] text-black-500" />
+                ) : (
+                  <ChevronDown className="size-[15px] text-black-500" />
+                )}
+              </Button>
+
+              {reportPanelOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 flex w-[303px] flex-col gap-4 border border-[#DDDDDD] bg-white p-4 shadow-lg">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-caption-s font-bold uppercase tracking-[20%] text-grey-450">
+                      Report Duration
+                    </span>
+                    <Select
+                      options={REPORT_PERIOD_OPTIONS}
+                      value={reportPeriod}
+                      onChange={(v) => v && setReportPeriod(v as ReportPeriod)}
+                      listClassName="!h-40"
+                    />
+                  </div>
+
+                  <div className="h-px bg-[#EBEBEB]" />
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-caption-s font-bold uppercase tracking-[20%] text-grey-450">
+                      Start Date
+                    </span>
+                    <input
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] outline-none focus:border-[#004DE7]"
+                    />
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    disabled={downloadPeriodReport.isPending}
+                    className="w-full justify-center"
+                    onClick={() => {
+                      downloadPeriodReport.mutate(
+                        {
+                          projectId: project.id,
+                          period: reportPeriod,
+                          date: reportDate || today,
+                        },
+                        {
+                          onSuccess: () => setReportPanelOpen(false),
+                          onError: () => toast("Could not download report"),
+                        },
+                      );
+                    }}
+                  >
+                    <Download className="size-3.5" />
+                    Download Report
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          {canCreateEntry && (
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => setEntryDate(today)}
+            >
+              <Plus className="size-4" />
+              Create new log
+            </Button>
+          )}
+        </div>
+
+        {/* Day sections */}
+        <div className="flex flex-col gap-2">
+          {days.map((day, i) => (
+            <DaySection
               key={day.logDate}
               projectId={project.id}
               day={day}
               userId={userId}
-              canCreateEntry={canCreateEntry}
+              userProfession={userProfession}
               canVoidEntry={canVoidEntry}
               canGenerateReport={canGenerateReport}
-              onAddEntry={() => setEntryDate(day.logDate)}
+              initialCollapsed={i !== 0}
               onEditHeader={() => openHeader(day.logDate)}
             />
-          ))
-        )}
-      </section>
+          ))}
+        </div>
+      </div>
 
       <UpsertDailyLogDialog
         open={headerOpen}
@@ -253,7 +352,6 @@ export default function ProjectDailyLog() {
           );
         }}
       />
-
       <AddDailyLogEntryDialog
         open={entryDate !== null}
         onOpenChange={(next) => {
@@ -281,27 +379,28 @@ export default function ProjectDailyLog() {
   );
 }
 
-function DayCard({
+function DaySection({
   projectId,
   day,
   userId,
-  canCreateEntry,
+  userProfession,
   canVoidEntry,
   canGenerateReport,
-  onAddEntry,
+  initialCollapsed = false,
   onEditHeader,
 }: {
   projectId: string;
   day: DailyLogDay;
   userId: string | null;
-  canCreateEntry: boolean;
+  userProfession: string | null;
   canVoidEntry: boolean;
   canGenerateReport: boolean;
-  onAddEntry: () => void;
+  initialCollapsed?: boolean;
   onEditHeader: () => void;
 }) {
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const downloadReport = useDownloadDailyReport();
-  const emailReport = useEmailDailyReport();
+
   const dateLabel = new Date(`${day.logDate}T00:00:00`).toLocaleDateString(
     undefined,
     {
@@ -312,41 +411,17 @@ function DayCard({
   );
 
   return (
-    <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8] p-0">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-3 border-b border-[#EDEDED] px-4 sm:px-6 py-4">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <CalendarIcon className="size-4 text-black-300 hidden sm:block" />
-          <p className="text-[15px] font-semibold text-black-500">
-            {dateLabel}
-          </p>
-          {day.weatherCondition && (
-            <Badge tone={WEATHER_TONE[day.weatherCondition]} size="sm">
-              {day.weatherCondition}
-            </Badge>
-          )}
-          <span className="text-[12px] text-black-300 w-full sm:w-auto">
-            Crew {day.workersPresent}/{day.workersExpected} · {day.totalHours}h
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          {canCreateEntry && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-              onClick={onEditHeader}
-            >
-              Conditions
-            </Button>
-          )}
+    <div className="border-[0.5px] border-border bg-white">
+      <div className="flex items-center justify-between px-6 py-4">
+        <span className="text-[15px] font-semibold text-gray-900">
+          {dateLabel}
+        </span>
+        <div className="flex items-center gap-4">
           {canGenerateReport && (
             <Button
-              type="button"
               variant="ghost"
-              size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-              loading={downloadReport.isPending}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-primary hover:bg-transparent disabled:opacity-50"
+              disabled={downloadReport.isPending}
               onClick={() =>
                 downloadReport.mutate(
                   { projectId, logDate: day.logDate },
@@ -354,63 +429,47 @@ function DayCard({
                 )
               }
             >
+              <Download className="size-4 text-primary" />
               Download report
             </Button>
           )}
-          {canGenerateReport && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
-              loading={emailReport.isPending}
-              onClick={() =>
-                emailReport.mutate(
-                  { projectId, logDate: day.logDate },
-                  {
-                    onSuccess: (res) =>
-                      toast(`Report sent to ${res.sentTo}`, "success"),
-                    onError: () => toast("Could not email report"),
-                  },
-                )
-              }
-            >
-              Email me
-            </Button>
-          )}
-          {canCreateEntry && (
-            <Button
-              variant="primary"
-              size="sm"
-              className="h-10 sm:h-8 px-3 text-xs"
-              onClick={onAddEntry}
-            >
-              <PlusIcon className="size-3.5" />
-              Add log
-            </Button>
+          <button
+            type="button"
+            className="text-gray-400 hover:text-gray-600"
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            {collapsed ? (
+              <ChevronDown className="size-4 text-black-500" />
+            ) : (
+              <ChevronUp className="size-4 text-black-500" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <div>
+          {day.entries.length === 0 ? (
+            <p className="px-6 pb-5 text-[13px] text-gray-400">
+              No team logs for this day yet.
+            </p>
+          ) : (
+            day.entries.map((entry) => (
+              <EntryRow
+                key={entry.id}
+                projectId={projectId}
+                logDate={day.logDate}
+                entry={entry}
+                userId={userId}
+                userProfession={userProfession}
+                canVoidEntry={canVoidEntry}
+                onEditLog={onEditHeader}
+              />
+            ))
           )}
         </div>
-      </header>
-
-      <div className="flex flex-col divide-y divide-[#EDEDED]">
-        {day.entries.length === 0 ? (
-          <p className="px-6 py-6 text-center text-[13px] text-black-300">
-            No team logs for this day yet.
-          </p>
-        ) : (
-          day.entries.map((entry) => (
-            <EntryRow
-              key={entry.id}
-              projectId={projectId}
-              logDate={day.logDate}
-              entry={entry}
-              userId={userId}
-              canVoidEntry={canVoidEntry}
-            />
-          ))
-        )}
-      </div>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -419,13 +478,17 @@ function EntryRow({
   logDate,
   entry,
   userId,
+  userProfession,
   canVoidEntry,
+  onEditLog,
 }: {
   projectId: string;
   logDate: string;
   entry: DailyLogEntry;
   userId: string | null;
+  userProfession: string | null;
   canVoidEntry: boolean;
+  onEditLog: () => void;
 }) {
   const [voidOpen, setVoidOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -442,86 +505,163 @@ function EntryRow({
     });
     return () => cancelAnimationFrame(id);
   }, [entry.bodyHtml, expanded]);
+
+  const [mediaItems, setMediaItems] = useState<
+    { id: string; url: string; type: "photo" }[]
+  >([]);
+
+  useEffect(() => {
+    if (!entry.bodyHtml) {
+      setMediaItems([]);
+      return;
+    }
+    const direct = extractDirectSrcs(entry.bodyHtml).map((url, i) => ({
+      id: `direct-${i}`,
+      url,
+      type: "photo" as const,
+    }));
+    const fileIds = extractFileIds(entry.bodyHtml);
+    if (fileIds.length === 0) {
+      setMediaItems(direct);
+      return;
+    }
+    Promise.all(
+      fileIds.map((id) =>
+        resolveFileUrl(id).then((url) => ({ id, url, type: "photo" as const })),
+      ),
+    )
+      .then((resolved) => setMediaItems([...direct, ...resolved]))
+      .catch(() => setMediaItems(direct));
+  }, [entry.bodyHtml]);
+
   const canVoid = !entry.voided && (entry.authorId === userId || canVoidEntry);
   const lastVoid =
     entry.voids.length > 0 ? entry.voids[entry.voids.length - 1]! : null;
-
-  const hasBody = entry.bodyHtml && entry.bodyHtml.trim().length > 0;
+  const hasBody = Boolean(entry.bodyHtml?.trim());
+  const textHtml = hasBody ? stripImages(entry.bodyHtml!) : "";
 
   return (
-    <div className={cn("px-4 sm:px-6 py-4", entry.voided && "opacity-70")}>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p
-            className={cn(
-              "text-[14px] font-semibold text-black-500",
-              entry.voided && "line-through text-black-300",
-            )}
-          >
-            {entry.authorName}
-          </p>
-          <Badge tone="neutral" size="sm" className='capitalize'>
-            {entry.authorRole}
-          </Badge>
+    <div
+      className={cn(
+        "border-t border-border px-6 py-4",
+        entry.voided && "opacity-70",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        {/* <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-caption-l font-semibold text-primary">
+          {getInitials(entry.authorName)}
+        </div> */}
+
+        <div className="min-w-0 flex-1">
+          {/* Name / role / time / kebab */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-caption-l font-semibold text-primary">
+                {getInitials(entry.authorName)}
+              </div>
+              <div className="flex flex-col">
+                <p
+                  className={cn(
+                    "text-caption-l font-semibold text-black-500",
+                    entry.voided && "text-gray-400 line-through",
+                  )}
+                >
+                  {entry.authorName}
+                </p>
+                <p className="text-caption-l font-normal text-grey-450 capitalize">
+                  {entry.authorId === userId && userProfession
+                    ? userProfession
+                    : entry.authorRole}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <span className="text-caption-m text-grey-450 italic">
+                {formatRelative(entry.createdAt)}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <button
+                    type="button"
+                    className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  >
+                    <MoreVertical className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[148px] p-1">
+                  <DropdownMenuItem
+                    onSelect={onEditLog}
+                    className="flex items-center gap-2.5 py-2 text-[13px]"
+                  >
+                    <Pencil className="size-3.5 text-gray-500" />
+                    Edit Log
+                  </DropdownMenuItem>
+                  {canVoid && (
+                    <DropdownMenuItem
+                      tone="danger"
+                      onSelect={() => setVoidOpen(true)}
+                      className="flex items-center gap-2.5 py-2 text-[13px]"
+                    >
+                      <XCircle className="size-3.5" />
+                      Void Log
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
           {entry.voided && (
-            <Badge tone="danger" size="sm">
+            <Badge tone="danger" size="sm" className="mt-1.5">
               Voided
             </Badge>
           )}
-        </div>
-        <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2">
-          <span className="text-[11px] text-black-200">
-            Added {formatTime(entry.createdAt)}
-          </span>
-          {canVoid && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-10 px-3 sm:h-7 sm:px-2 text-xs text-red-500 hover:text-red-600"
-              onClick={() => setVoidOpen(true)}
-            >
-              Void
-            </Button>
+
+          {/* Body text */}
+          {textHtml && (
+            <div className="mt-2">
+              <div
+                ref={contentRef}
+                className={cn(
+                  "prose prose-sm max-w-none text-caption-l leading-relaxed text-grey-500 [&_p]:my-0.5",
+                  !expanded && "line-clamp-4",
+                )}
+                dangerouslySetInnerHTML={{ __html: textHtml }}
+              />
+              {(isClamped || expanded) && (
+                <button
+                  type="button"
+                  className="mt-1 text-caption-l font-medium text-primary hover:underline"
+                  onClick={() => setExpanded((v) => !v)}
+                >
+                  {expanded ? "Show less" : "Read more"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Image thumbnails */}
+          {mediaItems.length > 0 && (
+            <MediaGallery
+              items={mediaItems}
+              aspectRatio="4/3"
+              itemClassName="rounded-none"
+              className="mt-3"
+            />
+          )}
+
+          {/* Void reason */}
+          {entry.voided && lastVoid && (
+            <div className="mt-3 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2">
+              <p className="text-[12px] font-semibold text-red-700">
+                Voided by {lastVoid.voidedByName}
+              </p>
+              <p className="text-[12px] text-red-900/80">{lastVoid.reason}</p>
+            </div>
           )}
         </div>
       </div>
-
-      {hasBody && (
-        <div className="mt-2">
-          <div
-            ref={contentRef}
-            className={cn(
-              "prose prose-sm max-w-none text-[13px] text-black-400 [&_img]:max-h-56 [&_img]:rounded-lg [&_p]:my-1",
-              !expanded && "line-clamp-4",
-            )}
-            dangerouslySetInnerHTML={{ __html: entry.bodyHtml! }}
-          />
-          {(isClamped || expanded) && (
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="mt-1 py-1.5 sm:py-0 text-[12px] font-medium text-primary hover:underline"
-            >
-              {expanded ? "Show less" : "Read more"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {entry.voided && lastVoid && (
-        <div className="mt-2 rounded-lg border border-red-100 bg-red-50/60 px-3 py-2">
-          <p className="text-[12px] font-semibold text-red-700">
-            Voided by {lastVoid.voidedByName} · {formatTime(lastVoid.voidedAt)}
-          </p>
-          <p className="text-[12px] text-red-900/80">{lastVoid.reason}</p>
-          {entry.voids.length > 1 && (
-            <p className="mt-1 text-[11px] text-red-700/70">
-              Voided {entry.voids.length} times — see report for full history.
-            </p>
-          )}
-        </div>
-      )}
 
       <VoidDailyLogEntryDialog
         open={voidOpen}

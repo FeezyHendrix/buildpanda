@@ -90,17 +90,21 @@ export default function ProjectSchedule() {
         <Breadcrumbs
           items={[
             { label: "Schedule", to: `/project/${project.id}/schedule` },
-            { label: "Project Chart" },
+            { label: "Programme of work" },
           ]}
           className="mb-4"
         />
         <PageHeader
-          title="Project Chart"
+          title="Programme of work"
           description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
               {canEdit && isProgrammeImportEnabled && (
-                <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setImportOpen(true)}
+                >
                   Import programme
                 </Button>
               )}
@@ -112,11 +116,18 @@ export default function ProjectSchedule() {
           badges={
             delays.total > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={delays.open > 0 ? "danger" : "neutral"} size="md" dot>
+                <Badge
+                  tone={delays.open > 0 ? "danger" : "neutral"}
+                  size="md"
+                  dot
+                >
                   {delays.open} open delay{delays.open === 1 ? "" : "s"}
                 </Badge>
                 <Badge tone="warning" size="md">
-                  {formatCurrency(delays.cost, project.currency, { compact: true })} delay cost
+                  {formatCurrency(delays.cost, project.currency, {
+                    compact: true,
+                  })}{" "}
+                  delay cost
                 </Badge>
               </div>
             ) : null
@@ -139,7 +150,11 @@ export default function ProjectSchedule() {
               description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
               action={
                 canEdit && isProgrammeImportEnabled ? (
-                  <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setImportOpen(true)}
+                  >
                     Import programme of works
                   </Button>
                 ) : undefined
@@ -157,10 +172,20 @@ export default function ProjectSchedule() {
                   Drag bars to reschedule. Changes save automatically.
                 </span>
                 <div className="ml-auto flex items-center gap-1">
-                  <Button variant="secondary" size="sm" onClick={undo} disabled={!canUndo}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={undo}
+                    disabled={!canUndo}
+                  >
                     Undo
                   </Button>
-                  <Button variant="secondary" size="sm" onClick={redo} disabled={!canRedo}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={redo}
+                    disabled={!canRedo}
+                  >
                     Redo
                   </Button>
                 </div>
@@ -185,7 +210,11 @@ export default function ProjectSchedule() {
           </div>
         </div>
       )}
-      <ImportProgrammeDialog open={importOpen} onOpenChange={setImportOpen} projectId={project.id} />
+      <ImportProgrammeDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        projectId={project.id}
+      />
     </div>
   );
 }

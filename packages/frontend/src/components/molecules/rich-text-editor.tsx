@@ -6,6 +6,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { uploadFileRequest, resolveFileUrl } from "@/hooks/use-files";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 
 export interface UploadedAttachment {
   fileId: string;
@@ -14,7 +16,7 @@ export interface UploadedAttachment {
 }
 
 export interface RichTextEditorHandle {
-  insertImageFile: (file: File) => void;
+  insertImageFile: (file: File) => Promise<void>;
 }
 
 interface Props {
@@ -77,7 +79,7 @@ function ToolbarButton({
       }}
       className={cn(
         "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
-        active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
+        active ? "bg-grey-100 text-gray-900" : "text-gray-600 hover:bg-grey-100",
       )}
     >
       {children}
@@ -112,6 +114,7 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
             src: string;
             alt: string;
           })
+          .createParagraphNear()
           .run();
         onAttach?.({ fileId: uploaded.id, url, name: uploaded.fileName });
       } catch {
@@ -123,15 +126,15 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
 
   const onPickFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) void insertImage(file);
+      const files = Array.from(e.target.files ?? []);
       e.target.value = "";
+      void (async () => { for (const file of files) await insertImage(file); })();
     },
     [insertImage],
   );
 
   useEffect(() => {
-    if (editor) onReady?.({ insertImageFile: (file) => void insertImage(file) });
+    if (editor) onReady?.({ insertImageFile: (file) => insertImage(file) });
   }, [editor, onReady, insertImage]);
 
   // Refresh each embedded image's src from its stable data-file-id. Presigned
@@ -162,35 +165,63 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
   if (!editor) return null;
 
   return (
-    <div className="rounded-lg border border-[#EDEDED] bg-white">
-      <div className="flex flex-wrap items-center gap-1 border-b border-[#F0F0F0] px-2 py-1.5">
-        <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
-          <span className="font-bold">B</span>
+    <div className="border-[0.5px] border-border bg-white">
+      <div className="flex flex-wrap items-center gap-1 border-b-[0.5px] border-border bg-grey-50 px-2 py-1.5">
+        <ToolbarButton
+          label="Bold"
+          active={editor.isActive("bold")}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        >
+          <ReactSVG src={icons2.bold} />
         </ToolbarButton>
-        <ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
-          <span className="italic">I</span>
+        <ToolbarButton
+          label="Italic"
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
+          <ReactSVG src={icons2.italic} />
         </ToolbarButton>
-        <ToolbarButton label="Bullet list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-          •
+        <ToolbarButton
+          label="Strikethrough"
+          active={editor.isActive("strike")}
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+        >
+          <ReactSVG src={icons2.strikethrough} />
         </ToolbarButton>
-        <ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-          1.
+        <div className="self-stretch -my-1.5 w-px bg-[#0000001F]" />
+        <ToolbarButton
+          label="Bullet list"
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
+          <ReactSVG src={icons2.unorderedList} />
         </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-[#F0F0F0]" />
-        <ToolbarButton label="Attach image" onClick={() => fileInputRef.current?.click()}>
-          🖼
+        <ToolbarButton
+          label="Numbered list"
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <ReactSVG src={icons2.orderedList} />
+        </ToolbarButton>
+        <div className="self-stretch -my-1.5 w-px bg-[#0000001F]" />
+        <ToolbarButton
+          label="Attach image"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <ReactSVG src={icons2.image} />
         </ToolbarButton>
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={onPickFile}
         />
       </div>
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 text-base lg:text-sm [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:max-h-[40vh] [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:outline-none [&_img]:max-h-64 [&_img]:rounded"
+        className="prose prose-sm max-w-none px-3 py-2 text-base lg:text-sm [&_.ProseMirror]:min-h-[120px] [&_.ProseMirror]:max-h-[40vh] [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:outline-none [&_img]:max-h-64 [&_img]:rounded [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-gray-400 [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0"
       />
     </div>
   );

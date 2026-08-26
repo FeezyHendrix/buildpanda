@@ -16,6 +16,7 @@ interface FormDrawerProps {
   onSubmit: () => void | Promise<void>;
   children: ReactNode;
   className?: string;
+  footerVariant?: "default" | "stacked";
 }
 
 function FormDrawer({
@@ -31,6 +32,7 @@ function FormDrawer({
   onSubmit,
   children,
   className,
+  footerVariant = "default",
 }: FormDrawerProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -49,13 +51,16 @@ function FormDrawer({
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(480px,100vw)] flex-col bg-white shadow-xl outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(480px,100vw)] flex-col bg-white shadow-xl outline-none no-scrollbar",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
             className,
           )}
         >
-          <form onSubmit={handleSubmit} className="flex h-full flex-col px-4 py-4">
+          <form
+            onSubmit={handleSubmit}
+            className="flex h-full flex-col no-scrollbar"
+          >
             <header className="px-6 py-5">
               <Dialog.Title className="text-h4 font-bold text-grey-800">
                 {title}
@@ -67,7 +72,7 @@ function FormDrawer({
               )}
             </header>
 
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-5 no-scrollbar">
               {children}
             </div>
 
@@ -77,24 +82,55 @@ function FormDrawer({
               </p>
             )}
 
-            <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
-              <Dialog.Close
-                render={
-                  <Button type="button" variant="ghost" size="lg" className="px-4">
-                    {cancelLabel}
-                  </Button>
-                }
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                disabled={submitting || submitDisabled}
-                className="px-4"
-              >
-                {submitting ? "Submitting…" : submitLabel}
-              </Button>
-            </footer>
+            {footerVariant === "stacked" ? (
+              <footer className="flex flex-col gap-2 px-6 pb-6 pt-2">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  disabled={submitting || submitDisabled}
+                  className="w-full"
+                >
+                  {submitting ? "Submitting…" : submitLabel}
+                </Button>
+                <Dialog.Close
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="lg"
+                      className="w-full"
+                    >
+                      {cancelLabel}
+                    </Button>
+                  }
+                />
+              </footer>
+            ) : (
+              <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+                <Dialog.Close
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="lg"
+                      className="px-4"
+                    >
+                      {cancelLabel}
+                    </Button>
+                  }
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  disabled={submitting || submitDisabled}
+                  className="px-4"
+                >
+                  {submitting ? "Submitting…" : submitLabel}
+                </Button>
+              </footer>
+            )}
           </form>
         </Dialog.Popup>
       </Dialog.Portal>

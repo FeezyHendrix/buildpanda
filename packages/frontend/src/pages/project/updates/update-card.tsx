@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CommentPanel } from "@/components/molecules/comment-panel";
 import { MediaGallery } from "@/components/molecules/media-gallery";
@@ -11,36 +10,37 @@ import {
   type UpsertUpdateValues,
 } from "@/components/molecules/upsert-update-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/atoms/dropdown-menu";
+import {
   useAddComment,
   useDeleteUpdate,
   useEditUpdate,
   usePublishUpdate,
-  // useTransitionUpdate,
   useUpdateComments,
 } from "@/hooks/use-updates";
-import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
-import { UPDATE_CATEGORY_TONE } from "@/lib/project-meta";
-import { cn } from "@/lib/utils";
-import type { ProjectUpdate, UpdateStatus } from "@/lib/project-types";
+import { formatTimeAgo } from "@/lib/formatters";
+import type { ProjectUpdate } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { icons2 } from "@/assets/icons2/icon2";
 
-// const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
-//   Progress: "Approved",
-//   "Material Delivery": "Inspected",
-//   Inspections: "Approved",
-//   Issues: "Resolved",
-// };
-
-const STATUS_BADGE_TONE: Record<
-  Exclude<UpdateStatus, "Open">,
-  "success" | "info" | "warning" | "danger"
-> = {
-  Approved: "success",
-  Inspected: "info",
-  Resolved: "success",
-  Escalated: "warning",
-};
+function CategoryBadge({ category }: { category: string }) {
+  switch (category) {
+    case "Progress":
+      return <Badge tone="success">{category}</Badge>;
+    case "Inspections":
+      return <Badge tone="info">{category}</Badge>;
+    case "Issues":
+      return <Badge tone="warning">{category}</Badge>;
+    case "Material Delivery":
+    default:
+      return <Badge tone="neutral">{category}</Badge>;
+  }
+}
 
 export function UpdateCard({
   projectId,
@@ -65,7 +65,7 @@ export function UpdateCard({
       onAutoEditHandled?.();
     }
   }, [autoEdit, canManage, onAutoEditHandled]);
-  // const transition = useTransitionUpdate();
+
   const addComment = useAddComment();
   const editUpdate = useEditUpdate();
   const deleteUpdate = useDeleteUpdate();
@@ -74,18 +74,6 @@ export function UpdateCard({
     commentsOpen ? projectId : undefined,
     commentsOpen ? update.id : undefined,
   );
-
-  const isOpen = update.status === "Open";
-  // const targetStatus = CATEGORY_TARGET_STATUS[update.category];
-
-  // function handleTransition(): void {
-  //   if (!isOpen || transition.isPending) return;
-  //   transition.mutate({
-  //     projectId,
-  //     updateId: update.id,
-  //     status: targetStatus,
-  //   });
-  // }
 
   function handlePostComment(body: string): void {
     addComment.mutate({ projectId, updateId: update.id, body });
@@ -103,134 +91,111 @@ export function UpdateCard({
   }
 
   return (
-    <Card className="flex flex-col gap-4 border border-[#F6F6F6] rounded-[8px] p-[24px]">
-      <header className="flex flex-wrap gap-3 items-start justify-between">
-        <div className="flex gap-2">
+    <div className="border-b-[0.5px] border-border first:border-t-[0.5px] py-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
           <Avatar
             name={update.author.name}
             src={update.author.avatarUrl}
             size="md"
-            className={cn("h-[40px] w-[40px] rounded-[12px]")}
+            className="size-10 rounded-full shrink-0 bg-success-100 !text-success-500 font-semibold text-caption-l"
           />
           <div>
-            <p className="text-[#131B2E] font-semibold text-[13px]">
+            <p className="text-caption-l font-semibold text-black-500">
               {update.author.name}
             </p>
-            <p className="text-black-300 text-[13px]">
-              {update.author.role} · {formatDateTime(update.createdAt)}
+            <p className="text-caption-l text-grey-450 font-medium">
+              {update.author.role}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {update.isDraft && (
-            <Badge tone="warning" size="md" dot>
-              {update.generatedKind ? "Draft · Panda AI" : "Draft"}
-            </Badge>
-          )}
-          {!update.isDraft && update.status !== "Open" && (
-            <Badge tone={STATUS_BADGE_TONE[update.status]} size="md" dot>
-              {update.status}
-            </Badge>
-          )}
-          <Badge tone={UPDATE_CATEGORY_TONE[update.category]} size="md">
-            {update.category}
-          </Badge>
-        </div>
-      </header>
 
-      <div className='flex flex-col gap-6'>
-        <div>
-          <h3 className="font-semibold text-[#131B2E]">
-            {update.title}
-          </h3>
-          <p className="text-[13px] text-black-300">
-            {update.description}
-          </p>
-          {!isOpen && update.action.takenBy && update.action.takenAt && (
-            <p className="mt-1.5 text-[11px] text-gray-500">
-              {update.status} by {update.action.takenBy.name} ·{" "}
-              {formatTimeAgo(update.action.takenAt)}
-            </p>
+        <div className="flex items-center gap-2 shrink-0">
+          <CategoryBadge category={update.category} />
+          {canManage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<button type="button" className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600" />}
+              >
+                <MoreVertical className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[148px] p-1">
+                <DropdownMenuItem onSelect={() => setEditOpen(true)} className="flex items-center gap-2.5 py-2 text-[13px]">
+                  <Pencil className="size-3.5 text-gray-500" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem tone="danger" onSelect={() => setDeleteOpen(true)} className="flex items-center gap-2.5 py-2 text-[13px]">
+                  <Trash2 className="size-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
-        <MediaGallery items={update.media} />
       </div>
 
+      {/* Body */}
+      <div className="mt-3.5">
+        <h3 className="text-caption-l font-semibold text-black-500">{update.title}</h3>
+        {update.description && (
+          <p className="mt-1 text-caption-l text-grey-450">{update.description}</p>
+        )}
+      </div>
 
-      <footer className='flex flex-wrap gap-3 justify-between items-center border-t border-[#F6F6F6] pt-6'>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setCommentsOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black-300 hover:text-black-500 cursor-pointer p-0"
-          >
-            <ReactSVG src={icons.comment} />
-            <p>{commentsOpen ? "Hide comments" : "Comment"}</p>
-          </button>
-          {update.secondaryAction && (
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-black-300 hover:text-black-500 p-0 cursor-pointer"
-            >
-              {update.secondaryAction.label === 'View Report' && <ReactSVG src={icons.report} />}
-              {update.secondaryAction.label === 'Escalation Details' && <ReactSVG src={icons.warningCircle} />}
-              {update.secondaryAction.label === 'Verify with Panda AI' && <ReactSVG src={icons.aiVerify} />}
-              <p>{update.secondaryAction.label}</p>
-            </button>
-          )}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="text-xs font-medium text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-          )}
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="text-xs font-medium text-red-500 hover:text-red-600"
-            >
-              Delete
-            </button>
-          )}
-        </div>
+      {/* Media */}
+      {update.media.length > 0 && (
+        <MediaGallery items={update.media} className="mt-3.5" />
+      )}
+
+      {/* Timestamp */}
+      <p className="mt-3.5 text-caption-m italic text-grey-450">{formatTimeAgo(update.createdAt)}</p>
+
+      {/* Actions */}
+      <div className="mt-2.5 flex items-center gap-3">
+        <Button
+          size='md'
+          variant='secondary'
+          onClick={() => setCommentsOpen((prev) => !prev)}
+          className='text-caption-l text-grey-450 font-medium'
+        >
+          <ReactSVG src={icons2.comment} />
+          <span>{commentsOpen ? "Hide comments" : "Comment"}</span>
+        </Button>
+
         {canManage && update.isDraft && (
           <Button
-            size="sm"
+            size="md"
             variant="primary"
             loading={publishUpdate.isPending}
-            onClick={() =>
-              publishUpdate.mutate({ projectId, updateId: update.id })
-            }
+            onClick={() => publishUpdate.mutate({ projectId, updateId: update.id })}
           >
             Publish
           </Button>
         )}
-        {/* {canManage && !update.isDraft && (
-          <Button
-            size="sm"
-            variant={update.cta.tone === "primary" ? "primary" : "secondary"}
-            loading={transition.isPending}
-            disabled={!isOpen}
-            onClick={handleTransition}
+
+        {/* {update.secondaryAction && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#F5F5F5] px-3 py-1.5 text-[12px] font-medium text-grey-500 hover:bg-[#EBEBEB] transition-colors"
           >
-            {!isOpen
-              ? update.status
-              : update.cta.label}
-          </Button>
+            {update.secondaryAction.label === "View Report" && <ReactSVG src={icons.report} />}
+            {update.secondaryAction.label === "Escalation Details" && <ReactSVG src={icons.warningCircle} />}
+            {update.secondaryAction.label === "Verify with Panda AI" && <ReactSVG src={icons.aiVerify} />}
+            <span>{update.secondaryAction.label}</span>
+          </button>
         )} */}
-      </footer>
+      </div>
 
       {commentsOpen && (
-        <CommentPanel
-          comments={commentsQuery.data ?? []}
-          isLoading={commentsQuery.isLoading}
-          isSubmitting={addComment.isPending}
-          onSubmit={handlePostComment}
-        />
+        <div className="mt-3">
+          <CommentPanel
+            comments={commentsQuery.data ?? []}
+            isLoading={commentsQuery.isLoading}
+            isSubmitting={addComment.isPending}
+            onSubmit={handlePostComment}
+          />
+        </div>
       )}
 
       <UpsertUpdateDialog
@@ -258,6 +223,6 @@ export function UpdateCard({
         confirmLabel="Delete"
         variant="danger"
       />
-    </Card>
+    </div>
   );
 }

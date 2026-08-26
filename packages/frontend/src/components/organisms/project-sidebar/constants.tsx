@@ -12,16 +12,17 @@ import {
   InspectionsIcon,
   MaterialsIcon,
   MessagesIcon,
-  OverviewIcon,
   TrendingUpIcon,
   UpdatesIcon,
 } from "@/components/atoms/project-nav-icons";
+import { icons2 } from "@/assets/icons2/icon2";
 
 export type IconComponent = ComponentType<SVGAttributes<SVGSVGElement>>;
 
 export interface NavEntry {
   label: string;
   slug: string;
+  /** A component renders directly; a string is an icons2 asset src rendered via ReactSVG. */
   Icon: IconComponent | string;
   flag?: FeatureFlagKey;
   /** Permission resource from the backend `statement`; shown only with `<resource>:view`. */
@@ -37,15 +38,10 @@ export interface GroupNavItem extends ProjectNavItem {
   helper: string;
 }
 
+// "Updates" now lives inside the Progress group (see PROGRESS_ENTRIES) rather
+// than as a flat top-level item.
 export const NAV_ENTRIES: readonly NavEntry[] = [
-  { label: "Overview", slug: "overview", Icon: OverviewIcon },
-  {
-    label: "Updates",
-    slug: "updates",
-    resource: "updates",
-    Icon: UpdatesIcon,
-    flag: "project.updates",
-  },
+  { label: "Overview", slug: "overview", Icon: icons2.overview },
 ] as const;
 
 export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -83,7 +79,19 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
-export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+// Note: "Site Activity" (schedules/activities) is intentionally not part of
+// the current Progress group nav — it isn't in the latest design. The route
+// still exists (App.tsx) and the entry is kept here, commented, so it's a
+// one-line restore if it comes back.
+export const PROGRESS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "Updates",
+    slug: "updates",
+    resource: "updates",
+    Icon: UpdatesIcon,
+    helper: "Project update posts",
+    flag: "project.updates",
+  },
   {
     label: "Build Stages",
     slug: "schedules/stages",
@@ -100,16 +108,16 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Milestone dates",
     flag: "compliance.keyDates",
   },
+  // {
+  //   label: "Site Activity",
+  //   slug: "schedules/activities",
+  //   resource: "schedule",
+  //   Icon: TrendingUpIcon,
+  //   helper: "Work items",
+  //   flag: "projects.schedule",
+  // },
   {
-    label: "Site Activity",
-    slug: "schedules/activities",
-    resource: "schedule",
-    Icon: TrendingUpIcon,
-    helper: "Work items",
-    flag: "projects.schedule",
-  },
-  {
-    label: "Project Chart",
+    label: "Programme of work",
     slug: "schedules/project-chart",
     resource: "schedule",
     Icon: GanttIcon,
@@ -118,24 +126,35 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   },
 ] as const;
 
+export const OPERATIONS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  {
+    label: "Tasks",
+    slug: "tasks",
+    resource: "schedule",
+    Icon: TrendingUpIcon,
+    helper: "Work item board",
+    flag: "projects.schedule",
+  },
+  {
+    label: "Daily Log",
+    slug: "schedules/daily-log",
+    resource: "dailyLog",
+    Icon: ClipboardIcon,
+    helper: "Field reports",
+    flag: "quality.dailyLogs",
+  },
+  {
+    label: "Look Ahead",
+    slug: "look-aheads",
+    resource: "schedule",
+    Icon: BinocularsIcon,
+    helper: "Rolling look-ahead planning",
+    flag: "projects.schedule",
+  },
+] as const;
+
 export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
   [
-    {
-      label: "Daily Log",
-      slug: "schedules/daily-log",
-      resource: "dailyLog",
-      Icon: ClipboardIcon,
-      helper: "Field reports",
-      flag: "quality.dailyLogs",
-    },
-    {
-      label: "Look Aheads",
-      slug: "look-aheads",
-      resource: "schedule",
-      Icon: BinocularsIcon,
-      helper: "Rolling look-ahead planning",
-      flag: "projects.schedule",
-    },
     {
       label: "RFIs",
       slug: "rfis",
@@ -145,7 +164,7 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
       flag: "workflow.rfis",
     },
     {
-      label: "BIM Models",
+      label: "BIMs",
       slug: "bim",
     resource: "bim",
       Icon: DocumentsIcon,
@@ -196,7 +215,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
-    label: "Contract",
+    label: "Contracts",
     slug: "finances/contract",
     resource: "finances",
     Icon: FinancesIcon,
@@ -204,13 +223,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
-    label: "Expendition",
+    label: "Payments",
     slug: "finances/transactions",
     resource: "transactions",
     Icon: DocumentsIcon,
     helper: "Photo-backed expense ledger",
     flag: "commercial.transactions",
   },
+  // Not yet routed (no page under finances/*) — restore once built.
   // {
   //   label: "Advance",
   //   slug: "finances/advance",
@@ -286,7 +306,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 ] as const;
 
 export const CLIENT_ENTRIES: readonly NavEntry[] = [
-  { label: "Overview", slug: "overview", Icon: OverviewIcon },
+  { label: "Overview", slug: "overview", Icon: icons2.grid },
   {
     label: "Updates",
     slug: "updates",

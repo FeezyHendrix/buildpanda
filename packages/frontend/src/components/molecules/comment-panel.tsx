@@ -40,15 +40,15 @@ function CommentPanel({
         <ul className="flex flex-col gap-3">
           {comments.map((comment) => (
             <li key={comment.id} className="flex items-start gap-2.5">
-              <Avatar name={comment.author.name} size="sm" />
-              <div className="flex-1 rounded-xl bg-[#F8F8F8] px-3 py-2">
+              <Avatar name={comment.author.name} size="sm" className='size-8 border-[0.5px] border-primary !text-caption-m' />
+              <div className="flex-1 bg-grey-50 px-3 py-2">
                 <p className="text-[11px] text-gray-500">
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-caption-m font-semibold text-black-500 capitalize">
                     {comment.author.name}
                   </span>{" "}
                   · {formatTimeAgo(comment.createdAt)}
                 </p>
-                <p className="mt-0.5 text-sm text-gray-700 text-pretty">
+                <p className="mt-0.5 text-caption-m text-grey-450 text-pretty">
                   {comment.body}
                 </p>
               </div>
@@ -64,7 +64,7 @@ function CommentPanel({
           placeholder="Write a comment…"
           rows={2}
           className={cn(
-            "flex-1 resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900",
+            "flex-1 h-9 resize-none border-[0.5px] border-border px-3 py-2 text-sm text-gray-900",
             "outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10",
           )}
           maxLength={2000}
@@ -75,7 +75,7 @@ function CommentPanel({
           variant="primary"
           loading={isSubmitting}
           disabled={!body.trim()}
-          className="h-9 px-3 text-xs"
+          className="h-9 px-3 text-caption-l"
         >
           Post
         </Button>
