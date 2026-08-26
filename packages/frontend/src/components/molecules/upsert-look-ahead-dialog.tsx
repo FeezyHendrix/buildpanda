@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
+import { MultiSearchableSelect } from "@/components/atoms/multi-searchable-select";
 import { Select, type SelectOption } from "@/components/atoms/select";
 import { TextInput } from "@/components/atoms/text-input";
 import { cn } from "@/lib/utils";
@@ -62,7 +63,6 @@ function UpsertLookAheadDialog({
   const [startDate, setStartDate] = useState(today());
   const [endDate, setEndDate] = useState(nextWeek());
   const [totalWorkers, setTotalWorkers] = useState("");
-  const [activityFilter, setActivityFilter] = useState("");
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -74,29 +74,23 @@ function UpsertLookAheadDialog({
     setEndDate(initial?.endDate ?? nextWeek());
     setTotalWorkers(initial?.totalWorkers != null ? String(initial.totalWorkers) : "");
     setSelectedActivityIds(new Set(initial?.activities.map((a) => a.activityId) ?? []));
-    setActivityFilter("");
   }, [open, initial]);
 
-  const filteredActivities = useMemo(() => {
-    const term = activityFilter.trim().toLowerCase();
-    if (!term) return activities;
-    return activities.filter((a) => a.name.toLowerCase().includes(term));
-  }, [activities, activityFilter]);
+  const activityItems = useMemo(
+    () =>
+      activities.map((a) => ({
+        value: a.id,
+        label: a.name,
+        meta: a.plannedStartAt.slice(0, 10),
+      })),
+    [activities],
+  );
 
   const isValid =
     name.trim().length > 0 &&
     startDate.length > 0 &&
     endDate.length > 0 &&
     endDate >= startDate;
-
-  function toggleActivity(activityId: string): void {
-    setSelectedActivityIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(activityId)) next.delete(activityId);
-      else next.add(activityId);
-      return next;
-    });
-  }
 
   function handleSubmit(): void {
     if (!isValid) return;
@@ -221,80 +215,19 @@ function UpsertLookAheadDialog({
         </div>
       </div>
 
-      {/* Activities */}
+      {/* Activities — searchable multi-select dropdown (reuses SearchableSelect visual language) */}
       <div className="flex flex-col gap-1.5">
         <p className="text-[13px] font-medium leading-none text-[#1E1E1E]">
           Activities ({selectedActivityIds.size} selected)
         </p>
-        <input
-          value={activityFilter}
-          onChange={(e) => setActivityFilter(e.target.value)}
-          placeholder="Search for activities"
-          className="h-11 w-full border border-[#EBEBEB] bg-white px-3.5 text-[14px] text-[#1E1E1E] placeholder:text-[#B0B0B0] outline-none focus:border-[#004DE7] focus:ring-1 focus:ring-[#004DE7]/10"
+        <MultiSearchableSelect
+          items={activityItems}
+          values={[...selectedActivityIds]}
+          onChange={(vals) => setSelectedActivityIds(new Set(vals))}
+          placeholder="Select activities"
+          searchPlaceholder="Search for activities"
+          emptyText="No activities found."
         />
-        <div className="max-h-56 overflow-y-auto border border-[#EBEBEB] bg-white">
-          {filteredActivities.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-[#B0B0B0]">
-              No activities found.
-            </p>
-          ) : (
-            filteredActivities.map((activity) => {
-              const selected = selectedActivityIds.has(activity.id);
-              return (
-                <label
-                  key={activity.id}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2.5 text-sm transition-colors last:border-b-0",
-                    selected ? "bg-[#EEF3FF]" : "hover:bg-[#FAFAFA]",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={selected}
-                    onChange={() => toggleActivity(activity.id)}
-                  />
-                  <span
-                    className={cn(
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-                      selected
-                        ? "border-[#004DE7] bg-[#004DE7]"
-                        : "border-[#D6D6D6] bg-white",
-                    )}
-                  >
-                    {selected && (
-                      <svg viewBox="0 0 6 5" fill="none" className="h-2 w-2">
-                        <path
-                          d="M0.5 2.5l2 2 3-4"
-                          stroke="white"
-                          strokeWidth={1.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </span>
-                  <span
-                    className={cn(
-                      "flex-1 truncate text-[13px]",
-                      selected ? "font-medium text-[#004DE7]" : "text-[#1E1E1E]",
-                    )}
-                  >
-                    {activity.name}
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 text-xs",
-                      selected ? "text-[#6B8AFF]" : "text-[#B0B0B0]",
-                    )}
-                  >
-                    {activity.plannedStartAt.slice(0, 10)}
-                  </span>
-                </label>
-              );
-            })
-          )}
-        </div>
       </div>
     </FormDrawer>
   );
