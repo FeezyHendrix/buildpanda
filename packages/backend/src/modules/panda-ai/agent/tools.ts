@@ -90,7 +90,7 @@ const NAV_TARGETS: Record<string, string> = {
   finances: "finances",
   budget: "finances/budget",
   invoices: "finances/invoices",
-  "milestone-payments": "finances/milestone-payments",
+  "milestone-payments": "finances/payments",
   "purchase-orders": "finances/purchase-orders",
   "payment-claims": "finances/payment-claims",
   contract: "finances/contract",
