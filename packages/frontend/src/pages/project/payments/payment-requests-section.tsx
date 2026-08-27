@@ -1,14 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { Label } from "@/components/atoms/label";
-import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
-import { ComboSelect } from "@/components/molecules/combo-select";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { FormDrawer } from "@/components/molecules/form-drawer";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -18,93 +14,25 @@ import {
   usePaymentClaims,
   useUpdatePaymentClaim,
   type PaymentClaim,
-  type PaymentClaimInput,
   type PaymentClaimStatus,
 } from "@/hooks/use-payment-claims";
-import { currencySymbol, formatCurrency } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import type { MilestonePayment } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
+import {
+  STATUS_SHAPE,
+  STATUS_TONE,
+  toInput,
+  toValues,
+  type RequestValues,
+} from "./payment-request-model";
+import { UpsertRequestDialog } from "./upsert-request-dialog";
 
 /**
  * Payment requests: contractor progress requests linked to stage payments.
- * Shared section used by the merged Payments workspace. "Payment request"
- * replaces the QS term "payment claim / drawdown" in all visible copy; the
- * PaymentClaim* API/enum names are unchanged.
+ * Shared section used by the merged Payments workspace and the standalone view.
  */
-interface RequestValues {
-  milestonePaymentId: string;
-  claimNumber: string;
-  periodStart: string;
-  periodEnd: string;
-  amount: string;
-  status: PaymentClaimStatus;
-  submittedAt: string;
-  approvedAt: string;
-  notes: string;
-}
-
-const STATUSES: PaymentClaimStatus[] = ["Draft", "Submitted", "Approved", "Rejected", "Paid"];
-
-const STATUS_TONE: Record<PaymentClaimStatus, "neutral" | "info" | "warning" | "success" | "danger"> = {
-  Draft: "neutral",
-  Submitted: "info",
-  Approved: "success",
-  Rejected: "danger",
-  Paid: "success",
-};
-
-const STATUS_SHAPE: Record<PaymentClaimStatus, string> = {
-  Draft: "○",
-  Submitted: "→",
-  Approved: "✓",
-  Rejected: "×",
-  Paid: "●",
-};
-
-const EMPTY: RequestValues = {
-  milestonePaymentId: "",
-  claimNumber: "",
-  periodStart: "",
-  periodEnd: "",
-  amount: "",
-  status: "Draft",
-  submittedAt: "",
-  approvedAt: "",
-  notes: "",
-};
-
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
-
-function toInput(values: RequestValues): PaymentClaimInput {
-  return {
-    milestonePaymentId: values.milestonePaymentId || null,
-    claimNumber: values.claimNumber,
-    periodStart: values.periodStart || undefined,
-    periodEnd: values.periodEnd || undefined,
-    amount: Number(values.amount),
-    status: values.status,
-    submittedAt: values.submittedAt || undefined,
-    approvedAt: values.approvedAt || undefined,
-    notes: values.notes || undefined,
-  };
-}
-
-function toValues(claim: PaymentClaim): RequestValues {
-  return {
-    milestonePaymentId: claim.milestonePaymentId ?? "",
-    claimNumber: claim.claimNumber,
-    periodStart: claim.periodStart ?? "",
-    periodEnd: claim.periodEnd ?? "",
-    amount: String(claim.amount),
-    status: claim.status,
-    submittedAt: claim.submittedAt ?? "",
-    approvedAt: claim.approvedAt ?? "",
-    notes: claim.notes ?? "",
-  };
-}
-
 function SummaryTile({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
     <Card padding="md">
@@ -129,165 +57,6 @@ function Metric({ label, value, accent = false }: { label: string; value: string
       <span className="text-xs text-gray-500">{label}</span>
       <span className={cn("text-sm font-semibold tabular-nums", accent ? "text-[#004DE7]" : "text-gray-900")}>{value}</span>
     </div>
-  );
-}
-
-function UpsertRequestDialog({
-  open,
-  onOpenChange,
-  mode,
-  initial,
-  onSubmit,
-  isSubmitting = false,
-  error,
-  currency,
-  milestones,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mode: "create" | "edit";
-  initial?: RequestValues;
-  onSubmit: (values: RequestValues) => void;
-  isSubmitting?: boolean;
-  error?: string | null;
-  currency: string;
-  milestones: MilestonePayment[];
-}) {
-  const [values, setValues] = useState<RequestValues>(EMPTY);
-  const symbol = currencySymbol(currency);
-  const milestoneItems = useMemo(
-    () => milestones.map((milestone) => ({ id: milestone.id, label: milestone.name })),
-    [milestones],
-  );
-
-  useEffect(() => {
-    if (open) setValues(initial ?? EMPTY);
-  }, [open, initial]);
-
-  function update<K extends keyof RequestValues>(key: K, value: RequestValues[K]): void {
-    setValues((prev) => ({ ...prev, [key]: value }));
-  }
-
-  const amountNumber = Number(values.amount);
-  const isValid =
-    values.claimNumber.trim().length > 0 &&
-    values.amount.trim().length > 0 &&
-    Number.isFinite(amountNumber) &&
-    amountNumber >= 0;
-
-  function handleSubmit(): void {
-    if (!isValid) return;
-    onSubmit({
-      ...values,
-      claimNumber: values.claimNumber.trim(),
-      amount: String(amountNumber),
-      notes: values.notes.trim(),
-    });
-  }
-
-  return (
-    <FormDrawer
-      open={open}
-      onOpenChange={onOpenChange}
-      title={mode === "edit" ? "Edit payment request" : "New payment request"}
-      description={
-        mode === "edit"
-          ? "Update this contractor payment request and its approval status."
-          : "Record a contractor payment request for this project."
-      }
-      submitLabel={mode === "edit" ? "Save changes" : "Add request"}
-      submitDisabled={!isValid}
-      submitting={isSubmitting}
-      error={error ?? null}
-      onSubmit={handleSubmit}
-    >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="request-number">Request number</Label>
-        <input
-          id="request-number"
-          value={values.claimNumber}
-          onChange={(e) => update("claimNumber", e.target.value)}
-          placeholder="e.g. PR-0042"
-          maxLength={100}
-          autoFocus
-          className={inputClass}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="request-milestone">Stage payment</Label>
-        <ComboSelect
-          items={milestoneItems}
-          value={values.milestonePaymentId || null}
-          onChange={(value) => update("milestonePaymentId", value ?? "")}
-          placeholder="No stage payment linked"
-          searchPlaceholder="Search stage payments…"
-          emptyText="No stage payments available"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-amount">Amount</Label>
-          <MoneyInput
-            id="request-amount"
-            value={values.amount}
-            onChange={(v) => update("amount", v)}
-            currencySymbol={symbol}
-            placeholder="0.00"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-status">Status</Label>
-          <select
-            id="request-status"
-            value={values.status}
-            onChange={(e) => update("status", e.target.value as PaymentClaimStatus)}
-            className={inputClass}
-          >
-            {STATUSES.map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-period-start">Period start</Label>
-          <input id="request-period-start" type="date" value={values.periodStart} onChange={(e) => update("periodStart", e.target.value)} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-period-end">Period end</Label>
-          <input id="request-period-end" type="date" value={values.periodEnd} onChange={(e) => update("periodEnd", e.target.value)} className={inputClass} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-submitted-at">Submitted at</Label>
-          <input id="request-submitted-at" type="date" value={values.submittedAt} onChange={(e) => update("submittedAt", e.target.value)} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="request-approved-at">Approved at</Label>
-          <input id="request-approved-at" type="date" value={values.approvedAt} onChange={(e) => update("approvedAt", e.target.value)} className={inputClass} />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="request-notes">Notes</Label>
-        <textarea
-          id="request-notes"
-          value={values.notes}
-          onChange={(e) => update("notes", e.target.value)}
-          placeholder="Work completed, supporting evidence, or approval context…"
-          maxLength={2000}
-          rows={4}
-          className={cn(inputClass, "h-auto py-3 resize-none")}
-        />
-      </div>
-    </FormDrawer>
   );
 }
 
