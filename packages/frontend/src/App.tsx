@@ -89,6 +89,7 @@ const ProjectBudgetAllocation = lazy(
 const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
+const ProjectPayments = lazy(() => import("@/pages/project/payments"));
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
 const ProjectInvoiceNew = lazy(() => import("@/pages/project/invoices/new"));
 const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
@@ -301,7 +302,8 @@ export const router = createBrowserRouter([
 
       { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
       { path: "finances/budget-allocation", element: pfr("commercial.budget", "finances", <ProjectBudgetAllocation />) },
-      { path: "finances/milestone-payments", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
+      { path: "finances/payments", element: pfr("commercial.finances", "finances", <ProjectPayments />) },
+      { path: "finances/milestone-payments", element: <Navigate to="../payments" replace relative="path" /> },
       { path: "finances/invoices", element: pfr("commercial.invoices", "finances", <ProjectInvoices />) },
       { path: "finances/invoices/new", element: pfr("commercial.invoices", "finances", <ProjectInvoiceNew />) },
       { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
