@@ -166,11 +166,6 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       location.pathname === item.to ||
       location.pathname.startsWith(`${item.to}/`),
   );
-  const isFinanceActive = financeItems.some(
-    (item) =>
-      location.pathname === item.to ||
-      location.pathname.startsWith(`${item.to}/`),
-  );
 
 
   const { selectedBuildingId } = useBuildingScope();
@@ -365,11 +360,13 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 />
               )}
               {financeItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Finance"
-                  Icon={FinancesIcon}
-                  items={financeItems}
-                  active={isFinanceActive}
+                <ProjectNavLink
+                  item={{
+                    label: "Finance",
+                    slug: "finances",
+                    Icon: FinancesIcon,
+                    to: `/project/${project.id}/finances`,
+                  }}
                   onClose={onClose}
                 />
               )}
@@ -418,11 +415,13 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               )}
 
               {financeItems.length > 0 && (
-                <SidebarNavGroup
-                  label="Finance"
-                  Icon={FinancesIcon}
-                  items={financeItems}
-                  active={isFinanceActive}
+                <ProjectNavLink
+                  item={{
+                    label: "Finance",
+                    slug: "finances",
+                    Icon: FinancesIcon,
+                    to: `/project/${project.id}/finances`,
+                  }}
                   onClose={onClose}
                 />
               )}
