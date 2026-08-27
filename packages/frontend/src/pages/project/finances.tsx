@@ -65,13 +65,13 @@ function CashFlowChronology({
         }
       />
       <ChronologyCard
-        title="Milestone Payments"
+        title="Stage payments"
         entries={milestones}
         accent="bg-green-500"
         formatAmount={(e) => formatCurrency(e.amount, currency)}
       />
       <ChronologyCard
-        title="Claims"
+        title="Payment requests"
         entries={claims}
         accent="bg-amber-500"
         formatAmount={(e) =>
@@ -177,8 +177,8 @@ export default function ProjectFinances() {
     return (
       <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
         <PageHeader
-          title="Finances"
-          description="Track spending, control payments, and monitor budget transparency across all phases."
+          title="Finance"
+          description="See where the project's money stands — what's budgeted, spent, and still to pay."
         />
         <Card padding="lg" className="mt-8 text-center text-sm text-gray-500">
           No finance data yet for this project.
@@ -190,8 +190,8 @@ export default function ProjectFinances() {
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
-        title="Finances"
-        description="Track spending, control payments, and monitor budget transparency across all phases."
+        title="Finance"
+        description="See where the project's money stands — what's budgeted, spent, and still to pay."
         actions={
           canManage ? (
             <div className="flex items-center gap-2">
@@ -202,7 +202,7 @@ export default function ProjectFinances() {
                 className="cursor-pointer"
               >
                 <ReactSVG src={icons.plusCircle} />
-                Add Cash flow
+                Record cash flow
               </Button>
             </div>
           ) : undefined
@@ -230,12 +230,12 @@ export default function ProjectFinances() {
           className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px]"
         />
         <KpiCard
-          title="Certified to Date"
+          title="Approved work value"
           icon={icons.verified}
           value={formatCurrency(finances.certifiedGrossToDate, finances.currency)}
         />
         <KpiCard
-          title="Remaining to Certify"
+          title="Remaining work value"
           icon={icons.wallet}
           value={formatCurrency(
             Math.max(0, finances.adjustedContract - finances.certifiedGrossToDate),
@@ -245,7 +245,7 @@ export default function ProjectFinances() {
         />
         {snapshot?.finance?.invoices ? (
           <KpiCard
-            title="Retention Held"
+            title="Held back"
             icon={icons.safeSquare}
             value={formatCurrency(
               snapshot.finance.invoices.retentionHeld,
@@ -348,13 +348,13 @@ export default function ProjectFinances() {
         onOpenChange={(next) => {
           if (!next) setReleaseTarget(null);
         }}
-        title={`Release ${releaseTarget?.name ?? "milestone"} funds?`}
-        description={`${
+        title={`Record payment for ${releaseTarget?.name ?? "this stage"}?`}
+        description={`Logs ${
           releaseTarget
             ? formatCurrency(releaseTarget.amount, finances.currency)
             : ""
-        } will be released from escrow to the contractor.`}
-        confirmLabel="Release funds"
+        } as paid to the contractor. This records a payment made off-platform — BuildPanda does not move money.`}
+        confirmLabel="Record payment"
         cancelLabel="Cancel"
         onConfirm={() => {
           if (!releaseTarget) return;
