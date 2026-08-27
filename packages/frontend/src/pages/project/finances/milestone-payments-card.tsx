@@ -33,7 +33,7 @@ export function MilestonePaymentsCard({
           </h3>
         </div>
         <Link
-          to={`/project/${projectId}/finances/milestone-payments`}
+          to={`/project/${projectId}/finances/payments`}
           className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
         >
           View More
