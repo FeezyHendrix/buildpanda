@@ -50,14 +50,14 @@ export default function ProjectInvoices() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
+          { label: "Finance", to: `/project/${project.id}/finances` },
           { label: "Invoices" },
         ]}
         className="mb-4"
       />
       <PageHeader
         title="Invoices"
-        description="Track vendor invoices, retainage withheld, and payments made across the project."
+        description="Send invoices and record the bills you pay on this project."
         actions={
           canManage ? (
             <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export default function ProjectInvoices() {
               </Button>
               <Button variant="primary" size="md" onClick={goToCreate}>
                 <PlusIcon className="size-4" />
-                New invoice
+                Send invoice
               </Button>
             </div>
           ) : undefined
@@ -78,19 +78,19 @@ export default function ProjectInvoices() {
         className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
       >
         <SummaryTile
-          label="Total Billed"
+          label="Total invoiced"
           value={formatCurrency(summary.billed, currency)}
         />
         <SummaryTile
-          label="Retainage Held"
+          label="Held back"
           value={formatCurrency(summary.retainage, currency)}
         />
         <SummaryTile
-          label="Amount Paid"
+          label="Paid"
           value={formatCurrency(summary.paid, currency)}
         />
         <SummaryTile
-          label="Balance Due"
+          label="Outstanding"
           value={formatCurrency(summary.balance, currency)}
           accent
         />
@@ -118,7 +118,7 @@ export default function ProjectInvoices() {
             <EmptyState
               icon={<FinancesIcon className="size-6" />}
               title="No invoices yet"
-              description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
+              description="Send an invoice or record a bill to track what's billed, held back, and paid."
               action={
                 canManage ? (
                   <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export default function ProjectInvoices() {
                     </Button>
                     <Button variant="primary" size="md" onClick={goToCreate}>
                       <PlusIcon className="size-4" />
-                      New invoice
+                      Send invoice
                     </Button>
                   </div>
                 ) : undefined
