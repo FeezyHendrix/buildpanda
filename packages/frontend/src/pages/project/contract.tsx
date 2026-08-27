@@ -296,14 +296,14 @@ export default function ProjectContract() {
       <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
         <Breadcrumbs
           items={[
-            { label: "Finances", to: `/project/${project.id}/finances` },
+            { label: "Finance", to: `/project/${project.id}/finances` },
             { label: "Contract" },
           ]}
           className="mb-4"
         />
         <PageHeader
           title="Contract"
-          description="Set contract type, retention, advance amortisation and payment terms for this project."
+          description="Set the agreed amount, changes, retention and payment terms for this project."
         />
         <Card padding="lg" className="mt-8 text-center text-sm text-red-600">
           {getApiErrorMessage(error, "Failed to load contract terms.")}
@@ -325,12 +325,12 @@ export default function ProjectContract() {
       />
       <PageHeader
         title="Contract"
-        description="Set contract type, retention, advance amortisation and payment terms. These values drive how retention accrues, how advances are recovered, and how invoices are aged."
+        description="Set the agreed amount, changes, retention, advance and payment terms for this project."
       />
 
       <Section
-        title="Contract sum"
-        description="The base contract value agreed with the contractor before variations. Adjusted contract = contract sum + variations."
+        title="Contract amount"
+        description="The base amount agreed with the contractor before changes. Revised contract = contract amount + changes."
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
@@ -406,7 +406,7 @@ export default function ProjectContract() {
 
       <Section
         title="Contract type"
-        description="Which pricing structure governs this contract? This affects how variations and certifications are handled."
+        description="Which pricing structure governs this contract? This affects how changes and approvals are handled."
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {CONTRACT_TYPES.map((type) => (
@@ -426,7 +426,7 @@ export default function ProjectContract() {
 
       <Section
         title="Retention"
-        description="Percentage held from each certified payment as security against defects."
+        description="Percentage held from each approved payment as security against defects."
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
@@ -473,7 +473,7 @@ export default function ProjectContract() {
 
       <Section
         title="Advance / mobilisation"
-        description="Up-front payment made to the contractor for mobilisation, recovered from later certifications."
+        description="Up-front payment made to the contractor for mobilisation, recovered from later payments."
       >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
