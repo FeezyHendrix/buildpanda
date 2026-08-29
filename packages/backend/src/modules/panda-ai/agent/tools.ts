@@ -94,6 +94,7 @@ const NAV_TARGETS: Record<string, string> = {
   "purchase-orders": "finances/purchase-orders",
   "payment-claims": "finances/payment-claims",
   contract: "finances/contract",
+  "schedule-of-values": "finances/contract",
   transactions: "finances/transactions",
   advance: "finances/advance",
   retention: "finances/retention",
@@ -222,6 +223,61 @@ export function buildTools(): AgentTool[] {
             verified: Boolean(m.proof_verified),
           })),
         },
+      };
+    }),
+
+    tool(fn("get_schedule_of_values", "Get the project's Schedule of Values: for each Build Stage, its scheduled contract value and the monthly billing lines — the period, the percentage of the stage value billed that period, the amount, and whether it has been billed yet. Use for questions about a stage's billing schedule, how a stage's value is spread across months, what is scheduled to be billed when, or how much of a stage is still unscheduled. BuildPanda only LOGS these figures; it does not move money.", { stage: { type: "string", description: "Optional stage name (or part of it) to filter to one build stage." } }), async (ctx, args) => {
+      const repo = agentRepository(ctx.db);
+      const rows = (await repo.scheduleOfValues(ctx.projectId)) as Array<{
+        stage_name: string | null;
+        stage_value: string | null;
+        period: string;
+        percent: string;
+        amount: string;
+        billed: boolean;
+      }>;
+      const stageFilter = optionalString(args.stage, 200)?.toLowerCase() ?? null;
+      const byStage = new Map<
+        string,
+        {
+          stage: string;
+          scheduledValue: number;
+          lines: Array<{ period: string; percent: number; amount: number; billed: boolean }>;
+        }
+      >();
+      for (const r of rows) {
+        const name = r.stage_name ?? "—";
+        if (stageFilter && !name.toLowerCase().includes(stageFilter)) continue;
+        let entry = byStage.get(name);
+        if (!entry) {
+          entry = { stage: name, scheduledValue: round2(Number(r.stage_value ?? 0)), lines: [] };
+          byStage.set(name, entry);
+        }
+        entry.lines.push({
+          period: r.period,
+          percent: Number(r.percent),
+          amount: round2(Number(r.amount)),
+          billed: r.billed,
+        });
+      }
+      return {
+        output: {
+          stages: [...byStage.values()].map((s) => {
+            const scheduledToDate = round2(s.lines.reduce((sum, l) => sum + l.amount, 0));
+            const billedToDate = round2(
+              s.lines.reduce((sum, l) => (l.billed ? sum + l.amount : sum), 0),
+            );
+            return {
+              stage: s.stage,
+              scheduledValue: s.scheduledValue,
+              scheduledToDate,
+              billedToDate,
+              unscheduled: round2(s.scheduledValue - scheduledToDate),
+              lines: s.lines,
+            };
+          }),
+        },
+        navigate: "contract",
       };
     }),
 
