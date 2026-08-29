@@ -1,4 +1,5 @@
 import { type InvoiceStatus, type InvoiceType, type ExtractedInvoice } from "@/hooks/use-invoices";
+import { Money } from "@/lib/money";
 
 export interface UpsertLineItem {
   description: string;
@@ -79,25 +80,35 @@ export const EMPTY_INVOICE: UpsertInvoiceValues = {
 };
 
 export function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  return Money.of(n).round(2).toNumber();
 }
 
 export function lineAmount(line: UpsertLineItem): number {
-  return round2(Number(line.quantity || "0") * Number(line.unitRate || "0"));
+  return Money.of(line.quantity || "0")
+    .mul(line.unitRate || "0")
+    .round(2)
+    .toNumber();
 }
 
 export function computeTotals(values: UpsertInvoiceValues): InvoiceTotals {
-  const subtotal = round2(
-    values.lineItems.reduce((sum, li) => sum + lineAmount(li), 0),
-  );
-  const vat = round2((subtotal * Number(values.vatRate || "0")) / 100);
-  const wht = round2((subtotal * Number(values.whtRate || "0")) / 100);
-  const retention = round2(
-    (subtotal * Number(values.retentionRate || "0")) / 100,
-  );
-  const totalInvoiced = round2(subtotal + vat);
-  const netPayable = round2(totalInvoiced - wht - retention);
-  return { subtotal, vat, wht, retention, totalInvoiced, netPayable };
+  const subtotal = Money.sum(
+    values.lineItems.map((li) =>
+      Money.of(li.quantity || "0").mul(li.unitRate || "0"),
+    ),
+  ).round(2);
+  const vat = subtotal.percent(values.vatRate || "0").round(2);
+  const wht = subtotal.percent(values.whtRate || "0").round(2);
+  const retention = subtotal.percent(values.retentionRate || "0").round(2);
+  const totalInvoiced = subtotal.add(vat).round(2);
+  const netPayable = totalInvoiced.sub(wht).sub(retention).round(2);
+  return {
+    subtotal: subtotal.toNumber(),
+    vat: vat.toNumber(),
+    wht: wht.toNumber(),
+    retention: retention.toNumber(),
+    totalInvoiced: totalInvoiced.toNumber(),
+    netPayable: netPayable.toNumber(),
+  };
 }
 
 export function countValidLines(values: UpsertInvoiceValues): number {
