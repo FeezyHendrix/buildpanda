@@ -5,7 +5,7 @@ import { ProjectNav } from "../pages/project-nav";
  * RISK MAP — Project sidebar grouping of schedule and field tools.
  * - Upstream trigger: a user opens a project and navigates via the sidebar.
  * - Expected guardrail: Field Tools carries site-control work, Look Aheads
- *   lives in Schedules, and BIM/Permits live next to Documents.
+ *   lives in Schedules, and BIM Models lives next to Documents.
  * - Failure liability: mis-grouped or resurrected nav items send users to the
  *   wrong place or expose removed workflows.
  */
@@ -49,7 +49,7 @@ test.describe("Sidebar navigation grouping @navigation", () => {
     await expect(dailyLog).toBeVisible();
     await expect(dailyLog).toHaveAttribute("href", new RegExp(`/project/${project.id}/schedules/daily-log`));
     await expect(sidebar.getByRole("link", { name: /bim models/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/bim`));
-    await expect(sidebar.getByRole("link", { name: /permits & compliance/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/permits`));
+    await expect(sidebar.getByRole("link", { name: /permits & compliance/i })).toHaveCount(0);
 
     // Retired items are absent from the sidebar entirely.
     await expect(sidebar.getByRole("link", { name: /selections/i })).toHaveCount(0);

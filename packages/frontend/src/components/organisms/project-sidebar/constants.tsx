@@ -134,7 +134,6 @@ export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [
   { label: "BIM Models", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
-  { label: "Permits & Compliance", slug: "permits", resource: "permits", Icon: DocumentsIcon, flag: "compliance.permits" },
 ] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
