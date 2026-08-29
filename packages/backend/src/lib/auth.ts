@@ -50,7 +50,7 @@ async function uniqueOrgSlug(base: string): Promise<string> {
  * company becomes its owner. Returns the user's active organization id.
  * Idempotent: if the user already has a membership, that org is returned.
  */
-async function ensureUserOrganization(
+export async function ensureUserOrganization(
   userId: string,
   knownName?: string,
   companyName?: string | null,
