@@ -41,11 +41,14 @@ export interface TakeoffEngineOptions {
   wallHeightM?: number;
 }
 
-// Orchestrates the deterministic take-off: parse -> calibrate scale ->
-// segment the sheet into drawings -> pick one representative floor plan ->
-// measure walls and count elements within it. The LLM is not involved in
-// measurement; this stage produces auditable quantities only.
-export async function runTakeoffEngine(
+// DWG take-off. The sibling pdf-takeoff module handles PDF drawings and is the
+// richer pipeline (vision fallback, BESMM enrichment, schedule reading); this
+// one is vector-only and reads DWG natively via LibreDWG, so it needs none of
+// that. Orchestrates: parse -> calibrate scale -> segment the sheet into
+// drawings -> pick one representative floor plan -> measure walls and count
+// elements within it. The LLM is not involved in measurement; this stage
+// produces auditable quantities only.
+export async function runDwgTakeoff(
   dwgPath: string,
   opts: TakeoffEngineOptions = {},
 ): Promise<TakeoffResult> {
