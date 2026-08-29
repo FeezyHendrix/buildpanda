@@ -11,6 +11,7 @@ export interface Stage {
   endDate: string | null;
   dateRange: string | null;
   progressPercent: number;
+  value: number;
   sortOrder: number;
 }
 
@@ -24,5 +25,29 @@ export interface StageRow {
   start_date: string | null;
   end_date: string | null;
   progress_percent: number;
+  value: string;
   sort_order: number;
+}
+
+export interface StageScheduleOfValue {
+  id: string;
+  stageId: string;
+  period: string;
+  percent: number;
+  amount: number;
+  billed: boolean;
+  sortOrder: number;
+}
+
+export interface StageScheduleOfValueRow {
+  id: string;
+  project_id: string;
+  stage_id: string;
+  period: string;
+  percent: string;
+  amount: string;
+  billed: boolean;
+  sort_order: number;
+  created_at: Date | string;
+  updated_at: Date | string;
 }

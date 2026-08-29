@@ -1,7 +1,18 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import type { StagesRepository, StageUpdatePatch } from "./repository.ts";
-import type { Stage, StageRow, StageStatus } from "./types.ts";
+import { Money } from "../../lib/money.ts";
+import type {
+  NewStageScheduleOfValueRecord,
+  StagesRepository,
+  StageUpdatePatch,
+} from "./repository.ts";
+import type {
+  Stage,
+  StageRow,
+  StageScheduleOfValue,
+  StageScheduleOfValueRow,
+  StageStatus,
+} from "./types.ts";
 
 export interface CreateStageInput {
   name: string;
@@ -10,6 +21,7 @@ export interface CreateStageInput {
   startDate?: string | null;
   endDate?: string | null;
   progressPercent?: number;
+  value?: number;
 }
 
 export interface UpdateStageInput {
@@ -18,6 +30,13 @@ export interface UpdateStageInput {
   startDate?: string | null;
   endDate?: string | null;
   progressPercent?: number;
+  value?: number;
+}
+
+export interface ScheduleOfValueLineInput {
+  period: string;
+  percent: number;
+  billed?: boolean;
 }
 
 function fmt(date: string | null | undefined): string | null {
@@ -51,6 +70,19 @@ function toStage(row: StageRow): Stage {
     endDate: row.end_date,
     dateRange: row.date_range,
     progressPercent: row.progress_percent,
+    value: Number(row.value),
+    sortOrder: row.sort_order,
+  };
+}
+
+function toScheduleOfValue(row: StageScheduleOfValueRow): StageScheduleOfValue {
+  return {
+    id: row.id,
+    stageId: row.stage_id,
+    period: row.period,
+    percent: Number(row.percent),
+    amount: Number(row.amount),
+    billed: row.billed,
     sortOrder: row.sort_order,
   };
 }
@@ -58,12 +90,30 @@ function toStage(row: StageRow): Stage {
 export function stagesService(
   repository: StagesRepository,
   soleRealBuildingId: (projectId: string) => Promise<string | undefined>,
+  contractSumForProject?: (projectId: string) => Promise<number>,
 ) {
   async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
     if (explicit) return explicit;
     const buildingId = await soleRealBuildingId(projectId);
     if (!buildingId) throw new BadRequestError("buildingId is required for a multi-building project");
     return buildingId;
+  }
+
+  async function assertValuesWithinContract(
+    projectId: string,
+    stageId: string | null,
+    value: number,
+  ): Promise<void> {
+    if (!contractSumForProject) return;
+    const contractSum = await contractSumForProject(projectId);
+    if (contractSum <= 0) return;
+    const rows = await repository.listByProject(projectId);
+    const others = Money.sum(
+      rows.filter((row) => row.id !== stageId).map((row) => row.value),
+    );
+    if (others.add(value).gt(contractSum)) {
+      throw new BadRequestError("Stage values exceed the contract sum");
+    }
   }
 
   return {
@@ -76,6 +126,9 @@ export function stagesService(
       const startDate = input.startDate ?? null;
       const endDate = input.endDate ?? null;
       const buildingId = await resolveBuildingId(projectId, input.buildingId);
+      if (input.value !== undefined) {
+        await assertValuesWithinContract(projectId, null, input.value);
+      }
       const sortOrder = await repository.nextSortOrder(projectId);
       const row = await repository.create({
         id: generateId("stage"),
@@ -87,6 +140,7 @@ export function stagesService(
         start_date: startDate,
         end_date: endDate,
         progress_percent: clampPercent(input.progressPercent, 0),
+        value: String(input.value ?? 0),
         sort_order: sortOrder,
       });
       return toStage(row);
@@ -116,6 +170,10 @@ export function stagesService(
           endProvided ? input.endDate ?? null : existing.end_date,
         );
       }
+      if (input.value !== undefined) {
+        await assertValuesWithinContract(projectId, stageId, input.value);
+        patch.value = String(input.value);
+      }
 
       const updated = await repository.update(stageId, patch);
       if (!updated) throw new NotFoundError("Stage");
@@ -132,6 +190,49 @@ export function stagesService(
       await repository.reorder(projectId, orderedIds);
       const rows = await repository.listByProject(projectId);
       return rows.map(toStage);
+    },
+
+    async listScheduleOfValues(
+      projectId: string,
+      stageId?: string,
+    ): Promise<StageScheduleOfValue[]> {
+      const rows = stageId
+        ? await repository.listScheduleOfValuesByStage(projectId, stageId)
+        : await repository.listScheduleOfValuesByProject(projectId);
+      return rows.map(toScheduleOfValue);
+    },
+
+    async replaceScheduleOfValues(
+      projectId: string,
+      stageId: string,
+      lines: ScheduleOfValueLineInput[],
+    ): Promise<StageScheduleOfValue[]> {
+      const stage = await repository.findById(stageId);
+      if (!stage || stage.project_id !== projectId) throw new NotFoundError("Stage");
+
+      const totalPercent = Money.sum(lines.map((line) => line.percent));
+      if (totalPercent.gt(100)) {
+        throw new BadRequestError(
+          "Schedule of Values cannot bill more than 100% of the stage value",
+        );
+      }
+
+      const billedTotal = Money.of(stage.value).percent(totalPercent);
+      const amounts = billedTotal.allocate(lines.map((line) => line.percent));
+      const records: NewStageScheduleOfValueRecord[] = lines.map((line, index) => ({
+        id: generateId("sov"),
+        project_id: projectId,
+        stage_id: stageId,
+        period: line.period,
+        percent: String(line.percent),
+        amount: amounts[index]?.toFixed(2) ?? "0.00",
+        billed: line.billed ?? false,
+        sort_order: index,
+      }));
+
+      await repository.replaceScheduleOfValues(stageId, records);
+      const rows = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      return rows.map(toScheduleOfValue);
     },
   };
 }
