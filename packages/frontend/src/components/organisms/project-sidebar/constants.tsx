@@ -116,75 +116,26 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Gantt chart",
     flag: "projects.schedule",
   },
+  {
+    label: "Look Aheads",
+    slug: "look-aheads",
+    resource: "schedule",
+    Icon: BinocularsIcon,
+    helper: "Rolling look-ahead planning",
+    flag: "projects.schedule",
+  },
 ] as const;
 
-export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
-  [
-    {
-      label: "Daily Log",
-      slug: "schedules/daily-log",
-      resource: "dailyLog",
-      Icon: ClipboardIcon,
-      helper: "Field reports",
-      flag: "quality.dailyLogs",
-    },
-    {
-      label: "Look Aheads",
-      slug: "look-aheads",
-      resource: "schedule",
-      Icon: BinocularsIcon,
-      helper: "Rolling look-ahead planning",
-      flag: "projects.schedule",
-    },
-    {
-      label: "RFIs",
-      slug: "rfis",
-    resource: "rfis",
-      Icon: AlertIcon,
-      helper: "Requests for information",
-      flag: "workflow.rfis",
-    },
-    {
-      label: "BIM Models",
-      slug: "bim",
-    resource: "bim",
-      Icon: DocumentsIcon,
-      helper: "3D model viewer",
-      flag: "projects.bim",
-    },
-    {
-      label: "Client Approvals",
-      slug: "approvals",
-      resource: "approvals",
-      Icon: InspectionsIcon,
-      helper: "Client sign-offs",
-      flag: "workflow.approvals",
-    },
-    {
-      label: "Selections",
-      slug: "selections",
-      resource: "selections",
-      Icon: InspectionsIcon,
-      helper: "Client choices & allowances",
-      flag: "projects.selections",
-    },
-    {
-      label: "Change Requests",
-      slug: "change-requests",
-      resource: "change-requests",
-      Icon: FinancesIcon,
-      helper: "Scope changes",
-      flag: "workflow.changeRequests",
-    },
-    {
-      label: "Permits & Compliance",
-      slug: "permits",
-      resource: "permits",
-      Icon: DocumentsIcon,
-      helper: "Regulatory permits & expiry",
-      flag: "compliance.permits",
-    },
-  ] as const;
+export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
+  { label: "RFIs", slug: "rfis", resource: "rfis", Icon: AlertIcon, helper: "Requests for information", flag: "workflow.rfis" },
+  { label: "Approvals", slug: "approvals", resource: "approvals", Icon: InspectionsIcon, helper: "Client sign-offs", flag: "workflow.approvals" },
+  { label: "Daily Log", slug: "schedules/daily-log", resource: "dailyLog", Icon: ClipboardIcon, helper: "Field reports", flag: "quality.dailyLogs" },
+] as const;
+
+export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [
+  { label: "BIM Models", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
+  { label: "Permits & Compliance", slug: "permits", resource: "permits", Icon: DocumentsIcon, flag: "compliance.permits" },
+] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
