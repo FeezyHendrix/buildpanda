@@ -477,12 +477,12 @@ export default function TransactionsPage() {
       <Breadcrumbs
         items={[
           { label: "Finance", to: `/project/${projectId}/finances` },
-          { label: "Spend log" },
+          { label: "Expenses" },
         ]}
         className="mb-4"
       />
       <PageHeader
-        title="Spend log"
+        title="Expenses"
         description="Record what you spend on site, with receipts."
         actions={
           <div className="flex items-center gap-3">

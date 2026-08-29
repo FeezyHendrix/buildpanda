@@ -24,7 +24,7 @@ interface Workspace {
 const WORKSPACES: readonly Workspace[] = [
   { label: "Overview", slug: "finances", helper: "Money position", flag: "commercial.finances", resource: "finances", primary: true },
   { label: "Invoices", slug: "finances/invoices", helper: "Send & track invoices", flag: "commercial.invoices", resource: "finances", primary: true },
-  { label: "Spend log", slug: "finances/transactions", helper: "Site expenses & receipts", flag: "commercial.transactions", resource: "transactions", primary: true },
+  { label: "Expenses", slug: "finances/transactions", helper: "Site expenses & receipts", flag: "commercial.transactions", resource: "transactions", primary: true },
   { label: "Payments", slug: "finances/payments", helper: "Stage payments & requests", flag: "commercial.finances", resource: "finances", primary: true },
   { label: "Contract", slug: "finances/contract", helper: "Amount, changes & terms", flag: "commercial.finances", resource: "finances", primary: true },
   { label: "Payment requests", slug: "finances/payment-claims", helper: "Contractor requests", flag: "commercial.paymentClaims", resource: "finances" },
