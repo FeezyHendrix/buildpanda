@@ -36,6 +36,12 @@ function addRange(range: DateRange, start: Date, end: Date): void {
   range.max = Math.max(range.max, end.getTime());
 }
 
+function canRenderActivity(activity: Activity): boolean {
+  const start = parseDate(activity.plannedStartAt);
+  const end = parseDate(activity.plannedEndAt);
+  return Boolean(start && (activity.isMilestone || end));
+}
+
 function stageRows(stages: Stage[], usedPhaseIds: Set<string>, range: DateRange): GanttTask[] {
   const rows: GanttTask[] = [];
 
@@ -43,14 +49,15 @@ function stageRows(stages: Stage[], usedPhaseIds: Set<string>, range: DateRange)
     const start = stage.startDate ? parseDate(stage.startDate) : null;
     const end = stage.endDate ? parseDate(stage.endDate) : start;
     if (!start || !end) continue;
+    const hasChildActivity = usedPhaseIds.has(stage.id);
     usedPhaseIds.add(stage.id);
 
     rows.push({
       id: stage.id,
       text: stage.name,
-      type: "summary",
+      type: hasChildActivity ? "summary" : "task",
       parent: ROOT_PARENT,
-      open: true,
+      open: hasChildActivity ? true : undefined,
       start,
       end,
       progress: Math.round(stage.progressPercent),
@@ -84,6 +91,7 @@ function keyDateRows(keyDates: KeyDate[], range: DateRange): GanttTask[] {
 
 function activityRows(activities: Activity[], usedPhaseIds: ReadonlySet<string>, range: DateRange): GanttTask[] {
   const activitiesById = new Map(activities.map((activity) => [activity.id, activity]));
+  const parentActivityIds = new Set(activities.flatMap((activity) => activity.parentActivityId ? [activity.parentActivityId] : []));
   const rows: GanttTask[] = [];
 
   for (const activity of activities) {
@@ -103,12 +111,13 @@ function activityRows(activities: Activity[], usedPhaseIds: ReadonlySet<string>,
     const taskEnd = activity.isMilestone ? start : end;
     if (!taskEnd) continue;
 
+    const isSummary = activity.isSummary && parentActivityIds.has(activity.id);
     rows.push({
       id: activity.id,
       text: activity.isDelayed ? `${activity.name} · delayed` : activity.name,
-      type: activity.isSummary ? "summary" : activity.isMilestone ? "milestone" : "task",
+      type: isSummary ? "summary" : activity.isMilestone ? "milestone" : "task",
       parent,
-      open: activity.isSummary ? true : undefined,
+      open: isSummary ? true : undefined,
       start,
       end: taskEnd,
       progress: Math.round(activity.percentComplete),
@@ -196,8 +205,11 @@ export function buildGanttData(
     max: Number.NEGATIVE_INFINITY,
   };
 
-  for (const activity of activities) {
-    if (activity.phaseId && phaseById.has(activity.phaseId)) usedPhaseIds.add(activity.phaseId);
+  const renderableActivities = activities.filter(canRenderActivity);
+  for (const activity of renderableActivities) {
+    if (activity.phaseId && (phaseById.has(activity.phaseId) || stagesById.has(activity.phaseId))) {
+      usedPhaseIds.add(activity.phaseId);
+    }
   }
 
   const summaryRows = stageRows(stages, usedPhaseIds, range);
@@ -208,21 +220,21 @@ export function buildGanttData(
     summaryRows.push({ id: phase.id, text: phase.name, type: "summary", parent: ROOT_PARENT, open: true });
   }
 
-  const taskRows = [...activityRows(activities, usedPhaseIds, range), ...keyDateRows(keyDates, range)];
+  const taskRows = [...activityRows(renderableActivities, usedPhaseIds, range), ...keyDateRows(keyDates, range)];
   const emittedIds = new Set<string>([
     ...summaryRows.map((row) => String(row.id)),
     ...taskRows.map((row) => String(row.id)),
   ]);
   reparentMissingParents(taskRows, emittedIds);
 
-  const criticalIds = computeCriticalActivityIds(activities, emittedIds);
+  const criticalIds = computeCriticalActivityIds(renderableActivities, emittedIds);
   markCriticalRows(taskRows, criticalIds);
 
   const hasRange = Number.isFinite(range.min) && Number.isFinite(range.max);
 
   return {
     tasks: [...summaryRows, ...taskRows],
-    links: linkRows(activities, emittedIds),
+    links: linkRows(renderableActivities, emittedIds),
     rangeStart: hasRange ? new Date(range.min - 7 * DAY_MS) : undefined,
     rangeEnd: hasRange ? new Date(range.max + 7 * DAY_MS) : undefined,
     delays: delaySummary(activities),
