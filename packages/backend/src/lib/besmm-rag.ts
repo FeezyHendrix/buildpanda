@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import { embedText } from "./llm.ts";
-import besmmEmbeddings from "../modules/panda-ai/takeoff/engine/besmm-embeddings.json" with { type: "json" };
+import besmmEmbeddings from "../modules/panda-ai/pdf-takeoff/engine/besmm-embeddings.json" with { type: "json" };
 
 export const BESMM_CORPUS_VERSION = "besmm4-2015";
 

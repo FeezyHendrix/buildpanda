@@ -36,6 +36,11 @@ import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measure
 import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
 import { priceRow } from "./price.ts";
 
+// PDF take-off. The sibling dwg-takeoff module reads DWG vectors natively and
+// stays fully deterministic; PDFs lose that fidelity, so this pipeline adds a
+// raster/vision fallback, schedule reading and BESMM enrichment on top of the
+// same vector-first measurement. Quantities still come from geometry only --
+// the LLM shapes descriptions and rules, never numbers.
 const DEFAULT_WALL_HEIGHT_M = 2.7;
 
 function besmmResolverFor(db: Knex): BesmmResolver {

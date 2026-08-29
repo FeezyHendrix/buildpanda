@@ -82,7 +82,7 @@ export async function runProgramme(
   }
 }
 
-export function registerPreconWorker(db: Knex, manager: QueueManager, publish: RealtimePublish = () => {}): void {
+export function registerPdfTakeoffWorker(db: Knex, manager: QueueManager, publish: RealtimePublish = () => {}): void {
   manager.registerProcessor<PreconGenerateJobData>(PRECON_GENERATE_QUEUE, (data) => runGenerate(db, data, publish));
   manager.registerProcessor<PreconProgrammeJobData>(PRECON_PROGRAMME_QUEUE, (data) =>
     runProgramme(db, data, publish),

@@ -9,8 +9,10 @@ import type { QueueManager } from "../../../lib/queue/index.ts";
 import { openStoredFile } from "../../../lib/file-storage.ts";
 import { generateId } from "../../../lib/ids.ts";
 import { takeoffJobsRepository } from "./jobs-repository.ts";
-import { runTakeoffEngine } from "./takeoff-engine.ts";
+import { runDwgTakeoff } from "./engine.ts";
 
+// Queue name is the pre-rename "automated-takeoff" string: it is a BullMQ key
+// in Redis, so changing it would strand jobs enqueued before a deploy.
 export const TAKEOFF_QUEUE = "automated-takeoff";
 
 export interface TakeoffJobData {
@@ -38,7 +40,7 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
 
   await repo.markProcessing(job.id);
   try {
-    const result = await withTempDwg(job.storage_path, (file) => runTakeoffEngine(file));
+    const result = await withTempDwg(job.storage_path, (file) => runDwgTakeoff(file));
     await repo.markComplete(job.id, result);
     if (job.proposal_id) {
       const maxSort = await db("proposal_boq_items")
@@ -68,6 +70,6 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
   }
 }
 
-export function registerTakeoffWorker(db: Knex, manager: QueueManager): void {
+export function registerDwgTakeoffWorker(db: Knex, manager: QueueManager): void {
   manager.registerProcessor<TakeoffJobData>(TAKEOFF_QUEUE, (data) => runTakeoff(db, data));
 }

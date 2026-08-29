@@ -206,7 +206,7 @@ const rateBody = {
 // Preconstruction lives in the sales suite: every route is organization-scoped
 // (bids usually precede a project). Reads need org membership; writes need the
 // proposals org permission, mirroring the proposals module.
-const preconRoutes: FastifyPluginAsync = async (fastify) => {
+const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(multipart, {
     limits: { fileSize: config.uploads.maxFileBytes, files: 10 },
   });
@@ -582,4 +582,4 @@ const preconRoutes: FastifyPluginAsync = async (fastify) => {
   );
 };
 
-export default preconRoutes;
+export default pdfTakeoffRoutes;
