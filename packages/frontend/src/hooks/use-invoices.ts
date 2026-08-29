@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { invoicesApi, type InvoiceInput, type PaymentInput, type SendInvoiceInput } from "@/api/invoices";
+import { invoicesApi, type InvoiceInput, type PayApplicationLineInput, type PaymentInput, type SendInvoiceInput } from "@/api/invoices";
 
 export type {
   InvoiceStatus,
@@ -20,6 +20,9 @@ export type {
   InvoiceScanResult,
   InvoiceDocumentKind,
   InvoiceScanConfidence,
+  PayApplicationLine,
+  PayApplicationSummary,
+  PayApplicationLineInput,
 } from "@/api/invoices";
 import { invoiceKeys } from "./query-keys";
 
@@ -173,6 +176,42 @@ export function useSetInvoiceAllocations() {
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: ["projects", projectId, "budget"] });
+    },
+  });
+}
+
+export function usePayApplication(
+  projectId: string | undefined,
+  invoiceId: string | undefined,
+) {
+  return useQuery({
+    queryKey: invoiceKeys.payApplication(
+      projectId ?? "__none__",
+      invoiceId ?? "__none__",
+    ),
+    queryFn: () => invoicesApi.payApplication(projectId!, invoiceId!),
+    enabled: Boolean(projectId && invoiceId),
+  });
+}
+
+export function useSetPayApplication() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      invoiceId,
+      lines,
+    }: {
+      projectId: string;
+      invoiceId: string;
+      lines: PayApplicationLineInput[];
+    }) => invoicesApi.setPayApplication(projectId, invoiceId, lines),
+    onSuccess: (_data, { projectId, invoiceId }) => {
+      queryClient.invalidateQueries({
+        queryKey: invoiceKeys.payApplication(projectId, invoiceId),
+      });
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
     },
   });
 }

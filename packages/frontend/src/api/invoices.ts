@@ -180,6 +180,12 @@ export const invoicesApi = {
 
   scan: (projectId: string, fileId: string) =>
     api.post<InvoiceScanResult>(`/projects/${projectId}/invoices/scan`, { fileId }).then(r => r.data),
+
+  payApplication: (projectId: string, invoiceId: string) =>
+    api.get<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`).then(r => r.data),
+
+  setPayApplication: (projectId: string, invoiceId: string, lines: PayApplicationLineInput[]) =>
+    api.put<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`, { lines }).then(r => r.data),
 };
 
 export type InvoiceDocumentKind = "invoice" | "receipt" | "quote" | "other";
@@ -234,4 +240,37 @@ export interface InvoiceAllocation {
   invoiceId: string;
   budgetCategoryId: string;
   amount: number;
+}
+
+export interface PayApplicationLine {
+  stageId: string;
+  stageName: string;
+  scheduledValue: number;
+  priorBilled: number;
+  thisPeriod: number;
+  storedMaterials: number;
+  totalCompleted: number;
+  percentComplete: number;
+  balanceToFinish: number;
+  retained: number;
+  currentPaymentDue: number;
+}
+
+export interface PayApplicationSummary {
+  lines: PayApplicationLine[];
+  scheduledTotal: number;
+  priorBilledTotal: number;
+  thisPeriodTotal: number;
+  storedMaterialsTotal: number;
+  totalCompleted: number;
+  balanceToFinish: number;
+  retainedTotal: number;
+  currentPaymentDue: number;
+}
+
+export interface PayApplicationLineInput {
+  stageId: string;
+  thisPeriod: number;
+  storedMaterials?: number;
+  retained?: number;
 }
