@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { ProgressBar } from "@/components/atoms/progress-bar";
@@ -7,12 +6,13 @@ import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "./form-drawer";
 import { cn } from "@/lib/utils";
 import { useUploadFile } from "@/hooks/use-files";
-import { useScanInvoice } from "@/hooks/use-invoices";
+import { useScanInvoice, type InvoiceScanResult } from "@/hooks/use-invoices";
 
 interface ScanInvoiceDialogProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onScanned: (result: InvoiceScanResult) => void;
 }
 
 function formatBytes(bytes: number): string {
@@ -25,8 +25,8 @@ export function ScanInvoiceDialog({
   projectId,
   open,
   onOpenChange,
+  onScanned,
 }: ScanInvoiceDialogProps) {
-  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -67,9 +67,7 @@ export function ScanInvoiceDialog({
             {
               onSuccess: (result) => {
                 onOpenChange(false);
-                navigate(`/project/${projectId}/finances/invoices/new`, {
-                  state: { scan: result },
-                });
+                onScanned(result);
               },
             }
           );
