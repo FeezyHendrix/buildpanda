@@ -1,9 +1,11 @@
 import type { FastifyPluginAsync } from "fastify";
 import { buildingsRepository } from "../buildings/repository.ts";
+import { financesRepository } from "../finances/repository.ts";
 import { stagesRepository } from "./repository.ts";
 import {
   stagesService,
   type CreateStageInput,
+  type ScheduleOfValueLineInput,
   type UpdateStageInput,
 } from "./service.ts";
 
@@ -43,6 +45,7 @@ const createStageBody = {
     startDate: { type: ["string", "null"], maxLength: 40 },
     endDate: { type: ["string", "null"], maxLength: 40 },
     progressPercent: { type: "integer", minimum: 0, maximum: 100 },
+    value: { type: "number", minimum: 0 },
   },
 } as const;
 
@@ -56,6 +59,7 @@ const updateStageBody = {
     startDate: { type: ["string", "null"], maxLength: 40 },
     endDate: { type: ["string", "null"], maxLength: 40 },
     progressPercent: { type: "integer", minimum: 0, maximum: 100 },
+    value: { type: "number", minimum: 0 },
   },
 } as const;
 
@@ -72,10 +76,38 @@ const reorderBody = {
   },
 } as const;
 
+const scheduleOfValuesBody = {
+  type: "object",
+  required: ["lines"],
+  additionalProperties: false,
+  properties: {
+    lines: {
+      type: "array",
+      maxItems: 240,
+      items: {
+        type: "object",
+        required: ["period", "percent"],
+        additionalProperties: false,
+        properties: {
+          period: { type: "string", pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+          percent: { type: "number", minimum: 0, maximum: 100 },
+          billed: { type: "boolean" },
+        },
+      },
+    },
+  },
+} as const;
+
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
   const buildings = buildingsRepository(fastify.db);
-  const service = stagesService(stagesRepository(fastify.db), (projectId) =>
-    buildings.soleRealBuildingId(projectId),
+  const finances = financesRepository(fastify.db);
+  const service = stagesService(
+    stagesRepository(fastify.db),
+    (projectId) => buildings.soleRealBuildingId(projectId),
+    async (projectId) => {
+      const summary = await finances.findSummary(projectId);
+      return summary ? Number(summary.contract_sum) : 0;
+    },
   );
 
   fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
@@ -122,6 +154,40 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       await service.remove(project.id, request.params.stageId);
       return reply.status(204).send();
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/schedule-of-values",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "stages", "view");
+      return service.listScheduleOfValues(project.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string; stageId: string } }>(
+    "/projects/:id/stages/:stageId/schedule-of-values",
+    { schema: { params: stageParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "stages", "view");
+      return service.listScheduleOfValues(project.id, request.params.stageId);
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string; stageId: string };
+    Body: { lines: ScheduleOfValueLineInput[] };
+  }>(
+    "/projects/:id/stages/:stageId/schedule-of-values",
+    { schema: { params: stageParams, body: scheduleOfValuesBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
+      return service.replaceScheduleOfValues(
+        project.id,
+        request.params.stageId,
+        request.body.lines,
+      );
     },
   );
 };
