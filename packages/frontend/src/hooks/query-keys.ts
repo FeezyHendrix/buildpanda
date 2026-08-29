@@ -90,6 +90,8 @@ export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
+  payApplication: (projectId: string, invoiceId: string) =>
+    [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
 };
 
 export const paymentClaimKeys = {
@@ -128,6 +130,8 @@ export const activityKeys = {
 export const stageKeys = {
   all: (projectId: string) => ["projects", projectId, "stages"] as const,
   list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,
+  scheduleOfValues: (projectId: string, stageId?: string) =>
+    [...stageKeys.all(projectId), "schedule-of-values", stageId ?? "all"] as const,
 };
 
 export const buildingKeys = {

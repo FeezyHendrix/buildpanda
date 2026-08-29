@@ -8,6 +8,23 @@ export interface StageInput {
   startDate?: string | null;
   endDate?: string | null;
   progressPercent?: number;
+  value?: number;
+}
+
+export interface StageScheduleOfValue {
+  id: string;
+  stageId: string;
+  period: string;
+  percent: number;
+  amount: number;
+  billed: boolean;
+  sortOrder: number;
+}
+
+export interface ScheduleOfValueLineInput {
+  period: string;
+  percent: number;
+  billed?: boolean;
 }
 
 export const stagesApi = {
@@ -25,4 +42,26 @@ export const stagesApi = {
 
   reorder: (projectId: string, stageIds: string[]) =>
     api.patch<Stage[]>(`/projects/${projectId}/stages/reorder`, { stageIds }).then((r) => r.data),
+
+  scheduleOfValues: (projectId: string, stageId: string) =>
+    api
+      .get<StageScheduleOfValue[]>(`/projects/${projectId}/stages/${stageId}/schedule-of-values`)
+      .then((r) => r.data),
+
+  projectScheduleOfValues: (projectId: string) =>
+    api
+      .get<StageScheduleOfValue[]>(`/projects/${projectId}/schedule-of-values`)
+      .then((r) => r.data),
+
+  replaceScheduleOfValues: (
+    projectId: string,
+    stageId: string,
+    lines: ScheduleOfValueLineInput[],
+  ) =>
+    api
+      .put<StageScheduleOfValue[]>(
+        `/projects/${projectId}/stages/${stageId}/schedule-of-values`,
+        { lines },
+      )
+      .then((r) => r.data),
 };
