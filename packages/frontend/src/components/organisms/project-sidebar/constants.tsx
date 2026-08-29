@@ -186,7 +186,6 @@ export const SITE_CONTROL_ENTRIES: readonly (NavEntry & { helper: string })[] =
     },
   ] as const;
 
-/** Keep labels/slugs/flags in sync with `WORKSPACES` in `finance-workspace-nav.tsx`. */
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
     label: "Overview",
