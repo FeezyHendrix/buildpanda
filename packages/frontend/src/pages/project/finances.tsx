@@ -27,7 +27,6 @@ import { ContractOverviewCard } from "./finances/contract-overview-card";
 import { MaterialsProcurementCard } from "./finances/materials-procurement-card";
 import { MilestonePaymentsCard } from "./finances/milestone-payments-card";
 import { FundingTrailCard } from "./finances/funding-trail-card";
-import { FinanceWorkspaceNav } from "./finances/finance-workspace-nav";
 
 function CashFlowChronology({
   entries,
@@ -180,7 +179,6 @@ export default function ProjectFinances() {
           title="Finance"
           description="See where the project's money stands — what's budgeted, spent, and still to pay."
         />
-        <FinanceWorkspaceNav className="mt-6" />
         <Card padding="lg" className="mt-8 text-center text-sm text-gray-500">
           No finance data yet for this project.
         </Card>
@@ -209,8 +207,6 @@ export default function ProjectFinances() {
           ) : undefined
         }
       />
-
-      <FinanceWorkspaceNav className="mt-6" />
 
       <ContractOverviewCard
         projectId={project.id}

@@ -18,7 +18,6 @@ import {
   type StageStatus,
 } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
-import { FinanceWorkspaceNav } from "./finance-workspace-nav";
 import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
 import {
@@ -259,8 +258,6 @@ export default function ContractStages() {
         title="Contract & stages"
         description="What each stage of the build is worth, and which months that value gets billed in."
       />
-
-      <FinanceWorkspaceNav className="mt-6" />
 
       <section
         aria-label="Contract summary"

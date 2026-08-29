@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { canViewSection } from "@/lib/project-types";
-import { FinanceWorkspaceNav } from "./finances/finance-workspace-nav";
 import { StagePaymentsSection } from "./payments/stage-payments-section";
 import { PaymentRequestsSection } from "./payments/payment-requests-section";
 
@@ -41,8 +40,6 @@ export default function ProjectPayments() {
         title="Payments"
         description="Stage payments and the requests contractors raise against them."
       />
-
-      <FinanceWorkspaceNav className="mt-6" />
 
       <div className="mt-8 flex flex-col gap-12">
         {showStagePayments && <StagePaymentsSection />}
