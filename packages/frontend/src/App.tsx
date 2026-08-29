@@ -97,6 +97,9 @@ const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectTransactions = lazy(() => import("@/pages/project/transactions"));
 const ProjectFinalAccount = lazy(() => import("@/pages/project/final-account"));
 const ProjectContract = lazy(() => import("@/pages/project/contract"));
+const ProjectContractStages = lazy(
+  () => import("@/pages/project/finances/contract-stages"),
+);
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -311,6 +314,7 @@ export const router = createBrowserRouter([
       { path: "finances/transactions", element: pfr("commercial.transactions", "transactions", <ProjectTransactions />) },
       { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
       { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContract />) },
+      { path: "finances/contract-stages", element: pfr("commercial.finances", "finances", <ProjectContractStages />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },

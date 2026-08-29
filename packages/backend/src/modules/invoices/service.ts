@@ -16,6 +16,7 @@ import type {
   PaymentMethod,
   StoredInvoiceStatus,
 } from "./types.ts";
+import { Money } from "../../lib/money.ts";
 
 export interface InvoicePartyInput {
   name?: string | null;
@@ -136,10 +137,6 @@ function num(value: string | null | undefined): number {
   return Number(value ?? 0);
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 function optional(value: string | null | undefined): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
@@ -233,12 +230,12 @@ function toInvoice(
 ): Invoice {
   const amount = num(row.amount);
   const retainagePercentage = num(row.retainage_percentage);
-  const retainageAmount = round2((amount * retainagePercentage) / 100);
-  const payableAmount = round2(amount - retainageAmount);
+  const retainageAmount = Money.of(amount).percent(retainagePercentage).round(2).toNumber();
+  const payableAmount = Money.of(amount).sub(retainageAmount).round(2).toNumber();
   const payments = paymentRows.map(toPayment);
-  const amountPaid = round2(payments.reduce((sum, p) => sum + p.amount, 0));
+  const amountPaid = Money.sum(payments.map((p) => p.amount)).round(2).toNumber();
   const netPayable = num(row.net_payable);
-  const balanceDue = round2(netPayable - amountPaid);
+  const balanceDue = Money.of(netPayable).sub(amountPaid).round(2).toNumber();
   const workflowStatus = toWorkflowStatus(row.status);
 
   return {
@@ -306,27 +303,27 @@ function computeMoney(
   items: InvoiceLineItemInput[],
   rates: { vatRate?: number; whtRate?: number; retentionRate?: number },
 ): MoneySnapshot {
-  const subtotal = round2(
-    items.reduce((sum, item) => sum + (item.quantity ?? 1) * (item.unitRate ?? 0), 0),
-  );
+  const subtotal = Money.sum(
+    items.map((item) => Money.of(item.quantity ?? 1).mul(item.unitRate ?? 0)),
+  ).round(2);
   const vatRate = rates.vatRate ?? config.finance.vatPct;
   const whtRate = rates.whtRate ?? config.finance.whtPct;
   const retentionRate = rates.retentionRate ?? config.finance.retentionPct;
-  const vatAmount = round2((subtotal * vatRate) / 100);
-  const totalInvoiced = round2(subtotal + vatAmount);
-  const whtAmount = round2((subtotal * whtRate) / 100);
-  const retentionAmount = round2((subtotal * retentionRate) / 100);
-  const netPayable = round2(totalInvoiced - whtAmount - retentionAmount);
+  const vatAmount = subtotal.percent(vatRate).round(2);
+  const totalInvoiced = subtotal.add(vatAmount).round(2);
+  const whtAmount = subtotal.percent(whtRate).round(2);
+  const retentionAmount = subtotal.percent(retentionRate).round(2);
+  const netPayable = totalInvoiced.sub(whtAmount).sub(retentionAmount).round(2);
   return {
-    subtotal,
+    subtotal: subtotal.toNumber(),
     vatRate,
     whtRate,
     retentionRate,
-    vatAmount,
-    whtAmount,
-    retentionAmount,
-    totalInvoiced,
-    netPayable,
+    vatAmount: vatAmount.toNumber(),
+    whtAmount: whtAmount.toNumber(),
+    retentionAmount: retentionAmount.toNumber(),
+    totalInvoiced: totalInvoiced.toNumber(),
+    netPayable: netPayable.toNumber(),
   };
 }
 
@@ -342,7 +339,7 @@ function itemRecords(invoiceId: string, items: InvoiceLineItemInput[]): NewInvoi
       quantity: String(quantity),
       unit: optional(item.unit) ?? null,
       unit_rate: String(unitRate),
-      amount: String(round2(quantity * unitRate)),
+      amount: String(Money.of(quantity).mul(unitRate).round(2).toNumber()),
       budget_category_id: optional(item.budgetCategoryId) ?? null,
       is_variation: item.isVariation ?? false,
     };
@@ -629,8 +626,8 @@ export function invoicesService(repository: InvoicesRepository) {
       allocations: InvoiceBudgetAllocation[],
     ): Promise<InvoiceBudgetAllocation[]> {
       const row = await getOwnedInvoice(projectId, invoiceId);
-      const total = allocations.reduce((sum, a) => sum + a.amount, 0);
-      if (total > Number(row.net_payable) + 0.01) throw new BadRequestError("Allocated amount exceeds the invoice amount");
+      const total = Money.sum(allocations.map((a) => a.amount)).round(2);
+      if (total.gt(Money.of(row.net_payable).round(2))) throw new BadRequestError("Allocated amount exceeds the invoice amount");
       await repository.replaceAllocations(
         invoiceId,
         allocations.map((a) => ({
