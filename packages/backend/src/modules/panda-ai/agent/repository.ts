@@ -35,6 +35,24 @@ export function agentRepository(db: Knex) {
         .select("id", "name", "status", "date_range", "sort_order");
     },
 
+    scheduleOfValues(projectId: string) {
+      return db("stage_schedule_of_values as sov")
+        .leftJoin("project_phases as p", "p.id", "sov.stage_id")
+        .where("sov.project_id", projectId)
+        .orderBy([
+          { column: "p.sort_order", order: "asc" },
+          { column: "sov.sort_order", order: "asc" },
+        ])
+        .select(
+          "p.name as stage_name",
+          "p.value as stage_value",
+          "sov.period",
+          "sov.percent",
+          "sov.amount",
+          "sov.billed",
+        );
+    },
+
     buildings(projectId: string) {
       return db("buildings")
         .where({ project_id: projectId, kind: "real" })
