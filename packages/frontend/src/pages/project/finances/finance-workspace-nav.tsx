@@ -5,32 +5,23 @@ import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { canViewSection } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 
-/**
- * Single in-Finance navigation. The project sidebar now shows one "Finance"
- * entry; this hub is how users move between the finance areas without a nine-item
- * submenu. Each area is gated by the same flag + resource the sidebar used, so
- * nobody sees an area they couldn't reach before, and nothing is stranded.
- */
+// Lean underline tab bar for the finance section — mirrors the sidebar Finance
+// group (same six areas, flags and resources) so the two navigations agree.
+// Same gating as the sidebar, so nothing is shown a user couldn't already reach.
 interface Workspace {
   label: string;
   slug: string;
-  helper: string;
   flag?: string;
   resource?: string;
-  /** Primary workspaces render as prominent tabs; the rest as secondary links. */
-  primary?: boolean;
 }
 
 const WORKSPACES: readonly Workspace[] = [
-  { label: "Overview", slug: "finances", helper: "Money position", flag: "commercial.finances", resource: "finances", primary: true },
-  { label: "Invoices", slug: "finances/invoices", helper: "Send & track invoices", flag: "commercial.invoices", resource: "finances", primary: true },
-  { label: "Expenses", slug: "finances/transactions", helper: "Site expenses & receipts", flag: "commercial.transactions", resource: "transactions", primary: true },
-  { label: "Payments", slug: "finances/payments", helper: "Stage payments & requests", flag: "commercial.finances", resource: "finances", primary: true },
-  { label: "Contract", slug: "finances/contract", helper: "Amount, changes & terms", flag: "commercial.finances", resource: "finances", primary: true },
-  { label: "Payment requests", slug: "finances/payment-claims", helper: "Contractor requests", flag: "commercial.paymentClaims", resource: "finances" },
-  { label: "Budget", slug: "finances/budget", helper: "Planning & allocation", flag: "commercial.budget", resource: "finances" },
-  { label: "Final account", slug: "finances/final-account", helper: "Closeout summary", flag: "commercial.finances", resource: "finances" },
-  { label: "Orders", slug: "finances/purchase-orders", helper: "Committed spend", flag: "commercial.purchaseOrders", resource: "finances" },
+  { label: "Overview", slug: "finances", flag: "commercial.finances", resource: "finances" },
+  { label: "Contract & Stages", slug: "finances/contract-stages", flag: "commercial.finances", resource: "finances" },
+  { label: "Invoices", slug: "finances/invoices", flag: "commercial.invoices", resource: "finances" },
+  { label: "Payments", slug: "finances/payments", flag: "commercial.finances", resource: "finances" },
+  { label: "Expenses", slug: "finances/transactions", flag: "commercial.transactions", resource: "transactions" },
+  { label: "Change Orders", slug: "change-requests", flag: "workflow.changeRequests", resource: "change-requests" },
 ] as const;
 
 export function FinanceWorkspaceNav({ className }: { className?: string }) {
@@ -48,8 +39,6 @@ export function FinanceWorkspaceNav({ className }: { className?: string }) {
     () => WORKSPACES.filter((w) => isOn(w.flag) && canViewSection(access, w.flag, w.resource)),
     [enabled, access],
   );
-  const primary = visible.filter((w) => w.primary);
-  const secondary = visible.filter((w) => !w.primary);
 
   const hrefFor = (slug: string) => `/project/${project.id}/${slug}`;
   const isActive = (slug: string) => {
@@ -62,53 +51,37 @@ export function FinanceWorkspaceNav({ className }: { className?: string }) {
   if (visible.length <= 1) return null;
 
   return (
-    <nav aria-label="Finance areas" className={cn("flex flex-col gap-3", className)}>
-      <div className="flex flex-wrap gap-2">
-        {primary.map((w) => {
-          const active = isActive(w.slug);
-          return (
-            <Link
-              key={w.slug}
-              to={hrefFor(w.slug)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "group flex flex-col rounded-xl border px-4 py-2.5 transition-colors",
-                "outline-none focus-visible:ring-2 focus-visible:ring-primary-500/20",
-                active
-                  ? "border-transparent bg-[#004DE7] text-white"
-                  : "border-[#EDEDED] bg-white text-gray-700 hover:border-[#004DE7]/40 hover:text-gray-900",
-              )}
-            >
-              <span className="text-sm font-semibold">{w.label}</span>
-              <span className={cn("text-[11px]", active ? "text-white/80" : "text-gray-500")}>
-                {w.helper}
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {secondary.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px]">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">More</span>
-          {secondary.map((w) => {
-            const active = isActive(w.slug);
-            return (
-              <Link
-                key={w.slug}
-                to={hrefFor(w.slug)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "font-medium transition-colors outline-none focus-visible:underline",
-                  active ? "text-[#004DE7]" : "text-gray-500 hover:text-gray-900",
-                )}
-              >
-                {w.label}
-              </Link>
-            );
-          })}
-        </div>
+    <nav
+      aria-label="Finance areas"
+      className={cn(
+        "flex items-center gap-0.5 overflow-x-auto border-b border-[#EDEDED] no-scrollbar",
+        className,
       )}
+    >
+      {visible.map((w) => {
+        const active = isActive(w.slug);
+        return (
+          <Link
+            key={w.slug}
+            to={hrefFor(w.slug)}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "relative whitespace-nowrap px-3.5 py-2.5 text-sm font-medium transition-colors",
+              "outline-none focus-visible:ring-2 focus-visible:ring-primary-500/20",
+              active ? "text-[#004DE7]" : "text-gray-500 hover:text-gray-900",
+            )}
+          >
+            {w.label}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "absolute inset-x-3 -bottom-px h-0.5 rounded-full",
+                active ? "bg-[#004DE7]" : "bg-transparent",
+              )}
+            />
+          </Link>
+        );
+      })}
     </nav>
   );
 }
