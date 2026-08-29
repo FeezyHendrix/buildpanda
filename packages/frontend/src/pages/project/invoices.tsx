@@ -1,8 +1,8 @@
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -11,23 +11,38 @@ import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInvoices } from "@/hooks/use-invoices";
+import { useProjectInvoices, type InvoiceScanResult } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "./invoices/invoice-card";
 import { SummaryTile } from "./invoices/summary-tile";
+import { InvoiceComposer } from "./invoices/invoice-composer";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
 
 export default function ProjectInvoices() {
   const { project, access } = useProjectContext();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [scanOpen, setScanOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
     project.id,
   );
+
+  // The retired /invoices/new route (and any deep link) opens the composer via
+  // ?compose=1; consume the flag so a refresh doesn't reopen it.
+  useEffect(() => {
+    if (canManage && searchParams.get("compose") === "1") {
+      setScanResult(null);
+      setComposerOpen(true);
+      searchParams.delete("compose");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const summary = useMemo(() => {
     return invoices.reduce(
@@ -42,9 +57,22 @@ export default function ProjectInvoices() {
     );
   }, [invoices]);
 
-  function goToCreate(): void {
-    navigate(`/project/${project.id}/finances/invoices/new`);
+  function openComposer(): void {
+    setScanResult(null);
+    setComposerOpen(true);
   }
+
+  const actions = canManage ? (
+    <div className="flex items-center gap-2">
+      <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+        Scan invoice
+      </Button>
+      <Button variant="primary" size="md" onClick={openComposer}>
+        <PlusIcon className="size-4" />
+        Send invoice
+      </Button>
+    </div>
+  ) : undefined;
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
@@ -58,19 +86,7 @@ export default function ProjectInvoices() {
       <PageHeader
         title="Invoices"
         description="Send invoices and record the bills you pay on this project."
-        actions={
-          canManage ? (
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
-                Scan invoice
-              </Button>
-              <Button variant="primary" size="md" onClick={goToCreate}>
-                <PlusIcon className="size-4" />
-                Send invoice
-              </Button>
-            </div>
-          ) : undefined
-        }
+        actions={actions}
       />
 
       <section
@@ -119,19 +135,7 @@ export default function ProjectInvoices() {
               icon={<FinancesIcon className="size-6" />}
               title="No invoices yet"
               description="Send an invoice or record a bill to track what's billed, held back, and paid."
-              action={
-                canManage ? (
-                  <div className="flex items-center gap-2">
-                    <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
-                      Scan invoice
-                    </Button>
-                    <Button variant="primary" size="md" onClick={goToCreate}>
-                      <PlusIcon className="size-4" />
-                      Send invoice
-                    </Button>
-                  </div>
-                ) : undefined
-              }
+              action={actions}
             />
           </Card>
         ) : (
@@ -148,11 +152,26 @@ export default function ProjectInvoices() {
           </div>
         )}
       </section>
+
       <ScanInvoiceDialog
         projectId={project.id}
         open={scanOpen}
         onOpenChange={setScanOpen}
+        onScanned={(result) => {
+          setScanResult(result);
+          setComposerOpen(true);
+        }}
       />
+
+      {canManage && (
+        <InvoiceComposer
+          projectId={project.id}
+          currency={currency}
+          open={composerOpen}
+          onOpenChange={setComposerOpen}
+          scan={scanResult}
+        />
+      )}
     </div>
   );
 }
