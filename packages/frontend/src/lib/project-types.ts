@@ -537,6 +537,7 @@ export interface Stage {
   endDate: string | null;
   dateRange: string | null;
   progressPercent: number;
+  value: number;
   sortOrder: number;
 }
 

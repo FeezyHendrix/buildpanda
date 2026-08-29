@@ -27,7 +27,6 @@ import { ContractOverviewCard } from "./finances/contract-overview-card";
 import { MaterialsProcurementCard } from "./finances/materials-procurement-card";
 import { MilestonePaymentsCard } from "./finances/milestone-payments-card";
 import { FundingTrailCard } from "./finances/funding-trail-card";
-import { BillingAuditCard } from "./finances/billing-audit-card";
 import { FinanceWorkspaceNav } from "./finances/finance-workspace-nav";
 
 function CashFlowChronology({
@@ -330,8 +329,6 @@ export default function ProjectFinances() {
       )}
 
       <FundingTrailCard projectId={project.id} currency={finances.currency} />
-
-      <BillingAuditCard />
 
       <AddCashFlowDialog
         open={cfOpen}
