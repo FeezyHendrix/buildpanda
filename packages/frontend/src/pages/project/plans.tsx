@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
 import { icons } from "@/assets/icons/icons";
@@ -29,17 +30,28 @@ export default function ProjectPlans() {
         title="Plans"
         description="Drawings and schematics with full revision history."
         actions={
-          canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-            >
-              <ReactSVG src={icons.upload} />
-              Upload plan
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <Link to="/plan-review">
+              <Button
+                variant="secondary"
+                size="md"
+                className="h-[32px] cursor-pointer text-[13px] font-semibold px-[20px] py-[12px]"
+              >
+                Review workspace
+              </Button>
+            </Link>
+            {canManage ? (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => uploader.handleOpenChange(true)}
+                className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              >
+                <ReactSVG src={icons.upload} />
+                Upload plan
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
