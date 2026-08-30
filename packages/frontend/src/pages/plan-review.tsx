@@ -107,11 +107,11 @@ const TOOLS: { id: Tool; label: string; shortcut: string; Icon: typeof Hand }[] 
 ];
 
 const MARKUP_COLORS = [
+  { value: "#004DE7", label: "Blue" },
   { value: "#ef4444", label: "Red" },
   { value: "#f97316", label: "Orange" },
   { value: "#eab308", label: "Yellow" },
   { value: "#22c55e", label: "Green" },
-  { value: "#004DE7", label: "Blue" },
   { value: "#111827", label: "Black" },
 ];
 
@@ -217,12 +217,12 @@ function SheetImage({
   sheet,
   className,
   style,
-  onAspectChange,
+  onRender,
 }: {
   sheet: Sheet;
   className?: string;
   style?: React.CSSProperties;
-  onAspectChange?: (aspect: number) => void;
+  onRender?: (state: { aspect: number; detectedScale: { label: string; feetPerPct: number } | null }) => void;
 }) {
   if (sheet.kind === "image" && sheet.src) {
     return (
@@ -234,7 +234,9 @@ function SheetImage({
         style={style}
         onLoad={(e) => {
           const el = e.currentTarget;
-          if (el.naturalWidth > 0) onAspectChange?.(el.naturalHeight / el.naturalWidth);
+          if (el.naturalWidth > 0) {
+            onRender?.({ aspect: el.naturalHeight / el.naturalWidth, detectedScale: null });
+          }
         }}
       />
     );
@@ -245,7 +247,9 @@ function SheetImage({
         url={sheet.src}
         title={sheet.alt}
         className={className}
-        onRenderStateChange={(state) => onAspectChange?.(state.aspect)}
+        onRenderStateChange={(state) =>
+          onRender?.({ aspect: state.aspect, detectedScale: state.detectedScale })
+        }
       />
     );
   }
@@ -412,7 +416,7 @@ export default function DrawingReviewWorkspace() {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
   const [sheetRevisions, setSheetRevisions] = useState<Record<string, string>>({});
   const [activeTool, setActiveTool] = useState<Tool>("select");
-  const [markupColor, setMarkupColor] = useState("#ef4444");
+  const [markupColor, setMarkupColor] = useState("#004DE7");
   const [markupVisible, setMarkupVisible] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -444,7 +448,7 @@ export default function DrawingReviewWorkspace() {
   const [isPanning, setIsPanning] = useState(false);
   const [imgAspect, setImgAspect] = useState(0.775);
   const [sheetScales, setSheetScales] = useState<Record<string, number>>({});
-  const [isAutoDetectingScale, setIsAutoDetectingScale] = useState(false);
+  const [scaleLabels, setScaleLabels] = useState<Record<string, string>>({});
   const [calibrateOpen, setCalibratePopoverOpen] = useState(false);
   const [calibrateInput, setCalibrateInput] = useState("");
 
@@ -590,16 +594,14 @@ export default function DrawingReviewWorkspace() {
     };
   }
 
-  function handleAutoDetectScale(): void {
-    if (!sheet) return;
-    setIsAutoDetectingScale(true);
-    window.setTimeout(() => {
-      setIsAutoDetectingScale(false);
-      // Simulate Panda AI finding a standard scale like 1/4" = 1'-0" on the drawing
-      // which corresponds to ~0.0833 feet per 1% on a typical 36" wide sheet
-      setSheetScales((s) => ({ ...s, [sheet.id]: 0.12 }));
-      import("@/lib/toast").then((m) => m.toast("Panda AI detected scale: 1/4\" = 1'-0\"", "success"));
-    }, 1500);
+  function handleSheetRender(state: { aspect: number; detectedScale: { label: string; feetPerPct: number } | null }): void {
+    setImgAspect(state.aspect);
+    if (!sheet || !state.detectedScale) return;
+    const detected = state.detectedScale;
+    setSheetScales((current) =>
+      current[sheet.id] ? current : { ...current, [sheet.id]: detected.feetPerPct },
+    );
+    setScaleLabels((current) => (current[sheet.id] ? current : { ...current, [sheet.id]: detected.label }));
   }
 
   function handleCalibrateSubmit(): void {
@@ -614,6 +616,7 @@ export default function DrawingReviewWorkspace() {
     const distPct = Math.hypot(dxPct, dyPct);
     
     setSheetScales((s) => ({ ...s, [sheet.id]: val / distPct }));
+    setScaleLabels((s) => ({ ...s, [sheet.id]: "calibrated" }));
     setCalibratePopoverOpen(false);
     setCalibrateInput("");
     import("@/lib/toast").then((m) => m.toast("Scale calibrated", "success"));
@@ -1019,18 +1022,20 @@ export default function DrawingReviewWorkspace() {
           <span className="hidden shrink-0 items-center gap-1.5 text-xs text-gray-500 sm:flex">
             {currentRevision}
             {sheet.scale ? ` · ${sheet.scale}` : ""}
-            {!sheet.scale && sheetScales[sheet.id] && " · Calibrated"}
-            {!sheet.scale && !sheetScales[sheet.id] && (
-              <button
-                type="button"
-                onClick={handleAutoDetectScale}
-                disabled={isAutoDetectingScale}
-                title="Use Panda AI to detect scale from the drawing"
-                className="ml-1.5 flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
-              >
-                {isAutoDetectingScale ? <span className="size-3 animate-spin rounded-full border-2 border-primary-300 border-t-primary-700" /> : <Sparkles size={11} />}
-                Auto-detect
-              </button>
+            {!sheet.scale && scaleLabels[sheet.id] === "calibrated" && (
+              <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
+                <Ruler size={10} /> Calibrated
+              </span>
+            )}
+            {!sheet.scale && scaleLabels[sheet.id] && scaleLabels[sheet.id] !== "calibrated" && (
+              <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
+                <Sparkles size={10} /> {scaleLabels[sheet.id]} from sheet
+              </span>
+            )}
+            {!sheet.scale && !scaleLabels[sheet.id] && (
+              <span className="flex items-center gap-1 rounded bg-[#F6F6F6] px-1.5 py-0.5 text-gray-500">
+                No scale on sheet — measure, then Calibrate
+              </span>
             )}
           </span>
         </div>
@@ -1321,7 +1326,7 @@ export default function DrawingReviewWorkspace() {
                   <SheetImage
                     sheet={sheet}
                     className="block w-full rounded-lg"
-                    onAspectChange={setImgAspect}
+                    onRender={handleSheetRender}
                   />
 
                   {blendReady && compareSheet?.src && (
