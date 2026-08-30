@@ -354,6 +354,30 @@ export function agentRepository(db: Knex) {
         .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
     },
 
+    drawingMarkupsOpen(projectId: string) {
+      return db("drawing_markups as m")
+        .join("project_documents as d", "d.id", "m.document_id")
+        .leftJoin("document_versions as v", "v.id", "m.document_version_id")
+        .leftJoin("drawing_markup_comments as c", "c.markup_id", "m.id")
+        .leftJoin("user as u", "u.id", "c.created_by_id")
+        .leftJoin("rfis as r", "r.source_markup_id", "m.id")
+        .where("m.project_id", projectId)
+        .whereNull("m.resolved_at")
+        .orderBy("m.created_at", "desc")
+        .limit(50)
+        .select(
+          "m.id",
+          "d.file_name as sheet",
+          "v.revision_label as revision",
+          db.raw("(d.current_version_id = m.document_version_id) as on_current_revision"),
+          "m.kind",
+          "c.body as comment",
+          "u.name as raisedBy",
+          "m.created_at",
+          "r.id as rfiId",
+        );
+    },
+
     actionItemsOpen(projectId: string) {
       return db("action_items as ai")
         .leftJoin("user as u", "u.id", "ai.assignee_id")

@@ -742,6 +742,25 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_drawing_markups", "Get unresolved markup raised on the project's drawings — redlines, revision clouds and pinned comments, with the sheet and revision they were raised against and whether that revision has since been superseded. Use for 'what is outstanding on the drawings', 'what did the architect flag', 'which comments are on a superseded revision', or 'which RFIs came off a drawing'."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const markups = await repo.drawingMarkupsOpen(ctx.projectId);
+      return {
+        output: {
+          markups: markups.map((m) => ({
+            sheet: m.sheet,
+            revision: m.revision,
+            onCurrentRevision: Boolean(m.on_current_revision),
+            kind: m.kind,
+            comment: m.comment,
+            raisedBy: m.raisedBy,
+            raisedOn: m.created_at,
+            rfiRaised: Boolean(m.rfiId),
+          })),
+        },
+      };
+    }),
+
     tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. Use for questions about changes, variations, scope changes, or why the budget or timeline is moving."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const changes = await repo.changeRequests(ctx.projectId);
