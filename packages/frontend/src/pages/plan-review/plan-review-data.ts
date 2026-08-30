@@ -12,6 +12,9 @@ export interface Sheet {
   kind: SheetKind;
   src: string | null;
   alt: string;
+  /** Null for the bundled demo sheets, which have no project document behind them. */
+  documentId: string | null;
+  documentVersionId: string | null;
 }
 
 export interface Pt {
@@ -188,6 +191,8 @@ export const MOCK_SHEETS: Sheet[] = MOCK_META.map((meta, index) => ({
   kind: "image",
   src: planImage(index, meta, meta.accent),
   alt: `Architectural floor plan, sheet ${meta.code}, ${meta.revision}, ${meta.title.toLowerCase()}`,
+  documentId: null,
+  documentVersionId: null,
 }));
 
 // ── Real project plans → sheets ────────────────────────────────────────────
@@ -213,5 +218,7 @@ export function adaptPlanDocuments(documents: ProjectDocument[], projectId: stri
       kind: sheetKind(doc.fileName),
       src: doc.currentVersionId ? documentVersionViewUrl(projectId, doc.id, doc.currentVersionId) : null,
       alt: `Plan sheet ${doc.fileName}, ${doc.category}`,
+      documentId: doc.id,
+      documentVersionId: doc.currentVersionId,
     }));
 }

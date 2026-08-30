@@ -46,7 +46,20 @@ import {
 } from "lucide-react";
 import { Spinner } from "@/components/atoms/spinner";
 import { useProjectDocuments } from "@/hooks/use-documents";
+import { useParticipants } from "@/hooks/use-participants";
+import {
+  useAddMarkupComment,
+  useCreateDrawingMarkup,
+  useDeleteDrawingMarkup,
+  useDrawingMarkups,
+} from "@/hooks/use-drawing-markup";
+import type { DrawingMarkup, MarkupGeometry } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
+import {
+  CommentComposerPopover,
+  CommentPin,
+  type CommentCapture,
+} from "./plan-review/plan-review-comment";
 import {
   MOCK_SHEETS,
   adaptPlanDocuments,
@@ -82,6 +95,25 @@ interface Pin {
   y: number;
   color: string;
   noteId: string | null;
+}
+
+function toLocalMarkup(server: DrawingMarkup[]): { pins: Pin[]; markups: Markup[] } {
+  const pins: Pin[] = [];
+  const markups: Markup[] = [];
+  for (const item of server) {
+    const base = { id: item.id, sheetId: item.documentId, color: item.color };
+    const g = item.geometry;
+    if (g.kind === "pin") {
+      pins.push({ ...base, x: g.at.x, y: g.at.y, noteId: item.comments[0]?.id ?? null });
+    } else if (g.kind === "pen") {
+      markups.push({ ...base, tool: "pen", points: g.points });
+    } else if (g.kind === "cloud") {
+      markups.push({ ...base, tool: "cloud", rect: g.rect });
+    } else {
+      markups.push({ ...base, tool: "measure", a: g.a, b: g.b });
+    }
+  }
+  return { pins, markups };
 }
 
 interface Note {
@@ -217,12 +249,18 @@ function SheetImage({
   sheet,
   className,
   style,
+  pageNumber = 1,
   onRender,
 }: {
   sheet: Sheet;
   className?: string;
   style?: React.CSSProperties;
-  onRender?: (state: { aspect: number; detectedScale: { label: string; feetPerPct: number } | null }) => void;
+  pageNumber?: number;
+  onRender?: (state: {
+    aspect: number;
+    detectedScale: { label: string; feetPerPct: number } | null;
+    pageCount?: number;
+  }) => void;
 }) {
   if (sheet.kind === "image" && sheet.src) {
     return (
@@ -247,8 +285,13 @@ function SheetImage({
         url={sheet.src}
         title={sheet.alt}
         className={className}
+        pageNumber={pageNumber}
         onRenderStateChange={(state) =>
-          onRender?.({ aspect: state.aspect, detectedScale: state.detectedScale })
+          onRender?.({
+            aspect: state.aspect,
+            detectedScale: state.detectedScale,
+            pageCount: state.pageCount,
+          })
         }
       />
     );
@@ -457,6 +500,9 @@ export default function DrawingReviewWorkspace() {
   const [noteDraft, setNoteDraft] = useState("");
   const [pendingPinId, setPendingPinId] = useState<string | null>(null);
   const [notesPanelOpen, setNotesPanelOpen] = useState(true);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfPageCount, setPdfPageCount] = useState(1);
+  const [commentAnchor, setCommentAnchor] = useState<{ x: number; y: number; at: Pt } | null>(null);
 
   const [recStatus, setRecStatus] = useState<"idle" | "recording" | "saved">("idle");
   const [recSeconds, setRecSeconds] = useState(0);
@@ -482,8 +528,31 @@ export default function DrawingReviewWorkspace() {
   const sheet = hasSheets ? sheetAt(sheets, activeSheetIndex) : null;
   const compareSheet = hasSheets ? sheetAt(sheets, compareSheetIndex) : null;
   const currentRevision = sheet ? (sheetRevisions[sheet.id] ?? sheet.revision) : "";
-  const sheetPins = sheet ? pins.filter((p) => p.sheetId === sheet.id) : [];
-  const sheetMarkups = sheet ? markups.filter((m) => m.sheetId === sheet.id) : [];
+
+  const { data: participants = [] } = useParticipants(projectId);
+  const assignees = useMemo(
+    () =>
+      participants
+        .filter((p) => p.userId && p.status === "active")
+        .map((p) => ({ id: p.userId!, name: p.name ?? p.email })),
+    [participants],
+  );
+
+  const versionId = sheet?.documentVersionId ?? null;
+  const markupQuery = useDrawingMarkups(projectId, versionId, pdfPage);
+  const createMarkup = useCreateDrawingMarkup(projectId);
+  const addMarkupComment = useAddMarkupComment(projectId);
+  const deleteMarkup = useDeleteDrawingMarkup(projectId);
+
+  /** Server markup is the source of truth; local state only holds the in-progress draft. */
+  const persisted = useMemo(() => toLocalMarkup(markupQuery.data ?? []), [markupQuery.data]);
+  const sheetPins = sheet ? [...persisted.pins, ...pins.filter((p) => p.sheetId === sheet.id)] : [];
+  const sheetMarkups = sheet
+    ? [...persisted.markups, ...markups.filter((m) => m.sheetId === sheet.id)]
+    : [];
+
+  const isSaving = createMarkup.isPending || addMarkupComment.isPending || deleteMarkup.isPending;
+  const saveError = createMarkup.error ?? addMarkupComment.error ?? deleteMarkup.error;
   const commentCount = notes.filter((n) => n.type === "comment").length;
   const recordingCount = notes.filter((n) => n.type === "recording").length;
   const orderedNotes = useMemo(() => [...notes].sort((a, b) => b.createdAt - a.createdAt), [notes]);
@@ -594,8 +663,13 @@ export default function DrawingReviewWorkspace() {
     };
   }
 
-  function handleSheetRender(state: { aspect: number; detectedScale: { label: string; feetPerPct: number } | null }): void {
+  function handleSheetRender(state: {
+    aspect: number;
+    detectedScale: { label: string; feetPerPct: number } | null;
+    pageCount?: number;
+  }): void {
     setImgAspect(state.aspect);
+    if (state.pageCount !== undefined) setPdfPageCount(state.pageCount);
     if (!sheet || !state.detectedScale) return;
     const detected = state.detectedScale;
     setSheetScales((current) =>
@@ -624,7 +698,10 @@ export default function DrawingReviewWorkspace() {
 
   function deleteSelection(): void {
     if (!selection) return;
-    if (selection.kind === "pin") {
+    const isPersisted = (markupQuery.data ?? []).some((m) => m.id === selection.id);
+    if (isPersisted) {
+      deleteMarkup.mutate(selection.id);
+    } else if (selection.kind === "pin") {
       setPins((p) => p.filter((pin) => pin.id !== selection.id));
       setNotes((n) => n.map((note) => (note.pinId === selection.id ? { ...note, pinId: null } : note)));
       if (pendingPinId === selection.id) setPendingPinId(null);
@@ -634,27 +711,48 @@ export default function DrawingReviewWorkspace() {
     setSelection(null);
   }
 
-  // ── Pins / comments ──
-  function finalizePendingPin(): void {
-    if (!pendingPinId) return;
-    const pin = pins.find((p) => p.id === pendingPinId);
-    setPendingPinId(null);
-    if (!pin || pin.noteId) return;
-    const noteId = generateId("note");
-    setNotes((n) => [
-      ...n,
-      {
-        id: noteId,
-        type: "comment",
-        text: "Pinned comment",
-        author: "You",
-        createdAt: Date.now(),
-        sheetId: pin.sheetId,
-        pinId: pin.id,
-        durationSeconds: null,
-      },
-    ]);
-    setPins((current) => current.map((p) => (p.id === pin.id ? { ...p, noteId } : p)));
+  /**
+   * Writes markup through the API when the sheet is a real project document.
+   * Demo sheets have no document behind them, so they stay in local state and
+   * the status bar reports them as unsaved rather than claiming otherwise.
+   */
+  async function persistMarkup(
+    tool: "pen" | "cloud" | "measure" | "pin",
+    geometry: MarkupGeometry,
+  ): Promise<string | null> {
+    if (!sheet) return null;
+    if (!projectId || !sheet.documentId || !sheet.documentVersionId) {
+      const local = { id: generateId("mk"), sheetId: sheet.id, color: markupColor };
+      if (geometry.kind === "pen") setMarkups((m) => [...m, { ...local, tool: "pen", points: geometry.points }]);
+      if (geometry.kind === "cloud") setMarkups((m) => [...m, { ...local, tool: "cloud", rect: geometry.rect }]);
+      if (geometry.kind === "measure") setMarkups((m) => [...m, { ...local, tool: "measure", a: geometry.a, b: geometry.b }]);
+      if (geometry.kind === "pin") setPins((p) => [...p, { ...local, x: geometry.at.x, y: geometry.at.y, noteId: null }]);
+      return local.id;
+    }
+    const created = await createMarkup.mutateAsync({
+      documentId: sheet.documentId,
+      documentVersionId: sheet.documentVersionId,
+      pageNo: pdfPage,
+      kind: tool,
+      geometry,
+      color: markupColor,
+    });
+    return created.id;
+  }
+
+  async function submitPinComment(capture: CommentCapture): Promise<void> {
+    const anchor = commentAnchor;
+    if (!anchor) return;
+    const markupId = await persistMarkup("pin", { kind: "pin", at: anchor.at });
+    if (markupId && projectId && sheet?.documentVersionId) {
+      await addMarkupComment.mutateAsync({
+        markupId,
+        body: capture.text,
+        assigneeId: capture.assigneeId,
+        mediaDurationSeconds: capture.mediaDurationSeconds,
+      });
+    }
+    setCommentAnchor(null);
   }
 
   function handleDrawingClick(e: React.MouseEvent<HTMLDivElement>): void {
@@ -667,18 +765,7 @@ export default function DrawingReviewWorkspace() {
     if (!point) return;
 
     if (activeTool === "comment") {
-      finalizePendingPin();
-      const pin: Pin = {
-        id: generateId("pin"),
-        sheetId: sheet.id,
-        x: point.x,
-        y: point.y,
-        color: markupColor,
-        noteId: null,
-      };
-      setPins((p) => [...p, pin]);
-      setPendingPinId(pin.id);
-      composerRef.current?.focus();
+      setCommentAnchor({ x: e.clientX, y: e.clientY + 14, at: point });
       return;
     }
 
@@ -687,10 +774,7 @@ export default function DrawingReviewWorkspace() {
         setMeasureStart(point);
         setMeasureCursor(point);
       } else {
-        setMarkups((m) => [
-          ...m,
-          { id: generateId("mk"), sheetId: sheet.id, tool: "measure", color: markupColor, a: measureStart, b: point },
-        ]);
+        void persistMarkup("measure", { kind: "measure", a: measureStart, b: point });
         setMeasureStart(null);
         setMeasureCursor(null);
       }
@@ -790,12 +874,10 @@ export default function DrawingReviewWorkspace() {
     }
     if (!sheet) return;
     if (activeTool === "pen" && penPoints.current.length > 1) {
-      const points = penPoints.current;
-      setMarkups((m) => [...m, { id: generateId("mk"), sheetId: sheet.id, tool: "pen", color: markupColor, points }]);
+      void persistMarkup("pen", { kind: "pen", points: penPoints.current });
     }
     if (activeTool === "cloud" && draft?.tool === "cloud" && draft.rect.w > 1 && draft.rect.h > 1) {
-      const rect = draft.rect;
-      setMarkups((m) => [...m, { id: generateId("mk"), sheetId: sheet.id, tool: "cloud", color: markupColor, rect }]);
+      void persistMarkup("cloud", { kind: "cloud", rect: draft.rect });
     }
     penPoints.current = [];
     cloudOrigin.current = null;
@@ -939,12 +1021,17 @@ export default function DrawingReviewWorkspace() {
   const noteResults = query ? notes.filter((n) => n.text.toLowerCase().includes(query)) : [];
   const resultCount = sheetResults.length + noteResults.length;
 
-  const saveState =
-    recStatus === "recording"
-      ? `Recording walkthrough · ${formatClock(recSeconds)}`
-      : savedFlash
-        ? "Walkthrough saved"
-        : "All changes saved";
+  const canPersist = Boolean(projectId && sheet?.documentVersionId);
+  function describeSaveState(): string {
+    if (recStatus === "recording") return `Recording walkthrough · ${formatClock(recSeconds)}`;
+    if (savedFlash) return "Walkthrough saved";
+    if (saveError) return "Could not save — retry";
+    if (isSaving) return "Saving…";
+    if (!canPersist) return "Demo sheet — markup not saved";
+    if (markupQuery.isPending) return "Loading markup…";
+    return "All changes saved";
+  }
+  const saveState = describeSaveState();
   const contextState = split.open
     ? `Comparing ${sheetAt(sheets, split.primaryIndex).code} / ${sheetAt(sheets, split.compareIndex).code}`
     : sheet
@@ -1326,6 +1413,7 @@ export default function DrawingReviewWorkspace() {
                   <SheetImage
                     sheet={sheet}
                     className="block w-full rounded-lg"
+                    pageNumber={pdfPage}
                     onRender={handleSheetRender}
                   />
 
@@ -1373,28 +1461,20 @@ export default function DrawingReviewWorkspace() {
                   )}
 
                   {markupVisible &&
-                    sheetPins.map((pin) => {
-                      const number = sheetPins.indexOf(pin) + 1;
-                      const isSelected = selection?.kind === "pin" && selection.id === pin.id;
-                      return (
-                        <span
-                          key={pin.id}
-                          title={`Pin ${number}`}
-                          onPointerDown={(e) => handlePinPointerDown(e, pin.id)}
-                          onClick={(e) => {
-                            if (activeTool === "select") e.stopPropagation();
-                          }}
-                          className={cn(
-                            "absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white shadow-lg",
-                            activeTool === "select" && "cursor-move",
-                            isSelected && "ring-2 ring-primary-500 ring-offset-1",
-                          )}
-                          style={{ left: `${pin.x}%`, top: `${pin.y}%`, backgroundColor: pin.color }}
-                        >
-                          {number}
-                        </span>
-                      );
-                    })}
+                    sheetPins.map((pin, index) => (
+                      <CommentPin
+                        key={pin.id}
+                        color={pin.color}
+                        label={`Comment ${index + 1}`}
+                        selected={selection?.kind === "pin" && selection.id === pin.id}
+                        draggable={activeTool === "select"}
+                        onPointerDown={(e) => handlePinPointerDown(e, pin.id)}
+                        onClick={(e) => {
+                          if (activeTool === "select") e.stopPropagation();
+                        }}
+                        style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                      />
+                    ))}
 
                   {(recStatus === "recording" || (recStatus === "saved" && trace.length > 1)) && (
                     <svg
@@ -1666,35 +1746,54 @@ export default function DrawingReviewWorkspace() {
             </div>
           )}
 
-          {/* ── Floating record button ── */}
-          <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-1.5 md:bottom-20">
-            {recStatus === "idle" && (
-              <span className="rounded-md bg-white/95 px-2 py-1 text-[10px] text-gray-500 shadow-sm ring-1 ring-black/5">
-                Captures your voice and mouse movement over the drawing
-              </span>
-            )}
+          {recStatus === "recording" && (
             <button
               type="button"
-              aria-label={recStatus === "recording" ? "Stop recording" : "Record walkthrough"}
-              title={recStatus === "recording" ? "Stop recording" : "Record walkthrough"}
-              onClick={() => (recStatus === "recording" ? stopRecording() : startRecording())}
-              className={cn(
-                "flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-xl transition-colors",
-                recStatus === "recording" ? "bg-red-600 text-white hover:bg-red-500" : "bg-primary-600 text-white hover:bg-primary-700",
-              )}
+              aria-label="Stop recording"
+              title="Stop recording"
+              onClick={stopRecording}
+              className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl hover:bg-red-500"
             >
-              {recStatus === "recording" ? (
-                <>
-                  <span className="size-2 animate-pulse rounded-full bg-white" />
-                  <Square size={13} fill="currentColor" /> Stop · {formatClock(recSeconds)}
-                </>
-              ) : (
-                <>
-                  <Video size={15} /> Record Walkthrough
-                </>
-              )}
+              <span className="size-2 animate-pulse rounded-full bg-white" />
+              <Square size={13} fill="currentColor" /> Stop · {formatClock(recSeconds)}
             </button>
-          </div>
+          )}
+
+          {/* ── Page switcher — fixed to the viewer, never inside the pan/zoom surface ── */}
+          {pdfPageCount > 1 && !split.open && (
+            <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/95 p-1 shadow-xl ring-1 ring-black/5">
+              <IconBtn
+                label="Previous page"
+                disabled={pdfPage <= 1}
+                onClick={() => setPdfPage((p) => Math.max(1, p - 1))}
+                className="size-8"
+              >
+                <ChevronLeft size={15} />
+              </IconBtn>
+              <span className="min-w-16 text-center font-mono text-xs text-gray-700">
+                {pdfPage} / {pdfPageCount}
+              </span>
+              <IconBtn
+                label="Next page"
+                disabled={pdfPage >= pdfPageCount}
+                onClick={() => setPdfPage((p) => Math.min(pdfPageCount, p + 1))}
+                className="size-8"
+              >
+                <ChevronRight size={15} />
+              </IconBtn>
+            </div>
+          )}
+
+          {commentAnchor && (
+            <CommentComposerPopover
+              anchor={{ x: commentAnchor.x, y: commentAnchor.y }}
+              assignees={assignees}
+              color={markupColor}
+              busy={createMarkup.isPending || addMarkupComment.isPending}
+              onCancel={() => setCommentAnchor(null)}
+              onSubmit={(capture) => void submitPinComment(capture)}
+            />
+          )}
         </section>
 
         {/* ── Review notes panel ── */}
