@@ -34,7 +34,7 @@ const securityPlugin: FastifyPluginAsync = async (fastify) => {
     contentSecurityPolicy: {
       directives: { 
         defaultSrc: ["'none'"], 
-        frameAncestors: config.server.corsOrigins 
+        frameAncestors: config.http.corsOrigins 
       },
     },
     // Cross-origin: the SPA and admin panel live on different hosts and must be
