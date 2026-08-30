@@ -5,7 +5,6 @@ import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
-import { OrgSwitcher } from "@/components/molecules/org-switcher";
 import {
   SuiteSwitcher,
   LAST_SUITE_KEY,
@@ -211,7 +210,6 @@ function SalesSidebar({
             <Link to="/sales" className="px-1" aria-label="BuildPanda home">
               <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
             </Link>
-            <OrgSwitcher />
           </div>
 
           <div className="px-3 pb-1">
