@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
@@ -25,6 +25,7 @@ const salesNav: Array<{
   to: string;
   flag?: string;
   permission?: { resource: string; action: string };
+  section?: string;
   icon: ReactNode;
 }> = [
   {
@@ -69,6 +70,7 @@ const salesNav: Array<{
     label: "Team",
     to: "/sales/team",
     permission: { resource: "teamMembers", action: "manage" },
+    section: "People & Admin",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -80,6 +82,7 @@ const salesNav: Array<{
   {
     label: "Settings",
     to: "/sales/settings",
+    section: "People & Admin",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <circle cx="12" cy="12" r="3" />
@@ -216,8 +219,15 @@ function SalesSidebar({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
-            {visibleNav.map((item) => (
-              <SalesNavLink key={item.to} item={item} />
+            {visibleNav.map((item, index) => (
+              <Fragment key={item.to}>
+                {item.section && item.section !== visibleNav[index - 1]?.section ? (
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    {item.section}
+                  </p>
+                ) : null}
+                <SalesNavLink item={item} />
+              </Fragment>
             ))}
           </nav>
 
