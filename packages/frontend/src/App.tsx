@@ -259,6 +259,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/project/:projectId/plans/review",
+    element: (
+      <RequireAuth>
+        <DrawingReviewWorkspace />
+      </RequireAuth>
+    ),
+  },
+  {
     path: "/project/create",
     element: (
       <RequireCompany>
