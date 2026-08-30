@@ -8,7 +8,7 @@
  * collaboration, calibrated sheet scales, permissions and audit trail.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Check,
   ChevronDown,
@@ -374,6 +374,8 @@ function SheetPane({
 export default function DrawingReviewWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedSheetId = searchParams.get("sheet");
   const docsQuery = useProjectDocuments(projectId);
   const sheets = useMemo<Sheet[]>(
     () => (projectId ? adaptPlanDocuments(docsQuery.data ?? [], projectId) : MOCK_SHEETS),
@@ -455,6 +457,14 @@ export default function DrawingReviewWorkspace() {
     setActiveSheetIndex((i) => clamp(i, 0, Math.max(0, sheets.length - 1)));
     setCompareSheetIndex((i) => clamp(i, 0, Math.max(0, sheets.length - 1)));
   }, [sheets.length]);
+
+  const appliedRequestedSheet = useRef(false);
+  useEffect(() => {
+    if (appliedRequestedSheet.current || !requestedSheetId || sheets.length === 0) return;
+    const index = sheets.findIndex((s) => s.id === requestedSheetId);
+    if (index >= 0) setActiveSheetIndex(index);
+    appliedRequestedSheet.current = true;
+  }, [sheets, requestedSheetId]);
 
   useEffect(() => {
     if (!openPopover) return;

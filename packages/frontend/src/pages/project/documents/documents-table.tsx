@@ -51,11 +51,13 @@ export function DocumentsTable({
   projectId,
   categories,
   canManage,
+  onOpenDocument,
 }: {
   documents: ProjectDocument[];
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  onOpenDocument?: (doc: ProjectDocument) => void;
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
@@ -89,6 +91,7 @@ export function DocumentsTable({
                 projectId={projectId}
                 categories={categories}
                 canManage={canManage}
+                onOpenDocument={onOpenDocument}
               />
             ))
           )}
@@ -105,12 +108,14 @@ function DocumentRow({
   projectId,
   categories,
   canManage,
+  onOpenDocument,
 }: {
   doc: ProjectDocument;
   isLast: boolean;
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  onOpenDocument?: (doc: ProjectDocument) => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -173,15 +178,32 @@ function DocumentRow({
         <TableCell>
           <div className="flex items-center gap-3">
             <ReactSVG src={getFileTypeIcon(doc.fileName)} className="shrink-0" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900">
-                {doc.fileName}
-              </p>
-              <p className="text-xs text-gray-500">
-                {doc.size}
-                {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
-              </p>
-            </div>
+            {onOpenDocument ? (
+              <button
+                type="button"
+                onClick={() => onOpenDocument(doc)}
+                title={`Open ${doc.fileName} in the review workspace`}
+                className="group min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+              >
+                <p className="truncate text-sm font-medium text-gray-900 group-hover:text-primary-600 group-hover:underline">
+                  {doc.fileName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {doc.size}
+                  {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
+                </p>
+              </button>
+            ) : (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {doc.fileName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {doc.size}
+                  {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
+                </p>
+              </div>
+            )}
           </div>
         </TableCell>
         <TableCell className="text-sm text-gray-600">{doc.category}</TableCell>
@@ -199,6 +221,7 @@ function DocumentRow({
             doc={doc}
             canManage={canManage}
             shareCopied={shareCopied}
+            onOpen={onOpenDocument ? () => onOpenDocument(doc) : undefined}
             onView={() => setViewerOpen(true)}
             onShare={handleShare}
             onVersions={() => setVersionsOpen(true)}
@@ -256,6 +279,7 @@ function RowMenu({
   doc,
   canManage,
   shareCopied,
+  onOpen,
   onView,
   onShare,
   onVersions,
@@ -265,6 +289,7 @@ function RowMenu({
   doc: ProjectDocument;
   canManage: boolean;
   shareCopied: boolean;
+  onOpen?: () => void;
   onView: () => void;
   onShare: () => void;
   onVersions: () => void;
@@ -329,6 +354,9 @@ function RowMenu({
           style={{ top: menuPos.top, right: menuPos.right }}
           className="fixed z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5"
         >
+          {onOpen && (
+            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onOpen(); }}>Review</button>
+          )}
           {doc.currentVersionId && (
             <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onView(); }}>View</button>
           )}

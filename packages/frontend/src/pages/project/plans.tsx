@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
 import { icons } from "@/assets/icons/icons";
@@ -16,6 +16,7 @@ import { useDocumentUpload } from "./documents/use-document-upload";
 
 export default function ProjectPlans() {
   const { project, access } = useProjectContext();
+  const navigate = useNavigate();
   const canManage = Boolean(access && canResourceAction(access, "documents", "upload"));
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
@@ -30,28 +31,17 @@ export default function ProjectPlans() {
         title="Plans"
         description="Drawings and schematics with full revision history."
         actions={
-          <div className="flex items-center gap-2">
-            <Link to={`/project/${project.id}/plans/review`}>
-              <Button
-                variant="secondary"
-                size="md"
-                className="h-[32px] cursor-pointer text-[13px] font-semibold px-[20px] py-[12px]"
-              >
-                Review workspace
-              </Button>
-            </Link>
-            {canManage ? (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => uploader.handleOpenChange(true)}
-                className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
-              >
-                <ReactSVG src={icons.upload} />
-                Upload plan
-              </Button>
-            ) : null}
-          </div>
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => uploader.handleOpenChange(true)}
+              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+            >
+              <ReactSVG src={icons.upload} />
+              Upload plan
+            </Button>
+          ) : undefined
         }
       />
 
@@ -84,6 +74,7 @@ export default function ProjectPlans() {
           projectId={project.id}
           categories={planCategories}
           canManage={canManage}
+          onOpenDocument={(doc) => navigate(`/project/${project.id}/plans/review?sheet=${doc.id}`)}
         />
       </section>
     </div>
