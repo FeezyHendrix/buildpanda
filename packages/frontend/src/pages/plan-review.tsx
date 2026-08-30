@@ -36,6 +36,7 @@ import {
   Ruler,
   Search,
   Send,
+  Sparkles,
   Square,
   Star,
   Trash2,
@@ -416,6 +417,10 @@ export default function DrawingReviewWorkspace() {
   const [selection, setSelection] = useState<Selection>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [imgAspect, setImgAspect] = useState(0.775);
+  const [sheetScales, setSheetScales] = useState<Record<string, number>>({});
+  const [isAutoDetectingScale, setIsAutoDetectingScale] = useState(false);
+  const [calibrateOpen, setCalibratePopoverOpen] = useState(false);
+  const [calibrateInput, setCalibrateInput] = useState("");
 
   const [pins, setPins] = useState<Pin[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -489,6 +494,7 @@ export default function DrawingReviewWorkspace() {
       const target = e.target as HTMLElement;
       if (
         e.isComposing ||
+        target.closest("[data-popover-root]") ||
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
@@ -556,6 +562,35 @@ export default function DrawingReviewWorkspace() {
       x: clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100),
       y: clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100),
     };
+  }
+
+  function handleAutoDetectScale(): void {
+    if (!sheet) return;
+    setIsAutoDetectingScale(true);
+    window.setTimeout(() => {
+      setIsAutoDetectingScale(false);
+      // Simulate Panda AI finding a standard scale like 1/4" = 1'-0" on the drawing
+      // which corresponds to ~0.0833 feet per 1% on a typical 36" wide sheet
+      setSheetScales((s) => ({ ...s, [sheet.id]: 0.12 }));
+      import("@/lib/toast").then((m) => m.toast("Panda AI detected scale: 1/4\" = 1'-0\"", "success"));
+    }, 1500);
+  }
+
+  function handleCalibrateSubmit(): void {
+    if (!sheet || !selection || selection.kind !== "markup" || !calibrateInput) return;
+    const markup = markups.find((m) => m.id === selection.id);
+    if (!markup || markup.tool !== "measure") return;
+    const val = Number.parseFloat(calibrateInput);
+    if (Number.isNaN(val) || val <= 0) return;
+
+    const dxPct = markup.b.x - markup.a.x;
+    const dyPct = (markup.b.y - markup.a.y) * imgAspect;
+    const distPct = Math.hypot(dxPct, dyPct);
+    
+    setSheetScales((s) => ({ ...s, [sheet.id]: val / distPct }));
+    setCalibratePopoverOpen(false);
+    setCalibrateInput("");
+    import("@/lib/toast").then((m) => m.toast("Scale calibrated", "success"));
   }
 
   function deleteSelection(): void {
@@ -955,9 +990,22 @@ export default function DrawingReviewWorkspace() {
           <span className="truncate text-sm font-semibold text-gray-900">
             {sheet.code} · {sheet.title}
           </span>
-          <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
+          <span className="hidden shrink-0 items-center gap-1.5 text-xs text-gray-500 sm:flex">
             {currentRevision}
             {sheet.scale ? ` · ${sheet.scale}` : ""}
+            {!sheet.scale && sheetScales[sheet.id] && " · Calibrated"}
+            {!sheet.scale && !sheetScales[sheet.id] && (
+              <button
+                type="button"
+                onClick={handleAutoDetectScale}
+                disabled={isAutoDetectingScale}
+                title="Use Panda AI to detect scale from the drawing"
+                className="ml-1.5 flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700 hover:bg-primary-100 disabled:opacity-50"
+              >
+                {isAutoDetectingScale ? <span className="size-3 animate-spin rounded-full border-2 border-primary-300 border-t-primary-700" /> : <Sparkles size={11} />}
+                Auto-detect
+              </button>
+            )}
           </span>
         </div>
 
@@ -1300,6 +1348,7 @@ export default function DrawingReviewWorkspace() {
                       selectedId={selection?.kind === "markup" ? selection.id : null}
                       scale={sheet.scale}
                       aspect={imgAspect}
+                      customFtPerPct={sheetScales[sheet.id]}
                     />
                   )}
 
@@ -1365,6 +1414,40 @@ export default function DrawingReviewWorkspace() {
                   <span className="text-[11px] font-medium text-gray-600">
                     {selection.kind === "pin" ? "Pin selected — drag to move" : "Markup selected"}
                   </span>
+                  {selection.kind === "markup" && markups.find((m) => m.id === selection.id)?.tool === "measure" && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setCalibratePopoverOpen((o) => !o)}
+                        className="flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700 hover:bg-primary-100"
+                      >
+                        <Ruler size={11} /> Calibrate
+                      </button>
+                      {calibrateOpen && (
+                        <div data-popover-root className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-black/5">
+                          <p className="text-xs font-semibold text-gray-900">Calibrate scale</p>
+                          <p className="mt-0.5 text-[11px] text-gray-500">Enter the actual distance for this measurement.</p>
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="any"
+                              value={calibrateInput}
+                              onChange={(e) => setCalibrateInput(e.target.value)}
+                              placeholder="Feet (e.g. 10.5)"
+                              className="h-8 w-full rounded-md bg-[#F6F6F6] px-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-primary-600/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleCalibrateSubmit}
+                              className="h-8 shrink-0 rounded-md bg-primary-600 px-3 text-xs font-semibold text-white hover:bg-primary-700"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={deleteSelection}

@@ -59,15 +59,25 @@ function scaleFactor(scale: string | null): number | null {
   return Number.isFinite(denom) && denom > 0 ? denom * 12 : null;
 }
 
-export function measureLabel(a: Pt, b: Pt, scale: string | null, aspect: number): string {
+export function measureLabel(a: Pt, b: Pt, scale: string | null, aspect: number, customFtPerPct?: number): string {
   const dxPct = b.x - a.x;
   const dyPct = (b.y - a.y) * aspect;
   const distPct = Math.hypot(dxPct, dyPct);
+
+  if (customFtPerPct) {
+    return formatFeetInches(distPct * customFtPerPct);
+  }
+
   const factor = scaleFactor(scale);
   if (factor === null) return `${distPct.toFixed(1)}% of sheet`;
   const realInches = (distPct / 100) * SHEET_WIDTH_IN * factor;
-  const feet = Math.floor(realInches / 12);
-  const inches = Math.round(realInches % 12);
+  return formatFeetInches(realInches / 12);
+}
+
+function formatFeetInches(decimalFeet: number): string {
+  const totalInches = Math.round(decimalFeet * 12);
+  const feet = Math.floor(totalInches / 12);
+  const inches = totalInches % 12;
   return inches === 12 ? `${feet + 1}'-0"` : `${feet}'-${inches}"`;
 }
 

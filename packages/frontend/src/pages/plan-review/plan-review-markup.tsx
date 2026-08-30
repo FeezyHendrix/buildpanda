@@ -116,11 +116,13 @@ function MeasureShape({
   scale,
   aspect,
   selected,
+  customFtPerPct,
 }: {
   markup: MeasureMarkup;
   scale: string | null;
   aspect: number;
   selected: boolean;
+  customFtPerPct?: number;
 }) {
   const { a, b, color } = markup;
   const midX = (a.x + b.x) / 2;
@@ -150,7 +152,7 @@ function MeasureShape({
         stroke="#ffffff"
         strokeWidth={0.7}
       >
-        {measureLabel(a, b, scale, aspect)}
+        {measureLabel(a, b, scale, aspect, customFtPerPct)}
       </text>
     </g>
   );
@@ -162,6 +164,7 @@ export function MarkupLayer({
   selectedId,
   scale,
   aspect,
+  customFtPerPct,
   className,
 }: {
   markups: Markup[];
@@ -169,6 +172,7 @@ export function MarkupLayer({
   selectedId: string | null;
   scale: string | null;
   aspect: number;
+  customFtPerPct?: number;
   className?: string;
 }) {
   const all = draft ? [...markups, draft] : markups;
@@ -182,7 +186,7 @@ export function MarkupLayer({
       {all.map((markup) => {
         const selected = markup.id === selectedId;
         if (markup.tool === "measure") {
-          return <MeasureShape key={markup.id} markup={markup} scale={scale} aspect={aspect} selected={selected} />;
+          return <MeasureShape key={markup.id} markup={markup} scale={scale} aspect={aspect} selected={selected} customFtPerPct={customFtPerPct} />;
         }
         if (markup.tool === "cloud") {
           return (
