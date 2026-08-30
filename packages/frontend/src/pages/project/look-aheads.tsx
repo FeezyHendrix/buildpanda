@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
@@ -116,21 +114,6 @@ export default function ProjectLookAheads() {
       <PageHeader
         title="Look Aheads"
         description="Plan rolling look-ahead periods by picking activities from the project chart or imported programme, and preview what's coming up next."
-        actions={
-          canManage && (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-            >
-              <PlusIcon className="size-4" />
-              New look ahead
-            </Button>
-          )
-        }
       />
 
       {lowStock.length > 0 && (
