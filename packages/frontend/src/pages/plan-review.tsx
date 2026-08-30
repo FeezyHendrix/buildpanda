@@ -207,7 +207,7 @@ function Kbd({ children, className }: { children: React.ReactNode; className?: s
   return (
     <kbd
       className={cn(
-        "rounded border border-gray-600 bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] leading-none text-gray-300",
+        "rounded border border-[#E2E2E2] bg-[#F6F6F6] px-1.5 py-0.5 font-mono text-[10px] leading-none text-gray-500",
         className,
       )}
     >
@@ -250,10 +250,10 @@ function IconBtn({
       aria-expanded={expanded}
       aria-haspopup={hasPopup ? "true" : undefined}
       className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-300 outline-none transition-colors",
-        "hover:bg-gray-700 hover:text-white focus-visible:ring-2 focus-visible:ring-primary-400",
+        "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-500 outline-none transition-colors",
+        "hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900/10",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
-        active && "bg-primary-600 text-white ring-1 ring-primary-300 hover:bg-primary-600",
+        active && "bg-primary-600 text-white ring-1 ring-primary-200 hover:bg-primary-600 hover:text-white",
         className,
       )}
     >
@@ -267,7 +267,7 @@ function PopShell({ children, className }: { children: React.ReactNode; classNam
     <div
       data-popover-root
       className={cn(
-        "absolute z-50 mt-2 rounded-xl border border-gray-700 bg-gray-900 p-2 text-sm text-gray-200 shadow-xl",
+        "absolute z-50 mt-2 rounded-xl bg-white p-2 text-sm text-gray-700 shadow-lg ring-1 ring-black/5",
         className,
       )}
     >
@@ -275,6 +275,9 @@ function PopShell({ children, className }: { children: React.ReactNode; classNam
     </div>
   );
 }
+
+const POP_ITEM_CLS =
+  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-[#F6F6F6]";
 
 // ── Split view pane ────────────────────────────────────────────────────────
 
@@ -304,9 +307,9 @@ function SheetPane({
   const sheet = sheetAt(sheetIndex);
   const selectId = `${paneKey}-sheet-select`;
   return (
-    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-700 bg-gray-900">
-      <div className="flex items-center gap-2 border-b border-gray-700 px-3 py-2">
-        <span className="rounded bg-gray-700 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-300">
+    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#EDEDED] bg-white">
+      <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2">
+        <span className="rounded bg-[#F6F6F6] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
           {label}
         </span>
         <label htmlFor={selectId} className="sr-only">
@@ -317,7 +320,7 @@ function SheetPane({
           value={sheetIndex}
           disabled={locked}
           onChange={(e) => onSheetChange(Number(e.target.value))}
-          className="h-7 min-w-0 rounded-md border border-gray-600 bg-gray-800 px-2 text-xs font-medium text-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-primary-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-7 min-w-0 rounded-md bg-[#F6F6F6] px-2 text-xs font-medium text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {SHEETS.map((s, i) => (
             <option key={s.id} value={i}>
@@ -341,7 +344,7 @@ function SheetPane({
         >
           <ChevronRight size={14} />
         </IconBtn>
-        <span className="ml-auto text-[11px] text-gray-400">{sheet.revision}</span>
+        <span className="ml-auto text-[11px] text-gray-500">{sheet.revision}</span>
         <div className="relative">
           <IconBtn
             label={`${label} pane options`}
@@ -355,18 +358,14 @@ function SheetPane({
           </IconBtn>
           {optionsOpen && (
             <PopShell className="right-0 w-44">
-              <button
-                type="button"
-                onClick={onFit}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
-              >
+              <button type="button" onClick={onFit} className={POP_ITEM_CLS}>
                 <Maximize2 size={14} /> Fit to pane
               </button>
               <button
                 type="button"
                 disabled
                 title="Rotate (coming soon)"
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left opacity-40"
+                className={cn(POP_ITEM_CLS, "opacity-40 hover:bg-transparent")}
               >
                 <RotateCcw size={14} /> Rotate
               </button>
@@ -375,25 +374,25 @@ function SheetPane({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto bg-gray-800 p-4">
+      <div className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4">
         <div className="mx-auto w-fit min-w-full">
           <img
             src={sheet.image}
             alt={sheet.alt}
             style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
-            className="mx-auto w-full max-w-3xl rounded border border-gray-600 bg-white shadow-lg"
+            className="mx-auto w-full max-w-3xl rounded border border-[#E2E2E2] bg-white shadow-md"
           />
         </div>
         {locked && (
-          <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-gray-900/40 p-3">
-            <span className="flex items-center gap-1.5 rounded-full bg-gray-900/90 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+          <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-white/50 p-3">
+            <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
               <Lock size={11} /> Locked
             </span>
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-center gap-2 border-t border-gray-700 px-3 py-1.5">
+      <div className="flex items-center justify-center gap-2 border-t border-[#F0F0F0] px-3 py-1.5">
         <IconBtn
           label={`${label} pane: zoom out`}
           disabled={locked || zoom <= 50}
@@ -402,7 +401,7 @@ function SheetPane({
         >
           <Minus size={13} />
         </IconBtn>
-        <span className="w-11 text-center font-mono text-[11px] text-gray-300">{zoom}%</span>
+        <span className="w-11 text-center font-mono text-[11px] text-gray-600">{zoom}%</span>
         <IconBtn
           label={`${label} pane: zoom in`}
           disabled={locked || zoom >= 200}
@@ -544,27 +543,24 @@ export default function DrawingReviewWorkspace() {
   // ── Pins / comments ──
   function finalizePendingPin(): void {
     if (!pendingPinId) return;
-    const pinId = pendingPinId;
+    const pin = pins.find((p) => p.id === pendingPinId);
     setPendingPinId(null);
-    setPins((current) => {
-      const pin = current.find((p) => p.id === pinId);
-      if (!pin || pin.noteId) return current;
-      const noteId = generateId("note");
-      setNotes((n) => [
-        ...n,
-        {
-          id: noteId,
-          type: "comment",
-          text: "Pinned comment",
-          author: "You",
-          createdAt: Date.now(),
-          sheetId: pin.sheetId,
-          pinId,
-          durationSeconds: null,
-        },
-      ]);
-      return current.map((p) => (p.id === pinId ? { ...p, noteId } : p));
-    });
+    if (!pin || pin.noteId) return;
+    const noteId = generateId("note");
+    setNotes((n) => [
+      ...n,
+      {
+        id: noteId,
+        type: "comment",
+        text: "Pinned comment",
+        author: "You",
+        createdAt: Date.now(),
+        sheetId: pin.sheetId,
+        pinId: pin.id,
+        durationSeconds: null,
+      },
+    ]);
+    setPins((current) => current.map((p) => (p.id === pin.id ? { ...p, noteId } : p)));
   }
 
   function handleDrawingClick(e: React.MouseEvent<HTMLDivElement>): void {
@@ -745,14 +741,14 @@ export default function DrawingReviewWorkspace() {
   const traceTip = traceVisible[traceVisible.length - 1];
 
   return (
-    <main className="flex h-dvh flex-col overflow-hidden bg-gray-950 font-sans text-gray-100">
+    <main className="flex h-dvh flex-col overflow-hidden bg-white font-sans text-gray-900">
       {/* ── Top navigation ── */}
-      <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2">
+      <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-[#F0F0F0] bg-white px-3 py-2">
         <button
           type="button"
           onClick={exitWorkspace}
           title="Exit document review"
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
         >
           <X size={15} /> Exit
         </button>
@@ -775,7 +771,7 @@ export default function DrawingReviewWorkspace() {
 
         <div className="flex min-w-0 items-center gap-2">
           <FileText size={15} className="shrink-0 text-gray-400" />
-          <span className="truncate text-sm font-semibold">
+          <span className="truncate text-sm font-semibold text-gray-900">
             {sheet.id} · {sheet.title}
           </span>
           <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
@@ -792,7 +788,7 @@ export default function DrawingReviewWorkspace() {
               aria-expanded={openPopover === "revision"}
               title="Select revision"
               onClick={() => setOpenPopover(openPopover === "revision" ? null : "revision")}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-800"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
             >
               {currentRevision} <ChevronDown size={12} />
             </button>
@@ -806,10 +802,10 @@ export default function DrawingReviewWorkspace() {
                       setSheetRevisions((r) => ({ ...r, [sheet.id]: rev }));
                       setOpenPopover(null);
                     }}
-                    className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
+                    className={cn(POP_ITEM_CLS, "justify-between")}
                   >
                     {rev}
-                    {rev === currentRevision ? <Check size={14} className="text-primary-400" /> : null}
+                    {rev === currentRevision ? <Check size={14} className="text-primary-600" /> : null}
                   </button>
                 ))}
               </PopShell>
@@ -820,7 +816,7 @@ export default function DrawingReviewWorkspace() {
             label={isFavorite ? "Remove from favorites" : "Add to favorites"}
             pressed={isFavorite}
             onClick={() => setIsFavorite((f) => !f)}
-            className={isFavorite ? "text-amber-400 hover:text-amber-300" : undefined}
+            className={isFavorite ? "text-amber-500 hover:text-amber-500" : undefined}
           >
             <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
           </IconBtn>
@@ -837,7 +833,7 @@ export default function DrawingReviewWorkspace() {
             </IconBtn>
             {openPopover === "search" && (
               <PopShell className="right-0 w-80 p-3">
-                <div className="flex items-center gap-2 rounded-lg bg-gray-800 px-2.5 py-2">
+                <div className="flex items-center gap-2 rounded-lg bg-[#F6F6F6] px-2.5 py-2">
                   <Search size={14} className="shrink-0 text-gray-400" />
                   <input
                     ref={searchRef}
@@ -851,21 +847,21 @@ export default function DrawingReviewWorkspace() {
                     }}
                     aria-label="Search sheets and markup"
                     placeholder="Search sheets and markup"
-                    className="w-full bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500"
+                    className="w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
                   />
                   <Kbd>Esc</Kbd>
                 </div>
                 {!query ? (
-                  <p className="px-1 pt-3 text-xs text-gray-500">Search sheets and markup</p>
+                  <p className="px-1 pt-3 text-xs text-gray-400">Search sheets and markup</p>
                 ) : resultCount === 0 ? (
-                  <p className="px-1 pt-3 text-xs text-gray-400">No results for &ldquo;{searchQuery.trim()}&rdquo;</p>
+                  <p className="px-1 pt-3 text-xs text-gray-500">No results for &ldquo;{searchQuery.trim()}&rdquo;</p>
                 ) : (
                   <div className="max-h-72 overflow-y-auto pt-2">
                     <p className="px-1 pb-1 text-[11px] text-gray-500">
                       {resultCount} result{resultCount === 1 ? "" : "s"}
                     </p>
                     {sheetResults.length > 0 && (
-                      <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Sheets</p>
+                      <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sheets</p>
                     )}
                     {sheetResults.map((s) => (
                       <button
@@ -875,15 +871,15 @@ export default function DrawingReviewWorkspace() {
                           setActiveSheetIndex(s.index);
                           setOpenPopover(null);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-800"
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
                       >
-                        <FileText size={13} className="shrink-0 text-gray-500" />
-                        <span className="font-medium">{s.id}</span>
-                        <span className="truncate text-gray-400">{s.title}</span>
+                        <FileText size={13} className="shrink-0 text-gray-400" />
+                        <span className="font-medium text-gray-900">{s.id}</span>
+                        <span className="truncate text-gray-500">{s.title}</span>
                       </button>
                     ))}
                     {noteResults.length > 0 && (
-                      <p className="px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                      <p className="px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                         Markup &amp; Notes
                       </p>
                     )}
@@ -896,11 +892,11 @@ export default function DrawingReviewWorkspace() {
                           if (index >= 0) setActiveSheetIndex(index);
                           setOpenPopover(null);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-gray-800"
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
                       >
-                        <MessageSquare size={13} className="shrink-0 text-gray-500" />
-                        <span className="truncate text-gray-300">{n.text}</span>
-                        <span className="ml-auto shrink-0 text-gray-500">{n.sheetId}</span>
+                        <MessageSquare size={13} className="shrink-0 text-gray-400" />
+                        <span className="truncate text-gray-600">{n.text}</span>
+                        <span className="ml-auto shrink-0 text-gray-400">{n.sheetId}</span>
                       </button>
                     ))}
                   </div>
@@ -925,7 +921,7 @@ export default function DrawingReviewWorkspace() {
               aria-expanded={openPopover === "reviewTools"}
               title="Review tools"
               onClick={() => setOpenPopover(openPopover === "reviewTools" ? null : "reviewTools")}
-              className="flex items-center gap-1.5 rounded-lg bg-gray-800 px-2.5 py-1.5 text-sm font-medium text-gray-200 hover:bg-gray-700"
+              className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-[#F6F6F6]"
             >
               <span className="hidden sm:inline">Review Tools</span>
               <MoreHorizontal size={16} className="sm:hidden" />
@@ -933,11 +929,7 @@ export default function DrawingReviewWorkspace() {
             </button>
             {openPopover === "reviewTools" && (
               <PopShell className="right-0 w-56">
-                <button
-                  type="button"
-                  onClick={openBlendPanel}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
-                >
+                <button type="button" onClick={openBlendPanel} className={POP_ITEM_CLS}>
                   <Layers size={15} /> Compare Revisions
                 </button>
                 <button
@@ -946,15 +938,11 @@ export default function DrawingReviewWorkspace() {
                     setSplit((s) => ({ ...s, open: !s.open }));
                     setOpenPopover(null);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
+                  className={POP_ITEM_CLS}
                 >
                   <Columns2 size={15} /> {split.open ? "Exit Split View" : "Split View"}
                 </button>
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
-                >
+                <button type="button" onClick={startRecording} className={POP_ITEM_CLS}>
                   <Video size={15} /> Record Walkthrough
                 </button>
                 <button
@@ -963,7 +951,7 @@ export default function DrawingReviewWorkspace() {
                     setMarkupVisible((v) => !v);
                     setOpenPopover(null);
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-gray-800"
+                  className={POP_ITEM_CLS}
                 >
                   {markupVisible ? <EyeOff size={15} /> : <Eye size={15} />}
                   {markupVisible ? "Hide Markup" : "Show Markup"}
@@ -975,7 +963,7 @@ export default function DrawingReviewWorkspace() {
       </header>
 
       {/* ── Markup toolbar ── */}
-      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-gray-800 bg-gray-900 px-3 py-1.5">
+      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#F0F0F0] bg-white px-3 py-1.5">
         {TOOLS.map(({ id, label, shortcut, Icon }) => (
           <button
             key={id}
@@ -987,8 +975,8 @@ export default function DrawingReviewWorkspace() {
             className={cn(
               "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
               activeTool === id
-                ? "bg-primary-600 text-white ring-1 ring-primary-300"
-                : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                ? "bg-primary-600 text-white ring-1 ring-primary-200"
+                : "text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900",
             )}
           >
             <Icon size={15} />
@@ -1006,9 +994,9 @@ export default function DrawingReviewWorkspace() {
             aria-expanded={openPopover === "color"}
             title="Markup color"
             onClick={() => setOpenPopover(openPopover === "color" ? null : "color")}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-gray-800"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[#F6F6F6]"
           >
-            <span className="size-4 rounded-full border border-white/40" style={{ backgroundColor: markupColor }} />
+            <span className="size-4 rounded-full border border-black/10" style={{ backgroundColor: markupColor }} />
             <ChevronDown size={12} className="text-gray-400" />
           </button>
           {openPopover === "color" && (
@@ -1023,7 +1011,7 @@ export default function DrawingReviewWorkspace() {
                     setMarkupColor(color.value);
                     setOpenPopover(null);
                   }}
-                  className="flex size-7 items-center justify-center rounded-full border border-white/20"
+                  className="flex size-7 items-center justify-center rounded-full border border-black/10"
                   style={{ backgroundColor: color.value }}
                 >
                   {markupColor === color.value ? <Check size={13} className="text-white drop-shadow" /> : null}
@@ -1037,7 +1025,7 @@ export default function DrawingReviewWorkspace() {
           type="button"
           title="Compare revisions"
           onClick={openBlendPanel}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
         >
           <Layers size={14} /> Compare
         </button>
@@ -1047,13 +1035,13 @@ export default function DrawingReviewWorkspace() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="relative flex min-h-0 min-w-0 flex-[2] flex-col overflow-hidden">
           {!split.open ? (
-            <div className="relative min-h-0 flex-1 overflow-auto bg-gray-800 p-4 sm:p-8">
+            <div className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4 sm:p-8">
               <div
                 ref={drawingRef}
                 onClick={handleDrawingClick}
                 onMouseMove={handleDrawingMouseMove}
                 className={cn(
-                  "relative mx-auto w-full max-w-4xl min-w-[560px] rounded-lg border border-gray-600 bg-white shadow-2xl",
+                  "relative mx-auto w-full max-w-4xl min-w-[560px] rounded-lg border border-[#E2E2E2] bg-white shadow-lg",
                   activeTool === "comment" && "cursor-crosshair",
                   activeTool === "pan" && "cursor-grab",
                 )}
@@ -1083,11 +1071,11 @@ export default function DrawingReviewWorkspace() {
                         style={{ mixBlendMode: "multiply", opacity: (blendAmount / 100) * 0.35 }}
                       />
                     )}
-                    <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-red-300">
-                      <span className="size-2 rounded-full bg-red-400" /> {sheet.id} · {currentRevision} (current)
+                    <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-red-700 shadow-sm ring-1 ring-black/10">
+                      <span className="size-2 rounded-full bg-red-500" /> {sheet.id} · {currentRevision} (current)
                     </span>
-                    <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-gray-900/85 px-2.5 py-1 text-[11px] font-medium text-sky-300">
-                      <span className="size-2 rounded-full bg-sky-400" /> {compareSheet.id} · {compareSheet.revision} (compare)
+                    <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
+                      <span className="size-2 rounded-full bg-sky-500" /> {compareSheet.id} · {compareSheet.revision} (compare)
                     </span>
                   </>
                 )}
@@ -1131,7 +1119,7 @@ export default function DrawingReviewWorkspace() {
               </div>
             </div>
           ) : (
-            <div ref={splitStageRef} className="flex min-h-0 flex-1 flex-col gap-2 bg-gray-800 p-3 md:flex-row md:gap-0">
+            <div ref={splitStageRef} className="flex min-h-0 flex-1 flex-col gap-2 bg-[#F0F0F0] p-3 md:flex-row md:gap-0">
               <div className="flex min-h-0 min-w-0 flex-1 md:flex-none" style={{ flexBasis: `${split.dividerRatio * 100}%` }}>
                 <SheetPane
                   paneKey="primary"
@@ -1157,10 +1145,10 @@ export default function DrawingReviewWorkspace() {
                 onMouseDown={startDividerDrag}
                 className="hidden w-2 shrink-0 cursor-col-resize flex-col items-center justify-center gap-2 md:flex"
               >
-                <span className="h-16 w-1 rounded-full bg-gray-600" />
+                <span className="h-16 w-1 rounded-full bg-gray-300" />
               </div>
               <div className="flex items-center justify-center gap-2 md:hidden">
-                <span className="h-px flex-1 bg-gray-700" />
+                <span className="h-px flex-1 bg-gray-200" />
               </div>
 
               <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1181,7 +1169,7 @@ export default function DrawingReviewWorkspace() {
                 />
               </div>
 
-              <div className="absolute right-5 top-5 z-20 flex items-center gap-1 rounded-lg border border-gray-700 bg-gray-900/95 p-1 shadow-lg">
+              <div className="absolute right-5 top-5 z-20 flex items-center gap-1 rounded-lg bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
                 <IconBtn
                   label={split.locked ? "Unlock compare pane" : "Lock compare pane"}
                   pressed={split.locked}
@@ -1207,7 +1195,7 @@ export default function DrawingReviewWorkspace() {
                   aria-label="Exit Split View"
                   title="Exit Split View"
                   onClick={() => setSplit((s) => ({ ...s, open: false }))}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
                 >
                   <X size={13} /> Exit Split View
                 </button>
@@ -1217,9 +1205,9 @@ export default function DrawingReviewWorkspace() {
 
           {/* ── Blend comparison panel ── */}
           {blendPanelOpen && !split.open && (
-            <div className="z-30 w-full border-t border-gray-700 bg-gray-900 p-3 md:absolute md:bottom-4 md:left-1/2 md:w-[560px] md:max-w-[calc(100%-2rem)] md:-translate-x-1/2 md:rounded-2xl md:border md:shadow-2xl">
+            <div className="z-30 w-full border-t border-[#EDEDED] bg-white p-3 md:absolute md:bottom-4 md:left-1/2 md:w-[560px] md:max-w-[calc(100%-2rem)] md:-translate-x-1/2 md:rounded-2xl md:border md:shadow-xl md:ring-1 md:ring-black/5">
               <div className="flex items-center gap-2">
-                <div className="flex rounded-lg bg-gray-800 p-0.5" role="group" aria-label="Blend mode">
+                <div className="flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-0.5" role="group" aria-label="Blend mode">
                   {BLEND_MODES.map((mode) => (
                     <button
                       key={mode.id}
@@ -1228,7 +1216,7 @@ export default function DrawingReviewWorkspace() {
                       onClick={() => setBlendMode(mode.id)}
                       className={cn(
                         "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                        blendMode === mode.id ? "bg-primary-600 text-white" : "text-gray-400 hover:text-white",
+                        blendMode === mode.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
                       )}
                     >
                       {mode.label}
@@ -1238,7 +1226,7 @@ export default function DrawingReviewWorkspace() {
                 <button
                   type="button"
                   onClick={() => setSplit((s) => ({ ...s, open: true }))}
-                  className="flex items-center gap-1.5 rounded-lg border border-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
+                  className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
                 >
                   <Columns2 size={13} /> Split View
                 </button>
@@ -1255,9 +1243,9 @@ export default function DrawingReviewWorkspace() {
               </div>
 
               <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                <span className="font-medium text-gray-200">
+                <span className="font-medium text-gray-700">
                   {sheet.id} · {currentRevision}
-                  <span className="px-1.5 text-gray-500">vs</span>
+                  <span className="px-1.5 text-gray-400">vs</span>
                   <label htmlFor="compare-sheet" className="sr-only">
                     Comparison sheet
                   </label>
@@ -1265,7 +1253,7 @@ export default function DrawingReviewWorkspace() {
                     id="compare-sheet"
                     value={compareSheetIndex}
                     onChange={(e) => setCompareSheetIndex(Number(e.target.value))}
-                    className="rounded-md border border-gray-600 bg-gray-800 px-1.5 py-1 text-xs text-gray-100 outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                    className="rounded-md bg-[#F6F6F6] px-1.5 py-1 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                   >
                     {SHEETS.map((s, i) => (
                       <option key={s.id} value={i}>
@@ -1277,18 +1265,18 @@ export default function DrawingReviewWorkspace() {
                 <button
                   type="button"
                   onClick={() => setBlendAmount(50)}
-                  className="rounded-md px-2 py-1 font-medium text-primary-300 hover:bg-gray-800"
+                  className="rounded-md px-2 py-1 font-medium text-primary-600 hover:bg-[#F6F6F6]"
                 >
                   Reset
                 </button>
               </div>
 
               <div className="mt-2">
-                <div className="flex items-center justify-between text-[11px] text-gray-400">
+                <div className="flex items-center justify-between text-[11px] text-gray-500">
                   <span>
                     {blendMode === "ghost" ? "Ghost opacity" : blendMode === "highlight" ? "Highlight intensity" : "Revision overlay"}
                   </span>
-                  <span className="font-mono text-gray-200">{blendAmount}%</span>
+                  <span className="font-mono text-gray-700">{blendAmount}%</span>
                 </div>
                 <input
                   type="range"
@@ -1301,7 +1289,7 @@ export default function DrawingReviewWorkspace() {
                   onChange={(e) => setBlendAmount(Number(e.target.value))}
                   className="mt-1 w-full accent-primary-600"
                 />
-                <div className="flex justify-between text-[10px] text-gray-500">
+                <div className="flex justify-between text-[10px] text-gray-400">
                   <span>Original</span>
                   <span>Overlay</span>
                 </div>
@@ -1312,7 +1300,7 @@ export default function DrawingReviewWorkspace() {
           {/* ── Floating record button ── */}
           <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-1.5 md:bottom-20">
             {recStatus === "idle" && (
-              <span className="rounded-md bg-gray-900/90 px-2 py-1 text-[10px] text-gray-400">
+              <span className="rounded-md bg-white/95 px-2 py-1 text-[10px] text-gray-500 shadow-sm ring-1 ring-black/5">
                 Captures your voice and mouse movement over the drawing
               </span>
             )}
@@ -1343,15 +1331,15 @@ export default function DrawingReviewWorkspace() {
         {/* ── Review notes panel ── */}
         <aside
           className={cn(
-            "flex shrink-0 flex-col border-t border-gray-800 bg-gray-900 lg:border-l lg:border-t-0",
+            "flex shrink-0 flex-col border-t border-[#F0F0F0] bg-white lg:border-l lg:border-t-0",
             notesPanelOpen ? "max-h-[45dvh] lg:max-h-none lg:w-80" : "lg:w-12",
           )}
         >
-          <div className="flex items-center gap-2 border-b border-gray-800 px-3 py-2.5">
+          <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2.5">
             {notesPanelOpen ? (
               <>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-100">Review Notes</p>
+                  <p className="text-sm font-semibold text-gray-900">Review Notes</p>
                   <p className="text-[11px] text-gray-500">
                     {commentCount} note{commentCount === 1 ? "" : "s"} · {recordingCount} recording{recordingCount === 1 ? "" : "s"}
                   </p>
@@ -1360,7 +1348,7 @@ export default function DrawingReviewWorkspace() {
                   type="button"
                   onClick={startRecording}
                   title="Record walkthrough"
-                  className="ml-auto flex items-center gap-1 rounded-lg border border-gray-700 px-2 py-1 text-[11px] font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
+                  className="ml-auto flex items-center gap-1 rounded-lg border border-[#EDEDED] px-2 py-1 text-[11px] font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
                 >
                   <Video size={12} /> Record
                 </button>
@@ -1381,14 +1369,14 @@ export default function DrawingReviewWorkspace() {
             <>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {orderedNotes.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-700 px-4 py-8 text-center">
-                    <MessageSquare size={20} className="text-gray-600" />
-                    <p className="text-sm font-medium text-gray-300">No review notes yet</p>
+                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#D9D9D9] bg-[#FAFAFA] px-4 py-8 text-center">
+                    <MessageSquare size={20} className="text-gray-400" />
+                    <p className="text-sm font-medium text-gray-900">No review notes yet</p>
                     <p className="text-xs text-gray-500">Drop a pin with the comment tool or record a walkthrough.</p>
                   </div>
                 ) : (
                   orderedNotes.map((note) => (
-                    <article key={note.id} className="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <article key={note.id} className="rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3">
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
@@ -1398,16 +1386,16 @@ export default function DrawingReviewWorkspace() {
                         >
                           {note.type === "recording" ? <Video size={11} /> : note.author.charAt(0)}
                         </span>
-                        <p className="text-xs font-semibold text-gray-200">
+                        <p className="text-xs font-semibold text-gray-900">
                           {note.author} <span className="font-normal text-gray-500">{relativeTime(note.createdAt)}</span>
                         </p>
                         {note.type === "recording" && note.durationSeconds !== null && (
-                          <span className="ml-auto rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[10px] text-gray-300">
+                          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
                             {formatClock(note.durationSeconds)}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1.5 text-xs text-gray-300">{note.text}</p>
+                      <p className="mt-1.5 text-xs text-gray-600">{note.text}</p>
                       {note.type === "recording" ? (
                         <div className="mt-2 flex items-center gap-1.5">
                           <button
@@ -1420,7 +1408,7 @@ export default function DrawingReviewWorkspace() {
                             {playProgress !== null ? "Playing…" : "Play Recording"}
                           </button>
                           <span className="text-[10px] text-gray-500">Voice + mouse movement</span>
-                          <IconBtn label="Clear recording" onClick={clearRecording} className="ml-auto size-7 text-gray-400 hover:text-red-400">
+                          <IconBtn label="Clear recording" onClick={clearRecording} className="ml-auto size-7 text-gray-400 hover:text-red-600">
                             <Trash2 size={13} />
                           </IconBtn>
                         </div>
@@ -1431,7 +1419,7 @@ export default function DrawingReviewWorkspace() {
                             const index = SHEETS.findIndex((s) => s.id === note.sheetId);
                             if (index >= 0) setActiveSheetIndex(index);
                           }}
-                          className="mt-2 flex items-center gap-1 rounded-md bg-gray-800 px-1.5 py-0.5 text-[10px] font-medium text-gray-300 hover:bg-gray-700"
+                          className="mt-2 flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-200"
                         >
                           {note.pinId ? <MapPin size={10} /> : <FileText size={10} />}
                           {note.pinId ? "Pinned" : "Sheet"} · {note.sheetId}
@@ -1442,9 +1430,9 @@ export default function DrawingReviewWorkspace() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 border-t border-gray-800 p-3">
+              <div className="flex items-center gap-2 border-t border-[#F0F0F0] p-3">
                 {pendingPinId && (
-                  <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary-600/20 px-1.5 py-1 text-[10px] font-medium text-primary-300">
+                  <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary-50 px-1.5 py-1 text-[10px] font-medium text-primary-700">
                     <MapPin size={10} /> {sheet.id}
                   </span>
                 )}
@@ -1458,7 +1446,7 @@ export default function DrawingReviewWorkspace() {
                   }}
                   aria-label="Add a comment"
                   placeholder={pendingPinId ? "Describe the pinned spot…" : "Add a comment…"}
-                  className="h-9 w-full min-w-0 rounded-lg bg-gray-800 px-3 text-sm text-gray-100 outline-none placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-primary-400"
+                  className="h-9 w-full min-w-0 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
                 />
                 <button
                   type="button"
@@ -1479,20 +1467,20 @@ export default function DrawingReviewWorkspace() {
       <footer
         role="status"
         aria-live="polite"
-        className="flex shrink-0 items-center gap-3 border-t border-gray-800 bg-gray-900 px-3 py-1.5 text-[11px] text-gray-400"
+        className="flex shrink-0 items-center gap-3 border-t border-[#F0F0F0] bg-white px-3 py-1.5 text-[11px] text-gray-500"
       >
         <span className="flex items-center gap-1.5">
           {recStatus === "recording" ? (
             <span className="size-2 animate-pulse rounded-full bg-red-500" />
           ) : (
-            <Check size={12} className="text-green-500" />
+            <Check size={12} className="text-green-600" />
           )}
           {saveState}
         </span>
-        <span className="mx-auto truncate text-gray-300">{contextState}</span>
+        <span className="mx-auto truncate text-gray-700">{contextState}</span>
         <span className="flex shrink-0 items-center gap-2">
           Tool: {activeToolLabel}
-          {!markupVisible && <span className="flex items-center gap-1 text-amber-400"><EyeOff size={11} /> Markup hidden</span>}
+          {!markupVisible && <span className="flex items-center gap-1 text-amber-600"><EyeOff size={11} /> Markup hidden</span>}
         </span>
       </footer>
     </main>
