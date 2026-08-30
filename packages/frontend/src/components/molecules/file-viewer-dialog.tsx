@@ -18,6 +18,10 @@ function isPdf(name: string): boolean {
   return /\.pdf$/i.test(name);
 }
 
+function isVideo(name: string): boolean {
+  return /\.(mp4|mov|webm|m4v|avi|mkv)$/i.test(name);
+}
+
 function FileViewerDialog({
   open,
   onOpenChange,
@@ -104,6 +108,11 @@ function FileViewerDialog({
               </div>
             ) : isPdf(fileName) ? (
               <iframe src={url} title={fileName} className="h-full w-full border-0" />
+            ) : isVideo(fileName) ? (
+              <div className="flex min-h-full items-center justify-center p-4">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption -- user-uploaded site footage has no caption track */}
+                <video src={url} controls className="max-h-full max-w-full rounded-lg" />
+              </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
                 <p className="text-sm text-gray-500">
