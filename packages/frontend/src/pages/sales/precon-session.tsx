@@ -336,9 +336,14 @@ export default function PreconSessionPage() {
             })()}
           </div>
         </div>
-        <Badge tone={reviewing ? "warning" : snapshot.session.status === "failed" ? "danger" : "info"}>
-          {snapshot.session.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Link to="/plan-review">
+            <Button variant="secondary" size="sm">Plan review</Button>
+          </Link>
+          <Badge tone={reviewing ? "warning" : snapshot.session.status === "failed" ? "danger" : "info"}>
+            {snapshot.session.status}
+          </Badge>
+        </div>
       </div>
 
       <Stepper active={effectiveStep} reviewing={reviewing} onSelect={setStep} />
