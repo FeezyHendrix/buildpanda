@@ -14,12 +14,19 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
+import { useOrgPermissions } from "@/hooks/use-organization";
 import logo from "@/assets/images/logo.svg";
 
 export { LAST_SUITE_KEY, SUITE_SALES };
 export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 
-const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNode }> = [
+const salesNav: Array<{
+  label: string;
+  to: string;
+  flag?: string;
+  permission?: { resource: string; action: string };
+  icon: ReactNode;
+}> = [
   {
     label: "Dashboard",
     to: "/sales",
@@ -55,6 +62,18 @@ const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNod
         <line x1="16" y1="13" x2="8" y2="13" />
         <line x1="16" y1="17" x2="8" y2="17" />
         <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+  },
+  {
+    label: "Team",
+    to: "/sales/team",
+    permission: { resource: "teamMembers", action: "manage" },
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
       </svg>
     ),
   },
@@ -125,9 +144,19 @@ function SalesSidebar({
   onOpen: () => void;
 }) {
   const { data: flagsData } = useFeatureFlags();
-  const visibleNav = salesNav.filter(
-    (item) => !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true),
-  );
+  const { data: permissionsData } = useOrgPermissions();
+  // Not cosmetic: OrgPermissionGate redirects to /dashboard, so an unpermitted
+  // link would eject the user out of the sales suite.
+  const visibleNav = salesNav.filter((item) => {
+    const flagOn =
+      !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true);
+    const permitted =
+      !item.permission ||
+      (permissionsData?.permissions?.[item.permission.resource] ?? []).includes(
+        item.permission.action,
+      );
+    return flagOn && permitted;
+  });
 
   return (
     <>

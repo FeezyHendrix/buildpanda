@@ -207,6 +207,14 @@ export const router = createBrowserRouter([
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
       { path: "takeoff/:sessionId", element: sf("ai.automatedTakeoff", <SalesPreconSession />) },
+      {
+        path: "team",
+        element: (
+          <OrgPermissionGate resource="teamMembers" action="manage">
+            <TeamSettings />
+          </OrgPermissionGate>
+        ),
+      },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
