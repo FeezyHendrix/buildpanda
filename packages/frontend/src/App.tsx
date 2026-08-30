@@ -107,6 +107,8 @@ const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-re
 const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
 const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
+const ProjectPlans = lazy(() => import("@/pages/project/plans"));
+const ProjectMediaLibrary = lazy(() => import("@/pages/project/media-library"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
@@ -285,6 +287,8 @@ export const router = createBrowserRouter([
       { path: "people", element: pf("collaboration.participants", <ProjectPeople />) },
 
       { path: "documents", element: pf("projects.documents", <ProjectDocuments />) },
+      { path: "plans", element: pf("projects.documents", <ProjectPlans />) },
+      { path: "media-library", element: pf("projects.documents", <ProjectMediaLibrary />) },
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
       { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },

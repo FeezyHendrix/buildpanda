@@ -4,6 +4,7 @@ import {
   AlertIcon,
   BinocularsIcon,
   BlocksIcon,
+  CameraIcon,
   ClipboardIcon,
   GanttIcon,
   CalendarIcon,
@@ -130,6 +131,8 @@ export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "RFIs", slug: "rfis", resource: "rfis", Icon: AlertIcon, helper: "Requests for information", flag: "workflow.rfis" },
   { label: "Approvals", slug: "approvals", resource: "approvals", Icon: InspectionsIcon, helper: "Client sign-offs", flag: "workflow.approvals" },
   { label: "Daily Log", slug: "schedules/daily-log", resource: "dailyLog", Icon: ClipboardIcon, helper: "Field reports", flag: "quality.dailyLogs" },
+  { label: "Plans", slug: "plans", resource: "documents", Icon: DocumentsIcon, helper: "Drawings & revisions", flag: "projects.documents" },
+  { label: "Media Library", slug: "media-library", resource: "documents", Icon: CameraIcon, helper: "Site photos & videos", flag: "projects.documents" },
 ] as const;
 
 export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [
