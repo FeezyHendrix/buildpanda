@@ -109,6 +109,7 @@ const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
 const ProjectPlans = lazy(() => import("@/pages/project/plans"));
 const ProjectMediaLibrary = lazy(() => import("@/pages/project/media-library"));
+const DrawingReviewWorkspace = lazy(() => import("@/pages/plan-review"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
@@ -246,6 +247,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <MyBuild />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/plan-review",
+    element: (
+      <RequireAuth>
+        <DrawingReviewWorkspace />
       </RequireAuth>
     ),
   },
