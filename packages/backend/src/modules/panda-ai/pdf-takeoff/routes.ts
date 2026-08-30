@@ -14,10 +14,14 @@ import {
   type PreconGenerateJobData,
   type PreconProgrammeJobData,
 } from "./job.ts";
-import { GEOMETRY_KINDS } from "./types.ts";
+import { GEOMETRY_KINDS, ROW_TYPES } from "./types.ts";
 import type {
   AddDeductionBody,
+  CreateBillBody,
+  CreateBlankSessionBody,
+  CreateRowBody,
   PreconSummarySettings,
+  UpdateBillBody,
   UpdateGeometryBody,
   UpdateProgrammeTaskBody,
   UpdateRowBody,
@@ -114,6 +118,7 @@ const updateGeometryBody = {
     version: { type: "integer", minimum: 1 },
     kind: { type: "string", enum: GEOMETRY_KINDS },
     vertices,
+    sheetId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -125,6 +130,7 @@ const addDeductionBody = {
     version: { type: "integer", minimum: 1 },
     label: { type: "string", minLength: 1, maxLength: 200 },
     vertices,
+    sheetId: { type: "string", minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -141,6 +147,45 @@ const listSessionsQuery = {
   type: "object",
   additionalProperties: false,
   properties: { proposalId: { type: "string", maxLength: 100 } },
+} as const;
+
+const billParams = {
+  type: "object",
+  required: ["billId"],
+  additionalProperties: false,
+  properties: { billId: { type: "string", minLength: 1 } },
+} as const;
+
+const blankSessionBody = {
+  type: "object",
+  required: ["title"],
+  additionalProperties: false,
+  properties: {
+    title: { type: "string", minLength: 1, maxLength: 200 },
+    proposalId: { type: "string", maxLength: 100 },
+  },
+} as const;
+
+const billBody = {
+  type: "object",
+  required: ["title"],
+  additionalProperties: false,
+  properties: { title: { type: "string", minLength: 1, maxLength: 200 } },
+} as const;
+
+const createRowBody = {
+  type: "object",
+  required: ["description"],
+  additionalProperties: false,
+  properties: {
+    rowType: { type: "string", enum: ROW_TYPES },
+    description: { type: "string", minLength: 1, maxLength: 4000 },
+    elementGroup: { type: "string", maxLength: 200 },
+    code: { type: "string", maxLength: 40 },
+    unit: { type: "string", maxLength: 20 },
+    qty: { type: "number", minimum: 0 },
+    rate: { type: "number", minimum: 0 },
+  },
 } as const;
 
 const fromPlanBody = {
@@ -278,6 +323,79 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
       const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);
+    },
+  );
+
+  fastify.post<{ Body: CreateBlankSessionBody }>(
+    "/precon/sessions/blank",
+    { schema: { body: blankSessionBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "create");
+      const proposalId = request.body.proposalId ?? null;
+      if (proposalId) {
+        const proposal = await proposalsRepository(fastify.db).getById(proposalId, orgId);
+        if (!proposal) throw new NotFoundError("Proposal");
+      }
+      const session = await service.createBlankSession(orgId, request.body.title, user.id, proposalId);
+      return reply.status(201).send(session);
+    },
+  );
+
+  fastify.post<{ Params: { sessionId: string }; Body: CreateBillBody }>(
+    "/precon/sessions/:sessionId/bills",
+    { schema: { params: sessionParams, body: billBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      const bill = await service.createBill(request.params.sessionId, request.body.title, user.id);
+      return reply.status(201).send(bill);
+    },
+  );
+
+  fastify.patch<{ Params: { billId: string }; Body: UpdateBillBody }>(
+    "/precon/bills/:billId",
+    { schema: { params: billParams, body: billBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertBillOrg(request.params.billId, orgId);
+      return service.renameBill(request.params.billId, request.body.title, user.id);
+    },
+  );
+
+  fastify.delete<{ Params: { billId: string } }>(
+    "/precon/bills/:billId",
+    { schema: { params: billParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertBillOrg(request.params.billId, orgId);
+      return service.removeBill(request.params.billId, user.id);
+    },
+  );
+
+  fastify.post<{ Params: { billId: string }; Body: CreateRowBody }>(
+    "/precon/bills/:billId/rows",
+    { schema: { params: billParams, body: createRowBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertBillOrg(request.params.billId, orgId);
+      const row = await service.createRow(request.params.billId, request.body, user.id);
+      return reply.status(201).send(row);
+    },
+  );
+
+  fastify.delete<{ Params: { rowId: string } }>(
+    "/precon/rows/:rowId",
+    { schema: { params: rowParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertRowOrg(request.params.rowId, orgId);
+      return service.removeRow(request.params.rowId, user.id);
     },
   );
 

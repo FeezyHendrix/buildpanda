@@ -84,8 +84,32 @@ export function preconRepository(db: Knex) {
     // bills + rows
     insertBills: (rows: Omit<PreconBillRow, "created_at">[]) =>
       rows.length ? db<PreconBillRow>("precon_bills").insert(rows) : Promise.resolve(),
+    insertBill: async (row: Omit<PreconBillRow, "created_at">) => {
+      const [inserted] = await db<PreconBillRow>("precon_bills").insert(row).returning("*");
+      return inserted!;
+    },
     billsBySession: (sessionId: string) =>
       db<PreconBillRow>("precon_bills").where({ session_id: sessionId }).orderBy("sort", "asc"),
+    billById: (id: string) => db<PreconBillRow>("precon_bills").where({ id }).first(),
+    updateBill: async (id: string, patch: Partial<Pick<PreconBillRow, "title" | "sort">>) => {
+      const rows = await db<PreconBillRow>("precon_bills").where({ id }).update(patch, "*");
+      return (rows as PreconBillRow[])[0] ?? null;
+    },
+    deleteBill: (id: string) => db("precon_bills").where({ id }).delete(),
+    nextBillSort: async (sessionId: string): Promise<number> => {
+      const row = await db("precon_bills")
+        .where({ session_id: sessionId })
+        .max<{ max: number | null }[]>("sort as max")
+        .first();
+      return (row?.max ?? -1) + 1;
+    },
+    nextRowSort: async (billId: string): Promise<number> => {
+      const row = await db("precon_boq_rows")
+        .where({ bill_id: billId })
+        .max<{ max: number | null }[]>("sort as max")
+        .first();
+      return (row?.max ?? -1) + 1;
+    },
     insertBoqRows: async (rows: Omit<PreconBoqRowRow, "created_at" | "updated_at">[]) => {
       // chunked: a generated BOQ can be several hundred rows
       for (let i = 0; i < rows.length; i += 200) {
@@ -94,6 +118,13 @@ export function preconRepository(db: Knex) {
         );
       }
     },
+    insertBoqRow: async (row: Omit<PreconBoqRowRow, "created_at" | "updated_at">) => {
+      const [inserted] = await db<PreconBoqRowRow>("precon_boq_rows")
+        .insert({ ...row, deductions: JSON.stringify(row.deductions) as never })
+        .returning("*");
+      return inserted!;
+    },
+    deleteRow: (id: string) => db("precon_boq_rows").where({ id }).delete(),
     rowsBySession: (sessionId: string) =>
       db<PreconBoqRowRow>("precon_boq_rows")
         .whereIn("bill_id", db("precon_bills").select("id").where({ session_id: sessionId }))

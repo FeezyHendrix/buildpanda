@@ -5,10 +5,13 @@ import { Button } from "@/components/atoms/button";
 import { cn } from "@/lib/utils";
 import {
   isVersionConflict,
+  useCreatePreconBill,
+  useDeletePreconRow,
   useRejectPreconRow,
   useUpdatePreconRow,
   useVerifyPreconRow,
 } from "@/hooks/use-precon";
+import { PreconRowComposer } from "@/components/molecules/precon-row-composer";
 import type { PreconBoqRow, PreconRowStatus, PreconSnapshot } from "@/api/precon";
 
 const STATUS_META: Record<PreconRowStatus, { label: string; tone: BadgeTone; mark: string }> = {
@@ -60,8 +63,11 @@ function BreakdownCard({
   const verify = useVerifyPreconRow(sessionId);
   const reject = useRejectPreconRow(sessionId);
   const update = useUpdatePreconRow(sessionId);
+  const remove = useDeletePreconRow(sessionId);
   const [qtyDraft, setQtyDraft] = useState<string | null>(null);
   const [rateDraft, setRateDraft] = useState<string | null>(null);
+  // Only engine-measured rows carry a confidence; hand-entered ones never do.
+  const measuredByAi = row.confidence !== null;
 
   const handleError = (error: unknown) => {
     onConflict(
@@ -87,7 +93,9 @@ function BreakdownCard({
     <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">AI measurement breakdown</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {measuredByAi ? "AI measurement breakdown" : "Manual entry"}
+          </p>
           {row.measurementBasis ? <p className="mt-1 text-xs text-gray-600">{row.measurementBasis}</p> : null}
         </div>
         {row.confidence ? (
@@ -161,18 +169,31 @@ function BreakdownCard({
         >
           {row.status === "verified" ? "Verified" : "Verify"}
         </Button>
+        {measuredByAi ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={reject.isPending}
+            disabled={row.status === "rejected"}
+            onClick={() => reject.mutate({ rowId: row.id, version: row.version }, { onError: handleError })}
+          >
+            Reject
+          </Button>
+        ) : null}
         <Button
           size="sm"
           variant="secondary"
-          loading={reject.isPending}
-          disabled={row.status === "rejected"}
-          onClick={() => reject.mutate({ rowId: row.id, version: row.version }, { onError: handleError })}
+          loading={remove.isPending}
+          onClick={() => remove.mutate(row.id, { onError: handleError })}
         >
-          Reject
+          Delete
         </Button>
       </div>
       {row.verifiedBy && row.status === "verified" ? (
-        <p className="text-[11px] text-gray-400">Measured by Panda AI · Reviewed {row.verifiedAt?.slice(0, 10)}</p>
+        <p className="text-[11px] text-gray-400">
+          {measuredByAi ? "Measured by Panda AI" : "Entered manually"} · Reviewed{" "}
+          {row.verifiedAt?.slice(0, 10)}
+        </p>
       ) : null}
     </div>
   );
@@ -181,6 +202,7 @@ BreakdownCard.displayName = "BreakdownCard";
 
 export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow }: PanelProps) {
   const [conflictNote, setConflictNote] = useState<string | null>(null);
+  const createBill = useCreatePreconBill(sessionId);
 
   const sheetByRow = useMemo(() => {
     const map = new Map<string, string>();
@@ -279,8 +301,24 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
                 );
               })}
             </ul>
+            <PreconRowComposer sessionId={sessionId} billId={bill.id} onError={setConflictNote} />
           </section>
         ))}
+        <div className="px-3 py-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={createBill.isPending}
+            onClick={() =>
+              createBill.mutate(`Bill No. ${snapshot.bills.length + 1}`, {
+                onError: (error) =>
+                  setConflictNote(error instanceof Error ? error.message : "Could not add the bill"),
+              })
+            }
+          >
+            + Add bill
+          </Button>
+        </div>
       </div>
 
       <div className="border-t border-gray-200 bg-gray-50 p-3">

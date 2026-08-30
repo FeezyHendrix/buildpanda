@@ -27,7 +27,11 @@ export interface StructureContext {
 
 export type PreconSessionStatus = "uploading" | "generating" | "reviewing" | "output" | "failed";
 export type PreconSheetKind = "floor-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
-export type PreconRowType = "heading" | "work_section" | "spec_note" | "item" | "provisional_sum";
+
+export const PRECON_ROW_TYPES = ["heading", "work_section", "spec_note", "item", "provisional_sum"] as const;
+export type PreconRowType = (typeof PRECON_ROW_TYPES)[number];
+
+export const PRECON_PRICED_ROW_TYPES: readonly PreconRowType[] = ["item", "provisional_sum"];
 
 export interface PreconSession {
   id: string;
@@ -135,6 +139,16 @@ export interface UpdateRowInput {
   changes: { description?: string; qty?: number; rate?: number; unit?: string };
 }
 
+export interface CreateRowInput {
+  rowType?: PreconRowType;
+  description: string;
+  elementGroup?: string;
+  code?: string;
+  unit?: string;
+  qty?: number;
+  rate?: number;
+}
+
 export const PROGRAMME_DEPENDENCY_TYPES = ["FS", "SS", "FF", "SF"] as const;
 export type ProgrammeDependencyType = (typeof PROGRAMME_DEPENDENCY_TYPES)[number];
 
@@ -207,7 +221,23 @@ export const preconApi = {
       .then((r) => r.data);
   },
 
+  createBlankSession: (title: string, proposalId?: string) =>
+    api.post<PreconSession>(`/precon/sessions/blank`, { title, proposalId }).then((r) => r.data),
+
   snapshot: (sessionId: string) => api.get<PreconSnapshot>(`/precon/sessions/${sessionId}`).then((r) => r.data),
+
+  createBill: (sessionId: string, title: string) =>
+    api.post<PreconBill>(`/precon/sessions/${sessionId}/bills`, { title }).then((r) => r.data),
+
+  renameBill: (billId: string, title: string) =>
+    api.patch<PreconBill>(`/precon/bills/${billId}`, { title }).then((r) => r.data),
+
+  deleteBill: (billId: string) => api.delete(`/precon/bills/${billId}`).then((r) => r.data),
+
+  createRow: (billId: string, input: CreateRowInput) =>
+    api.post<PreconBoqRow>(`/precon/bills/${billId}/rows`, input).then((r) => r.data),
+
+  deleteRow: (rowId: string) => api.delete(`/precon/rows/${rowId}`).then((r) => r.data),
 
   updateRow: (rowId: string, input: UpdateRowInput) =>
     api.patch<PreconBoqRow>(`/precon/rows/${rowId}`, input).then((r) => r.data),
@@ -218,11 +248,15 @@ export const preconApi = {
   rejectRow: (rowId: string, version: number) =>
     api.post<PreconBoqRow>(`/precon/rows/${rowId}/reject`, { version }).then((r) => r.data),
 
-  updateGeometry: (rowId: string, input: { version: number; kind: PreconGeometryKind; vertices: number[][] }) =>
-    api.put<PreconBoqRow>(`/precon/rows/${rowId}/geometry`, input).then((r) => r.data),
+  updateGeometry: (
+    rowId: string,
+    input: { version: number; kind: PreconGeometryKind; vertices: number[][]; sheetId?: string },
+  ) => api.put<PreconBoqRow>(`/precon/rows/${rowId}/geometry`, input).then((r) => r.data),
 
-  addDeduction: (rowId: string, input: { version: number; label: string; vertices: number[][] }) =>
-    api.post<PreconBoqRow>(`/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
+  addDeduction: (
+    rowId: string,
+    input: { version: number; label: string; vertices: number[][]; sheetId?: string },
+  ) => api.post<PreconBoqRow>(`/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
 
   updateSettings: (sessionId: string, patch: Partial<PreconSummarySettings>) =>
     api.patch<PreconSummarySettings>(`/precon/sessions/${sessionId}/settings`, patch).then((r) => r.data),

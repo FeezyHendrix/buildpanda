@@ -13,9 +13,11 @@ export type RealtimeEvent =
   | "channel.updated"
   | "unread.changed"
   | "notification.created"
+  | "row.created"
   | "row.updated"
   | "row.verified"
   | "row.rejected"
+  | "row.deleted"
   | "geometry.updated"
   | "precon.progress"
   | "access.updated";

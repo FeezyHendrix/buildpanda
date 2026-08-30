@@ -11,7 +11,11 @@ import {
   useStartProposalTakeoff,
 } from "@/hooks/use-proposals";
 import { useUploadFile } from "@/hooks/use-files";
-import { useCreatePreconSessionFromPlan, usePreconSessions } from "@/hooks/use-precon";
+import {
+  useCreateBlankPreconSession,
+  useCreatePreconSessionFromPlan,
+  usePreconSessions,
+} from "@/hooks/use-precon";
 import { useNavigate } from "react-router-dom";
 import { filesApi } from "@/api/files";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -42,6 +46,7 @@ export function PlansTab({ proposalId }: Props) {
   const navigate = useNavigate();
   const { data: takeoffSessions = [] } = usePreconSessions(proposalId);
   const measurePlan = useCreatePreconSessionFromPlan(proposalId);
+  const createBlankSheet = useCreateBlankPreconSession();
 
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,9 +209,29 @@ export function PlansTab({ proposalId }: Props) {
         </div>
       )}
 
-      {takeoffSessions.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="text-sm font-semibold text-gray-900">Panda AI takeoffs</p>
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Pricing sheets</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Measure a drawing with Panda AI, or price a sheet by hand — both open the same workspace.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={createBlankSheet.isPending}
+            onClick={() => {
+              void createBlankSheet
+                .mutateAsync({ title: "Untitled pricing sheet", proposalId })
+                .then((session) => navigate(`/sales/takeoff/${session.id}`))
+                .catch((err) => setError(getApiErrorMessage(err, "Could not start the pricing sheet.")));
+            }}
+          >
+            + Blank pricing sheet
+          </Button>
+        </div>
+        {takeoffSessions.length > 0 ? (
           <ul className="mt-3 space-y-2 text-sm">
             {takeoffSessions.map((session) => (
               <li key={session.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
@@ -225,8 +250,8 @@ export function PlansTab({ proposalId }: Props) {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       {takeoffs.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-4">
