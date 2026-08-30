@@ -2,7 +2,7 @@ import type { Tone } from "../projects/types.ts";
 
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 
-export type CategoryGroup = "document" | "plan";
+export type CategoryGroup = "document" | "plan" | "media";
 
 export interface DocumentCategory {
   id: string;
