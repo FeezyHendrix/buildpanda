@@ -16,6 +16,42 @@ Invoke with the `skill` tool (e.g. `skill(name="writing-backend-code")`). The sk
 auto-trigger from their descriptions, but load them explicitly when in doubt — the
 cost of loading is near zero, the cost of missing a convention is high.
 
+## Before you build
+
+Construction software is a system of record for a regulated, contractual process.
+A feature that looks fine in isolation can be wrong for the methodology. Before
+writing code for anything beyond a cosmetic change, work through this and state
+the conclusions:
+
+1. **What does this artefact mean on a real project?** A drawing markup, an RFI,
+   a valuation, a look-ahead are contractual records with defined lifecycles —
+   not UI objects. Model the real-world behaviour, not the screen.
+2. **Which existing modules does it touch?** Name them. A comment on a drawing
+   reaches RFIs, approvals, tasks, document revisions, participants and
+   notifications. Reuse those modules; never fork a parallel concept.
+3. **Does it need to survive a refresh, an audit, or a dispute?** If yes it is
+   persisted, attributed to an actor, and timestamped — never component state.
+4. **Is it revision-scoped?** Anything anchored to a drawing or programme must
+   record which revision it was made against, and must not silently carry over
+   when that revision is superseded.
+5. **Who is allowed to do it?** Check the resource/action the backend enforces;
+   viewing a sheet and raising an RFI off it are different permissions.
+6. **Would a PM ask Panda AI about it?** If yes, it needs an agent tool (see
+   Panda AI awareness below).
+
+If the answer to any of these changes the design, say so **before** implementing.
+Shipping a plausible-looking feature that contradicts how the trade actually
+works is worse than shipping nothing.
+
+## File size
+
+**400 lines is the hard ceiling for any `.ts`/`.tsx` file** (frontend skill,
+"File size"). Backend modules follow the same discipline via their three-layer
+split. Check the line count before adding to an existing file: if the change
+takes it over, split first — extract sub-components, config arrays and helpers
+into siblings — then make the change. Do not append to an already-oversized
+file; that is how a page reaches four times the limit one commit at a time.
+
 ## Layout
 
 - `packages/backend` — Fastify + Knex modular monolith (one domain per module, three
