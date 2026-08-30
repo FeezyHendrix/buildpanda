@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
@@ -208,7 +209,13 @@ export const auth = betterAuth({
   secret: config.auth.secret,
   baseURL: config.auth.baseUrl,
   basePath: "/api/auth",
-  trustedOrigins: config.http.corsOrigins,
+  // The native app has no browser origin, so it identifies itself by URL scheme.
+  // `exp://` covers Expo Go / dev clients on a LAN address and stays out of prod.
+  trustedOrigins: [
+    ...config.http.corsOrigins,
+    "buildpanda://",
+    ...(config.isProduction ? [] : ["exp://", "exp://**"]),
+  ],
 
   // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
   // deliberately skips these to avoid double-counting). Custom rules throttle
@@ -326,6 +333,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    expo(),
     organization({
       ac,
       roles,
