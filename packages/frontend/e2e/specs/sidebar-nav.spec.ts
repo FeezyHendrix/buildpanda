@@ -48,6 +48,8 @@ test.describe("Sidebar navigation grouping @navigation", () => {
     const dailyLog = sidebar.getByRole("link", { name: /daily log/i });
     await expect(dailyLog).toBeVisible();
     await expect(dailyLog).toHaveAttribute("href", new RegExp(`/project/${project.id}/schedules/daily-log`));
+    await expect(sidebar.getByRole("link", { name: /plans/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/plans`));
+    await expect(sidebar.getByRole("link", { name: /media library/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/media-library`));
     await expect(sidebar.getByRole("link", { name: /bim models/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/bim`));
     await expect(sidebar.getByRole("link", { name: /permits & compliance/i })).toHaveCount(0);
 
