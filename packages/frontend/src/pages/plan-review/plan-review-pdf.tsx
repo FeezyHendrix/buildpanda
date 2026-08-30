@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 // ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
 // constructor — static hosts that serve .mjs as octet-stream (staging nginx)
 // break both workerSrc and the fake-worker fallback, so never fetch .mjs.
@@ -30,23 +29,19 @@ export function PdfSheetCanvas({
   url,
   title,
   className,
+  pageNumber,
   onRenderStateChange,
 }: {
   url: string;
   title: string;
   className?: string;
+  pageNumber: number;
   onRenderStateChange?: (state: PdfRenderState) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const docRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPageNumber(1);
-  }, [url]);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +60,6 @@ export function PdfSheetCanvas({
           : await pdfjs.getDocument({ url, withCredentials: true }).promise;
       if (cancelled) return;
       docRef.current = { url, doc };
-      setPageCount(doc.numPages);
 
       const safePage = Math.min(Math.max(1, pageNumber), doc.numPages);
       const page = await doc.getPage(safePage);
@@ -126,37 +120,6 @@ export function PdfSheetCanvas({
         </div>
       )}
 
-      {pageCount > 1 && (
-        <div
-          className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/95 px-1 py-1 shadow-lg ring-1 ring-black/5"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            aria-label="Previous PDF page"
-            title="Previous PDF page"
-            disabled={pageNumber <= 1}
-            onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-            className="flex size-7 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="px-1 font-mono text-[11px] text-gray-600">
-            {pageNumber} / {pageCount}
-          </span>
-          <button
-            type="button"
-            aria-label="Next PDF page"
-            title="Next PDF page"
-            disabled={pageNumber >= pageCount}
-            onClick={() => setPageNumber((p) => Math.min(pageCount, p + 1))}
-            className="flex size-7 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

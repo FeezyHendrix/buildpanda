@@ -25,6 +25,14 @@ export const documentKeys = {
     [...documentKeys.all(projectId), "versions", documentId] as const,
 };
 
+export const drawingMarkupKeys = {
+  all: (projectId: string) => ["projects", projectId, "drawing-markups"] as const,
+  version: (projectId: string, documentVersionId: string, pageNo?: number) =>
+    [...drawingMarkupKeys.all(projectId), "version", documentVersionId, { pageNo }] as const,
+  document: (projectId: string, documentId: string) =>
+    [...drawingMarkupKeys.all(projectId), "document", documentId] as const,
+};
+
 export const inspectionKeys = {
   all: (projectId: string) => ["projects", projectId, "inspections"] as const,
   list: (projectId: string) =>
