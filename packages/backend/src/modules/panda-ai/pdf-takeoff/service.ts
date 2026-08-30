@@ -4,6 +4,7 @@ import { DERIVED_BASIS_PATTERN, anchorsFromRows, evaluateFormula } from "./engin
 import type { PreconRepository } from "./repository.ts";
 import type {
   AddDeductionBody,
+  CreateRowBody,
   Deduction,
   PreconRateCardRow,
   PreconRateRow,
@@ -179,7 +180,13 @@ export function quantityFromVertices(
 }
 
 export interface RowChangeEvent {
-  type: "row.updated" | "row.verified" | "row.rejected" | "geometry.updated";
+  type:
+    | "row.created"
+    | "row.updated"
+    | "row.verified"
+    | "row.rejected"
+    | "row.deleted"
+    | "geometry.updated";
   sessionId: string;
   rowId: string;
   version: number;
@@ -257,6 +264,22 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     }
   }
 
+  // Falls back to the row's last-measured sheet, so never-measured rows stay
+  // measurable. The id is caller-supplied, so it must be checked against the
+  // session — otherwise one session could measure another's sheet.
+  async function resolveMeasurementSheet(
+    rowId: string,
+    sessionId: string,
+    sheetId?: string,
+  ): Promise<PreconSheetRow & { scale_mm_per_pt: number }> {
+    const target = sheetId ?? (await repo.geometriesByRow(rowId))[0]?.sheet_id;
+    if (!target) throw new BadRequestError("Open the sheet you want to measure on first");
+    const sheet = await repo.sheetById(target);
+    if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
+    if (!sheet.scale_mm_per_pt) throw new BadRequestError("Sheet has no calibrated scale");
+    return sheet as PreconSheetRow & { scale_mm_per_pt: number };
+  }
+
   async function requireRow(rowId: string): Promise<{ row: PreconBoqRowRow; sessionId: string }> {
     const [row, sessionId] = await Promise.all([repo.rowById(rowId), repo.sessionIdForRow(rowId)]);
     if (!row || !sessionId) throw new NotFoundError("BOQ row");
@@ -305,6 +328,30 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return toSession(session);
     },
 
+    // Priced by hand: with no drawings there is nothing to upload or generate,
+    // so the session opens directly in review.
+    async createBlankSession(orgId: string, title: string, userId: string, proposalId: string | null = null) {
+      const session = await repo.insertSession({
+        id: generateId("pcs"),
+        org_id: orgId,
+        project_id: null,
+        proposal_id: proposalId,
+        status: "reviewing",
+        title,
+        error: null,
+        created_by: userId,
+      });
+      await repo.insertBill({
+        id: generateId("pcb"),
+        session_id: session.id,
+        title: "Bill No. 1",
+        sort: 0,
+      });
+      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
+      await audit(session.id, null, userId, "session_created", null, { title, origin: "manual" });
+      return toSession(session);
+    },
+
     async listSessions(orgId: string, proposalId?: string) {
       return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
     },
@@ -327,6 +374,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const session = await repo.sessionById(sessionId);
       if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
       return sessionId;
+    },
+
+    async assertBillOrg(billId: string, orgId: string) {
+      const bill = await repo.billById(billId);
+      if (!bill) throw new NotFoundError("Bill");
+      const session = await repo.sessionById(bill.session_id);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Bill");
+      return bill.session_id;
     },
 
     async assertProgrammeTaskOrg(taskId: string, orgId: string) {
@@ -368,6 +423,103 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       };
     },
 
+    async createBill(sessionId: string, title: string, actor: string): Promise<PreconBill> {
+      const bill = await repo.insertBill({
+        id: generateId("pcb"),
+        session_id: sessionId,
+        title,
+        sort: await repo.nextBillSort(sessionId),
+      });
+      await audit(sessionId, null, actor, "bill_created", null, { billId: bill.id, title });
+      return toBill(bill);
+    },
+
+    async renameBill(billId: string, title: string, actor: string): Promise<PreconBill> {
+      const existing = await repo.billById(billId);
+      if (!existing) throw new NotFoundError("Bill");
+      const updated = await repo.updateBill(billId, { title });
+      if (!updated) throw new NotFoundError("Bill");
+      await audit(existing.session_id, null, actor, "bill_renamed", { title: existing.title }, { title });
+      return toBill(updated);
+    },
+
+    async removeBill(billId: string, actor: string): Promise<{ ok: true }> {
+      const existing = await repo.billById(billId);
+      if (!existing) throw new NotFoundError("Bill");
+      const bills = await repo.billsBySession(existing.session_id);
+      if (bills.length <= 1) throw new BadRequestError("A pricing sheet needs at least one bill");
+      await repo.deleteBill(billId);
+      await audit(existing.session_id, null, actor, "bill_deleted", { title: existing.title }, null);
+      return { ok: true };
+    },
+
+    // Authored by a person, so it needs no AI review: it lands verified, and
+    // its rate is manual rather than sourced from a rate card.
+    async createRow(billId: string, body: CreateRowBody, actor: string): Promise<PreconBoqRowDto> {
+      const bill = await repo.billById(billId);
+      if (!bill) throw new NotFoundError("Bill");
+      const rowType = body.rowType ?? "item";
+      const priced = rowType === "item" || rowType === "provisional_sum";
+      if (!priced && (body.qty !== undefined || body.rate !== undefined)) {
+        throw new BadRequestError("Only priced rows carry quantities");
+      }
+      const qty = priced ? (body.qty ?? null) : null;
+      const rate = priced ? (body.rate ?? null) : null;
+      const row = await repo.insertBoqRow({
+        id: generateId("pbr"),
+        bill_id: billId,
+        sort: await repo.nextRowSort(billId),
+        row_type: rowType,
+        element_group: body.elementGroup ?? null,
+        code: body.code ?? null,
+        description: body.description,
+        unit: priced ? (body.unit ?? null) : null,
+        qty_gross: qty,
+        deductions: [],
+        qty,
+        rate,
+        amount: qty !== null && rate !== null ? Math.round(qty * rate * 100) / 100 : null,
+        rate_source: rate === null ? null : "manual",
+        confidence: null,
+        status: priced ? "verified" : null,
+        version: 1,
+        measurement_basis: priced ? "Entered manually" : null,
+        verified_by: priced ? actor : null,
+        verified_at: priced ? new Date() : null,
+      });
+      await audit(bill.session_id, row.id, actor, "created", null, {
+        description: body.description,
+        qty,
+        rate,
+      });
+      publish(bill.session_id, {
+        type: "row.created",
+        sessionId: bill.session_id,
+        rowId: row.id,
+        version: row.version,
+        actor,
+        changes: { billId, description: body.description, qty, rate },
+      });
+      return toRow(row);
+    },
+
+    // A hard delete, unlike `rejectRow`: rejection keeps an AI proposal visible
+    // as declined, while a row typed in error should simply go.
+    async removeRow(rowId: string, actor: string): Promise<{ ok: true }> {
+      const { row, sessionId } = await requireRow(rowId);
+      await repo.deleteRow(rowId);
+      await audit(sessionId, rowId, actor, "deleted", { ...toRow(row) }, null);
+      publish(sessionId, {
+        type: "row.deleted",
+        sessionId,
+        rowId,
+        version: row.version,
+        actor,
+        changes: {},
+      });
+      return { ok: true };
+    },
+
     async updateRow(rowId: string, body: UpdateRowBody, actor: string): Promise<PreconBoqRowDto> {
       const { row, sessionId } = await requireRow(rowId);
       if (row.row_type !== "item" && row.row_type !== "provisional_sum" && body.changes.qty !== undefined) {
@@ -384,11 +536,13 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const qty = body.changes.qty ?? num(row.qty);
       const rate = body.changes.rate ?? num(row.rate);
       if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
-      // an edited AI row needs re-verification
+      // An edited AI measurement needs re-checking; a hand-entered row's author
+      // is already its verifier, so it stays verified.
       if (row.status === "verified") {
-        patch.status = "needs_review";
-        patch.verified_by = null;
-        patch.verified_at = null;
+        const measuredByAi = row.confidence !== null;
+        patch.status = measuredByAi ? "needs_review" : "verified";
+        patch.verified_by = measuredByAi ? null : actor;
+        patch.verified_at = measuredByAi ? null : new Date();
       }
       const updated = await repo.updateRowVersioned(rowId, body.version, patch);
       if (!updated) {
@@ -458,11 +612,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     // Server-side quantity recompute: the client sends vertices, never quantities.
     async updateGeometry(rowId: string, body: UpdateGeometryBody, actor: string): Promise<PreconBoqRowDto> {
       const { row, sessionId } = await requireRow(rowId);
-      const geometries = await repo.geometriesByRow(rowId);
-      const sheetId = geometries[0]?.sheet_id;
-      if (!sheetId) throw new BadRequestError("Row has no measurable sheet geometry");
-      const sheet = await repo.sheetById(sheetId);
-      if (!sheet?.scale_mm_per_pt) throw new BadRequestError("Sheet has no calibrated scale");
+      const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
+      const sheetId = sheet.id;
       const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, sheet.scale_mm_per_pt);
       const deductionTotal = (row.deductions ?? []).reduce((s, d) => s + d.qty, 0);
       const net = Math.max(0, Math.round((quantity - deductionTotal) * 100) / 100);
@@ -502,11 +653,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
 
     async addDeduction(rowId: string, body: AddDeductionBody, actor: string): Promise<PreconBoqRowDto> {
       const { row, sessionId } = await requireRow(rowId);
-      const geometries = await repo.geometriesByRow(rowId);
-      const sheetId = geometries[0]?.sheet_id;
-      if (!sheetId) throw new BadRequestError("Row has no measurable sheet geometry");
-      const sheet = await repo.sheetById(sheetId);
-      if (!sheet?.scale_mm_per_pt) throw new BadRequestError("Sheet has no calibrated scale");
+      const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
+      const sheetId = sheet.id;
       const { quantity } = quantityFromVertices("deduction", body.vertices, sheet.scale_mm_per_pt);
       const geometryId = generateId("pgeo");
       const deductions: Deduction[] = [...(row.deductions ?? []), { label: body.label, qty: quantity, geometryId }];

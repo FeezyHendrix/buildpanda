@@ -123,7 +123,7 @@ test("addDeduction recomputes net from gross server-side", async () => {
   const svc = preconService(
     fakeRepo({
       geometriesByRow: (async () => [{ sheet_id: "pcsh_1" }]) as never,
-      sheetById: (async () => ({ id: "pcsh_1", scale_mm_per_pt: 10 })) as never,
+      sheetById: (async () => ({ id: "pcsh_1", session_id: "pcs_1", scale_mm_per_pt: 10 })) as never,
       insertGeometries: (async (rows: unknown[]) => {
         inserted.push(...rows);
       }) as never,
@@ -175,4 +175,143 @@ test("editing an anchor row recomputes derived rows from their formulas", async 
   assert.equal(recomputes[0]!.id, "pbr_derived");
   assert.equal(recomputes[0]!.qty, 2000); // 2 x corrected wall area
   assert.equal(recomputes[0]!.amount, 200000);
+});
+
+test("createRow prices a hand-entered item and lands it verified", async () => {
+  let inserted: PreconBoqRowRow | null = null;
+  const events: string[] = [];
+  const svc = preconService(
+    fakeRepo({
+      billById: (async () => ({ id: "pbl_1", session_id: "pcs_1", title: "Bill No. 1", sort: 0 })) as never,
+      nextRowSort: (async () => 7) as never,
+      insertBoqRow: (async (row: PreconBoqRowRow) => {
+        inserted = row;
+        return row;
+      }) as never,
+    }),
+    (_sessionId, e) => events.push(e.type),
+  );
+
+  const row = await svc.createRow(
+    "pbl_1",
+    { description: "150mm hardcore filling", unit: "m2", qty: 12.5, rate: 4000 },
+    "u_qs",
+  );
+
+  assert.equal(row.amount, 50000);
+  assert.equal(row.status, "verified");
+  assert.equal(row.rateSource, "manual");
+  assert.equal(row.confidence, null);
+  assert.equal(inserted!.sort, 7);
+  assert.equal(inserted!.verified_by, "u_qs");
+  assert.deepEqual(events, ["row.created"]);
+});
+
+test("createRow rejects quantities on a non-priced row type", async () => {
+  const svc = preconService(
+    fakeRepo({
+      billById: (async () => ({ id: "pbl_1", session_id: "pcs_1", title: "Bill No. 1", sort: 0 })) as never,
+      nextRowSort: (async () => 0) as never,
+      insertBoqRow: (async (row: PreconBoqRowRow) => row) as never,
+    }),
+  );
+
+  await assert.rejects(
+    svc.createRow("pbl_1", { rowType: "heading", description: "Substructure", qty: 5 }, "u_qs"),
+    /priced rows carry quantities/i,
+  );
+});
+
+test("createRow leaves a heading unpriced and unreviewable", async () => {
+  const svc = preconService(
+    fakeRepo({
+      billById: (async () => ({ id: "pbl_1", session_id: "pcs_1", title: "Bill No. 1", sort: 0 })) as never,
+      nextRowSort: (async () => 0) as never,
+      insertBoqRow: (async (row: PreconBoqRowRow) => row) as never,
+    }),
+  );
+
+  const row = await svc.createRow("pbl_1", { rowType: "heading", description: "Substructure" }, "u_qs");
+  assert.equal(row.status, null);
+  assert.equal(row.qty, null);
+  assert.equal(row.amount, null);
+});
+
+test("removeRow deletes and keeps the row in the audit trail", async () => {
+  const audits: { action: string; before: unknown }[] = [];
+  const deleted: string[] = [];
+  const svc = preconService(
+    fakeRepo({
+      deleteRow: (async (id: string) => {
+        deleted.push(id);
+      }) as never,
+      insertAuditEvent: (async (e: { action: string; before: unknown }) => {
+        audits.push(e);
+      }) as never,
+    }),
+  );
+
+  await svc.removeRow("pbr_1", "u_qs");
+
+  assert.deepEqual(deleted, ["pbr_1"]);
+  assert.equal(audits[0]!.action, "deleted");
+  assert.equal((audits[0]!.before as PreconBoqRowDto).description, "225mm sandcrete blockwork");
+});
+
+test("createBlankSession opens in review with one bill and default settings", async () => {
+  const bills: { title: string }[] = [];
+  let settings: { prelims_pct: number } | null = null;
+  const svc = preconService(
+    fakeRepo({
+      insertSession: (async (row: Record<string, unknown>) => ({
+        ...row,
+        structure_context: null,
+        programme_start_date: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      })) as never,
+      insertBill: (async (row: { title: string }) => {
+        bills.push(row);
+        return row;
+      }) as never,
+      upsertSettings: (async (row: { prelims_pct: number }) => {
+        settings = row;
+      }) as never,
+    }),
+  );
+
+  const session = await svc.createBlankSession("org_1", "Renovation pricing", "u_qs", "prop_1");
+
+  assert.equal(session.status, "reviewing");
+  assert.equal(session.proposalId, "prop_1");
+  assert.deepEqual(bills.map((b) => b.title), ["Bill No. 1"]);
+  assert.equal(settings!.prelims_pct, 5);
+});
+
+test("editing a hand-entered row keeps it verified, unlike an AI row", async () => {
+  const manual = itemRow({ status: "verified", confidence: null, verified_by: "u_qs" });
+  const svc = preconService(fakeRepo({ rowById: (async () => manual) as never }));
+  const row = await svc.updateRow("pbr_1", { version: 1, changes: { rate: 15000 } }, "u_qs");
+  assert.equal(row.status, "verified");
+  assert.equal(row.verifiedBy, "u_qs");
+});
+
+test("a never-measured row can be measured by naming the sheet", async () => {
+  const svc = preconService(
+    fakeRepo({
+      // no prior geometry: a schedule-derived, provisional or hand-entered row
+      rowById: (async () => itemRow({ deductions: [], qty_gross: null, qty: null })) as never,
+      geometriesByRow: (async () => []) as never,
+      sheetById: (async () => ({ id: "pcsh_1", session_id: "pcs_1", scale_mm_per_pt: 17.68 })) as never,
+      replaceRowGeometry: (async () => undefined) as never,
+    }),
+  );
+
+  const row = await svc.updateGeometry(
+    "pbr_1",
+    { version: 1, kind: "area", vertices: [[0, 0], [100, 0], [100, 100], [0, 100]], sheetId: "pcsh_1" },
+    "u_qs",
+  );
+
+  assert.ok(row.qty !== null && row.qty > 0, `expected a measured quantity, got ${row.qty}`);
 });

@@ -297,12 +297,38 @@ export interface UpdateGeometryBody {
   version: number;
   kind: GeometryKind;
   vertices: number[][];
+  sheetId?: string;
 }
 
 export interface AddDeductionBody {
   version: number;
   label: string;
   vertices: number[][];
+  sheetId?: string;
+}
+
+export interface CreateBlankSessionBody {
+  title: string;
+  proposalId?: string;
+}
+
+export interface CreateBillBody {
+  title: string;
+}
+
+export interface UpdateBillBody {
+  title: string;
+}
+
+// qty/rate are rejected on non-priced row types, matching the updateRow rule.
+export interface CreateRowBody {
+  rowType?: RowType;
+  description: string;
+  elementGroup?: string;
+  code?: string;
+  unit?: string;
+  qty?: number;
+  rate?: number;
 }
 
 // ---------- engine types ----------
