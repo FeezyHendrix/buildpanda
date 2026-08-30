@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-documents";
 import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
+import { formatShortDate } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type {
@@ -185,7 +186,7 @@ function DocumentRow({
         </TableCell>
         <TableCell className="text-sm text-gray-600">{doc.category}</TableCell>
         <TableCell className="whitespace-nowrap text-sm text-gray-600">
-          {doc.uploadedAt}
+          {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
         </TableCell>
         <TableCell>
           <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex w-fit items-center gap-1.5 bg-transparent">
