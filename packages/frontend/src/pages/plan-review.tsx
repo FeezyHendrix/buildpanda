@@ -63,6 +63,7 @@ import {
   normalizedRect,
   type Markup,
 } from "./plan-review/plan-review-markup";
+import { PdfSheetCanvas } from "./plan-review/plan-review-pdf";
 
 type Tool = "pan" | "select" | "measure" | "pen" | "cloud" | "comment";
 type BlendMode = "differences" | "ghost" | "highlight";
@@ -212,15 +213,40 @@ function PopShell({ children, className }: { children: React.ReactNode; classNam
 const POP_ITEM_CLS =
   "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-[#F6F6F6]";
 
-function SheetImage({ sheet, className, style }: { sheet: Sheet; className?: string; style?: React.CSSProperties }) {
+function SheetImage({
+  sheet,
+  className,
+  style,
+  onAspectChange,
+}: {
+  sheet: Sheet;
+  className?: string;
+  style?: React.CSSProperties;
+  onAspectChange?: (aspect: number) => void;
+}) {
   if (sheet.kind === "image" && sheet.src) {
-    return <img src={sheet.src} alt={sheet.alt} draggable={false} className={className} style={style} />;
+    return (
+      <img
+        src={sheet.src}
+        alt={sheet.alt}
+        draggable={false}
+        className={className}
+        style={style}
+        onLoad={(e) => {
+          const el = e.currentTarget;
+          if (el.naturalWidth > 0) onAspectChange?.(el.naturalHeight / el.naturalWidth);
+        }}
+      />
+    );
   }
   if (sheet.kind === "pdf" && sheet.src) {
     return (
-      <div className={cn("relative aspect-[4/3] w-full", className)} style={style}>
-        <iframe src={sheet.src} title={sheet.alt} className="pointer-events-none h-full w-full border-0" />
-      </div>
+      <PdfSheetCanvas
+        url={sheet.src}
+        title={sheet.alt}
+        className={className}
+        onRenderStateChange={(state) => onAspectChange?.(state.aspect)}
+      />
     );
   }
   return (
@@ -1295,19 +1321,8 @@ export default function DrawingReviewWorkspace() {
                   <SheetImage
                     sheet={sheet}
                     className="block w-full rounded-lg"
+                    onAspectChange={setImgAspect}
                   />
-                  {sheet.kind === "image" && sheet.src && (
-                    <img
-                      src={sheet.src}
-                      alt=""
-                      aria-hidden="true"
-                      className="hidden"
-                      onLoad={(e) => {
-                        const el = e.currentTarget;
-                        if (el.naturalWidth > 0) setImgAspect(el.naturalHeight / el.naturalWidth);
-                      }}
-                    />
-                  )}
 
                   {blendReady && compareSheet?.src && (
                     <>
