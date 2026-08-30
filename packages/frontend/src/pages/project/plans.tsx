@@ -31,7 +31,7 @@ export default function ProjectPlans() {
         description="Drawings and schematics with full revision history."
         actions={
           <div className="flex items-center gap-2">
-            <Link to="/plan-review">
+            <Link to={`/project/${project.id}/plans/review`}>
               <Button
                 variant="secondary"
                 size="md"

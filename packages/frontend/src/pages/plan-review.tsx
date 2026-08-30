@@ -1,14 +1,14 @@
 /*
- * Drawing Review Workspace — client-side prototype (no backend).
- * Production expansion points, intentionally out of scope here:
- * - Persist comments, pins and markup (documents module / API)
- * - Store walkthrough recordings with real audio + screen capture
- * - Real identity (session user) instead of the hardcoded "You" author
- * - Live collaboration / presence on the same sheet
- * - Revision data served from the backend per sheet
- * - Permissions and audit trail for review actions
+ * Drawing Review Workspace.
+ * Inside a project (/project/:projectId/plans/review) it reviews the
+ * project's uploaded plan documents; without a project it falls back to
+ * bundled demo sheets. Markup, notes and recordings are session-local.
+ * Production expansion points: persist markup/notes via the documents
+ * module, stored recordings with real audio capture, session identity,
+ * collaboration, calibrated sheet scales, permissions and audit trail.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Check,
   ChevronDown,
@@ -43,9 +43,25 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { Spinner } from "@/components/atoms/spinner";
+import { useProjectDocuments } from "@/hooks/use-documents";
 import { cn } from "@/lib/utils";
-
-// ── Data model ─────────────────────────────────────────────────────────────
+import {
+  MOCK_SHEETS,
+  adaptPlanDocuments,
+  clamp,
+  formatClock,
+  generateId,
+  relativeTime,
+  type Pt,
+  type Sheet,
+} from "./plan-review/plan-review-data";
+import {
+  MarkupLayer,
+  hitTestMarkup,
+  normalizedRect,
+  type Markup,
+} from "./plan-review/plan-review-markup";
 
 type Tool = "pan" | "select" | "measure" | "pen" | "cloud" | "comment";
 type BlendMode = "differences" | "ghost" | "highlight";
@@ -56,15 +72,6 @@ type PopoverId =
   | "color"
   | "paneOptsPrimary"
   | "paneOptsCompare";
-
-interface Sheet {
-  id: string;
-  title: string;
-  revision: string;
-  scale: string;
-  image: string;
-  alt: string;
-}
 
 interface Pin {
   id: string;
@@ -86,87 +93,7 @@ interface Note {
   durationSeconds: number | null;
 }
 
-interface TracePoint {
-  x: number;
-  y: number;
-}
-
-function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function formatClock(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function relativeTime(ts: number): string {
-  const diff = Math.max(0, Date.now() - ts);
-  const sec = Math.floor(diff / 1000);
-  if (sec < 60) return "just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.floor(hr / 24)}d ago`;
-}
-
-// ── Mock plan images (inline SVG data URIs, no network) ────────────────────
-
-const PLAN_LAYOUTS: [number, number, number, number][][] = [
-  [[60, 60, 300, 200], [380, 60, 360, 140], [380, 220, 200, 180], [600, 220, 140, 180], [60, 280, 300, 200], [380, 420, 360, 60]],
-  [[60, 60, 220, 300], [300, 60, 440, 120], [300, 200, 210, 160], [530, 200, 210, 160], [60, 380, 450, 100], [530, 380, 210, 100]],
-  [[60, 60, 340, 160], [420, 60, 320, 160], [60, 240, 200, 240], [280, 240, 240, 120], [280, 380, 240, 100], [540, 240, 200, 240]],
-  [[60, 60, 680, 100], [60, 180, 250, 300], [330, 180, 190, 140], [540, 180, 200, 140], [330, 340, 410, 140], [60, 500, 0, 0]],
-];
-
-function planImage(index: number, sheet: { id: string; title: string }, accent: string): string {
-  const rooms = (PLAN_LAYOUTS[index % PLAN_LAYOUTS.length] ?? [])
-    .filter(([, , w, h]) => w > 0 && h > 0)
-    .map(
-      ([x, y, w, h], i) =>
-        `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#334155" stroke-width="3"/>` +
-        `<text x="${x + 12}" y="${y + 26}" font-family="monospace" font-size="15" fill="#64748b">RM ${index + 1}0${i + 1}</text>`,
-    )
-    .join("");
-  const grid = Array.from({ length: 7 }, (_, i) => {
-    const gx = 100 + i * 100;
-    return `<line x1="${gx}" y1="30" x2="${gx}" y2="560" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4 8"/><circle cx="${gx}" cy="24" r="11" fill="none" stroke="#94a3b8" stroke-width="1.5"/><text x="${gx}" y="28" text-anchor="middle" font-family="monospace" font-size="11" fill="#64748b">${i + 1}</text>`;
-  }).join("");
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620">` +
-    `<rect width="800" height="620" fill="#fdfdfa"/>${grid}` +
-    `<rect x="48" y="48" width="704" height="464" fill="none" stroke="#0f172a" stroke-width="7"/>${rooms}` +
-    `<path d="M ${120 + index * 60} 512 a 44 44 0 0 1 44 -44" fill="none" stroke="${accent}" stroke-width="2.5"/>` +
-    `<line x1="60" y1="540" x2="740" y2="540" stroke="${accent}" stroke-width="2"/>` +
-    `<text x="60" y="562" font-family="monospace" font-size="14" fill="#475569">${sheet.title.toUpperCase()}</text>` +
-    `<rect x="560" y="548" width="192" height="60" fill="none" stroke="#334155" stroke-width="2"/>` +
-    `<text x="572" y="572" font-family="monospace" font-size="17" font-weight="bold" fill="#0f172a">${sheet.id}</text>` +
-    `<text x="572" y="594" font-family="monospace" font-size="11" fill="${accent}">BUILDPANDA REVIEW SET</text>` +
-    `</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
-const SHEET_META = [
-  { id: "A-114", title: "Second Floor Framing Plan", revision: "Rev C", scale: '1/4" = 1\'-0"', accent: "#b91c1c" },
-  { id: "A-104", title: "First Floor Plan", revision: "Rev B", scale: '1/4" = 1\'-0"', accent: "#004DE7" },
-  { id: "A-112", title: "Second Floor Plan", revision: "Rev C", scale: '1/4" = 1\'-0"', accent: "#15803d" },
-  { id: "A-201", title: "Building Elevations", revision: "Rev A", scale: '1/8" = 1\'-0"', accent: "#b45309" },
-] as const;
-
-const SHEETS: Sheet[] = SHEET_META.map((meta, index) => ({
-  id: meta.id,
-  title: meta.title,
-  revision: meta.revision,
-  scale: meta.scale,
-  image: planImage(index, meta, meta.accent),
-  alt: `Architectural floor plan, sheet ${meta.id}, ${meta.revision}, ${meta.title.toLowerCase()}`,
-}));
+type Selection = { kind: "pin" | "markup"; id: string } | null;
 
 const TOOLS: { id: Tool; label: string; shortcut: string; Icon: typeof Hand }[] = [
   { id: "pan", label: "Pan", shortcut: "H", Icon: Hand },
@@ -187,21 +114,26 @@ const MARKUP_COLORS = [
 ];
 
 const REVISIONS = ["Rev A", "Rev B", "Rev C"];
-
-function sheetAt(index: number): Sheet {
-  const found = SHEETS[clamp(index, 0, SHEETS.length - 1)];
-  if (!found) throw new Error("sheet index out of range");
-  return found;
-}
-
 const BLEND_MODES: { id: BlendMode; label: string }[] = [
   { id: "differences", label: "Differences" },
   { id: "ghost", label: "Ghost" },
   { id: "highlight", label: "Highlight" },
 ];
 const PLAYBACK_SECONDS = 4;
+const TOOL_CURSORS: Record<Tool, string> = {
+  pan: "cursor-grab",
+  select: "cursor-default",
+  measure: "cursor-crosshair",
+  pen: "cursor-crosshair",
+  cloud: "cursor-crosshair",
+  comment: "cursor-crosshair",
+};
 
-// ── Small shared pieces ────────────────────────────────────────────────────
+function sheetAt(sheets: Sheet[], index: number): Sheet {
+  const found = sheets[clamp(index, 0, sheets.length - 1)];
+  if (!found) throw new Error("sheet index out of range");
+  return found;
+}
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
@@ -279,11 +211,35 @@ function PopShell({ children, className }: { children: React.ReactNode; classNam
 const POP_ITEM_CLS =
   "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-[#F6F6F6]";
 
-// ── Split view pane ────────────────────────────────────────────────────────
+function SheetImage({ sheet, className, style }: { sheet: Sheet; className?: string; style?: React.CSSProperties }) {
+  if (sheet.kind === "image" && sheet.src) {
+    return <img src={sheet.src} alt={sheet.alt} draggable={false} className={className} style={style} />;
+  }
+  if (sheet.kind === "pdf" && sheet.src) {
+    return (
+      <div className={cn("relative aspect-[4/3] w-full", className)} style={style}>
+        <iframe src={sheet.src} title={sheet.alt} className="pointer-events-none h-full w-full border-0" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn("flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 text-center", className)}
+      style={style}
+      role="img"
+      aria-label={sheet.alt}
+    >
+      <FileText size={28} className="text-gray-300" />
+      <p className="max-w-[80%] truncate text-sm font-medium text-gray-600">{sheet.title}</p>
+      <p className="text-xs text-gray-400">Preview isn&apos;t available for this file type — annotate on the placeholder.</p>
+    </div>
+  );
+}
 
 function SheetPane({
   paneKey,
   label,
+  sheets,
   sheetIndex,
   zoom,
   locked,
@@ -295,6 +251,7 @@ function SheetPane({
 }: {
   paneKey: string;
   label: string;
+  sheets: Sheet[];
   sheetIndex: number;
   zoom: number;
   locked: boolean;
@@ -304,7 +261,7 @@ function SheetPane({
   onZoomChange: (zoom: number) => void;
   onFit: () => void;
 }) {
-  const sheet = sheetAt(sheetIndex);
+  const sheet = sheetAt(sheets, sheetIndex);
   const selectId = `${paneKey}-sheet-select`;
   return (
     <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#EDEDED] bg-white">
@@ -320,11 +277,11 @@ function SheetPane({
           value={sheetIndex}
           disabled={locked}
           onChange={(e) => onSheetChange(Number(e.target.value))}
-          className="h-7 min-w-0 rounded-md bg-[#F6F6F6] px-2 text-xs font-medium text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-7 min-w-0 max-w-44 rounded-md bg-[#F6F6F6] px-2 text-xs font-medium text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {SHEETS.map((s, i) => (
+          {sheets.map((s, i) => (
             <option key={s.id} value={i}>
-              {s.id} · {s.title}
+              {s.code} · {s.title}
             </option>
           ))}
         </select>
@@ -338,7 +295,7 @@ function SheetPane({
         </IconBtn>
         <IconBtn
           label={`${label} pane: next sheet`}
-          disabled={locked || sheetIndex === SHEETS.length - 1}
+          disabled={locked || sheetIndex === sheets.length - 1}
           onClick={() => onSheetChange(sheetIndex + 1)}
           className="size-7"
         >
@@ -376,9 +333,8 @@ function SheetPane({
 
       <div className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4">
         <div className="mx-auto w-fit min-w-full">
-          <img
-            src={sheet.image}
-            alt={sheet.alt}
+          <SheetImage
+            sheet={sheet}
             style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
             className="mx-auto w-full max-w-3xl rounded border border-[#E2E2E2] bg-white shadow-md"
           />
@@ -415,13 +371,17 @@ function SheetPane({
   );
 }
 
-// ── Main workspace ─────────────────────────────────────────────────────────
-
 export default function DrawingReviewWorkspace() {
-  const [activeSheetIndex, setActiveSheetIndex] = useState(0);
-  const [sheetRevisions, setSheetRevisions] = useState<Record<string, string>>(() =>
-    Object.fromEntries(SHEETS.map((s) => [s.id, s.revision])),
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const docsQuery = useProjectDocuments(projectId);
+  const sheets = useMemo<Sheet[]>(
+    () => (projectId ? adaptPlanDocuments(docsQuery.data ?? [], projectId) : MOCK_SHEETS),
+    [projectId, docsQuery.data],
   );
+
+  const [activeSheetIndex, setActiveSheetIndex] = useState(0);
+  const [sheetRevisions, setSheetRevisions] = useState<Record<string, string>>({});
   const [activeTool, setActiveTool] = useState<Tool>("select");
   const [markupColor, setMarkupColor] = useState("#ef4444");
   const [markupVisible, setMarkupVisible] = useState(true);
@@ -446,6 +406,15 @@ export default function DrawingReviewWorkspace() {
     dividerRatio: 0.5,
   });
 
+  const [zoom, setZoom] = useState(100);
+  const [markups, setMarkups] = useState<Markup[]>([]);
+  const [draft, setDraft] = useState<Markup | null>(null);
+  const [measureStart, setMeasureStart] = useState<Pt | null>(null);
+  const [measureCursor, setMeasureCursor] = useState<Pt | null>(null);
+  const [selection, setSelection] = useState<Selection>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [imgAspect, setImgAspect] = useState(0.775);
+
   const [pins, setPins] = useState<Pin[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [noteDraft, setNoteDraft] = useState("");
@@ -454,26 +423,39 @@ export default function DrawingReviewWorkspace() {
 
   const [recStatus, setRecStatus] = useState<"idle" | "recording" | "saved">("idle");
   const [recSeconds, setRecSeconds] = useState(0);
-  const [trace, setTrace] = useState<TracePoint[]>([]);
+  const [trace, setTrace] = useState<Pt[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [playProgress, setPlayProgress] = useState<number | null>(null);
 
   const drawingRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const splitStageRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastTraceAt = useRef(0);
   const playTimer = useRef<number | null>(null);
+  const panStart = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const penPoints = useRef<Pt[]>([]);
+  const cloudOrigin = useRef<Pt | null>(null);
+  const draggingPin = useRef<string | null>(null);
+  const suppressNextClick = useRef(false);
 
-  const sheet = sheetAt(activeSheetIndex);
-  const compareSheet = sheetAt(compareSheetIndex);
-  const currentRevision = sheetRevisions[sheet.id] ?? sheet.revision;
-  const sheetPins = pins.filter((p) => p.sheetId === sheet.id);
+  const hasSheets = sheets.length > 0;
+  const canCompare = sheets.length >= 2;
+  const sheet = hasSheets ? sheetAt(sheets, activeSheetIndex) : null;
+  const compareSheet = hasSheets ? sheetAt(sheets, compareSheetIndex) : null;
+  const currentRevision = sheet ? (sheetRevisions[sheet.id] ?? sheet.revision) : "";
+  const sheetPins = sheet ? pins.filter((p) => p.sheetId === sheet.id) : [];
+  const sheetMarkups = sheet ? markups.filter((m) => m.sheetId === sheet.id) : [];
   const commentCount = notes.filter((n) => n.type === "comment").length;
   const recordingCount = notes.filter((n) => n.type === "recording").length;
   const orderedNotes = useMemo(() => [...notes].sort((a, b) => b.createdAt - a.createdAt), [notes]);
 
-  // ── Popovers: outside click + escape ──
+  useEffect(() => {
+    setActiveSheetIndex((i) => clamp(i, 0, Math.max(0, sheets.length - 1)));
+    setCompareSheetIndex((i) => clamp(i, 0, Math.max(0, sheets.length - 1)));
+  }, [sheets.length]);
+
   useEffect(() => {
     if (!openPopover) return;
     function onDown(e: MouseEvent): void {
@@ -486,11 +468,12 @@ export default function DrawingReviewWorkspace() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [openPopover]);
 
-  // ── Keyboard shortcuts (guarded against inputs and IME) ──
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
       if (e.key === "Escape") {
         setOpenPopover(null);
+        setMeasureStart(null);
+        setSelection(null);
         return;
       }
       const target = e.target as HTMLElement;
@@ -502,6 +485,11 @@ export default function DrawingReviewWorkspace() {
       ) {
         return;
       }
+      if ((e.key === "Delete" || e.key === "Backspace") && selection) {
+        e.preventDefault();
+        deleteSelection();
+        return;
+      }
       if (e.key === "/") {
         e.preventDefault();
         setOpenPopover("search");
@@ -509,17 +497,15 @@ export default function DrawingReviewWorkspace() {
       }
       const tool = TOOLS.find((t) => t.shortcut.toLowerCase() === e.key.toLowerCase());
       if (tool) {
-        setActiveTool(tool.id);
+        selectTool(tool.id);
         return;
       }
-      if (!split.open && e.key === "ArrowLeft") setActiveSheetIndex((i) => Math.max(0, i - 1));
-      if (!split.open && e.key === "ArrowRight") {
-        setActiveSheetIndex((i) => Math.min(SHEETS.length - 1, i + 1));
-      }
+      if (!split.open && e.key === "ArrowLeft") goToSheet(activeSheetIndex - 1);
+      if (!split.open && e.key === "ArrowRight") goToSheet(activeSheetIndex + 1);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [split.open]);
+  });
 
   useEffect(() => {
     if (openPopover === "search") searchRef.current?.focus();
@@ -527,7 +513,6 @@ export default function DrawingReviewWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPopover]);
 
-  // ── Recording timer ──
   useEffect(() => {
     if (recStatus !== "recording") return;
     const id = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
@@ -539,6 +524,41 @@ export default function DrawingReviewWorkspace() {
       if (playTimer.current !== null) window.clearInterval(playTimer.current);
     };
   }, []);
+
+  function goToSheet(index: number): void {
+    setActiveSheetIndex(clamp(index, 0, sheets.length - 1));
+    setSelection(null);
+    setMeasureStart(null);
+    setDraft(null);
+  }
+
+  function selectTool(tool: Tool): void {
+    setActiveTool(tool);
+    setMeasureStart(null);
+    setDraft(null);
+    if (tool !== "select") setSelection(null);
+  }
+
+  function pointFromEvent(e: { clientX: number; clientY: number }): Pt | null {
+    const rect = drawingRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      x: clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100),
+      y: clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100),
+    };
+  }
+
+  function deleteSelection(): void {
+    if (!selection) return;
+    if (selection.kind === "pin") {
+      setPins((p) => p.filter((pin) => pin.id !== selection.id));
+      setNotes((n) => n.map((note) => (note.pinId === selection.id ? { ...note, pinId: null } : note)));
+      if (pendingPinId === selection.id) setPendingPinId(null);
+    } else {
+      setMarkups((m) => m.filter((markup) => markup.id !== selection.id));
+    }
+    setSelection(null);
+  }
 
   // ── Pins / comments ──
   function finalizePendingPin(): void {
@@ -564,26 +584,161 @@ export default function DrawingReviewWorkspace() {
   }
 
   function handleDrawingClick(e: React.MouseEvent<HTMLDivElement>): void {
-    if (activeTool !== "comment") return;
-    const rect = drawingRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    finalizePendingPin();
-    const pin: Pin = {
-      id: generateId("pin"),
-      sheetId: sheet.id,
-      x: clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100),
-      y: clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100),
-      color: markupColor,
-      noteId: null,
-    };
-    setPins((p) => [...p, pin]);
-    setPendingPinId(pin.id);
-    composerRef.current?.focus();
+    if (suppressNextClick.current) {
+      suppressNextClick.current = false;
+      return;
+    }
+    if (!sheet) return;
+    const point = pointFromEvent(e);
+    if (!point) return;
+
+    if (activeTool === "comment") {
+      finalizePendingPin();
+      const pin: Pin = {
+        id: generateId("pin"),
+        sheetId: sheet.id,
+        x: point.x,
+        y: point.y,
+        color: markupColor,
+        noteId: null,
+      };
+      setPins((p) => [...p, pin]);
+      setPendingPinId(pin.id);
+      composerRef.current?.focus();
+      return;
+    }
+
+    if (activeTool === "measure") {
+      if (!measureStart) {
+        setMeasureStart(point);
+        setMeasureCursor(point);
+      } else {
+        setMarkups((m) => [
+          ...m,
+          { id: generateId("mk"), sheetId: sheet.id, tool: "measure", color: markupColor, a: measureStart, b: point },
+        ]);
+        setMeasureStart(null);
+        setMeasureCursor(null);
+      }
+      return;
+    }
+
+    if (activeTool === "select") {
+      const hit = hitTestMarkup(sheetMarkups, point);
+      setSelection(hit ? { kind: "markup", id: hit.id } : null);
+    }
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>): void {
+    if (!sheet) return;
+    const point = pointFromEvent(e);
+    if (!point) return;
+
+    if (activeTool === "pan") {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      panStart.current = { x: e.clientX, y: e.clientY, left: canvas.scrollLeft, top: canvas.scrollTop };
+      setIsPanning(true);
+      drawingRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (activeTool === "pen") {
+      penPoints.current = [point];
+      setDraft({ id: "draft", sheetId: sheet.id, tool: "pen", color: markupColor, points: [point] });
+      drawingRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (activeTool === "cloud") {
+      cloudOrigin.current = point;
+      setDraft({ id: "draft", sheetId: sheet.id, tool: "cloud", color: markupColor, rect: { ...point, w: 0, h: 0 } });
+      drawingRef.current?.setPointerCapture(e.pointerId);
+    }
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>): void {
+    if (recStatus === "recording") {
+      const now = Date.now();
+      if (now - lastTraceAt.current >= 50) {
+        lastTraceAt.current = now;
+        const tracePoint = pointFromEvent(e);
+        if (tracePoint) setTrace((t) => (t.length >= 500 ? [...t.slice(1), tracePoint] : [...t, tracePoint]));
+      }
+    }
+
+    if (activeTool === "pan" && panStart.current) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.scrollLeft = panStart.current.left - (e.clientX - panStart.current.x);
+      canvas.scrollTop = panStart.current.top - (e.clientY - panStart.current.y);
+      return;
+    }
+
+    const point = pointFromEvent(e);
+    if (!point || !sheet) return;
+
+    if (draggingPin.current) {
+      const pinId = draggingPin.current;
+      setPins((p) => p.map((pin) => (pin.id === pinId ? { ...pin, x: point.x, y: point.y } : pin)));
+      return;
+    }
+    if (activeTool === "measure" && measureStart) {
+      setMeasureCursor(point);
+      return;
+    }
+    if (activeTool === "pen" && penPoints.current.length > 0) {
+      const last = penPoints.current[penPoints.current.length - 1];
+      if (last && Math.hypot(point.x - last.x, point.y - last.y) < 0.4) return;
+      penPoints.current = [...penPoints.current, point];
+      setDraft({ id: "draft", sheetId: sheet.id, tool: "pen", color: markupColor, points: penPoints.current });
+      return;
+    }
+    if (activeTool === "cloud" && cloudOrigin.current) {
+      setDraft({
+        id: "draft",
+        sheetId: sheet.id,
+        tool: "cloud",
+        color: markupColor,
+        rect: normalizedRect(cloudOrigin.current, point),
+      });
+    }
+  }
+
+  function handlePointerUp(): void {
+    if (draggingPin.current) {
+      draggingPin.current = null;
+      suppressNextClick.current = true;
+      return;
+    }
+    if (activeTool === "pan") {
+      panStart.current = null;
+      setIsPanning(false);
+      return;
+    }
+    if (!sheet) return;
+    if (activeTool === "pen" && penPoints.current.length > 1) {
+      const points = penPoints.current;
+      setMarkups((m) => [...m, { id: generateId("mk"), sheetId: sheet.id, tool: "pen", color: markupColor, points }]);
+    }
+    if (activeTool === "cloud" && draft?.tool === "cloud" && draft.rect.w > 1 && draft.rect.h > 1) {
+      const rect = draft.rect;
+      setMarkups((m) => [...m, { id: generateId("mk"), sheetId: sheet.id, tool: "cloud", color: markupColor, rect }]);
+    }
+    penPoints.current = [];
+    cloudOrigin.current = null;
+    setDraft(null);
+  }
+
+  function handlePinPointerDown(e: React.PointerEvent, pinId: string): void {
+    if (activeTool !== "select") return;
+    e.stopPropagation();
+    setSelection({ kind: "pin", id: pinId });
+    draggingPin.current = pinId;
+    drawingRef.current?.setPointerCapture(e.pointerId);
   }
 
   function submitComment(): void {
     const text = noteDraft.trim();
-    if (!text) return;
+    if (!text || !sheet) return;
     const pinId = pendingPinId;
     const noteId = generateId("note");
     setNotes((n) => [
@@ -617,6 +772,7 @@ export default function DrawingReviewWorkspace() {
   }
 
   function stopRecording(): void {
+    if (!sheet) return;
     setRecStatus("saved");
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 4000);
@@ -625,7 +781,7 @@ export default function DrawingReviewWorkspace() {
       {
         id: generateId("note"),
         type: "recording",
-        text: `Walkthrough of ${sheet.id}`,
+        text: `Walkthrough of ${sheet.code}`,
         author: "You",
         createdAt: Date.now(),
         sheetId: sheet.id,
@@ -662,23 +818,9 @@ export default function DrawingReviewWorkspace() {
     }, stepMs);
   }
 
-  function handleDrawingMouseMove(e: React.MouseEvent<HTMLDivElement>): void {
-    if (recStatus !== "recording") return;
-    const now = Date.now();
-    if (now - lastTraceAt.current < 50) return;
-    lastTraceAt.current = now;
-    const rect = drawingRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const point = {
-      x: clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100),
-      y: clamp(((e.clientY - rect.top) / rect.height) * 100, 0, 100),
-    };
-    setTrace((t) => (t.length >= 500 ? [...t.slice(1), point] : [...t, point]));
-  }
-
   // ── Split view ──
-  function setPaneZoom(pane: "primary" | "compare", zoom: number): void {
-    const next = clamp(zoom, 50, 200);
+  function setPaneZoom(pane: "primary" | "compare", nextZoom: number): void {
+    const next = clamp(nextZoom, 50, 200);
     setSplit((s) => ({
       ...s,
       primaryZoom: pane === "primary" || s.synced ? next : s.primaryZoom,
@@ -708,24 +850,21 @@ export default function DrawingReviewWorkspace() {
   }
 
   function exitWorkspace(): void {
-    setOpenPopover(null);
-    setBlendPanelOpen(false);
-    setBlendMode(null);
-    setSplit((s) => ({ ...s, open: false }));
-    setSearchQuery("");
+    if (projectId) navigate(`/project/${projectId}/plans`);
+    else if (window.history.length > 1) navigate(-1);
+    else navigate("/dashboard");
   }
 
   // ── Search ──
   const query = searchQuery.trim().toLowerCase();
   const sheetResults = query
-    ? SHEETS.map((s, index) => ({ ...s, index })).filter(
-        (s) => s.id.toLowerCase().includes(query) || s.title.toLowerCase().includes(query),
-      )
+    ? sheets
+        .map((s, index) => ({ ...s, index }))
+        .filter((s) => s.code.toLowerCase().includes(query) || s.title.toLowerCase().includes(query))
     : [];
   const noteResults = query ? notes.filter((n) => n.text.toLowerCase().includes(query)) : [];
   const resultCount = sheetResults.length + noteResults.length;
 
-  // ── Status bar text ──
   const saveState =
     recStatus === "recording"
       ? `Recording walkthrough · ${formatClock(recSeconds)}`
@@ -733,12 +872,48 @@ export default function DrawingReviewWorkspace() {
         ? "Walkthrough saved"
         : "All changes saved";
   const contextState = split.open
-    ? `Comparing ${sheetAt(split.primaryIndex).id} / ${sheetAt(split.compareIndex).id}`
-    : `Sheet ${sheet.id}${blendPanelOpen && blendMode ? ` · ${BLEND_MODES.find((m) => m.id === blendMode)?.label} · ${blendAmount}%` : ""}`;
+    ? `Comparing ${sheetAt(sheets, split.primaryIndex).code} / ${sheetAt(sheets, split.compareIndex).code}`
+    : sheet
+      ? `Sheet ${sheet.code}${blendPanelOpen && blendMode ? ` · ${BLEND_MODES.find((m) => m.id === blendMode)?.label} · ${blendAmount}%` : ""}`
+      : "No sheets";
   const activeToolLabel = TOOLS.find((t) => t.id === activeTool)?.label ?? "Select";
 
   const traceVisible = playProgress === null ? trace : trace.slice(0, Math.max(2, Math.floor(trace.length * playProgress)));
   const traceTip = traceVisible[traceVisible.length - 1];
+  const measureDraft: Markup | null =
+    sheet && activeTool === "measure" && measureStart && measureCursor
+      ? { id: "draft-measure", sheetId: sheet.id, tool: "measure", color: markupColor, a: measureStart, b: measureCursor }
+      : null;
+  const blendReady =
+    blendPanelOpen && blendMode && canCompare && sheet?.kind === "image" && compareSheet?.kind === "image";
+
+  if (projectId && docsQuery.isPending) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-white">
+        <Spinner size="md" />
+      </main>
+    );
+  }
+
+  if (!hasSheets || !sheet) {
+    return (
+      <main className="flex h-dvh flex-col items-center justify-center gap-3 bg-white px-6 text-center">
+        <FileText size={28} className="text-gray-300" />
+        <p className="text-base font-semibold text-gray-900">No plans to review yet</p>
+        <p className="max-w-sm text-sm text-gray-500">
+          Upload drawings to the Plans page and they&apos;ll open here for markup, comparison and walkthroughs.
+        </p>
+        {projectId && (
+          <Link
+            to={`/project/${projectId}/plans`}
+            className="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+          >
+            Go to Plans
+          </Link>
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-white font-sans text-gray-900">
@@ -753,17 +928,13 @@ export default function DrawingReviewWorkspace() {
           <X size={15} /> Exit
         </button>
         <div className="flex items-center">
-          <IconBtn
-            label="Previous sheet"
-            disabled={activeSheetIndex === 0}
-            onClick={() => setActiveSheetIndex((i) => i - 1)}
-          >
+          <IconBtn label="Previous sheet" disabled={activeSheetIndex === 0} onClick={() => goToSheet(activeSheetIndex - 1)}>
             <ChevronLeft size={17} />
           </IconBtn>
           <IconBtn
             label="Next sheet"
-            disabled={activeSheetIndex === SHEETS.length - 1}
-            onClick={() => setActiveSheetIndex((i) => i + 1)}
+            disabled={activeSheetIndex === sheets.length - 1}
+            onClick={() => goToSheet(activeSheetIndex + 1)}
           >
             <ChevronRight size={17} />
           </IconBtn>
@@ -772,10 +943,11 @@ export default function DrawingReviewWorkspace() {
         <div className="flex min-w-0 items-center gap-2">
           <FileText size={15} className="shrink-0 text-gray-400" />
           <span className="truncate text-sm font-semibold text-gray-900">
-            {sheet.id} · {sheet.title}
+            {sheet.code} · {sheet.title}
           </span>
           <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
-            {currentRevision} · {sheet.scale}
+            {currentRevision}
+            {sheet.scale ? ` · ${sheet.scale}` : ""}
           </span>
         </div>
 
@@ -794,7 +966,7 @@ export default function DrawingReviewWorkspace() {
             </button>
             {openPopover === "revision" && (
               <PopShell className="right-0 w-36">
-                {REVISIONS.map((rev) => (
+                {(sheet.scale ? REVISIONS : [currentRevision]).map((rev) => (
                   <button
                     key={rev}
                     type="button"
@@ -868,13 +1040,13 @@ export default function DrawingReviewWorkspace() {
                         key={s.id}
                         type="button"
                         onClick={() => {
-                          setActiveSheetIndex(s.index);
+                          goToSheet(s.index);
                           setOpenPopover(null);
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
                       >
                         <FileText size={13} className="shrink-0 text-gray-400" />
-                        <span className="font-medium text-gray-900">{s.id}</span>
+                        <span className="font-medium text-gray-900">{s.code}</span>
                         <span className="truncate text-gray-500">{s.title}</span>
                       </button>
                     ))}
@@ -888,15 +1060,17 @@ export default function DrawingReviewWorkspace() {
                         key={n.id}
                         type="button"
                         onClick={() => {
-                          const index = SHEETS.findIndex((s) => s.id === n.sheetId);
-                          if (index >= 0) setActiveSheetIndex(index);
+                          const index = sheets.findIndex((s) => s.id === n.sheetId);
+                          if (index >= 0) goToSheet(index);
                           setOpenPopover(null);
                         }}
                         className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
                       >
                         <MessageSquare size={13} className="shrink-0 text-gray-400" />
                         <span className="truncate text-gray-600">{n.text}</span>
-                        <span className="ml-auto shrink-0 text-gray-400">{n.sheetId}</span>
+                        <span className="ml-auto shrink-0 text-gray-400">
+                          {sheets.find((s) => s.id === n.sheetId)?.code ?? ""}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -929,19 +1103,23 @@ export default function DrawingReviewWorkspace() {
             </button>
             {openPopover === "reviewTools" && (
               <PopShell className="right-0 w-56">
-                <button type="button" onClick={openBlendPanel} className={POP_ITEM_CLS}>
-                  <Layers size={15} /> Compare Revisions
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSplit((s) => ({ ...s, open: !s.open }));
-                    setOpenPopover(null);
-                  }}
-                  className={POP_ITEM_CLS}
-                >
-                  <Columns2 size={15} /> {split.open ? "Exit Split View" : "Split View"}
-                </button>
+                {canCompare && (
+                  <button type="button" onClick={openBlendPanel} className={POP_ITEM_CLS}>
+                    <Layers size={15} /> Compare Revisions
+                  </button>
+                )}
+                {canCompare && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplit((s) => ({ ...s, open: !s.open }));
+                      setOpenPopover(null);
+                    }}
+                    className={POP_ITEM_CLS}
+                  >
+                    <Columns2 size={15} /> {split.open ? "Exit Split View" : "Split View"}
+                  </button>
+                )}
                 <button type="button" onClick={startRecording} className={POP_ITEM_CLS}>
                   <Video size={15} /> Record Walkthrough
                 </button>
@@ -971,7 +1149,7 @@ export default function DrawingReviewWorkspace() {
             aria-label={label}
             aria-pressed={activeTool === id}
             title={`${label} (${shortcut})`}
-            onClick={() => setActiveTool(id)}
+            onClick={() => selectTool(id)}
             className={cn(
               "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
               activeTool === id
@@ -1021,102 +1199,172 @@ export default function DrawingReviewWorkspace() {
           )}
         </div>
 
-        <button
-          type="button"
-          title="Compare revisions"
-          onClick={openBlendPanel}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-        >
-          <Layers size={14} /> Compare
-        </button>
+        {activeTool === "measure" && (
+          <span className="ml-2 hidden shrink-0 text-[11px] text-gray-500 md:inline">
+            {measureStart ? "Click the second point to finish" : "Click two points to measure"}
+          </span>
+        )}
+
+        {canCompare && (
+          <button
+            type="button"
+            title="Compare revisions"
+            onClick={openBlendPanel}
+            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
+          >
+            <Layers size={14} /> Compare
+          </button>
+        )}
       </div>
 
       {/* ── Workspace ── */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <section className="relative flex min-h-0 min-w-0 flex-[2] flex-col overflow-hidden">
           {!split.open ? (
-            <div className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4 sm:p-8">
-              <div
-                ref={drawingRef}
-                onClick={handleDrawingClick}
-                onMouseMove={handleDrawingMouseMove}
-                className={cn(
-                  "relative mx-auto w-full max-w-4xl min-w-[560px] rounded-lg border border-[#E2E2E2] bg-white shadow-lg",
-                  activeTool === "comment" && "cursor-crosshair",
-                  activeTool === "pan" && "cursor-grab",
-                )}
-              >
-                <img src={sheet.image} alt={sheet.alt} className="block w-full rounded-lg" draggable={false} />
-
-                {blendPanelOpen && blendMode && (
-                  <>
+            <div ref={canvasRef} className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4 sm:p-8">
+              <div className="mx-auto" style={{ width: `${zoom}%`, minWidth: "min(560px, 100%)" }}>
+                <div
+                  ref={drawingRef}
+                  onClick={handleDrawingClick}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  className={cn(
+                    "relative w-full touch-none rounded-lg border border-[#E2E2E2] bg-white shadow-lg",
+                    isPanning ? "cursor-grabbing" : TOOL_CURSORS[activeTool],
+                  )}
+                >
+                  <SheetImage
+                    sheet={sheet}
+                    className="block w-full rounded-lg"
+                  />
+                  {sheet.kind === "image" && sheet.src && (
                     <img
-                      src={compareSheet.image}
+                      src={sheet.src}
                       alt=""
                       aria-hidden="true"
-                      draggable={false}
-                      className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
-                      style={
-                        blendMode === "differences"
-                          ? { mixBlendMode: "difference", opacity: blendAmount / 100 }
-                          : blendMode === "ghost"
-                            ? { opacity: (blendAmount / 100) * 0.6, filter: "grayscale(0.9)" }
-                            : { mixBlendMode: "multiply", opacity: blendAmount / 100 }
-                      }
+                      className="hidden"
+                      onLoad={(e) => {
+                        const el = e.currentTarget;
+                        if (el.naturalWidth > 0) setImgAspect(el.naturalHeight / el.naturalWidth);
+                      }}
                     />
-                    {blendMode === "highlight" && (
-                      <div
+                  )}
+
+                  {blendReady && compareSheet?.src && (
+                    <>
+                      <img
+                        src={compareSheet.src}
+                        alt=""
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 rounded-lg bg-yellow-300"
-                        style={{ mixBlendMode: "multiply", opacity: (blendAmount / 100) * 0.35 }}
+                        draggable={false}
+                        className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
+                        style={
+                          blendMode === "differences"
+                            ? { mixBlendMode: "difference", opacity: blendAmount / 100 }
+                            : blendMode === "ghost"
+                              ? { opacity: (blendAmount / 100) * 0.6, filter: "grayscale(0.9)" }
+                              : { mixBlendMode: "multiply", opacity: blendAmount / 100 }
+                        }
                       />
-                    )}
-                    <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-red-700 shadow-sm ring-1 ring-black/10">
-                      <span className="size-2 rounded-full bg-red-500" /> {sheet.id} · {currentRevision} (current)
-                    </span>
-                    <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
-                      <span className="size-2 rounded-full bg-sky-500" /> {compareSheet.id} · {compareSheet.revision} (compare)
-                    </span>
-                  </>
-                )}
-
-                {markupVisible &&
-                  sheetPins.map((pin) => {
-                    const number = sheetPins.indexOf(pin) + 1;
-                    return (
-                      <span
-                        key={pin.id}
-                        title={`Pin ${number}`}
-                        className="absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white shadow-lg"
-                        style={{ left: `${pin.x}%`, top: `${pin.y}%`, backgroundColor: pin.color }}
-                      >
-                        {number}
+                      {blendMode === "highlight" && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 rounded-lg bg-yellow-300"
+                          style={{ mixBlendMode: "multiply", opacity: (blendAmount / 100) * 0.35 }}
+                        />
+                      )}
+                      <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-red-700 shadow-sm ring-1 ring-black/10">
+                        <span className="size-2 rounded-full bg-red-500" /> {sheet.code} · {currentRevision} (current)
                       </span>
-                    );
-                  })}
+                      <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-medium text-sky-700 shadow-sm ring-1 ring-black/10">
+                        <span className="size-2 rounded-full bg-sky-500" /> {compareSheet.code} · {compareSheet.revision} (compare)
+                      </span>
+                    </>
+                  )}
 
-                {(recStatus === "recording" || (recStatus === "saved" && trace.length > 1)) && (
-                  <svg
-                    aria-hidden="true"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className="pointer-events-none absolute inset-0 h-full w-full"
-                  >
-                    <polyline
-                      points={traceVisible.map((p) => `${p.x},${p.y}`).join(" ")}
-                      fill="none"
-                      stroke="#004DE7"
-                      strokeWidth="0.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      opacity="0.55"
+                  {markupVisible && (
+                    <MarkupLayer
+                      markups={sheetMarkups}
+                      draft={draft ?? measureDraft}
+                      selectedId={selection?.kind === "markup" ? selection.id : null}
+                      scale={sheet.scale}
+                      aspect={imgAspect}
                     />
-                    {traceTip && (
-                      <circle cx={traceTip.x} cy={traceTip.y} r="1.1" fill="#004DE7" />
-                    )}
-                  </svg>
-                )}
+                  )}
+
+                  {markupVisible &&
+                    sheetPins.map((pin) => {
+                      const number = sheetPins.indexOf(pin) + 1;
+                      const isSelected = selection?.kind === "pin" && selection.id === pin.id;
+                      return (
+                        <span
+                          key={pin.id}
+                          title={`Pin ${number}`}
+                          onPointerDown={(e) => handlePinPointerDown(e, pin.id)}
+                          onClick={(e) => {
+                            if (activeTool === "select") e.stopPropagation();
+                          }}
+                          className={cn(
+                            "absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-white shadow-lg",
+                            activeTool === "select" && "cursor-move",
+                            isSelected && "ring-2 ring-primary-500 ring-offset-1",
+                          )}
+                          style={{ left: `${pin.x}%`, top: `${pin.y}%`, backgroundColor: pin.color }}
+                        >
+                          {number}
+                        </span>
+                      );
+                    })}
+
+                  {(recStatus === "recording" || (recStatus === "saved" && trace.length > 1)) && (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className="pointer-events-none absolute inset-0 h-full w-full"
+                    >
+                      <polyline
+                        points={traceVisible.map((p) => `${p.x},${p.y}`).join(" ")}
+                        fill="none"
+                        stroke="#004DE7"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        opacity="0.55"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      {traceTip && <circle cx={traceTip.x} cy={traceTip.y} r="1.1" fill="#004DE7" />}
+                    </svg>
+                  )}
+                </div>
               </div>
+
+              <div className="absolute bottom-4 left-4 z-30 flex items-center gap-1 rounded-lg bg-white/95 p-1 shadow-lg ring-1 ring-black/5">
+                <IconBtn label="Zoom out" disabled={zoom <= 50} onClick={() => setZoom((z) => clamp(z - 25, 50, 300))} className="size-7">
+                  <Minus size={13} />
+                </IconBtn>
+                <span className="w-11 text-center font-mono text-[11px] text-gray-600">{zoom}%</span>
+                <IconBtn label="Zoom in" disabled={zoom >= 300} onClick={() => setZoom((z) => clamp(z + 25, 50, 300))} className="size-7">
+                  <Plus size={13} />
+                </IconBtn>
+              </div>
+
+              {selection && (
+                <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 py-1 pl-3 pr-1 shadow-lg ring-1 ring-black/5">
+                  <span className="text-[11px] font-medium text-gray-600">
+                    {selection.kind === "pin" ? "Pin selected — drag to move" : "Markup selected"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={deleteSelection}
+                    className="flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-100"
+                  >
+                    <Trash2 size={11} /> Delete
+                  </button>
+                  <Kbd>Del</Kbd>
+                </div>
+              )}
             </div>
           ) : (
             <div ref={splitStageRef} className="flex min-h-0 flex-1 flex-col gap-2 bg-[#F0F0F0] p-3 md:flex-row md:gap-0">
@@ -1124,13 +1372,14 @@ export default function DrawingReviewWorkspace() {
                 <SheetPane
                   paneKey="primary"
                   label="Primary"
+                  sheets={sheets}
                   sheetIndex={split.primaryIndex}
                   zoom={split.primaryZoom}
                   locked={false}
                   optionsOpen={openPopover === "paneOptsPrimary"}
                   onToggleOptions={() => setOpenPopover(openPopover === "paneOptsPrimary" ? null : "paneOptsPrimary")}
                   onSheetChange={(index) => setSplit((s) => ({ ...s, primaryIndex: index }))}
-                  onZoomChange={(zoom) => setPaneZoom("primary", zoom)}
+                  onZoomChange={(nextZoom) => setPaneZoom("primary", nextZoom)}
                   onFit={() => {
                     setSplit((s) => ({ ...s, primaryZoom: 100, compareZoom: s.synced ? 100 : s.compareZoom }));
                     setOpenPopover(null);
@@ -1155,13 +1404,14 @@ export default function DrawingReviewWorkspace() {
                 <SheetPane
                   paneKey="compare"
                   label="Compare"
+                  sheets={sheets}
                   sheetIndex={split.compareIndex}
                   zoom={split.compareZoom}
                   locked={split.locked}
                   optionsOpen={openPopover === "paneOptsCompare"}
                   onToggleOptions={() => setOpenPopover(openPopover === "paneOptsCompare" ? null : "paneOptsCompare")}
                   onSheetChange={(index) => setSplit((s) => ({ ...s, compareIndex: index }))}
-                  onZoomChange={(zoom) => setPaneZoom("compare", zoom)}
+                  onZoomChange={(nextZoom) => setPaneZoom("compare", nextZoom)}
                   onFit={() => {
                     setSplit((s) => ({ ...s, compareZoom: 100, primaryZoom: s.synced ? 100 : s.primaryZoom }));
                     setOpenPopover(null);
@@ -1244,7 +1494,7 @@ export default function DrawingReviewWorkspace() {
 
               <div className="mt-3 flex items-center justify-between gap-2 text-xs">
                 <span className="font-medium text-gray-700">
-                  {sheet.id} · {currentRevision}
+                  {sheet.code} · {currentRevision}
                   <span className="px-1.5 text-gray-400">vs</span>
                   <label htmlFor="compare-sheet" className="sr-only">
                     Comparison sheet
@@ -1255,9 +1505,9 @@ export default function DrawingReviewWorkspace() {
                     onChange={(e) => setCompareSheetIndex(Number(e.target.value))}
                     className="rounded-md bg-[#F6F6F6] px-1.5 py-1 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                   >
-                    {SHEETS.map((s, i) => (
+                    {sheets.map((s, i) => (
                       <option key={s.id} value={i}>
-                        {s.id} · {s.revision}
+                        {s.code} · {s.revision}
                       </option>
                     ))}
                   </select>
@@ -1270,6 +1520,12 @@ export default function DrawingReviewWorkspace() {
                   Reset
                 </button>
               </div>
+
+              {!blendReady && blendMode && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
+                  Overlay comparison needs two image sheets — PDF and CAD files can be compared side by side in Split View.
+                </p>
+              )}
 
               <div className="mt-2">
                 <div className="flex items-center justify-between text-[11px] text-gray-500">
@@ -1416,13 +1672,13 @@ export default function DrawingReviewWorkspace() {
                         <button
                           type="button"
                           onClick={() => {
-                            const index = SHEETS.findIndex((s) => s.id === note.sheetId);
-                            if (index >= 0) setActiveSheetIndex(index);
+                            const index = sheets.findIndex((s) => s.id === note.sheetId);
+                            if (index >= 0) goToSheet(index);
                           }}
                           className="mt-2 flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-200"
                         >
                           {note.pinId ? <MapPin size={10} /> : <FileText size={10} />}
-                          {note.pinId ? "Pinned" : "Sheet"} · {note.sheetId}
+                          {note.pinId ? "Pinned" : "Sheet"} · {sheets.find((s) => s.id === note.sheetId)?.code ?? "—"}
                         </button>
                       )}
                     </article>
@@ -1433,7 +1689,7 @@ export default function DrawingReviewWorkspace() {
               <div className="flex items-center gap-2 border-t border-[#F0F0F0] p-3">
                 {pendingPinId && (
                   <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary-50 px-1.5 py-1 text-[10px] font-medium text-primary-700">
-                    <MapPin size={10} /> {sheet.id}
+                    <MapPin size={10} /> {sheet.code}
                   </span>
                 )}
                 <input
