@@ -59,6 +59,61 @@ function scaleFactor(scale: string | null): number | null {
   return Number.isFinite(denom) && denom > 0 ? denom * 12 : null;
 }
 
+export interface DetectedScale {
+  label: string;
+  feetPerPct: number;
+}
+
+// Reads the scale off the sheet's own title block, the way a QS does. An
+// architectural note (1/4" = 1'-0") means a/b paper inches span one real foot,
+// so one paper inch spans b/a feet; an engineering note (1" = 20') states feet
+// per paper inch directly; a metric ratio (1:100) means one paper inch spans
+// 100 real inches. Multiplying by the page's true paper width (PDF points /
+// 72) converts that to feet per 1% of sheet width, the unit the markup layer
+// measures in. Quote characters are matched in both ASCII and typographic
+// forms because pdf.js normalizes ' to ’ during text extraction.
+const ARCHITECTURAL_SCALE = /(\d+)\s*\/\s*(\d+)\s*["”]?\s*=\s*1\s*['’]/;
+const ENGINEERING_SCALE = /(?<![\d/])(\d+(?:\.\d+)?)\s*["”]\s*=\s*(\d+(?:\.\d+)?)\s*['’]/;
+const METRIC_SCALE = /1\s*:\s*(\d{2,4})\b/;
+
+export function parseSheetScale(text: string, pageWidthPt: number): DetectedScale | null {
+  const paperInches = pageWidthPt / 72;
+  if (paperInches <= 0) return null;
+
+  const toDetected = (label: string, feetPerPaperInch: number): DetectedScale => ({
+    label,
+    feetPerPct: (feetPerPaperInch * paperInches) / 100,
+  });
+
+  const architectural = text.match(ARCHITECTURAL_SCALE);
+  if (architectural) {
+    const numerator = Number(architectural[1]);
+    const denominator = Number(architectural[2]);
+    if (numerator > 0 && denominator > 0) {
+      return toDetected(`${numerator}/${denominator}" = 1'-0"`, denominator / numerator);
+    }
+  }
+
+  const engineering = text.match(ENGINEERING_SCALE);
+  if (engineering) {
+    const paperUnits = Number(engineering[1]);
+    const realFeet = Number(engineering[2]);
+    if (paperUnits > 0 && realFeet > 0) {
+      return toDetected(`${paperUnits}" = ${realFeet}'`, realFeet / paperUnits);
+    }
+  }
+
+  const metric = text.match(METRIC_SCALE);
+  if (metric) {
+    const ratio = Number(metric[1]);
+    if (ratio > 0) {
+      return toDetected(`1:${ratio}`, ratio / 12);
+    }
+  }
+
+  return null;
+}
+
 export function measureLabel(a: Pt, b: Pt, scale: string | null, aspect: number, customFtPerPct?: number): string {
   const dxPct = b.x - a.x;
   const dyPct = (b.y - a.y) * aspect;

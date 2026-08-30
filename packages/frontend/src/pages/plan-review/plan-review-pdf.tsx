@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
+import { parseSheetScale, type DetectedScale } from "./plan-review-data";
 
 let sharedWorker: Worker | null = null;
 
@@ -17,6 +18,7 @@ export interface PdfRenderState {
   pageCount: number;
   pageNumber: number;
   aspect: number;
+  detectedScale: DetectedScale | null;
 }
 
 /**
@@ -79,11 +81,21 @@ export function PdfSheetCanvas({
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (cancelled) return;
 
+      const textContent = await page.getTextContent().catch(() => null);
+      if (cancelled) return;
+      const sheetText = textContent
+        ? textContent.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ")
+        : "";
+      const unscaledWidthPt = viewport.width / BASE_SCALE;
+
       setLoading(false);
       onRenderStateChange?.({
         pageCount: doc.numPages,
         pageNumber: safePage,
         aspect: viewport.height / viewport.width,
+        detectedScale: parseSheetScale(sheetText, unscaledWidthPt),
       });
     })().catch((err: unknown) => {
       if (cancelled) return;
