@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectKeys, projectTemplateKeys } from "./query-keys";
 import { projectsApi } from "@/api/projects";
-import type { ProjectTemplateSummary, CreateProjectInput, UpdateProjectBudgetInput } from "@/api/projects";
+import type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput } from "@/api/projects";
 
 export type { ProjectTemplateSummary, CreateProjectInput, UpdateProjectBudgetInput };
 
@@ -50,6 +50,25 @@ export function useDeleteProject() {
     onSuccess: (_data, projectId) => {
       queryClient.removeQueries({ queryKey: projectKeys.detail(projectId) });
       queryClient.invalidateQueries({ queryKey: projectKeys.list() });
+    },
+  });
+}
+
+export function useProjectSettings(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? projectKeys.settings(projectId) : projectKeys.settings("__none__"),
+    queryFn: () => projectsApi.settings(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export function useUpdateProjectSettings(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ProjectSettings) => projectsApi.updateSettings(projectId, input),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(projectKeys.settings(projectId), settings);
     },
   });
 }
