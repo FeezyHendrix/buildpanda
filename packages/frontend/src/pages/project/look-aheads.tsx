@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertLookAheadDialog,
@@ -24,16 +21,10 @@ import {
 import { useMaterialStock } from "@/hooks/use-materials-ledger";
 import { STATUS_META as ORDER_STATUS_META } from "./materials/shared";
 import { canResourceAction } from "@/lib/project-types";
-import type { AutoWindowActivity, LookAhead, LookAheadStatus } from "@/lib/project-types";
+import type { AutoWindowActivity, LookAhead } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
-
-const LOOK_AHEAD_STATUS_META: Record<LookAheadStatus, { label: string; tone: "neutral" | "info" | "success" }> = {
-  Draft: { label: "Draft", tone: "neutral" },
-  UnderReview: { label: "Under Review", tone: "info" },
-  Approved: { label: "Approved", tone: "success" },
-};
-
-const STATUS_FILTERS: Array<LookAheadStatus | "all"> = ["all", "Draft", "UnderReview", "Approved"];
+import { LookAheadDetailDrawer } from "./look-aheads/look-ahead-detail-drawer";
+import { LookAheadsTable } from "./look-aheads/look-aheads-table";
 
 function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
@@ -48,11 +39,9 @@ export default function ProjectLookAheads() {
   const { selectedBuildingId } = useBuildingScope();
   const canManage = canResourceAction(access, "schedule", "manage");
 
-  const [filter, setFilter] = useState<LookAheadStatus | "all">("all");
   const { data: lookAheads = [], isLoading } = useLookAheads(
     project.id,
     {
-      ...(filter === "all" ? {} : { status: filter }),
       ...(selectedBuildingId ? { buildingId: selectedBuildingId } : {}),
     },
   );
@@ -62,11 +51,17 @@ export default function ProjectLookAheads() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<LookAhead | null>(null);
+  const [viewTarget, setViewTarget] = useState<LookAhead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LookAhead | null>(null);
 
   const createLookAhead = useCreateLookAhead();
   const updateLookAhead = useUpdateLookAhead();
   const deleteLookAhead = useDeleteLookAhead();
+
+  const activityCoverage = useMemo(
+    () => new Map((autoWindow?.activities ?? []).map((activity) => [activity.activityId, activity.hasMaterialCoverage])),
+    [autoWindow?.activities],
+  );
 
   function handleSubmit(values: LookAheadFormValues): void {
     if (editTarget) {
@@ -119,40 +114,24 @@ export default function ProjectLookAheads() {
       <PageHeader
         title="Look Aheads"
         description="Plan rolling look-ahead periods by picking activities from the project chart or imported programme, and preview what's coming up next."
-        actions={
-          canManage && (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setEditTarget(null);
-                setFormOpen(true);
-              }}
-            >
-              <PlusIcon className="size-4" />
-              New look ahead
-            </Button>
-          )
-        }
       />
 
       {lowStock.length > 0 && (
-        <section className="mt-8 rounded-[16px] border-none bg-[#FFF7ED] p-5">
-          <p className="text-[13px] font-semibold text-[#9A5B13]">
+        <section className="mt-8 flex flex-wrap items-center gap-2 rounded-[16px] border border-[#FED7AA] bg-[#FFF7ED] p-4">
+          <p className="mr-2 text-[13px] font-semibold text-[#9A5B13]">
             {lowStock.length} material{lowStock.length === 1 ? "" : "s"} running low
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {lowStock.map((s) => (
-              <Badge key={s.materialId} tone="warning" size="sm">
-                {s.materialName}: {s.onHandQty} {s.unit}
-              </Badge>
-            ))}
-          </div>
+          {lowStock.slice(0, 6).map((s) => (
+            <Badge key={s.materialId} tone="warning" size="sm">
+              {s.materialName}: {s.onHandQty} {s.unit}
+            </Badge>
+          ))}
+          {lowStock.length > 6 && <Badge tone="warning" size="sm">+{lowStock.length - 6} more</Badge>}
         </section>
       )}
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">
+      <section className="mt-8 rounded-[18px] border border-[#EDEDED] bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900">
           Coming up{autoWindow ? ` (${formatDate(autoWindow.from)} – ${formatDate(autoWindow.to)})` : ""}
         </h2>
         {autoWindowLoading ? (
@@ -160,123 +139,45 @@ export default function ProjectLookAheads() {
             <Spinner size="md" />
           </div>
         ) : !autoWindow || autoWindow.activities.length === 0 ? (
-          <Card padding="md" className="text-sm text-gray-500">
+          <Card padding="md" className="mt-3 text-sm text-gray-500">
             Nothing scheduled in the next 4 weeks on the project chart.
           </Card>
         ) : (
-          <div className="flex flex-col gap-3">
-            {autoWindow.activities.map((activity) => (
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            {autoWindow.activities.slice(0, 4).map((activity) => (
               <AutoWindowCard key={activity.activityId} activity={activity} />
             ))}
+            {autoWindow.activities.length > 4 && (
+              <Card padding="md" className="flex items-center justify-center rounded-[16px] border-dashed text-sm text-gray-500">
+                +{autoWindow.activities.length - 4} more scheduled activities
+              </Card>
+            )}
           </div>
         )}
       </section>
 
-      <section className="mt-10 flex flex-col gap-3">
-        <div className="flex flex-col gap-4 lg:gap-0 lg:flex-row items-start lg:items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">Your look aheads</h2>
-          <div className="flex gap-1">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setFilter(s)}
-                className={
-                  filter === s
-                    ? "rounded-full bg-primary px-3 py-1 text-xs font-medium text-white"
-                    : "rounded-full bg-[#F6F6F6] px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200"
-                }
-              >
-                {s === "all" ? "All" : LOOK_AHEAD_STATUS_META[s].label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <section className="mt-8">
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Spinner size="md" />
           </div>
-        ) : lookAheads.length === 0 ? (
-          <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No look aheads yet"
-            description="Create a look-ahead period and pick the activities it covers from the project chart or imported programme."
-            action={
-              canManage && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    setEditTarget(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-4" />
-                  New look ahead
-                </Button>
-              )
-            }
-          />
         ) : (
-          lookAheads.map((lookAhead) => (
-            <Card
-              key={lookAhead.id}
-              padding="lg"
-              className="flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8]"
-            >
-              <header className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[15px] font-semibold text-black-500">{lookAhead.name}</p>
-                  <Badge tone={LOOK_AHEAD_STATUS_META[lookAhead.status].tone} size="sm">
-                    {LOOK_AHEAD_STATUS_META[lookAhead.status].label}
-                  </Badge>
-                </div>
-                {canManage && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditTarget(lookAhead);
-                        setFormOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700"
-                      onClick={() => setDeleteTarget(lookAhead)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </header>
-              <p className="text-[12px] text-black-300">
-                {formatDate(lookAhead.startDate)} – {formatDate(lookAhead.endDate)}
-                {lookAhead.totalWorkers != null && ` · Crew ${lookAhead.totalWorkers}`}
-                {" · "}
-                {lookAhead.activities.length} activit{lookAhead.activities.length === 1 ? "y" : "ies"}
-              </p>
-              {lookAhead.description && (
-                <p className="text-[13px] text-black-400">{lookAhead.description}</p>
-              )}
-              {lookAhead.activities.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {lookAhead.activities.map((a) => (
-                    <Badge key={a.activityId} tone="neutral" size="sm">
-                      {a.name}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </Card>
-          ))
+          <LookAheadsTable
+            lookAheads={lookAheads}
+            canManage={canManage}
+            activityCoverage={activityCoverage}
+            onCreate={() => {
+              setEditTarget(null);
+              setFormOpen(true);
+            }}
+            onView={setViewTarget}
+            onEdit={(lookAhead) => {
+              setViewTarget(null);
+              setEditTarget(lookAhead);
+              setFormOpen(true);
+            }}
+            onDelete={setDeleteTarget}
+          />
         )}
       </section>
 
@@ -297,6 +198,20 @@ export default function ProjectLookAheads() {
               : null
         }
         onSubmit={handleSubmit}
+      />
+
+      <LookAheadDetailDrawer
+        open={viewTarget !== null}
+        lookAhead={viewTarget}
+        canManage={canManage}
+        onOpenChange={(next) => {
+          if (!next) setViewTarget(null);
+        }}
+        onEdit={(lookAhead) => {
+          setViewTarget(null);
+          setEditTarget(lookAhead);
+          setFormOpen(true);
+        }}
       />
 
       <ConfirmDialog
@@ -329,8 +244,8 @@ export default function ProjectLookAheads() {
 
 function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
   return (
-    <Card padding="lg" className="rounded-[16px] border-none bg-[#F8F8F8]">
-      <header className="flex flex-col gap-2 border-b border-[#EDEDED] pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <Card padding="md" className="rounded-[16px] border-none bg-[#F8F8F8]">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[15px] font-semibold text-black-500">{activity.activityName}</p>
@@ -348,7 +263,7 @@ function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
       </header>
 
       {activity.materialOrders.length > 0 && (
-        <div className="flex flex-col divide-y divide-[#EDEDED]">
+        <div className="mt-3 flex flex-col divide-y divide-[#EDEDED] border-t border-[#EDEDED]">
           {activity.materialOrders.map((order) => (
             <div key={order.id} className="flex items-center justify-between gap-3 py-3">
               <div className="flex flex-col gap-0.5">

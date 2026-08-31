@@ -3,12 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 import { SettingsIcon } from "@/components/atoms/settings-icon";
 import {
   BackArrowIcon,
+  AlertIcon,
   CalendarIcon,
   ChevronRightIcon,
   ContractorsIcon,
   DocumentsIcon,
   FinancesIcon,
-  InspectionsIcon,
   MaterialsIcon,
   MessagesIcon,
   SparkleIcon,
@@ -35,7 +35,8 @@ import {
   NAV_ENTRIES,
   MATERIALS_ENTRIES,
   SCHEDULE_ENTRIES,
-  SITE_CONTROL_ENTRIES,
+  SITE_TOOL_ENTRIES,
+  DOCUMENT_TOOL_ENTRIES,
   FINANCE_ENTRIES,
   CLIENT_ENTRIES,
   type ProjectNavItem,
@@ -126,9 +127,17 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       })),
     [project.id, enabledKeys, access],
   );
-  const siteControlItems = useMemo<GroupNavItem[]>(
+  const siteToolItems = useMemo<GroupNavItem[]>(
     () =>
-      SITE_CONTROL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+      SITE_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
+        ...entry,
+        to: `/project/${project.id}/${entry.slug}`,
+      })),
+    [project.id, enabledKeys, access],
+  );
+  const documentToolItems = useMemo<ProjectNavItem[]>(
+    () =>
+      DOCUMENT_TOOL_ENTRIES.filter((e) => isOn(e.flag) && canViewSection(access, e.flag, e.resource)).map((entry) => ({
         ...entry,
         to: `/project/${project.id}/${entry.slug}`,
       })),
@@ -161,7 +170,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
       location.pathname === item.to ||
       location.pathname.startsWith(`${item.to}/`),
   );
-  const isSiteControlActive = siteControlItems.some(
+  const isFieldToolsActive = siteToolItems.some(
     (item) =>
       location.pathname === item.to ||
       location.pathname.startsWith(`${item.to}/`),
@@ -176,10 +185,8 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   const { selectedBuildingId } = useBuildingScope();
   const activeBuilding = realBuildings.find(b => b.id === selectedBuildingId);
   const showMultiBuildingNav = realBuildings.length > 1 && isOn("projects.multiBuilding") && canViewSection(access, "projects.schedule", "buildings");
-
-  const scopedSiteControlSlugs = ["schedules/daily-log", "look-aheads"];
-  const scopedSiteControlItems = siteControlItems.filter(item => scopedSiteControlSlugs.includes(item.slug));
-  const projectSiteControlItems = siteControlItems.filter(item => !scopedSiteControlSlugs.includes(item.slug));
+  const showDocumentsLink = isOn("projects.documents") && canViewSection(access, "projects.documents", "documents");
+  const hasDocumentsSection = showDocumentsLink || documentToolItems.length > 0;
 
   const tasksItem: ProjectNavItem | null = isOn("projects.schedule") ? {
     label: "Tasks",
@@ -324,7 +331,6 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                 </p>
                 {scheduleItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
                 {tasksItem && <ProjectNavLink item={tasksItem} onClose={onClose} />}
-                {scopedSiteControlItems.map(item => <ProjectNavLink key={item.slug} item={item} onClose={onClose} />)}
                 
                 <ProjectNavLink
                   item={{
@@ -345,12 +351,12 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
               {items.slice(0, 2).map((item) => (
                 <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
               ))}
-              {projectSiteControlItems.length > 0 && (
+              {siteToolItems.length > 0 && (
                 <SidebarNavGroup
-                  label="Site Control"
-                  Icon={InspectionsIcon}
-                  items={projectSiteControlItems}
-                  active={isSiteControlActive}
+                  label="Field Tools"
+                  Icon={AlertIcon}
+                  items={siteToolItems}
+                  active={isFieldToolsActive}
                   onClose={onClose}
                 />
               )}
@@ -377,7 +383,7 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
           ) : (
             <>
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Main menu
+                Project
               </p>
               {items.slice(0, 2).map((item) => (
                 <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
@@ -397,12 +403,12 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
                   onClose={onClose}
                 />
               )}
-              {siteControlItems.length > 0 && (
+              {siteToolItems.length > 0 && (
                 <SidebarNavGroup
-                  label="Site Control"
-                  Icon={InspectionsIcon}
-                  items={siteControlItems}
-                  active={isSiteControlActive}
+                  label="Field Tools"
+                  Icon={AlertIcon}
+                  items={siteToolItems}
+                  active={isFieldToolsActive}
                   onClose={onClose}
                 />
               )}
@@ -450,17 +456,28 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
             </>
           )}
 
-          {isOn("projects.documents") && canViewSection(access, "projects.documents", "documents") && (
-            <ProjectNavLink
-              item={{
-                label: "Documents",
-                slug: "documents",
-                Icon: DocumentsIcon,
-                to: `/project/${project.id}/documents`,
-              }}
-              onClose={onClose}
-            />
+          {hasDocumentsSection && (
+            <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              Documents
+            </p>
           )}
+          {showDocumentsLink && (
+              <ProjectNavLink
+                item={{
+                  label: "Documents",
+                  slug: "documents",
+                  Icon: DocumentsIcon,
+                  to: `/project/${project.id}/documents`,
+                }}
+                onClose={onClose}
+              />
+          )}
+          {documentToolItems.map((item) => (
+            <ProjectNavLink key={item.slug} item={item} onClose={onClose} />
+          ))}
+          <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            People & Admin
+          </p>
           {isOn("project.team") && canViewSection(access, undefined, "teamMembers") && (
             <ProjectNavLink
               item={{

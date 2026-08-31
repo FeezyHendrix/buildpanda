@@ -29,8 +29,13 @@ const securityPlugin: FastifyPluginAsync = async (fastify) => {
   await fastify.register(helmet, {
     // This is a JSON API, never an HTML origin, so a restrictive default-src
     // 'none' CSP is safe and blocks any accidental script/embed surface.
+    // The frameAncestors directive explicitly allows the SPA to iframe inline
+    // files (e.g. PDFs) returned by the /view endpoints.
     contentSecurityPolicy: {
-      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] },
+      directives: { 
+        defaultSrc: ["'none'"], 
+        frameAncestors: config.http.corsOrigins 
+      },
     },
     // Cross-origin: the SPA and admin panel live on different hosts and must be
     // able to read API responses and presigned-link redirects.

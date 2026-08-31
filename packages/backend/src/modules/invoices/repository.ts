@@ -4,6 +4,7 @@ import type {
   InvoiceParty,
   InvoicePaymentRow,
   InvoiceRow,
+  InvoiceStageLineRow,
   InvoiceType,
   PaymentMethod,
   StoredInvoiceStatus,
@@ -123,6 +124,18 @@ export interface NewPaymentRecord {
   method: PaymentMethod;
   paid_at: string | null;
   note: string | null;
+}
+
+export interface NewInvoiceStageLineRecord {
+  id: string;
+  project_id: string;
+  invoice_id: string;
+  stage_id: string;
+  scheduled_value: string;
+  this_period: string;
+  stored_materials: string;
+  retained: string;
+  sort_order: number;
 }
 
 export interface InvoiceOrgDefaultsRow {
@@ -281,6 +294,34 @@ export function invoicesRepository(db: Knex) {
           .delete();
         if (allocations.length > 0) {
           await trx("invoice_budget_allocations").insert(allocations);
+        }
+      });
+    },
+
+    listStageLines(invoiceId: string): Promise<InvoiceStageLineRow[]> {
+      return db<InvoiceStageLineRow>("invoice_stage_lines")
+        .where({ invoice_id: invoiceId })
+        .orderBy("sort_order", "asc");
+    },
+
+    listStageLinesForStages(
+      projectId: string,
+      stageIds: string[],
+    ): Promise<InvoiceStageLineRow[]> {
+      if (stageIds.length === 0) return Promise.resolve([]);
+      return db<InvoiceStageLineRow>("invoice_stage_lines")
+        .where({ project_id: projectId })
+        .whereIn("stage_id", stageIds);
+    },
+
+    async replaceStageLines(
+      invoiceId: string,
+      records: NewInvoiceStageLineRecord[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("invoice_stage_lines").where({ invoice_id: invoiceId }).delete();
+        if (records.length > 0) {
+          await trx("invoice_stage_lines").insert(records);
         }
       });
     },

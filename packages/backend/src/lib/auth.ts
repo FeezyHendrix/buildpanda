@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { admin, organization } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
 import { config } from "../config/index.ts";
 import { sendEmail } from "./mail.ts";
@@ -11,6 +12,8 @@ import {
   verificationEmail,
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
+import { logger } from "./logger.ts";
+import { provisionSampleProject } from "./sample-project.ts";
 import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
 
@@ -50,7 +53,7 @@ async function uniqueOrgSlug(base: string): Promise<string> {
  * company becomes its owner. Returns the user's active organization id.
  * Idempotent: if the user already has a membership, that org is returned.
  */
-async function ensureUserOrganization(
+export async function ensureUserOrganization(
   userId: string,
   knownName?: string,
   companyName?: string | null,
@@ -93,6 +96,11 @@ async function ensureUserOrganization(
     userId,
     role: "owner",
     createdAt: now,
+  });
+
+  // A sample project failing to provision must never block the sign-up itself.
+  await provisionSampleProject(db, orgId).catch((error: unknown) => {
+    logger.error({ err: error, orgId }, "Failed to provision sample project for new organization");
   });
 
   return orgId;
@@ -208,7 +216,13 @@ export const auth = betterAuth({
   secret: config.auth.secret,
   baseURL: config.auth.baseUrl,
   basePath: "/api/auth",
-  trustedOrigins: config.http.corsOrigins,
+  // The native app has no browser origin, so it identifies itself by URL scheme.
+  // `exp://` covers Expo Go / dev clients on a LAN address and stays out of prod.
+  trustedOrigins: [
+    ...config.http.corsOrigins,
+    "buildpanda://",
+    ...(config.isProduction ? [] : ["exp://", "exp://**"]),
+  ],
 
   // better-auth owns rate limiting for /api/auth/* (the Fastify limiter
   // deliberately skips these to avoid double-counting). Custom rules throttle
@@ -326,6 +340,7 @@ export const auth = betterAuth({
   },
 
   plugins: [
+    expo(),
     organization({
       ac,
       roles,

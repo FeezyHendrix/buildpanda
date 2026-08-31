@@ -55,11 +55,21 @@ function stepForStatus(status: string): StepKey {
   return "review";
 }
 
-function Stepper({ active, reviewing, onSelect }: { active: StepKey; reviewing: boolean; onSelect: (k: StepKey) => void }) {
-  const activeIndex = STEPS.findIndex((s) => s.key === active);
+function Stepper({
+  active,
+  reviewing,
+  steps,
+  onSelect,
+}: {
+  active: StepKey;
+  reviewing: boolean;
+  steps: readonly (typeof STEPS)[number][];
+  onSelect: (k: StepKey) => void;
+}) {
+  const activeIndex = steps.findIndex((s) => s.key === active);
   return (
     <nav className="flex items-center gap-4 border-b border-gray-200 pb-3">
-      {STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const reachable = reviewing && (step.key === "review" || step.key === "output");
         return (
           <button
@@ -307,6 +317,10 @@ export default function PreconSessionPage() {
 
   const effectiveStep: StepKey = step ?? (justCompleted ? "generate" : stepForStatus(snapshot.session.status));
   const reviewing = snapshot.session.status === "reviewing" || snapshot.session.status === "output";
+  // All sheets, not just measurable ones: a session still generating has only
+  // pending sheets and must not be mistaken for a hand-priced one.
+  const hasDrawings = snapshot.sheets.length > 0;
+  const visibleSteps = hasDrawings ? STEPS : STEPS.filter((s) => s.key === "review" || s.key === "output");
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
@@ -336,12 +350,17 @@ export default function PreconSessionPage() {
             })()}
           </div>
         </div>
-        <Badge tone={reviewing ? "warning" : snapshot.session.status === "failed" ? "danger" : "info"}>
-          {snapshot.session.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Link to="/plan-review">
+            <Button variant="secondary" size="sm">Plan review</Button>
+          </Link>
+          <Badge tone={reviewing ? "warning" : snapshot.session.status === "failed" ? "danger" : "info"}>
+            {snapshot.session.status}
+          </Badge>
+        </div>
       </div>
 
-      <Stepper active={effectiveStep} reviewing={reviewing} onSelect={setStep} />
+      <Stepper active={effectiveStep} reviewing={reviewing} steps={visibleSteps} onSelect={setStep} />
 
       {effectiveStep === "generate" || effectiveStep === "upload" ? (
         <GenerateFeed
@@ -358,19 +377,21 @@ export default function PreconSessionPage() {
           <PreconProgrammePanel sessionId={sessionId} sessionTitle={snapshot.session.title} />
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1fr_420px]">
-          <PreconSheetViewer
-            sessionId={sessionId}
-            sheets={measurableSheets}
-            activeSheet={activeSheet}
-            onSelectSheet={(id) => setActiveSheetId(id)}
-            geometries={snapshot.geometries}
-            rows={snapshot.rows}
-            selectedRowId={selectedRowId}
-            onSelectRow={setSelectedRowId}
-            tool={tool}
-            onToolChange={setTool}
-          />
+        <div className={cn("grid min-h-0 flex-1 gap-4", hasDrawings && "lg:grid-cols-[1fr_420px]")}>
+          {hasDrawings ? (
+            <PreconSheetViewer
+              sessionId={sessionId}
+              sheets={measurableSheets}
+              activeSheet={activeSheet}
+              onSelectSheet={(id) => setActiveSheetId(id)}
+              geometries={snapshot.geometries}
+              rows={snapshot.rows}
+              selectedRowId={selectedRowId}
+              onSelectRow={setSelectedRowId}
+              tool={tool}
+              onToolChange={setTool}
+            />
+          ) : null}
           <PreconBoqPanel
             sessionId={sessionId}
             snapshot={snapshot}

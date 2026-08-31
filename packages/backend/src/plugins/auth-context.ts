@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import { auth } from "../lib/auth.ts";
+import { auth, ensureUserOrganization } from "../lib/auth.ts";
 import { config } from "../config/index.ts";
 import { enterLlmContext } from "../lib/llm-context.ts";
 import { ForbiddenError, NotFoundError, UnauthorizedError } from "../lib/errors.ts";
@@ -245,7 +245,30 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
           image: session.user.image ?? null,
           role,
         };
-        request.activeOrganizationId = session.session.activeOrganizationId ?? null;
+        let { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
+          session.user.id,
+          () => loadAccessContextRows(session.user.id),
+        );
+
+        const sessionOrgId = session.session.activeOrganizationId ?? null;
+        let activeOrganizationId =
+          sessionOrgId && memberRows.some((row) => row.organizationId === sessionOrgId)
+            ? sessionOrgId
+            : memberRows[0]?.organizationId ?? null;
+        if (!activeOrganizationId) {
+          activeOrganizationId = await ensureUserOrganization(session.user.id, session.user.name);
+          await fastify.accessCache.invalidate(session.user.id);
+          memberRows = [{ organizationId: activeOrganizationId, role: "owner" }];
+          customRoleRows = [];
+          participantRows = [];
+        }
+        request.activeOrganizationId = activeOrganizationId;
+
+        if (activeOrganizationId && activeOrganizationId !== sessionOrgId) {
+          await fastify.db("session")
+            .where({ id: session.session.id })
+            .update({ activeOrganizationId });
+        }
 
         enterLlmContext({
           orgId: request.activeOrganizationId ?? undefined,
@@ -254,14 +277,6 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         });
 
         touchLastActivity(fastify.db, session.user.id);
-
-        // Role/permission rows are served from the access cache (Redis-backed
-        // when configured) and re-read only after an explicit invalidation on
-        // write or the TTL safety net elapses.
-        const { memberRows, customRoleRows, participantRows } = await fastify.accessCache.load(
-          session.user.id,
-          () => loadAccessContextRows(session.user.id),
-        );
 
         request.orgRoles = new Map(memberRows.map((row) => [row.organizationId, row.role]));
 

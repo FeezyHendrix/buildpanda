@@ -12,6 +12,9 @@ export interface NewApprovalRecord {
   due_date: string | null;
   submitted_by_id: string | null;
   requested_reviewer_id: string | null;
+  document_id: string | null;
+  document_version_id: string | null;
+  source_markup_id: string | null;
 }
 
 export interface ApprovalUpdatePatch {

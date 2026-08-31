@@ -25,6 +25,14 @@ export const documentKeys = {
     [...documentKeys.all(projectId), "versions", documentId] as const,
 };
 
+export const drawingMarkupKeys = {
+  all: (projectId: string) => ["projects", projectId, "drawing-markups"] as const,
+  version: (projectId: string, documentVersionId: string, pageNo?: number) =>
+    [...drawingMarkupKeys.all(projectId), "version", documentVersionId, { pageNo }] as const,
+  document: (projectId: string, documentId: string) =>
+    [...drawingMarkupKeys.all(projectId), "document", documentId] as const,
+};
+
 export const inspectionKeys = {
   all: (projectId: string) => ["projects", projectId, "inspections"] as const,
   list: (projectId: string) =>
@@ -90,6 +98,8 @@ export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
+  payApplication: (projectId: string, invoiceId: string) =>
+    [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
 };
 
 export const paymentClaimKeys = {
@@ -128,6 +138,8 @@ export const activityKeys = {
 export const stageKeys = {
   all: (projectId: string) => ["projects", projectId, "stages"] as const,
   list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,
+  scheduleOfValues: (projectId: string, stageId?: string) =>
+    [...stageKeys.all(projectId), "schedule-of-values", stageId ?? "all"] as const,
 };
 
 export const buildingKeys = {

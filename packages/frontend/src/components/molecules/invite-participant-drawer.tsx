@@ -26,7 +26,7 @@ function humanizeResource(r: string) {
     "drawings": "Drawings",
     "instructions": "Instructions",
     "key-dates": "Key dates",
-    "payment-claims": "Payment claims",
+    "payment-claims": "Payment requests",
     "photos": "Photos",
     "proposals": "Proposals",
     "rfi": "RFIs",

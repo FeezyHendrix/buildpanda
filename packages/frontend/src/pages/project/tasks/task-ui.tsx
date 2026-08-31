@@ -90,7 +90,7 @@ export const ENTITY_META: Record<TaskEntityType, { label: string; route: string 
   change_request: { label: "Change request", route: "change-requests" },
   material: { label: "Material", route: "materials" },
   invoice: { label: "Invoice", route: "finances/invoices" },
-  milestone_payment: { label: "Milestone", route: "schedules/milestones" },
+  milestone_payment: { label: "Stage payment", route: "finances/payments" },
 };
 
 export const ENTITY_ORDER: TaskEntityType[] = [

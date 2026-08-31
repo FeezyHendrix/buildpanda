@@ -1,11 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
-import { OrgSwitcher } from "@/components/molecules/org-switcher";
 import {
   SuiteSwitcher,
   LAST_SUITE_KEY,
@@ -14,12 +13,20 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { AbilityProvider } from "@/contexts/ability-context";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
+import { useOrgPermissions } from "@/hooks/use-organization";
 import logo from "@/assets/images/logo.svg";
 
 export { LAST_SUITE_KEY, SUITE_SALES };
 export { SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 
-const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNode }> = [
+const salesNav: Array<{
+  label: string;
+  to: string;
+  flag?: string;
+  permission?: { resource: string; action: string };
+  section?: string;
+  icon: ReactNode;
+}> = [
   {
     label: "Dashboard",
     to: "/sales",
@@ -59,8 +66,22 @@ const salesNav: Array<{ label: string; to: string; flag?: string; icon: ReactNod
     ),
   },
   {
+    label: "Team",
+    to: "/sales/team",
+    permission: { resource: "teamMembers", action: "manage" },
+    section: "People & Admin",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     to: "/sales/settings",
+    section: "People & Admin",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
         <circle cx="12" cy="12" r="3" />
@@ -125,9 +146,19 @@ function SalesSidebar({
   onOpen: () => void;
 }) {
   const { data: flagsData } = useFeatureFlags();
-  const visibleNav = salesNav.filter(
-    (item) => !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true),
-  );
+  const { data: permissionsData } = useOrgPermissions();
+  // Not cosmetic: OrgPermissionGate redirects to /dashboard, so an unpermitted
+  // link would eject the user out of the sales suite.
+  const visibleNav = salesNav.filter((item) => {
+    const flagOn =
+      !item.flag || (flagsData?.flags.find((f) => f.key === item.flag)?.enabled ?? true);
+    const permitted =
+      !item.permission ||
+      (permissionsData?.permissions?.[item.permission.resource] ?? []).includes(
+        item.permission.action,
+      );
+    return flagOn && permitted;
+  });
 
   return (
     <>
@@ -179,7 +210,6 @@ function SalesSidebar({
             <Link to="/sales" className="px-1" aria-label="BuildPanda home">
               <img src={logo} alt="BuildPanda" className="h-8 w-auto" />
             </Link>
-            <OrgSwitcher />
           </div>
 
           <div className="px-3 pb-1">
@@ -187,8 +217,15 @@ function SalesSidebar({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 px-3 pt-3">
-            {visibleNav.map((item) => (
-              <SalesNavLink key={item.to} item={item} />
+            {visibleNav.map((item, index) => (
+              <Fragment key={item.to}>
+                {item.section && item.section !== visibleNav[index - 1]?.section ? (
+                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    {item.section}
+                  </p>
+                ) : null}
+                <SalesNavLink item={item} />
+              </Fragment>
             ))}
           </nav>
 

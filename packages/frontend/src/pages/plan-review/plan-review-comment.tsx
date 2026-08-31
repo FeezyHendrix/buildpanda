@@ -1,0 +1,361 @@
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Check,
+  MessageSquare,
+  Mic,
+  Square,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
+import { Spinner } from "@/components/atoms/spinner";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import { cn } from "@/lib/utils";
+import { formatClock } from "./plan-review-data";
+
+import {
+  COMMENT_MODE,
+  FOLLOW_UP,
+  FOLLOW_UPS,
+  type CommentAssignee,
+  type CommentCapture,
+  type CommentMode,
+  type FollowUpKind,
+} from "./plan-review-comment-types";
+
+
+function ModeTab({
+  active,
+  onClick,
+  Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: typeof Mic;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+        active ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
+      )}
+    >
+      <Icon size={13} /> {label}
+    </button>
+  );
+}
+
+export function CommentComposerPopover({
+  anchor,
+  assignees,
+  color,
+  busy,
+  projectId,
+  onCancel,
+  onSubmit,
+}: {
+  anchor: { x: number; y: number };
+  assignees: CommentAssignee[];
+  color: string;
+  busy: boolean;
+  projectId?: string;
+  onCancel: () => void;
+  onSubmit: (capture: CommentCapture) => void;
+}) {
+  const [mode, setMode] = useState<CommentMode>(COMMENT_MODE.TEXT);
+  const [text, setText] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [followUp, setFollowUp] = useState<FollowUpKind>(FOLLOW_UP.NONE);
+
+  const [recording, setRecording] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const previewRef = useRef<HTMLVideoElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState(anchor);
+
+  // Keep the popover on screen: flip above the pin when it would overflow the
+  // bottom, and clamp its centre so the edges never leave the viewport.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const margin = 12;
+    const halfWidth = width / 2;
+    const x = Math.min(
+      Math.max(anchor.x, halfWidth + margin),
+      window.innerWidth - halfWidth - margin,
+    );
+    const overflowsBottom = anchor.y + height + margin > window.innerHeight;
+    const y = overflowsBottom
+      ? Math.max(margin, anchor.y - height - 28)
+      : anchor.y;
+    setPlacement({ x, y });
+  }, [anchor, mode, mediaUrl]);
+
+  useEffect(() => {
+    if (!recording) return;
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [recording]);
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCancel();
+      }
+    }
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [onCancel]);
+
+  function resetMedia(): void {
+    setMediaUrl(null);
+    setMediaBlob(null);
+    setSeconds(0);
+    setMediaError(null);
+  }
+
+  async function startRecording(): Promise<void> {
+    resetMedia();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(
+        mode === COMMENT_MODE.VIDEO ? { audio: true, video: true } : { audio: true },
+      );
+      streamRef.current = stream;
+      if (mode === COMMENT_MODE.VIDEO && previewRef.current) {
+        previewRef.current.srcObject = stream;
+        await previewRef.current.play().catch(() => undefined);
+      }
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        setMediaBlob(blob);
+        setMediaUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      };
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+    } catch {
+      setMediaError(
+        mode === COMMENT_MODE.VIDEO
+          ? "Camera unavailable — check browser permissions."
+          : "Microphone unavailable — check browser permissions.",
+      );
+    }
+  }
+
+  function stopRecording(): void {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
+  }
+
+  function handleSubmit(): void {
+    const trimmed = text.trim();
+    if (!trimmed && !mediaBlob) return;
+    const assignee = assignees.find((a) => a.id === assigneeId) ?? null;
+    onSubmit({
+      text: trimmed || (mode === COMMENT_MODE.VIDEO ? "Video note" : "Voice note"),
+      bodyHtml: bodyHtml.trim() ? bodyHtml : null,
+      mode,
+      mediaBlob,
+      mediaDurationSeconds: mediaBlob ? seconds : null,
+      assigneeId: assignee?.id ?? null,
+      assigneeName: assignee?.name ?? null,
+      followUp,
+    });
+  }
+
+  const canSubmit = Boolean(text.trim() || mediaBlob) && !recording && !busy;
+
+  return (
+    <div
+      ref={rootRef}
+      data-comment-popover
+      style={{ left: placement.x, top: placement.y }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      className="fixed z-[60] w-[320px] -translate-x-1/2 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/10"
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="flex size-6 items-center justify-center rounded-full text-white"
+          style={{ backgroundColor: color }}
+        >
+          <MessageSquare size={12} strokeWidth={2.5} />
+        </span>
+        <p className="text-sm font-semibold text-gray-900">Add comment</p>
+        <button
+          type="button"
+          aria-label="Cancel comment"
+          title="Cancel comment"
+          onClick={onCancel}
+          className="ml-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-[#F6F6F6] hover:text-gray-700"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div
+        className="mt-2.5 flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-0.5"
+        role="group"
+        aria-label="Comment type"
+      >
+        <ModeTab active={mode === COMMENT_MODE.TEXT} onClick={() => { setMode(COMMENT_MODE.TEXT); resetMedia(); }} Icon={MessageSquare} label="Note" />
+        <ModeTab active={mode === COMMENT_MODE.AUDIO} onClick={() => { setMode(COMMENT_MODE.AUDIO); resetMedia(); }} Icon={Mic} label="Audio" />
+        <ModeTab active={mode === COMMENT_MODE.VIDEO} onClick={() => { setMode(COMMENT_MODE.VIDEO); resetMedia(); }} Icon={Video} label="Video" />
+      </div>
+
+      <div className="mt-2.5" data-comment-body>
+        <RichTextField
+          value={bodyHtml}
+          onChange={setBodyHtml}
+          onChangeText={setText}
+          projectId={projectId}
+          placeholder={
+            mode === COMMENT_MODE.TEXT ? "What needs attention here?" : "Add a caption (optional)"
+          }
+        />
+      </div>
+
+      {mode !== COMMENT_MODE.TEXT && (
+        <div className="mt-2 rounded-lg border border-[#EDEDED] p-2.5">
+          {mode === COMMENT_MODE.VIDEO && (recording || mediaUrl) && (
+            <video
+              ref={previewRef}
+              src={mediaUrl ?? undefined}
+              controls={Boolean(mediaUrl)}
+              muted={recording}
+              playsInline
+              className="mb-2 aspect-video w-full rounded-md bg-gray-900 object-cover"
+            />
+          )}
+          {mode === COMMENT_MODE.AUDIO && mediaUrl && <audio src={mediaUrl} controls className="mb-2 w-full" />}
+
+          <div className="flex items-center gap-2">
+            {recording ? (
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
+              >
+                <Square size={11} fill="currentColor" /> Stop · {formatClock(seconds)}
+              </button>
+            ) : mediaUrl ? (
+              <>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+                  <Check size={13} /> {mode === COMMENT_MODE.VIDEO ? "Video" : "Audio"} captured · {formatClock(seconds)}
+                </span>
+                <button
+                  type="button"
+                  onClick={resetMedia}
+                  className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-gray-500 hover:bg-[#F6F6F6] hover:text-red-600"
+                >
+                  <Trash2 size={11} /> Discard
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void startRecording()}
+                className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+              >
+                {mode === COMMENT_MODE.VIDEO ? <Video size={12} /> : <Mic size={12} />}
+                Record {mode === COMMENT_MODE.VIDEO ? "video" : "audio"}
+              </button>
+            )}
+            {recording && <span className="size-2 animate-pulse rounded-full bg-red-500" />}
+          </div>
+
+          {mediaError && <p className="mt-1.5 text-[11px] text-amber-700">{mediaError}</p>}
+        </div>
+      )}
+
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <div>
+          <label htmlFor="comment-assignee" className="mb-1 block text-[11px] font-medium text-gray-500">
+            Assign to
+          </label>
+          <select
+            id="comment-assignee"
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            className="h-8 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          >
+            <option value="">Nobody</option>
+            {assignees.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="comment-followup" className="mb-1 block text-[11px] font-medium text-gray-500">
+            Follow-up
+          </label>
+          <select
+            id="comment-followup"
+            value={followUp}
+            onChange={(e) => setFollowUp(e.target.value as FollowUpKind)}
+            className="h-8 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          >
+            {FOLLOW_UPS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        <p className="text-[10px] text-gray-400">⌘↵ to save</p>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6]"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {busy ? <Spinner size="xs" tone="current" /> : null}
+          Save comment
+        </button>
+      </div>
+    </div>
+  );
+}
+
+CommentComposerPopover.displayName = "CommentComposerPopover";

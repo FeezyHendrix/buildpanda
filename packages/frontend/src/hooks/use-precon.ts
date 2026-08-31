@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   preconApi,
+  type CreateRowInput,
   type PreconGeometryKind,
   type PreconProgramme,
   type PreconSummarySettings,
@@ -171,17 +172,72 @@ export function useRejectPreconRow(sessionId: string) {
 export function useUpdatePreconGeometry(sessionId: string) {
   return useRowMutation(
     sessionId,
-    ({ rowId, version, kind, vertices }: { rowId: string; version: number; kind: PreconGeometryKind; vertices: number[][] }) =>
-      preconApi.updateGeometry(rowId, { version, kind, vertices }),
+    ({
+      rowId,
+      version,
+      kind,
+      vertices,
+      sheetId,
+    }: {
+      rowId: string;
+      version: number;
+      kind: PreconGeometryKind;
+      vertices: number[][];
+      sheetId?: string;
+    }) => preconApi.updateGeometry(rowId, { version, kind, vertices, sheetId }),
   );
 }
 
 export function useAddPreconDeduction(sessionId: string) {
   return useRowMutation(
     sessionId,
-    ({ rowId, version, label, vertices }: { rowId: string; version: number; label: string; vertices: number[][] }) =>
-      preconApi.addDeduction(rowId, { version, label, vertices }),
+    ({
+      rowId,
+      version,
+      label,
+      vertices,
+      sheetId,
+    }: {
+      rowId: string;
+      version: number;
+      label: string;
+      vertices: number[][];
+      sheetId?: string;
+    }) => preconApi.addDeduction(rowId, { version, label, vertices, sheetId }),
   );
+}
+
+export function useCreateBlankPreconSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ title, proposalId }: { title: string; proposalId?: string }) =>
+      preconApi.createBlankSession(title, proposalId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
+  });
+}
+
+export function useCreatePreconBill(sessionId: string) {
+  return useRowMutation(sessionId, (title: string) => preconApi.createBill(sessionId, title));
+}
+
+export function useRenamePreconBill(sessionId: string) {
+  return useRowMutation(sessionId, ({ billId, title }: { billId: string; title: string }) =>
+    preconApi.renameBill(billId, title),
+  );
+}
+
+export function useDeletePreconBill(sessionId: string) {
+  return useRowMutation(sessionId, (billId: string) => preconApi.deleteBill(billId));
+}
+
+export function useCreatePreconRow(sessionId: string) {
+  return useRowMutation(sessionId, ({ billId, input }: { billId: string; input: CreateRowInput }) =>
+    preconApi.createRow(billId, input),
+  );
+}
+
+export function useDeletePreconRow(sessionId: string) {
+  return useRowMutation(sessionId, (rowId: string) => preconApi.deleteRow(rowId));
 }
 
 export function useUpdatePreconSettings(sessionId: string) {

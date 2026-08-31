@@ -35,6 +35,24 @@ export function agentRepository(db: Knex) {
         .select("id", "name", "status", "date_range", "sort_order");
     },
 
+    scheduleOfValues(projectId: string) {
+      return db("stage_schedule_of_values as sov")
+        .leftJoin("project_phases as p", "p.id", "sov.stage_id")
+        .where("sov.project_id", projectId)
+        .orderBy([
+          { column: "p.sort_order", order: "asc" },
+          { column: "sov.sort_order", order: "asc" },
+        ])
+        .select(
+          "p.name as stage_name",
+          "p.value as stage_value",
+          "sov.period",
+          "sov.percent",
+          "sov.amount",
+          "sov.billed",
+        );
+    },
+
     buildings(projectId: string) {
       return db("buildings")
         .where({ project_id: projectId, kind: "real" })
@@ -334,6 +352,30 @@ export function agentRepository(db: Knex) {
         .orderBy("a.due_date", "asc")
         .limit(50)
         .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
+    },
+
+    drawingMarkupsOpen(projectId: string) {
+      return db("drawing_markups as m")
+        .join("project_documents as d", "d.id", "m.document_id")
+        .leftJoin("document_versions as v", "v.id", "m.document_version_id")
+        .leftJoin("drawing_markup_comments as c", "c.markup_id", "m.id")
+        .leftJoin("user as u", "u.id", "c.created_by_id")
+        .leftJoin("rfis as r", "r.source_markup_id", "m.id")
+        .where("m.project_id", projectId)
+        .whereNull("m.resolved_at")
+        .orderBy("m.created_at", "desc")
+        .limit(50)
+        .select(
+          "m.id",
+          "d.file_name as sheet",
+          "v.revision_label as revision",
+          db.raw("(d.current_version_id = m.document_version_id) as on_current_revision"),
+          "m.kind",
+          "c.body as comment",
+          "u.name as raisedBy",
+          "m.created_at",
+          "r.id as rfiId",
+        );
     },
 
     actionItemsOpen(projectId: string) {

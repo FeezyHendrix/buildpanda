@@ -165,3 +165,50 @@ export interface InvoicePaymentRow {
   note: string | null;
   created_at: Date | string;
 }
+
+export interface InvoiceStageLineRow {
+  id: string;
+  project_id: string;
+  invoice_id: string;
+  stage_id: string;
+  scheduled_value: string;
+  this_period: string;
+  stored_materials: string;
+  retained: string;
+  sort_order: number;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+export interface PayApplicationLineInput {
+  stageId: string;
+  thisPeriod: number;
+  storedMaterials?: number;
+  retained?: number;
+}
+
+export interface PayApplicationLine {
+  stageId: string;
+  stageName: string;
+  scheduledValue: number;
+  priorBilled: number;
+  thisPeriod: number;
+  storedMaterials: number;
+  totalCompleted: number;
+  percentComplete: number;
+  balanceToFinish: number;
+  retained: number;
+  currentPaymentDue: number;
+}
+
+export interface PayApplicationSummary {
+  lines: PayApplicationLine[];
+  scheduledTotal: number;
+  priorBilledTotal: number;
+  thisPeriodTotal: number;
+  storedMaterialsTotal: number;
+  totalCompleted: number;
+  balanceToFinish: number;
+  retainedTotal: number;
+  currentPaymentDue: number;
+}

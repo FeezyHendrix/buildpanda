@@ -89,14 +89,17 @@ const ProjectBudgetAllocation = lazy(
 const ProjectMilestonePayments = lazy(
   () => import("@/pages/project/milestone-payments"),
 );
+const ProjectPayments = lazy(() => import("@/pages/project/payments"));
 const ProjectInvoices = lazy(() => import("@/pages/project/invoices"));
-const ProjectInvoiceNew = lazy(() => import("@/pages/project/invoices/new"));
 const ProjectPaymentClaims = lazy(() => import("@/pages/project/payment-claims"));
 const ProjectPurchaseOrders = lazy(() => import("@/pages/project/purchase-orders"));
 const ProjectBudget = lazy(() => import("@/pages/project/budget"));
 const ProjectTransactions = lazy(() => import("@/pages/project/transactions"));
 const ProjectFinalAccount = lazy(() => import("@/pages/project/final-account"));
 const ProjectContract = lazy(() => import("@/pages/project/contract"));
+const ProjectContractStages = lazy(
+  () => import("@/pages/project/finances/contract-stages"),
+);
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -104,6 +107,9 @@ const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-re
 const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
 const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
 const ProjectDocuments = lazy(() => import("@/pages/project/documents"));
+const ProjectPlans = lazy(() => import("@/pages/project/plans"));
+const ProjectMediaLibrary = lazy(() => import("@/pages/project/media-library"));
+const DrawingReviewWorkspace = lazy(() => import("@/pages/plan-review"));
 const ProjectTeam = lazy(() => import("@/pages/project/team"));
 const ProjectInspections = lazy(() => import("@/pages/project/inspections"));
 const ProjectSettings = lazy(() => import("@/pages/project/settings"));
@@ -201,6 +207,14 @@ export const router = createBrowserRouter([
       { path: "proposals", element: sf("sales.proposals", <SalesProposals />) },
       { path: "proposals/:id", element: sf("sales.proposals", <SalesProposalWorkspace />) },
       { path: "takeoff/:sessionId", element: sf("ai.automatedTakeoff", <SalesPreconSession />) },
+      {
+        path: "team",
+        element: (
+          <OrgPermissionGate resource="teamMembers" action="manage">
+            <TeamSettings />
+          </OrgPermissionGate>
+        ),
+      },
       { path: "settings", element: <SalesSettings /> },
     ],
   },
@@ -245,6 +259,22 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/plan-review",
+    element: (
+      <RequireAuth>
+        <DrawingReviewWorkspace />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: "/project/:projectId/plans/review",
+    element: (
+      <RequireAuth>
+        <DrawingReviewWorkspace />
+      </RequireAuth>
+    ),
+  },
+  {
     path: "/project/create",
     element: (
       <RequireCompany>
@@ -282,6 +312,8 @@ export const router = createBrowserRouter([
       { path: "people", element: pf("collaboration.participants", <ProjectPeople />) },
 
       { path: "documents", element: pf("projects.documents", <ProjectDocuments />) },
+      { path: "plans", element: pf("projects.documents", <ProjectPlans />) },
+      { path: "media-library", element: pf("projects.documents", <ProjectMediaLibrary />) },
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
       { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
@@ -301,15 +333,17 @@ export const router = createBrowserRouter([
 
       { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
       { path: "finances/budget-allocation", element: pfr("commercial.budget", "finances", <ProjectBudgetAllocation />) },
-      { path: "finances/milestone-payments", element: pfr("commercial.finances", "finances", <ProjectMilestonePayments />) },
+      { path: "finances/payments", element: pfr("commercial.finances", "finances", <ProjectPayments />) },
+      { path: "finances/milestone-payments", element: <Navigate to="../payments" replace relative="path" /> },
       { path: "finances/invoices", element: pfr("commercial.invoices", "finances", <ProjectInvoices />) },
-      { path: "finances/invoices/new", element: pfr("commercial.invoices", "finances", <ProjectInvoiceNew />) },
+      { path: "finances/invoices/new", element: <Navigate to="../invoices?compose=1" replace relative="path" /> },
       { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
       { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
       { path: "finances/transactions", element: pfr("commercial.transactions", "transactions", <ProjectTransactions />) },
       { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
       { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContract />) },
+      { path: "finances/contract-stages", element: pfr("commercial.finances", "finances", <ProjectContractStages />) },
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },

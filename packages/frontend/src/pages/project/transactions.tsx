@@ -195,7 +195,7 @@ function UpsertTransactionDialog({
     <FormDrawer
       open
       onOpenChange={(open) => !open && onClose()}
-      title={isEdit ? "Edit expenditure" : "Log expenditure"}
+      title={isEdit ? "Edit expense" : "Record expense"}
       submitLabel={isEdit ? "Save changes" : "Save entry"}
       submitting={mutation.isPending || uploadProgress !== null}
       submitDisabled={!isValid || uploadProgress !== null}
@@ -476,14 +476,14 @@ export default function TransactionsPage() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
-          { label: "Finances", to: `/project/${projectId}/finances` },
-          { label: "Transactions" },
+          { label: "Finance", to: `/project/${projectId}/finances` },
+          { label: "Expenses" },
         ]}
         className="mb-4"
       />
       <PageHeader
-        title="Transactions"
-        description="Project finances and expenditure ledger."
+        title="Expenses"
+        description="Record what you spend on site, with receipts."
         actions={
           <div className="flex items-center gap-3">
             <Button
@@ -496,7 +496,7 @@ export default function TransactionsPage() {
             <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
               Manage categories
             </Button>
-            <Button onClick={() => setUpsertTarget("new")}>Log expenditure</Button>
+            <Button onClick={() => setUpsertTarget("new")}>Record expense</Button>
           </div>
         }
       />
@@ -504,12 +504,12 @@ export default function TransactionsPage() {
       <div className="mt-6 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <KpiCard
-            title="Total expenditure"
+            title="Total spend"
             value={formatCurrency(analytics?.totalAmount || 0, currency)}
             icon={FinancesIcon.name}
           />
           <KpiCard
-            title="Transactions recorded"
+            title="Expenses recorded"
             value={(analytics?.count || 0).toString()}
             icon={FinancesIcon.name}
           />
@@ -613,9 +613,9 @@ export default function TransactionsPage() {
           ) : isEmpty ? (
             <EmptyState
               icon={<FinancesIcon className="size-12 text-gray-300" />}
-              title="No transactions logged"
-              description="Start recording project expenditure to build your ledger."
-              action={<Button onClick={() => setUpsertTarget("new")}>Log expenditure</Button>}
+              title="No expenses recorded yet"
+              description="Start recording site spend to build your log."
+              action={<Button onClick={() => setUpsertTarget("new")}>Record expense</Button>}
               className="py-16"
             />
           ) : transactions.length === 0 ? (

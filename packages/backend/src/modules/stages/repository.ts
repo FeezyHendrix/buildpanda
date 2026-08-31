@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import type { StageRow, StageStatus } from "./types.ts";
+import type { StageRow, StageStatus, StageScheduleOfValueRow } from "./types.ts";
 
 export interface NewStageRecord {
   id: string;
@@ -11,6 +11,7 @@ export interface NewStageRecord {
   start_date: string | null;
   end_date: string | null;
   progress_percent: number;
+  value: string;
   sort_order: number;
 }
 
@@ -21,7 +22,19 @@ export interface StageUpdatePatch {
   start_date?: string | null;
   end_date?: string | null;
   progress_percent?: number;
+  value?: string;
   sort_order?: number;
+}
+
+export interface NewStageScheduleOfValueRecord {
+  id: string;
+  project_id: string;
+  stage_id: string;
+  period: string;
+  percent: string;
+  amount: string;
+  billed: boolean;
+  sort_order: number;
 }
 
 const COLUMNS = [
@@ -34,6 +47,7 @@ const COLUMNS = [
   "start_date",
   "end_date",
   "progress_percent",
+  "value",
   "sort_order",
 ] as const;
 
@@ -85,6 +99,36 @@ export function stagesRepository(db: Knex) {
           await trx("project_phases")
             .where({ id: orderedIds[i], project_id: projectId })
             .update({ sort_order: i });
+        }
+      });
+    },
+
+    listScheduleOfValuesByProject(projectId: string): Promise<StageScheduleOfValueRow[]> {
+      return db<StageScheduleOfValueRow>("stage_schedule_of_values")
+        .where({ project_id: projectId })
+        .orderBy([
+          { column: "stage_id", order: "asc" },
+          { column: "sort_order", order: "asc" },
+        ]);
+    },
+
+    listScheduleOfValuesByStage(
+      projectId: string,
+      stageId: string,
+    ): Promise<StageScheduleOfValueRow[]> {
+      return db<StageScheduleOfValueRow>("stage_schedule_of_values")
+        .where({ project_id: projectId, stage_id: stageId })
+        .orderBy("sort_order", "asc");
+    },
+
+    async replaceScheduleOfValues(
+      stageId: string,
+      records: NewStageScheduleOfValueRecord[],
+    ): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("stage_schedule_of_values").where({ stage_id: stageId }).del();
+        if (records.length > 0) {
+          await trx("stage_schedule_of_values").insert(records);
         }
       });
     },

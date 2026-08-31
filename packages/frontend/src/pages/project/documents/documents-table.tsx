@@ -18,6 +18,7 @@ import {
 } from "@/hooks/use-documents";
 import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
+import { formatShortDate } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type {
@@ -50,11 +51,13 @@ export function DocumentsTable({
   projectId,
   categories,
   canManage,
+  onOpenDocument,
 }: {
   documents: ProjectDocument[];
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  onOpenDocument?: (doc: ProjectDocument) => void;
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
@@ -88,6 +91,7 @@ export function DocumentsTable({
                 projectId={projectId}
                 categories={categories}
                 canManage={canManage}
+                onOpenDocument={onOpenDocument}
               />
             ))
           )}
@@ -104,12 +108,14 @@ function DocumentRow({
   projectId,
   categories,
   canManage,
+  onOpenDocument,
 }: {
   doc: ProjectDocument;
   isLast: boolean;
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
+  onOpenDocument?: (doc: ProjectDocument) => void;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -172,20 +178,37 @@ function DocumentRow({
         <TableCell>
           <div className="flex items-center gap-3">
             <ReactSVG src={getFileTypeIcon(doc.fileName)} className="shrink-0" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-gray-900">
-                {doc.fileName}
-              </p>
-              <p className="text-xs text-gray-500">
-                {doc.size}
-                {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
-              </p>
-            </div>
+            {onOpenDocument ? (
+              <button
+                type="button"
+                onClick={() => onOpenDocument(doc)}
+                title={`Open ${doc.fileName} in the review workspace`}
+                className="group min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+              >
+                <p className="truncate text-sm font-medium text-gray-900 group-hover:text-primary-600 group-hover:underline">
+                  {doc.fileName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {doc.size}
+                  {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
+                </p>
+              </button>
+            ) : (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900">
+                  {doc.fileName}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {doc.size}
+                  {doc.versionNo > 0 ? ` · v${doc.versionNo}` : ""}
+                </p>
+              </div>
+            )}
           </div>
         </TableCell>
         <TableCell className="text-sm text-gray-600">{doc.category}</TableCell>
         <TableCell className="whitespace-nowrap text-sm text-gray-600">
-          {doc.uploadedAt}
+          {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
         </TableCell>
         <TableCell>
           <Badge tone={DOCUMENT_STATUS_TONE[doc.status]} size="md" className="flex w-fit items-center gap-1.5 bg-transparent">
@@ -198,6 +221,7 @@ function DocumentRow({
             doc={doc}
             canManage={canManage}
             shareCopied={shareCopied}
+            onOpen={onOpenDocument ? () => onOpenDocument(doc) : undefined}
             onView={() => setViewerOpen(true)}
             onShare={handleShare}
             onVersions={() => setVersionsOpen(true)}
@@ -255,6 +279,7 @@ function RowMenu({
   doc,
   canManage,
   shareCopied,
+  onOpen,
   onView,
   onShare,
   onVersions,
@@ -264,23 +289,45 @@ function RowMenu({
   doc: ProjectDocument;
   canManage: boolean;
   shareCopied: boolean;
+  onOpen?: () => void;
   onView: () => void;
   onShare: () => void;
   onVersions: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const open = menuPos !== null;
 
   useEffect(() => {
     if (!open) return;
+    const close = () => setMenuPos(null);
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
+      close();
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    // The menu is fixed-positioned, so any scroll would detach it from its row.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, [open]);
+
+  function toggleMenu(e: React.MouseEvent<HTMLButtonElement>): void {
+    if (open) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  }
 
   const itemCls = "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700 outline-none hover:bg-[#F6F6F6]";
 
@@ -288,9 +335,11 @@ function RowMenu({
     <div ref={ref} className="relative flex items-center justify-end">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleMenu}
         className="flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
         aria-label="Actions"
+        aria-haspopup="true"
+        aria-expanded={open}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <circle cx="8" cy="3" r="1.5" />
@@ -300,22 +349,29 @@ function RowMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          {doc.currentVersionId && (
-            <button type="button" className={itemCls} onClick={() => { setOpen(false); onView(); }}>View</button>
+        <div
+          ref={menuRef}
+          style={{ top: menuPos.top, right: menuPos.right }}
+          className="fixed z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5"
+        >
+          {onOpen && (
+            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onOpen(); }}>Review</button>
           )}
           {doc.currentVersionId && (
-            <button type="button" className={itemCls} onClick={() => { setOpen(false); onShare(); }}>
+            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onView(); }}>View</button>
+          )}
+          {doc.currentVersionId && (
+            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onShare(); }}>
               {shareCopied ? "Copied!" : "Share"}
             </button>
           )}
-          <button type="button" className={itemCls} onClick={() => { setOpen(false); onVersions(); }}>
+          <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onVersions(); }}>
             Versions{doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}
           </button>
           {canManage && (
             <>
-              <button type="button" className={itemCls} onClick={() => { setOpen(false); onEdit(); }}>Edit</button>
-              <button type="button" className={cn(itemCls, "text-red-600 hover:bg-red-50")} onClick={() => { setOpen(false); onDelete(); }}>Delete</button>
+              <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onEdit(); }}>Edit</button>
+              <button type="button" className={cn(itemCls, "text-red-600 hover:bg-red-50")} onClick={() => { setMenuPos(null); onDelete(); }}>Delete</button>
             </>
           )}
         </div>

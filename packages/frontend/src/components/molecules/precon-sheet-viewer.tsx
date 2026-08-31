@@ -6,6 +6,7 @@ import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 
 let sharedWorker: Worker | null = null;
 import { Spinner } from "@/components/atoms/spinner";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { preconApi, type PreconBoqRow, type PreconGeometry, type PreconSheet } from "@/api/precon";
 import {
@@ -268,7 +269,14 @@ export function PreconSheetViewer({
   };
 
   const selectedRow = selectedRowId ? rowById.get(selectedRowId) : null;
-  const drawingEnabled = tool !== "select" && Boolean(selectedRow) && Boolean(activeSheet?.scaleMmPerPt);
+  const measureBlockedReason = !activeSheet
+    ? "Open a sheet to measure on"
+    : !activeSheet.scaleMmPerPt
+      ? "This sheet has no calibrated scale, so it cannot be measured"
+      : !selectedRow
+        ? "Select a BOQ item on the right to measure into"
+        : null;
+  const drawingEnabled = tool !== "select" && !measureBlockedReason;
 
   const commitDraft = () => {
     if (!selectedRow || draft.length === 0) {
@@ -279,30 +287,29 @@ export function PreconSheetViewer({
       setNote(
         isVersionConflict(error)
           ? "Row changed elsewhere — refreshed; redraw to apply."
-          : error instanceof Error
-            ? error.message
-            : "Measurement failed",
+          : getApiErrorMessage(error, "Measurement failed"),
       );
+    const sheetId = activeSheet?.id;
     if (tool === "deduct") {
       if (draft.length >= 3) {
         addDeduction.mutate(
-          { rowId: selectedRow.id, version: selectedRow.version, label: "Opening (manual)", vertices: draft },
+          { rowId: selectedRow.id, version: selectedRow.version, label: "Opening (manual)", vertices: draft, sheetId },
           { onError },
         );
       }
     } else if (tool === "area" && draft.length >= 3) {
       updateGeometry.mutate(
-        { rowId: selectedRow.id, version: selectedRow.version, kind: "area", vertices: draft },
+        { rowId: selectedRow.id, version: selectedRow.version, kind: "area", vertices: draft, sheetId },
         { onError },
       );
     } else if (tool === "linear" && draft.length >= 2) {
       updateGeometry.mutate(
-        { rowId: selectedRow.id, version: selectedRow.version, kind: "linear", vertices: draft },
+        { rowId: selectedRow.id, version: selectedRow.version, kind: "linear", vertices: draft, sheetId },
         { onError },
       );
     } else if (tool === "count" && draft.length >= 1) {
       updateGeometry.mutate(
-        { rowId: selectedRow.id, version: selectedRow.version, kind: "count", vertices: draft },
+        { rowId: selectedRow.id, version: selectedRow.version, kind: "count", vertices: draft, sheetId },
         { onError },
       );
     }
@@ -397,20 +404,25 @@ export function PreconSheetViewer({
           </button>
         ))}
         <div className="ml-auto flex shrink-0 items-center gap-1">
-          {TOOLS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              title={t.hint}
-              onClick={() => onToolChange(t.key)}
-              className={cn(
-                "h-7 rounded-lg px-2.5 text-xs font-medium",
-                tool === t.key ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
+          {TOOLS.map((t) => {
+            const blocked = t.key !== "select" ? measureBlockedReason : null;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                title={blocked ?? t.hint}
+                disabled={Boolean(blocked)}
+                onClick={() => onToolChange(t.key)}
+                className={cn(
+                  "h-7 rounded-lg px-2.5 text-xs font-medium",
+                  tool === t.key ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
+                  blocked && "cursor-not-allowed opacity-40 hover:bg-transparent",
+                )}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

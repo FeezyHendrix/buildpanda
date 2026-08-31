@@ -2,16 +2,15 @@ import { test, expect } from "../fixtures/test";
 import { ProjectNav } from "../pages/project-nav";
 
 /**
- * RISK MAP — Project sidebar grouping of Daily Log / Site Control.
+ * RISK MAP — Project sidebar grouping of schedule and field tools.
  * - Upstream trigger: a user opens a project and navigates via the sidebar.
- * - Expected guardrail: "Daily Log" lives under the "Site Control" group (not
- *   "Schedules"), and the retired items — "Action Items", "Queries",
- *   "Inspections" — no longer appear in the sidebar at all.
+ * - Expected guardrail: Field Tools carries site-control work, Look Aheads
+ *   lives in Schedules, and BIM Models lives next to Documents.
  * - Failure liability: mis-grouped or resurrected nav items send users to the
  *   wrong place or expose removed workflows.
  */
 test.describe("Sidebar navigation grouping @navigation", () => {
-  test("Daily Log sits under Site Control; Action Items, Queries, Inspections are gone", async ({
+  test("Field Tools groups site-control work", async ({
     page,
     project,
   }) => {
@@ -28,22 +27,34 @@ test.describe("Sidebar navigation grouping @navigation", () => {
 
     const sidebar = page.getByRole("navigation");
 
-    // Expand both collapsible groups so their items are in the DOM.
-    for (const label of ["Schedules", "Site Control"]) {
-      const group = sidebar.getByRole("button", { name: new RegExp(label, "i") });
-      await expect(group).toBeVisible();
-      if ((await group.getAttribute("aria-expanded")) !== "true") {
-        await group.click();
-      }
-      await expect(group).toHaveAttribute("aria-expanded", "true");
+    const schedules = sidebar.getByRole("button", { name: /schedules/i });
+    await expect(schedules).toBeVisible();
+    if ((await schedules.getAttribute("aria-expanded")) !== "true") {
+      await schedules.click();
     }
+    await expect(schedules).toHaveAttribute("aria-expanded", "true");
 
-    // Daily Log is present and links to its route (route is unchanged by the move).
+    const fieldTools = sidebar.getByRole("button", { name: /field tools/i });
+    await expect(fieldTools).toBeVisible();
+    if ((await fieldTools.getAttribute("aria-expanded")) !== "true") {
+      await fieldTools.click();
+    }
+    await expect(fieldTools).toHaveAttribute("aria-expanded", "true");
+
+    await expect(sidebar.getByRole("button", { name: /site control/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("link", { name: /look aheads/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/look-aheads`));
+    await expect(sidebar.getByRole("link", { name: /rfis/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/rfis`));
+    await expect(sidebar.getByRole("link", { name: /approvals/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/approvals`));
     const dailyLog = sidebar.getByRole("link", { name: /daily log/i });
     await expect(dailyLog).toBeVisible();
     await expect(dailyLog).toHaveAttribute("href", new RegExp(`/project/${project.id}/schedules/daily-log`));
+    await expect(sidebar.getByRole("link", { name: /plans/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/plans`));
+    await expect(sidebar.getByRole("link", { name: /media library/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/media-library`));
+    await expect(sidebar.getByRole("link", { name: /bim models/i })).toHaveAttribute("href", new RegExp(`/project/${project.id}/bim`));
+    await expect(sidebar.getByRole("link", { name: /permits & compliance/i })).toHaveCount(0);
 
     // Retired items are absent from the sidebar entirely.
+    await expect(sidebar.getByRole("link", { name: /selections/i })).toHaveCount(0);
     await expect(sidebar.getByRole("link", { name: /action items/i })).toHaveCount(0);
     await expect(sidebar.getByRole("link", { name: /^queries$/i })).toHaveCount(0);
     await expect(sidebar.getByRole("link", { name: /inspections/i })).toHaveCount(0);
