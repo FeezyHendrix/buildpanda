@@ -55,6 +55,7 @@ export interface ProjectRow {
   budget_min: string | null;
   budget_max: string | null;
   setup: ProjectSetup | null;
+  ai_updates_enabled: boolean;
   created_at: Date | string;
   updated_at: Date | string;
 }

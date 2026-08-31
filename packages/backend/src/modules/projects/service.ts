@@ -337,6 +337,10 @@ export function projectsService(repository: ProjectsRepository) {
       return this.getById(id);
     },
 
+    async updateSettings(id: string, settings: { aiUpdatesEnabled: boolean }): Promise<void> {
+      await repository.update(id, { ai_updates_enabled: settings.aiUpdatesEnabled });
+    },
+
     async updateCurrencyForUser(
       id: string,
       currency: CurrencyCode,

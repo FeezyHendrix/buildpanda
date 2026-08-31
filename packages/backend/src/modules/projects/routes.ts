@@ -45,6 +45,15 @@ const updateCurrencyBody = {
   },
 } as const;
 
+const updateSettingsBody = {
+  type: "object",
+  required: ["aiUpdatesEnabled"],
+  additionalProperties: false,
+  properties: {
+    aiUpdatesEnabled: { type: "boolean" },
+  },
+} as const;
+
 const projectIdParams = {
   type: "object",
   properties: { id: { type: "string", minLength: 1 } },
@@ -215,6 +224,25 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
         userId: user.id,
         orgRoles: request.orgRoles,
       });
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/settings",
+    { schema: { params: projectIdParams } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "project", "view");
+      return { aiUpdatesEnabled: project.ai_updates_enabled };
+    },
+  );
+
+  fastify.put<{ Params: { id: string }; Body: { aiUpdatesEnabled: boolean } }>(
+    "/projects/:id/settings",
+    { schema: { params: projectIdParams, body: updateSettingsBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "project", "manage");
+      await service.updateSettings(project.id, { aiUpdatesEnabled: request.body.aiUpdatesEnabled });
+      return { aiUpdatesEnabled: request.body.aiUpdatesEnabled };
     },
   );
 

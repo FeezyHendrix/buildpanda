@@ -34,10 +34,14 @@ export const ScopeSelector = memo(function ScopeSelector({
         accessibilityLabel={
           projectName ? `Project: ${projectName}. Tap to switch project.` : undefined
         }
-        className="min-h-11 flex-1 flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
+        className={
+          compact
+            ? "min-h-11 shrink flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
+            : "min-h-11 flex-1 flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
+        }
       >
         <Ionicons name="business-outline" size={16} color="#FFFFFF" />
-        <View className="min-w-0 flex-1">
+        <View className={compact ? "min-w-0 shrink" : "min-w-0 flex-1"}>
           {workspaceName && !compact ? (
             <Text
               tone="inverse"

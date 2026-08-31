@@ -45,7 +45,9 @@ export async function runWeeklyUpdateDraftSweep(
 
   // Only projects with any activity in the window get a draft — zero-activity
   // projects are skipped entirely so nobody is spammed with empty updates.
+  // Projects that turned the preference off never get an automatic draft.
   const projects = await db<CandidateProjectRow>("projects as p")
+    .where("p.ai_updates_enabled", true)
     .where((builder) =>
       builder
         .whereExists(

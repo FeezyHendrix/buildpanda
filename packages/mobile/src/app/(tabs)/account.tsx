@@ -77,6 +77,11 @@ export default function Account() {
           value={project?.name}
           onPress={() => router.push("/select-project")}
         />
+        <ScopeRow
+          label="Project settings"
+          value={project ? "AI updates & preferences" : undefined}
+          onPress={() => router.push("/settings/project")}
+        />
       </Card>
 
       <Button

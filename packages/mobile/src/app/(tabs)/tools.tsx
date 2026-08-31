@@ -30,8 +30,7 @@ const TOOLS: readonly FieldTool[] = [
     href: "/tools/change-requests",
   },
   { key: "materials", label: "Materials", helper: "Orders & requests", icon: "cube-outline", href: "/tools/materials" },
-  { key: "panda-ai", label: "Panda AI", helper: "Ask about your project", icon: "sparkles-outline", href: "/tools/panda-ai" },
-  { key: "look-aheads", label: "Look Aheads", helper: "Rolling plan", icon: "eye-outline", href: "/tools/look-aheads" },
+  { key: "updates", label: "Updates", helper: "Project update feed", icon: "megaphone-outline", href: "/tools/updates" },
 ] as const;
 
 function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
