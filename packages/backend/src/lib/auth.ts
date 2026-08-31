@@ -12,6 +12,8 @@ import {
   verificationEmail,
 } from "./email-templates.ts";
 import { db } from "../db/connection.ts";
+import { logger } from "./logger.ts";
+import { provisionSampleProject } from "./sample-project.ts";
 import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
 
@@ -94,6 +96,11 @@ export async function ensureUserOrganization(
     userId,
     role: "owner",
     createdAt: now,
+  });
+
+  // A sample project failing to provision must never block the sign-up itself.
+  await provisionSampleProject(db, orgId).catch((error: unknown) => {
+    logger.error({ err: error, orgId }, "Failed to provision sample project for new organization");
   });
 
   return orgId;
