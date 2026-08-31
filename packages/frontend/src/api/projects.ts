@@ -54,4 +54,12 @@ export const projectsApi = {
   updateBudget: (id: string, input: UpdateProjectBudgetInput) => api.patch<Project>(`/projects/${id}/budget`, input).then((r) => r.data),
 
   updateCurrency: (id: string, currency: string) => api.patch<Project>(`/projects/${id}/currency`, { currency }).then((r) => r.data),
+
+  settings: (id: string) => api.get<ProjectSettings>(`/projects/${id}/settings`).then((r) => r.data),
+
+  updateSettings: (id: string, input: ProjectSettings) => api.put<ProjectSettings>(`/projects/${id}/settings`, input).then((r) => r.data),
 };
+
+export interface ProjectSettings {
+  aiUpdatesEnabled: boolean;
+}

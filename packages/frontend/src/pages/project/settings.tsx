@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/molecules/page-header";
 import { Button } from "@/components/atoms/button";
+import { Switcher } from "@/components/atoms/switcher";
 import { EditBudgetDrawer } from "@/components/molecules/edit-budget-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useUpdateProjectCurrency } from "@/hooks/use-projects";
+import {
+  useProjectSettings,
+  useUpdateProjectCurrency,
+  useUpdateProjectSettings,
+} from "@/hooks/use-projects";
 import { formatCurrency } from "@/lib/formatters";
 import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
 import { toast } from "@/lib/toast";
@@ -18,6 +23,12 @@ export default function ProjectSettings() {
   useEffect(() => setCurrency(project.currency), [project.currency]);
   const updateCurrency = useUpdateProjectCurrency(project.id);
   const currencyDirty = currency !== project.currency;
+
+  const { data: settings } = useProjectSettings(project.id);
+  const updateSettings = useUpdateProjectSettings(project.id);
+  const aiUpdatesEnabled = updateSettings.isPending
+    ? (updateSettings.variables?.aiUpdatesEnabled ?? true)
+    : (settings?.aiUpdatesEnabled ?? true);
 
   const hasRange = project.budgetMin !== null && project.budgetMax !== null;
   const rangeLabel = hasRange
@@ -111,6 +122,40 @@ export default function ProjectSettings() {
             </Button>
           </div>
         )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-[#F0F0F0] bg-white p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Panda AI weekly updates</h2>
+            <p className="mt-1 text-sm text-gray-500 text-pretty">
+              Panda AI drafts a weekly client update from this project's field data — daily logs,
+              activities, deliveries and RFIs. Drafts wait for your review before publishing.
+              Turn this off and only user-written updates are posted.
+            </p>
+          </div>
+          {canManage && (
+            <Switcher
+              value={aiUpdatesEnabled ? "yes" : "no"}
+              onChange={(value) =>
+                updateSettings.mutate(
+                  { aiUpdatesEnabled: value === "yes" },
+                  {
+                    onSuccess: () =>
+                      toast(
+                        value === "yes"
+                          ? "Panda AI weekly update drafts are on."
+                          : "Panda AI weekly update drafts are off.",
+                        "success",
+                      ),
+                    onError: (e) =>
+                      toast(getApiErrorMessage(e, "Could not update the setting."), "error"),
+                  },
+                )
+              }
+            />
+          )}
+        </div>
       </section>
 
       <EditBudgetDrawer
