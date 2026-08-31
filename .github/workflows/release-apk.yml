@@ -1,0 +1,70 @@
+name: Release APK
+
+# prod is the production branch (master deploys staging). Every push to prod
+# builds a signed release APK on EAS and publishes it as a GitHub release.
+# One-time prerequisites: an EXPO_TOKEN repo secret (robot token from
+# expo.dev), and Android keystore credentials configured once for the
+# buildpanda-field-tool project via `eas credentials --platform android`.
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+
+concurrency:
+  group: release-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Build release APK on EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          eas build \
+            --platform android \
+            --profile production-apk \
+            --non-interactive \
+            --wait \
+            --json > build.json
+          cat build.json
+
+      - name: Download APK artifact
+        run: |
+          APK_URL=$(node -e "const b=require('./build.json'); const first=Array.isArray(b)?b[0]:b; process.stdout.write(first.artifacts.buildUrl || first.artifacts.applicationArchiveUrl)")
+          curl --fail --location "$APK_URL" --output buildpanda-field.apk
+          ls -la buildpanda-field.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: buildpanda-field-apk
+          path: packages/mobile/buildpanda-field.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="apk-${{ github.run_number }}"
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "BuildPanda Field APK #${{ github.run_number }}" \
+            --notes "Release APK built from prod @ ${{ github.sha }}" \
+            buildpanda-field.apk
