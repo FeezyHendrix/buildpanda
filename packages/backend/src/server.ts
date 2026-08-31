@@ -62,6 +62,7 @@ import linkPreviewRoutes from "./modules/link-preview/routes.ts";
 import materialsEquipmentRoutes from "./modules/materials-equipment/routes.ts";
 import pandaAiRoutes from "./modules/panda-ai/routes.ts";
 import pandaAiAgentRoutes from "./modules/panda-ai/agent/routes.ts";
+import voiceReportRoutes from "./modules/panda-ai/voice-report/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import dwgTakeoffRoutes from "./modules/panda-ai/dwg-takeoff/routes.ts";
 import pdfTakeoffRoutes from "./modules/panda-ai/pdf-takeoff/routes.ts";
@@ -193,6 +194,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(materialsEquipmentRoutes);
   await app.register(pandaAiRoutes);
   await app.register(pandaAiAgentRoutes);
+  await app.register(voiceReportRoutes);
   await app.register(programmeImportRoutes);
   await app.register(dwgTakeoffRoutes);
   await app.register(pdfTakeoffRoutes);
