@@ -6,6 +6,9 @@ export type RfiStatus = (typeof RFI_STATUSES)[number];
 export const RFI_PRIORITIES = ["Low", "Normal", "High"] as const;
 export type RfiPriority = (typeof RFI_PRIORITIES)[number];
 
+export const RFI_STATUS_TRANSITIONS = ["Closed", "Void", "Open"] as const;
+export type RfiStatusTransition = (typeof RFI_STATUS_TRANSITIONS)[number];
+
 export interface Rfi {
   id: string;
   number: number;
@@ -62,5 +65,11 @@ export const rfisApi = {
     request<Rfi>(`/projects/${projectId}/rfis/${rfiId}`, {
       method: "PATCH",
       body: JSON.stringify(body),
+    }),
+
+  transition: (projectId: string, rfiId: string, status: RfiStatusTransition) =>
+    request<Rfi>(`/projects/${projectId}/rfis/${rfiId}/transition`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
     }),
 };

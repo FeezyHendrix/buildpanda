@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { setJsonTransportForTests } from "../../../lib/llm.ts";
 import { classifyTranscript } from "./service.ts";
+import type { ProjectSnapshot } from "./types.ts";
+
+const SNAPSHOT: ProjectSnapshot = {
+  rfis: [{ id: "rfi_1", number: 12, subject: "Rebar spacing", status: "Open" }],
+  changeRequests: [{ id: "cr_1", title: "Lobby tiles", status: "Draft" }],
+  materialOrders: [
+    { id: "mo_1", title: "Cement", materialName: "cement", quantity: 30, unit: "bags", status: "Requested" },
+  ],
+  lookAheads: [{ id: "la_1", name: "Week 40", startDate: "2026-09-28", endDate: "2026-10-04", status: "Draft" }],
+};
 
 test("classifyTranscript maps validated model output to typed actions", async () => {
   const restore = setJsonTransportForTests(async () => ({
@@ -78,6 +88,69 @@ test("classifyTranscript keeps received materials as a ledger entry", async () =
     assert.ok(only);
     assert.equal(only.kind, "material_log");
     if (only.kind === "material_log") assert.equal(only.payload.entryType, "IN");
+  } finally {
+    restore();
+  }
+});
+
+test("classifyTranscript accepts updates that target a snapshot record", async () => {
+  const restore = setJsonTransportForTests(async () => ({
+    content: JSON.stringify({
+      actions: [
+        {
+          kind: "update_material_order",
+          title: "Cement order to 50 bags",
+          summary: "Change the cement order quantity to 50 bags",
+          payload: { orderId: "mo_1", patch: { quantity: 50 } },
+        },
+        {
+          kind: "transition_rfi",
+          title: "Close RFI-12",
+          summary: "Close the rebar spacing RFI",
+          payload: { rfiId: "rfi_1", status: "Closed" },
+        },
+      ],
+    }),
+  }));
+
+  try {
+    const actions = await classifyTranscript("change the cement order to 50 bags and close RFI 12", SNAPSHOT);
+    assert.equal(actions.length, 2);
+    const [first, second] = actions;
+    assert.ok(first && second);
+    assert.equal(first.kind, "update_material_order");
+    assert.equal(second.kind, "transition_rfi");
+  } finally {
+    restore();
+  }
+});
+
+test("classifyTranscript drops updates whose target id is not in the snapshot", async () => {
+  const restore = setJsonTransportForTests(async () => ({
+    content: JSON.stringify({
+      actions: [
+        {
+          kind: "delete_look_ahead",
+          title: "Remove week 41 plan",
+          summary: "Delete a look ahead that does not exist",
+          payload: { lookAheadId: "la_hallucinated" },
+        },
+        {
+          kind: "update_daily_log",
+          title: "Set hours to 8",
+          summary: "Update today's total hours to 8",
+          payload: { totalHours: 8 },
+        },
+      ],
+    }),
+  }));
+
+  try {
+    const actions = await classifyTranscript("delete the week 41 plan and set hours to eight", SNAPSHOT);
+    assert.equal(actions.length, 1);
+    const [only] = actions;
+    assert.ok(only);
+    assert.equal(only.kind, "update_daily_log");
   } finally {
     restore();
   }

@@ -38,4 +38,9 @@ export const lookAheadsApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  remove: (projectId: string, lookAheadId: string) =>
+    request<{ ok: boolean }>(`/projects/${projectId}/look-aheads/${lookAheadId}`, {
+      method: "DELETE",
+    }),
 };

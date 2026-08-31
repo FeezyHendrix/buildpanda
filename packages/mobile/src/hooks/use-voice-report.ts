@@ -1,10 +1,14 @@
 import { useCallback } from "react";
-import type { ProposedAction } from "@/api/voice-report-types";
+import { changeRequestsApi } from "@/api/change-requests";
+import { lookAheadsApi } from "@/api/look-aheads";
+import { materialsApi } from "@/api/materials";
 import { materialsLedgerApi } from "@/api/materials-ledger";
+import { rfisApi } from "@/api/rfis";
+import type { ProposedAction } from "@/api/voice-report-types";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
-import { useAddDailyLogEntry } from "./use-daily-logs";
+import { useAddDailyLogEntry, useSaveDailyLog } from "./use-daily-logs";
 import { useCreateChangeRequest } from "./use-local-change-requests";
 import { useCreateLookAhead } from "./use-local-look-aheads";
 import { useCreateMaterialOrder } from "./use-local-materials";
@@ -18,10 +22,10 @@ function localDateIso(): string {
 }
 
 /**
- * Turns a reviewed voice action into a real local record. Each branch calls the
- * same offline create hook the hand-typed forms use, so a voice-created RFI is
- * written to SQLite and queued to the outbox identically — it just skipped the
- * form.
+ * Turns a reviewed voice action into a real change. Creates go through the same
+ * offline repositories the hand-typed forms use; updates and deletes call the
+ * server directly — the voice flow is online anyway (transcription), and the
+ * target id came from the server snapshot, so the record exists there.
  */
 export function useApplyProposedAction() {
   const { db } = useLocalDb();
@@ -30,12 +34,18 @@ export function useApplyProposedAction() {
 
   const createRfi = useCreateLocalRfi();
   const addDailyEntry = useAddDailyLogEntry(db, projectId);
+  const saveDailyLog = useSaveDailyLog(db, projectId);
   const createChangeRequest = useCreateChangeRequest(db, projectId);
   const createMaterialOrder = useCreateMaterialOrder(db, projectId);
   const createLookAhead = useCreateLookAhead(db, projectId);
 
   return useCallback(
     async (action: ProposedAction): Promise<void> => {
+      const requireProject = (): string => {
+        if (!projectId) throw new Error("Project is not ready yet.");
+        return projectId;
+      };
+
       switch (action.kind) {
         case "rfi":
           await createRfi(action.payload);
@@ -47,8 +57,7 @@ export function useApplyProposedAction() {
           await createChangeRequest(action.payload);
           return;
         case "material_log":
-          if (!projectId) throw new Error("Project is not ready yet.");
-          await materialsLedgerApi.logEntry(projectId, action.payload);
+          await materialsLedgerApi.logEntry(requireProject(), action.payload);
           return;
         case "material_order":
           await createMaterialOrder(action.payload);
@@ -56,12 +65,48 @@ export function useApplyProposedAction() {
         case "look_ahead":
           await createLookAhead(action.payload);
           return;
+        case "update_rfi":
+          await rfisApi.update(requireProject(), action.payload.rfiId, action.payload.patch);
+          return;
+        case "transition_rfi":
+          await rfisApi.transition(requireProject(), action.payload.rfiId, action.payload.status);
+          return;
+        case "update_change_request":
+          await changeRequestsApi.update(requireProject(), action.payload.changeRequestId, action.payload.patch);
+          return;
+        case "delete_change_request":
+          await changeRequestsApi.remove(requireProject(), action.payload.changeRequestId);
+          return;
+        case "update_material_order":
+          await materialsApi.update(requireProject(), action.payload.orderId, action.payload.patch);
+          return;
+        case "delete_material_order":
+          await materialsApi.remove(requireProject(), action.payload.orderId);
+          return;
+        case "update_look_ahead":
+          await lookAheadsApi.update(requireProject(), action.payload.lookAheadId, action.payload.patch);
+          return;
+        case "delete_look_ahead":
+          await lookAheadsApi.remove(requireProject(), action.payload.lookAheadId);
+          return;
+        case "update_daily_log":
+          await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours });
+          return;
         default: {
           const unhandled: never = action;
           throw new Error(`Unsupported voice action: ${JSON.stringify(unhandled)}`);
         }
       }
     },
-    [createRfi, addDailyEntry, createChangeRequest, createMaterialOrder, createLookAhead, projectId, user],
+    [
+      createRfi,
+      addDailyEntry,
+      saveDailyLog,
+      createChangeRequest,
+      createMaterialOrder,
+      createLookAhead,
+      projectId,
+      user,
+    ],
   );
 }
