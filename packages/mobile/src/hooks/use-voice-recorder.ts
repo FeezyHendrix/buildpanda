@@ -7,6 +7,17 @@ import {
 } from "expo-audio";
 import { useCallback, useState } from "react";
 
+// Voice notes need speech intelligibility, not music fidelity: mono at 16 kHz
+// (Whisper's own input rate) and a low bitrate make the upload ~4x smaller than
+// HIGH_QUALITY's stereo 44.1 kHz / 128 kbps, so transcription starts far sooner
+// with no accuracy loss on speech.
+const SPEECH_RECORDING = {
+  ...RecordingPresets.HIGH_QUALITY,
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 32000,
+};
+
 export interface VoiceRecorder {
   isRecording: boolean;
   /** Elapsed recording time in whole seconds, for the on-screen timer. */
@@ -23,7 +34,7 @@ export interface VoiceRecorder {
  * audio-session setup happen on `start`, so the screen can stay declarative.
  */
 export function useVoiceRecorder(): VoiceRecorder {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(SPEECH_RECORDING);
   const state = useAudioRecorderState(recorder);
   const [error, setError] = useState<string | null>(null);
 

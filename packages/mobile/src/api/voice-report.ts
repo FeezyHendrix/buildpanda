@@ -1,3 +1,4 @@
+import { FileSystemUploadType, uploadAsync } from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import type { UpsertChangeRequestInput } from "./change-requests";
@@ -41,25 +42,34 @@ export async function requestVoiceReport(
   projectId: string,
   audioUri: string,
 ): Promise<VoiceReport> {
-  const form = new FormData();
-  form.append("audio", { uri: audioUri, name: "field-note.m4a", type: "audio/m4a" } as never);
-
   const headers: Record<string, string> = {};
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
-  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/ai/voice-report`, {
-    method: "POST",
-    credentials: "include",
-    headers,
-    body: form,
-  });
+  // Native multipart upload: React Native's FormData rejects the recording's file
+  // part ("unsupported FormDataPart implementation"), so expo-file-system streams
+  // the file straight from disk instead of building a FormData body.
+  const result = await uploadAsync(
+    `${API_BASE_URL}/projects/${projectId}/ai/voice-report`,
+    audioUri,
+    {
+      httpMethod: "POST",
+      uploadType: FileSystemUploadType.MULTIPART,
+      fieldName: "audio",
+      mimeType: "audio/m4a",
+      headers,
+    },
+  );
 
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(
-      body?.error ?? `Panda AI could not process that recording (${response.status}).`,
-    );
+  if (result.status < 200 || result.status >= 300) {
+    let message = `Panda AI could not process that recording (${result.status}).`;
+    try {
+      const parsed = JSON.parse(result.body) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      // error body was not JSON; keep the generic message
+    }
+    throw new Error(message);
   }
 
-  return (await response.json()) as VoiceReport;
+  return JSON.parse(result.body) as VoiceReport;
 }

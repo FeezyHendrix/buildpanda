@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BadRequestError } from "../../../lib/errors.ts";
 import { chatJson } from "../../../lib/llm.ts";
+import { logger } from "../../../lib/logger.ts";
 import { translateAudioToEnglish } from "../../../lib/speech.ts";
 import type { ProposedAction, VoiceReport } from "./types.ts";
 
@@ -87,7 +88,22 @@ export async function classifyTranscript(transcript: string): Promise<ProposedAc
 }
 
 export async function transcribeAndClassify(audio: Blob, fileName: string): Promise<VoiceReport> {
+  const startedAt = Date.now();
   const transcript = await translateAudioToEnglish(audio, fileName);
+  const transcribedAt = Date.now();
   if (!transcript) throw new BadRequestError("That recording was empty or inaudible");
-  return { transcript, actions: await classifyTranscript(transcript) };
+  const actions = await classifyTranscript(transcript);
+  // Split timing so the slow leg is obvious in the logs: Whisper is bound by audio
+  // duration, classify by the LLM model, and a big `bytes` points at the upload.
+  logger.info(
+    {
+      bytes: audio.size,
+      whisperMs: transcribedAt - startedAt,
+      classifyMs: Date.now() - transcribedAt,
+      transcriptChars: transcript.length,
+      actions: actions.length,
+    },
+    "voice-report processed",
+  );
+  return { transcript, actions };
 }
