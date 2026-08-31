@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "./auth-client";
-import { readCachedUser, writeCachedUser, type CachedUser } from "./session-cache";
+import { readCachedUser, subscribeCachedUser, writeCachedUser, type CachedUser } from "./session-cache";
 
 interface AuthGate {
   user: CachedUser | null;
@@ -20,6 +20,8 @@ interface AuthGate {
 export function useAuthGate(): AuthGate {
   const { data: session, isPending } = useSession();
   const [cached, setCached] = useState<CachedUser | null>(readCachedUser);
+
+  useEffect(() => subscribeCachedUser(setCached), []);
 
   useEffect(() => {
     const live = session?.user;

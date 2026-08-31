@@ -8,6 +8,7 @@ interface ScopeSelectorProps {
   projectName?: string;
   onPressWorkspace?: () => void;
   onPressProject?: () => void;
+  compact?: boolean;
 }
 
 /**
@@ -22,9 +23,10 @@ export const ScopeSelector = memo(function ScopeSelector({
   projectName,
   onPressWorkspace,
   onPressProject,
+  compact = false,
 }: ScopeSelectorProps) {
   return (
-    <View className="flex-row items-stretch gap-2">
+    <View className="min-w-0 flex-row items-stretch gap-2">
       <Pressable
         onPress={onPressProject}
         disabled={!onPressProject}
@@ -32,11 +34,11 @@ export const ScopeSelector = memo(function ScopeSelector({
         accessibilityLabel={
           projectName ? `Project: ${projectName}. Tap to switch project.` : undefined
         }
-        className="min-h-12 flex-1 flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
+        className="min-h-11 flex-1 flex-row items-center gap-2 rounded-xl bg-white/15 px-3 active:bg-white/25"
       >
         <Ionicons name="business-outline" size={16} color="#FFFFFF" />
         <View className="min-w-0 flex-1">
-          {workspaceName ? (
+          {workspaceName && !compact ? (
             <Text
               tone="inverse"
               className="text-[10px] uppercase tracking-wide opacity-70"
@@ -45,14 +47,14 @@ export const ScopeSelector = memo(function ScopeSelector({
               {workspaceName}
             </Text>
           ) : null}
-          <Text weight="semibold" tone="inverse" className="text-sm" numberOfLines={1}>
+          <Text weight="semibold" tone="inverse" className={compact ? "text-xs" : "text-sm"} numberOfLines={1}>
             {projectName ?? "Choose a project"}
           </Text>
         </View>
         {onPressProject ? <Ionicons name="chevron-down" size={16} color="#FFFFFF" /> : null}
       </Pressable>
 
-      {onPressWorkspace ? (
+      {onPressWorkspace && !compact ? (
         <Pressable
           onPress={onPressWorkspace}
           accessibilityRole="button"

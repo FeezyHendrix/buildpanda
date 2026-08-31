@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
@@ -45,6 +46,7 @@ function ScopeRow({
 export default function Account() {
   const { data: session } = useSession();
   const { projectId, organizationId } = useFieldSession();
+  const [signingOut, setSigningOut] = useState(false);
 
   const { data: organizations, isPending: orgsPending } = useOrganizations();
   const { data: project } = useProject(projectId);
@@ -77,7 +79,16 @@ export default function Account() {
         />
       </Card>
 
-      <Button variant="danger" className="mt-6" onPress={() => void signOutAndClearScope()}>
+      <Button
+        variant="danger"
+        className="mt-6"
+        loading={signingOut}
+        onPress={async () => {
+          setSigningOut(true);
+          await signOutAndClearScope();
+          router.replace("/sign-in");
+        }}
+      >
         Sign out
       </Button>
     </Page>

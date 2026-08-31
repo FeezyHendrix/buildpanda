@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { router } from "expo-router";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -58,13 +59,14 @@ export function Page({
   const isCentred = variant === "default";
   const hasBar = Boolean(onBack || title || rightButtons || showSync);
   const hasScope = Boolean(projectName || workspaceName);
+  const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
 
   return (
     <View className="flex-1 bg-canvas">
       <View className="bg-primary-500 px-4 pb-4" style={{ paddingTop: insets.top + 8 }}>
         {hasBar ? (
-          <View className={cn("flex-row items-center", hasScope && "pb-3")}>
-            <View className={cn("flex-row items-center", isCentred && SIDE_SLOT)}>
+          <View className="flex-row items-center gap-2">
+            <View className={cn("min-w-0 flex-1 flex-row items-center", !hasScope && isCentred && SIDE_SLOT)}>
               {onBack ? (
                 <Pressable
                   onPress={onBack}
@@ -74,6 +76,17 @@ export function Page({
                 >
                   <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
                 </Pressable>
+              ) : null}
+              {hasScope ? (
+                <View className="min-w-0 flex-1">
+                  <ScopeSelector
+                    workspaceName={workspaceName}
+                    projectName={projectName}
+                    onPressWorkspace={onPressWorkspace}
+                    onPressProject={onPressProject}
+                    compact
+                  />
+                </View>
               ) : null}
             </View>
 
@@ -100,7 +113,7 @@ export function Page({
                 <SyncIndicator
                   state={sync.state}
                   pendingCount={sync.pendingCount}
-                  onPress={onPressSync}
+                  onPress={handleSyncPress}
                   onDark
                 />
               ) : null}
@@ -108,14 +121,6 @@ export function Page({
           </View>
         ) : null}
 
-        {hasScope ? (
-          <ScopeSelector
-            workspaceName={workspaceName}
-            projectName={projectName}
-            onPressWorkspace={onPressWorkspace}
-            onPressProject={onPressProject}
-          />
-        ) : null}
       </View>
 
       {scroll ? (
