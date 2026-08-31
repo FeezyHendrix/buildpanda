@@ -7,6 +7,7 @@ export interface ChangeRequest {
   id: string;
   title: string;
   description: string | null;
+  descriptionHtml: string | null;
   reason: string | null;
   status: ChangeStatus;
   costImpact: number;
@@ -17,6 +18,7 @@ export interface ChangeRequest {
 export interface UpsertChangeRequestInput {
   title: string;
   description?: string | null;
+  descriptionHtml?: string | null;
   reason?: string | null;
   costImpact?: number;
   timeImpactDays?: number;

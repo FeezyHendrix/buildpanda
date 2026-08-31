@@ -49,10 +49,10 @@ export const rfisApi = {
   detail: (projectId: string, rfiId: string) =>
     request<RfiDetail>(`/projects/${projectId}/rfis/${rfiId}`),
 
-  addComment: (projectId: string, rfiId: string, body: string) =>
+  addComment: (projectId: string, rfiId: string, body: string, contentHtml?: string | null) =>
     request<RfiComment>(`/projects/${projectId}/rfis/${rfiId}/comments`, {
       method: "POST",
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, contentHtml }),
     }),
 
   create: (projectId: string, body: UpsertRfiInput) =>
