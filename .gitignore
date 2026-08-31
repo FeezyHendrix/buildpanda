@@ -37,6 +37,7 @@ postgres_data/
 # Test artifacts / agent internal
 .playwright-mcp/
 .sisyphus/
+.omo/
 
 # Design source archives
 screenshots/
