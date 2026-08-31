@@ -1,10 +1,12 @@
 name: Release APK
 
 # prod is the production branch (master deploys staging). Every push to prod
-# builds a signed release APK on EAS and publishes it as a GitHub release.
-# One-time prerequisites: an EXPO_TOKEN repo secret (robot token from
-# expo.dev), and Android keystore credentials configured once for the
-# buildpanda-field-tool project via `eas credentials --platform android`.
+# generates the native Android project with expo prebuild and builds the
+# release APK with Gradle on the runner — no EAS. Signing: when the
+# ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
+# ANDROID_KEY_PASSWORD secrets are set the APK is signed with that release
+# keystore; without them it falls back to the debug keystore (installable for
+# internal testing, not Play-uploadable).
 on:
   push:
     branches: [prod]
@@ -23,33 +25,74 @@ jobs:
     defaults:
       run:
         working-directory: packages/mobile
+    env:
+      NPM_CONFIG_LEGACY_PEER_DEPS: "true"
+      EXPO_NO_TELEMETRY: "1"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: packages/mobile/package-lock.json
 
-      - name: Set up EAS CLI
-        run: npm install --global eas-cli
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-      - name: Build release APK on EAS
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Configure release signing
         env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          eas build \
-            --platform android \
-            --profile production-apk \
-            --non-interactive \
-            --wait \
-            --json > build.json
-          cat build.json
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No release keystore secret — building with the debug keystore."
+            exit 0
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          node --eval '
+            const fs = require("fs");
+            const path = "android/app/build.gradle";
+            let gradle = fs.readFileSync(path, "utf8");
+            const releaseConfig = [
+              "signingConfigs {",
+              "        release {",
+              "            storeFile file(\"release.keystore\")",
+              "            storePassword System.getenv(\"ANDROID_KEYSTORE_PASSWORD\")",
+              "            keyAlias System.getenv(\"ANDROID_KEY_ALIAS\")",
+              "            keyPassword System.getenv(\"ANDROID_KEY_PASSWORD\")",
+              "        }",
+            ].join("\n");
+            if (!gradle.includes("signingConfigs {")) throw new Error("signingConfigs anchor missing");
+            gradle = gradle.replace("signingConfigs {", releaseConfig);
+            const anchor = "signingConfig signingConfigs.debug";
+            const last = gradle.lastIndexOf(anchor);
+            if (last < 0) throw new Error("release signingConfig anchor missing");
+            gradle = gradle.slice(0, last) + "signingConfig signingConfigs.release" + gradle.slice(last + anchor.length);
+            fs.writeFileSync(path, gradle);
+          '
+          grep -n "signingConfigs.release" android/app/build.gradle
 
-      - name: Download APK artifact
-        run: |
-          APK_URL=$(node -e "const b=require('./build.json'); const first=Array.isArray(b)?b[0]:b; process.stdout.write(first.artifacts.buildUrl || first.artifacts.applicationArchiveUrl)")
-          curl --fail --location "$APK_URL" --output buildpanda-field.apk
-          ls -la buildpanda-field.apk
+      - name: Build release APK
+        working-directory: packages/mobile/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GRADLE_OPTS: -Xmx4g -Dorg.gradle.jvmargs=-Xmx4g
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk buildpanda-field.apk
 
       - uses: actions/upload-artifact@v4
         with:
