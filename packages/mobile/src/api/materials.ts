@@ -36,4 +36,9 @@ export const materialsApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  remove: (projectId: string, orderId: string) =>
+    request<{ ok: boolean }>(`/projects/${projectId}/materials/orders/${orderId}`, {
+      method: "DELETE",
+    }),
 };

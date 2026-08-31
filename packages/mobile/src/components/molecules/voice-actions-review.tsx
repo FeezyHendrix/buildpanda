@@ -5,13 +5,22 @@ import type { ProposedAction, ProposedActionKind } from "@/api/voice-report-type
 import { Card, Text } from "@/components/atoms";
 import { cn } from "@/lib/utils";
 
-const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typeof Ionicons>["name"] }> = {
+const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typeof Ionicons>["name"]; destructive?: boolean }> = {
   rfi: { label: "Raise RFI", icon: "help-circle-outline" },
   daily_log: { label: "Append Daily Log", icon: "clipboard-outline" },
   change_request: { label: "Submit Change Request", icon: "swap-horizontal-outline" },
   material_log: { label: "Log Material Movement", icon: "archive-outline" },
   material_order: { label: "Request Material", icon: "cube-outline" },
   look_ahead: { label: "Create Look Ahead", icon: "eye-outline" },
+  update_rfi: { label: "Update RFI", icon: "create-outline" },
+  transition_rfi: { label: "Change RFI Status", icon: "swap-vertical-outline" },
+  update_change_request: { label: "Update Change Request", icon: "create-outline" },
+  delete_change_request: { label: "Delete Change Request", icon: "trash-outline", destructive: true },
+  update_material_order: { label: "Update Material Request", icon: "create-outline" },
+  delete_material_order: { label: "Cancel Material Request", icon: "trash-outline", destructive: true },
+  update_look_ahead: { label: "Update Look Ahead", icon: "create-outline" },
+  delete_look_ahead: { label: "Delete Look Ahead", icon: "trash-outline", destructive: true },
+  update_daily_log: { label: "Update Daily Log", icon: "time-outline" },
 };
 
 /**
@@ -41,11 +50,11 @@ export function VoiceActionsReview({
             accessibilityState={{ checked: included }}
           >
             <Card className={cn("flex-row items-start gap-3 p-4", !included && "opacity-50")}>
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-50">
-                <Ionicons name={meta.icon} size={20} color="#004DE7" />
+              <View className={cn("h-10 w-10 items-center justify-center rounded-xl", meta.destructive ? "bg-error-50" : "bg-primary-50")}>
+                <Ionicons name={meta.icon} size={20} color={meta.destructive ? "#D42C19" : "#004DE7"} />
               </View>
               <View className="min-w-0 flex-1">
-                <Text tone="brand" weight="semibold" className="text-[11px] uppercase">
+                <Text tone={meta.destructive ? "danger" : "brand"} weight="semibold" className="text-[11px] uppercase">
                   {meta.label}
                 </Text>
                 <Text weight="semibold" className="pt-0.5 text-[15px]" numberOfLines={2}>

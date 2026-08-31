@@ -54,6 +54,11 @@ export const changeRequestsApi = {
       body: JSON.stringify(body),
     }),
 
+  remove: (projectId: string, changeId: string) =>
+    request<{ ok: boolean }>(`/projects/${projectId}/change-requests/${changeId}`, {
+      method: "DELETE",
+    }),
+
   addComment: (projectId: string, changeId: string, body: string) =>
     request<ChangeRequestComment>(`/projects/${projectId}/change-requests/${changeId}/comments`, {
       method: "POST",
