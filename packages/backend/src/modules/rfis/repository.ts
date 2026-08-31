@@ -37,6 +37,9 @@ export interface NewRfiRecord {
   cost_impact: boolean;
   schedule_impact: boolean;
   created_by_id: string | null;
+  document_id: string | null;
+  document_version_id: string | null;
+  source_markup_id: string | null;
 }
 
 export interface RfiUpdatePatch {
@@ -134,10 +137,17 @@ export function rfisRepository(db: Knex) {
             .where({ project_id: record.project_id })
             .update({ next_number: number + 1 });
         } else {
-          number = 1;
+          // No counter row yet — seeded, imported or restored projects can
+          // already hold RFIs, so resume from the highest existing number
+          // instead of assuming 1 and colliding with the unique (project, number).
+          const highest = await trx("rfis")
+            .where({ project_id: record.project_id })
+            .max({ max: "number" })
+            .first<{ max: number | string | null }>();
+          number = Number(highest?.max ?? 0) + 1;
           await trx("rfi_counters").insert({
             project_id: record.project_id,
-            next_number: 2,
+            next_number: number + 1,
           });
         }
 

@@ -1,8 +1,20 @@
 export const MARKUP_KINDS = ["pin", "pen", "cloud", "measure"] as const;
 export type MarkupKind = (typeof MARKUP_KINDS)[number];
 
+export const MARKUP_KIND = {
+  PIN: "pin",
+  PEN: "pen",
+  CLOUD: "cloud",
+  MEASURE: "measure",
+} as const satisfies Record<string, MarkupKind>;
+
 export const MEDIA_KINDS = ["audio", "video"] as const;
 export type MediaKind = (typeof MEDIA_KINDS)[number];
+
+export const MEDIA_KIND = {
+  AUDIO: "audio",
+  VIDEO: "video",
+} as const satisfies Record<string, MediaKind>;
 
 export interface Point {
   x: number;
@@ -43,6 +55,7 @@ export interface DrawingMarkupCommentRow {
   id: string;
   markup_id: string;
   body: string;
+  body_html: string | null;
   media_kind: MediaKind | null;
   file_id: string | null;
   media_duration_seconds: number | null;
@@ -56,6 +69,7 @@ export interface DrawingMarkupComment {
   id: string;
   markupId: string;
   body: string;
+  bodyHtml: string | null;
   mediaKind: MediaKind | null;
   fileId: string | null;
   mediaDurationSeconds: number | null;
@@ -98,6 +112,7 @@ export interface CreateMarkupInput {
 
 export interface CreateCommentInput {
   body: string;
+  bodyHtml?: string | null;
   mediaKind?: MediaKind | null;
   fileId?: string | null;
   mediaDurationSeconds?: number | null;

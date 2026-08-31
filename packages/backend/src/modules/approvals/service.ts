@@ -18,6 +18,9 @@ export interface CreateApprovalInput {
   descriptionHtml?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
+  documentId?: string | null;
+  documentVersionId?: string | null;
+  sourceMarkupId?: string | null;
 }
 
 export interface UpdateApprovalInput {
@@ -116,6 +119,9 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         due_date: input.dueDate ?? null,
         submitted_by_id: userId,
         requested_reviewer_id: input.requestedReviewerId ?? null,
+        document_id: input.documentId ?? null,
+        document_version_id: input.documentVersionId ?? null,
+        source_markup_id: input.sourceMarkupId ?? null,
       });
       return toApproval(row, 0);
     },

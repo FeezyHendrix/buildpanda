@@ -36,6 +36,9 @@ export interface CreateRfiInput {
   dueDate?: string | null;
   costImpact?: boolean;
   scheduleImpact?: boolean;
+  documentId?: string | null;
+  documentVersionId?: string | null;
+  sourceMarkupId?: string | null;
 }
 
 export interface UpdateRfiInput {
@@ -262,6 +265,9 @@ export function rfisService(
         cost_impact: input.costImpact ?? false,
         schedule_impact: input.scheduleImpact ?? false,
         created_by_id: actor.id,
+        document_id: input.documentId ?? null,
+        document_version_id: input.documentVersionId ?? null,
+        source_markup_id: input.sourceMarkupId ?? null,
       });
       await logEvent(row.id, "created", actor, { number: row.number });
       if (hasAssignee) {

@@ -12,6 +12,9 @@ export interface ApprovalCreateInput {
   description?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
+  documentId?: string | null;
+  documentVersionId?: string | null;
+  sourceMarkupId?: string | null;
 }
 export interface ApprovalUpdateInput {
   title?: string;

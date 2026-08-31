@@ -62,6 +62,9 @@ const createBody = {
     dueDate: { type: ["string", "null"], maxLength: 40 },
     costImpact: { type: "boolean" },
     scheduleImpact: { type: "boolean" },
+    documentId: { type: ["string", "null"], maxLength: 100 },
+    documentVersionId: { type: ["string", "null"], maxLength: 100 },
+    sourceMarkupId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 

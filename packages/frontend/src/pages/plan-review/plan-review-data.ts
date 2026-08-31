@@ -3,6 +3,15 @@ import { documentVersionViewUrl } from "@/hooks/use-documents";
 
 export type SheetKind = "image" | "pdf" | "other";
 
+export const SHEET_KIND = {
+  IMAGE: "image",
+  PDF: "pdf",
+  OTHER: "other",
+} as const satisfies Record<string, SheetKind>;
+
+const PLAN_GROUP = "plan";
+const PDF_EXTENSION = "pdf";
+
 export interface Sheet {
   id: string;
   code: string;
@@ -188,7 +197,7 @@ export const MOCK_SHEETS: Sheet[] = MOCK_META.map((meta, index) => ({
   title: meta.title,
   revision: meta.revision,
   scale: meta.scale,
-  kind: "image",
+  kind: SHEET_KIND.IMAGE,
   src: planImage(index, meta, meta.accent),
   alt: `Architectural floor plan, sheet ${meta.code}, ${meta.revision}, ${meta.title.toLowerCase()}`,
   documentId: null,
@@ -201,14 +210,14 @@ const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
 
 function sheetKind(fileName: string): SheetKind {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (IMAGE_EXTS.has(ext)) return "image";
-  if (ext === "pdf") return "pdf";
-  return "other";
+  if (IMAGE_EXTS.has(ext)) return SHEET_KIND.IMAGE;
+  if (ext === PDF_EXTENSION) return SHEET_KIND.PDF;
+  return SHEET_KIND.OTHER;
 }
 
 export function adaptPlanDocuments(documents: ProjectDocument[], projectId: string): Sheet[] {
   return documents
-    .filter((d) => d.group === "plan")
+    .filter((d) => d.group === PLAN_GROUP)
     .map((doc, index) => ({
       id: doc.id,
       code: `P-${String(index + 1).padStart(2, "0")}`,

@@ -47,21 +47,28 @@ import {
 import { Spinner } from "@/components/atoms/spinner";
 import { useProjectDocuments } from "@/hooks/use-documents";
 import { useParticipants } from "@/hooks/use-participants";
+import { useCreateRfi } from "@/hooks/use-rfis";
+import { useCreateApproval } from "@/hooks/use-approvals";
+import { useUploadFile } from "@/hooks/use-files";
 import {
   useAddMarkupComment,
   useCreateDrawingMarkup,
   useDeleteDrawingMarkup,
   useDrawingMarkups,
 } from "@/hooks/use-drawing-markup";
-import type { DrawingMarkup, MarkupGeometry } from "@/api/drawing-markup";
+import { MARKUP_KIND, type DrawingMarkup, type MarkupGeometry } from "@/api/drawing-markup";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
+  COMMENT_MODE,
   CommentComposerPopover,
   CommentPin,
+  FOLLOW_UP,
   type CommentCapture,
 } from "./plan-review/plan-review-comment";
 import {
   MOCK_SHEETS,
+  SHEET_KIND,
   adaptPlanDocuments,
   clamp,
   formatClock,
@@ -80,6 +87,46 @@ import { PdfSheetCanvas } from "./plan-review/plan-review-pdf";
 
 type Tool = "pan" | "select" | "measure" | "pen" | "cloud" | "comment";
 type BlendMode = "differences" | "ghost" | "highlight";
+type RecStatus = "idle" | "recording" | "saved";
+type SelectionKind = "pin" | "markup";
+
+const TOOL = {
+  PAN: "pan",
+  SELECT: "select",
+  MEASURE: "measure",
+  PEN: "pen",
+  CLOUD: "cloud",
+  COMMENT: "comment",
+} as const satisfies Record<string, Tool>;
+
+const BLEND_MODE = {
+  DIFFERENCES: "differences",
+  GHOST: "ghost",
+  HIGHLIGHT: "highlight",
+} as const satisfies Record<string, BlendMode>;
+
+const REC_STATUS = {
+  IDLE: "idle",
+  RECORDING: "recording",
+  SAVED: "saved",
+} as const satisfies Record<string, RecStatus>;
+
+const SELECTION_KIND = {
+  PIN: "pin",
+  MARKUP: "markup",
+} as const satisfies Record<string, SelectionKind>;
+
+const KEY = {
+  ESCAPE: "Escape",
+  ENTER: "Enter",
+  DELETE: "Delete",
+  BACKSPACE: "Backspace",
+  ARROW_LEFT: "ArrowLeft",
+  ARROW_RIGHT: "ArrowRight",
+  SLASH: "/",
+} as const;
+
+const CALIBRATED_LABEL = "calibrated";
 type PopoverId =
   | "search"
   | "revision"
@@ -87,6 +134,24 @@ type PopoverId =
   | "color"
   | "paneOptsPrimary"
   | "paneOptsCompare";
+
+const POPOVER = {
+  SEARCH: "search",
+  REVISION: "revision",
+  REVIEW_TOOLS: "reviewTools",
+  COLOR: "color",
+  PANE_OPTS_PRIMARY: "paneOptsPrimary",
+  PANE_OPTS_COMPARE: "paneOptsCompare",
+} as const satisfies Record<string, PopoverId>;
+
+type PaneSide = "primary" | "compare";
+
+const PANE = {
+  PRIMARY: "primary",
+  COMPARE: "compare",
+} as const satisfies Record<string, PaneSide>;
+
+const PARTICIPANT_ACTIVE = "active";
 
 interface Pin {
   id: string;
@@ -103,11 +168,11 @@ function toLocalMarkup(server: DrawingMarkup[]): { pins: Pin[]; markups: Markup[
   for (const item of server) {
     const base = { id: item.id, sheetId: item.documentId, color: item.color };
     const g = item.geometry;
-    if (g.kind === "pin") {
+    if (g.kind === MARKUP_KIND.PIN) {
       pins.push({ ...base, x: g.at.x, y: g.at.y, noteId: item.comments[0]?.id ?? null });
-    } else if (g.kind === "pen") {
+    } else if (g.kind === MARKUP_KIND.PEN) {
       markups.push({ ...base, tool: "pen", points: g.points });
-    } else if (g.kind === "cloud") {
+    } else if (g.kind === MARKUP_KIND.CLOUD) {
       markups.push({ ...base, tool: "cloud", rect: g.rect });
     } else {
       markups.push({ ...base, tool: "measure", a: g.a, b: g.b });
@@ -116,9 +181,16 @@ function toLocalMarkup(server: DrawingMarkup[]): { pins: Pin[]; markups: Markup[
   return { pins, markups };
 }
 
+type NoteType = "comment" | "recording";
+
+const NOTE_TYPE = {
+  COMMENT: "comment",
+  RECORDING: "recording",
+} as const satisfies Record<string, NoteType>;
+
 interface Note {
   id: string;
-  type: "comment" | "recording";
+  type: NoteType;
   text: string;
   author: string;
   createdAt: number;
@@ -127,7 +199,7 @@ interface Note {
   durationSeconds: number | null;
 }
 
-type Selection = { kind: "pin" | "markup"; id: string } | null;
+type Selection = { kind: SelectionKind; id: string } | null;
 
 const TOOLS: { id: Tool; label: string; shortcut: string; Icon: typeof Hand }[] = [
   { id: "pan", label: "Pan", shortcut: "H", Icon: Hand },
@@ -149,9 +221,9 @@ const MARKUP_COLORS = [
 
 const REVISIONS = ["Rev A", "Rev B", "Rev C"];
 const BLEND_MODES: { id: BlendMode; label: string }[] = [
-  { id: "differences", label: "Differences" },
-  { id: "ghost", label: "Ghost" },
-  { id: "highlight", label: "Highlight" },
+  { id: BLEND_MODE.DIFFERENCES, label: "Differences" },
+  { id: BLEND_MODE.GHOST, label: "Ghost" },
+  { id: BLEND_MODE.HIGHLIGHT, label: "Highlight" },
 ];
 const PLAYBACK_SECONDS = 4;
 const TOOL_CURSORS: Record<Tool, string> = {
@@ -262,7 +334,7 @@ function SheetImage({
     pageCount?: number;
   }) => void;
 }) {
-  if (sheet.kind === "image" && sheet.src) {
+  if (sheet.kind === SHEET_KIND.IMAGE && sheet.src) {
     return (
       <img
         src={sheet.src}
@@ -279,7 +351,7 @@ function SheetImage({
       />
     );
   }
-  if (sheet.kind === "pdf" && sheet.src) {
+  if (sheet.kind === SHEET_KIND.PDF && sheet.src) {
     return (
       <PdfSheetCanvas
         url={sheet.src}
@@ -458,7 +530,7 @@ export default function DrawingReviewWorkspace() {
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
   const [sheetRevisions, setSheetRevisions] = useState<Record<string, string>>({});
-  const [activeTool, setActiveTool] = useState<Tool>("select");
+  const [activeTool, setActiveTool] = useState<Tool>(TOOL.SELECT);
   const [markupColor, setMarkupColor] = useState("#004DE7");
   const [markupVisible, setMarkupVisible] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -504,7 +576,7 @@ export default function DrawingReviewWorkspace() {
   const [pdfPageCount, setPdfPageCount] = useState(1);
   const [commentAnchor, setCommentAnchor] = useState<{ x: number; y: number; at: Pt } | null>(null);
 
-  const [recStatus, setRecStatus] = useState<"idle" | "recording" | "saved">("idle");
+  const [recStatus, setRecStatus] = useState<RecStatus>(REC_STATUS.IDLE);
   const [recSeconds, setRecSeconds] = useState(0);
   const [trace, setTrace] = useState<Pt[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -533,7 +605,7 @@ export default function DrawingReviewWorkspace() {
   const assignees = useMemo(
     () =>
       participants
-        .filter((p) => p.userId && p.status === "active")
+        .filter((p) => p.userId && p.status === PARTICIPANT_ACTIVE)
         .map((p) => ({ id: p.userId!, name: p.name ?? p.email })),
     [participants],
   );
@@ -543,6 +615,9 @@ export default function DrawingReviewWorkspace() {
   const createMarkup = useCreateDrawingMarkup(projectId);
   const addMarkupComment = useAddMarkupComment(projectId);
   const deleteMarkup = useDeleteDrawingMarkup(projectId);
+  const uploadFile = useUploadFile();
+  const createRfi = useCreateRfi();
+  const createApproval = useCreateApproval();
 
   /** Server markup is the source of truth; local state only holds the in-progress draft. */
   const persisted = useMemo(() => toLocalMarkup(markupQuery.data ?? []), [markupQuery.data]);
@@ -553,8 +628,8 @@ export default function DrawingReviewWorkspace() {
 
   const isSaving = createMarkup.isPending || addMarkupComment.isPending || deleteMarkup.isPending;
   const saveError = createMarkup.error ?? addMarkupComment.error ?? deleteMarkup.error;
-  const commentCount = notes.filter((n) => n.type === "comment").length;
-  const recordingCount = notes.filter((n) => n.type === "recording").length;
+  const commentCount = notes.filter((n) => n.type === NOTE_TYPE.COMMENT).length;
+  const recordingCount = notes.filter((n) => n.type === NOTE_TYPE.RECORDING).length;
   const orderedNotes = useMemo(() => [...notes].sort((a, b) => b.createdAt - a.createdAt), [notes]);
 
   useEffect(() => {
@@ -584,30 +659,35 @@ export default function DrawingReviewWorkspace() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
-      if (e.key === "Escape") {
+      if (e.key === KEY.ESCAPE) {
         setOpenPopover(null);
         setMeasureStart(null);
         setSelection(null);
         return;
       }
       const target = e.target as HTMLElement;
+      // A rich-text editor is a contenteditable div, not an input, so it must be
+      // excluded explicitly or typing "/" or a tool letter fires a shortcut and
+      // swallows the character.
       if (
         e.isComposing ||
+        target.isContentEditable ||
         target.closest("[data-popover-root]") ||
+        target.closest("[data-comment-popover]") ||
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement
       ) {
         return;
       }
-      if ((e.key === "Delete" || e.key === "Backspace") && selection) {
+      if ((e.key === KEY.DELETE || e.key === KEY.BACKSPACE) && selection) {
         e.preventDefault();
         deleteSelection();
         return;
       }
-      if (e.key === "/") {
+      if (e.key === KEY.SLASH) {
         e.preventDefault();
-        setOpenPopover("search");
+        setOpenPopover(POPOVER.SEARCH);
         return;
       }
       const tool = TOOLS.find((t) => t.shortcut.toLowerCase() === e.key.toLowerCase());
@@ -615,21 +695,21 @@ export default function DrawingReviewWorkspace() {
         selectTool(tool.id);
         return;
       }
-      if (!split.open && e.key === "ArrowLeft") goToSheet(activeSheetIndex - 1);
-      if (!split.open && e.key === "ArrowRight") goToSheet(activeSheetIndex + 1);
+      if (!split.open && e.key === KEY.ARROW_LEFT) goToSheet(activeSheetIndex - 1);
+      if (!split.open && e.key === KEY.ARROW_RIGHT) goToSheet(activeSheetIndex + 1);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
   useEffect(() => {
-    if (openPopover === "search") searchRef.current?.focus();
+    if (openPopover === POPOVER.SEARCH) searchRef.current?.focus();
     else if (searchQuery) setSearchQuery("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPopover]);
 
   useEffect(() => {
-    if (recStatus !== "recording") return;
+    if (recStatus !== REC_STATUS.RECORDING) return;
     const id = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(id);
   }, [recStatus]);
@@ -651,7 +731,7 @@ export default function DrawingReviewWorkspace() {
     setActiveTool(tool);
     setMeasureStart(null);
     setDraft(null);
-    if (tool !== "select") setSelection(null);
+    if (tool !== TOOL.SELECT) setSelection(null);
   }
 
   function pointFromEvent(e: { clientX: number; clientY: number }): Pt | null {
@@ -679,9 +759,9 @@ export default function DrawingReviewWorkspace() {
   }
 
   function handleCalibrateSubmit(): void {
-    if (!sheet || !selection || selection.kind !== "markup" || !calibrateInput) return;
+    if (!sheet || !selection || selection.kind !== SELECTION_KIND.MARKUP || !calibrateInput) return;
     const markup = markups.find((m) => m.id === selection.id);
-    if (!markup || markup.tool !== "measure") return;
+    if (!markup || markup.tool !== MARKUP_KIND.MEASURE) return;
     const val = Number.parseFloat(calibrateInput);
     if (Number.isNaN(val) || val <= 0) return;
 
@@ -690,7 +770,7 @@ export default function DrawingReviewWorkspace() {
     const distPct = Math.hypot(dxPct, dyPct);
     
     setSheetScales((s) => ({ ...s, [sheet.id]: val / distPct }));
-    setScaleLabels((s) => ({ ...s, [sheet.id]: "calibrated" }));
+    setScaleLabels((s) => ({ ...s, [sheet.id]: CALIBRATED_LABEL }));
     setCalibratePopoverOpen(false);
     setCalibrateInput("");
     import("@/lib/toast").then((m) => m.toast("Scale calibrated", "success"));
@@ -701,7 +781,7 @@ export default function DrawingReviewWorkspace() {
     const isPersisted = (markupQuery.data ?? []).some((m) => m.id === selection.id);
     if (isPersisted) {
       deleteMarkup.mutate(selection.id);
-    } else if (selection.kind === "pin") {
+    } else if (selection.kind === SELECTION_KIND.PIN) {
       setPins((p) => p.filter((pin) => pin.id !== selection.id));
       setNotes((n) => n.map((note) => (note.pinId === selection.id ? { ...note, pinId: null } : note)));
       if (pendingPinId === selection.id) setPendingPinId(null);
@@ -723,10 +803,10 @@ export default function DrawingReviewWorkspace() {
     if (!sheet) return null;
     if (!projectId || !sheet.documentId || !sheet.documentVersionId) {
       const local = { id: generateId("mk"), sheetId: sheet.id, color: markupColor };
-      if (geometry.kind === "pen") setMarkups((m) => [...m, { ...local, tool: "pen", points: geometry.points }]);
-      if (geometry.kind === "cloud") setMarkups((m) => [...m, { ...local, tool: "cloud", rect: geometry.rect }]);
-      if (geometry.kind === "measure") setMarkups((m) => [...m, { ...local, tool: "measure", a: geometry.a, b: geometry.b }]);
-      if (geometry.kind === "pin") setPins((p) => [...p, { ...local, x: geometry.at.x, y: geometry.at.y, noteId: null }]);
+      if (geometry.kind === MARKUP_KIND.PEN) setMarkups((m) => [...m, { ...local, tool: "pen", points: geometry.points }]);
+      if (geometry.kind === MARKUP_KIND.CLOUD) setMarkups((m) => [...m, { ...local, tool: "cloud", rect: geometry.rect }]);
+      if (geometry.kind === MARKUP_KIND.MEASURE) setMarkups((m) => [...m, { ...local, tool: "measure", a: geometry.a, b: geometry.b }]);
+      if (geometry.kind === MARKUP_KIND.PIN) setPins((p) => [...p, { ...local, x: geometry.at.x, y: geometry.at.y, noteId: null }]);
       return local.id;
     }
     const created = await createMarkup.mutateAsync({
@@ -740,17 +820,60 @@ export default function DrawingReviewWorkspace() {
     return created.id;
   }
 
+  async function uploadCapturedMedia(capture: CommentCapture): Promise<string | null> {
+    if (!capture.mediaBlob || !projectId) return null;
+    const extension = capture.mode === COMMENT_MODE.VIDEO ? "webm" : "webm";
+    const file = new File([capture.mediaBlob], `${capture.mode}-note-${Date.now()}.${extension}`, {
+      type: capture.mediaBlob.type || (capture.mode === COMMENT_MODE.VIDEO ? "video/webm" : "audio/webm"),
+    });
+    const uploaded = await uploadFile.mutateAsync({ file, projectId });
+    return uploaded.id;
+  }
+
+  async function raiseFollowUp(capture: CommentCapture, markupId: string): Promise<void> {
+    if (!projectId || !sheet?.documentId || !sheet.documentVersionId) return;
+    const reference = {
+      documentId: sheet.documentId,
+      documentVersionId: sheet.documentVersionId,
+      sourceMarkupId: markupId,
+    };
+    if (capture.followUp === FOLLOW_UP.RFI) {
+      await createRfi.mutateAsync({
+        projectId,
+        subject: `${sheet.code} — ${capture.text.slice(0, 80)}`,
+        question: capture.text,
+        ballInCourtId: capture.assigneeId ?? null,
+        ...reference,
+      });
+      toast("RFI raised from this comment", "success");
+    } else if (capture.followUp === FOLLOW_UP.APPROVAL) {
+      await createApproval.mutateAsync({
+        projectId,
+        title: `${sheet.code} — ${capture.text.slice(0, 80)}`,
+        description: capture.text,
+        requestedReviewerId: capture.assigneeId ?? null,
+        ...reference,
+      });
+      toast("Approval requested from this comment", "success");
+    }
+  }
+
   async function submitPinComment(capture: CommentCapture): Promise<void> {
     const anchor = commentAnchor;
     if (!anchor) return;
     const markupId = await persistMarkup("pin", { kind: "pin", at: anchor.at });
     if (markupId && projectId && sheet?.documentVersionId) {
+      const fileId = await uploadCapturedMedia(capture);
       await addMarkupComment.mutateAsync({
         markupId,
         body: capture.text,
+        bodyHtml: capture.bodyHtml,
         assigneeId: capture.assigneeId,
+        mediaKind: capture.mode === COMMENT_MODE.TEXT ? null : capture.mode,
+        fileId,
         mediaDurationSeconds: capture.mediaDurationSeconds,
       });
+      await raiseFollowUp(capture, markupId);
     }
     setCommentAnchor(null);
   }
@@ -764,12 +887,12 @@ export default function DrawingReviewWorkspace() {
     const point = pointFromEvent(e);
     if (!point) return;
 
-    if (activeTool === "comment") {
+    if (activeTool === TOOL.COMMENT) {
       setCommentAnchor({ x: e.clientX, y: e.clientY + 14, at: point });
       return;
     }
 
-    if (activeTool === "measure") {
+    if (activeTool === TOOL.MEASURE) {
       if (!measureStart) {
         setMeasureStart(point);
         setMeasureCursor(point);
@@ -781,9 +904,9 @@ export default function DrawingReviewWorkspace() {
       return;
     }
 
-    if (activeTool === "select") {
+    if (activeTool === TOOL.SELECT) {
       const hit = hitTestMarkup(sheetMarkups, point);
-      setSelection(hit ? { kind: "markup", id: hit.id } : null);
+      setSelection(hit ? { kind: SELECTION_KIND.MARKUP, id: hit.id } : null);
     }
   }
 
@@ -792,7 +915,7 @@ export default function DrawingReviewWorkspace() {
     const point = pointFromEvent(e);
     if (!point) return;
 
-    if (activeTool === "pan") {
+    if (activeTool === TOOL.PAN) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       panStart.current = { x: e.clientX, y: e.clientY, left: canvas.scrollLeft, top: canvas.scrollTop };
@@ -800,13 +923,13 @@ export default function DrawingReviewWorkspace() {
       drawingRef.current?.setPointerCapture(e.pointerId);
       return;
     }
-    if (activeTool === "pen") {
+    if (activeTool === TOOL.PEN) {
       penPoints.current = [point];
       setDraft({ id: "draft", sheetId: sheet.id, tool: "pen", color: markupColor, points: [point] });
       drawingRef.current?.setPointerCapture(e.pointerId);
       return;
     }
-    if (activeTool === "cloud") {
+    if (activeTool === TOOL.CLOUD) {
       cloudOrigin.current = point;
       setDraft({ id: "draft", sheetId: sheet.id, tool: "cloud", color: markupColor, rect: { ...point, w: 0, h: 0 } });
       drawingRef.current?.setPointerCapture(e.pointerId);
@@ -814,7 +937,7 @@ export default function DrawingReviewWorkspace() {
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>): void {
-    if (recStatus === "recording") {
+    if (recStatus === REC_STATUS.RECORDING) {
       const now = Date.now();
       if (now - lastTraceAt.current >= 50) {
         lastTraceAt.current = now;
@@ -823,7 +946,7 @@ export default function DrawingReviewWorkspace() {
       }
     }
 
-    if (activeTool === "pan" && panStart.current) {
+    if (activeTool === TOOL.PAN && panStart.current) {
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvas.scrollLeft = panStart.current.left - (e.clientX - panStart.current.x);
@@ -839,18 +962,18 @@ export default function DrawingReviewWorkspace() {
       setPins((p) => p.map((pin) => (pin.id === pinId ? { ...pin, x: point.x, y: point.y } : pin)));
       return;
     }
-    if (activeTool === "measure" && measureStart) {
+    if (activeTool === TOOL.MEASURE && measureStart) {
       setMeasureCursor(point);
       return;
     }
-    if (activeTool === "pen" && penPoints.current.length > 0) {
+    if (activeTool === TOOL.PEN && penPoints.current.length > 0) {
       const last = penPoints.current[penPoints.current.length - 1];
       if (last && Math.hypot(point.x - last.x, point.y - last.y) < 0.4) return;
       penPoints.current = [...penPoints.current, point];
       setDraft({ id: "draft", sheetId: sheet.id, tool: "pen", color: markupColor, points: penPoints.current });
       return;
     }
-    if (activeTool === "cloud" && cloudOrigin.current) {
+    if (activeTool === TOOL.CLOUD && cloudOrigin.current) {
       setDraft({
         id: "draft",
         sheetId: sheet.id,
@@ -867,16 +990,16 @@ export default function DrawingReviewWorkspace() {
       suppressNextClick.current = true;
       return;
     }
-    if (activeTool === "pan") {
+    if (activeTool === TOOL.PAN) {
       panStart.current = null;
       setIsPanning(false);
       return;
     }
     if (!sheet) return;
-    if (activeTool === "pen" && penPoints.current.length > 1) {
+    if (activeTool === TOOL.PEN && penPoints.current.length > 1) {
       void persistMarkup("pen", { kind: "pen", points: penPoints.current });
     }
-    if (activeTool === "cloud" && draft?.tool === "cloud" && draft.rect.w > 1 && draft.rect.h > 1) {
+    if (activeTool === TOOL.CLOUD && draft?.tool === MARKUP_KIND.CLOUD && draft.rect.w > 1 && draft.rect.h > 1) {
       void persistMarkup("cloud", { kind: "cloud", rect: draft.rect });
     }
     penPoints.current = [];
@@ -885,9 +1008,9 @@ export default function DrawingReviewWorkspace() {
   }
 
   function handlePinPointerDown(e: React.PointerEvent, pinId: string): void {
-    if (activeTool !== "select") return;
+    if (activeTool !== TOOL.SELECT) return;
     e.stopPropagation();
-    setSelection({ kind: "pin", id: pinId });
+    setSelection({ kind: SELECTION_KIND.PIN, id: pinId });
     draggingPin.current = pinId;
     drawingRef.current?.setPointerCapture(e.pointerId);
   }
@@ -901,7 +1024,7 @@ export default function DrawingReviewWorkspace() {
       ...n,
       {
         id: noteId,
-        type: "comment",
+        type: NOTE_TYPE.COMMENT,
         text,
         author: "You",
         createdAt: Date.now(),
@@ -919,24 +1042,24 @@ export default function DrawingReviewWorkspace() {
 
   // ── Recording ──
   function startRecording(): void {
-    setNotes((n) => n.filter((note) => note.type !== "recording"));
+    setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING));
     setPlayProgress(null);
     setTrace([]);
     setRecSeconds(0);
-    setRecStatus("recording");
+    setRecStatus(REC_STATUS.RECORDING);
     setOpenPopover(null);
   }
 
   function stopRecording(): void {
     if (!sheet) return;
-    setRecStatus("saved");
+    setRecStatus(REC_STATUS.SAVED);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 4000);
     setNotes((n) => [
       ...n,
       {
         id: generateId("note"),
-        type: "recording",
+        type: NOTE_TYPE.RECORDING,
         text: `Walkthrough of ${sheet.code}`,
         author: "You",
         createdAt: Date.now(),
@@ -949,8 +1072,8 @@ export default function DrawingReviewWorkspace() {
 
   function clearRecording(): void {
     if (playTimer.current !== null) window.clearInterval(playTimer.current);
-    setNotes((n) => n.filter((note) => note.type !== "recording"));
-    setRecStatus("idle");
+    setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING));
+    setRecStatus(REC_STATUS.IDLE);
     setPlayProgress(null);
     setTrace([]);
     setRecSeconds(0);
@@ -975,12 +1098,12 @@ export default function DrawingReviewWorkspace() {
   }
 
   // ── Split view ──
-  function setPaneZoom(pane: "primary" | "compare", nextZoom: number): void {
+  function setPaneZoom(pane: PaneSide, nextZoom: number): void {
     const next = clamp(nextZoom, 50, 200);
     setSplit((s) => ({
       ...s,
-      primaryZoom: pane === "primary" || s.synced ? next : s.primaryZoom,
-      compareZoom: pane === "compare" || s.synced ? next : s.compareZoom,
+      primaryZoom: pane === PANE.PRIMARY || s.synced ? next : s.primaryZoom,
+      compareZoom: pane === PANE.COMPARE || s.synced ? next : s.compareZoom,
     }));
   }
 
@@ -1001,7 +1124,7 @@ export default function DrawingReviewWorkspace() {
 
   function openBlendPanel(): void {
     setBlendPanelOpen(true);
-    setBlendMode((m) => m ?? "differences");
+    setBlendMode((m) => m ?? BLEND_MODE.DIFFERENCES);
     setOpenPopover(null);
   }
 
@@ -1023,7 +1146,7 @@ export default function DrawingReviewWorkspace() {
 
   const canPersist = Boolean(projectId && sheet?.documentVersionId);
   function describeSaveState(): string {
-    if (recStatus === "recording") return `Recording walkthrough · ${formatClock(recSeconds)}`;
+    if (recStatus === REC_STATUS.RECORDING) return `Recording walkthrough · ${formatClock(recSeconds)}`;
     if (savedFlash) return "Walkthrough saved";
     if (saveError) return "Could not save — retry";
     if (isSaving) return "Saving…";
@@ -1042,11 +1165,11 @@ export default function DrawingReviewWorkspace() {
   const traceVisible = playProgress === null ? trace : trace.slice(0, Math.max(2, Math.floor(trace.length * playProgress)));
   const traceTip = traceVisible[traceVisible.length - 1];
   const measureDraft: Markup | null =
-    sheet && activeTool === "measure" && measureStart && measureCursor
+    sheet && activeTool === TOOL.MEASURE && measureStart && measureCursor
       ? { id: "draft-measure", sheetId: sheet.id, tool: "measure", color: markupColor, a: measureStart, b: measureCursor }
       : null;
   const blendReady =
-    blendPanelOpen && blendMode && canCompare && sheet?.kind === "image" && compareSheet?.kind === "image";
+    blendPanelOpen && blendMode && canCompare && sheet?.kind === SHEET_KIND.IMAGE && compareSheet?.kind === SHEET_KIND.IMAGE;
 
   if (projectId && docsQuery.isPending) {
     return (
@@ -1109,12 +1232,12 @@ export default function DrawingReviewWorkspace() {
           <span className="hidden shrink-0 items-center gap-1.5 text-xs text-gray-500 sm:flex">
             {currentRevision}
             {sheet.scale ? ` · ${sheet.scale}` : ""}
-            {!sheet.scale && scaleLabels[sheet.id] === "calibrated" && (
+            {!sheet.scale && scaleLabels[sheet.id] === CALIBRATED_LABEL && (
               <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
                 <Ruler size={10} /> Calibrated
               </span>
             )}
-            {!sheet.scale && scaleLabels[sheet.id] && scaleLabels[sheet.id] !== "calibrated" && (
+            {!sheet.scale && scaleLabels[sheet.id] && scaleLabels[sheet.id] !== CALIBRATED_LABEL && (
               <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
                 <Sparkles size={10} /> {scaleLabels[sheet.id]} from sheet
               </span>
@@ -1133,14 +1256,14 @@ export default function DrawingReviewWorkspace() {
               type="button"
               data-popover-trigger
               aria-haspopup="true"
-              aria-expanded={openPopover === "revision"}
+              aria-expanded={openPopover === POPOVER.REVISION}
               title="Select revision"
-              onClick={() => setOpenPopover(openPopover === "revision" ? null : "revision")}
+              onClick={() => setOpenPopover(openPopover === POPOVER.REVISION ? null : POPOVER.REVISION)}
               className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
             >
               {currentRevision} <ChevronDown size={12} />
             </button>
-            {openPopover === "revision" && (
+            {openPopover === POPOVER.REVISION && (
               <PopShell className="right-0 w-36">
                 {(sheet.scale ? REVISIONS : [currentRevision]).map((rev) => (
                   <button
@@ -1174,12 +1297,12 @@ export default function DrawingReviewWorkspace() {
               label="Search sheets and notes (/)"
               data-popover-trigger
               hasPopup
-              expanded={openPopover === "search"}
-              onClick={() => setOpenPopover(openPopover === "search" ? null : "search")}
+              expanded={openPopover === POPOVER.SEARCH}
+              onClick={() => setOpenPopover(openPopover === POPOVER.SEARCH ? null : POPOVER.SEARCH)}
             >
               <Search size={16} />
             </IconBtn>
-            {openPopover === "search" && (
+            {openPopover === POPOVER.SEARCH && (
               <PopShell className="right-0 w-80 p-3">
                 <div className="flex items-center gap-2 rounded-lg bg-[#F6F6F6] px-2.5 py-2">
                   <Search size={14} className="shrink-0 text-gray-400" />
@@ -1188,7 +1311,7 @@ export default function DrawingReviewWorkspace() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Escape") {
+                      if (e.key === KEY.ESCAPE) {
                         setSearchQuery("");
                         setOpenPopover(null);
                       }
@@ -1268,16 +1391,16 @@ export default function DrawingReviewWorkspace() {
               type="button"
               data-popover-trigger
               aria-haspopup="true"
-              aria-expanded={openPopover === "reviewTools"}
+              aria-expanded={openPopover === POPOVER.REVIEW_TOOLS}
               title="Review tools"
-              onClick={() => setOpenPopover(openPopover === "reviewTools" ? null : "reviewTools")}
+              onClick={() => setOpenPopover(openPopover === POPOVER.REVIEW_TOOLS ? null : POPOVER.REVIEW_TOOLS)}
               className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-[#F6F6F6]"
             >
               <span className="hidden sm:inline">Review Tools</span>
               <MoreHorizontal size={16} className="sm:hidden" />
               <ChevronDown size={13} className="hidden sm:inline" />
             </button>
-            {openPopover === "reviewTools" && (
+            {openPopover === POPOVER.REVIEW_TOOLS && (
               <PopShell className="right-0 w-56">
                 {canCompare && (
                   <button type="button" onClick={openBlendPanel} className={POP_ITEM_CLS}>
@@ -1345,15 +1468,15 @@ export default function DrawingReviewWorkspace() {
             data-popover-trigger
             aria-label="Markup color"
             aria-haspopup="true"
-            aria-expanded={openPopover === "color"}
+            aria-expanded={openPopover === POPOVER.COLOR}
             title="Markup color"
-            onClick={() => setOpenPopover(openPopover === "color" ? null : "color")}
+            onClick={() => setOpenPopover(openPopover === POPOVER.COLOR ? null : POPOVER.COLOR)}
             className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[#F6F6F6]"
           >
             <span className="size-4 rounded-full border border-black/10" style={{ backgroundColor: markupColor }} />
             <ChevronDown size={12} className="text-gray-400" />
           </button>
-          {openPopover === "color" && (
+          {openPopover === POPOVER.COLOR && (
             <PopShell className="left-0 flex w-max gap-1.5 p-2">
               {MARKUP_COLORS.map((color) => (
                 <button
@@ -1375,7 +1498,7 @@ export default function DrawingReviewWorkspace() {
           )}
         </div>
 
-        {activeTool === "measure" && (
+        {activeTool === TOOL.MEASURE && (
           <span className="ml-2 hidden shrink-0 text-[11px] text-gray-500 md:inline">
             {measureStart ? "Click the second point to finish" : "Click two points to measure"}
           </span>
@@ -1426,14 +1549,14 @@ export default function DrawingReviewWorkspace() {
                         draggable={false}
                         className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
                         style={
-                          blendMode === "differences"
+                          blendMode === BLEND_MODE.DIFFERENCES
                             ? { mixBlendMode: "difference", opacity: blendAmount / 100 }
-                            : blendMode === "ghost"
+                            : blendMode === BLEND_MODE.GHOST
                               ? { opacity: (blendAmount / 100) * 0.6, filter: "grayscale(0.9)" }
                               : { mixBlendMode: "multiply", opacity: blendAmount / 100 }
                         }
                       />
-                      {blendMode === "highlight" && (
+                      {blendMode === BLEND_MODE.HIGHLIGHT && (
                         <div
                           aria-hidden="true"
                           className="pointer-events-none absolute inset-0 rounded-lg bg-yellow-300"
@@ -1453,7 +1576,7 @@ export default function DrawingReviewWorkspace() {
                     <MarkupLayer
                       markups={sheetMarkups}
                       draft={draft ?? measureDraft}
-                      selectedId={selection?.kind === "markup" ? selection.id : null}
+                      selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
                       scale={sheet.scale}
                       aspect={imgAspect}
                       customFtPerPct={sheetScales[sheet.id]}
@@ -1466,17 +1589,17 @@ export default function DrawingReviewWorkspace() {
                         key={pin.id}
                         color={pin.color}
                         label={`Comment ${index + 1}`}
-                        selected={selection?.kind === "pin" && selection.id === pin.id}
-                        draggable={activeTool === "select"}
+                        selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
+                        draggable={activeTool === TOOL.SELECT}
                         onPointerDown={(e) => handlePinPointerDown(e, pin.id)}
                         onClick={(e) => {
-                          if (activeTool === "select") e.stopPropagation();
+                          if (activeTool === TOOL.SELECT) e.stopPropagation();
                         }}
                         style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
                       />
                     ))}
 
-                  {(recStatus === "recording" || (recStatus === "saved" && trace.length > 1)) && (
+                  {(recStatus === REC_STATUS.RECORDING || (recStatus === REC_STATUS.SAVED && trace.length > 1)) && (
                     <svg
                       aria-hidden="true"
                       viewBox="0 0 100 100"
@@ -1512,9 +1635,9 @@ export default function DrawingReviewWorkspace() {
               {selection && (
                 <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 py-1 pl-3 pr-1 shadow-lg ring-1 ring-black/5">
                   <span className="text-[11px] font-medium text-gray-600">
-                    {selection.kind === "pin" ? "Pin selected — drag to move" : "Markup selected"}
+                    {selection.kind === SELECTION_KIND.PIN ? "Pin selected — drag to move" : "Markup selected"}
                   </span>
-                  {selection.kind === "markup" && markups.find((m) => m.id === selection.id)?.tool === "measure" && (
+                  {selection.kind === SELECTION_KIND.MARKUP && markups.find((m) => m.id === selection.id)?.tool === MARKUP_KIND.MEASURE && (
                     <div className="relative">
                       <button
                         type="button"
@@ -1569,10 +1692,10 @@ export default function DrawingReviewWorkspace() {
                   sheetIndex={split.primaryIndex}
                   zoom={split.primaryZoom}
                   locked={false}
-                  optionsOpen={openPopover === "paneOptsPrimary"}
-                  onToggleOptions={() => setOpenPopover(openPopover === "paneOptsPrimary" ? null : "paneOptsPrimary")}
+                  optionsOpen={openPopover === POPOVER.PANE_OPTS_PRIMARY}
+                  onToggleOptions={() => setOpenPopover(openPopover === POPOVER.PANE_OPTS_PRIMARY ? null : POPOVER.PANE_OPTS_PRIMARY)}
                   onSheetChange={(index) => setSplit((s) => ({ ...s, primaryIndex: index }))}
-                  onZoomChange={(nextZoom) => setPaneZoom("primary", nextZoom)}
+                  onZoomChange={(nextZoom) => setPaneZoom(PANE.PRIMARY, nextZoom)}
                   onFit={() => {
                     setSplit((s) => ({ ...s, primaryZoom: 100, compareZoom: s.synced ? 100 : s.compareZoom }));
                     setOpenPopover(null);
@@ -1601,10 +1724,10 @@ export default function DrawingReviewWorkspace() {
                   sheetIndex={split.compareIndex}
                   zoom={split.compareZoom}
                   locked={split.locked}
-                  optionsOpen={openPopover === "paneOptsCompare"}
-                  onToggleOptions={() => setOpenPopover(openPopover === "paneOptsCompare" ? null : "paneOptsCompare")}
+                  optionsOpen={openPopover === POPOVER.PANE_OPTS_COMPARE}
+                  onToggleOptions={() => setOpenPopover(openPopover === POPOVER.PANE_OPTS_COMPARE ? null : POPOVER.PANE_OPTS_COMPARE)}
                   onSheetChange={(index) => setSplit((s) => ({ ...s, compareIndex: index }))}
-                  onZoomChange={(nextZoom) => setPaneZoom("compare", nextZoom)}
+                  onZoomChange={(nextZoom) => setPaneZoom(PANE.COMPARE, nextZoom)}
                   onFit={() => {
                     setSplit((s) => ({ ...s, compareZoom: 100, primaryZoom: s.synced ? 100 : s.primaryZoom }));
                     setOpenPopover(null);
@@ -1723,7 +1846,7 @@ export default function DrawingReviewWorkspace() {
               <div className="mt-2">
                 <div className="flex items-center justify-between text-[11px] text-gray-500">
                   <span>
-                    {blendMode === "ghost" ? "Ghost opacity" : blendMode === "highlight" ? "Highlight intensity" : "Revision overlay"}
+                    {blendMode === BLEND_MODE.GHOST ? "Ghost opacity" : blendMode === BLEND_MODE.HIGHLIGHT ? "Highlight intensity" : "Revision overlay"}
                   </span>
                   <span className="font-mono text-gray-700">{blendAmount}%</span>
                 </div>
@@ -1746,7 +1869,7 @@ export default function DrawingReviewWorkspace() {
             </div>
           )}
 
-          {recStatus === "recording" && (
+          {recStatus === REC_STATUS.RECORDING && (
             <button
               type="button"
               aria-label="Stop recording"
@@ -1789,7 +1912,8 @@ export default function DrawingReviewWorkspace() {
               anchor={{ x: commentAnchor.x, y: commentAnchor.y }}
               assignees={assignees}
               color={markupColor}
-              busy={createMarkup.isPending || addMarkupComment.isPending}
+              projectId={projectId}
+              busy={createMarkup.isPending || addMarkupComment.isPending || uploadFile.isPending}
               onCancel={() => setCommentAnchor(null)}
               onSubmit={(capture) => void submitPinComment(capture)}
             />
@@ -1849,22 +1973,22 @@ export default function DrawingReviewWorkspace() {
                         <span
                           className={cn(
                             "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
-                            note.type === "recording" ? "bg-red-600" : "bg-primary-600",
+                            note.type === NOTE_TYPE.RECORDING ? "bg-red-600" : "bg-primary-600",
                           )}
                         >
-                          {note.type === "recording" ? <Video size={11} /> : note.author.charAt(0)}
+                          {note.type === NOTE_TYPE.RECORDING ? <Video size={11} /> : note.author.charAt(0)}
                         </span>
                         <p className="text-xs font-semibold text-gray-900">
                           {note.author} <span className="font-normal text-gray-500">{relativeTime(note.createdAt)}</span>
                         </p>
-                        {note.type === "recording" && note.durationSeconds !== null && (
+                        {note.type === NOTE_TYPE.RECORDING && note.durationSeconds !== null && (
                           <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
                             {formatClock(note.durationSeconds)}
                           </span>
                         )}
                       </div>
                       <p className="mt-1.5 text-xs text-gray-600">{note.text}</p>
-                      {note.type === "recording" ? (
+                      {note.type === NOTE_TYPE.RECORDING ? (
                         <div className="mt-2 flex items-center gap-1.5">
                           <button
                             type="button"
@@ -1910,7 +2034,7 @@ export default function DrawingReviewWorkspace() {
                   onChange={(e) => setNoteDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                    if (e.key === "Enter") submitComment();
+                    if (e.key === KEY.ENTER) submitComment();
                   }}
                   aria-label="Add a comment"
                   placeholder={pendingPinId ? "Describe the pinned spot…" : "Add a comment…"}
@@ -1938,7 +2062,7 @@ export default function DrawingReviewWorkspace() {
         className="flex shrink-0 items-center gap-3 border-t border-[#F0F0F0] bg-white px-3 py-1.5 text-[11px] text-gray-500"
       >
         <span className="flex items-center gap-1.5">
-          {recStatus === "recording" ? (
+          {recStatus === REC_STATUS.RECORDING ? (
             <span className="size-2 animate-pulse rounded-full bg-red-500" />
           ) : (
             <Check size={12} className="text-green-600" />

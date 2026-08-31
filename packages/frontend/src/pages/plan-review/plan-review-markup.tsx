@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { measureLabel, type Pt } from "./plan-review-data";
+import { MARKUP_KIND } from "@/api/drawing-markup";
 
 export interface PenMarkup {
   id: string;
@@ -44,9 +45,9 @@ export function hitTestMarkup(markups: Markup[], point: Pt): Markup | null {
   for (let i = markups.length - 1; i >= 0; i--) {
     const markup = markups[i];
     if (!markup) continue;
-    if (markup.tool === "measure") {
+    if (markup.tool === MARKUP_KIND.MEASURE) {
       if (distToSegment(point, markup.a, markup.b) <= HIT_TOLERANCE) return markup;
-    } else if (markup.tool === "cloud") {
+    } else if (markup.tool === MARKUP_KIND.CLOUD) {
       const { x, y, w, h } = markup.rect;
       const near =
         point.x >= x - HIT_TOLERANCE &&
@@ -185,10 +186,10 @@ export function MarkupLayer({
     >
       {all.map((markup) => {
         const selected = markup.id === selectedId;
-        if (markup.tool === "measure") {
+        if (markup.tool === MARKUP_KIND.MEASURE) {
           return <MeasureShape key={markup.id} markup={markup} scale={scale} aspect={aspect} selected={selected} customFtPerPct={customFtPerPct} />;
         }
-        if (markup.tool === "cloud") {
+        if (markup.tool === MARKUP_KIND.CLOUD) {
           return (
             <path
               key={markup.id}

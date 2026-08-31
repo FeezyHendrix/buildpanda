@@ -2,6 +2,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { DrawingMarkupRepository } from "./repository.ts";
+import { MARKUP_KIND } from "./types.ts";
 import type {
   CreateCommentInput,
   CreateMarkupInput,
@@ -18,8 +19,8 @@ function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): 
     throw new BadRequestError(`Geometry kind "${geometry.kind}" does not match markup kind "${kind}"`);
   }
   const invalid =
-    (geometry.kind === "pen" && geometry.points.length < 2) ||
-    (geometry.kind === "cloud" && (geometry.rect.w <= 0 || geometry.rect.h <= 0));
+    (geometry.kind === MARKUP_KIND.PEN && geometry.points.length < 2) ||
+    (geometry.kind === MARKUP_KIND.CLOUD && (geometry.rect.w <= 0 || geometry.rect.h <= 0));
   if (invalid) throw new BadRequestError(`Incomplete geometry for a ${kind} markup`);
 }
 
@@ -31,6 +32,7 @@ function toComment(
     id: row.id,
     markupId: row.markup_id,
     body: row.body,
+    bodyHtml: row.body_html,
     mediaKind: row.media_kind,
     fileId: row.file_id,
     mediaDurationSeconds: row.media_duration_seconds,
@@ -197,6 +199,7 @@ export function drawingMarkupService(repo: DrawingMarkupRepository) {
         id: generateId("mkc"),
         markup_id: markupId,
         body,
+        body_html: input.bodyHtml ?? null,
         media_kind: input.mediaKind ?? null,
         file_id: input.fileId ?? null,
         media_duration_seconds: input.mediaDurationSeconds ?? null,

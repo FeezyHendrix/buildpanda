@@ -46,6 +46,9 @@ const createBody = {
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
+    documentId: { type: ["string", "null"], maxLength: 100 },
+    documentVersionId: { type: ["string", "null"], maxLength: 100 },
+    sourceMarkupId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 
