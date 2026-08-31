@@ -11,6 +11,10 @@ const SNAPSHOT: ProjectSnapshot = {
     { id: "mo_1", title: "Cement", materialName: "cement", quantity: 30, unit: "bags", status: "Requested" },
   ],
   lookAheads: [{ id: "la_1", name: "Week 40", startDate: "2026-09-28", endDate: "2026-10-04", status: "Draft" }],
+  activities: [{ id: "act_1", name: "Blockwork", status: "InProgress" }],
+  delayReasons: [{ code: "WEATHER", name: "Weather" }],
+  ledgerEntries: [{ id: "mle_1", entryType: "IN", materialName: "cement", quantity: 30, unit: "bags" }],
+  todayEntries: [{ id: "dle_1", logDate: "2026-08-31", authorName: "Adura", snippet: "Poured the slab" }],
 };
 
 test("classifyTranscript maps validated model output to typed actions", async () => {

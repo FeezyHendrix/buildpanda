@@ -21,6 +21,11 @@ const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typ
   update_look_ahead: { label: "Update Look Ahead", icon: "create-outline" },
   delete_look_ahead: { label: "Delete Look Ahead", icon: "trash-outline", destructive: true },
   update_daily_log: { label: "Update Daily Log", icon: "time-outline" },
+  log_activity: { label: "Log Activity Work", icon: "hammer-outline" },
+  comment_rfi: { label: "Respond to RFI", icon: "chatbubble-outline" },
+  comment_change_request: { label: "Comment on Change Request", icon: "chatbubble-outline" },
+  void_ledger_entry: { label: "Void Material Entry", icon: "trash-outline", destructive: true },
+  void_daily_log_entry: { label: "Void Diary Entry", icon: "trash-outline", destructive: true },
 };
 
 /**

@@ -104,6 +104,37 @@ export interface DailyLogUpdatePayload {
   totalHours: number;
 }
 
+export interface ActivityLogPayload {
+  activityId: string;
+  /** Enriched server-side from the snapshot — the model never supplies it. */
+  activityName: string;
+  hoursLogged: number;
+  delayReasonCode?: string | null;
+  delayNote?: string | null;
+}
+
+export interface RfiCommentPayload {
+  rfiId: string;
+  body: string;
+}
+
+export interface ChangeRequestCommentPayload {
+  changeRequestId: string;
+  body: string;
+}
+
+export interface LedgerVoidPayload {
+  entryId: string;
+  reason: string;
+}
+
+export interface DailyLogEntryVoidPayload {
+  entryId: string;
+  /** Enriched server-side from the snapshot — the model never supplies it. */
+  logDate: string;
+  reason: string;
+}
+
 export type ProposedAction =
   | { kind: "rfi"; title: string; summary: string; payload: RfiPayload }
   | { kind: "daily_log"; title: string; summary: string; payload: DailyLogPayload }
@@ -119,7 +150,12 @@ export type ProposedAction =
   | { kind: "delete_material_order"; title: string; summary: string; payload: MaterialOrderDeletePayload }
   | { kind: "update_look_ahead"; title: string; summary: string; payload: LookAheadUpdatePayload }
   | { kind: "delete_look_ahead"; title: string; summary: string; payload: LookAheadDeletePayload }
-  | { kind: "update_daily_log"; title: string; summary: string; payload: DailyLogUpdatePayload };
+  | { kind: "update_daily_log"; title: string; summary: string; payload: DailyLogUpdatePayload }
+  | { kind: "log_activity"; title: string; summary: string; payload: ActivityLogPayload }
+  | { kind: "comment_rfi"; title: string; summary: string; payload: RfiCommentPayload }
+  | { kind: "comment_change_request"; title: string; summary: string; payload: ChangeRequestCommentPayload }
+  | { kind: "void_ledger_entry"; title: string; summary: string; payload: LedgerVoidPayload }
+  | { kind: "void_daily_log_entry"; title: string; summary: string; payload: DailyLogEntryVoidPayload };
 
 export interface SnapshotRfi {
   id: string;
@@ -151,11 +187,41 @@ export interface SnapshotLookAhead {
   status: string;
 }
 
+export interface SnapshotActivity {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface SnapshotDelayReason {
+  code: string;
+  name: string;
+}
+
+export interface SnapshotLedgerEntry {
+  id: string;
+  entryType: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface SnapshotDailyLogEntry {
+  id: string;
+  logDate: string;
+  authorName: string;
+  snippet: string;
+}
+
 export interface ProjectSnapshot {
   rfis: SnapshotRfi[];
   changeRequests: SnapshotChangeRequest[];
   materialOrders: SnapshotMaterialOrder[];
   lookAheads: SnapshotLookAhead[];
+  activities: SnapshotActivity[];
+  delayReasons: SnapshotDelayReason[];
+  ledgerEntries: SnapshotLedgerEntry[];
+  todayEntries: SnapshotDailyLogEntry[];
 }
 
 export interface VoiceReport {

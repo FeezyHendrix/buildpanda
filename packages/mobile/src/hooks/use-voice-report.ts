@@ -1,10 +1,13 @@
 import { useCallback } from "react";
 import { changeRequestsApi } from "@/api/change-requests";
+import { dailyLogsApi } from "@/api/daily-logs";
 import { lookAheadsApi } from "@/api/look-aheads";
 import { materialsApi } from "@/api/materials";
 import { materialsLedgerApi } from "@/api/materials-ledger";
 import { rfisApi } from "@/api/rfis";
 import type { ProposedAction } from "@/api/voice-report-types";
+import { dailyLogsRepository } from "@/db/daily-logs-repository";
+import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
@@ -13,6 +16,7 @@ import { useCreateChangeRequest } from "./use-local-change-requests";
 import { useCreateLookAhead } from "./use-local-look-aheads";
 import { useCreateMaterialOrder } from "./use-local-materials";
 import { useCreateLocalRfi } from "./use-local-rfis";
+import { useAddRfiComment } from "./use-rfi-comments";
 
 /** Local calendar date (YYYY-MM-DD) — the daily log is keyed by the crew's day, not UTC. */
 function localDateIso(): string {
@@ -38,6 +42,7 @@ export function useApplyProposedAction() {
   const createChangeRequest = useCreateChangeRequest(db, projectId);
   const createMaterialOrder = useCreateMaterialOrder(db, projectId);
   const createLookAhead = useCreateLookAhead(db, projectId);
+  const addRfiComment = useAddRfiComment(db, projectId);
 
   return useCallback(
     async (action: ProposedAction): Promise<void> => {
@@ -92,6 +97,35 @@ export function useApplyProposedAction() {
         case "update_daily_log":
           await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours });
           return;
+        case "log_activity": {
+          if (!db) throw new Error("Local database is not ready yet.");
+          await dailyLogsRepository.logActivityLocal(db, requireProject(), localDateIso(), {
+            activityId: action.payload.activityId,
+            activityName: action.payload.activityName,
+            hoursLogged: action.payload.hoursLogged,
+            delayReasonCode: action.payload.delayReasonCode ?? null,
+            delayNote: action.payload.delayNote ?? null,
+          });
+          void flushOutbox(db).catch(() => undefined);
+          return;
+        }
+        case "comment_rfi":
+          await addRfiComment(action.payload.rfiId, action.payload.body, user?.name ?? "Field team");
+          return;
+        case "comment_change_request":
+          await changeRequestsApi.addComment(requireProject(), action.payload.changeRequestId, action.payload.body);
+          return;
+        case "void_ledger_entry":
+          await materialsLedgerApi.voidEntry(requireProject(), action.payload.entryId, action.payload.reason);
+          return;
+        case "void_daily_log_entry":
+          await dailyLogsApi.voidEntry(
+            requireProject(),
+            action.payload.logDate,
+            action.payload.entryId,
+            action.payload.reason,
+          );
+          return;
         default: {
           const unhandled: never = action;
           throw new Error(`Unsupported voice action: ${JSON.stringify(unhandled)}`);
@@ -105,6 +139,8 @@ export function useApplyProposedAction() {
       createChangeRequest,
       createMaterialOrder,
       createLookAhead,
+      addRfiComment,
+      db,
       projectId,
       user,
     ],
