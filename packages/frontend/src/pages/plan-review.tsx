@@ -49,13 +49,13 @@ import {
 import { MARKUP_KIND, type MarkupGeometry } from "@/api/drawing-markup";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { CommentComposerPopover } from "./plan-review/plan-review-comment";
+import { CommentPin } from "./plan-review/plan-review-pin";
 import {
   COMMENT_MODE,
-  CommentComposerPopover,
-  CommentPin,
   FOLLOW_UP,
   type CommentCapture,
-} from "./plan-review/plan-review-comment";
+} from "./plan-review/plan-review-comment-types";
 import {
   MOCK_SHEETS,
   SHEET_KIND,
