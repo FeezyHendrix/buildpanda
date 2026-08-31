@@ -35,3 +35,13 @@ export const keyDateKeys = {
   all: (projectId: string | undefined) => ["key-dates", projectId ?? "none"] as const,
   list: (projectId: string | undefined) => [...keyDateKeys.all(projectId), "list"] as const,
 };
+
+export const updateKeys = {
+  all: (projectId: string | undefined) => ["updates", projectId ?? "none"] as const,
+  list: (projectId: string | undefined) => [...updateKeys.all(projectId), "list"] as const,
+};
+
+export const projectSettingsKeys = {
+  detail: (projectId: string | undefined) =>
+    ["project-settings", projectId ?? "none"] as const,
+};

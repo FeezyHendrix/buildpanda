@@ -28,14 +28,12 @@ interface PageProps {
   children: ReactNode;
 }
 
-const SIDE_SLOT = "w-11";
-
 /**
  * The single page chrome for every Field Tools screen: a BuildPanda-blue header
  * carrying the title, sync state and scope selector, over a light content area.
  *
- * The title centres by giving both side slots a fixed equal width, so it stays
- * optically centred regardless of how many buttons each side holds.
+ * The centred title is an absolutely-positioned overlay, so it stays optically
+ * centred no matter how wide the switcher or button cluster on either side is.
  */
 export function Page({
   variant = "default",
@@ -65,8 +63,8 @@ export function Page({
     <View className="flex-1 bg-canvas">
       <View className="bg-primary-500 px-4 pb-4" style={{ paddingTop: insets.top + 8 }}>
         {hasBar ? (
-          <View className="flex-row items-center gap-2">
-            <View className={cn("min-w-0 flex-1 flex-row items-center", !hasScope && isCentred && SIDE_SLOT)}>
+          <View className="relative min-h-11 flex-row items-center justify-between gap-2">
+            <View className={cn("min-w-0 flex-row items-center", !isCentred && "flex-1")}>
               {onBack ? (
                 <Pressable
                   onPress={onBack}
@@ -78,7 +76,7 @@ export function Page({
                 </Pressable>
               ) : null}
               {hasScope ? (
-                <View className="min-w-0 flex-1">
+                <View className="min-w-0" style={{ maxWidth: 150 }}>
                   <ScopeSelector
                     workspaceName={workspaceName}
                     projectName={projectName}
@@ -88,26 +86,21 @@ export function Page({
                   />
                 </View>
               ) : null}
-            </View>
-
-            <View className={cn("min-w-0 flex-1 px-1", isCentred ? "items-center" : "items-start")}>
-              {title ? (
-                <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
-                  {title}
-                </Text>
-              ) : null}
-              {description ? (
-                <Text
-                  tone="inverse"
-                  className="text-xs opacity-80"
-                  numberOfLines={1}
-                >
-                  {description}
-                </Text>
+              {!isCentred && title ? (
+                <View className="min-w-0 flex-1 items-start px-1">
+                  <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
+                    {title}
+                  </Text>
+                  {description ? (
+                    <Text tone="inverse" className="text-xs opacity-80" numberOfLines={1}>
+                      {description}
+                    </Text>
+                  ) : null}
+                </View>
               ) : null}
             </View>
 
-            <View className={cn("flex-row items-center justify-end gap-1", isCentred && SIDE_SLOT)}>
+            <View className="flex-row items-center justify-end gap-1">
               {rightButtons}
               {showSync ? (
                 <SyncIndicator
@@ -118,6 +111,25 @@ export function Page({
                 />
               ) : null}
             </View>
+
+            {isCentred && (title || description) ? (
+              <View
+                pointerEvents="none"
+                className="absolute inset-0 items-center justify-center"
+                style={{ paddingHorizontal: hasScope ? 150 : 56 }}
+              >
+                {title ? (
+                  <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>
+                    {title}
+                  </Text>
+                ) : null}
+                {description ? (
+                  <Text tone="inverse" className="text-xs opacity-80" numberOfLines={1}>
+                    {description}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         ) : null}
 

@@ -1,9 +1,18 @@
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Text } from "@/components/atoms";
 import type { Activity } from "@/api/activities";
 import type { KeyDate } from "@/api/key-dates";
 import type { Stage } from "@/api/stages";
 import { cn } from "@/lib/utils";
+
+interface LookAheadListItem {
+  name: string;
+  startDate: string;
+  endDate: string;
+  totalWorkers: number | null;
+  status: string;
+  isPendingSync?: boolean;
+}
 
 function dayLabel(iso: string | null): string {
   if (!iso) return "—";
@@ -96,5 +105,25 @@ export function TimelineRow({ activity }: { activity: Activity }) {
       subtitle={`${dayLabel(activity.plannedStartAt)} – ${dayLabel(activity.plannedEndAt)}`}
       right={<Chip label={activity.status} tone={activity.isDelayed ? "danger" : "neutral"} />}
     />
+  );
+}
+
+export function LookAheadRow({
+  lookAhead,
+  onPress,
+}: {
+  lookAhead: LookAheadListItem;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" className="active:bg-surface-alt">
+      <Row
+        title={lookAhead.name}
+        subtitle={`${dayLabel(lookAhead.startDate)} – ${dayLabel(lookAhead.endDate)}${
+          lookAhead.totalWorkers ? ` · ${lookAhead.totalWorkers} workers` : ""
+        }`}
+        right={<Chip label={lookAhead.isPendingSync ? "Pending" : lookAhead.status} tone={lookAhead.isPendingSync ? "brand" : "neutral"} />}
+      />
+    </Pressable>
   );
 }

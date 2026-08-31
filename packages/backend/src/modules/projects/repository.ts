@@ -32,6 +32,7 @@ export interface ProjectUpdatePatch {
   budget_min?: number;
   budget_max?: number;
   currency?: CurrencyCode;
+  ai_updates_enabled?: boolean;
 }
 
 export interface NewPhaseRecord {
