@@ -34,7 +34,33 @@ export type ProposedAction =
       payload: { lookAheadId: string; patch: Partial<CreateLookAheadInput> };
     }
   | { kind: "delete_look_ahead"; title: string; summary: string; payload: { lookAheadId: string } }
-  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number } };
+  | { kind: "update_daily_log"; title: string; summary: string; payload: { totalHours: number } }
+  | {
+      kind: "log_activity";
+      title: string;
+      summary: string;
+      payload: {
+        activityId: string;
+        activityName: string;
+        hoursLogged: number;
+        delayReasonCode?: string | null;
+        delayNote?: string | null;
+      };
+    }
+  | { kind: "comment_rfi"; title: string; summary: string; payload: { rfiId: string; body: string } }
+  | {
+      kind: "comment_change_request";
+      title: string;
+      summary: string;
+      payload: { changeRequestId: string; body: string };
+    }
+  | { kind: "void_ledger_entry"; title: string; summary: string; payload: { entryId: string; reason: string } }
+  | {
+      kind: "void_daily_log_entry";
+      title: string;
+      summary: string;
+      payload: { entryId: string; logDate: string; reason: string };
+    };
 
 export type ProposedActionKind = ProposedAction["kind"];
 

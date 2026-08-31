@@ -111,6 +111,24 @@ const lookAheadDeletePayload = z.object({ lookAheadId: z.string().min(1) });
 
 const dailyLogUpdatePayload = z.object({ totalHours: z.number().min(0) });
 
+const activityLogPayload = z.object({
+  activityId: z.string().min(1),
+  hoursLogged: z.number().min(0),
+  delayReasonCode: z.string().nullish(),
+  delayNote: z.string().nullish(),
+});
+
+const rfiCommentPayload = z.object({ rfiId: z.string().min(1), body: z.string().min(1) });
+
+const changeRequestCommentPayload = z.object({
+  changeRequestId: z.string().min(1),
+  body: z.string().min(1),
+});
+
+const ledgerVoidPayload = z.object({ entryId: z.string().min(1), reason: z.string().min(1) });
+
+const dailyLogEntryVoidPayload = z.object({ entryId: z.string().min(1), reason: z.string().min(1) });
+
 const base = { title: z.string().min(1), summary: z.string() };
 
 const actionSchema = z.discriminatedUnion("kind", [
@@ -129,15 +147,26 @@ const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("update_look_ahead"), ...base, payload: lookAheadUpdatePayload }),
   z.object({ kind: z.literal("delete_look_ahead"), ...base, payload: lookAheadDeletePayload }),
   z.object({ kind: z.literal("update_daily_log"), ...base, payload: dailyLogUpdatePayload }),
+  z.object({ kind: z.literal("log_activity"), ...base, payload: activityLogPayload }),
+  z.object({ kind: z.literal("comment_rfi"), ...base, payload: rfiCommentPayload }),
+  z.object({ kind: z.literal("comment_change_request"), ...base, payload: changeRequestCommentPayload }),
+  z.object({ kind: z.literal("void_ledger_entry"), ...base, payload: ledgerVoidPayload }),
+  z.object({ kind: z.literal("void_daily_log_entry"), ...base, payload: dailyLogEntryVoidPayload }),
 ]);
 
 const envelopeSchema = z.object({ actions: z.array(z.unknown()) });
+
+type ParsedAction = z.infer<typeof actionSchema>;
 
 const EMPTY_SNAPSHOT: ProjectSnapshot = {
   rfis: [],
   changeRequests: [],
   materialOrders: [],
   lookAheads: [],
+  activities: [],
+  delayReasons: [],
+  ledgerEntries: [],
+  todayEntries: [],
 };
 
 const CLASSIFY_SYSTEM = `You convert a spoken site update from a construction crew member into the field actions they are asking for. You draft for review — a human confirms every action before it runs — so extract exactly what was said and never invent details.
@@ -160,6 +189,11 @@ UPDATE / DELETE actions — allowed ONLY against the EXISTING RECORDS list below
 - "update_look_ahead": payload { lookAheadId, patch { name?, description?, startDate?, endDate?, totalWorkers? } }.
 - "delete_look_ahead": payload { lookAheadId }.
 - "update_daily_log": set today's total hours. payload { totalHours }.
+- "log_activity": record work done against a scheduled activity today, optionally with a delay. payload { activityId, hoursLogged, delayReasonCode?, delayNote? }. delayReasonCode must come from DELAY REASONS below.
+- "comment_rfi": add a response/comment to an RFI. payload { rfiId, body }.
+- "comment_change_request": add a comment to a change request. payload { changeRequestId, body }.
+- "void_ledger_entry": void a wrongly logged material movement. payload { entryId, reason }.
+- "void_daily_log_entry": void one of today's diary entries. payload { entryId, reason }.
 
 Rules:
 - Extract every distinct action — one update can yield several.
@@ -180,26 +214,63 @@ function snapshotPrompt(snapshot: ProjectSnapshot): string {
     lines.push(`- material_order ${m.id} — "${m.title}" ${m.quantity} ${m.unit} of ${m.materialName} (${m.status})`);
   for (const l of snapshot.lookAheads)
     lines.push(`- look_ahead ${l.id} — "${l.name}" ${l.startDate}→${l.endDate} (${l.status})`);
+  for (const a of snapshot.activities) lines.push(`- activity ${a.id} — "${a.name}" (${a.status})`);
+  for (const e of snapshot.ledgerEntries)
+    lines.push(`- ledger_entry ${e.id} — ${e.entryType} ${e.quantity} ${e.unit} of ${e.materialName}`);
+  for (const e of snapshot.todayEntries)
+    lines.push(`- diary_entry ${e.id} — ${e.authorName}: "${e.snippet}"`);
   if (lines.length === 1) lines.push("- none");
+
+  if (snapshot.delayReasons.length > 0) {
+    lines.push("", "DELAY REASONS (the only valid delayReasonCode values):");
+    for (const d of snapshot.delayReasons) lines.push(`- ${d.code} — ${d.name}`);
+  }
   return lines.join("\n");
 }
 
-function isValidTarget(action: ProposedAction, snapshot: ProjectSnapshot): boolean {
+// Update/delete/log actions must reference a record from the snapshot; a target
+// the model invented is dropped here. Fields the model must not author
+// (activityName, logDate) are injected from the snapshot at the same time.
+function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot): ProposedAction | null {
   switch (action.kind) {
     case "update_rfi":
     case "transition_rfi":
-      return snapshot.rfis.some((r) => r.id === action.payload.rfiId);
+    case "comment_rfi":
+      return snapshot.rfis.some((r) => r.id === action.payload.rfiId) ? action : null;
     case "update_change_request":
     case "delete_change_request":
-      return snapshot.changeRequests.some((c) => c.id === action.payload.changeRequestId);
+    case "comment_change_request":
+      return snapshot.changeRequests.some((c) => c.id === action.payload.changeRequestId) ? action : null;
     case "update_material_order":
     case "delete_material_order":
-      return snapshot.materialOrders.some((m) => m.id === action.payload.orderId);
+      return snapshot.materialOrders.some((m) => m.id === action.payload.orderId) ? action : null;
     case "update_look_ahead":
     case "delete_look_ahead":
-      return snapshot.lookAheads.some((l) => l.id === action.payload.lookAheadId);
+      return snapshot.lookAheads.some((l) => l.id === action.payload.lookAheadId) ? action : null;
+    case "void_ledger_entry":
+      return snapshot.ledgerEntries.some((e) => e.id === action.payload.entryId) ? action : null;
+    case "void_daily_log_entry": {
+      const entry = snapshot.todayEntries.find((e) => e.id === action.payload.entryId);
+      if (!entry) return null;
+      return { ...action, payload: { ...action.payload, logDate: entry.logDate } };
+    }
+    case "log_activity": {
+      const activity = snapshot.activities.find((a) => a.id === action.payload.activityId);
+      if (!activity) return null;
+      const codeValid = snapshot.delayReasons.some((d) => d.code === action.payload.delayReasonCode);
+      return {
+        ...action,
+        payload: {
+          activityId: activity.id,
+          activityName: activity.name,
+          hoursLogged: action.payload.hoursLogged,
+          delayReasonCode: codeValid ? action.payload.delayReasonCode : null,
+          delayNote: codeValid ? action.payload.delayNote : null,
+        },
+      };
+    }
     default:
-      return true;
+      return action;
   }
 }
 
@@ -219,13 +290,13 @@ export async function classifyTranscript(
   if (!envelope.success) return [];
 
   // Validate each action on its own and keep the ones that pass; a malformed
-  // action is dropped instead of sinking the whole report. Update/delete
-  // actions must additionally target an id present in the project snapshot —
-  // that is the guard against the model inventing a record id.
+  // action is dropped instead of sinking the whole report.
   const actions: ProposedAction[] = [];
   for (const candidate of envelope.data.actions) {
     const parsed = actionSchema.safeParse(candidate);
-    if (parsed.success && isValidTarget(parsed.data, snapshot)) actions.push(parsed.data);
+    if (!parsed.success) continue;
+    const normalized = normalizeAction(parsed.data, snapshot);
+    if (normalized) actions.push(normalized);
   }
   return actions;
 }

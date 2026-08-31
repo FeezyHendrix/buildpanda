@@ -24,4 +24,10 @@ export const materialsLedgerApi = {
       `/projects/${projectId}/materials/ledger`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+
+  voidEntry: (projectId: string, entryId: string, reason: string) =>
+    request<{ id: string }>(`/projects/${projectId}/materials/ledger/${entryId}/void`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
 };

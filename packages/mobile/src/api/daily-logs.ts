@@ -66,4 +66,10 @@ export const dailyLogsApi = {
       method: "POST",
       body: JSON.stringify({ bodyHtml, bodyText }),
     }),
+
+  voidEntry: (projectId: string, date: string, entryId: string, reason: string) =>
+    request<{ id: string }>(`/projects/${projectId}/daily-logs/${date}/entries/${entryId}/void`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
 };
