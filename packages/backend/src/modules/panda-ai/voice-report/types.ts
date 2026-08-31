@@ -22,6 +22,16 @@ export interface MaterialOrderPayload {
   supplier?: string | null;
 }
 
+export interface MaterialLogPayload {
+  entryType: "IN" | "USED";
+  materialName: string;
+  quantity: number;
+  unit: string;
+  locationKey?: string | null;
+  reason?: string | null;
+  notesHtml?: string | null;
+}
+
 export interface LookAheadPayload {
   name: string;
   description?: string | null;
@@ -34,6 +44,7 @@ export type ProposedAction =
   | { kind: "rfi"; title: string; summary: string; payload: RfiPayload }
   | { kind: "daily_log"; title: string; summary: string; payload: DailyLogPayload }
   | { kind: "change_request"; title: string; summary: string; payload: ChangeRequestPayload }
+  | { kind: "material_log"; title: string; summary: string; payload: MaterialLogPayload }
   | { kind: "material_order"; title: string; summary: string; payload: MaterialOrderPayload }
   | { kind: "look_ahead"; title: string; summary: string; payload: LookAheadPayload };
 

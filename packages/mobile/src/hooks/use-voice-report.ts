@@ -1,5 +1,6 @@
 import { useCallback } from "react";
-import type { ProposedAction } from "@/api/voice-report";
+import type { ProposedAction } from "@/api/voice-report-types";
+import { materialsLedgerApi } from "@/api/materials-ledger";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
 import { useAuthGate } from "@/lib/use-auth-gate";
@@ -45,6 +46,10 @@ export function useApplyProposedAction() {
         case "change_request":
           await createChangeRequest(action.payload);
           return;
+        case "material_log":
+          if (!projectId) throw new Error("Project is not ready yet.");
+          await materialsLedgerApi.logEntry(projectId, action.payload);
+          return;
         case "material_order":
           await createMaterialOrder(action.payload);
           return;
@@ -57,6 +62,6 @@ export function useApplyProposedAction() {
         }
       }
     },
-    [createRfi, addDailyEntry, createChangeRequest, createMaterialOrder, createLookAhead, user],
+    [createRfi, addDailyEntry, createChangeRequest, createMaterialOrder, createLookAhead, projectId, user],
   );
 }
