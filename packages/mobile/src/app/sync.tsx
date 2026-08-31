@@ -27,7 +27,7 @@ function labelFor(resource: string): string {
 function QueueList({ db, ready }: { db: NonNullable<ReturnType<typeof useLocalDb>["db"]>; ready: boolean }) {
   const query = useMemo(() => outboxQuery(db), [db]);
   const live = useLiveQuery(query);
-  const rows = (live.data ?? []).toSorted((a, b) => b.createdAt - a.createdAt);
+  const rows = [...(live.data ?? [])].sort((a, b) => b.createdAt - a.createdAt);
   const pending = rows.filter((row) => row.status === "pending");
   const failed = rows.filter((row) => row.status === "failed");
 
