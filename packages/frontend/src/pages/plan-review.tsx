@@ -14,28 +14,18 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Cloud,
   Columns2,
   Eye,
   EyeOff,
   FileText,
-  Hand,
   Layers,
   Lock,
-  MapPin,
-  Maximize2,
   MessageSquare,
-  MessageSquarePlus,
   Minus,
   MoreHorizontal,
-  MousePointer2,
-  Pen,
-  Play,
   Plus,
-  RotateCcw,
   Ruler,
   Search,
-  Send,
   Sparkles,
   Square,
   Star,
@@ -56,7 +46,7 @@ import {
   useDeleteDrawingMarkup,
   useDrawingMarkups,
 } from "@/hooks/use-drawing-markup";
-import { MARKUP_KIND, type DrawingMarkup, type MarkupGeometry } from "@/api/drawing-markup";
+import { MARKUP_KIND, type MarkupGeometry } from "@/api/drawing-markup";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
@@ -73,7 +63,6 @@ import {
   clamp,
   formatClock,
   generateId,
-  relativeTime,
   type Pt,
   type Sheet,
 } from "./plan-review/plan-review-data";
@@ -83,439 +72,40 @@ import {
   normalizedRect,
   type Markup,
 } from "./plan-review/plan-review-markup";
-import { PdfSheetCanvas } from "./plan-review/plan-review-pdf";
+import {
+  BLEND_MODE,
+  BLEND_MODES,
+  CALIBRATED_LABEL,
+  KEY,
+  NOTE_TYPE,
+  PANE,
+  PARTICIPANT_ACTIVE,
+  PLAYBACK_SECONDS,
+  POPOVER,
+  REC_STATUS,
+  REVISIONS,
+  SELECTION_KIND,
+  TOOL,
+  TOOLS,
+  TOOL_CURSORS,
+  sheetAt,
+  toLocalMarkup,
+  type BlendMode,
+  type Note,
+  type PaneSide,
+  type Pin,
+  type PopoverId,
+  type RecStatus,
+  type Selection,
+  type Tool,
+} from "./plan-review/plan-review-types";
+import { IconBtn, Kbd, POP_ITEM_CLS, PopShell } from "./plan-review/plan-review-ui";
+import { SheetImage } from "./plan-review/plan-review-sheet-image";
+import { SheetPane } from "./plan-review/plan-review-sheet-pane";
+import { ReviewNotesPanel } from "./plan-review/plan-review-notes-panel";
+import { MarkupToolbar } from "./plan-review/plan-review-toolbar";
+import { BlendComparisonPanel } from "./plan-review/plan-review-blend-panel";
 
-type Tool = "pan" | "select" | "measure" | "pen" | "cloud" | "comment";
-type BlendMode = "differences" | "ghost" | "highlight";
-type RecStatus = "idle" | "recording" | "saved";
-type SelectionKind = "pin" | "markup";
-
-const TOOL = {
-  PAN: "pan",
-  SELECT: "select",
-  MEASURE: "measure",
-  PEN: "pen",
-  CLOUD: "cloud",
-  COMMENT: "comment",
-} as const satisfies Record<string, Tool>;
-
-const BLEND_MODE = {
-  DIFFERENCES: "differences",
-  GHOST: "ghost",
-  HIGHLIGHT: "highlight",
-} as const satisfies Record<string, BlendMode>;
-
-const REC_STATUS = {
-  IDLE: "idle",
-  RECORDING: "recording",
-  SAVED: "saved",
-} as const satisfies Record<string, RecStatus>;
-
-const SELECTION_KIND = {
-  PIN: "pin",
-  MARKUP: "markup",
-} as const satisfies Record<string, SelectionKind>;
-
-const KEY = {
-  ESCAPE: "Escape",
-  ENTER: "Enter",
-  DELETE: "Delete",
-  BACKSPACE: "Backspace",
-  ARROW_LEFT: "ArrowLeft",
-  ARROW_RIGHT: "ArrowRight",
-  SLASH: "/",
-} as const;
-
-const CALIBRATED_LABEL = "calibrated";
-type PopoverId =
-  | "search"
-  | "revision"
-  | "reviewTools"
-  | "color"
-  | "paneOptsPrimary"
-  | "paneOptsCompare";
-
-const POPOVER = {
-  SEARCH: "search",
-  REVISION: "revision",
-  REVIEW_TOOLS: "reviewTools",
-  COLOR: "color",
-  PANE_OPTS_PRIMARY: "paneOptsPrimary",
-  PANE_OPTS_COMPARE: "paneOptsCompare",
-} as const satisfies Record<string, PopoverId>;
-
-type PaneSide = "primary" | "compare";
-
-const PANE = {
-  PRIMARY: "primary",
-  COMPARE: "compare",
-} as const satisfies Record<string, PaneSide>;
-
-const PARTICIPANT_ACTIVE = "active";
-
-interface Pin {
-  id: string;
-  sheetId: string;
-  x: number;
-  y: number;
-  color: string;
-  noteId: string | null;
-}
-
-function toLocalMarkup(server: DrawingMarkup[]): { pins: Pin[]; markups: Markup[] } {
-  const pins: Pin[] = [];
-  const markups: Markup[] = [];
-  for (const item of server) {
-    const base = { id: item.id, sheetId: item.documentId, color: item.color };
-    const g = item.geometry;
-    if (g.kind === MARKUP_KIND.PIN) {
-      pins.push({ ...base, x: g.at.x, y: g.at.y, noteId: item.comments[0]?.id ?? null });
-    } else if (g.kind === MARKUP_KIND.PEN) {
-      markups.push({ ...base, tool: "pen", points: g.points });
-    } else if (g.kind === MARKUP_KIND.CLOUD) {
-      markups.push({ ...base, tool: "cloud", rect: g.rect });
-    } else {
-      markups.push({ ...base, tool: "measure", a: g.a, b: g.b });
-    }
-  }
-  return { pins, markups };
-}
-
-type NoteType = "comment" | "recording";
-
-const NOTE_TYPE = {
-  COMMENT: "comment",
-  RECORDING: "recording",
-} as const satisfies Record<string, NoteType>;
-
-interface Note {
-  id: string;
-  type: NoteType;
-  text: string;
-  author: string;
-  createdAt: number;
-  sheetId: string;
-  pinId: string | null;
-  durationSeconds: number | null;
-}
-
-type Selection = { kind: SelectionKind; id: string } | null;
-
-const TOOLS: { id: Tool; label: string; shortcut: string; Icon: typeof Hand }[] = [
-  { id: "pan", label: "Pan", shortcut: "H", Icon: Hand },
-  { id: "select", label: "Select", shortcut: "V", Icon: MousePointer2 },
-  { id: "measure", label: "Measure", shortcut: "M", Icon: Ruler },
-  { id: "pen", label: "Pen", shortcut: "P", Icon: Pen },
-  { id: "cloud", label: "Cloud", shortcut: "C", Icon: Cloud },
-  { id: "comment", label: "Comment", shortcut: "N", Icon: MessageSquarePlus },
-];
-
-const MARKUP_COLORS = [
-  { value: "#004DE7", label: "Blue" },
-  { value: "#ef4444", label: "Red" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#eab308", label: "Yellow" },
-  { value: "#22c55e", label: "Green" },
-  { value: "#111827", label: "Black" },
-];
-
-const REVISIONS = ["Rev A", "Rev B", "Rev C"];
-const BLEND_MODES: { id: BlendMode; label: string }[] = [
-  { id: BLEND_MODE.DIFFERENCES, label: "Differences" },
-  { id: BLEND_MODE.GHOST, label: "Ghost" },
-  { id: BLEND_MODE.HIGHLIGHT, label: "Highlight" },
-];
-const PLAYBACK_SECONDS = 4;
-const TOOL_CURSORS: Record<Tool, string> = {
-  pan: "cursor-grab",
-  select: "cursor-default",
-  measure: "cursor-crosshair",
-  pen: "cursor-crosshair",
-  cloud: "cursor-crosshair",
-  comment: "cursor-crosshair",
-};
-
-function sheetAt(sheets: Sheet[], index: number): Sheet {
-  const found = sheets[clamp(index, 0, sheets.length - 1)];
-  if (!found) throw new Error("sheet index out of range");
-  return found;
-}
-
-function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <kbd
-      className={cn(
-        "rounded border border-[#E2E2E2] bg-[#F6F6F6] px-1.5 py-0.5 font-mono text-[10px] leading-none text-gray-500",
-        className,
-      )}
-    >
-      {children}
-    </kbd>
-  );
-}
-
-function IconBtn({
-  label,
-  onClick,
-  active,
-  pressed,
-  disabled,
-  expanded,
-  hasPopup,
-  className,
-  children,
-  ...rest
-}: {
-  label: string;
-  onClick?: () => void;
-  active?: boolean;
-  pressed?: boolean;
-  disabled?: boolean;
-  expanded?: boolean;
-  hasPopup?: boolean;
-  className?: string;
-  children: React.ReactNode;
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "disabled" | "className" | "children">) {
-  return (
-    <button
-      type="button"
-      {...rest}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={pressed}
-      aria-expanded={expanded}
-      aria-haspopup={hasPopup ? "true" : undefined}
-      className={cn(
-        "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-500 outline-none transition-colors",
-        "hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
-        active && "bg-primary-600 text-white ring-1 ring-primary-200 hover:bg-primary-600 hover:text-white",
-        className,
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function PopShell({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      data-popover-root
-      className={cn(
-        "absolute z-50 mt-2 rounded-xl bg-white p-2 text-sm text-gray-700 shadow-lg ring-1 ring-black/5",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-const POP_ITEM_CLS =
-  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-[#F6F6F6]";
-
-function SheetImage({
-  sheet,
-  className,
-  style,
-  pageNumber = 1,
-  onRender,
-}: {
-  sheet: Sheet;
-  className?: string;
-  style?: React.CSSProperties;
-  pageNumber?: number;
-  onRender?: (state: {
-    aspect: number;
-    detectedScale: { label: string; feetPerPct: number } | null;
-    pageCount?: number;
-  }) => void;
-}) {
-  if (sheet.kind === SHEET_KIND.IMAGE && sheet.src) {
-    return (
-      <img
-        src={sheet.src}
-        alt={sheet.alt}
-        draggable={false}
-        className={className}
-        style={style}
-        onLoad={(e) => {
-          const el = e.currentTarget;
-          if (el.naturalWidth > 0) {
-            onRender?.({ aspect: el.naturalHeight / el.naturalWidth, detectedScale: null });
-          }
-        }}
-      />
-    );
-  }
-  if (sheet.kind === SHEET_KIND.PDF && sheet.src) {
-    return (
-      <PdfSheetCanvas
-        url={sheet.src}
-        title={sheet.alt}
-        className={className}
-        pageNumber={pageNumber}
-        onRenderStateChange={(state) =>
-          onRender?.({
-            aspect: state.aspect,
-            detectedScale: state.detectedScale,
-            pageCount: state.pageCount,
-          })
-        }
-      />
-    );
-  }
-  return (
-    <div
-      className={cn("flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 text-center", className)}
-      style={style}
-      role="img"
-      aria-label={sheet.alt}
-    >
-      <FileText size={28} className="text-gray-300" />
-      <p className="max-w-[80%] truncate text-sm font-medium text-gray-600">{sheet.title}</p>
-      <p className="text-xs text-gray-400">Preview isn&apos;t available for this file type — annotate on the placeholder.</p>
-    </div>
-  );
-}
-
-function SheetPane({
-  paneKey,
-  label,
-  sheets,
-  sheetIndex,
-  zoom,
-  locked,
-  optionsOpen,
-  onToggleOptions,
-  onSheetChange,
-  onZoomChange,
-  onFit,
-}: {
-  paneKey: string;
-  label: string;
-  sheets: Sheet[];
-  sheetIndex: number;
-  zoom: number;
-  locked: boolean;
-  optionsOpen: boolean;
-  onToggleOptions: () => void;
-  onSheetChange: (index: number) => void;
-  onZoomChange: (zoom: number) => void;
-  onFit: () => void;
-}) {
-  const sheet = sheetAt(sheets, sheetIndex);
-  const selectId = `${paneKey}-sheet-select`;
-  return (
-    <section className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#EDEDED] bg-white">
-      <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2">
-        <span className="rounded bg-[#F6F6F6] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-          {label}
-        </span>
-        <label htmlFor={selectId} className="sr-only">
-          {label} pane sheet
-        </label>
-        <select
-          id={selectId}
-          value={sheetIndex}
-          disabled={locked}
-          onChange={(e) => onSheetChange(Number(e.target.value))}
-          className="h-7 min-w-0 max-w-44 rounded-md bg-[#F6F6F6] px-2 text-xs font-medium text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {sheets.map((s, i) => (
-            <option key={s.id} value={i}>
-              {s.code} · {s.title}
-            </option>
-          ))}
-        </select>
-        <IconBtn
-          label={`${label} pane: previous sheet`}
-          disabled={locked || sheetIndex === 0}
-          onClick={() => onSheetChange(sheetIndex - 1)}
-          className="size-7"
-        >
-          <ChevronLeft size={14} />
-        </IconBtn>
-        <IconBtn
-          label={`${label} pane: next sheet`}
-          disabled={locked || sheetIndex === sheets.length - 1}
-          onClick={() => onSheetChange(sheetIndex + 1)}
-          className="size-7"
-        >
-          <ChevronRight size={14} />
-        </IconBtn>
-        <span className="ml-auto text-[11px] text-gray-500">{sheet.revision}</span>
-        <div className="relative">
-          <IconBtn
-            label={`${label} pane options`}
-            onClick={onToggleOptions}
-            expanded={optionsOpen}
-            hasPopup
-            className="size-7"
-            data-popover-trigger
-          >
-            <MoreHorizontal size={14} />
-          </IconBtn>
-          {optionsOpen && (
-            <PopShell className="right-0 w-44">
-              <button type="button" onClick={onFit} className={POP_ITEM_CLS}>
-                <Maximize2 size={14} /> Fit to pane
-              </button>
-              <button
-                type="button"
-                disabled
-                title="Rotate (coming soon)"
-                className={cn(POP_ITEM_CLS, "opacity-40 hover:bg-transparent")}
-              >
-                <RotateCcw size={14} /> Rotate
-              </button>
-            </PopShell>
-          )}
-        </div>
-      </div>
-
-      <div className="relative min-h-0 flex-1 overflow-auto bg-[#F0F0F0] p-4">
-        <div className="mx-auto w-fit min-w-full">
-          <SheetImage
-            sheet={sheet}
-            style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top left" }}
-            className="mx-auto w-full max-w-3xl rounded border border-[#E2E2E2] bg-white shadow-md"
-          />
-        </div>
-        {locked && (
-          <div className="pointer-events-none absolute inset-0 flex items-start justify-end bg-white/50 p-3">
-            <span className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
-              <Lock size={11} /> Locked
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center justify-center gap-2 border-t border-[#F0F0F0] px-3 py-1.5">
-        <IconBtn
-          label={`${label} pane: zoom out`}
-          disabled={locked || zoom <= 50}
-          onClick={() => onZoomChange(zoom - 10)}
-          className="size-7"
-        >
-          <Minus size={13} />
-        </IconBtn>
-        <span className="w-11 text-center font-mono text-[11px] text-gray-600">{zoom}%</span>
-        <IconBtn
-          label={`${label} pane: zoom in`}
-          disabled={locked || zoom >= 200}
-          onClick={() => onZoomChange(zoom + 10)}
-          className="size-7"
-        >
-          <Plus size={13} />
-        </IconBtn>
-      </div>
-    </section>
-  );
-}
 
 export default function DrawingReviewWorkspace() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -1439,82 +1029,20 @@ export default function DrawingReviewWorkspace() {
         </div>
       </header>
 
-      {/* ── Markup toolbar ── */}
-      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#F0F0F0] bg-white px-3 py-1.5">
-        {TOOLS.map(({ id, label, shortcut, Icon }) => (
-          <button
-            key={id}
-            type="button"
-            aria-label={label}
-            aria-pressed={activeTool === id}
-            title={`${label} (${shortcut})`}
-            onClick={() => selectTool(id)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
-              activeTool === id
-                ? "bg-primary-600 text-white ring-1 ring-primary-200"
-                : "text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900",
-            )}
-          >
-            <Icon size={15} />
-            <span className="hidden lg:inline">{label}</span>
-            <Kbd className="hidden md:inline-block">{shortcut}</Kbd>
-          </button>
-        ))}
-
-        <div className="relative ml-1">
-          <button
-            type="button"
-            data-popover-trigger
-            aria-label="Markup color"
-            aria-haspopup="true"
-            aria-expanded={openPopover === POPOVER.COLOR}
-            title="Markup color"
-            onClick={() => setOpenPopover(openPopover === POPOVER.COLOR ? null : POPOVER.COLOR)}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[#F6F6F6]"
-          >
-            <span className="size-4 rounded-full border border-black/10" style={{ backgroundColor: markupColor }} />
-            <ChevronDown size={12} className="text-gray-400" />
-          </button>
-          {openPopover === POPOVER.COLOR && (
-            <PopShell className="left-0 flex w-max gap-1.5 p-2">
-              {MARKUP_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  aria-label={`${color.label} markup color`}
-                  title={color.label}
-                  onClick={() => {
-                    setMarkupColor(color.value);
-                    setOpenPopover(null);
-                  }}
-                  className="flex size-7 items-center justify-center rounded-full border border-black/10"
-                  style={{ backgroundColor: color.value }}
-                >
-                  {markupColor === color.value ? <Check size={13} className="text-white drop-shadow" /> : null}
-                </button>
-              ))}
-            </PopShell>
-          )}
-        </div>
-
-        {activeTool === TOOL.MEASURE && (
-          <span className="ml-2 hidden shrink-0 text-[11px] text-gray-500 md:inline">
-            {measureStart ? "Click the second point to finish" : "Click two points to measure"}
-          </span>
-        )}
-
-        {canCompare && (
-          <button
-            type="button"
-            title="Compare revisions"
-            onClick={openBlendPanel}
-            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-          >
-            <Layers size={14} /> Compare
-          </button>
-        )}
-      </div>
+      <MarkupToolbar
+        activeTool={activeTool}
+        onSelectTool={selectTool}
+        markupColor={markupColor}
+        onSelectColor={(color) => {
+          setMarkupColor(color);
+          setOpenPopover(null);
+        }}
+        colorOpen={openPopover === POPOVER.COLOR}
+        onToggleColor={() => setOpenPopover(openPopover === POPOVER.COLOR ? null : POPOVER.COLOR)}
+        measuring={measureStart !== null}
+        canCompare={canCompare}
+        onCompare={openBlendPanel}
+      />
 
       {/* ── Workspace ── */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -1771,102 +1299,24 @@ export default function DrawingReviewWorkspace() {
 
           {/* ── Blend comparison panel ── */}
           {blendPanelOpen && !split.open && (
-            <div className="z-30 w-full border-t border-[#EDEDED] bg-white p-3 md:absolute md:bottom-4 md:left-1/2 md:w-[560px] md:max-w-[calc(100%-2rem)] md:-translate-x-1/2 md:rounded-2xl md:border md:shadow-xl md:ring-1 md:ring-black/5">
-              <div className="flex items-center gap-2">
-                <div className="flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-0.5" role="group" aria-label="Blend mode">
-                  {BLEND_MODES.map((mode) => (
-                    <button
-                      key={mode.id}
-                      type="button"
-                      aria-pressed={blendMode === mode.id}
-                      onClick={() => setBlendMode(mode.id)}
-                      className={cn(
-                        "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                        blendMode === mode.id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-                      )}
-                    >
-                      {mode.label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSplit((s) => ({ ...s, open: true }))}
-                  className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-                >
-                  <Columns2 size={13} /> Split View
-                </button>
-                <IconBtn
-                  label="Close comparison panel"
-                  onClick={() => {
-                    setBlendPanelOpen(false);
-                    setBlendMode(null);
-                  }}
-                  className="ml-auto"
-                >
-                  <X size={15} />
-                </IconBtn>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between gap-2 text-xs">
-                <span className="font-medium text-gray-700">
-                  {sheet.code} · {currentRevision}
-                  <span className="px-1.5 text-gray-400">vs</span>
-                  <label htmlFor="compare-sheet" className="sr-only">
-                    Comparison sheet
-                  </label>
-                  <select
-                    id="compare-sheet"
-                    value={compareSheetIndex}
-                    onChange={(e) => setCompareSheetIndex(Number(e.target.value))}
-                    className="rounded-md bg-[#F6F6F6] px-1.5 py-1 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-                  >
-                    {sheets.map((s, i) => (
-                      <option key={s.id} value={i}>
-                        {s.code} · {s.revision}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setBlendAmount(50)}
-                  className="rounded-md px-2 py-1 font-medium text-primary-600 hover:bg-[#F6F6F6]"
-                >
-                  Reset
-                </button>
-              </div>
-
-              {!blendReady && blendMode && (
-                <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-700">
-                  Overlay comparison needs two image sheets — PDF and CAD files can be compared side by side in Split View.
-                </p>
-              )}
-
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-[11px] text-gray-500">
-                  <span>
-                    {blendMode === BLEND_MODE.GHOST ? "Ghost opacity" : blendMode === BLEND_MODE.HIGHLIGHT ? "Highlight intensity" : "Revision overlay"}
-                  </span>
-                  <span className="font-mono text-gray-700">{blendAmount}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={blendAmount}
-                  aria-label="Blend amount"
-                  aria-valuetext={`${blendAmount} percent overlay`}
-                  onChange={(e) => setBlendAmount(Number(e.target.value))}
-                  className="mt-1 w-full accent-primary-600"
-                />
-                <div className="flex justify-between text-[10px] text-gray-400">
-                  <span>Original</span>
-                  <span>Overlay</span>
-                </div>
-              </div>
-            </div>
+            <BlendComparisonPanel
+              blendMode={blendMode}
+              amount={blendAmount}
+              sheets={sheets}
+              sheetCode={sheet.code}
+              revision={currentRevision}
+              compareIndex={compareSheetIndex}
+              blendReady={Boolean(blendReady)}
+              onModeChange={setBlendMode}
+              onAmountChange={setBlendAmount}
+              onCompareIndexChange={setCompareSheetIndex}
+              onReset={() => setBlendAmount(50)}
+              onOpenSplit={() => setSplit((s) => ({ ...s, open: true }))}
+              onClose={() => {
+                setBlendPanelOpen(false);
+                setBlendMode(null);
+              }}
+            />
           )}
 
           {recStatus === REC_STATUS.RECORDING && (
@@ -1920,139 +1370,29 @@ export default function DrawingReviewWorkspace() {
           )}
         </section>
 
-        {/* ── Review notes panel ── */}
-        <aside
-          className={cn(
-            "flex shrink-0 flex-col border-t border-[#F0F0F0] bg-white lg:border-l lg:border-t-0",
-            notesPanelOpen ? "max-h-[45dvh] lg:max-h-none lg:w-80" : "lg:w-12",
-          )}
-        >
-          <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2.5">
-            {notesPanelOpen ? (
-              <>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">Review Notes</p>
-                  <p className="text-[11px] text-gray-500">
-                    {commentCount} note{commentCount === 1 ? "" : "s"} · {recordingCount} recording{recordingCount === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  title="Record walkthrough"
-                  className="ml-auto flex items-center gap-1 rounded-lg border border-[#EDEDED] px-2 py-1 text-[11px] font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-                >
-                  <Video size={12} /> Record
-                </button>
-              </>
-            ) : null}
-            <IconBtn
-              label={notesPanelOpen ? "Collapse review notes" : "Expand review notes"}
-              pressed={notesPanelOpen}
-              onClick={() => setNotesPanelOpen((o) => !o)}
-              className={notesPanelOpen ? undefined : "mx-auto"}
-            >
-              {notesPanelOpen ? <ChevronRight size={15} className="hidden lg:block" /> : <MessageSquare size={15} />}
-              {notesPanelOpen ? <ChevronDown size={15} className="lg:hidden" /> : null}
-            </IconBtn>
-          </div>
-
-          {notesPanelOpen && (
-            <>
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-                {orderedNotes.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#D9D9D9] bg-[#FAFAFA] px-4 py-8 text-center">
-                    <MessageSquare size={20} className="text-gray-400" />
-                    <p className="text-sm font-medium text-gray-900">No review notes yet</p>
-                    <p className="text-xs text-gray-500">Drop a pin with the comment tool or record a walkthrough.</p>
-                  </div>
-                ) : (
-                  orderedNotes.map((note) => (
-                    <article key={note.id} className="rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
-                            note.type === NOTE_TYPE.RECORDING ? "bg-red-600" : "bg-primary-600",
-                          )}
-                        >
-                          {note.type === NOTE_TYPE.RECORDING ? <Video size={11} /> : note.author.charAt(0)}
-                        </span>
-                        <p className="text-xs font-semibold text-gray-900">
-                          {note.author} <span className="font-normal text-gray-500">{relativeTime(note.createdAt)}</span>
-                        </p>
-                        {note.type === NOTE_TYPE.RECORDING && note.durationSeconds !== null && (
-                          <span className="ml-auto rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
-                            {formatClock(note.durationSeconds)}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1.5 text-xs text-gray-600">{note.text}</p>
-                      {note.type === NOTE_TYPE.RECORDING ? (
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={playRecording}
-                            disabled={playProgress !== null}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                          >
-                            <Play size={11} fill="currentColor" />
-                            {playProgress !== null ? "Playing…" : "Play Recording"}
-                          </button>
-                          <span className="text-[10px] text-gray-500">Voice + mouse movement</span>
-                          <IconBtn label="Clear recording" onClick={clearRecording} className="ml-auto size-7 text-gray-400 hover:text-red-600">
-                            <Trash2 size={13} />
-                          </IconBtn>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const index = sheets.findIndex((s) => s.id === note.sheetId);
-                            if (index >= 0) goToSheet(index);
-                          }}
-                          className="mt-2 flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-200"
-                        >
-                          {note.pinId ? <MapPin size={10} /> : <FileText size={10} />}
-                          {note.pinId ? "Pinned" : "Sheet"} · {sheets.find((s) => s.id === note.sheetId)?.code ?? "—"}
-                        </button>
-                      )}
-                    </article>
-                  ))
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 border-t border-[#F0F0F0] p-3">
-                {pendingPinId && (
-                  <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary-50 px-1.5 py-1 text-[10px] font-medium text-primary-700">
-                    <MapPin size={10} /> {sheet.code}
-                  </span>
-                )}
-                <input
-                  ref={composerRef}
-                  value={noteDraft}
-                  onChange={(e) => setNoteDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                    if (e.key === KEY.ENTER) submitComment();
-                  }}
-                  aria-label="Add a comment"
-                  placeholder={pendingPinId ? "Describe the pinned spot…" : "Add a comment…"}
-                  className="h-9 w-full min-w-0 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-                />
-                <button
-                  type="button"
-                  aria-label="Send comment"
-                  title="Send comment"
-                  onClick={submitComment}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white hover:bg-primary-700"
-                >
-                  <Send size={15} />
-                </button>
-              </div>
-            </>
-          )}
-        </aside>
+        <ReviewNotesPanel
+          open={notesPanelOpen}
+          onToggle={() => setNotesPanelOpen((o) => !o)}
+          notes={{ items: orderedNotes, commentCount, recordingCount }}
+          recording={{
+            playProgress,
+            onStart: startRecording,
+            onPlay: playRecording,
+            onClear: clearRecording,
+          }}
+          composer={{
+            value: noteDraft,
+            onChange: setNoteDraft,
+            onSubmit: submitComment,
+            inputRef: composerRef,
+            pinnedSheetCode: pendingPinId ? sheet.code : null,
+          }}
+          onOpenNote={(note) => {
+            const index = sheets.findIndex((s) => s.id === note.sheetId);
+            if (index >= 0) goToSheet(index);
+          }}
+          sheetCodeFor={(sheetId) => sheets.find((s) => s.id === sheetId)?.code ?? "—"}
+        />
       </div>
 
       {/* ── Status bar ── */}
@@ -2078,3 +1418,4 @@ export default function DrawingReviewWorkspace() {
     </main>
   );
 }
+
