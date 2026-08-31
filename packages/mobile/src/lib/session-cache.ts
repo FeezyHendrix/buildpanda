@@ -13,6 +13,7 @@ import { storage } from "./storage";
  * that actually says the session is gone (401). Never on a transport error.
  */
 const KEY = "buildpanda_session_user";
+const listeners = new Set<(user: CachedUser | null) => void>();
 
 export interface CachedUser {
   id: string;
@@ -48,4 +49,10 @@ export function writeCachedUser(user: CachedUser | null): void {
   } catch {
     // Keychain unavailable — session still works for this app session.
   }
+  for (const listener of listeners) listener(user);
+}
+
+export function subscribeCachedUser(listener: (user: CachedUser | null) => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
