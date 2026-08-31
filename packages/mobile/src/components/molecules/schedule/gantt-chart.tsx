@@ -28,7 +28,7 @@ export function GanttChart({ activities }: { activities: readonly Activity[] }) 
   const rows = activities
     .map((activity) => ({ activity, span: activitySpan(activity) }))
     .filter((row): row is { readonly activity: Activity; readonly span: { readonly start: number; readonly end: number } } => row.span !== null)
-    .toSorted((a, b) => a.span.start - b.span.start);
+    .sort((a, b) => a.span.start - b.span.start);
 
   if (rows.length === 0) {
     return (
