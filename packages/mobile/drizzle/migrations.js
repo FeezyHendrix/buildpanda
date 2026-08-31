@@ -9,6 +9,7 @@ import m0004 from './0004_common_thor_girl.sql';
 import m0005 from './0005_clever_sumo.sql';
 import m0006 from './0006_daily_report.sql';
 import m0007 from './0007_recent_docs.sql';
+import m0008 from './0008_rich_text_fields.sql';
 
   export default {
     journal,
@@ -20,7 +21,8 @@ m0003,
 m0004,
 m0005,
 m0006,
-m0007
+m0007,
+m0008
     }
   }
   

@@ -50,6 +50,7 @@ export const rfiComments = sqliteTable(
     projectId: text("project_id").notNull(),
     authorName: text("author_name").notNull().default(""),
     body: text("body").notNull(),
+    contentHtml: text("content_html"),
     createdAt: integer("created_at")
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
@@ -165,6 +166,7 @@ export const dailyLogEntries = sqliteTable(
     logDate: text("log_date").notNull(),
     authorName: text("author_name").notNull().default(""),
     bodyText: text("body_text").notNull().default(""),
+    bodyHtml: text("body_html"),
     voided: integer("voided", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at")
       .notNull()
@@ -196,6 +198,7 @@ export const changeRequests = sqliteTable(
     projectId: text("project_id").notNull(),
     title: text("title").notNull(),
     description: text("description"),
+    descriptionHtml: text("description_html"),
     reason: text("reason"),
     status: text("status").notNull().default("Draft"),
     costImpact: integer("cost_impact").notNull().default(0),

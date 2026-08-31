@@ -10,6 +10,7 @@ export function toComment(row: RfiCommentRow) {
     rfiId: row.rfiId,
     authorName: row.authorName,
     body: row.body,
+    contentHtml: row.contentHtml,
     createdAt: row.createdAt,
     isPendingSync: row.isPendingSync,
   };
@@ -30,6 +31,7 @@ export const rfiCommentsRepository = {
     rfiId: string,
     body: string,
     authorName: string,
+    contentHtml?: string | null,
   ): Promise<string> {
     const id = `local_${randomUUID()}`;
 
@@ -40,6 +42,7 @@ export const rfiCommentsRepository = {
         projectId,
         authorName,
         body,
+        contentHtml: contentHtml ?? null,
         createdAt: Date.now(),
         isPendingSync: true,
       });
@@ -66,6 +69,7 @@ export const rfiCommentsRepository = {
         projectId: "",
         authorName: server.authorName,
         body: server.body,
+        contentHtml: server.contentHtml,
         createdAt: Date.parse(server.createdAt) || Date.now(),
         isPendingSync: false,
         serverLastSyncedAt: Date.now(),
@@ -91,13 +95,14 @@ export const rfiCommentsRepository = {
             projectId,
             authorName: row.authorName,
             body: row.body,
+            contentHtml: row.contentHtml,
             createdAt: Date.parse(row.createdAt) || now,
             isPendingSync: false,
             serverLastSyncedAt: now,
           })
           .onConflictDoUpdate({
             target: rfiComments.id,
-            set: { body: row.body, authorName: row.authorName, serverLastSyncedAt: now },
+            set: { body: row.body, contentHtml: row.contentHtml, authorName: row.authorName, serverLastSyncedAt: now },
             where: eq(rfiComments.isPendingSync, false),
           });
       }
