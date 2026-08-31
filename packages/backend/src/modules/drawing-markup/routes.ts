@@ -91,6 +91,7 @@ const createCommentBody = {
   additionalProperties: false,
   properties: {
     body: { type: "string", minLength: 1, maxLength: 4000 },
+    bodyHtml: { type: ["string", "null"], maxLength: 200000 },
     mediaKind: { type: ["string", "null"], enum: [...MEDIA_KINDS, null] },
     fileId: { type: ["string", "null"], maxLength: 100 },
     mediaDurationSeconds: { type: ["integer", "null"], minimum: 0 },

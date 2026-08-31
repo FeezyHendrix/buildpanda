@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Check,
   ClipboardCheck,
@@ -11,16 +11,31 @@ import {
   X,
 } from "lucide-react";
 import { Spinner } from "@/components/atoms/spinner";
+import { RichTextField } from "@/components/molecules/rich-text-field";
 import { cn } from "@/lib/utils";
 import { formatClock } from "./plan-review-data";
 
 export type CommentMode = "text" | "audio" | "video";
 export type FollowUpKind = "none" | "rfi" | "approval" | "task";
 
+export const COMMENT_MODE = {
+  TEXT: "text",
+  AUDIO: "audio",
+  VIDEO: "video",
+} as const satisfies Record<string, CommentMode>;
+
+export const FOLLOW_UP = {
+  NONE: "none",
+  RFI: "rfi",
+  APPROVAL: "approval",
+  TASK: "task",
+} as const satisfies Record<string, FollowUpKind>;
+
 export interface CommentCapture {
   text: string;
+  bodyHtml: string | null;
   mode: CommentMode;
-  mediaUrl: string | null;
+  mediaBlob: Blob | null;
   mediaDurationSeconds: number | null;
   assigneeId: string | null;
   assigneeName: string | null;
@@ -33,10 +48,10 @@ export interface CommentAssignee {
 }
 
 const FOLLOW_UPS: { id: FollowUpKind; label: string }[] = [
-  { id: "none", label: "Comment only" },
-  { id: "rfi", label: "Raise an RFI" },
-  { id: "approval", label: "Request approval" },
-  { id: "task", label: "Create a task" },
+  { id: FOLLOW_UP.NONE, label: "Comment only" },
+  { id: FOLLOW_UP.RFI, label: "Raise an RFI" },
+  { id: FOLLOW_UP.APPROVAL, label: "Request approval" },
+  { id: FOLLOW_UP.TASK, label: "Create a task" },
 ];
 
 export const FOLLOW_UP_META: Record<
@@ -118,6 +133,7 @@ export function CommentComposerPopover({
   assignees,
   color,
   busy,
+  projectId,
   onCancel,
   onSubmit,
 }: {
@@ -125,28 +141,47 @@ export function CommentComposerPopover({
   assignees: CommentAssignee[];
   color: string;
   busy: boolean;
+  projectId?: string;
   onCancel: () => void;
   onSubmit: (capture: CommentCapture) => void;
 }) {
-  const [mode, setMode] = useState<CommentMode>("text");
+  const [mode, setMode] = useState<CommentMode>(COMMENT_MODE.TEXT);
   const [text, setText] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
-  const [followUp, setFollowUp] = useState<FollowUpKind>("none");
+  const [followUp, setFollowUp] = useState<FollowUpKind>(FOLLOW_UP.NONE);
 
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const previewRef = useRef<HTMLVideoElement>(null);
-  const textRef = useRef<HTMLTextAreaElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState(anchor);
 
-  useEffect(() => {
-    if (mode === "text") textRef.current?.focus();
-  }, [mode]);
+  // Keep the popover on screen: flip above the pin when it would overflow the
+  // bottom, and clamp its centre so the edges never leave the viewport.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const margin = 12;
+    const halfWidth = width / 2;
+    const x = Math.min(
+      Math.max(anchor.x, halfWidth + margin),
+      window.innerWidth - halfWidth - margin,
+    );
+    const overflowsBottom = anchor.y + height + margin > window.innerHeight;
+    const y = overflowsBottom
+      ? Math.max(margin, anchor.y - height - 28)
+      : anchor.y;
+    setPlacement({ x, y });
+  }, [anchor, mode, mediaUrl]);
 
   useEffect(() => {
     if (!recording) return;
@@ -173,6 +208,7 @@ export function CommentComposerPopover({
 
   function resetMedia(): void {
     setMediaUrl(null);
+    setMediaBlob(null);
     setSeconds(0);
     setMediaError(null);
   }
@@ -181,10 +217,10 @@ export function CommentComposerPopover({
     resetMedia();
     try {
       const stream = await navigator.mediaDevices.getUserMedia(
-        mode === "video" ? { audio: true, video: true } : { audio: true },
+        mode === COMMENT_MODE.VIDEO ? { audio: true, video: true } : { audio: true },
       );
       streamRef.current = stream;
-      if (mode === "video" && previewRef.current) {
+      if (mode === COMMENT_MODE.VIDEO && previewRef.current) {
         previewRef.current.srcObject = stream;
         await previewRef.current.play().catch(() => undefined);
       }
@@ -194,7 +230,9 @@ export function CommentComposerPopover({
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
-        setMediaUrl(URL.createObjectURL(new Blob(chunksRef.current, { type: recorder.mimeType })));
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        setMediaBlob(blob);
+        setMediaUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       };
@@ -203,7 +241,7 @@ export function CommentComposerPopover({
       setRecording(true);
     } catch {
       setMediaError(
-        mode === "video"
+        mode === COMMENT_MODE.VIDEO
           ? "Camera unavailable — check browser permissions."
           : "Microphone unavailable — check browser permissions.",
       );
@@ -218,25 +256,27 @@ export function CommentComposerPopover({
 
   function handleSubmit(): void {
     const trimmed = text.trim();
-    if (!trimmed && !mediaUrl) return;
+    if (!trimmed && !mediaBlob) return;
     const assignee = assignees.find((a) => a.id === assigneeId) ?? null;
     onSubmit({
-      text: trimmed || (mode === "video" ? "Video note" : "Voice note"),
+      text: trimmed || (mode === COMMENT_MODE.VIDEO ? "Video note" : "Voice note"),
+      bodyHtml: bodyHtml.trim() ? bodyHtml : null,
       mode,
-      mediaUrl,
-      mediaDurationSeconds: mediaUrl ? seconds : null,
+      mediaBlob,
+      mediaDurationSeconds: mediaBlob ? seconds : null,
       assigneeId: assignee?.id ?? null,
       assigneeName: assignee?.name ?? null,
       followUp,
     });
   }
 
-  const canSubmit = Boolean(text.trim() || mediaUrl) && !recording && !busy;
+  const canSubmit = Boolean(text.trim() || mediaBlob) && !recording && !busy;
 
   return (
     <div
+      ref={rootRef}
       data-comment-popover
-      style={{ left: anchor.x, top: anchor.y }}
+      style={{ left: placement.x, top: placement.y }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       className="fixed z-[60] w-[320px] -translate-x-1/2 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/10"
@@ -265,31 +305,26 @@ export function CommentComposerPopover({
         role="group"
         aria-label="Comment type"
       >
-        <ModeTab active={mode === "text"} onClick={() => { setMode("text"); resetMedia(); }} Icon={MessageSquare} label="Note" />
-        <ModeTab active={mode === "audio"} onClick={() => { setMode("audio"); resetMedia(); }} Icon={Mic} label="Audio" />
-        <ModeTab active={mode === "video"} onClick={() => { setMode("video"); resetMedia(); }} Icon={Video} label="Video" />
+        <ModeTab active={mode === COMMENT_MODE.TEXT} onClick={() => { setMode(COMMENT_MODE.TEXT); resetMedia(); }} Icon={MessageSquare} label="Note" />
+        <ModeTab active={mode === COMMENT_MODE.AUDIO} onClick={() => { setMode(COMMENT_MODE.AUDIO); resetMedia(); }} Icon={Mic} label="Audio" />
+        <ModeTab active={mode === COMMENT_MODE.VIDEO} onClick={() => { setMode(COMMENT_MODE.VIDEO); resetMedia(); }} Icon={Video} label="Video" />
       </div>
 
-      <label htmlFor="comment-text" className="sr-only">
-        Comment
-      </label>
-      <textarea
-        id="comment-text"
-        ref={textRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
-        }}
-        rows={mode === "text" ? 3 : 2}
-        placeholder={mode === "text" ? "What needs attention here?" : "Add a caption (optional)"}
-        className="mt-2.5 w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
-      />
+      <div className="mt-2.5" data-comment-body>
+        <RichTextField
+          value={bodyHtml}
+          onChange={setBodyHtml}
+          onChangeText={setText}
+          projectId={projectId}
+          placeholder={
+            mode === COMMENT_MODE.TEXT ? "What needs attention here?" : "Add a caption (optional)"
+          }
+        />
+      </div>
 
-      {mode !== "text" && (
+      {mode !== COMMENT_MODE.TEXT && (
         <div className="mt-2 rounded-lg border border-[#EDEDED] p-2.5">
-          {mode === "video" && (recording || mediaUrl) && (
+          {mode === COMMENT_MODE.VIDEO && (recording || mediaUrl) && (
             <video
               ref={previewRef}
               src={mediaUrl ?? undefined}
@@ -299,7 +334,7 @@ export function CommentComposerPopover({
               className="mb-2 aspect-video w-full rounded-md bg-gray-900 object-cover"
             />
           )}
-          {mode === "audio" && mediaUrl && <audio src={mediaUrl} controls className="mb-2 w-full" />}
+          {mode === COMMENT_MODE.AUDIO && mediaUrl && <audio src={mediaUrl} controls className="mb-2 w-full" />}
 
           <div className="flex items-center gap-2">
             {recording ? (
@@ -313,7 +348,7 @@ export function CommentComposerPopover({
             ) : mediaUrl ? (
               <>
                 <span className="flex items-center gap-1.5 text-xs font-medium text-green-700">
-                  <Check size={13} /> {mode === "video" ? "Video" : "Audio"} captured · {formatClock(seconds)}
+                  <Check size={13} /> {mode === COMMENT_MODE.VIDEO ? "Video" : "Audio"} captured · {formatClock(seconds)}
                 </span>
                 <button
                   type="button"
@@ -329,8 +364,8 @@ export function CommentComposerPopover({
                 onClick={() => void startRecording()}
                 className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
               >
-                {mode === "video" ? <Video size={12} /> : <Mic size={12} />}
-                Record {mode === "video" ? "video" : "audio"}
+                {mode === COMMENT_MODE.VIDEO ? <Video size={12} /> : <Mic size={12} />}
+                Record {mode === COMMENT_MODE.VIDEO ? "video" : "audio"}
               </button>
             )}
             {recording && <span className="size-2 animate-pulse rounded-full bg-red-500" />}
@@ -404,7 +439,7 @@ export function CommentComposerPopover({
 CommentComposerPopover.displayName = "CommentComposerPopover";
 
 export function MediaNotePlayer({ url, mode }: { url: string; mode: CommentMode }) {
-  if (mode === "video") {
+  if (mode === COMMENT_MODE.VIDEO) {
     return <video src={url} controls playsInline className="mt-2 w-full rounded-md bg-gray-900" />;
   }
   return <audio src={url} controls className="mt-2 w-full" />;
