@@ -1,0 +1,8 @@
+# Exclude all node_modules — EAS runs its own npm install
+**/node_modules
+.git
+packages/admin
+packages/web
+*.mp4
+ios
+android
