@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788124362709,
+      "tag": "0000_chubby_human_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788124716440,
+      "tag": "0001_lethal_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788127334331,
+      "tag": "0002_lonely_cardiac",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788129761555,
+      "tag": "0003_lonely_daredevil",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788131175463,
+      "tag": "0004_common_thor_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788134147091,
+      "tag": "0005_clever_sumo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788136651061,
+      "tag": "0006_daily_report",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788144293208,
+      "tag": "0007_recent_docs",
+      "breakpoints": true
+    }
+  ]
+}
