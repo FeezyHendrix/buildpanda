@@ -4,6 +4,7 @@ import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-n
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, Field, Text } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
+import { writeCachedUser } from "@/lib/session-cache";
 import logo from "@/assets/images/buildpanda-logo.png";
 
 export default function SignIn() {
@@ -21,18 +22,19 @@ export default function SignIn() {
     setLoading(true);
 
     // Same endpoint the web app posts to; the Expo plugin stores the returned
-    // session cookie in the keychain. The gate lives on `/`, so hand back to it
-    // rather than routing from here — it decides workspace vs project vs tools.
-    await authClient.signIn.email(
-      { email: email.trim(), password },
-      {
-        onSuccess: () => router.replace("/"),
-        onError: (ctx) => {
-          setLoading(false);
-          setError(ctx.error.message ?? "Invalid email or password.");
-        },
-      },
-    );
+    // session cookie in the keychain.
+    const { data, error } = await authClient.signIn.email({ email: email.trim(), password });
+    if (error || !data) {
+      setLoading(false);
+      setError(error?.message ?? "Invalid email or password.");
+      return;
+    }
+
+    // Prime the cached identity before handing back to the gate at `/`. On a first
+    // sign-in useSession() hasn't hydrated when `/` mounts, so without this the gate
+    // reads a null user and bounces straight back here — the double sign-in.
+    writeCachedUser({ id: data.user.id, name: data.user.name, email: data.user.email });
+    router.replace("/");
   }
 
   return (

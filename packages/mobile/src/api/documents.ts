@@ -1,3 +1,10 @@
+import {
+  cacheDirectory,
+  copyAsync,
+  FileSystemUploadType,
+  makeDirectoryAsync,
+  uploadAsync,
+} from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { request } from "./client";
@@ -53,22 +60,30 @@ export const documentsApi = {
 
   /** Multipart file upload — can't use the generic request() helper. */
   uploadFile: async (projectId: string, uri: string, fileName: string, mimeType: string): Promise<{ id: string; fileName: string; sizeBytes: number }> => {
-    const form = new FormData();
-    form.append("file", { uri, name: fileName, type: mimeType } as never);
-    form.append("projectId", projectId);
-
     const headers: Record<string, string> = {};
     if (Platform.OS !== "web") headers.cookie = authClient.getCookie();
 
-    const response = await fetch(`${API_BASE_URL}/files`, {
-      method: "POST",
-      credentials: "include",
+    // uploadAsync derives the multipart filename from the file's basename, so stage
+    // the pick under its real name first (the picker's cache path uses a generated
+    // one). Native multipart because RN FormData rejects the file part — see
+    // api/voice-report.ts.
+    const safeName = fileName.replace(/[/\\]/g, "_");
+    const dir = `${cacheDirectory ?? ""}bp-upload-${Date.now()}/`;
+    await makeDirectoryAsync(dir, { intermediates: true });
+    const stagedUri = `${dir}${safeName}`;
+    await copyAsync({ from: uri, to: stagedUri });
+
+    const result = await uploadAsync(`${API_BASE_URL}/files`, stagedUri, {
+      httpMethod: "POST",
+      uploadType: FileSystemUploadType.MULTIPART,
+      fieldName: "file",
+      mimeType,
+      parameters: { projectId },
       headers,
-      body: form,
     });
 
-    if (!response.ok) throw new Error(`Upload failed (${response.status})`);
-    return (await response.json()) as { id: string; fileName: string; sizeBytes: number };
+    if (result.status < 200 || result.status >= 300) throw new Error(`Upload failed (${result.status})`);
+    return JSON.parse(result.body) as { id: string; fileName: string; sizeBytes: number };
   },
 
   createDocument: (projectId: string, body: { categoryId: string; fileId: string; fileName: string; size: string }) =>
