@@ -80,7 +80,6 @@ import {
   NOTE_TYPE,
   PANE,
   PARTICIPANT_ACTIVE,
-  PLAYBACK_SECONDS,
   POPOVER,
   REC_STATUS,
   REVISIONS,
@@ -95,7 +94,6 @@ import {
   type PaneSide,
   type Pin,
   type PopoverId,
-  type RecStatus,
   type Selection,
   type Tool,
 } from "./plan-review/plan-review-types";
@@ -105,6 +103,8 @@ import { SheetPane } from "./plan-review/plan-review-sheet-pane";
 import { ReviewNotesPanel } from "./plan-review/plan-review-notes-panel";
 import { MarkupToolbar } from "./plan-review/plan-review-toolbar";
 import { BlendComparisonPanel } from "./plan-review/plan-review-blend-panel";
+import { usePlanRecording } from "./plan-review/use-plan-recording";
+import { useSheetScale } from "./plan-review/use-sheet-scale";
 
 
 export default function DrawingReviewWorkspace() {
@@ -151,11 +151,6 @@ export default function DrawingReviewWorkspace() {
   const [measureCursor, setMeasureCursor] = useState<Pt | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [imgAspect, setImgAspect] = useState(0.775);
-  const [sheetScales, setSheetScales] = useState<Record<string, number>>({});
-  const [scaleLabels, setScaleLabels] = useState<Record<string, string>>({});
-  const [calibrateOpen, setCalibratePopoverOpen] = useState(false);
-  const [calibrateInput, setCalibrateInput] = useState("");
 
   const [pins, setPins] = useState<Pin[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -166,19 +161,11 @@ export default function DrawingReviewWorkspace() {
   const [pdfPageCount, setPdfPageCount] = useState(1);
   const [commentAnchor, setCommentAnchor] = useState<{ x: number; y: number; at: Pt } | null>(null);
 
-  const [recStatus, setRecStatus] = useState<RecStatus>(REC_STATUS.IDLE);
-  const [recSeconds, setRecSeconds] = useState(0);
-  const [trace, setTrace] = useState<Pt[]>([]);
-  const [savedFlash, setSavedFlash] = useState(false);
-  const [playProgress, setPlayProgress] = useState<number | null>(null);
-
   const drawingRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const splitStageRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const lastTraceAt = useRef(0);
-  const playTimer = useRef<number | null>(null);
   const panStart = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const penPoints = useRef<Pt[]>([]);
   const cloudOrigin = useRef<Pt | null>(null);
@@ -221,6 +208,33 @@ export default function DrawingReviewWorkspace() {
   const commentCount = notes.filter((n) => n.type === NOTE_TYPE.COMMENT).length;
   const recordingCount = notes.filter((n) => n.type === NOTE_TYPE.RECORDING).length;
   const orderedNotes = useMemo(() => [...notes].sort((a, b) => b.createdAt - a.createdAt), [notes]);
+
+  const scale = useSheetScale(setPdfPageCount);
+
+  const recording = usePlanRecording({
+    pointFromEvent,
+    onStart: () => {
+      setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING));
+      setOpenPopover(null);
+    },
+    onStop: (durationSeconds) => {
+      if (!sheet) return;
+      setNotes((n) => [
+        ...n,
+        {
+          id: generateId("note"),
+          type: NOTE_TYPE.RECORDING,
+          text: `Walkthrough of ${sheet.code}`,
+          author: "You",
+          createdAt: Date.now(),
+          sheetId: sheet.id,
+          pinId: null,
+          durationSeconds,
+        },
+      ]);
+    },
+    onClear: () => setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING)),
+  });
 
   useEffect(() => {
     setActiveSheetIndex((i) => clamp(i, 0, Math.max(0, sheets.length - 1)));
@@ -298,18 +312,6 @@ export default function DrawingReviewWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openPopover]);
 
-  useEffect(() => {
-    if (recStatus !== REC_STATUS.RECORDING) return;
-    const id = window.setInterval(() => setRecSeconds((s) => s + 1), 1000);
-    return () => window.clearInterval(id);
-  }, [recStatus]);
-
-  useEffect(() => {
-    return () => {
-      if (playTimer.current !== null) window.clearInterval(playTimer.current);
-    };
-  }, []);
-
   function goToSheet(index: number): void {
     setActiveSheetIndex(clamp(index, 0, sheets.length - 1));
     setSelection(null);
@@ -333,37 +335,9 @@ export default function DrawingReviewWorkspace() {
     };
   }
 
-  function handleSheetRender(state: {
-    aspect: number;
-    detectedScale: { label: string; feetPerPct: number } | null;
-    pageCount?: number;
-  }): void {
-    setImgAspect(state.aspect);
-    if (state.pageCount !== undefined) setPdfPageCount(state.pageCount);
-    if (!sheet || !state.detectedScale) return;
-    const detected = state.detectedScale;
-    setSheetScales((current) =>
-      current[sheet.id] ? current : { ...current, [sheet.id]: detected.feetPerPct },
-    );
-    setScaleLabels((current) => (current[sheet.id] ? current : { ...current, [sheet.id]: detected.label }));
-  }
-
-  function handleCalibrateSubmit(): void {
-    if (!sheet || !selection || selection.kind !== SELECTION_KIND.MARKUP || !calibrateInput) return;
-    const markup = markups.find((m) => m.id === selection.id);
-    if (!markup || markup.tool !== MARKUP_KIND.MEASURE) return;
-    const val = Number.parseFloat(calibrateInput);
-    if (Number.isNaN(val) || val <= 0) return;
-
-    const dxPct = markup.b.x - markup.a.x;
-    const dyPct = (markup.b.y - markup.a.y) * imgAspect;
-    const distPct = Math.hypot(dxPct, dyPct);
-    
-    setSheetScales((s) => ({ ...s, [sheet.id]: val / distPct }));
-    setScaleLabels((s) => ({ ...s, [sheet.id]: CALIBRATED_LABEL }));
-    setCalibratePopoverOpen(false);
-    setCalibrateInput("");
-    import("@/lib/toast").then((m) => m.toast("Scale calibrated", "success"));
+  function submitCalibration(): void {
+    if (!sheet || selection?.kind !== SELECTION_KIND.MARKUP) return;
+    scale.calibrate(sheet.id, markups.find((m) => m.id === selection.id) ?? null);
   }
 
   function deleteSelection(): void {
@@ -527,14 +501,7 @@ export default function DrawingReviewWorkspace() {
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>): void {
-    if (recStatus === REC_STATUS.RECORDING) {
-      const now = Date.now();
-      if (now - lastTraceAt.current >= 50) {
-        lastTraceAt.current = now;
-        const tracePoint = pointFromEvent(e);
-        if (tracePoint) setTrace((t) => (t.length >= 500 ? [...t.slice(1), tracePoint] : [...t, tracePoint]));
-      }
-    }
+    recording.captureTrace(e);
 
     if (activeTool === TOOL.PAN && panStart.current) {
       const canvas = canvasRef.current;
@@ -630,63 +597,6 @@ export default function DrawingReviewWorkspace() {
     setNoteDraft("");
   }
 
-  // ── Recording ──
-  function startRecording(): void {
-    setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING));
-    setPlayProgress(null);
-    setTrace([]);
-    setRecSeconds(0);
-    setRecStatus(REC_STATUS.RECORDING);
-    setOpenPopover(null);
-  }
-
-  function stopRecording(): void {
-    if (!sheet) return;
-    setRecStatus(REC_STATUS.SAVED);
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 4000);
-    setNotes((n) => [
-      ...n,
-      {
-        id: generateId("note"),
-        type: NOTE_TYPE.RECORDING,
-        text: `Walkthrough of ${sheet.code}`,
-        author: "You",
-        createdAt: Date.now(),
-        sheetId: sheet.id,
-        pinId: null,
-        durationSeconds: recSeconds,
-      },
-    ]);
-  }
-
-  function clearRecording(): void {
-    if (playTimer.current !== null) window.clearInterval(playTimer.current);
-    setNotes((n) => n.filter((note) => note.type !== NOTE_TYPE.RECORDING));
-    setRecStatus(REC_STATUS.IDLE);
-    setPlayProgress(null);
-    setTrace([]);
-    setRecSeconds(0);
-  }
-
-  function playRecording(): void {
-    if (trace.length === 0 || playProgress !== null) return;
-    const stepMs = 50;
-    const steps = (PLAYBACK_SECONDS * 1000) / stepMs;
-    let step = 0;
-    setPlayProgress(0);
-    playTimer.current = window.setInterval(() => {
-      step += 1;
-      if (step >= steps) {
-        if (playTimer.current !== null) window.clearInterval(playTimer.current);
-        playTimer.current = null;
-        setPlayProgress(null);
-      } else {
-        setPlayProgress(step / steps);
-      }
-    }, stepMs);
-  }
-
   // ── Split view ──
   function setPaneZoom(pane: PaneSide, nextZoom: number): void {
     const next = clamp(nextZoom, 50, 200);
@@ -736,8 +646,8 @@ export default function DrawingReviewWorkspace() {
 
   const canPersist = Boolean(projectId && sheet?.documentVersionId);
   function describeSaveState(): string {
-    if (recStatus === REC_STATUS.RECORDING) return `Recording walkthrough · ${formatClock(recSeconds)}`;
-    if (savedFlash) return "Walkthrough saved";
+    if (recording.status === REC_STATUS.RECORDING) return `Recording walkthrough · ${formatClock(recording.seconds)}`;
+    if (recording.savedFlash) return "Walkthrough saved";
     if (saveError) return "Could not save — retry";
     if (isSaving) return "Saving…";
     if (!canPersist) return "Demo sheet — markup not saved";
@@ -752,8 +662,6 @@ export default function DrawingReviewWorkspace() {
       : "No sheets";
   const activeToolLabel = TOOLS.find((t) => t.id === activeTool)?.label ?? "Select";
 
-  const traceVisible = playProgress === null ? trace : trace.slice(0, Math.max(2, Math.floor(trace.length * playProgress)));
-  const traceTip = traceVisible[traceVisible.length - 1];
   const measureDraft: Markup | null =
     sheet && activeTool === TOOL.MEASURE && measureStart && measureCursor
       ? { id: "draft-measure", sheetId: sheet.id, tool: "measure", color: markupColor, a: measureStart, b: measureCursor }
@@ -822,17 +730,17 @@ export default function DrawingReviewWorkspace() {
           <span className="hidden shrink-0 items-center gap-1.5 text-xs text-gray-500 sm:flex">
             {currentRevision}
             {sheet.scale ? ` · ${sheet.scale}` : ""}
-            {!sheet.scale && scaleLabels[sheet.id] === CALIBRATED_LABEL && (
+            {!sheet.scale && scale.labelFor(sheet.id) === CALIBRATED_LABEL && (
               <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
                 <Ruler size={10} /> Calibrated
               </span>
             )}
-            {!sheet.scale && scaleLabels[sheet.id] && scaleLabels[sheet.id] !== CALIBRATED_LABEL && (
+            {!sheet.scale && scale.labelFor(sheet.id) && scale.labelFor(sheet.id) !== CALIBRATED_LABEL && (
               <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
-                <Sparkles size={10} /> {scaleLabels[sheet.id]} from sheet
+                <Sparkles size={10} /> {scale.labelFor(sheet.id)} from sheet
               </span>
             )}
-            {!sheet.scale && !scaleLabels[sheet.id] && (
+            {!sheet.scale && !scale.labelFor(sheet.id) && (
               <span className="flex items-center gap-1 rounded bg-[#F6F6F6] px-1.5 py-0.5 text-gray-500">
                 No scale on sheet — measure, then Calibrate
               </span>
@@ -1009,7 +917,7 @@ export default function DrawingReviewWorkspace() {
                     <Columns2 size={15} /> {split.open ? "Exit Split View" : "Split View"}
                   </button>
                 )}
-                <button type="button" onClick={startRecording} className={POP_ITEM_CLS}>
+                <button type="button" onClick={recording.start} className={POP_ITEM_CLS}>
                   <Video size={15} /> Record Walkthrough
                 </button>
                 <button
@@ -1065,7 +973,7 @@ export default function DrawingReviewWorkspace() {
                     sheet={sheet}
                     className="block w-full rounded-lg"
                     pageNumber={pdfPage}
-                    onRender={handleSheetRender}
+                    onRender={(state) => scale.applyRender(sheet?.id ?? null, state)}
                   />
 
                   {blendReady && compareSheet?.src && (
@@ -1106,8 +1014,8 @@ export default function DrawingReviewWorkspace() {
                       draft={draft ?? measureDraft}
                       selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
                       scale={sheet.scale}
-                      aspect={imgAspect}
-                      customFtPerPct={sheetScales[sheet.id]}
+                      aspect={scale.imgAspect}
+                      customFtPerPct={scale.scaleFor(sheet.id)}
                     />
                   )}
 
@@ -1127,7 +1035,8 @@ export default function DrawingReviewWorkspace() {
                       />
                     ))}
 
-                  {(recStatus === REC_STATUS.RECORDING || (recStatus === REC_STATUS.SAVED && trace.length > 1)) && (
+                  {(recording.status === REC_STATUS.RECORDING ||
+                    (recording.status === REC_STATUS.SAVED && recording.trace.length > 1)) && (
                     <svg
                       aria-hidden="true"
                       viewBox="0 0 100 100"
@@ -1135,7 +1044,7 @@ export default function DrawingReviewWorkspace() {
                       className="pointer-events-none absolute inset-0 h-full w-full"
                     >
                       <polyline
-                        points={traceVisible.map((p) => `${p.x},${p.y}`).join(" ")}
+                        points={recording.visibleTrace.map((p) => `${p.x},${p.y}`).join(" ")}
                         fill="none"
                         stroke="#004DE7"
                         strokeWidth="2"
@@ -1144,7 +1053,9 @@ export default function DrawingReviewWorkspace() {
                         opacity="0.55"
                         vectorEffect="non-scaling-stroke"
                       />
-                      {traceTip && <circle cx={traceTip.x} cy={traceTip.y} r="1.1" fill="#004DE7" />}
+                      {recording.traceTip && (
+                        <circle cx={recording.traceTip.x} cy={recording.traceTip.y} r="1.1" fill="#004DE7" />
+                      )}
                     </svg>
                   )}
                 </div>
@@ -1169,12 +1080,12 @@ export default function DrawingReviewWorkspace() {
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => setCalibratePopoverOpen((o) => !o)}
+                        onClick={() => scale.setCalibrateOpen(!scale.calibrateOpen)}
                         className="flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-semibold text-primary-700 hover:bg-primary-100"
                       >
                         <Ruler size={11} /> Calibrate
                       </button>
-                      {calibrateOpen && (
+                      {scale.calibrateOpen && (
                         <div data-popover-root className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 rounded-xl bg-white p-3 shadow-lg ring-1 ring-black/5">
                           <p className="text-xs font-semibold text-gray-900">Calibrate scale</p>
                           <p className="mt-0.5 text-[11px] text-gray-500">Enter the actual distance for this measurement.</p>
@@ -1182,14 +1093,14 @@ export default function DrawingReviewWorkspace() {
                             <input
                               type="number"
                               step="any"
-                              value={calibrateInput}
-                              onChange={(e) => setCalibrateInput(e.target.value)}
+                              value={scale.calibrateInput}
+                              onChange={(e) => scale.setCalibrateInput(e.target.value)}
                               placeholder="Feet (e.g. 10.5)"
                               className="h-8 w-full rounded-md bg-[#F6F6F6] px-2.5 text-xs text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-primary-600/20"
                             />
                             <button
                               type="button"
-                              onClick={handleCalibrateSubmit}
+                              onClick={submitCalibration}
                               className="h-8 shrink-0 rounded-md bg-primary-600 px-3 text-xs font-semibold text-white hover:bg-primary-700"
                             >
                               Save
@@ -1319,16 +1230,16 @@ export default function DrawingReviewWorkspace() {
             />
           )}
 
-          {recStatus === REC_STATUS.RECORDING && (
+          {recording.status === REC_STATUS.RECORDING && (
             <button
               type="button"
               aria-label="Stop recording"
               title="Stop recording"
-              onClick={stopRecording}
+              onClick={recording.stop}
               className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl hover:bg-red-500"
             >
               <span className="size-2 animate-pulse rounded-full bg-white" />
-              <Square size={13} fill="currentColor" /> Stop · {formatClock(recSeconds)}
+              <Square size={13} fill="currentColor" /> Stop · {formatClock(recording.seconds)}
             </button>
           )}
 
@@ -1375,10 +1286,10 @@ export default function DrawingReviewWorkspace() {
           onToggle={() => setNotesPanelOpen((o) => !o)}
           notes={{ items: orderedNotes, commentCount, recordingCount }}
           recording={{
-            playProgress,
-            onStart: startRecording,
-            onPlay: playRecording,
-            onClear: clearRecording,
+            playProgress: recording.playProgress,
+            onStart: recording.start,
+            onPlay: recording.play,
+            onClear: recording.clear,
           }}
           composer={{
             value: noteDraft,
@@ -1402,7 +1313,7 @@ export default function DrawingReviewWorkspace() {
         className="flex shrink-0 items-center gap-3 border-t border-[#F0F0F0] bg-white px-3 py-1.5 text-[11px] text-gray-500"
       >
         <span className="flex items-center gap-1.5">
-          {recStatus === REC_STATUS.RECORDING ? (
+          {recording.status === REC_STATUS.RECORDING ? (
             <span className="size-2 animate-pulse rounded-full bg-red-500" />
           ) : (
             <Check size={12} className="text-green-600" />
