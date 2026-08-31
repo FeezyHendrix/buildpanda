@@ -1,10 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Button, Card, Field, Spinner, Text } from "@/components/atoms";
 import { ActivityLogSheet } from "@/components/molecules/activity-log-sheet";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { activitiesApi, type Activity, type DelayReason } from "@/api/activities";
@@ -13,6 +14,7 @@ import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/us
 import { useActivities } from "@/hooks/use-activities";
 import { useSession } from "@/lib/auth-client";
 import { useFieldSession } from "@/lib/field-session";
+import { htmlToText } from "@/lib/html";
 import { usePersistentQuery } from "@/lib/persistent-query";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
     queryFn: activitiesApi.delayReasons,
   });
 
-  const [entryText, setEntryText] = useState("");
+  const [entryHtml, setEntryHtml] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -65,12 +67,12 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
   }
 
   async function handleAddEntry() {
-    const text = entryText.trim();
+    const text = htmlToText(entryHtml);
     if (!text) return;
     setError(null);
     try {
-      await addEntry(logDate, text, session?.user.name ?? "You");
-      setEntryText("");
+      await addEntry(logDate, text, session?.user.name ?? "You", entryHtml.trim() || null);
+      setEntryHtml("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add that entry.");
     }
@@ -176,26 +178,26 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
         />
 
         {!isVoided ? (
-          <View className="flex-row items-end gap-2 pt-1">
-            <TextInput
-              value={entryText}
-              onChangeText={setEntryText}
+          <View className="gap-2 pt-1">
+            <RichTextEditor
+              value={entryHtml}
+              onChange={setEntryHtml}
               placeholder="What happened on site?"
-              placeholderTextColor="#ADADAD"
-              multiline
-              className="max-h-28 min-h-12 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+              projectId={projectId}
             />
             <Pressable
               onPress={handleAddEntry}
-              disabled={entryText.trim().length === 0}
+              disabled={htmlToText(entryHtml).length === 0}
               accessibilityRole="button"
               accessibilityLabel="Add entry"
               className={cn(
-                "h-12 w-12 items-center justify-center rounded-xl bg-primary-500",
-                entryText.trim().length === 0 && "opacity-50",
+                "min-h-12 items-center justify-center rounded-xl bg-primary-500",
+                htmlToText(entryHtml).length === 0 && "opacity-50",
               )}
             >
-              <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+              <Text weight="semibold" tone="inverse" className="text-[15px]">
+                Add entry
+              </Text>
             </Pressable>
           </View>
         ) : null}

@@ -3,10 +3,12 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import { useLocalDb } from "@/db/provider";
 import { useCreateChangeRequest } from "@/hooks/use-local-change-requests";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
+import { htmlToText } from "@/lib/html";
 
 export default function NewChangeRequest() {
   const { projectId } = useFieldSession();
@@ -15,7 +17,7 @@ export default function NewChangeRequest() {
   const { isOnline } = useSyncState();
 
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [descriptionHtml, setDescriptionHtml] = useState("");
   const [cost, setCost] = useState("");
   const [days, setDays] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,7 +32,7 @@ export default function NewChangeRequest() {
     try {
       await create({
         title: title.trim(),
-        description: description.trim() || null,
+        description: htmlToText(descriptionHtml) || null,
         costImpact: Number.parseFloat(cost) || 0,
         timeImpactDays: Number.parseInt(days, 10) || 0,
       });
@@ -69,14 +71,17 @@ export default function NewChangeRequest() {
 
       <View className="gap-5">
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is changing?" autoFocus />
-        <Field
-          label="Description"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Why is it needed?"
-          multiline
-          className="min-h-32"
-        />
+        <View>
+          <Text weight="semibold" className="pb-2 text-[13px]">
+            Description
+          </Text>
+          <RichTextEditor
+            value={descriptionHtml}
+            onChange={setDescriptionHtml}
+            placeholder="Why is it needed?"
+            projectId={projectId}
+          />
+        </View>
         <View className="flex-row gap-3">
           <Field label="Cost impact" value={cost} onChangeText={setCost} keyboardType="numeric" className="flex-1" />
           <Field label="Days" value={days} onChangeText={setDays} keyboardType="number-pad" className="flex-1" />

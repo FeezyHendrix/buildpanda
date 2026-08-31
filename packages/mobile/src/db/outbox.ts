@@ -12,6 +12,7 @@ import { rfiCommentsRepository } from "./rfi-comments-repository";
 import type { Db } from "./client";
 import { dailyLogActivities, dailyLogEntries, dailyLogs, outbox, rfiComments, rfis } from "./schema";
 import { rfisRepository } from "./rfis-repository";
+import { textToParagraphHtml } from "@/lib/html";
 
 const MAX_ATTEMPTS = 8;
 
@@ -83,6 +84,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
         const server = await changeRequestsApi.create(item.projectId, {
           title: row.title,
           description: row.description,
+          descriptionHtml: row.descriptionHtml,
           reason: row.reason,
           costImpact: row.costImpact,
           timeImpactDays: row.timeImpactDays,
@@ -203,15 +205,10 @@ async function runFlush(db: Db): Promise<FlushResult> {
           continue;
         }
 
-        // The backend stores HTML; plain dictated/typed text is wrapped so the
-        // web renders it as a paragraph rather than raw characters.
-        const html = `<p>${entry.bodyText.replace(/[&<>]/g, (c) =>
-          c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;",
-        )}</p>`;
         const server = await dailyLogsApi.addEntry(
           item.projectId,
           entry.logDate,
-          html,
+          entry.bodyHtml ?? textToParagraphHtml(entry.bodyText),
           entry.bodyText,
         );
         await db.transaction(async (tx) => {
@@ -222,6 +219,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
             logDate: entry.logDate,
             authorName: server.authorName,
             bodyText: server.bodyText ?? entry.bodyText,
+            bodyHtml: server.bodyHtml ?? entry.bodyHtml,
             voided: server.voided,
             createdAt: Date.parse(server.createdAt) || Date.now(),
             isPendingSync: false,
@@ -246,7 +244,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
         // server has no id for that RFI yet.
         if (comment.rfiId.startsWith("local_")) continue;
 
-        const server = await rfisApi.addComment(item.projectId, comment.rfiId, comment.body);
+        const server = await rfisApi.addComment(item.projectId, comment.rfiId, comment.body, comment.contentHtml);
         await rfiCommentsRepository.reconcileCreate(db, comment.id, server);
         await db.delete(outbox).where(eq(outbox.id, item.id));
         pushed += 1;

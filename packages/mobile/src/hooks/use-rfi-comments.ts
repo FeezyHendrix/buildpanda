@@ -38,9 +38,9 @@ export function useRfiComments(db: Db, projectId: string, rfiId: string) {
 }
 
 export function useAddRfiComment(db: Db | null, projectId: string | undefined) {
-  return async (rfiId: string, body: string, authorName: string) => {
+  return async (rfiId: string, body: string, authorName: string, contentHtml?: string | null) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
-    await rfiCommentsRepository.createLocal(db, projectId, rfiId, body, authorName);
+    await rfiCommentsRepository.createLocal(db, projectId, rfiId, body, authorName, contentHtml);
     // The row is already durable, so a failed push just leaves it queued.
     void flushOutbox(db).catch(() => undefined);
   };
