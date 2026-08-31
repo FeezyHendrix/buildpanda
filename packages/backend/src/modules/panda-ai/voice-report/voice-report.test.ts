@@ -57,6 +57,32 @@ test("classifyTranscript drops actions missing required fields", async () => {
   }
 });
 
+test("classifyTranscript keeps received materials as a ledger entry", async () => {
+  const restore = setJsonTransportForTests(async () => ({
+    content: JSON.stringify({
+      actions: [
+        {
+          kind: "material_log",
+          title: "Cement received",
+          summary: "Log 30 bags of cement received on site",
+          payload: { entryType: "IN", materialName: "cement", quantity: 30, unit: "bags" },
+        },
+      ],
+    }),
+  }));
+
+  try {
+    const actions = await classifyTranscript("received 30 bags of cement");
+    assert.equal(actions.length, 1);
+    const [only] = actions;
+    assert.ok(only);
+    assert.equal(only.kind, "material_log");
+    if (only.kind === "material_log") assert.equal(only.payload.entryType, "IN");
+  } finally {
+    restore();
+  }
+});
+
 test("classifyTranscript short-circuits an empty transcript without calling the model", async () => {
   let called = false;
   const restore = setJsonTransportForTests(async () => {

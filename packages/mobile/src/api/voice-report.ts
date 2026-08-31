@@ -1,34 +1,7 @@
 import { FileSystemUploadType, uploadAsync } from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { API_BASE_URL, authClient } from "@/lib/auth-client";
-import type { UpsertChangeRequestInput } from "./change-requests";
-import type { CreateLookAheadInput } from "./look-aheads";
-import type { CreateMaterialOrderInput } from "./materials";
-import type { UpsertRfiInput } from "./rfis";
-
-/**
- * A single record Panda AI proposes creating from a spoken site update. Every
- * one is reviewed by the crew member before anything is written — voice never
- * creates a contractual record silently.
- *
- * `kind` maps one-to-one onto the offline create repositories, so a confirmed
- * action is enqueued to the outbox exactly like a hand-typed one and survives a
- * dead signal.
- */
-export type ProposedAction =
-  | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
-  | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string } }
-  | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
-  | { kind: "material_order"; title: string; summary: string; payload: CreateMaterialOrderInput }
-  | { kind: "look_ahead"; title: string; summary: string; payload: CreateLookAheadInput };
-
-export type ProposedActionKind = ProposedAction["kind"];
-
-export interface VoiceReport {
-  /** The English transcript Panda AI worked from, shown so the crew can sanity-check it. */
-  transcript: string;
-  actions: ProposedAction[];
-}
+import type { VoiceReport } from "./voice-report-types";
 
 /**
  * Uploads a recording to Panda AI, which transcribes it (Whisper) and returns

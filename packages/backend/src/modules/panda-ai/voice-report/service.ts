@@ -27,6 +27,16 @@ const materialOrderPayload = z.object({
   supplier: z.string().nullish(),
 });
 
+const materialLogPayload = z.object({
+  entryType: z.enum(["IN", "USED"]),
+  materialName: z.string().min(1),
+  quantity: z.number(),
+  unit: z.string().min(1),
+  locationKey: z.string().nullish(),
+  reason: z.string().nullish(),
+  notesHtml: z.string().nullish(),
+});
+
 const lookAheadPayload = z.object({
   name: z.string().min(1),
   description: z.string().nullish(),
@@ -39,6 +49,7 @@ const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("rfi"), title: z.string().min(1), summary: z.string(), payload: rfiPayload }),
   z.object({ kind: z.literal("daily_log"), title: z.string().min(1), summary: z.string(), payload: dailyLogPayload }),
   z.object({ kind: z.literal("change_request"), title: z.string().min(1), summary: z.string(), payload: changeRequestPayload }),
+  z.object({ kind: z.literal("material_log"), title: z.string().min(1), summary: z.string(), payload: materialLogPayload }),
   z.object({ kind: z.literal("material_order"), title: z.string().min(1), summary: z.string(), payload: materialOrderPayload }),
   z.object({ kind: z.literal("look_ahead"), title: z.string().min(1), summary: z.string(), payload: lookAheadPayload }),
 ]);
@@ -51,13 +62,15 @@ Record types you may propose:
 - "rfi": a Request For Information — a question for the design team or client. payload: { subject, question, priority? one of "Low"|"Normal"|"High" }.
 - "daily_log": a note for today's site diary — work done, deliveries, weather, delays, headcount. payload: { bodyText } — one clean sentence, keep first person.
 - "change_request": a change to the contracted scope, cost or programme. payload: { title, description?, reason? }.
-- "material_order": a request to order or deliver materials. payload: { title, materialName, quantity (number), unit, supplier? }. Only propose this if BOTH a material and a quantity were stated.
+- "material_log": an actual material movement already observed on site. Use entryType "IN" for received/delivered/arrived/stocked, and "USED" for consumed/used/installed. payload: { entryType, materialName, quantity (number), unit, locationKey?, reason?, notesHtml? }. Example: "received 30 bags of cement" => material_log IN, NOT material_order.
+- "material_order": a future procurement request — need/order/request/buy/bring materials not yet received. payload: { title, materialName, quantity (number), unit, supplier? }. Only propose this if BOTH a material and a quantity were stated and the speaker is requesting future procurement.
 - "look_ahead": a short-term forward plan for a date range. payload: { name, description?, startDate (YYYY-MM-DD), endDate (YYYY-MM-DD), totalWorkers? }. Only propose this if explicit dates were given.
 
 Rules:
 - Extract every distinct actionable record — one update can yield several.
 - Keep numbers, names, drawing references and measurements exactly as spoken.
 - Never fabricate quantities, dates, suppliers or costs. Omit an optional field rather than guess, and skip a whole action when its required fields were not stated.
+- Material nuance is critical: received/arrived/delivered = material_log IN; used/installed/consumed = material_log USED; need/request/order = material_order.
 - "title" is a short label (max ~8 words). "summary" is a one-line plain-English description of what will be created, for the review card.
 - If nothing actionable was said, return an empty actions array.
 

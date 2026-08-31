@@ -2,7 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, View } from "react-native";
-import { requestVoiceReport, type VoiceReport } from "@/api/voice-report";
+import { requestVoiceReport } from "@/api/voice-report";
+import type { VoiceReport } from "@/api/voice-report-types";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { VoiceActionsReview } from "@/components/molecules/voice-actions-review";
@@ -132,7 +133,7 @@ export default function Capture() {
           <Button onPress={handleConfirm} disabled={count === 0 || phase === "saving"} loading={phase === "saving"}>
             {count === 0
               ? "Select at least one"
-              : `Create ${count} ${count === 1 ? "record" : "records"}`}
+              : `Apply ${count} ${count === 1 ? "action" : "actions"}`}
           </Button>
         }
       >
@@ -155,7 +156,7 @@ export default function Capture() {
         ) : (
           <View className="pt-4">
             <Text tone="secondary" className="pb-3 text-[13px]">
-              Tap to include or exclude. Nothing is created until you confirm.
+              Tap to include or exclude. Nothing is saved or updated until you confirm.
             </Text>
             <VoiceActionsReview actions={report.actions} includedIndexes={included} onToggle={toggle} />
           </View>

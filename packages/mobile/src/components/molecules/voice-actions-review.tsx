@@ -1,16 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ComponentProps } from "react";
 import { Pressable, View } from "react-native";
-import type { ProposedAction, ProposedActionKind } from "@/api/voice-report";
+import type { ProposedAction, ProposedActionKind } from "@/api/voice-report-types";
 import { Card, Text } from "@/components/atoms";
 import { cn } from "@/lib/utils";
 
 const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typeof Ionicons>["name"] }> = {
-  rfi: { label: "RFI", icon: "help-circle-outline" },
-  daily_log: { label: "Daily Log", icon: "clipboard-outline" },
-  change_request: { label: "Change Request", icon: "swap-horizontal-outline" },
-  material_order: { label: "Material Order", icon: "cube-outline" },
-  look_ahead: { label: "Look Ahead", icon: "eye-outline" },
+  rfi: { label: "Raise RFI", icon: "help-circle-outline" },
+  daily_log: { label: "Append Daily Log", icon: "clipboard-outline" },
+  change_request: { label: "Submit Change Request", icon: "swap-horizontal-outline" },
+  material_log: { label: "Log Material Movement", icon: "archive-outline" },
+  material_order: { label: "Request Material", icon: "cube-outline" },
+  look_ahead: { label: "Create Look Ahead", icon: "eye-outline" },
 };
 
 /**
