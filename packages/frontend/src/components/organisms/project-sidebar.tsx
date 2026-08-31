@@ -21,7 +21,7 @@ import type { Project, ProjectAccess } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { useProjectChannels, useAllChannels } from "@/hooks/use-chat";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
+import { useFeatureFlags, useFeatureFlagState } from "@/hooks/use-feature-flags";
 import { useBuildings } from "@/hooks/use-buildings";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 
@@ -99,7 +99,14 @@ function ProjectSidebar({ project, className, access, open = false, onClose, onO
   );
   const isOn = (key?: string) => !key || (enabledKeys.get(key) ?? true);
 
-  const { data: buildingsData = [] } = useBuildings(project.id);
+  // Multi-building is off by default and its /buildings route is flag-gated
+  // (403 when disabled). Fetch only once the flag is known-enabled, so a
+  // disabled feature never triggers the global 403 error toast.
+  const multiBuilding = useFeatureFlagState("projects.multiBuilding");
+  const { data: buildingsData = [] } = useBuildings(
+    project.id,
+    multiBuilding.enabled && !multiBuilding.isLoading,
+  );
   const realBuildings = useMemo(() => buildingsData.filter((b) => b.kind === "real"), [buildingsData]);
 
 

@@ -4,11 +4,11 @@ import { buildingKeys, stageKeys } from "./query-keys";
 
 export type { BuildingInput };
 
-export function useBuildings(projectId: string | undefined) {
+export function useBuildings(projectId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: buildingKeys.list(projectId ?? "__none__"),
     queryFn: () => buildingsApi.list(projectId!),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && enabled,
   });
 }
 
