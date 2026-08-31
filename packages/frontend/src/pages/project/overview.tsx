@@ -8,6 +8,7 @@ import { TourGuide } from "@/components/molecules/tour-guide";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useBuildings } from "@/hooks/use-buildings";
+import { useFeatureFlagState } from "@/hooks/use-feature-flags";
 import { useTour } from "@/hooks/use-tour";
 import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import { useAutoWindow } from "@/hooks/use-look-aheads";
@@ -35,7 +36,11 @@ export default function ProjectOverview() {
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
   const { data: autoWindow } = useAutoWindow(project.id, 4);
-  const { data: buildings = [] } = useBuildings(project.id);
+  const multiBuilding = useFeatureFlagState("projects.multiBuilding");
+  const { data: buildings = [] } = useBuildings(
+    project.id,
+    multiBuilding.enabled && !multiBuilding.isLoading,
+  );
   const realBuildings = buildings.filter((b) => b.kind === "real");
 
   const firstName = (session?.user?.name ?? "").trim().split(" ")[0] || "there";
