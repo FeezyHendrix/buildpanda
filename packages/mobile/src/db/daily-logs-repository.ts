@@ -37,6 +37,7 @@ export function toEntry(row: DailyLogEntryRow) {
     id: row.id,
     authorName: row.authorName,
     bodyText: row.bodyText,
+    bodyHtml: row.bodyHtml,
     voided: row.voided,
     createdAt: row.createdAt,
     isPendingSync: row.isPendingSync,
@@ -210,6 +211,7 @@ export const dailyLogsRepository = {
     logDate: string,
     bodyText: string,
     authorName: string,
+    bodyHtml?: string | null,
   ): Promise<void> {
     const id = `local_${randomUUID()}`;
     await db.transaction(async (tx) => {
@@ -219,6 +221,7 @@ export const dailyLogsRepository = {
         logDate,
         authorName,
         bodyText,
+        bodyHtml: bodyHtml ?? null,
         createdAt: Date.now(),
         isPendingSync: true,
       });
@@ -271,13 +274,14 @@ export const dailyLogsRepository = {
               logDate: day.logDate,
               authorName: entry.authorName,
               bodyText: entry.bodyText ?? "",
+              bodyHtml: entry.bodyHtml,
               voided: entry.voided,
               createdAt: Date.parse(entry.createdAt) || now,
               isPendingSync: false,
             })
             .onConflictDoUpdate({
               target: dailyLogEntries.id,
-              set: { bodyText: entry.bodyText ?? "", voided: entry.voided },
+              set: { bodyText: entry.bodyText ?? "", bodyHtml: entry.bodyHtml, voided: entry.voided },
               where: eq(dailyLogEntries.isPendingSync, false),
             });
         }

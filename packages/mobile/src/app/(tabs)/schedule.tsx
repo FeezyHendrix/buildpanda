@@ -8,8 +8,8 @@ import {
   ActivityRow,
   KeyDateRow,
   StageRow,
-  TimelineRow,
 } from "@/components/molecules/schedule/rows";
+import { GanttChart } from "@/components/molecules/schedule/gantt-chart";
 import { useActivities } from "@/hooks/use-activities";
 import { useKeyDates } from "@/hooks/use-key-dates";
 import { useProject } from "@/hooks/use-projects";
@@ -146,11 +146,7 @@ export default function Schedule() {
           emptyTitle="Nothing to chart"
           emptyBody="Activities with planned dates will appear here as a timeline."
         >
-          {[...(activities.data ?? [])]
-            .sort((a, b) => a.plannedStartAt.localeCompare(b.plannedStartAt))
-            .map((activity) => (
-              <TimelineRow key={activity.id} activity={activity} />
-            ))}
+          <GanttChart activities={activities.data ?? []} />
         </Section>
       ) : null}
     </Page>

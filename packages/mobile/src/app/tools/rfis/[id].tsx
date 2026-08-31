@@ -1,16 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 import type { RfiPriority, RfiStatus } from "@/api/rfis";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useAddRfiComment, useRfiComments } from "@/hooks/use-rfi-comments";
 import { useLocalRfis } from "@/hooks/use-local-rfis";
 import { useSession } from "@/lib/auth-client";
 import { useFieldSession } from "@/lib/field-session";
+import { htmlToText } from "@/lib/html";
 import { cn } from "@/lib/utils";
 
 const STATUS_TONE: Record<RfiStatus, { bg: string; text: string }> = {
@@ -224,19 +226,20 @@ export default function RfiDetail() {
   const { data: session } = useSession();
   const addComment = useAddRfiComment(db, projectId);
 
-  const [body, setBody] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSend = body.trim().length > 0 && !sending;
+  const bodyText = htmlToText(bodyHtml);
+  const canSend = bodyText.length > 0 && !sending;
 
   async function handleSend() {
     if (!canSend || !id) return;
     setSending(true);
     setError(null);
     try {
-      await addComment(id, body.trim(), session?.user.name ?? "You");
-      setBody("");
+      await addComment(id, bodyText, session?.user.name ?? "You", bodyHtml.trim() || null);
+      setBodyHtml("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save that comment.");
     } finally {
@@ -256,14 +259,12 @@ export default function RfiDetail() {
               {error}
             </Text>
           ) : null}
-          <View className="flex-row items-end gap-2">
-            <TextInput
-              value={body}
-              onChangeText={setBody}
+          <View className="gap-2">
+            <RichTextEditor
+              value={bodyHtml}
+              onChange={setBodyHtml}
               placeholder="Add a comment"
-              placeholderTextColor="#ADADAD"
-              multiline
-              className="max-h-28 min-h-12 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+              projectId={projectId}
             />
             <Pressable
               onPress={handleSend}
@@ -272,14 +273,16 @@ export default function RfiDetail() {
               accessibilityLabel="Send comment"
               accessibilityState={{ disabled: !canSend, busy: sending }}
               className={cn(
-                "h-12 w-12 items-center justify-center rounded-xl bg-primary-500",
+                "min-h-12 items-center justify-center rounded-xl bg-primary-500",
                 !canSend && "opacity-50",
               )}
             >
               {sending ? (
                 <Spinner size="xs" tone="current" />
               ) : (
-                <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+                <Text weight="semibold" tone="inverse" className="text-[15px]">
+                  Send response
+                </Text>
               )}
             </Pressable>
           </View>
