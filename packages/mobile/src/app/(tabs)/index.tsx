@@ -170,8 +170,13 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
                   setError(null);
                   try {
                     await cacheDocument(db, projectId, id);
-                  } catch {
-                    setError("Couldn't download that file. Try again when you have signal.");
+                  } catch (err) {
+                    console.error("plan download failed", err);
+                    setError(
+                      err instanceof Error && err.message
+                        ? `Couldn't download that file: ${err.message}`
+                        : "Couldn't download that file. Try again when you have signal.",
+                    );
                   }
                 }}
               />
@@ -185,7 +190,11 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
   const openDoc = async (id: string) => {
     const { documentsRepository } = await import("@/db/documents-repository");
     await documentsRepository.trackAccess(db, id);
-    try { await cacheDocument(db, projectId, id); } catch {}
+    try {
+      await cacheDocument(db, projectId, id);
+    } catch (err) {
+      console.error("recent doc download failed", err);
+    }
   };
 
   return (
