@@ -324,7 +324,13 @@ const authContextPlugin: FastifyPluginAsync = async (fastify) => {
         (method === "GET" && /^\/project-invites\/[^/?]+$/.test(url)) ||
         (method === "GET" && /^\/share\/[^/?]+(\/file)?$/.test(url)) ||
         (method === "POST" && /^\/rfi-reply\/[^/?]+$/.test(url)) ||
-        (method === "POST" && url === "/leads/consultation");
+        (method === "POST" && url === "/leads/consultation") ||
+        // OTA: the app checks for updates before anyone signs in, so the
+        // manifest and its assets cannot sit behind a session. Publishing is
+        // exempt from the session gate but guarded by its own bearer token.
+        (method === "GET" && /^\/ota\/manifest(\?|$)/.test(url)) ||
+        (method === "GET" && /^\/ota\/assets\/[^/?]+\/[^/?]+$/.test(url)) ||
+        (method === "POST" && url === "/ota/publish");
       if (!isPublic) throw new UnauthorizedError();
     }
   });

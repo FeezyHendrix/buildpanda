@@ -37,6 +37,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.2",
     "expo-system-ui": "~57.0.3",
+    "expo-updates": "~57.0.19",
     "expo-web-browser": "~57.0.2",
     "lexical": "^0.49.0",
     "nativewind": "^4.2.6",
