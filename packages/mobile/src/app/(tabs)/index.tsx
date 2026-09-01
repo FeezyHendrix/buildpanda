@@ -28,7 +28,7 @@ function FileRow({
   doc,
   onOpen,
 }: {
-  doc: { id: string; fileName: string; size: string; category: string | null; status: string | null; versionNo: number; isAvailableOffline: boolean };
+  doc: { id: string; fileName: string; size: string; category: string | null; group: DocumentGroup; status: string | null; versionNo: number; isAvailableOffline: boolean };
   onOpen: (id: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -36,7 +36,11 @@ function FileRow({
     <Pressable
       onPress={async () => {
         await onOpen(doc.id);
-        router.push(`/tools/documents/${doc.id}` as never);
+        router.push(
+          (doc.group === "plan"
+            ? `/tools/plan-review?documentId=${doc.id}`
+            : `/tools/documents/${doc.id}`) as never,
+        );
       }}
       accessibilityRole="button"
       className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
