@@ -11,27 +11,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Columns2,
-  Eye,
   EyeOff,
   FileText,
-  Layers,
   Lock,
-  MessageSquare,
   Minus,
-  MoreHorizontal,
   Plus,
   Ruler,
-  Search,
-  Sparkles,
   Square,
-  Star,
   Trash2,
   Unlock,
-  Video,
   X,
 } from "lucide-react";
 import { Spinner } from "@/components/atoms/spinner";
@@ -75,14 +66,12 @@ import {
 import {
   BLEND_MODE,
   BLEND_MODES,
-  CALIBRATED_LABEL,
   KEY,
   NOTE_TYPE,
   PANE,
   PARTICIPANT_ACTIVE,
   POPOVER,
   REC_STATUS,
-  REVISIONS,
   SELECTION_KIND,
   TOOL,
   TOOLS,
@@ -97,12 +86,13 @@ import {
   type Selection,
   type Tool,
 } from "./plan-review/plan-review-types";
-import { IconBtn, Kbd, POP_ITEM_CLS, PopShell } from "./plan-review/plan-review-ui";
+import { IconBtn, Kbd } from "./plan-review/plan-review-ui";
 import { SheetImage } from "./plan-review/plan-review-sheet-image";
 import { SheetPane } from "./plan-review/plan-review-sheet-pane";
 import { ReviewNotesPanel } from "./plan-review/plan-review-notes-panel";
 import { MarkupToolbar } from "./plan-review/plan-review-toolbar";
 import { BlendComparisonPanel } from "./plan-review/plan-review-blend-panel";
+import { WorkspaceHeader } from "./plan-review/plan-review-header";
 import { usePlanRecording } from "./plan-review/use-plan-recording";
 import { useSheetScale } from "./plan-review/use-sheet-scale";
 
@@ -699,243 +689,51 @@ export default function DrawingReviewWorkspace() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-white font-sans text-gray-900">
-      {/* ── Top navigation ── */}
-      <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-[#F0F0F0] bg-white px-3 py-2">
-        <button
-          type="button"
-          onClick={exitWorkspace}
-          title="Exit document review"
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-        >
-          <X size={15} /> Exit
-        </button>
-        <div className="flex items-center">
-          <IconBtn label="Previous sheet" disabled={activeSheetIndex === 0} onClick={() => goToSheet(activeSheetIndex - 1)}>
-            <ChevronLeft size={17} />
-          </IconBtn>
-          <IconBtn
-            label="Next sheet"
-            disabled={activeSheetIndex === sheets.length - 1}
-            onClick={() => goToSheet(activeSheetIndex + 1)}
-          >
-            <ChevronRight size={17} />
-          </IconBtn>
-        </div>
-
-        <div className="flex min-w-0 items-center gap-2">
-          <FileText size={15} className="shrink-0 text-gray-400" />
-          <span className="truncate text-sm font-semibold text-gray-900">
-            {sheet.code} · {sheet.title}
-          </span>
-          <span className="hidden shrink-0 items-center gap-1.5 text-xs text-gray-500 sm:flex">
-            {currentRevision}
-            {sheet.scale ? ` · ${sheet.scale}` : ""}
-            {!sheet.scale && scale.labelFor(sheet.id) === CALIBRATED_LABEL && (
-              <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
-                <Ruler size={10} /> Calibrated
-              </span>
-            )}
-            {!sheet.scale && scale.labelFor(sheet.id) && scale.labelFor(sheet.id) !== CALIBRATED_LABEL && (
-              <span className="flex items-center gap-1 rounded bg-primary-50 px-1.5 py-0.5 font-medium text-primary-700">
-                <Sparkles size={10} /> {scale.labelFor(sheet.id)} from sheet
-              </span>
-            )}
-            {!sheet.scale && !scale.labelFor(sheet.id) && (
-              <span className="flex items-center gap-1 rounded bg-[#F6F6F6] px-1.5 py-0.5 text-gray-500">
-                No scale on sheet — measure, then Calibrate
-              </span>
-            )}
-          </span>
-        </div>
-
-        <div className="ml-auto flex items-center gap-1">
-          <div className="relative">
-            <button
-              type="button"
-              data-popover-trigger
-              aria-haspopup="true"
-              aria-expanded={openPopover === POPOVER.REVISION}
-              title="Select revision"
-              onClick={() => setOpenPopover(openPopover === POPOVER.REVISION ? null : POPOVER.REVISION)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-            >
-              {currentRevision} <ChevronDown size={12} />
-            </button>
-            {openPopover === POPOVER.REVISION && (
-              <PopShell className="right-0 w-36">
-                {(sheet.scale ? REVISIONS : [currentRevision]).map((rev) => (
-                  <button
-                    key={rev}
-                    type="button"
-                    onClick={() => {
-                      setSheetRevisions((r) => ({ ...r, [sheet.id]: rev }));
-                      setOpenPopover(null);
-                    }}
-                    className={cn(POP_ITEM_CLS, "justify-between")}
-                  >
-                    {rev}
-                    {rev === currentRevision ? <Check size={14} className="text-primary-600" /> : null}
-                  </button>
-                ))}
-              </PopShell>
-            )}
-          </div>
-
-          <IconBtn
-            label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-            pressed={isFavorite}
-            onClick={() => setIsFavorite((f) => !f)}
-            className={isFavorite ? "text-amber-500 hover:text-amber-500" : undefined}
-          >
-            <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
-          </IconBtn>
-
-          <div className="relative">
-            <IconBtn
-              label="Search sheets and notes (/)"
-              data-popover-trigger
-              hasPopup
-              expanded={openPopover === POPOVER.SEARCH}
-              onClick={() => setOpenPopover(openPopover === POPOVER.SEARCH ? null : POPOVER.SEARCH)}
-            >
-              <Search size={16} />
-            </IconBtn>
-            {openPopover === POPOVER.SEARCH && (
-              <PopShell className="right-0 w-80 p-3">
-                <div className="flex items-center gap-2 rounded-lg bg-[#F6F6F6] px-2.5 py-2">
-                  <Search size={14} className="shrink-0 text-gray-400" />
-                  <input
-                    ref={searchRef}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === KEY.ESCAPE) {
-                        setSearchQuery("");
-                        setOpenPopover(null);
-                      }
-                    }}
-                    aria-label="Search sheets and markup"
-                    placeholder="Search sheets and markup"
-                    className="w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
-                  />
-                  <Kbd>Esc</Kbd>
-                </div>
-                {!query ? (
-                  <p className="px-1 pt-3 text-xs text-gray-400">Search sheets and markup</p>
-                ) : resultCount === 0 ? (
-                  <p className="px-1 pt-3 text-xs text-gray-500">No results for &ldquo;{searchQuery.trim()}&rdquo;</p>
-                ) : (
-                  <div className="max-h-72 overflow-y-auto pt-2">
-                    <p className="px-1 pb-1 text-[11px] text-gray-500">
-                      {resultCount} result{resultCount === 1 ? "" : "s"}
-                    </p>
-                    {sheetResults.length > 0 && (
-                      <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sheets</p>
-                    )}
-                    {sheetResults.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          goToSheet(s.index);
-                          setOpenPopover(null);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
-                      >
-                        <FileText size={13} className="shrink-0 text-gray-400" />
-                        <span className="font-medium text-gray-900">{s.code}</span>
-                        <span className="truncate text-gray-500">{s.title}</span>
-                      </button>
-                    ))}
-                    {noteResults.length > 0 && (
-                      <p className="px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                        Markup &amp; Notes
-                      </p>
-                    )}
-                    {noteResults.map((n) => (
-                      <button
-                        key={n.id}
-                        type="button"
-                        onClick={() => {
-                          const index = sheets.findIndex((s) => s.id === n.sheetId);
-                          if (index >= 0) goToSheet(index);
-                          setOpenPopover(null);
-                        }}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
-                      >
-                        <MessageSquare size={13} className="shrink-0 text-gray-400" />
-                        <span className="truncate text-gray-600">{n.text}</span>
-                        <span className="ml-auto shrink-0 text-gray-400">
-                          {sheets.find((s) => s.id === n.sheetId)?.code ?? ""}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </PopShell>
-            )}
-          </div>
-
-          <IconBtn
-            label={markupVisible ? "Hide all markup" : "Show all markup"}
-            pressed={markupVisible}
-            onClick={() => setMarkupVisible((v) => !v)}
-          >
-            {markupVisible ? <Eye size={16} /> : <EyeOff size={16} />}
-          </IconBtn>
-
-          <div className="relative">
-            <button
-              type="button"
-              data-popover-trigger
-              aria-haspopup="true"
-              aria-expanded={openPopover === POPOVER.REVIEW_TOOLS}
-              title="Review tools"
-              onClick={() => setOpenPopover(openPopover === POPOVER.REVIEW_TOOLS ? null : POPOVER.REVIEW_TOOLS)}
-              className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-[#F6F6F6]"
-            >
-              <span className="hidden sm:inline">Review Tools</span>
-              <MoreHorizontal size={16} className="sm:hidden" />
-              <ChevronDown size={13} className="hidden sm:inline" />
-            </button>
-            {openPopover === POPOVER.REVIEW_TOOLS && (
-              <PopShell className="right-0 w-56">
-                {canCompare && (
-                  <button type="button" onClick={openBlendPanel} className={POP_ITEM_CLS}>
-                    <Layers size={15} /> Compare Revisions
-                  </button>
-                )}
-                {canCompare && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSplit((s) => ({ ...s, open: !s.open }));
-                      setOpenPopover(null);
-                    }}
-                    className={POP_ITEM_CLS}
-                  >
-                    <Columns2 size={15} /> {split.open ? "Exit Split View" : "Split View"}
-                  </button>
-                )}
-                <button type="button" onClick={recording.start} className={POP_ITEM_CLS}>
-                  <Video size={15} /> Record Walkthrough
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMarkupVisible((v) => !v);
-                    setOpenPopover(null);
-                  }}
-                  className={POP_ITEM_CLS}
-                >
-                  {markupVisible ? <EyeOff size={15} /> : <Eye size={15} />}
-                  {markupVisible ? "Hide Markup" : "Show Markup"}
-                </button>
-              </PopShell>
-            )}
-          </div>
-        </div>
-      </header>
+      <WorkspaceHeader
+        sheet={sheet}
+        currentRevision={currentRevision}
+        scaleLabel={scale.labelFor(sheet.id)}
+        popover={{ open: openPopover, onOpen: setOpenPopover }}
+        nav={{ activeIndex: activeSheetIndex, count: sheets.length, onGo: goToSheet }}
+        revision={{
+          onSelect: (rev) => {
+            setSheetRevisions((r) => ({ ...r, [sheet.id]: rev }));
+            setOpenPopover(null);
+          },
+        }}
+        favorite={{ active: isFavorite, onToggle: () => setIsFavorite((f) => !f) }}
+        markupVisible={markupVisible}
+        onToggleMarkup={() => {
+          setMarkupVisible((v) => !v);
+          setOpenPopover(null);
+        }}
+        compare={{
+          can: canCompare,
+          onBlend: openBlendPanel,
+          splitOpen: split.open,
+          onToggleSplit: () => {
+            setSplit((s) => ({ ...s, open: !s.open }));
+            setOpenPopover(null);
+          },
+        }}
+        search={{
+          query: searchQuery,
+          trimmed: searchQuery.trim(),
+          onQueryChange: setSearchQuery,
+          inputRef: searchRef,
+          sheetResults,
+          noteResults,
+          resultCount,
+          sheetCodeFor: (sheetId) => sheets.find((s) => s.id === sheetId)?.code ?? "",
+          onGoToSheet: goToSheet,
+          onGoToSheetById: (sheetId) => {
+            const index = sheets.findIndex((s) => s.id === sheetId);
+            if (index >= 0) goToSheet(index);
+          },
+        }}
+        onRecordStart={recording.start}
+        onExit={exitWorkspace}
+      />
 
       <MarkupToolbar
         activeTool={activeTool}
