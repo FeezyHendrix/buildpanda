@@ -1,10 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useNetworkState } from "expo-network";
 import { memo, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/atoms";
+import { useSyncState } from "@/lib/sync-provider";
 
 const BACK_ONLINE_MS = 5_000;
 /** Tab bar height, so the banner sits directly on top of it rather than over it. */
@@ -16,8 +16,9 @@ const TAB_BAR_HEIGHT = 49;
  */
 export const ConnectionBanner = memo(function ConnectionBanner() {
   const insets = useSafeAreaInsets();
-  const network = useNetworkState();
-  const isOnline = network.isInternetReachable !== false;
+  // Reads the one connectivity source in the app rather than probing again, so
+  // the banner and the tab-bar sync indicator can never disagree.
+  const { isOnline } = useSyncState();
 
   // Guards the first resolution, otherwise "back online" flashes on every cold
   // start — the app has technically just transitioned into being online.
@@ -25,9 +26,7 @@ export const ConnectionBanner = memo(function ConnectionBanner() {
   const [showBackOnline, setShowBackOnline] = useState(false);
 
   useEffect(() => {
-    if (network.isInternetReachable === undefined) return;
-
-    if (hasResolved.current && network.isInternetReachable) {
+    if (hasResolved.current && isOnline) {
       setShowBackOnline(true);
       const timer = setTimeout(() => setShowBackOnline(false), BACK_ONLINE_MS);
       return () => clearTimeout(timer);
@@ -35,7 +34,7 @@ export const ConnectionBanner = memo(function ConnectionBanner() {
 
     hasResolved.current = true;
     return undefined;
-  }, [network.isInternetReachable]);
+  }, [isOnline]);
 
   if (isOnline && !showBackOnline) return null;
 
