@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
     "build": "tsup src/cluster.ts src/server.ts --format esm --dts",
-    "start": "node dist/cluster.js",
+    "start": "npm run db:migrate && node dist/cluster.js",
     "db:migrate": "tsx ./node_modules/knex/bin/cli.js migrate:latest --knexfile knexfile.ts",
     "db:rollback": "tsx ./node_modules/knex/bin/cli.js migrate:rollback --knexfile knexfile.ts",
     "db:seed": "tsx ./node_modules/knex/bin/cli.js seed:run --knexfile knexfile.ts",
