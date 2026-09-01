@@ -25,6 +25,16 @@ export type UpdateStatus =
   | "Resolved"
   | "Escalated";
 
+// What Panda AI drafts for a project. The audience differs per value: `weekly`
+// is the homeowner-facing client update, `daily` is the internal end-of-day
+// digest written for the build team and never addressed to the client.
+export const AI_UPDATE_CADENCES = ["off", "daily", "weekly", "both"] as const;
+export type AiUpdateCadence = (typeof AI_UPDATE_CADENCES)[number];
+
+// The non-null values of `ProjectUpdate.generatedKind`.
+export const AI_DRAFT_KINDS = ["weekly", "daily"] as const;
+export type AiDraftKind = (typeof AI_DRAFT_KINDS)[number];
+
 export type MediaType = "photo" | "video";
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 export type InspectionStatus = "Action Required" | "Completed" | "Scheduled";

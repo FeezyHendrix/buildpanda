@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import { isEmployeeRole } from "../../lib/permissions.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
+  AiUpdateCadence,
   ProjectPhaseRow,
   ProjectRow,
   ProjectSetup,
@@ -32,7 +33,7 @@ export interface ProjectUpdatePatch {
   budget_min?: number;
   budget_max?: number;
   currency?: CurrencyCode;
-  ai_updates_enabled?: boolean;
+  ai_update_cadence?: AiUpdateCadence;
 }
 
 export interface NewPhaseRecord {
