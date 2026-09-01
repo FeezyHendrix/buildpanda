@@ -1,12 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Linking, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { documentsApi, type DocumentVersion } from "@/api/documents";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { useLocalDb } from "@/db/provider";
-import { cacheDocument } from "@/lib/download-file";
+import { cacheDocument, cacheVersionFile } from "@/lib/download-file";
 import { useFieldSession } from "@/lib/field-session";
 import { cn } from "@/lib/utils";
 
@@ -19,20 +19,32 @@ function VersionRow({
   version,
   projectId,
   documentId,
+  onError,
 }: {
   version: DocumentVersion;
   projectId: string;
   documentId: string;
+  onError: (message: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
 
   async function handleView() {
     setBusy(true);
     try {
-      const { url } = await documentsApi.versionViewUrl(projectId, documentId, version.id);
-      await Linking.openURL(url);
-    } catch {}
-    finally { setBusy(false); }
+      const uri = await cacheVersionFile(projectId, documentId, version.id, version.fileName);
+      router.push(
+        `/tools/documents/view?uri=${encodeURIComponent(uri)}&name=${encodeURIComponent(version.fileName)}` as never,
+      );
+    } catch (err) {
+      console.error("version download failed", err);
+      onError(
+        err instanceof Error && err.message
+          ? `Couldn't open this version: ${err.message}`
+          : "Couldn't open this version. Try again when you have signal.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -74,6 +86,7 @@ export default function DocumentDetail() {
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
   const [loading, setLoading] = useState(true);
   const [caching, setCaching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId || !id) return;
@@ -87,11 +100,15 @@ export default function DocumentDetail() {
   async function handleCacheForOffline() {
     if (!db || !projectId || !id) return;
     setCaching(true);
+    setError(null);
     try {
       await cacheDocument(db, projectId, id);
       const { documentsRepository } = await import("@/db/documents-repository");
       await documentsRepository.trackAccess(db, id);
-    } catch {}
+    } catch (err) {
+      console.error("offline cache failed", err);
+      setError(err instanceof Error && err.message ? err.message : "Couldn't save this document for offline.");
+    }
     finally { setCaching(false); }
   }
 
@@ -111,6 +128,12 @@ export default function DocumentDetail() {
         </Pressable>
       }
     >
+      {error ? (
+        <View className="mb-4 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">{error}</Text>
+        </View>
+      ) : null}
+
       {loading ? (
         <View className="items-center py-12"><Spinner size="md" /></View>
       ) : versions.length === 0 ? (
@@ -122,7 +145,7 @@ export default function DocumentDetail() {
           <Text weight="bold" className="text-base">Version history</Text>
           <Card>
             {versions.map((v) => (
-              <VersionRow key={v.id} version={v} projectId={projectId!} documentId={id!} />
+              <VersionRow key={v.id} version={v} projectId={projectId!} documentId={id!} onError={setError} />
             ))}
           </Card>
         </View>

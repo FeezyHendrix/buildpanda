@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/lib/auth-client";
 import { uploadProjectFile } from "./files";
 import { request } from "./client";
 
@@ -42,11 +43,13 @@ export const documentsApi = {
 
   list: (projectId: string) => request<ProjectDocument[]>(`/projects/${projectId}/documents`),
 
-  /** Presigned URL for a specific version, used to cache the file for offline. */
-  versionViewUrl: (projectId: string, documentId: string, versionId: string) =>
-    request<{ url: string }>(
-      `/projects/${projectId}/documents/${documentId}/versions/${versionId}/view`,
-    ),
+  /**
+   * The version endpoint streams the file bytes (Content-Type of the document,
+   * not JSON), so callers download from this URL with the auth cookie header —
+   * there is no presigned-URL hop.
+   */
+  versionDownloadUrl: (projectId: string, documentId: string, versionId: string) =>
+    `${API_BASE_URL}/projects/${projectId}/documents/${documentId}/versions/${versionId}/view`,
   versions: (projectId: string, documentId: string) =>
     request<DocumentVersion[]>(`/projects/${projectId}/documents/${documentId}/versions`),
 
