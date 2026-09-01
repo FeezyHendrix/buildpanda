@@ -130,6 +130,14 @@ export const config = {
     maxFileBytes: optionalNumber("UPLOAD_MAX_BYTES", 25 * 1024 * 1024),
   },
 
+  // Expo over-the-air updates. An empty publish token disables publishing
+  // entirely rather than leaving the endpoint open, so the feature is inert
+  // until CI is given a token.
+  ota: {
+    publishToken: optional("OTA_PUBLISH_TOKEN", ""),
+    maxAssetBytes: optionalNumber("OTA_MAX_ASSET_BYTES", 64 * 1024 * 1024),
+  },
+
   // Web push (VAPID). When the key pair is empty the feature no-ops: the
   // public-key endpoint returns "" (frontend hides the toggle) and delivery
   // logs instead of sending — mirroring how mail degrades without a token.
