@@ -4,7 +4,29 @@ import type { LogMaterialEntryInput } from "./materials-ledger";
 import type { CreateMaterialOrderInput } from "./materials";
 import type { RfiStatusTransition, UpsertRfiInput } from "./rfis";
 
-export type ProposedAction =
+export type MissingFieldType = "text" | "number" | "date" | "select";
+
+export interface MissingFieldOption {
+  value: string;
+  label: string;
+}
+
+// Mirrors the backend contract: a required field the speaker never said, which
+// the review screen collects before the action may be applied.
+export interface MissingField {
+  name: string;
+  label: string;
+  type: MissingFieldType;
+  options?: MissingFieldOption[];
+}
+
+export interface StageTransitionPayload {
+  stageId: string | null;
+  status: "Pending" | "InProgress" | "Done" | null;
+  buildingId?: string | null;
+}
+
+export type DraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: UpsertRfiInput }
   | { kind: "daily_log"; title: string; summary: string; payload: { bodyText: string } }
   | { kind: "change_request"; title: string; summary: string; payload: UpsertChangeRequestInput }
@@ -60,7 +82,10 @@ export type ProposedAction =
       title: string;
       summary: string;
       payload: { entryId: string; logDate: string; reason: string };
-    };
+    }
+  | { kind: "transition_stage"; title: string; summary: string; payload: StageTransitionPayload };
+
+export type ProposedAction = DraftAction & { missing: MissingField[] };
 
 export type ProposedActionKind = ProposedAction["kind"];
 

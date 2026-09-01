@@ -5,6 +5,7 @@ import { lookAheadsApi } from "@/api/look-aheads";
 import { materialsApi } from "@/api/materials";
 import { materialsLedgerApi } from "@/api/materials-ledger";
 import { rfisApi } from "@/api/rfis";
+import { stagesApi } from "@/api/stages";
 import type { ProposedAction } from "@/api/voice-report-types";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { flushOutbox } from "@/db/outbox";
@@ -112,6 +113,16 @@ export function useApplyProposedAction() {
         case "comment_rfi":
           await addRfiComment(action.payload.rfiId, action.payload.body, user?.name ?? "Field team");
           return;
+        case "transition_stage": {
+          if (!action.payload.stageId || !action.payload.status) {
+            throw new Error("Pick a stage and a status before applying this.");
+          }
+          await stagesApi.update(requireProject(), action.payload.stageId, {
+            status: action.payload.status,
+            ...(action.payload.buildingId ? { buildingId: action.payload.buildingId } : {}),
+          });
+          return;
+        }
         case "comment_change_request":
           await changeRequestsApi.addComment(requireProject(), action.payload.changeRequestId, action.payload.body);
           return;

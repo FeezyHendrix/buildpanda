@@ -42,6 +42,19 @@ interface DelayReasonPick {
   name: string;
 }
 
+interface StagePick {
+  id: string;
+  name: string;
+  status: string;
+  building_id: string;
+}
+
+interface BuildingPick {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 interface LedgerEntryPick {
   id: string;
   entry_type: string;
@@ -70,8 +83,18 @@ export function voiceReportRepository(db: Knex) {
   return {
     async snapshot(projectId: string): Promise<ProjectSnapshot> {
       const today = new Date().toISOString().slice(0, 10);
-      const [rfis, changeRequests, materialOrders, lookAheads, activities, delayReasons, ledgerEntries, todayEntries] =
-        await Promise.all([
+      const [
+        rfis,
+        changeRequests,
+        materialOrders,
+        lookAheads,
+        activities,
+        delayReasons,
+        ledgerEntries,
+        todayEntries,
+        stages,
+        buildings,
+      ] = await Promise.all([
           db<RfiPick>("rfis")
             .where({ project_id: projectId })
             .whereNotIn("status", ["Closed", "Void"])
@@ -109,6 +132,16 @@ export function voiceReportRepository(db: Knex) {
             .orderBy("created_at", "desc")
             .limit(10)
             .select("id", "log_date", "author_name", "body_text"),
+          db<StagePick>("project_phases")
+            .where({ project_id: projectId })
+            .orderBy("sort_order", "asc")
+            .limit(40)
+            .select("id", "name", "status", "building_id"),
+          db<BuildingPick>("buildings")
+            .where({ project_id: projectId, kind: "real" })
+            .orderBy("sort_order", "asc")
+            .limit(20)
+            .select("id", "name", "code"),
         ]);
 
       return {
@@ -144,6 +177,14 @@ export function voiceReportRepository(db: Knex) {
           authorName: e.author_name,
           snippet: (e.body_text ?? "").slice(0, 80),
         })),
+        stages: stages.map((s) => ({
+          id: s.id,
+          name: s.name,
+          status: s.status,
+          buildingId: s.building_id,
+        })),
+        buildings: buildings.map((b) => ({ id: b.id, name: b.name, code: b.code })),
+        today,
       };
     },
   };

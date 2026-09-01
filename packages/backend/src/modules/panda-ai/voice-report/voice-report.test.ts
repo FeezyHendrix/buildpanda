@@ -15,6 +15,12 @@ const SNAPSHOT: ProjectSnapshot = {
   delayReasons: [{ code: "WEATHER", name: "Weather" }],
   ledgerEntries: [{ id: "mle_1", entryType: "IN", materialName: "cement", quantity: 30, unit: "bags" }],
   todayEntries: [{ id: "dle_1", logDate: "2026-08-31", authorName: "Adura", snippet: "Poured the slab" }],
+  stages: [
+    { id: "stg_1", name: "Site Survey & Soil Testing", status: "InProgress", buildingId: "bld_1" },
+    { id: "stg_2", name: "Permitting & Approvals", status: "Pending", buildingId: "bld_1" },
+  ],
+  buildings: [{ id: "bld_1", name: "Block A", code: "A" }],
+  today: "2026-09-01",
 };
 
 test("classifyTranscript maps validated model output to typed actions", async () => {
@@ -170,6 +176,78 @@ test("classifyTranscript short-circuits an empty transcript without calling the 
   try {
     assert.deepEqual(await classifyTranscript("   "), []);
     assert.equal(called, false);
+  } finally {
+    restore();
+  }
+});
+
+test("an under-specified look ahead survives as an action with fields to fill", async () => {
+  const restore = setJsonTransportForTests(async () => ({
+    content: JSON.stringify({
+      actions: [
+        {
+          kind: "look_ahead",
+          title: "Site excavation",
+          summary: "Plan site excavation for tomorrow",
+          payload: { name: "Site excavation", startDate: null, endDate: null },
+        },
+      ],
+    }),
+  }));
+
+  try {
+    const actions = await classifyTranscript("look ahead for tomorrow, site excavation", SNAPSHOT);
+    assert.equal(actions.length, 1, "the action must survive rather than degrade into a daily log");
+    const [action] = actions;
+    assert.ok(action);
+    assert.equal(action.kind, "look_ahead");
+    assert.deepEqual(
+      action.missing.map((f) => f.name).sort(),
+      ["endDate", "startDate"],
+      "both unstated dates are offered to the reviewer",
+    );
+  } finally {
+    restore();
+  }
+});
+
+test("a stage transition resolves a real stage and offers the status picker", async () => {
+  const restore = setJsonTransportForTests(async () => ({
+    content: JSON.stringify({
+      actions: [
+        {
+          kind: "transition_stage",
+          title: "Complete site survey",
+          summary: "Mark Site Survey & Soil Testing as done",
+          payload: { stageId: "stg_1", status: "Done" },
+        },
+        {
+          kind: "transition_stage",
+          title: "Start permitting",
+          summary: "Mark Permitting & Approvals as started",
+          payload: { stageId: "stg_nope", status: null },
+        },
+      ],
+    }),
+  }));
+
+  try {
+    const actions = await classifyTranscript("we finished the site survey, start permitting", SNAPSHOT);
+    assert.equal(actions.length, 2);
+    const [done, invented] = actions;
+    assert.ok(done && invented);
+    if (done.kind === "transition_stage") {
+      assert.equal(done.payload.stageId, "stg_1");
+      assert.deepEqual(done.missing, [], "a fully stated transition needs nothing from the reviewer");
+    }
+    if (invented.kind === "transition_stage") {
+      assert.equal(invented.payload.stageId, null, "an invented stage id is cleared, not trusted");
+      const names = invented.missing.map((f) => f.name).sort();
+      assert.deepEqual(names, ["stageId", "status"]);
+      const stagePicker = invented.missing.find((f) => f.name === "stageId");
+      assert.equal(stagePicker?.type, "select");
+      assert.equal(stagePicker?.options?.length, 2, "the picker offers the project's real stages");
+    }
   } finally {
     restore();
   }

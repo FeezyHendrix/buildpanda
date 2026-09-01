@@ -3,7 +3,14 @@ import { BadRequestError } from "../../../lib/errors.ts";
 import { chatJson } from "../../../lib/llm.ts";
 import { logger } from "../../../lib/logger.ts";
 import { translateAudioToEnglish } from "../../../lib/speech.ts";
-import type { ProjectSnapshot, ProposedAction, VoiceReport } from "./types.ts";
+import type {
+  DraftAction,
+  MissingField,
+  MissingFieldOption,
+  ProjectSnapshot,
+  ProposedAction,
+  VoiceReport,
+} from "./types.ts";
 
 const priority = z.enum(["Low", "Normal", "High"]);
 
@@ -39,12 +46,20 @@ const materialLogPayload = z.object({
   notesHtml: z.string().nullish(),
 });
 
+// startDate/endDate/buildingId are nullable so an action the speaker described
+// but under-specified still reaches the reviewer, who fills the gap in the app.
 const lookAheadPayload = z.object({
   name: z.string().min(1),
   description: z.string().nullish(),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
+  startDate: z.string().min(1).nullish(),
+  endDate: z.string().min(1).nullish(),
   totalWorkers: z.number().nullish(),
+  buildingId: z.string().min(1).nullish(),
+});
+
+const stageTransitionPayload = z.object({
+  stageId: z.string().min(1).nullish(),
+  status: z.enum(["Pending", "InProgress", "Done"]).nullish(),
 });
 
 const rfiUpdatePayload = z.object({
@@ -129,6 +144,13 @@ const ledgerVoidPayload = z.object({ entryId: z.string().min(1), reason: z.strin
 
 const dailyLogEntryVoidPayload = z.object({ entryId: z.string().min(1), reason: z.string().min(1) });
 
+const STAGE_STATUSES = ["Pending", "InProgress", "Done"] as const;
+const STAGE_STATUS_LABEL: Record<(typeof STAGE_STATUSES)[number], string> = {
+  Pending: "Not started",
+  InProgress: "Started",
+  Done: "Completed",
+};
+
 const base = { title: z.string().min(1), summary: z.string() };
 
 const actionSchema = z.discriminatedUnion("kind", [
@@ -152,6 +174,7 @@ const actionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("comment_change_request"), ...base, payload: changeRequestCommentPayload }),
   z.object({ kind: z.literal("void_ledger_entry"), ...base, payload: ledgerVoidPayload }),
   z.object({ kind: z.literal("void_daily_log_entry"), ...base, payload: dailyLogEntryVoidPayload }),
+  z.object({ kind: z.literal("transition_stage"), ...base, payload: stageTransitionPayload }),
 ]);
 
 const envelopeSchema = z.object({ actions: z.array(z.unknown()) });
@@ -167,6 +190,9 @@ const EMPTY_SNAPSHOT: ProjectSnapshot = {
   delayReasons: [],
   ledgerEntries: [],
   todayEntries: [],
+  stages: [],
+  buildings: [],
+  today: new Date().toISOString().slice(0, 10),
 };
 
 const CLASSIFY_SYSTEM = `You convert a spoken site update from a construction crew member into the field actions they are asking for. You draft for review — a human confirms every action before it runs — so extract exactly what was said and never invent details.
@@ -177,7 +203,8 @@ CREATE actions:
 - "change_request": a change to contracted scope, cost or programme. payload { title, description?, reason? }.
 - "material_log": a material movement that ALREADY HAPPENED on site. entryType "IN" = received/delivered/arrived; "USED" = consumed/installed. payload { entryType, materialName, quantity, unit, locationKey?, reason? }. "received 30 bags of cement" => material_log IN, never material_order.
 - "material_order": FUTURE procurement — need/order/request/buy. payload { title, materialName, quantity, unit, supplier? }. Only when material AND quantity were stated and it is a request, not a receipt.
-- "look_ahead": a forward plan for a date range. payload { name, description?, startDate YYYY-MM-DD, endDate YYYY-MM-DD, totalWorkers? }. Only with explicit dates.
+- "look_ahead": a forward plan for a date range. payload { name, description?, startDate YYYY-MM-DD, endDate YYYY-MM-DD, totalWorkers?, buildingId? }. Resolve relative dates against TODAY; set a date to null only if none can be worked out.
+- "transition_stage": start or complete a build stage ("we've started/finished X"). payload { stageId, status "InProgress" (started) | "Done" (completed) | "Pending", buildingId? }. stageId MUST come from the stage list below; set it to null if no stage clearly matches.
 
 UPDATE / DELETE actions — allowed ONLY against the EXISTING RECORDS list below; copy the id exactly:
 - "update_rfi": payload { rfiId, patch { subject?, question?, priority?, dueDate? } }.
@@ -198,16 +225,20 @@ UPDATE / DELETE actions — allowed ONLY against the EXISTING RECORDS list below
 Rules:
 - Extract every distinct action — one update can yield several.
 - Keep numbers, names, drawing references and measurements exactly as spoken.
-- Never fabricate quantities, dates, suppliers, costs or ids. Skip an action whose required fields were not stated.
+- Never fabricate quantities, dates, suppliers, costs or ids. If a required field was not stated and cannot be worked out, set it to null and STILL propose the action — the reviewer is shown the blank fields and fills them in. Do not downgrade a request into a daily_log just because a detail is missing.
 - Material nuance: received/arrived/delivered = material_log IN; used/installed/consumed = material_log USED; need/request/order = material_order; "change/cancel the order" = update_material_order/delete_material_order.
-- Only propose an update or delete when the speech clearly refers to one record in EXISTING RECORDS; if nothing matches, fall back to a daily_log note of what was said.
+- Only propose an update or delete when the speech clearly refers to one record in EXISTING RECORDS; if nothing matches, fall back to a daily_log note of what was said. This fallback is for updates to records that do not exist — never for a create whose fields are merely incomplete.
 - "title" is a short label (max ~8 words). "summary" is one plain-English line describing what will happen, for the review card.
 - If nothing actionable was said, return an empty actions array.
 
 Return JSON exactly: { "actions": [ { "kind", "title", "summary", "payload" } ] }`;
 
 function snapshotPrompt(snapshot: ProjectSnapshot): string {
-  const lines: string[] = ["EXISTING RECORDS (the only valid update/delete targets):"];
+  const lines: string[] = [
+    `TODAY: ${snapshot.today}. Resolve every relative date ("today", "tomorrow", "next Monday") against it and output YYYY-MM-DD.`,
+    "",
+    "EXISTING RECORDS (the only valid update/delete targets):",
+  ];
   for (const r of snapshot.rfis) lines.push(`- rfi ${r.id} — RFI-${r.number} "${r.subject}" (${r.status})`);
   for (const c of snapshot.changeRequests) lines.push(`- change_request ${c.id} — "${c.title}" (${c.status})`);
   for (const m of snapshot.materialOrders)
@@ -219,7 +250,10 @@ function snapshotPrompt(snapshot: ProjectSnapshot): string {
     lines.push(`- ledger_entry ${e.id} — ${e.entryType} ${e.quantity} ${e.unit} of ${e.materialName}`);
   for (const e of snapshot.todayEntries)
     lines.push(`- diary_entry ${e.id} — ${e.authorName}: "${e.snippet}"`);
-  if (lines.length === 1) lines.push("- none");
+  for (const s of snapshot.stages)
+    lines.push(`- stage ${s.id} — "${s.name}" (${s.status}) building ${s.buildingId}`);
+  for (const b of snapshot.buildings)
+    lines.push(`- building ${b.id} — "${b.name}"${b.code ? ` (${b.code})` : ""}`);
 
   if (snapshot.delayReasons.length > 0) {
     lines.push("", "DELAY REASONS (the only valid delayReasonCode values):");
@@ -231,7 +265,7 @@ function snapshotPrompt(snapshot: ProjectSnapshot): string {
 // Update/delete/log actions must reference a record from the snapshot; a target
 // the model invented is dropped here. Fields the model must not author
 // (activityName, logDate) are injected from the snapshot at the same time.
-function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot): ProposedAction | null {
+function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot): DraftAction | null {
   switch (action.kind) {
     case "update_rfi":
     case "transition_rfi":
@@ -269,9 +303,83 @@ function normalizeAction(action: ParsedAction, snapshot: ProjectSnapshot): Propo
         },
       };
     }
+    case "transition_stage": {
+      // An invented stage id is cleared rather than dropping the action, so the
+      // reviewer is offered the stage picker instead of losing the request.
+      const known = snapshot.stages.some((s) => s.id === action.payload.stageId);
+      return known ? action : { ...action, payload: { ...action.payload, stageId: null } };
+    }
     default:
       return action;
   }
+}
+
+const BUILDING_SCOPED_KINDS = new Set(["look_ahead", "transition_stage"]);
+
+function requiredFields(action: DraftAction): MissingField[] {
+  switch (action.kind) {
+    case "look_ahead":
+      return [
+        { name: "name", label: "Name", type: "text" },
+        { name: "startDate", label: "Start date", type: "date" },
+        { name: "endDate", label: "End date", type: "date" },
+      ];
+    case "transition_stage":
+      return [
+        { name: "stageId", label: "Stage", type: "select" },
+        { name: "status", label: "New status", type: "select" },
+      ];
+    case "material_log":
+      return [
+        { name: "materialName", label: "Material", type: "text" },
+        { name: "quantity", label: "Quantity", type: "number" },
+        { name: "unit", label: "Unit", type: "text" },
+      ];
+    case "material_order":
+      return [
+        { name: "materialName", label: "Material", type: "text" },
+        { name: "quantity", label: "Quantity", type: "number" },
+        { name: "unit", label: "Unit", type: "text" },
+      ];
+    default:
+      return [];
+  }
+}
+
+function optionsFor(name: string, action: DraftAction, snapshot: ProjectSnapshot): MissingFieldOption[] {
+  if (name === "buildingId") {
+    return snapshot.buildings.map((b) => ({ value: b.id, label: b.code ? `${b.name} (${b.code})` : b.name }));
+  }
+  if (name === "status") {
+    return STAGE_STATUSES.map((s) => ({ value: s, label: STAGE_STATUS_LABEL[s] }));
+  }
+  // Stage options narrow to the chosen building so a picker can never offer a
+  // stage from a different block.
+  const chosen = (action.payload as { buildingId?: string | null }).buildingId ?? null;
+  return snapshot.stages
+    .filter((s) => !chosen || s.buildingId === chosen)
+    .map((s) => ({ value: s.id, label: `${s.name} — ${s.status}` }));
+}
+
+/**
+ * Required fields the speaker never supplied, which the review screen collects
+ * before the action may be applied. buildingId is added only when the project
+ * has more than one building, because that is the case the API refuses.
+ */
+function computeMissing(action: DraftAction, snapshot: ProjectSnapshot): MissingField[] {
+  const payload = action.payload as Record<string, unknown>;
+  const missing = requiredFields(action).filter((field) => {
+    const value = payload[field.name];
+    return value === null || value === undefined || value === "";
+  });
+
+  if (BUILDING_SCOPED_KINDS.has(action.kind) && snapshot.buildings.length > 1 && !payload["buildingId"]) {
+    missing.unshift({ name: "buildingId", label: "Building", type: "select" });
+  }
+
+  return missing.map((field) =>
+    field.type === "select" ? { ...field, options: optionsFor(field.name, action, snapshot) } : field,
+  );
 }
 
 export async function classifyTranscript(
@@ -296,7 +404,7 @@ export async function classifyTranscript(
     const parsed = actionSchema.safeParse(candidate);
     if (!parsed.success) continue;
     const normalized = normalizeAction(parsed.data, snapshot);
-    if (normalized) actions.push(normalized);
+    if (normalized) actions.push({ ...normalized, missing: computeMissing(normalized, snapshot) });
   }
   return actions;
 }
