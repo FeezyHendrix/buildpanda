@@ -21,6 +21,10 @@ import { SyncProvider } from "@/lib/sync-provider";
 
 void SplashScreen.preventAutoHideAsync();
 
+// Without an anchor the root stack has no route beneath `capture`, so a reload
+// or deep link can surface the capture modal with nothing to go back to.
+export const unstable_settings = { initialRouteName: "index" };
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
