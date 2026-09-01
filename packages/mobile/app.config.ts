@@ -21,7 +21,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       url: `${apiUrl}/ota/manifest`,
       enabled: true,
       checkAutomatically: "ON_LOAD",
-      fallbackToCacheTimeout: 5000,
+      // Never block launch on the network: crews start the app on sites with no
+      // signal. The cached bundle launches immediately and a new one is fetched
+      // in the background for the next cold start.
+      fallbackToCacheTimeout: 0,
     },
   };
 };
