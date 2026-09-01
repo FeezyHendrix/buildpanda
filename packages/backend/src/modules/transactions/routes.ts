@@ -97,7 +97,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "view",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -111,7 +111,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "view",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -125,7 +125,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "view",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -139,7 +139,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "manage",
       );
       const user = request.requireAuth();
@@ -155,7 +155,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -170,8 +170,8 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
-        "export",
+        "finances",
+        "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       const csv = await service.exportCsv(project.id, orgId, toFilters(request.query));
@@ -189,7 +189,7 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
+        "finances",
         "view",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -203,8 +203,8 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
-        "create",
+        "finances",
+        "manage",
       );
       const user = request.requireAuth();
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
@@ -222,8 +222,8 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
-        "edit",
+        "finances",
+        "manage",
       );
       const orgId = project.organization_id ?? project.owner_id ?? project.id;
       return service.edit(
@@ -241,8 +241,8 @@ const transactionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const project = await request.requireProjectPermission(
         request.params.id,
-        "transactions",
-        "delete",
+        "finances",
+        "manage",
       );
       await service.remove(project.id, request.params.transactionId);
       return reply.status(204).send();
