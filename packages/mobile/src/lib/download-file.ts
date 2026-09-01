@@ -2,7 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 import { documentsApi } from "@/api/documents";
 import type { Db } from "@/db/client";
-import { authClient } from "./auth-client";
+import { API_BASE_URL, authClient } from "./auth-client";
 import { documentsRepository } from "@/db/documents-repository";
 
 const CACHE_DIR_NAME = "offline-docs";
@@ -37,6 +37,17 @@ export async function cacheVersionFile(
   if (destination.exists) return destination.uri;
   const url = documentsApi.versionDownloadUrl(projectId, documentId, versionId);
   const downloaded = await File.downloadFileAsync(url, destination, {
+    headers: authHeaders(),
+    idempotent: true,
+  });
+  return downloaded.uri;
+}
+
+/** Downloads an uploaded file (comment media, attachments) and returns its local URI. */
+export async function cacheFileById(fileId: string, fileName: string): Promise<string> {
+  const destination = new File(cacheDir(), `${fileId}${extensionOf(fileName)}`);
+  if (destination.exists) return destination.uri;
+  const downloaded = await File.downloadFileAsync(`${API_BASE_URL}/files/${fileId}/download`, destination, {
     headers: authHeaders(),
     idempotent: true,
   });

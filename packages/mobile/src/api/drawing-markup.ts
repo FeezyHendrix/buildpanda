@@ -3,13 +3,11 @@ import type {
   MarkupKind,
   MarkupPoint,
   MarkupRect,
+  MediaKind,
 } from "@/components/plan-review/markup-types";
 import { request } from "./client";
 
-export type { MarkupGeometry, MarkupKind, MarkupPoint, MarkupRect };
-
-export const MEDIA_KINDS = ["audio", "video"] as const;
-export type MediaKind = (typeof MEDIA_KINDS)[number];
+export type { MarkupGeometry, MarkupKind, MarkupPoint, MarkupRect, MediaKind };
 
 export interface DrawingMarkupComment {
   id: string;

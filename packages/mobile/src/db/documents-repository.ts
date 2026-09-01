@@ -6,8 +6,13 @@ import { documentCategories, documents, type DocumentCategoryRow, type DocumentR
 /** Matches the web: two groups, no media tab. */
 export type DocumentGroup = "plan" | "document";
 
+export const DOCUMENT_GROUP = {
+  PLAN: "plan",
+  DOCUMENT: "document",
+} as const satisfies Record<string, DocumentGroup>;
+
 export function groupOf(row: { group: string }): DocumentGroup {
-  return row.group === "plan" ? "plan" : "document";
+  return row.group === DOCUMENT_GROUP.PLAN ? DOCUMENT_GROUP.PLAN : DOCUMENT_GROUP.DOCUMENT;
 }
 
 export function toDocument(row: DocumentRow) {
@@ -32,7 +37,7 @@ export function toCategory(row: DocumentCategoryRow) {
     fileCount: row.fileCount,
     totalSize: row.totalSize,
     tone: row.tone,
-    group: row.group === "plan" ? ("plan" as const) : ("document" as const),
+    group: row.group === DOCUMENT_GROUP.PLAN ? DOCUMENT_GROUP.PLAN : DOCUMENT_GROUP.DOCUMENT,
   };
 }
 

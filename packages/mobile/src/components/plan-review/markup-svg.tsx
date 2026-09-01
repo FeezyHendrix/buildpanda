@@ -1,4 +1,4 @@
-import type { MarkupPoint, SheetMarkup } from "./markup-types";
+import { MARKUP_KIND, type MarkupPoint, type SheetMarkup } from "./markup-types";
 
 function toPx(p: MarkupPoint, w: number, h: number): { x: number; y: number } {
   return { x: (p.x / 100) * w, y: (p.y / 100) * h };
@@ -24,14 +24,14 @@ export function hitTestMarkup(
   for (const m of markups) {
     let dist = Number.POSITIVE_INFINITY;
     const g = m.geometry;
-    if (g.kind === "pin") {
+    if (g.kind === MARKUP_KIND.PIN) {
       dist = Math.hypot(pt.x - toPx(g.at, w, h).x, pt.y - toPx(g.at, w, h).y);
-    } else if (g.kind === "pen") {
+    } else if (g.kind === MARKUP_KIND.PEN) {
       for (let i = 1; i < g.points.length; i++) {
         dist = Math.min(dist, distToSegment(pt, toPx(g.points[i - 1], w, h), toPx(g.points[i], w, h)));
       }
       if (g.points.length === 1) dist = Math.hypot(pt.x - toPx(g.points[0], w, h).x, pt.y - toPx(g.points[0], w, h).y);
-    } else if (g.kind === "cloud") {
+    } else if (g.kind === MARKUP_KIND.CLOUD) {
       const x = (g.rect.x / 100) * w;
       const y = (g.rect.y / 100) * h;
       const rw = (g.rect.w / 100) * w;
@@ -65,6 +65,7 @@ export function MarkupLayer({
   markups,
   draftPen,
   draftRect,
+  draftPin,
   width,
   height,
   selectedId,
@@ -72,6 +73,7 @@ export function MarkupLayer({
   markups: SheetMarkup[];
   draftPen: MarkupPoint[] | null;
   draftRect: { x: number; y: number; w: number; h: number } | null;
+  draftPin: MarkupPoint | null;
   width: number;
   height: number;
   selectedId: string | null;
@@ -86,10 +88,10 @@ export function MarkupLayer({
       {markups.map((m) => {
         const selected = m.id === selectedId;
         const g = m.geometry;
-        if (g.kind === "pin") {
+        if (g.kind === MARKUP_KIND.PIN) {
           return <PinShape key={m.id} at={g.at} color={m.color} selected={selected} resolved={m.resolved} w={width} h={height} />;
         }
-        if (g.kind === "pen") {
+        if (g.kind === MARKUP_KIND.PEN) {
           return (
             <polyline
               key={m.id}
@@ -103,7 +105,7 @@ export function MarkupLayer({
             />
           );
         }
-        if (g.kind === "cloud") {
+        if (g.kind === MARKUP_KIND.CLOUD) {
           return (
             <rect
               key={m.id}
@@ -132,6 +134,9 @@ export function MarkupLayer({
         );
       })}
 
+      {draftPin ? (
+        <PinShape at={draftPin} color="#004DE7" selected resolved={false} w={width} h={height} />
+      ) : null}
       {draftPen && draftPen.length > 1 ? (
         <polyline
           points={points(draftPen, width, height)}

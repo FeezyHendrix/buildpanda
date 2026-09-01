@@ -9,7 +9,7 @@ import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segment
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
-import type { DocumentGroup } from "@/db/documents-repository";
+import { DOCUMENT_GROUP, type DocumentGroup } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useDocumentCategories, useLocalDocuments, useRecentDocuments } from "@/hooks/use-local-documents";
 import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 
 /** Two groups, matching the web — no invented Media tab. */
 const GROUPS: readonly SegmentedTab<DocumentGroup>[] = [
-  { key: "plan", label: "Plans" },
-  { key: "document", label: "Documents" },
+  { key: DOCUMENT_GROUP.PLAN, label: "Plans" },
+  { key: DOCUMENT_GROUP.DOCUMENT, label: "Documents" },
 ] as const;
 
 function FileRow({
@@ -37,7 +37,7 @@ function FileRow({
       onPress={async () => {
         await onOpen(doc.id);
         router.push(
-          (doc.group === "plan"
+          (doc.group === DOCUMENT_GROUP.PLAN
             ? `/tools/plan-review?documentId=${doc.id}`
             : `/tools/documents/${doc.id}`) as never,
         );
@@ -211,7 +211,7 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
             Nothing here yet
           </Text>
           <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            {group === "plan"
+            {group === DOCUMENT_GROUP.PLAN
               ? "Drawings uploaded to this project will appear here."
               : "Project documents will appear here."}
           </Text>
@@ -239,7 +239,7 @@ export default function Plans() {
   const { data: project } = useProject(projectId);
   const setActive = useSetActiveOrganization();
 
-  const [group, setGroup] = useState<DocumentGroup>("plan");
+  const [group, setGroup] = useState<DocumentGroup>(DOCUMENT_GROUP.PLAN);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | undefined>(undefined);
 
