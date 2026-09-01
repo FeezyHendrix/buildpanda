@@ -304,7 +304,6 @@ const SECTION_MAP: Record<
   "commercial.invoices": { resource: "finances", view: ["view"], edit: ["view"] },
   "commercial.paymentClaims": { resource: "finances", view: ["view"], edit: ["view"] },
   "commercial.purchaseOrders": { resource: "finances", view: ["view"], edit: ["view"] },
-  "commercial.transactions": { resource: "transactions", view: ["view"], edit: ["view", "create", "delete", "export"] },
   "commercial.materialsEquipment": { resource: "materials", view: ["view"], edit: ["view", "request"] },
   "commercial.materialsLedger": { resource: "materials", view: ["view", "report"], edit: ["view", "report"] },
   "workflow.rfis": { resource: "rfis", view: ["view"], edit: ["view", "create", "respond"], editExtra: { comments: ["view", "post"] } },

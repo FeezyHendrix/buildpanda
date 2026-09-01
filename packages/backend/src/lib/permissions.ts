@@ -11,8 +11,10 @@ export const statement = {
   // Construction suite
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
+  // Governs the WHOLE finance surface, expenses/receipts included — they had a
+  // separate `transactions` resource until the model was unified. Reading an
+  // expense is finances:view; writing or exporting one is finances:manage.
   finances: ["view", "manage", "approve", "dispute"],
-  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
   stages: ["view", "manage"],
   buildings: ["view", "manage"],
@@ -50,7 +52,6 @@ const constructionFull = {
   project: ["create", "update", "delete", "view"],
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "approve", "dispute"],
-  transactions: ["view", "create", "edit", "delete", "export", "manage"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "delete", "markup"],
   inspections: ["view", "request", "manage"],
@@ -81,7 +82,6 @@ const constructionContributor = {
   project: ["view"],
   tasks: ["view", "add", "remove"],
   finances: ["view", "manage", "dispute"],
-  transactions: ["view", "create", "edit", "export"],
   schedule: ["view", "manage"],
   documents: ["view", "upload", "markup"],
   inspections: ["view", "request", "manage"],
@@ -112,7 +112,6 @@ const constructionReadOnly = {
   project: ["view"],
   tasks: ["view"],
   finances: ["view"],
-  transactions: ["view"],
   schedule: ["view"],
   documents: ["view"],
   inspections: ["view"],
