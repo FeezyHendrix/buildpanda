@@ -1,20 +1,31 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { View, useWindowDimensions } from "react-native";
 import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
+import { uploadProjectFile } from "@/api/files";
+import { participantsApi, toAssignees, type CommentAssignee } from "@/api/participants";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { CommentComposer } from "@/components/plan-review/comment-composer";
 import { MarkupPanel } from "@/components/plan-review/markup-panel";
-import type {
-  MarkupGeometry,
-  SheetMarkup,
-  SheetRenderInfo,
-  SheetTool,
+import {
+  MARKUP_KIND,
+  MEDIA_KIND,
+  SHEET_TOOL,
+  type CommentDraft,
+  type MarkupGeometry,
+  type MarkupPoint,
+  type SheetMarkup,
+  type SheetRenderInfo,
+  type SheetTool,
 } from "@/components/plan-review/markup-types";
+import { ReviewToolbar, ToolHint } from "@/components/plan-review/review-toolbar";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
+import { SheetStrip } from "@/components/plan-review/sheet-strip";
+import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
+import { DOCUMENT_GROUP } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useLocalDocuments } from "@/hooks/use-local-documents";
 import { cacheDocument } from "@/lib/download-file";
@@ -29,12 +40,8 @@ const IMAGE_MIME: Record<string, string> = {
   bmp: "image/bmp",
 };
 
-const TOOLS: { key: SheetTool; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { key: "navigate", icon: "move-outline", label: "Move" },
-  { key: "pin", icon: "location-outline", label: "Pin" },
-  { key: "pen", icon: "pencil-outline", label: "Draw" },
-  { key: "cloud", icon: "square-outline", label: "Cloud" },
-];
+const VOICE_NOTE_FILE = { name: "voice-note.m4a", mime: "audio/m4a" } as const;
+const VIDEO_NOTE_FILE = { name: "site-video.mov", mime: "video/quicktime" } as const;
 
 function extensionOf(fileName: string): string {
   return fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -63,7 +70,9 @@ export default function PlanReview() {
 
 function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   const { documentId } = useLocalSearchParams<{ documentId?: string }>();
-  const plans = useLocalDocuments(db, projectId, "plan");
+  const plans = useLocalDocuments(db, projectId, DOCUMENT_GROUP.PLAN);
+  const { width, height } = useWindowDimensions();
+  const sidePanel = width > height && width >= TabletMinWidth;
 
   const sheets = useMemo(
     () => plans.data.filter((doc) => doc.currentVersionId),
@@ -77,9 +86,11 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   );
 
   const [pageNo, setPageNo] = useState(1);
-  const [tool, setTool] = useState<SheetTool>("navigate");
+  const [tool, setTool] = useState<SheetTool>(SHEET_TOOL.PAN);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pendingAnchor, setPendingAnchor] = useState<MarkupPoint | null>(null);
   const [markups, setMarkups] = useState<DrawingMarkup[]>([]);
+  const [assignees, setAssignees] = useState<CommentAssignee[]>([]);
   const [source, setSource] = useState<SheetSource | null>(null);
   const [renderInfo, setRenderInfo] = useState<SheetRenderInfo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -137,6 +148,19 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     };
   }, [projectId, versionId, pageNo]);
 
+  useEffect(() => {
+    let cancelled = false;
+    participantsApi
+      .list(projectId)
+      .then((rows) => {
+        if (!cancelled) setAssignees(toAssignees(rows));
+      })
+      .catch((err: unknown) => console.error("participants load failed", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
   const canvasMarkups = useMemo<SheetMarkup[]>(
     () =>
       markups.map((m) => ({
@@ -158,11 +182,12 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     setActiveDocId(id);
     setPageNo(1);
     setSelectedId(null);
+    setPendingAnchor(null);
     setMarkups([]);
     setError(null);
   }
 
-  async function handleCreate(geometry: MarkupGeometry) {
+  async function persistMarkup(geometry: MarkupGeometry) {
     if (!sheetId || !versionId) return;
     setBusy(true);
     setError(null);
@@ -179,6 +204,42 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     } catch (err) {
       console.error("markup create failed", err);
       setError(err instanceof Error && err.message ? err.message : "Couldn't save that markup.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitComment(draft: CommentDraft) {
+    if (!sheetId || !versionId || !pendingAnchor) return;
+    setBusy(true);
+    setError(null);
+    try {
+      let fileId: string | null = null;
+      if (draft.mediaUri && draft.mediaKind) {
+        const media = draft.mediaKind === MEDIA_KIND.AUDIO ? VOICE_NOTE_FILE : VIDEO_NOTE_FILE;
+        const uploaded = await uploadProjectFile(projectId, draft.mediaUri, media.name, media.mime);
+        fileId = uploaded.id;
+      }
+      const created = await drawingMarkupApi.create(projectId, {
+        documentId: sheetId,
+        documentVersionId: versionId,
+        pageNo,
+        kind: MARKUP_KIND.PIN,
+        geometry: { kind: MARKUP_KIND.PIN, at: pendingAnchor },
+      });
+      const comment = await drawingMarkupApi.addComment(projectId, created.id, {
+        body: draft.text,
+        mediaKind: draft.mediaKind,
+        fileId,
+        mediaDurationSeconds: draft.mediaDurationSeconds,
+        assigneeId: draft.assigneeId,
+      });
+      setMarkups((prev) => [...prev, { ...created, comments: [comment] }]);
+      setPendingAnchor(null);
+      setSelectedId(created.id);
+    } catch (err) {
+      console.error("comment create failed", err);
+      setError(err instanceof Error && err.message ? err.message : "Couldn't save that comment.");
     } finally {
       setBusy(false);
     }
@@ -232,8 +293,6 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     }
   }
 
-  const pageCount = renderInfo?.pageCount ?? 1;
-
   if (sheets.length === 0) {
     return (
       <Page title="Plan review" onBack={() => router.back()} scroll={false}>
@@ -249,76 +308,43 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     );
   }
 
+  const sidebar = pendingAnchor ? (
+    <CommentComposer
+      assignees={assignees}
+      busy={busy}
+      onCancel={() => setPendingAnchor(null)}
+      onSubmit={(draft) => void submitComment(draft)}
+    />
+  ) : selected ? (
+    <MarkupPanel
+      markup={selected}
+      busy={busy}
+      onAddComment={(body) => void handleAddComment(body)}
+      onResolve={(resolved) => void handleResolve(resolved)}
+      onDelete={() => void handleDelete()}
+      onClose={() => setSelectedId(null)}
+      onError={setError}
+    />
+  ) : (
+    <ToolHint tool={tool} />
+  );
+
   return (
     <Page title={fileName || "Plan review"} onBack={() => router.back()} scroll={false} className="px-0 pb-0 pt-0">
       <View className="flex-1">
-        <View className="flex-row items-center gap-2 border-b border-hairline bg-surface px-4 py-2">
-          {TOOLS.map((t) => {
-            const active = tool === t.key;
-            return (
-              <Pressable
-                key={t.key}
-                onPress={() => setTool(t.key)}
-                accessibilityRole="button"
-                accessibilityLabel={t.label}
-                className={`h-11 flex-row items-center gap-1.5 rounded-full px-3.5 ${active ? "bg-primary-500" : "bg-surface-alt"}`}
-              >
-                <Ionicons name={t.icon} size={17} color={active ? "#FFFFFF" : "#5C5C5C"} />
-                <Text weight="semibold" className={`text-[13px] ${active ? "text-white" : "text-ink-secondary"}`}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-          <View className="flex-1" />
-          {pageCount > 1 ? (
-            <View className="flex-row items-center gap-1">
-              <Pressable
-                onPress={() => setPageNo((p) => Math.max(1, p - 1))}
-                disabled={pageNo <= 1}
-                accessibilityRole="button"
-                accessibilityLabel="Previous page"
-                className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
-              >
-                <Ionicons name="chevron-back" size={20} color={pageNo <= 1 ? "#ADADAD" : "#1A1A1A"} />
-              </Pressable>
-              <Text tone="secondary" className="text-xs">
-                {pageNo} / {pageCount}
-              </Text>
-              <Pressable
-                onPress={() => setPageNo((p) => Math.min(pageCount, p + 1))}
-                disabled={pageNo >= pageCount}
-                accessibilityRole="button"
-                accessibilityLabel="Next page"
-                className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
-              >
-                <Ionicons name="chevron-forward" size={20} color={pageNo >= pageCount ? "#ADADAD" : "#1A1A1A"} />
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
+        <ReviewToolbar
+          tool={tool}
+          onSelectTool={setTool}
+          pageNo={pageNo}
+          pageCount={renderInfo?.pageCount ?? 1}
+          onChangePage={(next) => {
+            setPageNo(next);
+            setSelectedId(null);
+            setPendingAnchor(null);
+          }}
+        />
 
-        {sheets.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="max-h-14 border-b border-hairline bg-surface">
-            <View className="flex-row items-center gap-2 px-4 py-2">
-              {sheets.map((s, index) => {
-                const active = s.id === activeSheet?.id;
-                return (
-                  <Pressable
-                    key={s.id}
-                    onPress={() => switchSheet(s.id)}
-                    accessibilityRole="button"
-                    className={`h-9 flex-row items-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
-                  >
-                    <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-ink-secondary"}`}>
-                      P-{String(index + 1).padStart(2, "0")}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
-        ) : null}
+        <SheetStrip sheets={sheets} activeId={activeSheet?.id} onSelect={switchSheet} />
 
         {error ? (
           <View className="bg-error-50 px-4 py-2">
@@ -328,53 +354,40 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
           </View>
         ) : null}
 
-        <View className="flex-1 bg-[#EDEDED]">
-          {source && versionId ? (
-            <SheetCanvas
-              dom={{ style: { flex: 1 } }}
-              docKey={`${versionId}`}
-              pdfBase64={source.pdfBase64}
-              imageDataUri={source.imageDataUri}
-              pageNo={pageNo}
-              markups={canvasMarkups}
-              selectedId={selectedId}
-              tool={tool}
-              onCreate={handleCreate}
-              onSelect={async (id) => setSelectedId(id)}
-              onRendered={async (info) => setRenderInfo(info)}
-            />
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <Spinner size="md" />
-              <Text tone="secondary" className="pt-3 text-[13px]">
-                Preparing sheet…
-              </Text>
-            </View>
-          )}
+        <View className={sidePanel ? "flex-1 flex-row" : "flex-1"}>
+          <View className="flex-1 bg-[#EDEDED]">
+            {source && versionId ? (
+              <SheetCanvas
+                dom={{ style: { flex: 1 } }}
+                docKey={`${versionId}`}
+                pdfBase64={source.pdfBase64}
+                imageDataUri={source.imageDataUri}
+                pageNo={pageNo}
+                markups={canvasMarkups}
+                selectedId={selectedId}
+                tool={tool}
+                draftPin={pendingAnchor}
+                onCreate={persistMarkup}
+                onTapPoint={async (pt) => {
+                  setPendingAnchor(pt);
+                  setSelectedId(null);
+                }}
+                onSelect={async (id) => setSelectedId(id)}
+                onRendered={async (info) => setRenderInfo(info)}
+              />
+            ) : (
+              <View className="flex-1 items-center justify-center">
+                <Spinner size="md" />
+                <Text tone="secondary" className="pt-3 text-[13px]">
+                  Preparing sheet…
+                </Text>
+              </View>
+            )}
+          </View>
+          {sidePanel ? <View className="w-96 border-l border-hairline bg-surface">{sidebar}</View> : null}
         </View>
 
-        {selected ? (
-          <MarkupPanel
-            markup={selected}
-            busy={busy}
-            onAddComment={(body) => void handleAddComment(body)}
-            onResolve={(resolved) => void handleResolve(resolved)}
-            onDelete={() => void handleDelete()}
-            onClose={() => setSelectedId(null)}
-          />
-        ) : (
-          <View className="border-t border-hairline bg-surface px-4 py-3">
-            <Text tone="secondary" className="text-center text-xs">
-              {tool === "navigate"
-                ? "Pinch to zoom · drag to pan · tap a markup to open it"
-                : tool === "pin"
-                  ? "Tap the sheet to drop a pin"
-                  : tool === "pen"
-                    ? "Draw on the sheet with your finger"
-                    : "Drag a box around the area to cloud"}
-            </Text>
-          </View>
-        )}
+        {!sidePanel ? sidebar : null}
       </View>
     </Page>
   );

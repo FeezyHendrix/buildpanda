@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
 import { useSyncState } from "@/lib/sync-provider";
@@ -135,23 +135,25 @@ export function Page({
 
       </View>
 
-      {scroll ? (
-        <ScrollView
-          className={cn("px-4", className)}
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View className={cn("flex-1 px-4 pt-4", className)}>{children}</View>
-      )}
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {scroll ? (
+          <ScrollView
+            className={cn("px-4", className)}
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 24 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View className={cn("flex-1 px-4 pt-4", className)}>{children}</View>
+        )}
 
-      {footer ? (
-        <View className="px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
-          {footer}
-        </View>
-      ) : null}
+        {footer ? (
+          <View className="px-4 pt-3" style={{ paddingBottom: insets.bottom + 12 }}>
+            {footer}
+          </View>
+        ) : null}
+      </KeyboardAvoidingView>
     </View>
   );
 }
