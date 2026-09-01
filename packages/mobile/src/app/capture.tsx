@@ -12,6 +12,11 @@ import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
+import {
+  mergeMissingValues,
+  outstandingCount,
+  type MissingFieldValues,
+} from "@/lib/voice-missing-fields";
 
 type Phase = "record" | "processing" | "review" | "saving" | "done";
 
@@ -36,6 +41,7 @@ export default function Capture() {
   const [phase, setPhase] = useState<Phase>("record");
   const [report, setReport] = useState<VoiceReport | null>(null);
   const [included, setIncluded] = useState<Set<number>>(new Set());
+  const [fieldValues, setFieldValues] = useState<MissingFieldValues>({});
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
 
@@ -54,6 +60,7 @@ export default function Capture() {
       const result = await requestVoiceReport(projectId, uri);
       setReport(result);
       setIncluded(new Set(result.actions.map((_, index) => index)));
+      setFieldValues({});
       setPhase("review");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not process the recording.");
@@ -70,14 +77,24 @@ export default function Capture() {
     });
   }, []);
 
+  const changeField = useCallback((actionIndex: number, fieldName: string, value: string) => {
+    setFieldValues((prev) => ({
+      ...prev,
+      [actionIndex]: { ...prev[actionIndex], [fieldName]: value },
+    }));
+  }, []);
+
   const handleConfirm = useCallback(async () => {
     if (!report) return;
+    if (outstandingCount(report.actions, included, fieldValues) > 0) return;
     setPhase("saving");
     setError(null);
     try {
-      const chosen = report.actions.filter((_, index) => included.has(index));
-      for (const action of chosen) {
-        await applyAction(action);
+      const chosen = report.actions
+        .map((action, index) => ({ action, index }))
+        .filter((entry) => included.has(entry.index));
+      for (const { action, index } of chosen) {
+        await applyAction(mergeMissingValues(action, fieldValues[index]));
       }
       setSavedCount(chosen.length);
       setPhase("done");
@@ -85,7 +102,7 @@ export default function Capture() {
       setError(err instanceof Error ? err.message : "Could not save these records.");
       setPhase("review");
     }
-  }, [report, included, applyAction]);
+  }, [report, included, fieldValues, applyAction]);
 
   if (phase === "processing") {
     return (
@@ -124,17 +141,32 @@ export default function Capture() {
 
   if ((phase === "review" || phase === "saving") && report) {
     const count = included.size;
+    const outstanding = outstandingCount(report.actions, included, fieldValues);
     return (
       <Page
         title="Review"
         showSync={false}
         onBack={phase === "review" ? close : undefined}
         footer={
-          <Button onPress={handleConfirm} disabled={count === 0 || phase === "saving"} loading={phase === "saving"}>
-            {count === 0
-              ? "Select at least one"
-              : `Apply ${count} ${count === 1 ? "action" : "actions"}`}
-          </Button>
+          <View className="gap-2">
+            {outstanding > 0 ? (
+              <View className="flex-row items-center justify-center gap-1.5">
+                <Ionicons name="alert-circle" size={14} color="#D42C19" />
+                <Text tone="danger" weight="semibold" className="text-[13px]">
+                  Fill in {outstanding} {outstanding === 1 ? "detail" : "details"} before saving
+                </Text>
+              </View>
+            ) : null}
+            <Button
+              onPress={handleConfirm}
+              disabled={count === 0 || outstanding > 0 || phase === "saving"}
+              loading={phase === "saving"}
+            >
+              {count === 0
+                ? "Select at least one"
+                : `Apply ${count} ${count === 1 ? "action" : "actions"}`}
+            </Button>
+          </View>
         }
       >
         <View className="rounded-xl bg-surface-alt px-4 py-3">
@@ -156,9 +188,16 @@ export default function Capture() {
         ) : (
           <View className="pt-4">
             <Text tone="secondary" className="pb-3 text-[13px]">
-              Tap to include or exclude. Nothing is saved or updated until you confirm.
+              Tap a card to include or exclude it. Anything Panda AI couldn&apos;t hear is asked for below.
+              Nothing is saved or updated until you confirm.
             </Text>
-            <VoiceActionsReview actions={report.actions} includedIndexes={included} onToggle={toggle} />
+            <VoiceActionsReview
+              actions={report.actions}
+              includedIndexes={included}
+              values={fieldValues}
+              onToggle={toggle}
+              onChangeField={changeField}
+            />
           </View>
         )}
 

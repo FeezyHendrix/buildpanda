@@ -13,4 +13,10 @@ export interface Stage {
 
 export const stagesApi = {
   list: (projectId: string) => request<Stage[]>(`/projects/${projectId}/stages`),
+
+  update: (projectId: string, stageId: string, patch: { status?: string; buildingId?: string | null }) =>
+    request<Stage>(`/projects/${projectId}/stages/${stageId}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
 };

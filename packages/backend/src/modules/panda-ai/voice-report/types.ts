@@ -135,7 +135,28 @@ export interface DailyLogEntryVoidPayload {
   reason: string;
 }
 
-export type ProposedAction =
+export interface StageTransitionPayload {
+  stageId: string | null;
+  status: "Pending" | "InProgress" | "Done" | null;
+}
+
+export type MissingFieldType = "text" | "number" | "date" | "select";
+
+export interface MissingFieldOption {
+  value: string;
+  label: string;
+}
+
+// Server-computed, not model-authored: a required field the speaker never said,
+// which the reviewer fills in rather than the action being silently dropped.
+export interface MissingField {
+  name: string;
+  label: string;
+  type: MissingFieldType;
+  options?: MissingFieldOption[];
+}
+
+export type DraftAction =
   | { kind: "rfi"; title: string; summary: string; payload: RfiPayload }
   | { kind: "daily_log"; title: string; summary: string; payload: DailyLogPayload }
   | { kind: "change_request"; title: string; summary: string; payload: ChangeRequestPayload }
@@ -155,7 +176,10 @@ export type ProposedAction =
   | { kind: "comment_rfi"; title: string; summary: string; payload: RfiCommentPayload }
   | { kind: "comment_change_request"; title: string; summary: string; payload: ChangeRequestCommentPayload }
   | { kind: "void_ledger_entry"; title: string; summary: string; payload: LedgerVoidPayload }
-  | { kind: "void_daily_log_entry"; title: string; summary: string; payload: DailyLogEntryVoidPayload };
+  | { kind: "void_daily_log_entry"; title: string; summary: string; payload: DailyLogEntryVoidPayload }
+  | { kind: "transition_stage"; title: string; summary: string; payload: StageTransitionPayload };
+
+export type ProposedAction = DraftAction & { missing: MissingField[] };
 
 export interface SnapshotRfi {
   id: string;
@@ -213,6 +237,19 @@ export interface SnapshotDailyLogEntry {
   snippet: string;
 }
 
+export interface SnapshotStage {
+  id: string;
+  name: string;
+  status: string;
+  buildingId: string;
+}
+
+export interface SnapshotBuilding {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 export interface ProjectSnapshot {
   rfis: SnapshotRfi[];
   changeRequests: SnapshotChangeRequest[];
@@ -222,6 +259,9 @@ export interface ProjectSnapshot {
   delayReasons: SnapshotDelayReason[];
   ledgerEntries: SnapshotLedgerEntry[];
   todayEntries: SnapshotDailyLogEntry[];
+  stages: SnapshotStage[];
+  buildings: SnapshotBuilding[];
+  today: string;
 }
 
 export interface VoiceReport {
