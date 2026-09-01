@@ -1,15 +1,18 @@
 name: Release APK
 
-# prod is the production branch (master deploys staging). Every push to prod
-# generates the native Android project with expo prebuild and builds the
-# release APK with Gradle on the runner — no EAS. Signing: when the
+# prod is the production branch, master is staging. EXPO_PUBLIC_API_URL is
+# inlined into the JS bundle at build time, so the API origin is a property of
+# the build and cannot be changed on an installed app.
+#
+# Each push generates the native Android project with expo prebuild and builds
+# the release APK with Gradle on the runner — no EAS. Signing: when the
 # ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
 # ANDROID_KEY_PASSWORD secrets are set the APK is signed with that release
 # keystore; without them it falls back to the debug keystore (installable for
 # internal testing, not Play-uploadable).
 on:
   push:
-    branches: [prod]
+    branches: [master, prod]
   workflow_dispatch:
 
 concurrency:
@@ -28,8 +31,22 @@ jobs:
     env:
       NPM_CONFIG_LEGACY_PEER_DEPS: "true"
       EXPO_NO_TELEMETRY: "1"
+      # Only prod gets the production API. master and any manual dispatch fall
+      # to staging, so a build off an unexpected ref can never ship against prod.
+      EXPO_PUBLIC_API_URL: ${{ github.ref == 'refs/heads/prod' && 'https://api.buildpanda.io' || 'https://api.staging.buildpanda.io' }}
+      ENVIRONMENT_NAME: ${{ github.ref == 'refs/heads/prod' && 'production' || 'staging' }}
     steps:
       - uses: actions/checkout@v4
+
+      # packages/mobile/.env is gitignored, so without this the bundler would
+      # inline the localhost fallback and ship an APK that reaches no backend.
+      - name: Check the API base URL is set
+        run: |
+          if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+            echo "EXPO_PUBLIC_API_URL is empty — refusing to build a bundle with no backend." >&2
+            exit 1
+          fi
+          echo "Building the $ENVIRONMENT_NAME APK against $EXPO_PUBLIC_API_URL"
 
       - uses: actions/setup-node@v4
         with:
@@ -96,7 +113,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: buildpanda-field-apk
+          name: buildpanda-field-apk-${{ env.ENVIRONMENT_NAME }}
           path: packages/mobile/buildpanda-field.apk
           if-no-files-found: error
 
@@ -104,10 +121,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="apk-${{ github.run_number }}"
+          if [ "$ENVIRONMENT_NAME" = "production" ]; then
+            TAG="apk-${{ github.run_number }}"
+            TITLE="BuildPanda Field APK #${{ github.run_number }}"
+            PRERELEASE=""
+          else
+            TAG="apk-staging-${{ github.run_number }}"
+            TITLE="BuildPanda Field APK #${{ github.run_number }} (Staging)"
+            PRERELEASE="--prerelease"
+          fi
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
             --target "${{ github.sha }}" \
-            --title "BuildPanda Field APK #${{ github.run_number }}" \
-            --notes "Release APK built from prod @ ${{ github.sha }}" \
+            --title "$TITLE" \
+            --notes "Release APK built from ${{ github.ref_name }} @ ${{ github.sha }} against $EXPO_PUBLIC_API_URL" \
+            $PRERELEASE \
             buildpanda-field.apk
