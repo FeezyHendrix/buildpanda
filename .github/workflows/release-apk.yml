@@ -137,3 +137,30 @@ jobs:
             --notes "Release APK built from ${{ github.ref_name }} @ ${{ github.sha }} against $EXPO_PUBLIC_API_URL" \
             $PRERELEASE \
             buildpanda-field.apk
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+
+      # Each APK is ~120MB. Keep the one just published and drop the two before
+      # it, matched within this channel only so a staging build can never delete
+      # a production release.
+      - name: Prune the previous two releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$ENVIRONMENT_NAME" = "production" ]; then
+            PATTERN='^apk-[0-9]+$'
+          else
+            PATTERN='^apk-staging-[0-9]+$'
+          fi
+
+          # Sorted on publishedAt, not createdAt: createdAt is the target commit's
+          # date, so two releases built from one commit tie and order arbitrarily.
+          gh release list --repo "${{ github.repository }}" --limit 100 \
+            --json tagName,publishedAt \
+            --jq 'sort_by(.publishedAt) | reverse | .[].tagName' \
+            | grep -E "$PATTERN" \
+            | grep -vx "$RELEASE_TAG" \
+            | head -n 2 \
+            | while read -r old; do
+                echo "Deleting $old"
+                gh release delete "$old" --repo "${{ github.repository }}" --cleanup-tag --yes
+              done
