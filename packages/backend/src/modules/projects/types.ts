@@ -6,6 +6,15 @@ export type PhaseStatus = "Done" | "InProgress" | "Pending";
 export type Currency = CurrencyCode;
 export type Tone = "brand" | "orange" | "green" | "purple" | "amber" | "red" | "gray";
 
+// Audience differs per value: `weekly` is the homeowner client update, `daily`
+// is the internal end-of-day digest for the build team.
+export const AI_UPDATE_CADENCES = ["off", "daily", "weekly", "both"] as const;
+export type AiUpdateCadence = (typeof AI_UPDATE_CADENCES)[number];
+
+export interface ProjectSettings {
+  aiUpdateCadence: AiUpdateCadence;
+}
+
 export interface ProjectPhase {
   id: string;
   name: string;
@@ -55,7 +64,7 @@ export interface ProjectRow {
   budget_min: string | null;
   budget_max: string | null;
   setup: ProjectSetup | null;
-  ai_updates_enabled: boolean;
+  ai_update_cadence: AiUpdateCadence;
   created_at: Date | string;
   updated_at: Date | string;
 }

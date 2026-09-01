@@ -25,6 +25,7 @@ import { registerProjectFileImportWorker } from "../modules/panda-ai/project-fil
 import { registerProgressRecomputeWorker } from "../modules/activities/progress-job.ts";
 import { registerWeatherImpactWorker } from "../modules/weather/impact-job.ts";
 import { registerWeeklyUpdateDraftWorker } from "../modules/updates/weekly-draft-job.ts";
+import { registerDailyDigestWorker } from "../modules/updates/daily-digest-job.ts";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -62,6 +63,7 @@ const queuePlugin: FastifyPluginAsync = async (fastify) => {
     registerDecisionChasingWorker(fastify.db, manager, fastify.log);
     registerWeatherImpactWorker(fastify.db, manager, fastify.log);
     registerWeeklyUpdateDraftWorker(fastify.db, manager, fastify.log);
+    registerDailyDigestWorker(fastify.db, manager, fastify.log);
     manager.startWorkers();
   }
 

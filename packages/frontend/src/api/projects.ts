@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Currency, Project } from "@/lib/project-types";
+import type { AiUpdateCadence, Currency, Project } from "@/lib/project-types";
 
 export interface ProjectTemplateSummary {
   id: string;
@@ -61,5 +61,5 @@ export const projectsApi = {
 };
 
 export interface ProjectSettings {
-  aiUpdatesEnabled: boolean;
+  aiUpdateCadence: AiUpdateCadence;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/atoms/avatar";
-import { Badge } from "@/components/atoms/badge";
+import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
@@ -21,7 +21,12 @@ import {
 import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
 import { UPDATE_CATEGORY_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
-import type { ProjectUpdate, UpdateStatus } from "@/lib/project-types";
+import {
+  AI_DRAFT_KINDS,
+  type AiDraftKind,
+  type ProjectUpdate,
+  type UpdateStatus,
+} from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 
@@ -41,6 +46,34 @@ const STATUS_BADGE_TONE: Record<
   Resolved: "success",
   Escalated: "warning",
 };
+
+const DRAFT_KIND_BADGE: Record<AiDraftKind, { tone: BadgeTone; label: string }> = {
+  weekly: { tone: "info", label: "Panda AI draft · For the homeowner" },
+  daily: { tone: "accent", label: "Panda AI digest · Internal, team only" },
+};
+
+function isAiDraftKind(kind: string | null): kind is AiDraftKind {
+  return kind !== null && (AI_DRAFT_KINDS as readonly string[]).includes(kind);
+}
+
+function DraftBadge({ generatedKind }: { generatedKind: string | null }) {
+  if (!isAiDraftKind(generatedKind)) {
+    return (
+      <Badge tone="warning" size="md" dot>
+        {generatedKind === null ? "Draft" : "Draft · Panda AI"}
+      </Badge>
+    );
+  }
+
+  const { tone, label } = DRAFT_KIND_BADGE[generatedKind];
+  return (
+    <Badge tone={tone} size="md" dot>
+      {label}
+    </Badge>
+  );
+}
+
+DraftBadge.displayName = "DraftBadge";
 
 export function UpdateCard({
   projectId,
@@ -122,11 +155,7 @@ export function UpdateCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {update.isDraft && (
-            <Badge tone="warning" size="md" dot>
-              {update.generatedKind ? "Draft · Panda AI" : "Draft"}
-            </Badge>
-          )}
+          {update.isDraft && <DraftBadge generatedKind={update.generatedKind} />}
           {!update.isDraft && update.status !== "Open" && (
             <Badge tone={STATUS_BADGE_TONE[update.status]} size="md" dot>
               {update.status}
