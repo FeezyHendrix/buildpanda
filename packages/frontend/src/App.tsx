@@ -340,7 +340,7 @@ export const router = createBrowserRouter([
       { path: "finances/payment-claims", element: pfr("commercial.paymentClaims", "finances", <ProjectPaymentClaims />) },
       { path: "finances/purchase-orders", element: pfr("commercial.purchaseOrders", "finances", <ProjectPurchaseOrders />) },
       { path: "finances/budget", element: pfr("commercial.budget", "finances", <ProjectBudget />) },
-      { path: "finances/transactions", element: pfr("commercial.transactions", "transactions", <ProjectTransactions />) },
+      { path: "finances/transactions", element: pfr("commercial.transactions", "finances", <ProjectTransactions />) },
       { path: "finances/final-account", element: pfr("commercial.finances", "finances", <ProjectFinalAccount />) },
       { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContract />) },
       { path: "finances/contract-stages", element: pfr("commercial.finances", "finances", <ProjectContractStages />) },

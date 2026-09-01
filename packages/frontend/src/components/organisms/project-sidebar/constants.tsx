@@ -175,7 +175,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
     label: "Expenses",
     slug: "finances/transactions",
-    resource: "transactions",
+    resource: "finances",
     Icon: DocumentsIcon,
     helper: "Site expenses & receipts",
     flag: "commercial.transactions",
