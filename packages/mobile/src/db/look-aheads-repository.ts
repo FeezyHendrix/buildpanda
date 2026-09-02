@@ -1,7 +1,8 @@
 import { randomUUID } from "expo-crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "./client";
+import { enqueueUpdate } from "./enqueue-update";
 import { lookAheads, outbox, type LookAheadRow } from "./schema";
 
 export function toLookAhead(row: LookAheadRow) {
@@ -52,17 +53,11 @@ export const lookAheadsRepository = {
     return id;
   },
 
-  /**
-   * Applies an edit locally and queues the push in one transaction.
-   *
-   * A record whose create is still queued has an id the server has never seen,
-   * so no update is enqueued for it — the local row is mutated and the pending
-   * create carries the final state. Enqueuing one would PATCH a nonexistent id.
-   */
   async markSynced(db: Db, id: string): Promise<void> {
     await db.update(lookAheads).set({ isPendingSync: false }).where(eq(lookAheads.id, id));
   },
 
+  /** Applies an edit locally and queues the push in one transaction. */
   async updateLocal(
     db: Db,
     projectId: string,
@@ -83,40 +78,7 @@ export const lookAheadsRepository = {
         })
         .where(eq(lookAheads.id, id));
 
-      const [queuedCreate] = await tx
-        .select({ id: outbox.id })
-        .from(outbox)
-        .where(
-          and(
-            eq(outbox.resource, "look-aheads"),
-            eq(outbox.entityId, id),
-            eq(outbox.operation, "create"),
-          ),
-        )
-        .limit(1);
-      if (queuedCreate) return;
-
-      const [queuedUpdate] = await tx
-        .select({ id: outbox.id })
-        .from(outbox)
-        .where(
-          and(
-            eq(outbox.resource, "look-aheads"),
-            eq(outbox.entityId, id),
-            eq(outbox.operation, "update"),
-          ),
-        )
-        .limit(1);
-      if (queuedUpdate) return;
-
-      await tx.insert(outbox).values({
-        id: randomUUID(),
-        resource: "look-aheads",
-        entityId: id,
-        projectId,
-        operation: "update",
-        nextAttemptAt: 0,
-      });
+      await enqueueUpdate(tx as never, "look-aheads", id, projectId);
     });
   },
 
