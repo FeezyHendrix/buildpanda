@@ -11,6 +11,7 @@ import { useLocalDb } from "@/db/provider";
 import { activitiesApi, type Activity, type DelayReason } from "@/api/activities";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/use-daily-logs";
+import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useActivities } from "@/hooks/use-activities";
 import { useSession } from "@/lib/auth-client";
 import { useFieldSession } from "@/lib/field-session";
@@ -27,6 +28,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
   const { day, entries, isPending } = useDailyLogDay(db, projectId, logDate);
   const save = useSaveDailyLog(db, projectId);
   const addEntry = useAddDailyLogEntry(db, projectId);
+  const { buildingId } = useProjectBuilding();
   const { data: session } = useSession();
 
   const [hours, setHours] = useState("0");
@@ -71,7 +73,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
     if (!text) return;
     setError(null);
     try {
-      await addEntry(logDate, text, session?.user.name ?? "You", entryHtml.trim() || null);
+      await addEntry(logDate, text, session?.user.name ?? "You", entryHtml.trim() || null, buildingId);
       setEntryHtml("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add that entry.");

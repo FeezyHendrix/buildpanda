@@ -163,6 +163,9 @@ export const dailyLogEntries = sqliteTable(
   {
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
+    // Carried so an entry written offline still names its block; the API
+    // refuses a daily-log write without one on a multi-building project.
+    buildingId: text("building_id"),
     logDate: text("log_date").notNull(),
     authorName: text("author_name").notNull().default(""),
     bodyText: text("body_text").notNull().default(""),
