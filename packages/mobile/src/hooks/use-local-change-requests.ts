@@ -34,3 +34,11 @@ export function useCreateChangeRequest(db: Db | null, projectId: string | undefi
     void flushOutbox(db).catch(() => undefined);
   };
 }
+
+export function useUpdateChangeRequest(db: Db | null, projectId: string | undefined) {
+  return async (id: string, patch: Partial<UpsertChangeRequestInput>) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await changeRequestsRepository.updateLocal(db, projectId, id, patch);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
