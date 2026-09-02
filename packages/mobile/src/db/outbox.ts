@@ -190,6 +190,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
         await dailyLogsApi.upsert(item.projectId, day.logDate, {
           totalHours: day.totalHours,
           summary: day.summary,
+          buildingId: day.buildingId,
         });
         await db
           .update(dailyLogs)

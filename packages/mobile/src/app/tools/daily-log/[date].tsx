@@ -68,7 +68,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
     setSaving(true);
     setError(null);
     try {
-      await save(logDate, { totalHours: numberOrZero(hours) });
+      await save(logDate, { totalHours: numberOrZero(hours), buildingId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save this log.");
     } finally {

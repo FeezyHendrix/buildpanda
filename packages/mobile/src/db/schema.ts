@@ -121,6 +121,7 @@ export const dailyLogs = sqliteTable(
   {
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
+    buildingId: text("building_id"),
     logDate: text("log_date").notNull(),
     totalHours: integer("total_hours").notNull().default(0),
     summary: text("summary"),
