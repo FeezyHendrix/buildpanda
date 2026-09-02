@@ -1,13 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { materialsRepository, toMaterialOrder } from "@/db/materials-repository";
 import { useLocalDb } from "@/db/provider";
+import { useDeleteMaterialOrder } from "@/hooks/use-local-materials";
 import { useFieldSession } from "@/lib/field-session";
 
 function MaterialDetail({ db, projectId, orderId }: { db: Db; projectId: string; orderId: string }) {
@@ -63,6 +64,24 @@ export default function MaterialOrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
+  const removeRecord = useDeleteMaterialOrder(db, projectId);
+
+  // Native confirm: deleting a site record is destructive and the app has no
+  // undo, so it must not happen on a single stray tap.
+  function confirmDelete() {
+    if (!id) return;
+    Alert.alert("Delete this order?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void removeRecord(id).then(() => router.back()).catch(() => undefined);
+        },
+      },
+    ]);
+  }
+
 
   return (
     <Page
@@ -70,14 +89,24 @@ export default function MaterialOrderDetail() {
       onBack={() => router.back()}
       rightButtons={
         id ? (
-          <Pressable
-            onPress={() => router.push(`/tools/materials/edit/${id}` as never)}
-            accessibilityRole="button"
-            accessibilityLabel="Edit order"
-            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-          >
-            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-          </Pressable>
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={() => router.push(`/tools/materials/edit/${id}` as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Edit order"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+            >
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={confirmDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Delete order"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+            >
+              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
         ) : null
       }
     >
