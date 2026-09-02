@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, TextInput, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { changeRequestsApi, type ChangeRequestComment, type ChangeStatus } from "@/api/change-requests";
 import { Card, Spinner, Text } from "@/components/atoms";
@@ -9,6 +9,7 @@ import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-repository";
 import { useLocalDb } from "@/db/provider";
+import { useDeleteChangeRequest } from "@/hooks/use-local-change-requests";
 import { useFieldSession } from "@/lib/field-session";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,24 @@ export default function ChangeRequestDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
+  const removeRecord = useDeleteChangeRequest(db, projectId);
+
+  // Native confirm: deleting a site record is destructive and the app has no
+  // undo, so it must not happen on a single stray tap.
+  function confirmDelete() {
+    if (!id) return;
+    Alert.alert("Delete this change request?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void removeRecord(id).then(() => router.back()).catch(() => undefined);
+        },
+      },
+    ]);
+  }
+
   const { data: session } = useSession();
 
   const [body, setBody] = useState("");
@@ -133,14 +152,24 @@ export default function ChangeRequestDetail() {
       onBack={() => router.back()}
       rightButtons={
         id ? (
-          <Pressable
-            onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)}
-            accessibilityRole="button"
-            accessibilityLabel="Edit change request"
-            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-          >
-            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-          </Pressable>
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Edit change request"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+            >
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={confirmDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Delete change request"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+            >
+              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+            </Pressable>
+          </View>
         ) : null
       }
       scroll
