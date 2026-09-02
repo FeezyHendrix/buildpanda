@@ -2,6 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateMaterialOrderInput, MaterialOrder } from "@/api/materials";
 import type { Db } from "./client";
+import { enqueueUpdate } from "./enqueue-update";
 import { materialOrders, outbox, type MaterialOrderRow } from "./schema";
 
 export function toMaterialOrder(row: MaterialOrderRow) {
@@ -49,6 +50,35 @@ export const materialsRepository = {
       });
     });
     return id;
+  },
+
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(materialOrders).set({ isPendingSync: false }).where(eq(materialOrders.id, id));
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: Partial<CreateMaterialOrderInput>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(materialOrders)
+        .set({
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.materialName !== undefined ? { materialName: patch.materialName } : {}),
+          ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
+          ...(patch.unit !== undefined ? { unit: patch.unit } : {}),
+          ...(patch.supplier !== undefined ? { supplier: patch.supplier } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(materialOrders.id, id));
+
+      await enqueueUpdate(tx as never, "material-orders", id, projectId);
+    });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: MaterialOrder) {

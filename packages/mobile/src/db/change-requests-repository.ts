@@ -2,6 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { ChangeRequest, UpsertChangeRequestInput } from "@/api/change-requests";
 import type { Db } from "./client";
+import { enqueueUpdate } from "./enqueue-update";
 import { changeRequests, outbox, type ChangeRequestRow } from "./schema";
 
 export function toChangeRequest(row: ChangeRequestRow) {
@@ -51,6 +52,36 @@ export const changeRequestsRepository = {
       });
     });
     return id;
+  },
+
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(changeRequests).set({ isPendingSync: false }).where(eq(changeRequests.id, id));
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: Partial<UpsertChangeRequestInput>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(changeRequests)
+        .set({
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.description !== undefined ? { description: patch.description } : {}),
+          ...(patch.descriptionHtml !== undefined ? { descriptionHtml: patch.descriptionHtml } : {}),
+          ...(patch.reason !== undefined ? { reason: patch.reason } : {}),
+          ...(patch.costImpact !== undefined ? { costImpact: patch.costImpact } : {}),
+          ...(patch.timeImpactDays !== undefined ? { timeImpactDays: patch.timeImpactDays } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(changeRequests.id, id));
+
+      await enqueueUpdate(tx as never, "change-requests", id, projectId);
+    });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: ChangeRequest) {

@@ -81,6 +81,20 @@ async function runFlush(db: Db): Promise<FlushResult> {
           await db.delete(outbox).where(eq(outbox.id, item.id));
           continue;
         }
+        if (item.operation === "update") {
+          await changeRequestsApi.update(item.projectId, row.id, {
+            title: row.title,
+            description: row.description,
+            descriptionHtml: row.descriptionHtml,
+            reason: row.reason,
+            costImpact: row.costImpact,
+            timeImpactDays: row.timeImpactDays,
+          });
+          await changeRequestsRepository.markSynced(db, row.id);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
+          continue;
+        }
         const server = await changeRequestsApi.create(item.projectId, {
           title: row.title,
           description: row.description,
@@ -134,6 +148,19 @@ async function runFlush(db: Db): Promise<FlushResult> {
         const row = await materialsRepository.findById(db, item.entityId);
         if (!row) {
           await db.delete(outbox).where(eq(outbox.id, item.id));
+          continue;
+        }
+        if (item.operation === "update") {
+          await materialsApi.update(item.projectId, row.id, {
+            title: row.title,
+            materialName: row.materialName,
+            quantity: row.quantity,
+            unit: row.unit,
+            supplier: row.supplier,
+          });
+          await materialsRepository.markSynced(db, row.id);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
           continue;
         }
         const server = await materialsApi.create(item.projectId, {
