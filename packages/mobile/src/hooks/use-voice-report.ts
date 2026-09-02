@@ -7,7 +7,11 @@ import { materialsLedgerApi } from "@/api/materials-ledger";
 import { rfisApi } from "@/api/rfis";
 import { stagesApi } from "@/api/stages";
 import type { ProposedAction } from "@/api/voice-report-types";
+import { changeRequestsRepository } from "@/db/change-requests-repository";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
+import { lookAheadsRepository } from "@/db/look-aheads-repository";
+import { materialsRepository } from "@/db/materials-repository";
+import { rfisRepository } from "@/db/rfis-repository";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
@@ -52,6 +56,14 @@ export function useApplyProposedAction() {
         return projectId;
       };
 
+      // Edits go to the local row and the outbox, never straight to the API:
+      // a crew member reviewing a note out of signal must not lose them.
+      const queueEdit = async (run: (database: NonNullable<typeof db>) => Promise<void>) => {
+        if (!db) throw new Error("Local database is not ready yet.");
+        await run(db);
+        void flushOutbox(db).catch(() => undefined);
+      };
+
       switch (action.kind) {
         case "rfi":
           await createRfi(action.payload);
@@ -72,25 +84,43 @@ export function useApplyProposedAction() {
           await createLookAhead(action.payload);
           return;
         case "update_rfi":
-          await rfisApi.update(requireProject(), action.payload.rfiId, action.payload.patch);
+          await queueEdit((database) =>
+            rfisRepository.updateLocal(database, requireProject(), action.payload.rfiId, action.payload.patch),
+          );
           return;
         case "transition_rfi":
           await rfisApi.transition(requireProject(), action.payload.rfiId, action.payload.status);
           return;
         case "update_change_request":
-          await changeRequestsApi.update(requireProject(), action.payload.changeRequestId, action.payload.patch);
+          await queueEdit((database) =>
+            changeRequestsRepository.updateLocal(
+              database,
+              requireProject(),
+              action.payload.changeRequestId,
+              action.payload.patch,
+            ),
+          );
           return;
         case "delete_change_request":
           await changeRequestsApi.remove(requireProject(), action.payload.changeRequestId);
           return;
         case "update_material_order":
-          await materialsApi.update(requireProject(), action.payload.orderId, action.payload.patch);
+          await queueEdit((database) =>
+            materialsRepository.updateLocal(database, requireProject(), action.payload.orderId, action.payload.patch),
+          );
           return;
         case "delete_material_order":
           await materialsApi.remove(requireProject(), action.payload.orderId);
           return;
         case "update_look_ahead":
-          await lookAheadsApi.update(requireProject(), action.payload.lookAheadId, action.payload.patch);
+          await queueEdit((database) =>
+            lookAheadsRepository.updateLocal(
+              database,
+              requireProject(),
+              action.payload.lookAheadId,
+              action.payload.patch,
+            ),
+          );
           return;
         case "delete_look_ahead":
           await lookAheadsApi.remove(requireProject(), action.payload.lookAheadId);
