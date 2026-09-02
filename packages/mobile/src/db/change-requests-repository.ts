@@ -80,7 +80,7 @@ export const changeRequestsRepository = {
         })
         .where(eq(changeRequests.id, id));
 
-      await enqueueUpdate(tx as never, "change-requests", id, projectId);
+      await enqueueUpdate(tx as never, "change-requests", id, projectId, randomUUID());
     });
   },
 

@@ -1,4 +1,3 @@
-import { randomUUID } from "expo-crypto";
 import { and, eq } from "drizzle-orm";
 import { outbox } from "./schema";
 
@@ -31,19 +30,21 @@ async function hasQueued(tx: Tx, resource: string, entityId: string, operation: 
  * edit coalesces onto the update already queued rather than stacking rows.
  *
  * Shared so this rule has one home; duplicating it per repository is how one
- * copy quietly loses the guard.
+ * copy quietly loses the guard. The row id is passed in rather than generated
+ * here, so this stays free of native modules and can be tested directly.
  */
 export async function enqueueUpdate(
   tx: Tx,
   resource: string,
   entityId: string,
   projectId: string,
+  newId: string,
 ): Promise<void> {
   if (await hasQueued(tx, resource, entityId, "create")) return;
   if (await hasQueued(tx, resource, entityId, "update")) return;
 
   await tx.insert(outbox).values({
-    id: randomUUID(),
+    id: newId,
     resource,
     entityId,
     projectId,

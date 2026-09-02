@@ -78,7 +78,7 @@ export const lookAheadsRepository = {
         })
         .where(eq(lookAheads.id, id));
 
-      await enqueueUpdate(tx as never, "look-aheads", id, projectId);
+      await enqueueUpdate(tx as never, "look-aheads", id, projectId, randomUUID());
     });
   },
 
