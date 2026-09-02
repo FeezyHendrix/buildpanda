@@ -156,16 +156,28 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
         </View>
       ) : null}
 
-      <Pressable
-        onPress={() => router.push("/tools/schedule/stages" as never)}
-        accessibilityRole="button"
-        className="mt-3 h-11 flex-row items-center justify-center gap-1 rounded-xl bg-surface-alt active:bg-hairline"
-      >
-        <Text weight="semibold" tone="secondary" className="text-[13px]">
-          All build stages
-        </Text>
-        <Ionicons name="chevron-forward" size={14} color="#5C5C5C" />
-      </Pressable>
+      <View className="mt-3 flex-row gap-2">
+        <Pressable
+          onPress={() => router.push("/tools/schedule/stages" as never)}
+          accessibilityRole="button"
+          className="h-11 flex-1 flex-row items-center justify-center gap-1 rounded-xl bg-surface-alt active:bg-hairline"
+        >
+          <Text weight="semibold" tone="secondary" className="text-[13px]">
+            All build stages
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color="#5C5C5C" />
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/tools/schedule/chart" as never)}
+          accessibilityRole="button"
+          className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-primary-50 active:bg-primary-100"
+        >
+          <Ionicons name="stats-chart-outline" size={15} color="#004DE7" />
+          <Text weight="semibold" tone="brand" className="text-[13px]">
+            Project chart
+          </Text>
+        </Pressable>
+      </View>
     </Card>
   );
 }
@@ -245,16 +257,6 @@ export default function Schedule() {
       title="Schedule"
       projectName={project?.name ?? "Loading project…"}
       onPressProject={() => router.push("/select-project")}
-      rightButtons={
-        <Pressable
-          onPress={() => router.push("/tools/schedule/chart" as never)}
-          accessibilityRole="button"
-          accessibilityLabel="Project chart"
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-        >
-          <Ionicons name="stats-chart-outline" size={20} color="#FFFFFF" />
-        </Pressable>
-      }
     >
       {isPending ? (
         <View className="items-center py-12">
