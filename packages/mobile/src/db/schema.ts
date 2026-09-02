@@ -215,6 +215,10 @@ export const lookAheads = sqliteTable(
   {
     id: text("id").primaryKey(),
     projectId: text("project_id").notNull(),
+    // A look ahead belongs to a building, and the API rejects a write without
+    // one on a multi-building project. Nullable because single-building
+    // projects let the server resolve it.
+    buildingId: text("building_id"),
     name: text("name").notNull(),
     description: text("description"),
     status: text("status").notNull().default("Draft"),

@@ -19,7 +19,12 @@ export interface CreateLookAheadInput {
   startDate: string;
   endDate: string;
   totalWorkers?: number | null;
+  // Required by the API on a multi-building project; the server resolves it
+  // when the project has a single building.
+  buildingId?: string | null;
 }
+
+export type UpdateLookAheadInput = Partial<CreateLookAheadInput>;
 
 export const lookAheadsApi = {
   list: (projectId: string) => request<LookAhead[]>(`/projects/${projectId}/look-aheads`),

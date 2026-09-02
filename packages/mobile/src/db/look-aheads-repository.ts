@@ -1,6 +1,6 @@
 import { randomUUID } from "expo-crypto";
-import { desc, eq } from "drizzle-orm";
-import type { CreateLookAheadInput, LookAhead } from "@/api/look-aheads";
+import { and, desc, eq } from "drizzle-orm";
+import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "./client";
 import { lookAheads, outbox, type LookAheadRow } from "./schema";
 
@@ -36,6 +36,7 @@ export const lookAheadsRepository = {
         startDate: input.startDate,
         endDate: input.endDate,
         totalWorkers: input.totalWorkers ?? null,
+        buildingId: input.buildingId ?? null,
         isPendingSync: true,
         updatedAt: Date.now(),
       });
@@ -49,6 +50,74 @@ export const lookAheadsRepository = {
       });
     });
     return id;
+  },
+
+  /**
+   * Applies an edit locally and queues the push in one transaction.
+   *
+   * A record whose create is still queued has an id the server has never seen,
+   * so no update is enqueued for it — the local row is mutated and the pending
+   * create carries the final state. Enqueuing one would PATCH a nonexistent id.
+   */
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(lookAheads).set({ isPendingSync: false }).where(eq(lookAheads.id, id));
+  },
+
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: UpdateLookAheadInput,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(lookAheads)
+        .set({
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.description !== undefined ? { description: patch.description } : {}),
+          ...(patch.startDate !== undefined ? { startDate: patch.startDate } : {}),
+          ...(patch.endDate !== undefined ? { endDate: patch.endDate } : {}),
+          ...(patch.totalWorkers !== undefined ? { totalWorkers: patch.totalWorkers } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(lookAheads.id, id));
+
+      const [queuedCreate] = await tx
+        .select({ id: outbox.id })
+        .from(outbox)
+        .where(
+          and(
+            eq(outbox.resource, "look-aheads"),
+            eq(outbox.entityId, id),
+            eq(outbox.operation, "create"),
+          ),
+        )
+        .limit(1);
+      if (queuedCreate) return;
+
+      const [queuedUpdate] = await tx
+        .select({ id: outbox.id })
+        .from(outbox)
+        .where(
+          and(
+            eq(outbox.resource, "look-aheads"),
+            eq(outbox.entityId, id),
+            eq(outbox.operation, "update"),
+          ),
+        )
+        .limit(1);
+      if (queuedUpdate) return;
+
+      await tx.insert(outbox).values({
+        id: randomUUID(),
+        resource: "look-aheads",
+        entityId: id,
+        projectId,
+        operation: "update",
+        nextAttemptAt: 0,
+      });
+    });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: LookAhead) {

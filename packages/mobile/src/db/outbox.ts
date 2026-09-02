@@ -101,6 +101,22 @@ async function runFlush(db: Db): Promise<FlushResult> {
           await db.delete(outbox).where(eq(outbox.id, item.id));
           continue;
         }
+        if (item.operation === "update") {
+          // buildingId travels with the patch: the API refuses a look-ahead
+          // write without one on a multi-building project.
+          await lookAheadsApi.update(item.projectId, row.id, {
+            name: row.name,
+            description: row.description,
+            startDate: row.startDate,
+            endDate: row.endDate,
+            totalWorkers: row.totalWorkers,
+            ...(row.buildingId ? { buildingId: row.buildingId } : {}),
+          });
+          await lookAheadsRepository.markSynced(db, row.id);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
+          continue;
+        }
         const server = await lookAheadsApi.create(item.projectId, {
           name: row.name,
           description: row.description,
