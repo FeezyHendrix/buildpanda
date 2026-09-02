@@ -76,6 +76,14 @@ async function runFlush(db: Db): Promise<FlushResult> {
   for (const item of due) {
     try {
       if (item.resource === "change-requests") {
+        // Before the row lookup: deleteLocal already removed it, so a missing
+        // row is expected here rather than a reason to drop the push.
+        if (item.operation === "delete") {
+          await changeRequestsApi.remove(item.projectId, item.entityId);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
+          continue;
+        }
         const row = await changeRequestsRepository.findById(db, item.entityId);
         if (!row) {
           await db.delete(outbox).where(eq(outbox.id, item.id));
@@ -110,6 +118,14 @@ async function runFlush(db: Db): Promise<FlushResult> {
       }
 
       if (item.resource === "look-aheads") {
+        // Before the row lookup: deleteLocal already removed it, so a missing
+        // row is expected here rather than a reason to drop the push.
+        if (item.operation === "delete") {
+          await lookAheadsApi.remove(item.projectId, item.entityId);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
+          continue;
+        }
         const row = await lookAheadsRepository.findById(db, item.entityId);
         if (!row) {
           await db.delete(outbox).where(eq(outbox.id, item.id));
@@ -145,6 +161,14 @@ async function runFlush(db: Db): Promise<FlushResult> {
       }
 
       if (item.resource === "material-orders") {
+        // Before the row lookup: deleteLocal already removed it, so a missing
+        // row is expected here rather than a reason to drop the push.
+        if (item.operation === "delete") {
+          await materialsApi.remove(item.projectId, item.entityId);
+          await db.delete(outbox).where(eq(outbox.id, item.id));
+          pushed += 1;
+          continue;
+        }
         const row = await materialsRepository.findById(db, item.entityId);
         if (!row) {
           await db.delete(outbox).where(eq(outbox.id, item.id));

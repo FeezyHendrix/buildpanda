@@ -42,3 +42,11 @@ export function useUpdateChangeRequest(db: Db | null, projectId: string | undefi
     void flushOutbox(db).catch(() => undefined);
   };
 }
+
+export function useDeleteChangeRequest(db: Db | null, projectId: string | undefined) {
+  return async (id: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await changeRequestsRepository.deleteLocal(db, projectId, id);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}

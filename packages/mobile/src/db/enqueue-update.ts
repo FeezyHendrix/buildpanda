@@ -8,6 +8,7 @@ type Tx = {
     };
   };
   insert: (table: typeof outbox) => { values: (row: Record<string, unknown>) => Promise<unknown> };
+  delete: (table: typeof outbox) => { where: (condition: unknown) => Promise<unknown> };
 };
 
 async function hasQueued(tx: Tx, resource: string, entityId: string, operation: string) {
@@ -49,6 +50,39 @@ export async function enqueueUpdate(
     entityId,
     projectId,
     operation: "update",
+    nextAttemptAt: 0,
+  });
+}
+
+/**
+ * Queues a delete for push, in the caller's transaction.
+ *
+ * Any work already queued for the record is dropped first: an update to a row
+ * that is about to disappear is pointless. If its create never left the device
+ * then the server has no such record, so nothing is queued at all — pushing a
+ * delete for an id the server has never seen would 404.
+ */
+export async function enqueueDelete(
+  tx: Tx,
+  resource: string,
+  entityId: string,
+  projectId: string,
+  newId: string,
+): Promise<void> {
+  const neverReachedServer = await hasQueued(tx, resource, entityId, "create");
+
+  await tx
+    .delete(outbox)
+    .where(and(eq(outbox.resource, resource), eq(outbox.entityId, entityId)));
+
+  if (neverReachedServer) return;
+
+  await tx.insert(outbox).values({
+    id: newId,
+    resource,
+    entityId,
+    projectId,
+    operation: "delete",
     nextAttemptAt: 0,
   });
 }

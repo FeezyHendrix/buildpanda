@@ -2,7 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateMaterialOrderInput, MaterialOrder } from "@/api/materials";
 import type { Db } from "./client";
-import { enqueueUpdate } from "./enqueue-update";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { materialOrders, outbox, type MaterialOrderRow } from "./schema";
 
 export function toMaterialOrder(row: MaterialOrderRow) {
@@ -54,6 +54,14 @@ export const materialsRepository = {
 
   async markSynced(db: Db, id: string): Promise<void> {
     await db.update(materialOrders).set({ isPendingSync: false }).where(eq(materialOrders.id, id));
+  },
+
+  /** Removes the row locally and queues the push in one transaction. */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(materialOrders).where(eq(materialOrders.id, id));
+      await enqueueDelete(tx as never, "material-orders", id, projectId, randomUUID());
+    });
   },
 
   /** Applies an edit locally and queues the push in one transaction. */

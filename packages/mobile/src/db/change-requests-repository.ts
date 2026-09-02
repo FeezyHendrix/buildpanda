@@ -2,7 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { ChangeRequest, UpsertChangeRequestInput } from "@/api/change-requests";
 import type { Db } from "./client";
-import { enqueueUpdate } from "./enqueue-update";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { changeRequests, outbox, type ChangeRequestRow } from "./schema";
 
 export function toChangeRequest(row: ChangeRequestRow) {
@@ -56,6 +56,14 @@ export const changeRequestsRepository = {
 
   async markSynced(db: Db, id: string): Promise<void> {
     await db.update(changeRequests).set({ isPendingSync: false }).where(eq(changeRequests.id, id));
+  },
+
+  /** Removes the row locally and queues the push in one transaction. */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(changeRequests).where(eq(changeRequests.id, id));
+      await enqueueDelete(tx as never, "change-requests", id, projectId, randomUUID());
+    });
   },
 
   /** Applies an edit locally and queues the push in one transaction. */
