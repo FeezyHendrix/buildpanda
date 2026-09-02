@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
@@ -65,7 +65,22 @@ export default function MaterialOrderDetail() {
   const { db, ready } = useLocalDb();
 
   return (
-    <Page title="Material Order" onBack={() => router.back()}>
+    <Page
+      title="Material Order"
+      onBack={() => router.back()}
+      rightButtons={
+        id ? (
+          <Pressable
+            onPress={() => router.push(`/tools/materials/edit/${id}` as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit order"
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+          >
+            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+          </Pressable>
+        ) : null
+      }
+    >
       {ready && db && projectId && id ? (
         <MaterialDetail db={db} projectId={projectId} orderId={id} />
       ) : (

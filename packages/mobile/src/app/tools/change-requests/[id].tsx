@@ -131,6 +131,18 @@ export default function ChangeRequestDetail() {
     <Page
       title="Change Request"
       onBack={() => router.back()}
+      rightButtons={
+        id ? (
+          <Pressable
+            onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit change request"
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+          >
+            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+          </Pressable>
+        ) : null
+      }
       scroll
       footer={
         id && !id.startsWith("local_") ? (
