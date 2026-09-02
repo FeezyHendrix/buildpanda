@@ -35,3 +35,19 @@ export function useCreateLocalRfi() {
     return id;
   };
 }
+
+/**
+ * Only subject, question and priority are editable: those are the fields the
+ * outbox pushes on an RFI update, so exposing more would save locally and
+ * never reach the server.
+ */
+export function useUpdateLocalRfi() {
+  const { projectId } = useFieldSession();
+  const { db } = useLocalDb();
+
+  return async (rfiId: string, patch: Pick<UpsertRfiInput, "subject" | "question" | "priority">) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await rfisRepository.updateLocal(db, projectId, rfiId, patch);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
