@@ -68,9 +68,23 @@ export function useSaveDailyLog(db: Db | null, projectId: string | undefined) {
 }
 
 export function useAddDailyLogEntry(db: Db | null, projectId: string | undefined) {
-  return async (logDate: string, bodyText: string, authorName: string, bodyHtml?: string | null) => {
+  return async (
+    logDate: string,
+    bodyText: string,
+    authorName: string,
+    bodyHtml?: string | null,
+    buildingId?: string | null,
+  ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
-    await dailyLogsRepository.addEntryLocal(db, projectId, logDate, bodyText, authorName, bodyHtml);
+    await dailyLogsRepository.addEntryLocal(
+      db,
+      projectId,
+      logDate,
+      bodyText,
+      authorName,
+      bodyHtml,
+      buildingId,
+    );
     void flushOutbox(db).catch(() => undefined);
   };
 }

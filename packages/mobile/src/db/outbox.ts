@@ -253,6 +253,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
           entry.logDate,
           entry.bodyHtml ?? textToParagraphHtml(entry.bodyText),
           entry.bodyText,
+          entry.buildingId,
         );
         await db.transaction(async (tx) => {
           await tx.delete(dailyLogEntries).where(eq(dailyLogEntries.id, entry.id));
@@ -263,6 +264,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
             authorName: server.authorName,
             bodyText: server.bodyText ?? entry.bodyText,
             bodyHtml: server.bodyHtml ?? entry.bodyHtml,
+            buildingId: entry.buildingId,
             voided: server.voided,
             createdAt: Date.parse(server.createdAt) || Date.now(),
             isPendingSync: false,

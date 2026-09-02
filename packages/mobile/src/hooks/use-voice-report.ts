@@ -15,6 +15,7 @@ import { rfisRepository } from "@/db/rfis-repository";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
 import { useFieldSession } from "@/lib/field-session";
+import { useProjectBuilding } from "./use-project-building";
 import { useAuthGate } from "@/lib/use-auth-gate";
 import { useAddDailyLogEntry, useSaveDailyLog } from "./use-daily-logs";
 import { useCreateChangeRequest } from "./use-local-change-requests";
@@ -43,6 +44,7 @@ export function useApplyProposedAction() {
 
   const createRfi = useCreateLocalRfi();
   const addDailyEntry = useAddDailyLogEntry(db, projectId);
+  const { buildingId } = useProjectBuilding();
   const saveDailyLog = useSaveDailyLog(db, projectId);
   const createChangeRequest = useCreateChangeRequest(db, projectId);
   const createMaterialOrder = useCreateMaterialOrder(db, projectId);
@@ -69,7 +71,13 @@ export function useApplyProposedAction() {
           await createRfi(action.payload);
           return;
         case "daily_log":
-          await addDailyEntry(localDateIso(), action.payload.bodyText, user?.name ?? "Field team");
+          await addDailyEntry(
+            localDateIso(),
+            action.payload.bodyText,
+            user?.name ?? "Field team",
+            null,
+            buildingId,
+          );
           return;
         case "change_request":
           await createChangeRequest(action.payload);
@@ -184,6 +192,7 @@ export function useApplyProposedAction() {
       db,
       projectId,
       user,
+      buildingId,
     ],
   );
 }
