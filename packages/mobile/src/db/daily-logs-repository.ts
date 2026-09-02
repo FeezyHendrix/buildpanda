@@ -173,6 +173,7 @@ export const dailyLogsRepository = {
           logDate,
           totalHours: input.totalHours ?? 0,
           summary: input.summary ?? null,
+          buildingId: input.buildingId ?? null,
           isPendingSync: true,
           updatedAt: now,
         })

@@ -1,11 +1,13 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Button, Field, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { todayIso } from "@/db/daily-logs-repository";
 import { useLocalDb } from "@/db/provider";
 import { useCreateLookAhead } from "@/hooks/use-local-look-aheads";
+import { useProjectBuilding } from "@/hooks/use-project-building";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
 
@@ -27,6 +29,14 @@ export default function NewLookAhead() {
   const [workers, setWorkers] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { buildingId, buildings, needsChoice, selectBuilding } = useProjectBuilding();
+  const [buildingPickerOpen, setBuildingPickerOpen] = useState(false);
+
+  // The API refuses a look ahead without a block on a multi-building project,
+  // so ask before the crew member fills the form rather than on submit.
+  useEffect(() => {
+    if (needsChoice) setBuildingPickerOpen(true);
+  }, [needsChoice]);
 
   const canSubmit = name.trim().length > 0 && !saving;
 
@@ -40,6 +50,7 @@ export default function NewLookAhead() {
         startDate,
         endDate,
         totalWorkers: Number.parseInt(workers, 10) || null,
+        buildingId,
       });
       router.back();
     } catch (err) {
@@ -82,6 +93,20 @@ export default function NewLookAhead() {
         </View>
         <Field label="Total crew" value={workers} onChangeText={setWorkers} keyboardType="number-pad" />
       </View>
+
+      <WorkspaceSheet
+        visible={buildingPickerOpen}
+        workspaces={buildings.map((building) => ({
+          id: building.id,
+          name: building.code ? `${building.name} (${building.code})` : building.name,
+        }))}
+        activeId={buildingId}
+        onSelect={(id) => {
+          selectBuilding(id);
+          setBuildingPickerOpen(false);
+        }}
+        onClose={() => setBuildingPickerOpen(false)}
+      />
     </Page>
   );
 }

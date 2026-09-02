@@ -35,6 +35,7 @@ export interface DailyLogDay {
 export interface UpsertDailyLogInput {
   totalHours?: number;
   summary?: string | null;
+  buildingId?: string | null;
 }
 
 export const dailyLogsApi = {
