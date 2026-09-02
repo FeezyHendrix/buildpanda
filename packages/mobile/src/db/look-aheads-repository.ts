@@ -2,7 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "./client";
-import { enqueueUpdate } from "./enqueue-update";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { lookAheads, outbox, type LookAheadRow } from "./schema";
 
 export function toLookAhead(row: LookAheadRow) {
@@ -55,6 +55,14 @@ export const lookAheadsRepository = {
 
   async markSynced(db: Db, id: string): Promise<void> {
     await db.update(lookAheads).set({ isPendingSync: false }).where(eq(lookAheads.id, id));
+  },
+
+  /** Removes the row locally and queues the push in one transaction. */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(lookAheads).where(eq(lookAheads.id, id));
+      await enqueueDelete(tx as never, "look-aheads", id, projectId, randomUUID());
+    });
   },
 
   /** Applies an edit locally and queues the push in one transaction. */

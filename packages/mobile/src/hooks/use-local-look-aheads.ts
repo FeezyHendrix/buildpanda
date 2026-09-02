@@ -42,3 +42,11 @@ export function useUpdateLookAhead(db: Db | null, projectId: string | undefined)
     void flushOutbox(db).catch(() => undefined);
   };
 }
+
+export function useDeleteLookAhead(db: Db | null, projectId: string | undefined) {
+  return async (id: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await lookAheadsRepository.deleteLocal(db, projectId, id);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
