@@ -2,6 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Rfi, UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "./client";
+import { enqueueUpdate } from "./enqueue-update";
 import { outbox, rfis, type RfiRow } from "./schema";
 
 // Hermes has no global crypto.randomUUID; expo-crypto is the RN-safe source.
@@ -73,6 +74,36 @@ export const rfisRepository = {
   },
 
   /** Replaces the local placeholder with the row the server assigned. */
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(rfis).set({ isPendingSync: false }).where(eq(rfis.id, id));
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: Partial<UpsertRfiInput>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(rfis)
+        .set({
+          ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
+          ...(patch.question !== undefined ? { question: patch.question } : {}),
+          ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+          ...(patch.dueDate !== undefined ? { dueDate: patch.dueDate } : {}),
+          ...(patch.costImpact !== undefined ? { costImpact: patch.costImpact } : {}),
+          ...(patch.scheduleImpact !== undefined ? { scheduleImpact: patch.scheduleImpact } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(rfis.id, id));
+
+      await enqueueUpdate(tx as never, "rfis", id, projectId);
+    });
+  },
+
   async reconcileCreate(
     db: Db,
     projectId: string,
