@@ -61,10 +61,16 @@ export const dailyLogsApi = {
       body: JSON.stringify({ activityId, hoursLogged }),
     }),
 
-  addEntry: (projectId: string, date: string, bodyHtml: string, bodyText: string) =>
+  addEntry: (
+    projectId: string,
+    date: string,
+    bodyHtml: string,
+    bodyText: string,
+    buildingId?: string | null,
+  ) =>
     request<DailyLogEntry>(`/projects/${projectId}/daily-logs/${date}/entries`, {
       method: "POST",
-      body: JSON.stringify({ bodyHtml, bodyText }),
+      body: JSON.stringify({ bodyHtml, bodyText, ...(buildingId ? { buildingId } : {}) }),
     }),
 
   voidEntry: (projectId: string, date: string, entryId: string, reason: string) =>

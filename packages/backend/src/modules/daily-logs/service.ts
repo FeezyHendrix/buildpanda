@@ -322,12 +322,13 @@ export function dailyLogsService(
       bodyHtml: string,
       bodyText: string | null,
       author: { id: string; name: string; role: string },
+      explicitBuildingId: string | null = null,
     ): Promise<DailyLogEntry> {
       assertDate(logDate, "logDate");
       if (stripHtml(bodyHtml).trim() === "") {
         throw new BadRequestError("Your daily log entry cannot be empty");
       }
-      const buildingId = await resolveBuildingId(projectId);
+      const buildingId = await resolveBuildingId(projectId, explicitBuildingId);
       const existing = await repository.findOne({ projectId, buildingId, logDate });
       if (!existing) {
         await repository.upsert({ projectId, buildingId, logDate }, {}, author.id);
