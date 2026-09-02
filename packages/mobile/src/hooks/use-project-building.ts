@@ -9,6 +9,7 @@ export interface ProjectBuilding {
   buildings: Building[];
   /** True when the crew member must choose before a building-scoped write. */
   needsChoice: boolean;
+  selectBuilding: (buildingId: string) => void;
   isLoading: boolean;
 }
 
@@ -43,6 +44,7 @@ export function useProjectBuilding(): ProjectBuilding {
     buildingId: resolved,
     buildings,
     needsChoice: !resolved && buildings.length > 1,
+    selectBuilding,
     isLoading,
   };
 }

@@ -12,6 +12,7 @@ import { activitiesApi, type Activity, type DelayReason } from "@/api/activities
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/use-daily-logs";
 import { useProjectBuilding } from "@/hooks/use-project-building";
+import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { useActivities } from "@/hooks/use-activities";
 import { useSession } from "@/lib/auth-client";
 import { useFieldSession } from "@/lib/field-session";
@@ -28,7 +29,14 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
   const { day, entries, isPending } = useDailyLogDay(db, projectId, logDate);
   const save = useSaveDailyLog(db, projectId);
   const addEntry = useAddDailyLogEntry(db, projectId);
-  const { buildingId } = useProjectBuilding();
+  const { buildingId, buildings, needsChoice, selectBuilding } = useProjectBuilding();
+  const [buildingPickerOpen, setBuildingPickerOpen] = useState(false);
+
+  // A multi-building project cannot take an entry until the block is known, so
+  // the sheet opens itself rather than letting the write fail on submit.
+  useEffect(() => {
+    if (needsChoice) setBuildingPickerOpen(true);
+  }, [needsChoice]);
   const { data: session } = useSession();
 
   const [hours, setHours] = useState("0");
@@ -204,6 +212,20 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
           </View>
         ) : null}
       </View>
+
+      <WorkspaceSheet
+        visible={buildingPickerOpen}
+        workspaces={buildings.map((building) => ({
+          id: building.id,
+          name: building.code ? `${building.name} (${building.code})` : building.name,
+        }))}
+        activeId={buildingId}
+        onSelect={(id) => {
+          selectBuilding(id);
+          setBuildingPickerOpen(false);
+        }}
+        onClose={() => setBuildingPickerOpen(false)}
+      />
     </View>
   );
 }
