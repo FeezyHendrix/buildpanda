@@ -100,7 +100,7 @@ export const rfisRepository = {
         })
         .where(eq(rfis.id, id));
 
-      await enqueueUpdate(tx as never, "rfis", id, projectId);
+      await enqueueUpdate(tx as never, "rfis", id, projectId, randomUUID());
     });
   },
 

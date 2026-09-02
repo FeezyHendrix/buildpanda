@@ -77,7 +77,7 @@ export const materialsRepository = {
         })
         .where(eq(materialOrders.id, id));
 
-      await enqueueUpdate(tx as never, "material-orders", id, projectId);
+      await enqueueUpdate(tx as never, "material-orders", id, projectId, randomUUID());
     });
   },
 
