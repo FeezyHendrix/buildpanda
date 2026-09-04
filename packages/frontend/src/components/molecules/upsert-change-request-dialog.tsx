@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol } from "@/lib/formatters";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
 import type { ChangeStatus } from "@/lib/project-types";
 
@@ -9,6 +11,7 @@ export interface UpsertChangeValues {
   title: string;
   description: string | null;
   reason: string | null;
+  reasonHtml: string | null;
   status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
@@ -24,6 +27,7 @@ export interface AssigneeOption {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   mode: "create" | "edit";
   initial?: Partial<UpsertChangeValues>;
   assigneeOptions?: AssigneeOption[];
@@ -42,10 +46,11 @@ const STATUS: { value: ChangeStatus; label: string }[] = [
 const field =
   "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
-function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
+function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");
+  const [reasonHtml, setReasonHtml] = useState("");
   const [status, setStatus] = useState<ChangeStatus>("Draft");
   const [cost, setCost] = useState("0");
   const [days, setDays] = useState("0");
@@ -59,6 +64,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
       setTitle(initial?.title ?? "");
       setDescription(initial?.description ?? "");
       setReason(initial?.reason ?? "");
+      setReasonHtml(initial?.reasonHtml ?? htmlFromPlainText(initial?.reason ?? ""));
       setStatus(initial?.status ?? "Draft");
       setCost(String(initial?.costImpact ?? 0));
       setDays(String(initial?.timeImpactDays ?? 0));
@@ -73,6 +79,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
       title: title.trim(),
       description: description.trim() || null,
       reason: reason.trim() || null,
+      reasonHtml: reasonHtml || null,
       status,
       costImpact: Number(cost) || 0,
       timeImpactDays: Math.round(Number(days) || 0),
@@ -101,10 +108,14 @@ function UpsertChangeRequestDialog({ open, onOpenChange, mode, initial, assignee
         <Label htmlFor="cr-desc">Details</Label>
         <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="cr-reason">Reason</Label>
-        <input id="cr-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is it needed?" className={field} />
-      </div>
+      <RichTextField
+        label="Reason"
+        value={reasonHtml}
+        onChange={setReasonHtml}
+        onChangeText={setReason}
+        projectId={projectId}
+        placeholder="Why is it needed?"
+      />
       <div className="grid grid-cols-3 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="cr-currency">Currency</Label>
