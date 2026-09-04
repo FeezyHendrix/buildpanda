@@ -4,6 +4,7 @@ import type { Rfi, RfiDetail, RfiPriority, RfiStatus } from "@/lib/project-types
 export interface RfiCreateInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   dueDate?: string | null;
   costImpact?: boolean;
@@ -19,6 +20,7 @@ export interface RfiCreateInput {
 export interface RfiUpdateInput {
   subject?: string;
   question?: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   dueDate?: string | null;
   costImpact?: boolean;
