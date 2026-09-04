@@ -194,8 +194,10 @@ export function materialsLedgerRepository(db: Knex) {
             "COALESCE(SUM(CASE WHEN entry_type = 'USED' THEN quantity ELSE 0 END), 0) as total_used",
           ),
         )
-        .where({ project_id: projectId })
-        .groupBy("material_id");
+          // Received/used totals count accepted movements only, matching
+          // on_hand_qty, which approve() is the only thing that moves.
+          .where({ project_id: projectId, approval_status: "Approved" })
+          .groupBy("material_id");
 
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")
@@ -261,16 +263,21 @@ export function materialsLedgerRepository(db: Knex) {
           .where({ project_id: input.projectId, material_id: input.materialId, location_key: input.locationKey })
           .forUpdate()
           .first<{ on_hand_qty: string }>();
-        const current = locked ? Number(locked.on_hand_qty) : 0;
-        const nextOnHand = current + input.stockDelta;
-        const negativeStock = nextOnHand < 0;
+          const current = locked ? Number(locked.on_hand_qty) : 0;
+          // A pending entry is a claim, not yet a fact. It must not move stock
+          // and must not raise a negative-stock flag for a movement that has
+          // not been accepted. approve() applies the delta later.
+          const gated = input.approvalStatus === "Pending";
+          const nextOnHand = gated ? current : current + input.stockDelta;
+          const negativeStock = nextOnHand < 0;
 
         await trx("material_ledger_entries").insert({
           id: input.id,
           project_id: input.projectId,
           idempotency_key: input.idempotencyKey,
-          entry_type: input.entryType,
-          status: "Posted",
+            entry_type: input.entryType,
+            status: "Posted",
+            approval_status: input.approvalStatus,
           material_id: input.materialId,
           material_name_snapshot: input.materialName,
           stage_id: input.stageId,
@@ -290,9 +297,11 @@ export function materialsLedgerRepository(db: Knex) {
           notes_html: input.notesHtml,
         });
 
-        await trx("materials_stock")
-          .where({ project_id: input.projectId, material_id: input.materialId, location_key: input.locationKey })
-          .update({ on_hand_qty: nextOnHand, last_ledger_entry_id: input.id, updated_at: trx.fn.now() });
+          if (!gated) {
+            await trx("materials_stock")
+              .where({ project_id: input.projectId, material_id: input.materialId, location_key: input.locationKey })
+              .update({ on_hand_qty: nextOnHand, last_ledger_entry_id: input.id, updated_at: trx.fn.now() });
+          }
 
         if (input.reversalForEntryId) {
           await trx("material_ledger_entries")
