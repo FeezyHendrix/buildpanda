@@ -265,6 +265,7 @@ export interface Approval {
   description: string | null;
   status: ApprovalStatus;
   response: string | null;
+  responseHtml: string | null;
   dueDate: string | null;
   submittedById: string | null;
   requestedReviewerId: string | null;
