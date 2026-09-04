@@ -13,6 +13,7 @@ export interface LogEntryInput {
   unit: string;
   quantity: number;
   locationKey?: string | null;
+  stageId?: string | null;
   occurredAt?: string | null;
   materialOrderId?: string | null;
   taskId?: string | null;

@@ -1357,6 +1357,7 @@ export interface LedgerEntry {
   materialName: string;
   unit: string;
   locationKey: string;
+  stageId: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
