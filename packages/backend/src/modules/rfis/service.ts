@@ -28,6 +28,7 @@ export function hashReplyToken(raw: string): string {
 export interface CreateRfiInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
   ballInCourtName?: string | null;
@@ -44,6 +45,7 @@ export interface CreateRfiInput {
 export interface UpdateRfiInput {
   subject?: string;
   question?: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   ballInCourtId?: string | null;
   ballInCourtName?: string | null;
@@ -56,6 +58,7 @@ export interface UpdateRfiInput {
 
 export interface RespondInput {
   body: string;
+  bodyHtml?: string | null;
   official?: boolean;
   contentHtml?: string | null;
   attachments?: RfiCommentAttachment[];
@@ -73,8 +76,9 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     projectId: row.project_id,
     number: row.number,
     subject: row.subject,
-    question: row.question,
-    status: row.status,
+      question: row.question,
+      questionHtml: row.question_html,
+      status: row.status,
     priority: row.priority,
     visibility: row.visibility,
     ballInCourtId: row.ball_in_court_id,
@@ -82,7 +86,8 @@ function toRfi(row: RfiRow, commentCount: number): Rfi {
     ballInCourtEmail: row.ball_in_court_email,
     assigneeRole: row.assignee_role,
     dueDate: row.due_date,
-    officialResponse: row.official_response,
+      officialResponse: row.official_response,
+      officialResponseHtml: row.official_response_html,
     officialRespondedById: row.official_responded_by_id,
     officialRespondedByName: row.official_responded_by_name,
     officialRespondedAt: row.official_responded_at,
@@ -253,8 +258,9 @@ export function rfisService(
         id: generateId("rfi"),
         project_id: projectId,
         subject: input.subject,
-        question: input.question,
-        status: hasAssignee ? "Open" : "Draft",
+          question: input.question,
+          question_html: input.questionHtml ?? null,
+          status: hasAssignee ? "Open" : "Draft",
         priority: input.priority ?? "Normal",
         visibility,
         ball_in_court_id: input.ballInCourtId ?? null,
@@ -289,7 +295,8 @@ export function rfisService(
       const current = await loadRow(projectId, rfiId);
       const patch: RfiUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.subject !== undefined) patch.subject = input.subject;
-      if (input.question !== undefined) patch.question = input.question;
+        if (input.question !== undefined) patch.question = input.question;
+        if (input.questionHtml !== undefined) patch.question_html = input.questionHtml;
       if (input.priority !== undefined) patch.priority = input.priority;
       if (input.assigneeRole !== undefined) patch.assignee_role = input.assigneeRole;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
@@ -366,6 +373,7 @@ export function rfisService(
         await repository.update(rfiId, {
           status: "Answered",
           official_response: input.body,
+          official_response_html: input.bodyHtml ?? null,
           official_responded_by_id: actor.id,
           official_responded_at: now,
           ball_in_court_id: current.created_by_id,

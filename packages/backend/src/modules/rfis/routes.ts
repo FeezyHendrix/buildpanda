@@ -54,6 +54,7 @@ const createBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 8000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
     ballInCourtName: { type: ["string", "null"], maxLength: 200 },
@@ -75,6 +76,7 @@ const updateBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 8000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     priority: { type: "string", enum: RFI_PRIORITIES },
     ballInCourtId: { type: ["string", "null"], maxLength: 100 },
     ballInCourtName: { type: ["string", "null"], maxLength: 200 },
@@ -92,6 +94,7 @@ const respondBody = {
   additionalProperties: false,
   properties: {
     body: { type: "string", minLength: 1, maxLength: 8000 },
+    bodyHtml: { type: ["string", "null"], maxLength: 200000 },
     official: { type: "boolean" },
     contentHtml: { type: ["string", "null"], maxLength: 50000 },
     attachments: {
