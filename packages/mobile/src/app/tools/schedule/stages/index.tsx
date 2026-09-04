@@ -1,4 +1,6 @@
 import { StageRow } from "@/components/molecules/schedule/rows";
+import { router } from "expo-router";
+import { Pressable } from "react-native";
 import { ScheduleListScreen } from "@/components/molecules/schedule/list-screen";
 import { useStages } from "@/hooks/use-stages";
 import { useFieldSession } from "@/lib/field-session";
@@ -18,7 +20,13 @@ export default function Stages() {
       emptyBody="Stages break the build into phases with their own progress."
     >
       {data.map((stage) => (
-        <StageRow key={stage.id} stage={stage} />
+        <Pressable
+          key={stage.id}
+          onPress={() => router.push(`/tools/schedule/stages/${stage.id}` as never)}
+          accessibilityRole="button"
+        >
+          <StageRow stage={stage} />
+        </Pressable>
       ))}
     </ScheduleListScreen>
   );

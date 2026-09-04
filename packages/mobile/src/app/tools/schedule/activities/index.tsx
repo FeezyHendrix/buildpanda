@@ -1,4 +1,6 @@
 import { ActivityRow } from "@/components/molecules/schedule/rows";
+import { router } from "expo-router";
+import { Pressable } from "react-native";
 import { ScheduleListScreen } from "@/components/molecules/schedule/list-screen";
 import { useActivities } from "@/hooks/use-activities";
 import { useFieldSession } from "@/lib/field-session";
@@ -18,7 +20,13 @@ export default function Activities() {
       emptyBody="Site activities for this project will appear here."
     >
       {data.map((activity) => (
-        <ActivityRow key={activity.id} activity={activity} />
+        <Pressable
+          key={activity.id}
+          onPress={() => router.push(`/tools/schedule/activities/${activity.id}` as never)}
+          accessibilityRole="button"
+        >
+          <ActivityRow activity={activity} />
+        </Pressable>
       ))}
     </ScheduleListScreen>
   );
