@@ -14,6 +14,7 @@ import type {
 export interface CreateQueryInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   dueDate?: string | null;
   assigneeId?: string | null;
 }
@@ -21,8 +22,10 @@ export interface CreateQueryInput {
 export interface UpdateQueryInput {
   subject?: string;
   question?: string;
+  questionHtml?: string | null;
   status?: QueryStatus;
   answer?: string | null;
+  answerHtml?: string | null;
   dueDate?: string | null;
   assigneeId?: string | null;
 }
@@ -33,8 +36,10 @@ function toQuery(row: QueryRow, commentCount: number): Query {
     projectId: row.project_id,
     subject: row.subject,
     question: row.question,
+    questionHtml: row.question_html,
     status: row.status,
     answer: row.answer,
+    answerHtml: row.answer_html,
     dueDate: row.due_date,
     askedById: row.asked_by_id,
     answeredById: row.answered_by_id,
@@ -118,6 +123,7 @@ export function queriesService(repository: QueriesRepository, deps: QueriesDeps 
         project_id: projectId,
         subject: input.subject,
         question: input.question,
+        question_html: input.questionHtml ?? null,
         status: "Open",
         due_date: input.dueDate ?? null,
         asked_by_id: userId,
@@ -139,8 +145,10 @@ export function queriesService(repository: QueriesRepository, deps: QueriesDeps 
       const patch: QueryUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.subject !== undefined) patch.subject = input.subject;
       if (input.question !== undefined) patch.question = input.question;
+      if (input.questionHtml !== undefined) patch.question_html = input.questionHtml;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
       if (input.answer !== undefined) patch.answer = input.answer;
+      if (input.answerHtml !== undefined) patch.answer_html = input.answerHtml;
 
       const reassigned =
         input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id;

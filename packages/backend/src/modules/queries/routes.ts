@@ -35,6 +35,7 @@ const createBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 4000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
@@ -47,8 +48,10 @@ const updateBody = {
   properties: {
     subject: { type: "string", minLength: 1, maxLength: 200 },
     question: { type: "string", minLength: 1, maxLength: 4000 },
+    questionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     answer: { type: ["string", "null"], maxLength: 4000 },
+    answerHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     assigneeId: { type: ["string", "null"], maxLength: 100 },
   },
