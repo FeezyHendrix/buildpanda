@@ -8,6 +8,8 @@ import {
   useApproval,
   useUpdateApproval,
 } from "@/hooks/use-approvals";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import { htmlFromPlainText } from "@/lib/rich-text";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import type { ApprovalStatus } from "@/lib/project-types";
@@ -47,16 +49,18 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
   const updateApproval = useUpdateApproval();
   const addComment = useAddApprovalComment();
   const [response, setResponse] = useState("");
+  const [responseHtml, setResponseHtml] = useState("");
   const [comment, setComment] = useState("");
 
   useEffect(() => {
     setResponse(approval?.response ?? "");
-  }, [approval?.response, approvalId]);
+    setResponseHtml(approval?.responseHtml ?? htmlFromPlainText(approval?.response ?? ""));
+  }, [approval?.response, approval?.responseHtml, approvalId]);
 
   function decide(status: ApprovalStatus): void {
     if (!approvalId) return;
     updateApproval.mutate(
-      { projectId, approvalId, status, response: response.trim() || null },
+      { projectId, approvalId, status, response: response.trim() || null, responseHtml: responseHtml || null },
       {
         onSuccess: () => {
           toast(DECISION_TOAST[status], "success");
@@ -120,7 +124,14 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                 </p>
                 {decided && approval.response ? (
                   <div className="mt-2 rounded-xl bg-[#FAFAFA] p-3">
-                    <p className="whitespace-pre-wrap text-sm text-gray-900">{approval.response}</p>
+                    {approval.responseHtml ? (
+                      <div
+                        className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
+                        dangerouslySetInnerHTML={{ __html: approval.responseHtml }}
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap text-sm text-gray-900">{approval.response}</p>
+                    )}
                     {approval.reviewedByName && (
                       <p className="mt-1 text-xs text-gray-500">
                         {approval.reviewedByName}
@@ -131,12 +142,13 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                 ) : null}
                 {mayDecide ? (
                   <div className="mt-2 flex flex-col gap-2">
-                    <textarea
-                      value={response}
-                      onChange={(e) => setResponse(e.target.value)}
-                      rows={2}
+                    <RichTextField
+                      label="Decision note"
+                      value={responseHtml}
+                      onChange={setResponseHtml}
+                      onChangeText={setResponse}
+                      projectId={projectId}
                       placeholder="Add a note for your decision (optional)"
-                      className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
                     />
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Approved")}>

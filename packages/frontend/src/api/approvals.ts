@@ -22,6 +22,7 @@ export interface ApprovalUpdateInput {
   description?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
+  responseHtml?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
 }
