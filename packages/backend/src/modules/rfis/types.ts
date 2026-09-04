@@ -13,6 +13,7 @@ export interface Rfi {
   number: number;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   visibility: RfiVisibility;
@@ -22,6 +23,7 @@ export interface Rfi {
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
+  officialResponseHtml: string | null;
   officialRespondedById: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: string | null;
@@ -81,6 +83,7 @@ export interface RfiRow {
   number: number;
   subject: string;
   question: string;
+  question_html: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   visibility: RfiVisibility;
@@ -90,6 +93,7 @@ export interface RfiRow {
   assignee_role: string | null;
   due_date: string | null;
   official_response: string | null;
+  official_response_html: string | null;
   official_responded_by_id: string | null;
   official_responded_by_name: string | null;
   official_responded_at: string | null;
