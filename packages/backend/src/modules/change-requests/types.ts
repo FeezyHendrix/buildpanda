@@ -9,6 +9,7 @@ export interface ChangeRequest {
   description: string | null;
   descriptionHtml: string | null;
   reason: string | null;
+  reasonHtml: string | null;
   status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
@@ -50,6 +51,7 @@ export interface ChangeRequestRow {
   description: string | null;
   description_html: string | null;
   reason: string | null;
+  reason_html: string | null;
   status: ChangeStatus;
   cost_impact: string;
   time_impact_days: number;
