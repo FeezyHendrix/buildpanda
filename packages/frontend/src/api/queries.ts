@@ -9,6 +9,7 @@ import type {
 export interface QueryCreateInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   dueDate?: string | null;
   assigneeId?: string | null;
 }
@@ -16,8 +17,10 @@ export interface QueryCreateInput {
 export interface QueryUpdateInput {
   subject?: string;
   question?: string;
+  questionHtml?: string | null;
   status?: QueryStatus;
   answer?: string | null;
+  answerHtml?: string | null;
   dueDate?: string | null;
   assigneeId?: string | null;
 }
