@@ -89,6 +89,10 @@ const ENTRY_SELECT = [
   "e.logged_by_id",
   "u.name as logged_by_name",
   "ph.name as stage_name",
+  "e.approval_status",
+  "e.approved_by_id",
+  "au.name as approved_by_name",
+  "e.approved_at",
   "e.material_order_id",
   "e.task_id",
   "e.activity_id",
@@ -103,7 +107,8 @@ export function materialsLedgerRepository(db: Knex) {
     // silently drop every entry logged before a stage was chosen.
     return db("material_ledger_entries as e")
       .leftJoin("user as u", "u.id", "e.logged_by_id")
-      .leftJoin("project_phases as ph", "ph.id", "e.stage_id");
+      .leftJoin("project_phases as ph", "ph.id", "e.stage_id")
+      .leftJoin("user as au", "au.id", "e.approved_by_id");
   }
 
   function catalogBase() {
