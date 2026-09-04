@@ -1,8 +1,43 @@
 import { Badge } from "@/components/atoms/badge";
 import { cn } from "@/lib/utils";
-import { formatTimeAgo } from "@/lib/formatters";
+import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
 import type { LedgerEntry } from "@/lib/project-types";
+import { AlertTriangleIcon, ClockAlertIcon, PaperclipIcon } from "./icons";
+import { ENTRY_TYPE_META, formatMeasure } from "./shared";
 
+function EntryFlags({ entry }: { entry: LedgerEntry }) {
+  return (
+    <>
+      {entry.status === "Voided" ? (
+        <Badge tone="neutral" size="sm" variant="outline">
+          Voided
+        </Badge>
+      ) : null}
+      {entry.negativeStock ? (
+        <Badge tone="danger" size="sm">
+          <AlertTriangleIcon className="size-3" />
+          Negative stock
+        </Badge>
+      ) : null}
+      {entry.timestampSuspect ? (
+        <Badge tone="warning" size="sm">
+          <ClockAlertIcon className="size-3" />
+          Time flagged
+        </Badge>
+      ) : null}
+    </>
+  );
+}
+
+EntryFlags.displayName = "EntryFlags";
+
+/**
+ * One line of the material ledger.
+ *
+ * The ledger is an append-only contractual record: nothing is ever removed, so
+ * a voided entry stays fully legible — struck through and tagged rather than
+ * faded out — and every row keeps the actor and the time it happened on screen.
+ */
 export function LedgerRow({
   entry,
   canManage,
@@ -12,56 +47,93 @@ export function LedgerRow({
   canManage: boolean;
   onVoid: () => void;
 }) {
+  const meta = ENTRY_TYPE_META[entry.entryType];
   const isVoided = entry.status === "Voided";
-  const isIn = entry.entryType === "IN";
-  const isVoid = entry.entryType === "VOID";
+  const isReversal = entry.entryType === "VOID";
+  const photo = entry.files[0];
 
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3", isVoided && "opacity-60")}>
-      <span
-        className={cn(
-          "flex h-9 w-12 shrink-0 items-center justify-center rounded-lg text-xs font-bold",
-          isVoid ? "bg-gray-100 text-gray-500" : isIn ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700",
-        )}
+    <div
+      className={cn("flex gap-3 px-4 py-3.5 sm:px-5", isVoided && "bg-[#FAFAFA]")}
+    >
+      <Badge
+        tone={meta.tone}
+        size="md"
+        className="mt-0.5 w-[74px] shrink-0 justify-center font-semibold"
       >
-        {isVoid ? "VOID" : isIn ? "IN" : "USED"}
-      </span>
+        <meta.Icon className="size-3.5" />
+        {meta.label}
+      </Badge>
+
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
-          {entry.quantity} {entry.unit} · {entry.materialName}
-          {entry.negativeStock && <Badge tone="danger" size="sm" className="ml-2">Negative</Badge>}
-          {entry.timestampSuspect && <Badge tone="warning" size="sm" className="ml-2">Time flagged</Badge>}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <p
+            className={cn(
+              "text-sm font-semibold text-black-500",
+              isVoided && "line-through decoration-gray-400",
+            )}
+          >
+            {formatMeasure(entry.quantity, entry.unit)} · {entry.materialName}
+          </p>
+          <EntryFlags entry={entry} />
+        </div>
+
+        <p className="mt-1 text-xs text-gray-500">
+          <span className="font-medium text-gray-700">
+            {entry.loggedByName ?? "Unknown user"}
+          </span>{" "}
+          ·{" "}
+          <time
+            dateTime={entry.occurredAt}
+            title={formatDateTime(entry.occurredAt)}
+          >
+            {formatTimeAgo(entry.occurredAt)}
+          </time>
         </p>
-        <p className="mt-0.5 truncate text-xs text-gray-500">
-          {entry.loggedByName ?? "Someone"} · {formatTimeAgo(entry.occurredAt)}
-          {entry.reason ? ` · ${entry.reason}` : ""}
-        </p>
-        {entry.notesHtml && entry.notesHtml.trim().length > 0 && (
+
+        {entry.reason ? (
+          <p className="mt-1 text-xs text-gray-500">
+            <span className="font-medium text-gray-700">
+              {isReversal ? "Reversal reason" : "Void reason"}:
+            </span>{" "}
+            {entry.reason}
+          </p>
+        ) : null}
+
+        {entry.notesHtml && entry.notesHtml.trim().length > 0 ? (
           <div
-            className="prose prose-sm mt-1 max-w-none text-xs text-gray-600 [&_img]:max-h-40 [&_img]:rounded-lg [&_p]:my-0.5"
+            className="prose prose-sm mt-2 max-w-none text-xs text-gray-600 [&_img]:max-h-40 [&_img]:rounded-lg [&_p]:my-0.5"
             dangerouslySetInnerHTML={{ __html: entry.notesHtml }}
           />
-        )}
+        ) : null}
       </div>
-      {entry.files.length > 0 && (
-        <a
-          href={entry.files[0]!.url}
-          target="_blank"
-          rel="noreferrer"
-          className="shrink-0 text-xs font-medium text-[#004DE7] hover:underline"
-        >
-          Photo
-        </a>
-      )}
-      {canManage && !isVoided && !isVoid && (
-        <button
-          type="button"
-          onClick={onVoid}
-          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-gray-400 hover:bg-red-50 hover:text-red-500"
-        >
-          Void
-        </button>
-      )}
+
+      <div className="flex shrink-0 items-start gap-1">
+        {photo ? (
+          <a
+            href={photo.url}
+            target="_blank"
+            rel="noreferrer"
+            title={photo.name}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary-500 transition-colors hover:bg-primary-50"
+          >
+            <PaperclipIcon className="size-3.5" />
+            <span className="hidden sm:inline">Proof</span>
+          </a>
+        ) : null}
+        {canManage && !isVoided && !isReversal ? (
+          <button
+            type="button"
+            onClick={onVoid}
+            title={`Void ${meta.verb.toLowerCase()} entry for ${entry.materialName}`}
+            className="rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-error-50 hover:text-error-600"
+          >
+            Void
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
+
+LedgerRow.displayName = "LedgerRow";
