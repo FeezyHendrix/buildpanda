@@ -83,14 +83,28 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                 <Dialog.Title className="mt-2 text-lg font-semibold text-gray-900">
                   {query.subject}
                 </Dialog.Title>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{query.question}</p>
+                  {query.questionHtml ? (
+                    <div
+                      className="prose prose-sm mt-1.5 max-w-none text-sm text-gray-600 [&_img]:max-h-64 [&_img]:rounded"
+                      dangerouslySetInnerHTML={{ __html: query.questionHtml }}
+                    />
+                  ) : (
+                    <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{query.question}</p>
+                  )}
               </header>
 
               <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Answer</p>
                 {query.answer && query.status !== "Open" ? (
                   <div className="mt-2 rounded-xl bg-[#F0F4FF] p-3">
-                    <p className="whitespace-pre-wrap text-sm text-gray-900">{query.answer}</p>
+                      {query.answerHtml ? (
+                        <div
+                          className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
+                          dangerouslySetInnerHTML={{ __html: query.answerHtml }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm text-gray-900">{query.answer}</p>
+                      )}
                     {query.answeredByName && (
                       <p className="mt-1 text-xs text-gray-500">
                         Answered by {query.answeredByName}

@@ -123,8 +123,10 @@ export interface SiteQuery {
   projectId: string;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: QueryStatus;
   answer: string | null;
+  answerHtml: string | null;
   dueDate: string | null;
   askedById: string | null;
   answeredById: string | null;
