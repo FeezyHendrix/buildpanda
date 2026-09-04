@@ -23,8 +23,9 @@ export interface ApprovalUpdatePatch {
   description?: string | null;
   description_html?: string | null;
   status?: ApprovalStatus;
-  response?: string | null;
-  due_date?: string | null;
+    response?: string | null;
+    response_html?: string | null;
+    due_date?: string | null;
   requested_reviewer_id?: string | null;
   reviewed_by_id?: string | null;
   reviewed_at?: string | null;
@@ -42,8 +43,9 @@ const SELECT = [
   "a.description",
   "a.description_html",
   "a.status",
-  "a.response",
-  "a.due_date",
+    "a.response",
+    "a.response_html",
+    "a.due_date",
   "a.submitted_by_id",
   "a.requested_reviewer_id",
   "rr.name as requested_reviewer_name",

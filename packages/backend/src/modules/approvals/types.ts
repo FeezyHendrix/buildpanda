@@ -9,6 +9,7 @@ export interface Approval {
   descriptionHtml: string | null;
   status: ApprovalStatus;
   response: string | null;
+  responseHtml: string | null;
   dueDate: string | null;
   submittedById: string | null;
   requestedReviewerId: string | null;
@@ -43,6 +44,7 @@ export interface ApprovalRow {
   description_html: string | null;
   status: ApprovalStatus;
   response: string | null;
+  response_html: string | null;
   due_date: string | null;
   submitted_by_id: string | null;
   requested_reviewer_id: string | null;

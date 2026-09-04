@@ -30,6 +30,7 @@ export interface UpdateApprovalInput {
   descriptionHtml?: string | null;
   status?: ApprovalStatus;
   response?: string | null;
+  responseHtml?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
 }
@@ -67,8 +68,9 @@ function toApproval(row: ApprovalRow, commentCount: number): Approval {
     description: row.description,
     descriptionHtml: row.description_html,
     status: row.status,
-    response: row.response,
-    dueDate: row.due_date,
+      response: row.response,
+      responseHtml: row.response_html,
+      dueDate: row.due_date,
     submittedById: row.submitted_by_id,
     requestedReviewerId: row.requested_reviewer_id,
     requestedReviewerName: row.requested_reviewer_name,
@@ -140,7 +142,8 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
       if (input.category !== undefined) patch.category = input.category;
       if (input.description !== undefined) patch.description = input.description;
       if (input.descriptionHtml !== undefined) patch.description_html = input.descriptionHtml;
-      if (input.response !== undefined) patch.response = input.response;
+        if (input.response !== undefined) patch.response = input.response;
+        if (input.responseHtml !== undefined) patch.response_html = input.responseHtml;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
       if (input.requestedReviewerId !== undefined) patch.requested_reviewer_id = input.requestedReviewerId;
 
