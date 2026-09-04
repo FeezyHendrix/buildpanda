@@ -39,6 +39,7 @@ export interface LedgerEntry {
   unit: string;
   locationKey: string;
   stageId: string | null;
+  stageName: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
@@ -97,6 +98,7 @@ export interface LedgerEntryRow {
   unit_snapshot: string;
   location_key: string;
   stage_id: string | null;
+  stage_name: string | null;
   quantity: string;
   stock_delta: string;
   occurred_at: string;

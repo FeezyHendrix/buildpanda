@@ -88,6 +88,7 @@ const ENTRY_SELECT = [
   "e.negative_stock",
   "e.logged_by_id",
   "u.name as logged_by_name",
+  "ph.name as stage_name",
   "e.material_order_id",
   "e.task_id",
   "e.activity_id",
@@ -98,7 +99,11 @@ const ENTRY_SELECT = [
 
 export function materialsLedgerRepository(db: Knex) {
   function entryBase() {
-    return db("material_ledger_entries as e").leftJoin("user as u", "u.id", "e.logged_by_id");
+    // leftJoin, not inner: stage_id is nullable, and an inner join would
+    // silently drop every entry logged before a stage was chosen.
+    return db("material_ledger_entries as e")
+      .leftJoin("user as u", "u.id", "e.logged_by_id")
+      .leftJoin("project_phases as ph", "ph.id", "e.stage_id");
   }
 
   function catalogBase() {
