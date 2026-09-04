@@ -17,6 +17,7 @@ export interface PostEntryInput {
   materialName: string;
   unit: string;
   locationKey: string;
+  stageId: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
@@ -78,8 +79,9 @@ const ENTRY_SELECT = [
   "e.material_id",
   "e.material_name_snapshot",
   "e.unit_snapshot",
-  "e.location_key",
-  "e.quantity",
+    "e.location_key",
+    "e.stage_id",
+    "e.quantity",
   "e.stock_delta",
   "e.occurred_at",
   "e.timestamp_suspect",
@@ -266,6 +268,7 @@ export function materialsLedgerRepository(db: Knex) {
           status: "Posted",
           material_id: input.materialId,
           material_name_snapshot: input.materialName,
+          stage_id: input.stageId,
           unit_snapshot: input.unit,
           location_key: input.locationKey,
           quantity: input.quantity,

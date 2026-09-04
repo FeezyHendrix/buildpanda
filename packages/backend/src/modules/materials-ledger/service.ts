@@ -23,6 +23,7 @@ export interface LogEntryInput {
   unit: string;
   quantity: number;
   locationKey?: string | null;
+  stageId?: string | null;
   occurredAt?: string | null;
   materialOrderId?: string | null;
   taskId?: string | null;
@@ -114,8 +115,9 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     materialId: row.material_id,
     materialName: row.material_name_snapshot,
     unit: row.unit_snapshot,
-    locationKey: row.location_key,
-    quantity: Number(row.quantity),
+      locationKey: row.location_key,
+      stageId: row.stage_id,
+      quantity: Number(row.quantity),
     stockDelta: Number(row.stock_delta),
     occurredAt: toIso(row.occurred_at),
     timestampSuspect: row.timestamp_suspect,
@@ -220,7 +222,8 @@ export function materialsLedgerService(
         materialId: catalog.id,
         materialName: catalog.name,
         unit: catalog.unit,
-        locationKey: (input.locationKey || "default").trim(),
+          locationKey: (input.locationKey || "default").trim(),
+          stageId: input.stageId ?? null,
         quantity: input.quantity,
         stockDelta,
         occurredAt,
@@ -281,7 +284,8 @@ export function materialsLedgerService(
         materialId: original.material_id,
         materialName: original.material_name_snapshot,
         unit: original.unit_snapshot,
-        locationKey: original.location_key,
+          locationKey: original.location_key,
+          stageId: original.stage_id,
         quantity: Number(original.quantity),
         stockDelta: -Number(original.stock_delta),
         occurredAt: new Date().toISOString(),
