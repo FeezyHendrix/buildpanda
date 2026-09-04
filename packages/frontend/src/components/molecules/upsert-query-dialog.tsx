@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { RichTextField } from "@/components/molecules/rich-text-field";
+import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
 import type { QueryStatus } from "@/lib/project-types";
 
@@ -11,16 +12,6 @@ export interface UpsertQueryValues {
   status: QueryStatus;
   dueDate: string | null;
   assigneeId: string | null;
-}
-
-// Seeds the editor for queries raised before it existed: without this they open
-// blank and saving erases the question.
-function htmlFromPlainText(text: string): string {
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return escaped ? `<p>${escaped.replace(/\n/g, "<br>")}</p>` : "";
 }
 
 export interface AssigneeOption {
