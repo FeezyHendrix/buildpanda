@@ -247,6 +247,8 @@ export const materialOrders = sqliteTable(
     unit: text("unit").notNull().default(""),
     supplier: text("supplier"),
     status: text("status").notNull().default("Draft"),
+    phaseId: text("phase_id"),
+    phaseName: text("phase_name"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },

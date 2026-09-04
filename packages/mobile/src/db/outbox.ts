@@ -175,25 +175,27 @@ async function runFlush(db: Db): Promise<FlushResult> {
           continue;
         }
         if (item.operation === "update") {
-          await materialsApi.update(item.projectId, row.id, {
-            title: row.title,
-            materialName: row.materialName,
-            quantity: row.quantity,
-            unit: row.unit,
-            supplier: row.supplier,
-          });
+            await materialsApi.update(item.projectId, row.id, {
+              title: row.title,
+              materialName: row.materialName,
+              quantity: row.quantity,
+              unit: row.unit,
+              supplier: row.supplier,
+              phaseId: row.phaseId,
+            });
           await materialsRepository.markSynced(db, row.id);
           await db.delete(outbox).where(eq(outbox.id, item.id));
           pushed += 1;
           continue;
         }
-        const server = await materialsApi.create(item.projectId, {
-          title: row.title,
-          materialName: row.materialName,
-          quantity: row.quantity,
-          unit: row.unit,
-          supplier: row.supplier,
-        });
+          const server = await materialsApi.create(item.projectId, {
+            title: row.title,
+            materialName: row.materialName,
+            quantity: row.quantity,
+            unit: row.unit,
+            supplier: row.supplier,
+            phaseId: row.phaseId,
+          });
         await materialsRepository.reconcileCreate(db, item.projectId, row.id, server);
         await db.delete(outbox).where(eq(outbox.id, item.id));
         pushed += 1;
