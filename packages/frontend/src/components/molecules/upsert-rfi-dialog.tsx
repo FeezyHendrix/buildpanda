@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { ToggleRow } from "@/components/atoms/toggle-row";
+import { RichTextField } from "@/components/molecules/rich-text-field";
 import { FormDrawer } from "./form-drawer";
 import type { RfiPriority } from "@/lib/project-types";
 
 export interface UpsertRfiValues {
   subject: string;
   question: string;
+  questionHtml: string | null;
   priority: RfiPriority;
   dueDate: string | null;
   costImpact: boolean;
@@ -26,6 +28,7 @@ export interface AssigneeOption {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   onSubmit: (values: UpsertRfiValues) => void;
   isSubmitting?: boolean;
   error?: string | null;
@@ -44,6 +47,7 @@ const field =
 const EMPTY: UpsertRfiValues = {
   subject: "",
   question: "",
+  questionHtml: null,
   priority: "Normal",
   dueDate: null,
   costImpact: false,
@@ -53,7 +57,7 @@ const EMPTY: UpsertRfiValues = {
   ballInCourtEmail: null,
 };
 
-export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, error, assigneeOptions = [] }: Props) {
+export function UpsertRfiDialog({ open, onOpenChange, projectId, onSubmit, isSubmitting, error, assigneeOptions = [] }: Props) {
   const [values, setValues] = useState<UpsertRfiValues>(EMPTY);
 
   useEffect(() => {
@@ -117,17 +121,14 @@ export function UpsertRfiDialog({ open, onOpenChange, onSubmit, isSubmitting, er
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="rfi-question">Question</Label>
-        <textarea
-          id="rfi-question"
-          className={`${field} h-28 resize-none py-2.5`}
-          value={values.question}
-          maxLength={8000}
-          onChange={(e) => update("question", e.target.value)}
-          placeholder="Describe what you need clarified, referencing drawings or specs."
-        />
-      </div>
+      <RichTextField
+        label="Question"
+        value={values.questionHtml ?? ""}
+        onChange={(html) => update("questionHtml", html)}
+        onChangeText={(text) => update("question", text)}
+        projectId={projectId}
+        placeholder="Describe what you need clarified, referencing drawings or specs."
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">

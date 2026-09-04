@@ -224,7 +224,14 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                 <Dialog.Title className="mt-2 text-xl font-semibold text-gray-900">
                   {rfi.subject}
                 </Dialog.Title>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{rfi.question}</p>
+                {rfi.questionHtml ? (
+                  <div
+                    className="prose prose-sm mt-1.5 max-w-none text-sm text-gray-600 [&_img]:max-h-64 [&_img]:rounded"
+                    dangerouslySetInnerHTML={{ __html: rfi.questionHtml }}
+                  />
+                ) : (
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{rfi.question}</p>
+                )}
               </header>
 
               <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -234,7 +241,14 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                       Official response
                     </p>
                     <div className="mt-2 rounded-xl bg-[#F0F4FF] p-3">
-                      <p className="whitespace-pre-wrap text-sm text-gray-900">{rfi.officialResponse}</p>
+                      {rfi.officialResponseHtml ? (
+                        <div
+                          className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
+                          dangerouslySetInnerHTML={{ __html: rfi.officialResponseHtml }}
+                        />
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm text-gray-900">{rfi.officialResponse}</p>
+                      )}
                       {rfi.officialRespondedByName && (
                         <p className="mt-1 text-xs text-gray-500">
                           {rfi.officialRespondedByName}
