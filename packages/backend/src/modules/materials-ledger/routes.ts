@@ -78,6 +78,7 @@ const logBody = {
     unit: { type: "string", maxLength: 40 },
     quantity: { type: "number", exclusiveMinimum: 0 },
     locationKey: { type: ["string", "null"], maxLength: 100 },
+    stageId: { type: ["string", "null"], maxLength: 100 },
     occurredAt: { type: ["string", "null"], maxLength: 40 },
     materialOrderId: { type: ["string", "null"], maxLength: 100 },
     taskId: { type: ["string", "null"], maxLength: 100 },
