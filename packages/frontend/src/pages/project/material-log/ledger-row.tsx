@@ -89,6 +89,12 @@ export function LedgerRow({
           >
             {formatTimeAgo(entry.occurredAt)}
           </time>
+          {entry.stageName ? (
+            <>
+              {" "}
+              · <span className="text-gray-700">{entry.stageName}</span>
+            </>
+          ) : null}
         </p>
 
         {entry.reason ? (
