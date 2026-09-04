@@ -13,6 +13,7 @@ export interface NewChangeRequestRecord {
   description: string | null;
   description_html: string | null;
   reason: string | null;
+  reason_html: string | null;
   status: ChangeStatus;
   cost_impact: string;
   time_impact_days: number;
@@ -26,6 +27,7 @@ export interface ChangeRequestUpdatePatch {
   description?: string | null;
   description_html?: string | null;
   reason?: string | null;
+  reason_html?: string | null;
   status?: ChangeStatus;
   cost_impact?: string;
   time_impact_days?: number;
@@ -43,6 +45,7 @@ const SELECT = [
   "c.description",
   "c.description_html",
   "c.reason",
+  "c.reason_html",
   "c.status",
   "c.cost_impact",
   "c.time_impact_days",
