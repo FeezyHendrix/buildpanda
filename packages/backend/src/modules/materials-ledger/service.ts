@@ -117,6 +117,7 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     unit: row.unit_snapshot,
       locationKey: row.location_key,
       stageId: row.stage_id,
+      stageName: row.stage_name,
       quantity: Number(row.quantity),
     stockDelta: Number(row.stock_delta),
     occurredAt: toIso(row.occurred_at),
