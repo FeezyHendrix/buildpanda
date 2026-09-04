@@ -31,22 +31,30 @@ export interface MaterialOption {
   unit: string;
 }
 
+export interface StageOption {
+  id: string;
+  name: string;
+}
+
 export function LogMaterialDrawer({
   open,
   onOpenChange,
   materials,
+  stages,
   submitting,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   materials: MaterialOption[];
+  stages: StageOption[];
   submitting: boolean;
   onSubmit: (input: {
     entryType: "IN" | "USED";
     materialName: string;
     unit: string;
     quantity: number;
+    stageId?: string | null;
     fileIds?: string[];
     notesHtml?: string | null;
   }) => void;
@@ -55,6 +63,7 @@ export function LogMaterialDrawer({
   const [materialName, setMaterialName] = useState("");
   const [unit, setUnit] = useState("bags");
   const [quantity, setQuantity] = useState("");
+  const [stageId, setStageId] = useState("");
   const [fileId, setFileId] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -65,6 +74,7 @@ export function LogMaterialDrawer({
     setMaterialName("");
     setUnit("bags");
     setQuantity("");
+    setStageId("");
     setFileId(null);
     setFileName(null);
     setNotesHtml("");
@@ -106,6 +116,7 @@ export function LogMaterialDrawer({
       materialName: materialName.trim(),
       unit: unit.trim(),
       quantity: qtyNum,
+      stageId: stageId || null,
       fileIds: fileId ? [fileId] : [],
       notesHtml: notesHtml.trim().length > 0 ? notesHtml : null,
     });
@@ -177,6 +188,23 @@ export function LogMaterialDrawer({
           <Label htmlFor="mat-unit">Unit</Label>
           <UnitInput id="mat-unit" value={unit} onChange={setUnit} className={FIELD} />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="mat-stage">Build stage (optional)</Label>
+        <select
+          id="mat-stage"
+          value={stageId}
+          onChange={(e) => setStageId(e.target.value)}
+          className={FIELD}
+        >
+          <option value="">Not assigned to a stage</option>
+          {stages.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1.5">

@@ -19,6 +19,7 @@ import {
   useEmailMaterialReport,
   useUpdateReorderPolicy,
 } from "@/hooks/use-materials-ledger";
+import { useStages } from "@/hooks/use-stages";
 import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import type { LedgerEntry } from "@/lib/project-types";
@@ -36,6 +37,7 @@ export default function ProjectMaterialLog() {
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
   const { data: catalog = [] } = useMaterialCatalog(project.id);
+  const { data: stages = [] } = useStages(project.id);
   const { data: orders = [] } = useMaterialOrders(project.id);
   const logEntry = useLogMaterialEntry(project.id);
   const voidEntry = useVoidMaterialEntry(project.id);
@@ -195,8 +197,9 @@ export default function ProjectMaterialLog() {
       <LogMaterialDrawer
         open={logOpen}
         onOpenChange={setLogOpen}
-        materials={materialOptions}
-        submitting={logEntry.isPending}
+          materials={materialOptions}
+          stages={stages}
+          submitting={logEntry.isPending}
         onSubmit={(input) =>
           logEntry.mutate(input, {
             onSuccess: (res) => {
