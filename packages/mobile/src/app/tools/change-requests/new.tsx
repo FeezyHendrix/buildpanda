@@ -32,7 +32,8 @@ export default function NewChangeRequest() {
     try {
       await create({
         title: title.trim(),
-        description: htmlToText(descriptionHtml) || null,
+          description: htmlToText(descriptionHtml) || null,
+          descriptionHtml: descriptionHtml || null,
         costImpact: Number.parseFloat(cost) || 0,
         timeImpactDays: Number.parseInt(days, 10) || 0,
       });
