@@ -58,7 +58,6 @@ export interface UpdateRfiInput {
 
 export interface RespondInput {
   body: string;
-  bodyHtml?: string | null;
   official?: boolean;
   contentHtml?: string | null;
   attachments?: RfiCommentAttachment[];
@@ -373,7 +372,7 @@ export function rfisService(
         await repository.update(rfiId, {
           status: "Answered",
           official_response: input.body,
-          official_response_html: input.bodyHtml ?? null,
+          official_response_html: input.contentHtml ?? null,
           official_responded_by_id: actor.id,
           official_responded_at: now,
           ball_in_court_id: current.created_by_id,

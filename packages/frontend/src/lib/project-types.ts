@@ -161,6 +161,7 @@ export interface Rfi {
   number: number;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   visibility: "internal" | "shared";
@@ -170,6 +171,7 @@ export interface Rfi {
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
+  officialResponseHtml: string | null;
   officialRespondedById: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: string | null;
