@@ -4,6 +4,8 @@ import { View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
+import { htmlToText, textToParagraphHtml } from "@/lib/html";
 import type { Db } from "@/db/client";
 import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-repository";
 import { useLocalDb } from "@/db/provider";
@@ -20,7 +22,7 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
 
   const update = useUpdateChangeRequest(db, projectId);
   const [title, setTitle] = useState<string | null>(null);
-  const [description, setDescription] = useState<string | null>(null);
+  const [descriptionHtml, setDescriptionHtml] = useState<string | null>(null);
   const [cost, setCost] = useState<string | null>(null);
   const [days, setDays] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -37,7 +39,8 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
   // Null means untouched, so only what the crew member actually typed is sent
   // and a background refresh cannot be clobbered by a stale render.
   const titleValue = title ?? existing.title;
-  const descriptionValue = description ?? (existing.description ?? "");
+  const descriptionHtmlValue =
+    descriptionHtml ?? existing.descriptionHtml ?? textToParagraphHtml(existing.description ?? "");
   const costValue = cost ?? String(existing.costImpact ?? "");
   const daysValue = days ?? String(existing.timeImpactDays ?? "");
 
@@ -48,7 +51,8 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
     try {
       await update(changeId, {
         title: titleValue.trim(),
-        description: descriptionValue.trim() || null,
+        description: htmlToText(descriptionHtmlValue).trim() || null,
+        descriptionHtml: descriptionHtmlValue.trim() || null,
         costImpact: Number.parseFloat(costValue) || 0,
         timeImpactDays: Number.parseInt(daysValue, 10) || 0,
       });
@@ -63,7 +67,8 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
     <View className="gap-5">
       {error ? <Text tone="danger" className="text-[13px]">{error}</Text> : null}
       <Field label="Title" value={titleValue} onChangeText={setTitle} />
-      <Field label="Description" value={descriptionValue} onChangeText={setDescription} multiline />
+      <Text className="text-[13px] text-slate-600">Description</Text>
+      <RichTextEditor value={descriptionHtmlValue} onChange={setDescriptionHtml} />
       <View className="flex-row gap-3">
         <Field label="Cost impact" value={costValue} onChangeText={setCost} keyboardType="numeric" className="flex-1" />
         <Field label="Days" value={daysValue} onChangeText={setDays} keyboardType="number-pad" className="flex-1" />
