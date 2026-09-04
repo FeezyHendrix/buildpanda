@@ -94,7 +94,6 @@ const respondBody = {
   additionalProperties: false,
   properties: {
     body: { type: "string", minLength: 1, maxLength: 8000 },
-    bodyHtml: { type: ["string", "null"], maxLength: 200000 },
     official: { type: "boolean" },
     contentHtml: { type: ["string", "null"], maxLength: 50000 },
     attachments: {
