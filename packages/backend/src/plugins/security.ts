@@ -6,6 +6,7 @@ import IORedis from "ioredis";
 import { config } from "../config/index.ts";
 import { clientIp } from "../lib/client-geo.ts";
 import { TooManyRequestsError } from "../lib/errors.ts";
+import { sanitizeHtmlFields } from "../lib/rich-text.ts";
 
 function rateLimitKey(request: FastifyRequest): string {
   return clientIp(request) ?? request.ip;
@@ -26,6 +27,16 @@ export const leadsRateLimit: RateLimitOptions = {
 };
 
 const securityPlugin: FastifyPluginAsync = async (fastify) => {
+  // Rich text is stored raw and rendered with dangerouslySetInnerHTML on the
+  // web, so a daily-log entry or RFI comment could otherwise carry markup that
+  // runs in whoever opens the record next. Sanitising here rather than in each
+  // service covers every route at once, including ones added later.
+  fastify.addHook("preHandler", async (request) => {
+    if (request.body && typeof request.body === "object") {
+      request.body = sanitizeHtmlFields(request.body);
+    }
+  });
+
   await fastify.register(helmet, {
     // This is a JSON API, never an HTML origin, so a restrictive default-src
     // 'none' CSP is safe and blocks any accidental script/embed surface.
