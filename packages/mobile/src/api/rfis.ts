@@ -14,6 +14,7 @@ export interface Rfi {
   number: number;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   ballInCourtName: string | null;
@@ -40,6 +41,7 @@ export interface RfiDetail extends Rfi {
 export interface UpsertRfiInput {
   subject: string;
   question: string;
+  questionHtml?: string | null;
   priority?: RfiPriority;
   dueDate?: string | null;
   costImpact?: boolean;

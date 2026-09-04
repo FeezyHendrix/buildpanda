@@ -331,6 +331,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
         const server = await rfisApi.create(item.projectId, {
           subject: row.subject,
           question: row.question,
+          questionHtml: row.questionHtml,
           priority: row.priority as never,
           dueDate: row.dueDate,
           costImpact: row.costImpact,
@@ -341,6 +342,7 @@ async function runFlush(db: Db): Promise<FlushResult> {
         await rfisApi.update(item.projectId, row.id, {
           subject: row.subject,
           question: row.question,
+          questionHtml: row.questionHtml,
           priority: row.priority as never,
         });
         await db

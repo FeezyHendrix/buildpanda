@@ -45,7 +45,10 @@ export function useUpdateLocalRfi() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
 
-  return async (rfiId: string, patch: Pick<UpsertRfiInput, "subject" | "question" | "priority">) => {
+  return async (
+    rfiId: string,
+    patch: Pick<UpsertRfiInput, "subject" | "question" | "questionHtml" | "priority">,
+  ) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     await rfisRepository.updateLocal(db, projectId, rfiId, patch);
     void flushOutbox(db).catch(() => undefined);
