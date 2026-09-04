@@ -25,6 +25,7 @@ interface Props {
   onReady?: (handle: RichTextEditorHandle) => void;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 // Persist only the stable file id on the image node, never the src. The src is
@@ -85,7 +86,7 @@ function ToolbarButton({
   );
 }
 
-export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled }: Props) {
+export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, placeholder, disabled, ariaLabel }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const editor = useEditor({
@@ -96,6 +97,9 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     ],
     content: value,
     editable: !disabled,
+    // A label's htmlFor cannot name a contenteditable, so without this the
+    // editor has no accessible name for screen readers or getByLabel.
+    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : undefined,
     onUpdate: ({ editor: e }) => onChange(e.getHTML(), e.getText()),
   });
 
