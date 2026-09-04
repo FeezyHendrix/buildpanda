@@ -1,13 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { router } from "expo-router";
-import { Pressable, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
 import { Card, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { UpdateCard } from "@/components/molecules/update-card";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { TabletMinWidth } from "@/constants/theme";
 import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
+import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +32,6 @@ const TOOLS: readonly FieldTool[] = [
     href: "/tools/change-requests",
   },
   { key: "materials", label: "Materials", helper: "Orders & requests", icon: "cube-outline", href: "/tools/materials" },
-  { key: "updates", label: "Updates", helper: "Project update feed", icon: "megaphone-outline", href: "/tools/updates" },
 ] as const;
 
 function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
@@ -62,6 +63,7 @@ export default function ToolsTab() {
 
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
+  const { data: updates } = useProjectUpdates(projectId);
   const setActive = useSetActiveOrganization();
 
   return (
@@ -72,11 +74,48 @@ export default function ToolsTab() {
       projectName={project?.name ?? "Loading project…"}
       onPressWorkspace={() => setSheetOpen(true)}
       onPressProject={() => router.push("/select-project")}
+      scroll={false}
     >
       <View className="flex-row flex-wrap gap-3">
         {TOOLS.map((tool) => (
           <ToolCard key={tool.key} tool={tool} isWide={isWide} />
         ))}
+      </View>
+
+      {/* The grid stays put and only the feed moves, so the tools a crew member
+          reaches for are always in the same place on the screen. */}
+      <View className="mt-6 min-w-0 flex-1">
+        <View className="flex-row items-center justify-between pb-3">
+          <Text weight="semibold" className="text-base">
+            Updates
+          </Text>
+          <Pressable
+            onPress={() => router.push("/tools/updates" as never)}
+            accessibilityRole="button"
+            className="min-h-11 justify-center"
+          >
+            <Text weight="semibold" tone="brand" className="text-[13px]">
+              See all
+            </Text>
+          </Pressable>
+        </View>
+        <FlatList
+          data={updates ?? []}
+          keyExtractor={(update) => update.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="gap-3 pb-6"
+          renderItem={({ item }) => (
+            <UpdateCard
+              update={item}
+              onPress={() => router.push(`/tools/updates/${item.id}` as never)}
+            />
+          )}
+          ListEmptyComponent={
+            <Text tone="secondary" className="py-8 text-center text-[13px]">
+              No updates have been posted for this project yet.
+            </Text>
+          }
+        />
       </View>
 
       <WorkspaceSheet
