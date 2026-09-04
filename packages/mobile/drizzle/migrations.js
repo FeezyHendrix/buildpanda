@@ -13,6 +13,7 @@ import m0008 from './0008_rich_text_fields.sql';
 import m0009 from './0009_look_ahead_building.sql';
 import m0010 from './0010_daily_log_entry_building.sql';
 import m0011 from './0011_daily_log_building.sql';
+import m0012 from './0012_rfi_question_html.sql';
 
   export default {
     journal,
@@ -28,7 +29,8 @@ m0007,
 m0008,
 m0009,
 m0010,
-m0011
+m0011,
+m0012
     }
   }
   

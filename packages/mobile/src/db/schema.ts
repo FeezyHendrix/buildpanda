@@ -19,6 +19,7 @@ export const rfis = sqliteTable(
     number: integer("number").notNull().default(0),
     subject: text("subject").notNull(),
     question: text("question").notNull(),
+    questionHtml: text("question_html"),
     status: text("status").notNull().default("Draft"),
     priority: text("priority").notNull().default("Normal"),
     ballInCourtName: text("ball_in_court_name"),

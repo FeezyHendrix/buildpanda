@@ -4,6 +4,8 @@ import { Pressable, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
+import { htmlToText, textToParagraphHtml } from "@/lib/html";
 import type { Db } from "@/db/client";
 import { rfisRepository, toRfi } from "@/db/rfis-repository";
 import { useLocalDb } from "@/db/provider";
@@ -23,7 +25,7 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
 
   const update = useUpdateLocalRfi();
   const [subject, setSubject] = useState<string | null>(null);
-  const [question, setQuestion] = useState<string | null>(null);
+  const [questionHtml, setQuestionHtml] = useState<string | null>(null);
   const [priority, setPriority] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,8 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
   // Null means untouched, so only what was actually typed is sent and a
   // background refresh cannot be clobbered by a stale render.
   const subjectValue = subject ?? existing.subject;
-  const questionValue = question ?? existing.question;
+  const questionHtmlValue =
+    questionHtml ?? existing.questionHtml ?? textToParagraphHtml(existing.question);
   const priorityValue = priority ?? existing.priority;
 
   async function submit() {
@@ -49,7 +52,8 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
     try {
       await update(rfiId, {
         subject: subjectValue.trim(),
-        question: questionValue.trim(),
+        question: htmlToText(questionHtmlValue).trim(),
+        questionHtml: questionHtmlValue.trim() || null,
         priority: priorityValue as never,
       });
       router.back();
@@ -64,7 +68,8 @@ function Editor({ db, projectId, rfiId }: { db: Db; projectId: string; rfiId: st
       {error ? <Text tone="danger" className="text-[13px]">{error}</Text> : null}
 
       <Field label="Subject" value={subjectValue} onChangeText={setSubject} />
-      <Field label="Question" value={questionValue} onChangeText={setQuestion} multiline />
+      <Text className="text-[13px] text-slate-600">Question</Text>
+      <RichTextEditor value={questionHtmlValue} onChange={setQuestionHtml} />
 
       <View className="gap-2">
         <Text weight="semibold" tone="secondary" className="text-[13px]">
