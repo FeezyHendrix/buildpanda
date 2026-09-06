@@ -107,7 +107,7 @@ export default function ProjectApprovals() {
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
-        title="Client Approvals"
+        title="Approvals"
         description="Selections and specs awaiting the client's sign-off."
         actions={
           canManage ? (
