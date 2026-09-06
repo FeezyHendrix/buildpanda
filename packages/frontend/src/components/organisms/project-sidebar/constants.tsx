@@ -181,6 +181,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.transactions",
   },
   {
+    label: "Final Account",
+    slug: "finances/final-account",
+    resource: "finances",
+    Icon: FinancesIcon,
+    helper: "Final settlement statement",
+    flag: "commercial.finances",
+  },
+  {
     label: "Change Orders",
     slug: "change-requests",
     resource: "change-requests",
