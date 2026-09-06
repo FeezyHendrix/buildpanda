@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
+  useApproveMaterialEntry,
   useMaterialStock,
   useMaterialLedger,
   useMaterialCatalog,
@@ -38,6 +39,7 @@ export default function ProjectMaterialLog() {
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
   const { data: catalog = [] } = useMaterialCatalog(project.id);
   const { data: stages = [] } = useStages(project.id);
+  const approveEntry = useApproveMaterialEntry(project.id);
   const { data: orders = [] } = useMaterialOrders(project.id);
   const logEntry = useLogMaterialEntry(project.id);
   const voidEntry = useVoidMaterialEntry(project.id);
@@ -191,7 +193,18 @@ export default function ProjectMaterialLog() {
       </section>
 
       <section className="mt-8">
-        <LedgerList entries={entries} canManage={canManage} onVoid={setVoiding} />
+        <LedgerList
+          entries={entries}
+          canManage={canManage}
+          onVoid={setVoiding}
+          onApprove={(entry) =>
+            approveEntry.mutate(entry.id, {
+              onSuccess: () => toast("Approved — it now counts toward stock", "success"),
+              onError: () => toast("Could not approve that entry"),
+            })
+          }
+          approvingId={approveEntry.isPending ? approveEntry.variables : null}
+        />
       </section>
 
       <LogMaterialDrawer

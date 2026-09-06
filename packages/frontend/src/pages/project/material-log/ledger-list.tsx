@@ -57,10 +57,14 @@ export function LedgerList({
   entries,
   canManage,
   onVoid,
+  onApprove,
+  approvingId,
 }: {
   entries: LedgerEntry[];
   canManage: boolean;
   onVoid: (entry: LedgerEntry) => void;
+  onApprove: (entry: LedgerEntry) => void;
+  approvingId?: string | null;
 }) {
   const [filter, setFilter] = useState<LedgerFilter>("all");
 
@@ -141,6 +145,8 @@ export function LedgerList({
                   entry={entry}
                   canManage={canManage}
                   onVoid={() => onVoid(entry)}
+                  onApprove={() => onApprove(entry)}
+                  approving={approvingId === entry.id}
                 />
               ))}
             </div>

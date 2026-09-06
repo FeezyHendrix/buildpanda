@@ -46,6 +46,9 @@ export const materialsLedgerApi = {
   logEntry: (projectId: string, input: LogEntryInput) =>
     api.post<LogEntryResult>(`/projects/${projectId}/materials/ledger`, input).then(r => r.data),
     
+  approveEntry: (projectId: string, entryId: string) =>
+    api.post<LedgerEntry>(`/projects/${projectId}/materials/ledger/${entryId}/approve`).then(r => r.data),
+
   voidEntry: (projectId: string, entryId: string, reason?: string | null) =>
     api.post<LedgerEntry>(`/projects/${projectId}/materials/ledger/${entryId}/void`, { reason }).then(r => r.data),
     

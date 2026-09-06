@@ -42,11 +42,16 @@ export function LedgerRow({
   entry,
   canManage,
   onVoid,
+  onApprove,
+  approving,
 }: {
   entry: LedgerEntry;
   canManage: boolean;
   onVoid: () => void;
+  onApprove: () => void;
+  approving?: boolean;
 }) {
+  const isPending = entry.approvalStatus === "Pending";
   const meta = ENTRY_TYPE_META[entry.entryType];
   const isVoided = entry.status === "Voided";
   const isReversal = entry.entryType === "VOID";
@@ -97,6 +102,12 @@ export function LedgerRow({
           ) : null}
         </p>
 
+        {isPending ? (
+          <p className="mt-1.5 text-xs text-[#C26A00]">
+            Awaiting approval — not counted in stock yet
+          </p>
+        ) : null}
+
         {entry.reason ? (
           <p className="mt-1 text-xs text-gray-500">
             <span className="font-medium text-gray-700">
@@ -127,16 +138,33 @@ export function LedgerRow({
             <span className="hidden sm:inline">Proof</span>
           </a>
         ) : null}
-        {canManage && !isVoided && !isReversal ? (
-          <button
-            type="button"
-            onClick={onVoid}
-            title={`Void ${meta.verb.toLowerCase()} entry for ${entry.materialName}`}
-            className="rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-error-50 hover:text-error-600"
-          >
-            Void
-          </button>
-        ) : null}
+          {canManage && isPending && !isVoided ? (
+            <button
+              type="button"
+              onClick={onApprove}
+              disabled={approving}
+              title={`Approve this ${meta.verb.toLowerCase()} so it counts toward stock`}
+              className="rounded-md bg-primary-500 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
+            >
+              Approve
+            </button>
+          ) : null}
+          {canManage && !isVoided && !isReversal ? (
+            <button
+              type="button"
+              onClick={onVoid}
+              // Same action, named for what the user is actually doing: refusing
+              // a claim that never counted, versus reversing one that did.
+              title={
+                isPending
+                  ? `Reject this ${meta.verb.toLowerCase()} for ${entry.materialName}`
+                  : `Void ${meta.verb.toLowerCase()} entry for ${entry.materialName}`
+              }
+              className="rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-error-50 hover:text-error-600"
+            >
+              {isPending ? "Reject" : "Void"}
+            </button>
+          ) : null}
       </div>
     </div>
   );
