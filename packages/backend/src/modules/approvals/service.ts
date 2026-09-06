@@ -59,6 +59,23 @@ function notifyApprovalDecided(
     .catch(() => undefined);
 }
 
+function notifyApprovalReviewer(
+  deps: ApprovalsDeps,
+  reviewerId: string | null | undefined,
+  projectId: string,
+  title: string,
+  actorId: string,
+): void {
+  if (!deps.notifications || !reviewerId || reviewerId === actorId) return;
+  void deps.notifications
+    .notify(reviewerId, "approval_requested", {
+      title: "An approval needs your decision",
+      body: title,
+      projectId,
+    })
+    .catch(() => undefined);
+}
+
 function toApproval(row: ApprovalRow, commentCount: number): Approval {
   return {
     id: row.id,
@@ -123,10 +140,11 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         requested_reviewer_id: input.requestedReviewerId ?? null,
         document_id: input.documentId ?? null,
         document_version_id: input.documentVersionId ?? null,
-        source_markup_id: input.sourceMarkupId ?? null,
-      });
-      return toApproval(row, 0);
-    },
+          source_markup_id: input.sourceMarkupId ?? null,
+        });
+        notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
+        return toApproval(row, 0);
+      },
 
     async update(
       projectId: string,
@@ -145,7 +163,12 @@ export function approvalsService(repository: ApprovalsRepository, deps: Approval
         if (input.response !== undefined) patch.response = input.response;
         if (input.responseHtml !== undefined) patch.response_html = input.responseHtml;
       if (input.dueDate !== undefined) patch.due_date = input.dueDate;
-      if (input.requestedReviewerId !== undefined) patch.requested_reviewer_id = input.requestedReviewerId;
+        if (input.requestedReviewerId !== undefined) {
+          patch.requested_reviewer_id = input.requestedReviewerId;
+          if (input.requestedReviewerId && input.requestedReviewerId !== existing.requested_reviewer_id) {
+            notifyApprovalReviewer(deps, input.requestedReviewerId, projectId, input.title ?? existing.title, userId);
+          }
+        }
 
       if (input.status !== undefined) {
         patch.status = input.status;
