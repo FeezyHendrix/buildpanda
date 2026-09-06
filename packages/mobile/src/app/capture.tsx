@@ -44,6 +44,7 @@ export default function Capture() {
   const [fieldValues, setFieldValues] = useState<MissingFieldValues>({});
   const [error, setError] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
+  const [awaitingCount, setAwaitingCount] = useState(0);
 
   const close = useCallback(() => router.back(), []);
 
@@ -93,10 +94,13 @@ export default function Capture() {
       const chosen = report.actions
         .map((action, index) => ({ action, index }))
         .filter((entry) => included.has(entry.index));
+      let awaiting = 0;
       for (const { action, index } of chosen) {
-        await applyAction(mergeMissingValues(action, fieldValues[index]));
+        const result = await applyAction(mergeMissingValues(action, fieldValues[index]));
+        if (result?.awaitingApproval) awaiting += 1;
       }
       setSavedCount(chosen.length);
+      setAwaitingCount(awaiting);
       setPhase("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save these records.");
@@ -131,6 +135,11 @@ export default function Capture() {
           <Text tone="secondary" className="pt-1 text-center text-[13px]">
             They&apos;ll sync when you&apos;re online. You can edit them any time from Field Tools.
           </Text>
+          {awaitingCount > 0 ? (
+            <Text className="pt-2 text-center text-[13px] text-[#C26A00]">
+              {awaitingCount} awaiting a manager&apos;s approval before it counts toward stock.
+            </Text>
+          ) : null}
           <View className="mt-8 w-full">
             <Button onPress={close}>Done</Button>
           </View>

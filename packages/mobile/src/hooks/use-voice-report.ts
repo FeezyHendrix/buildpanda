@@ -52,7 +52,7 @@ export function useApplyProposedAction() {
   const addRfiComment = useAddRfiComment(db, projectId);
 
   return useCallback(
-    async (action: ProposedAction): Promise<void> => {
+    async (action: ProposedAction): Promise<{ awaitingApproval?: boolean } | void> => {
       const requireProject = (): string => {
         if (!projectId) throw new Error("Project is not ready yet.");
         return projectId;
@@ -82,9 +82,13 @@ export function useApplyProposedAction() {
         case "change_request":
           await createChangeRequest(action.payload);
           return;
-        case "material_log":
-          await materialsLedgerApi.logEntry(requireProject(), action.payload);
-          return;
+        case "material_log": {
+          const logged = await materialsLedgerApi.logEntry(requireProject(), action.payload);
+          // Material now lands pending and does not move stock until approved.
+          // Reporting it as simply saved would tell a crew their delivery is
+          // counted when it is not.
+          return { awaitingApproval: logged.entry.approvalStatus === "Pending" };
+        }
         case "material_order":
           await createMaterialOrder(action.payload);
           return;
