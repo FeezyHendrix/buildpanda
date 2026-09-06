@@ -52,7 +52,7 @@ function notifyApprovalDecided(
   if (!deps.notifications || !submitterId || submitterId === actorId) return;
   void deps.notifications
     .notify(submitterId, "approval_decided", {
-      title: `Approval ${status.toLowerCase()}`,
+        title: status === "Approved" ? "Approval Request approved" : `Approval ${status.toLowerCase()}`,
       body: title,
       projectId,
     })
