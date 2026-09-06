@@ -20,7 +20,12 @@ export interface LogMaterialEntryInput {
 
 export const materialsLedgerApi = {
   logEntry: (projectId: string, body: LogMaterialEntryInput) =>
-    request<{ entry: { id: string }; duplicate: boolean; negativeStock: boolean; onHandQty: number }>(
+      request<{
+        entry: { id: string; approvalStatus: string };
+        duplicate: boolean;
+        negativeStock: boolean;
+        onHandQty: number;
+      }>(
       `/projects/${projectId}/materials/ledger`,
       { method: "POST", body: JSON.stringify(body) },
     ),
