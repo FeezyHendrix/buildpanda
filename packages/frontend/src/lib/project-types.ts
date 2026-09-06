@@ -1359,6 +1359,10 @@ export interface LedgerEntry {
   locationKey: string;
   stageId: string | null;
   stageName: string | null;
+  approvalStatus: string;
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;
