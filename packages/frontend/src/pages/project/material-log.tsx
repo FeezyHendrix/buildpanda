@@ -67,6 +67,9 @@ export default function ProjectMaterialLog() {
   const negativeCount = stock.filter((s) => s.onHandQty < 0).length;
   const lowCount = stock.filter((s) => s.lowStock && s.onHandQty >= 0).length;
   const voidedCount = entries.filter((e) => e.status === "Voided").length;
+  const pendingCount = entries.filter(
+    (e) => e.approvalStatus === "Pending" && e.status !== "Voided",
+  ).length;
 
   if (stockLoading || ledgerLoading) {
     return (
@@ -135,14 +138,16 @@ export default function ProjectMaterialLog() {
         />
         <MetricCard
           label="Needs attention"
-          value={(negativeCount + lowCount).toString()}
-          helper={
-            negativeCount > 0
-              ? `${negativeCount} at negative stock`
-              : lowCount > 0
-                ? `${lowCount} below reorder level`
-                : "All levels healthy"
-          }
+            value={(negativeCount + lowCount + pendingCount).toString()}
+            helper={
+              pendingCount > 0
+                ? `${pendingCount} awaiting approval`
+                : negativeCount > 0
+                  ? `${negativeCount} at negative stock`
+                  : lowCount > 0
+                    ? `${lowCount} below reorder level`
+                    : "All levels healthy"
+            }
         />
         <MetricCard
           label="Ledger entries"
