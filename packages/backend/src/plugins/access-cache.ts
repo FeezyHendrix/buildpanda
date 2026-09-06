@@ -44,6 +44,22 @@ declare module "fastify" {
 const TTL_SECONDS = 60;
 const KEY_PREFIX = "buildpanda:access-ctx:";
 
+// Invalidation for callers outside the Fastify plugin — the better-auth
+// organization hooks fire on role and membership changes that never touch our
+// routes, so the request-scoped accessCache decorator is out of reach there.
+// This dels the same Redis key so a role change shows on the next request
+// instead of waiting out the 60s TTL. No-op without Redis (local dev), where
+// the per-worker Map is unreachable from here and the TTL self-heals anyway.
+let invalidationRedis: Redis | null = null;
+export function invalidateAccessContext(userId: string): void {
+  if (!config.redis.url) return;
+  if (!invalidationRedis) {
+    invalidationRedis = new IORedis(config.redis.url, { maxRetriesPerRequest: 1 });
+    invalidationRedis.on("error", () => undefined);
+  }
+  void invalidationRedis.del(KEY_PREFIX + userId).catch(() => undefined);
+}
+
 function redisCache(redis: Redis, onError: (err: unknown) => void): AccessCache {
   return {
     async load(userId, loader) {

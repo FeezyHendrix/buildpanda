@@ -16,6 +16,7 @@ import { logger } from "./logger.ts";
 import { provisionSampleProject } from "./sample-project.ts";
 import { generateId } from "./ids.ts";
 import { ac, isEmployeeRole, roles } from "./permissions.ts";
+import { invalidateAccessContext } from "../plugins/access-cache.ts";
 
 const pool =
   "connectionString" in config.db
@@ -354,6 +355,20 @@ export const auth = betterAuth({
           url: appUrlFor(`/accept-invitation/${data.id}`),
         });
         await sendEmail({ to: data.email, subject, html });
+      },
+      organizationHooks: {
+        afterUpdateMemberRole: async ({ member }) => {
+          invalidateAccessContext(member.userId);
+        },
+        afterAcceptInvitation: async ({ member }) => {
+          if (member) invalidateAccessContext(member.userId);
+        },
+        afterAddMember: async ({ member }) => {
+          invalidateAccessContext(member.userId);
+        },
+        afterRemoveMember: async ({ member }) => {
+          invalidateAccessContext(member.userId);
+        },
       },
     }),
     admin({
