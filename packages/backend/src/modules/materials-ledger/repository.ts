@@ -222,7 +222,56 @@ export function materialsLedgerRepository(db: Knex) {
         .orderBy("c.name", "asc");
     },
 
-    findOrCreateCatalog(
+      async approveEntry(
+        projectId: string,
+        entryId: string,
+        actorId: string,
+      ): Promise<LedgerEntryRow | null> {
+        return db.transaction(async (trx) => {
+          const entry = await trx<LedgerEntryRow>("material_ledger_entries")
+            .where({ id: entryId, project_id: projectId })
+            .first();
+          if (!entry) return null;
+          // Idempotent: approving twice must not apply the delta twice.
+          if (entry.approval_status === "Approved") return entry;
+
+          const locked = await trx("materials_stock")
+            .where({
+              project_id: projectId,
+              material_id: entry.material_id,
+              location_key: entry.location_key,
+            })
+            .forUpdate()
+            .first<{ on_hand_qty: string }>();
+          const nextOnHand = (locked ? Number(locked.on_hand_qty) : 0) + Number(entry.stock_delta);
+
+          await trx("material_ledger_entries").where({ id: entryId }).update({
+            approval_status: "Approved",
+            approved_by_id: actorId,
+            approved_at: trx.fn.now(),
+            // Only knowable now: the shortfall depends on the balance at the
+            // moment the movement is accepted, not when it was claimed.
+            negative_stock: nextOnHand < 0,
+            updated_at: trx.fn.now(),
+          });
+
+          await trx("materials_stock")
+            .where({
+              project_id: projectId,
+              material_id: entry.material_id,
+              location_key: entry.location_key,
+            })
+            .update({
+              on_hand_qty: nextOnHand,
+              last_ledger_entry_id: entryId,
+              updated_at: trx.fn.now(),
+            });
+
+          return { ...entry, approval_status: "Approved" };
+        });
+      },
+
+      findOrCreateCatalog(
       projectId: string,
       name: string,
       unit: string,

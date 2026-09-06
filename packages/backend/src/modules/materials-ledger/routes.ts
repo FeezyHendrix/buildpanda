@@ -274,6 +274,17 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  fastify.post<{ Params: { id: string; entryId: string } }>(
+    "/projects/:id/materials/ledger/:entryId/approve",
+    { schema: { params: entryParams } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
+      const user = request.requireAuth();
+      const entry = await service.approveEntry(project.id, request.params.entryId, user.id);
+      return reply.send(entry);
+    },
+  );
+
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/materials/report",
     { schema: { params: projectIdParams } },
