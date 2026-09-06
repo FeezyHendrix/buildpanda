@@ -220,13 +220,13 @@ export default function ProjectMaterialLog() {
           submitting={logEntry.isPending}
         onSubmit={(input) =>
           logEntry.mutate(input, {
-            onSuccess: (res) => {
+            onSuccess: () => {
               setLogOpen(false);
-              if (res.negativeStock) {
-                toast(`Logged. Heads up: ${input.materialName} is now at ${res.onHandQty}.`, "error");
-              } else {
-                toast("Material logged", "success");
-              }
+              // Every fresh log is born pending under the gate, so it does not
+              // move stock yet — and the negative-stock heads-up cannot fire on
+              // a movement that was not applied. That warning now belongs to
+              // approval, where the delta is actually applied.
+              toast("Logged — awaiting approval before it counts toward stock", "success");
             },
             onError: () => toast("Could not log material"),
           })
