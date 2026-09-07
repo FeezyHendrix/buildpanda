@@ -12,6 +12,11 @@ import {
 import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
 import { outbox, type OutboxRow } from "./schema";
 
+function isPermanentRejection(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status;
+  return typeof status === "number" && status >= 400 && status < 500 && status !== 401 && status !== 429;
+}
+
 export async function pushMaterialApprovalOutboxItem(
   db: Db,
   item: OutboxRow,
@@ -39,10 +44,18 @@ export async function pushMaterialApprovalOutboxItem(
       });
       await materialApprovalsRepository.reconcileCreate(db, item.projectId, row.id, server);
     } else if (item.operation === "decision") {
-      await materialApprovalsApi.update(item.projectId, row.id, {
-        status: isApprovalStatus(row.status) ? row.status : "Pending",
-        response: row.response,
-      });
+      try {
+        await materialApprovalsApi.update(item.projectId, row.id, {
+          status: isApprovalStatus(row.status) ? row.status : "Pending",
+          response: row.response,
+        });
+      } catch (error) {
+        if (isPermanentRejection(error)) {
+          const server = await materialApprovalsApi.detail(item.projectId, row.id).catch(() => null);
+          if (server) await materialApprovalsRepository.replaceFromServer(db, item.projectId, server);
+        }
+        throw error;
+      }
       await materialApprovalsRepository.markSynced(db, row.id);
     } else {
       await materialApprovalsApi.update(item.projectId, row.id, {
