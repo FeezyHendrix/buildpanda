@@ -14,11 +14,13 @@ import {
   type PreconGenerateJobData,
   type PreconProgrammeJobData,
 } from "./job.ts";
-import { GEOMETRY_KINDS, ROW_TYPES } from "./types.ts";
+import { GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
   CreateBillBody,
   CreateBlankSessionBody,
+  CreateSessionFromPlanBody,
   CreateRowBody,
   PreconSummarySettings,
   UpdateBillBody,
@@ -195,6 +197,15 @@ const fromPlanBody = {
   properties: {
     proposalId: { type: "string", minLength: 1 },
     planId: { type: "string", minLength: 1 },
+    scope: {
+      type: "object",
+      required: ["kind", "elements"],
+      additionalProperties: false,
+      properties: {
+        kind: { type: "string", enum: TAKEOFF_SCOPE_KINDS },
+        elements: { type: "array", maxItems: 20, items: { type: "string", enum: BESMM_ELEMENT_ORDER } },
+      },
+    },
   },
 } as const;
 
@@ -296,7 +307,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Measure a plan already uploaded to the proposal — no re-upload; the
   // session reuses the plan's stored file.
-  fastify.post<{ Body: { proposalId: string; planId: string } }>(
+  fastify.post<{ Body: CreateSessionFromPlanBody }>(
     "/precon/sessions/from-plan",
     { schema: { body: fromPlanBody } },
     async (request, reply) => {
@@ -319,7 +330,22 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         user.id,
         [{ fileName: file.file_name, storagePath: file.storage_path }],
         request.body.proposalId,
+        request.body.scope,
       );
+      const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
+      await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
+      return reply.status(202).send(session);
+    },
+  );
+
+  fastify.post<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/retry",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("proposals", "update");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      const session = await service.retryGeneration(request.params.sessionId, user.id);
       const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
       return reply.status(202).send(session);

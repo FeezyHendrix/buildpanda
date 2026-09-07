@@ -1,6 +1,31 @@
 export const SESSION_STATUSES = ["uploading", "generating", "reviewing", "output", "failed"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
+// The generate pipeline reports which stage it is in alongside every message,
+// so the client renders a checklist from data instead of pattern-matching prose.
+export const PRECON_PHASES = ["reading", "structure", "schedules", "building", "pricing", "draft"] as const;
+export type PreconPhase = (typeof PRECON_PHASES)[number];
+
+export interface PreconProgressEntry {
+  at: string;
+  phase: PreconPhase;
+  message: string;
+}
+
+// What the run should produce. `full` is the whole bill; `sections` keeps only
+// the named BESMM elements (a finishes-only bill, say); `areas` stops after
+// measurement and lists the floor area of every identifiable space in m².
+export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas"] as const;
+export type TakeoffScopeKind = (typeof TAKEOFF_SCOPE_KINDS)[number];
+
+export interface TakeoffScope {
+  kind: TakeoffScopeKind;
+  elements: string[];
+}
+
+export const FULL_TAKEOFF_SCOPE: TakeoffScope = { kind: "full", elements: [] };
+export const MEASURED_AREAS_GROUP = "Measured areas";
+
 export const SHEET_KINDS = ["floor-plan", "elevation", "section", "detail", "schedule", "unknown"] as const;
 export type SheetKind = (typeof SHEET_KINDS)[number];
 
@@ -54,6 +79,9 @@ export interface PreconSessionRow {
   status: SessionStatus;
   title: string;
   error: string | null;
+  phase: PreconPhase | null;
+  progress_log: PreconProgressEntry[] | null;
+  scope: TakeoffScope | null;
   structure_context: StructureContext | null;
   programme_start_date: Date | string | null;
   created_by: string | null;
@@ -189,6 +217,9 @@ export interface PreconSession {
   status: SessionStatus;
   title: string;
   error: string | null;
+  phase: PreconPhase | null;
+  progressLog: PreconProgressEntry[];
+  scope: TakeoffScope;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
@@ -310,6 +341,12 @@ export interface AddDeductionBody {
 export interface CreateBlankSessionBody {
   title: string;
   proposalId?: string;
+}
+
+export interface CreateSessionFromPlanBody {
+  proposalId: string;
+  planId: string;
+  scope?: TakeoffScope;
 }
 
 export interface CreateBillBody {

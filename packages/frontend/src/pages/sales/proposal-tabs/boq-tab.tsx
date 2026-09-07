@@ -3,9 +3,13 @@ import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { useProposalBoq, useReplaceBoq } from "@/hooks/use-proposals";
+import { usePriceBoqIntoEstimate, useProposalBoq, useReplaceBoq } from "@/hooks/use-proposals";
 import { proposalsApi } from "@/api/proposals";
 import { UnitInput } from "@/components/atoms/unit-input";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+
+const SAVED_FLASH_MS = 4000;
 
 interface BoqDraft {
   groupLabel: string;
@@ -22,9 +26,16 @@ interface Props {
 export function BoqTab({ proposalId, estimateId }: Props) {
   const { data, isLoading } = useProposalBoq(proposalId);
   const replace = useReplaceBoq(proposalId);
+  const priceInto = usePriceBoqIntoEstimate(proposalId);
   const [items, setItems] = useState<BoqDraft[]>([]);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), SAVED_FLASH_MS);
+    return () => clearTimeout(timer);
+  }, [saved]);
 
   useEffect(() => {
     if (!data) return;
@@ -50,37 +61,33 @@ export function BoqTab({ proposalId, estimateId }: Props) {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function save() {
-    await replace.mutateAsync(
-      items
-        .filter((row) => row.description.trim().length > 0)
-        .map((row, idx) => ({
-          groupLabel: row.groupLabel.trim() || "General",
-          description: row.description.trim(),
-          qty: parseFloat(row.qty) || 0,
-          unit: row.unit.trim() || "item",
-          sort: idx,
-        })),
-    );
-    setSavedAt(Date.now());
+  const cleanRows = () =>
+    items
+      .filter((row) => row.description.trim().length > 0)
+      .map((row, idx) => ({
+        groupLabel: row.groupLabel.trim() || "General",
+        description: row.description.trim(),
+        qty: parseFloat(row.qty) || 0,
+        unit: row.unit.trim() || "item",
+        sort: idx,
+      }));
+
+  function save() {
+    replace.mutate(cleanRows(), {
+      onSuccess: () => setSaved(true),
+      onError: (err) => toast(getApiErrorMessage(err, "Could not save the BoQ."), "error"),
+    });
   }
 
-  async function priceIntoEstimate() {
+  function priceIntoEstimate() {
     if (!estimateId) return;
-    await proposalsApi.replaceItems(
-      proposalId,
-      estimateId,
-      items
-        .filter((row) => row.description.trim().length > 0)
-        .map((row, idx) => ({
-          groupLabel: row.groupLabel.trim() || "General",
-          description: row.description.trim(),
-          qty: parseFloat(row.qty) || 0,
-          unit: row.unit.trim() || "item",
-          unitRate: 0,
-          boqItemId: null,
-          sort: idx,
-        })),
+    const rows = cleanRows();
+    priceInto.mutate(
+      { estimateId, items: rows },
+      {
+        onSuccess: () => toast(`${rows.length} line${rows.length === 1 ? "" : "s"} seeded into the estimate. Set the rates on the Estimate tab.`, "success"),
+        onError: (err) => toast(getApiErrorMessage(err, "Could not price into the estimate."), "error"),
+      },
     );
   }
 
@@ -194,14 +201,12 @@ export function BoqTab({ proposalId, estimateId }: Props) {
         >
           Save BOQ
         </Button>
-        {estimateId && items.length > 0 && (
-          <Button type="button" variant="secondary" size="sm" onClick={priceIntoEstimate}>
+        {estimateId && items.length > 0 ? (
+          <Button type="button" variant="secondary" size="sm" loading={priceInto.isPending} onClick={priceIntoEstimate}>
             Price into estimate →
           </Button>
-        )}
-        {savedAt && Date.now() - savedAt < 4000 && (
-          <span className="text-xs text-green-600">Saved.</span>
-        )}
+        ) : null}
+        {saved ? <span className="text-xs text-success-700">Saved.</span> : null}
       </div>
     </div>
   );

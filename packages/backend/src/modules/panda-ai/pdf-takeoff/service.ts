@@ -26,12 +26,17 @@ import type {
   PreconSummary,
   PreconSummarySettings,
   ProgrammeDependency,
+  TakeoffScope,
   UpdateGeometryBody,
   UpdateRowBody,
 } from "./types.ts";
+import { FULL_TAKEOFF_SCOPE } from "./types.ts";
 import { scheduleProgramme } from "./programme-schedule.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
+// pg serialises a plain object into jsonb; typed as the row field so the
+// repository insert stays honest about what it stores.
+const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
 
 function toSession(r: PreconSessionRow): PreconSession {
   return {
@@ -42,6 +47,9 @@ function toSession(r: PreconSessionRow): PreconSession {
     status: r.status,
     title: r.title,
     error: r.error,
+    phase: r.phase ?? null,
+    progressLog: r.progress_log ?? [],
+    scope: r.scope ?? FULL_TAKEOFF_SCOPE,
     structureContext: r.structure_context ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
@@ -293,7 +301,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       userId: string,
       files: { fileName: string; storagePath: string }[],
       proposalId: string | null = null,
+      scope: TakeoffScope = FULL_TAKEOFF_SCOPE,
     ) {
+      if (scope.kind === "sections" && scope.elements.length === 0) {
+        throw new BadRequestError("Pick at least one section to measure");
+      }
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -302,6 +314,9 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: "uploading",
         title,
         error: null,
+        phase: null,
+        progress_log: null,
+        scope: db_json(scope),
         created_by: userId,
       });
       // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
@@ -324,7 +339,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         })),
       );
       await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
-      await audit(session.id, null, userId, "session_created", null, { title });
+      await audit(session.id, null, userId, "session_created", null, { title, scope });
       return toSession(session);
     },
 
@@ -339,6 +354,9 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: "reviewing",
         title,
         error: null,
+        phase: null,
+        progress_log: null,
+        scope: db_json(FULL_TAKEOFF_SCOPE),
         created_by: userId,
       });
       await repo.insertBill({
@@ -354,6 +372,22 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
 
     async listSessions(orgId: string, proposalId?: string) {
       return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
+    },
+
+    // A failed run is retried in place: the session keeps its id, settings and
+    // audit trail, and goes back to the queue as if freshly uploaded. Only
+    // sessions that actually have drawings can be re-run — a hand-priced
+    // sheet has nothing to generate.
+    async retryGeneration(sessionId: string, actor: string): Promise<PreconSession> {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
+      if (session.status !== "failed") throw new BadRequestError("Only a failed take-off can be retried");
+      const sheets = await repo.sheetsBySession(sessionId);
+      if (sheets.length === 0) throw new BadRequestError("This sheet has no drawings to measure");
+      await repo.resetSessionForRetry(sessionId);
+      await audit(sessionId, null, actor, "session_retried", { error: session.error }, null);
+      const reset = await repo.sessionById(sessionId);
+      return toSession(reset ?? { ...session, status: "generating", error: null, phase: null, progress_log: null });
     },
 
     async linkToProposal(sessionId: string, proposalId: string) {

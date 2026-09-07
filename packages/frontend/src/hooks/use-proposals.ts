@@ -128,6 +128,30 @@ export function useProposals(filters?: { status?: string; limit?: number; offset
   });
 }
 
+// Seeds the estimate from the BoQ rows. The estimate lives on the workspace
+// query, so that is what gets invalidated — the Estimate tab must not show
+// yesterday's revision after this runs.
+export function usePriceBoqIntoEstimate(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      estimateId,
+      items,
+    }: {
+      estimateId: string;
+      items: Array<{ groupLabel: string; description: string; qty: number; unit: string; sort: number }>;
+    }) =>
+      proposalsApi.replaceItems(
+        proposalId,
+        estimateId,
+        items.map((item) => ({ ...item, unitRate: 0, boqItemId: null })),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
 export function useProposalWorkspace(id: string) {
   return useQuery({
     queryKey: proposalKeys.detail(id),

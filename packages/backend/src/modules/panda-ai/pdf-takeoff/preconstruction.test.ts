@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeSummary, preconService, quantityFromVertices } from "./service.ts";
 import type { PreconRepository } from "./repository.ts";
-import type { PreconBoqRowDto, PreconBoqRowRow } from "./types.ts";
+import type { PreconBoqRowDto, PreconBoqRowRow, PreconSessionRow } from "./types.ts";
 
 function itemRow(overrides: Partial<PreconBoqRowRow> = {}): PreconBoqRowRow {
   return {
@@ -314,4 +314,84 @@ test("a never-measured row can be measured by naming the sheet", async () => {
   );
 
   assert.ok(row.qty !== null && row.qty > 0, `expected a measured quantity, got ${row.qty}`);
+});
+
+function sessionRow(overrides: Partial<PreconSessionRow> = {}): PreconSessionRow {
+  return {
+    id: "pcs_1",
+    org_id: "org_1",
+    project_id: null,
+    proposal_id: "prp_1",
+    status: "failed",
+    title: "Ground floor.pdf",
+    error: "LLM timed out",
+    phase: "building",
+    progress_log: [{ at: "2026-07-12T00:00:00Z", phase: "building", message: "Building up the bill" }],
+    scope: { kind: "full", elements: [] },
+    structure_context: null,
+    programme_start_date: null,
+    created_by: "usr_1",
+    created_at: new Date("2026-07-12T00:00:00Z"),
+    updated_at: new Date("2026-07-12T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+test("retryGeneration resets a failed session with drawings and audits the old error", async () => {
+  let resetCalls = 0;
+  const audits: { action: string; before: unknown }[] = [];
+  let current = sessionRow();
+  const svc = preconService(
+    fakeRepo({
+      sessionById: async () => current,
+      sheetsBySession: async () => [{ id: "pcsh_1" }],
+      resetSessionForRetry: async () => {
+        resetCalls++;
+        current = sessionRow({ status: "generating", error: null, phase: null, progress_log: null });
+      },
+      insertAuditEvent: async (e: { action: string; before: unknown }) => {
+        audits.push(e);
+      },
+    }),
+  );
+  const session = await svc.retryGeneration("pcs_1", "usr_2");
+  assert.equal(resetCalls, 1);
+  assert.equal(session.status, "generating");
+  assert.equal(session.error, null);
+  assert.deepEqual(session.progressLog, []);
+  assert.equal(audits[0]?.action, "session_retried");
+});
+
+test("retryGeneration refuses sessions that are not failed or have no drawings", async () => {
+  const reviewing = preconService(fakeRepo({ sessionById: async () => sessionRow({ status: "reviewing" }) }));
+  await assert.rejects(reviewing.retryGeneration("pcs_1", "usr_1"), /failed take-off/);
+  const blank = preconService(fakeRepo({ sessionById: async () => sessionRow(), sheetsBySession: async () => [] }));
+  await assert.rejects(blank.retryGeneration("pcs_1", "usr_1"), /no drawings/);
+});
+
+test("createSession rejects a sections scope with nothing selected and stores the scope", async () => {
+  const inserted: { scope?: unknown }[] = [];
+  const svc = preconService(
+    fakeRepo({
+      insertSession: async (row: { scope?: unknown }) => {
+        inserted.push(row);
+        return { ...sessionRow({ status: "uploading" }), ...row };
+      },
+      insertSheets: async () => undefined,
+      upsertSettings: async () => undefined,
+    }),
+  );
+  await assert.rejects(
+    svc.createSession("org_1", "Plan.pdf", "usr_1", [{ fileName: "Plan.pdf", storagePath: "p" }], null, {
+      kind: "sections",
+      elements: [],
+    }),
+    /at least one section/,
+  );
+  const session = await svc.createSession("org_1", "Plan.pdf", "usr_1", [{ fileName: "Plan.pdf", storagePath: "p" }], null, {
+    kind: "areas",
+    elements: [],
+  });
+  assert.deepEqual(inserted[0]?.scope, { kind: "areas", elements: [] });
+  assert.equal(session.scope.kind, "areas");
 });

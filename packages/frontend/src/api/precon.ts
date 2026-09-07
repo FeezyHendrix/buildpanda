@@ -26,6 +26,23 @@ export interface StructureContext {
 }
 
 export type PreconSessionStatus = "uploading" | "generating" | "reviewing" | "output" | "failed";
+
+export const PRECON_PHASES = ["reading", "structure", "schedules", "building", "pricing", "draft"] as const;
+export type PreconPhase = (typeof PRECON_PHASES)[number];
+
+export interface PreconProgressEntry {
+  at: string;
+  phase: PreconPhase;
+  message: string;
+}
+
+export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas"] as const;
+export type TakeoffScopeKind = (typeof TAKEOFF_SCOPE_KINDS)[number];
+
+export interface TakeoffScope {
+  kind: TakeoffScopeKind;
+  elements: string[];
+}
 export type PreconSheetKind = "floor-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
 
 export const PRECON_ROW_TYPES = ["heading", "work_section", "spec_note", "item", "provisional_sum"] as const;
@@ -41,6 +58,9 @@ export interface PreconSession {
   status: PreconSessionStatus;
   title: string;
   error: string | null;
+  phase: PreconPhase | null;
+  progressLog: PreconProgressEntry[];
+  scope: TakeoffScope;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
@@ -207,8 +227,11 @@ export const preconApi = {
       .get<PreconSession[]>(`/precon/sessions`, { params: proposalId ? { proposalId } : undefined })
       .then((r) => r.data),
 
-  createSessionFromPlan: (proposalId: string, planId: string) =>
-    api.post<PreconSession>(`/precon/sessions/from-plan`, { proposalId, planId }).then((r) => r.data),
+  createSessionFromPlan: (proposalId: string, planId: string, scope: TakeoffScope) =>
+    api.post<PreconSession>(`/precon/sessions/from-plan`, { proposalId, planId, scope }).then((r) => r.data),
+
+  retrySession: (sessionId: string) =>
+    api.post<PreconSession>(`/precon/sessions/${sessionId}/retry`).then((r) => r.data),
 
   createSession: (files: File[], title?: string) => {
     const form = new FormData();

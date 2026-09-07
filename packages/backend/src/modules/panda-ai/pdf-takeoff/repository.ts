@@ -13,6 +13,7 @@ import type {
   RowStatus,
   SessionStatus,
   SheetStatus,
+  PreconProgressEntry,
   StructureContext,
 } from "./types.ts";
 
@@ -41,6 +42,68 @@ export function preconRepository(db: Knex) {
       db<PreconSessionRow>("precon_sessions")
         .where({ id })
         .update({ status, error: error ?? null, updated_at: db.fn.now() }),
+
+    // Append one progress entry and move the phase pointer. The log is capped
+    // at 100 entries in SQL (drop index 0 when full) so a chatty run cannot
+    // bloat the row; the client only ever renders the latest message per phase.
+    appendSessionProgress: (id: string, entry: PreconProgressEntry) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({
+          phase: entry.phase,
+          progress_log: db.raw(
+            `(CASE WHEN jsonb_array_length(COALESCE(progress_log, '[]'::jsonb)) >= 100
+                THEN (progress_log - 0) ELSE COALESCE(progress_log, '[]'::jsonb) END) || ?::jsonb`,
+            [JSON.stringify([entry])],
+          ) as never,
+          updated_at: db.fn.now(),
+        }),
+
+    // Put a failed session back to the state it was in before generate ran:
+    // one pending placeholder sheet per uploaded file, no bills/rows/geometry,
+    // no structure context, empty log. Everything else (settings, audit trail,
+    // proposal link) is kept so the retry is a continuation, not a new session.
+    resetSessionForRetry: (id: string) =>
+      db.transaction(async (trx) => {
+        const sheets = await trx<PreconSheetRow>("precon_sheets")
+          .where({ session_id: id })
+          .orderBy("page_number", "asc");
+        const keepByFile = new Map<string, PreconSheetRow>();
+        for (const sheet of sheets) {
+          if (!keepByFile.has(sheet.storage_path)) keepByFile.set(sheet.storage_path, sheet);
+        }
+        const keepIds = [...keepByFile.values()].map((s) => s.id);
+        await trx("precon_bills").where({ session_id: id }).delete();
+        await trx("precon_sheets").where({ session_id: id }).whereNotIn("id", keepIds).delete();
+        let pageNumber = 1;
+        for (const sheet of keepByFile.values()) {
+          await trx<PreconSheetRow>("precon_sheets")
+            .where({ id: sheet.id })
+            .update({
+              page_number: pageNumber++,
+              code: null,
+              title: null,
+              kind: "unknown",
+              status: "pending",
+              scale_mm_per_pt: null,
+              scale_confidence: null,
+              dim_unit: null,
+              snap_index: null,
+              error: null,
+              updated_at: trx.fn.now(),
+            });
+        }
+        await trx<PreconSessionRow>("precon_sessions")
+          .where({ id })
+          .update({
+            status: "generating",
+            error: null,
+            phase: null,
+            progress_log: null,
+            structure_context: null,
+            updated_at: trx.fn.now(),
+          });
+      }),
 
     updateSessionStructure: (id: string, structure: StructureContext) =>
       db<PreconSessionRow>("precon_sessions")

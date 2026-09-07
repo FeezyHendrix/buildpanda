@@ -2,10 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { preconApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
 import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+const squareMetres = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
 const SETTING_FIELDS: { key: keyof PreconSummarySettings; label: string }[] = [
   { key: "prelimsPct", label: "Preliminaries %" },
@@ -17,15 +21,10 @@ interface OutputProps {
   snapshot: PreconSnapshot;
 }
 
-export function PreconOutputPanel({ snapshot }: OutputProps) {
-  const navigate = useNavigate();
-  const sessionId = snapshot.session.id;
-  const updateSettings = useUpdatePreconSettings(sessionId);
-  const applyToProposal = useApplyPreconToProposal(sessionId);
-  const [sendResult, setSendResult] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Partial<Record<keyof PreconSummarySettings, string>>>({});
-
+function BidSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
   const { summary, settings, progress } = snapshot;
+  const updateSettings = useUpdatePreconSettings(snapshot.session.id);
+  const [drafts, setDrafts] = useState<Partial<Record<keyof PreconSummarySettings, string>>>({});
   const complete = progress.total > 0 ? Math.round((progress.verified / progress.total) * 100) : 0;
 
   const commit = (key: keyof PreconSummarySettings) => {
@@ -38,7 +37,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
     setDrafts((d) => ({ ...d, [key]: undefined }));
   };
 
-  const summaryLines: { label: string; value: number; strong?: boolean }[] = [
+  const lines: { label: string; value: number; strong?: boolean }[] = [
     { label: "Measured works", value: summary.measuredTotal },
     { label: `Preliminaries (${settings.prelimsPct}%)`, value: summary.prelims },
     { label: "Construction sum", value: summary.constructionSum },
@@ -49,74 +48,141 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
   ];
 
   return (
+    <Card className="space-y-4 p-5">
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900">Bid summary</h2>
+        <p className="text-xs text-gray-500">
+          {progress.verified} of {progress.total} items verified ({complete}%). Figures below are recorded draft amounts —
+          BuildPanda logs them; no money moves here.
+        </p>
+      </div>
+      <dl className="space-y-1.5 text-sm">
+        {lines.map((line) => (
+          <div key={line.label} className="flex justify-between">
+            <dt className={line.strong ? "font-semibold text-gray-900" : "text-gray-500"}>{line.label}</dt>
+            <dd className={line.strong ? "text-lg font-bold text-gray-900" : "tabular-nums text-gray-800"}>
+              {naira.format(line.value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
+        {SETTING_FIELDS.map(({ key, label }) => (
+          <label key={key} className="text-xs text-gray-500">
+            {label}
+            <input
+              className="mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
+              inputMode="decimal"
+              value={drafts[key] ?? settings[key]}
+              onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
+              onBlur={() => commit(key)}
+            />
+          </label>
+        ))}
+      </div>
+    </Card>
+  );
+}
+BidSummaryCard.displayName = "BidSummaryCard";
+
+function AreasSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
+  const { progress } = snapshot;
+  const spaces = snapshot.rows.filter((r) => r.rowType === "item" && r.status !== "rejected");
+  const totalM2 = spaces.reduce((sum, r) => sum + (r.unit === "m2" ? (r.qty ?? 0) : 0), 0);
+  return (
+    <Card className="space-y-4 p-5">
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900">Measured areas</h2>
+        <p className="text-xs text-gray-500">
+          {progress.verified} of {progress.total} spaces verified. Nothing is priced — this sheet lists floor areas only.
+        </p>
+      </div>
+      <dl className="space-y-1.5 text-sm">
+        <div className="flex justify-between">
+          <dt className="text-gray-500">Spaces identified</dt>
+          <dd className="tabular-nums text-gray-800">{spaces.length}</dd>
+        </div>
+        <div className="flex justify-between">
+          <dt className="font-semibold text-gray-900">Total floor area</dt>
+          <dd className="text-lg font-bold text-gray-900">{squareMetres.format(totalM2)} m²</dd>
+        </div>
+      </dl>
+    </Card>
+  );
+}
+AreasSummaryCard.displayName = "AreasSummaryCard";
+
+export function PreconOutputPanel({ snapshot }: OutputProps) {
+  const navigate = useNavigate();
+  const { session, progress } = snapshot;
+  const applyToProposal = useApplyPreconToProposal(session.id);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const areas = session.scope.kind === "areas";
+  const linked = Boolean(session.proposalId);
+  const applyLabel = linked ? "Apply to proposal BoQ" : "Create proposal from this sheet";
+
+  const apply = () =>
+    applyToProposal.mutate(undefined, {
+      onSuccess: (result) => {
+        setConfirmOpen(false);
+        toast(
+          `${result.itemCount} line${result.itemCount === 1 ? "" : "s"} ${linked ? "applied to" : "added to the new"} proposal BoQ.`,
+          "success",
+        );
+        navigate(`/sales/proposals/${result.proposalId}?tab=boq`);
+      },
+      onError: (error) => {
+        setConfirmOpen(false);
+        toast(getApiErrorMessage(error, "Could not apply to the proposal."), "error");
+      },
+    });
+
+  return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="space-y-4 p-5">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Bid summary</h2>
-          <p className="text-xs text-gray-500">
-            {progress.verified} of {progress.total} items verified ({complete}%). Figures below are recorded draft
-            amounts — BuildPanda logs them; no money moves here.
-          </p>
-        </div>
-        <dl className="space-y-1.5 text-sm">
-          {summaryLines.map((line) => (
-            <div key={line.label} className="flex justify-between">
-              <dt className={line.strong ? "font-semibold text-gray-900" : "text-gray-500"}>{line.label}</dt>
-              <dd className={line.strong ? "text-lg font-bold text-gray-900" : "tabular-nums text-gray-800"}>
-                {naira.format(line.value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
-          {SETTING_FIELDS.map(({ key, label }) => (
-            <label key={key} className="text-xs text-gray-500">
-              {label}
-              <input
-                className="mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
-                inputMode="decimal"
-                value={drafts[key] ?? settings[key]}
-                onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                onBlur={() => commit(key)}
-              />
-            </label>
-          ))}
-        </div>
-      </Card>
+      {areas ? <AreasSummaryCard snapshot={snapshot} /> : <BidSummaryCard snapshot={snapshot} />}
 
       <Card className="space-y-4 p-5">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Bid pack</h2>
-          <p className="text-xs text-gray-500">Export the BOQ workbook or apply the reviewed bill to the proposal.</p>
+          <h2 className="text-sm font-semibold text-gray-900">{areas ? "Areas schedule" : "Bid pack"}</h2>
+          <p className="text-xs text-gray-500">
+            {areas
+              ? "Export the areas workbook or push the spaces onto the proposal as BoQ lines."
+              : "Export the BOQ workbook or apply the reviewed bill to the proposal."}
+          </p>
         </div>
         <div className="space-y-2">
-          <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(sessionId), "_blank")}>
-            Download BOQ (Excel)
+          <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(session.id), "_blank")}>
+            {areas ? "Download areas (Excel)" : "Download BOQ (Excel)"}
           </Button>
-          <Button
-            variant="secondary"
-            className="w-full"
-            loading={applyToProposal.isPending}
-            onClick={() =>
-              applyToProposal.mutate(undefined, {
-                onSuccess: (result) => {
-                  setSendResult(`${result.itemCount} BOQ items applied to the proposal.`);
-                  navigate(`/sales/proposals/${result.proposalId}`);
-                },
-                onError: (error) =>
-                  setSendResult(error instanceof Error ? error.message : "Could not apply to the proposal"),
-              })
-            }
-          >
-            {snapshot.session.proposalId ? "Apply to proposal BoQ" : "Create proposal from this BOQ"}
+          <Button variant="secondary" className="w-full" onClick={() => setConfirmOpen(true)}>
+            {applyLabel}
           </Button>
-          {sendResult ? <p className="text-xs text-gray-500">{sendResult}</p> : null}
+          {progress.total > 0 && progress.verified < progress.total ? (
+            <p className="text-xs text-amber-700">
+              {progress.total - progress.verified} line{progress.total - progress.verified === 1 ? "" : "s"} still
+              unverified. Unreviewed AI lines are applied as drafted.
+            </p>
+          ) : null}
         </div>
         <p className="border-t border-gray-100 pt-3 text-[11px] text-gray-400">
           Measured by Panda AI · verified line items carry the reviewer's name in the audit trail. A quantity surveyor
           must review before the bill is used contractually.
         </p>
       </Card>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={linked ? "Replace the proposal's BoQ?" : "Create a proposal from this sheet?"}
+        description={
+          linked
+            ? "Every line currently on the proposal's BoQ tab is replaced with the lines from this sheet. Rejected lines are left out. This cannot be undone from here."
+            : "A new proposal is created with these lines as its BoQ and this sheet is linked to it."
+        }
+        confirmLabel={linked ? "Replace BoQ" : "Create proposal"}
+        loading={applyToProposal.isPending}
+        onConfirm={apply}
+      />
     </div>
   );
 }

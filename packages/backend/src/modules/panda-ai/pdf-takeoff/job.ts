@@ -2,7 +2,8 @@ import type { Knex } from "knex";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import type { RealtimePayload } from "../../../lib/realtime/index.ts";
 import { preconRepository } from "./repository.ts";
-import { generateForSession } from "./engine/run.ts";
+import { generateForSession, type ProgressFn } from "./engine/run.ts";
+import type { PreconPhase } from "./types.ts";
 
 export const PRECON_GENERATE_QUEUE = "precon-generate";
 
@@ -18,24 +19,33 @@ export async function runGenerate(db: Knex, data: PreconGenerateJobData, publish
   const session = await repo.sessionById(data.sessionId);
   if (!session) return;
 
-  const progress = (message: string, extra?: Record<string, unknown>) => {
+  // Every progress tick is written to the session before it is broadcast, so a
+  // client that connects late (or reloads) reads the same checklist from the
+  // snapshot that a live client built from the socket.
+  const progress: ProgressFn = async (phase: PreconPhase, message: string, extra?: Record<string, unknown>) => {
+    const at = new Date().toISOString();
+    await repo.appendSessionProgress(session.id, { at, phase, message });
     publish({
       event: "precon.progress",
       channelId: `precon:${session.id}`,
-      data: { sessionId: session.id, message, ...extra },
+      data: { sessionId: session.id, phase, message, at, ...extra },
     });
   };
 
   await repo.updateSessionStatus(session.id, "generating");
-  progress("Generation started");
+  await progress("reading", "Generation started");
   try {
     await generateForSession(db, session.id, progress);
     await repo.updateSessionStatus(session.id, "reviewing");
-    progress("Generation complete — ready for review");
+    await progress("draft", "Generation complete — ready for review");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Generate failed";
     await repo.updateSessionStatus(session.id, "failed", message);
-    progress(`Generation failed: ${message}`);
+    publish({
+      event: "precon.progress",
+      channelId: `precon:${session.id}`,
+      data: { sessionId: session.id, message: `Generation failed: ${message}`, at: new Date().toISOString() },
+    });
     throw error;
   }
 }
