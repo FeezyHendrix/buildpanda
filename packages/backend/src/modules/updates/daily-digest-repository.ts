@@ -38,16 +38,18 @@ export const MOVEMENT_HEADINGS: ReadonlyArray<{ key: MovementKey; heading: strin
   MOVEMENT_SOURCES.map((source) => ({ key: source.key, heading: source.heading }));
 
 export function dailyDigestRepository(db: Knex) {
-  function inWindow(table: string, at: string, label: string, projectId: string, from: Date, to: Date) {
-    return db(table)
-      .where({ project_id: projectId })
-      .whereNotNull(at)
-      .where(at, ">=", from)
-      .where(at, "<", to)
-      .orderBy(at, "asc")
-      .limit(PER_SOURCE_LIMIT)
-      .select<DigestRow[]>(`${label} as label`, "status");
-  }
+    function inWindow(table: string, at: string, label: string, projectId: string, from: Date, to: Date) {
+      const query = db(table)
+        .where({ project_id: projectId })
+        .whereNotNull(at)
+        .where(at, ">=", from)
+        .where(at, "<", to)
+        .orderBy(at, "asc")
+        .limit(PER_SOURCE_LIMIT)
+        .select<DigestRow[]>(`${label} as label`, "status");
+      if (table === "approvals") query.where("kind", "client");
+      return query;
+    }
 
   return {
     project(projectId: string) {

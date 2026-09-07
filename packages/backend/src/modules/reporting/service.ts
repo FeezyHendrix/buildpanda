@@ -175,7 +175,7 @@ export function reportingService(db: Knex) {
         .count<{ count: string }[]>("id as count")
         .first(),
       db("approvals")
-        .where({ project_id: projectId })
+        .where({ project_id: projectId, kind: "client" })
         .whereIn("status", ["Pending", "Resubmit"])
         .count<{ count: string }[]>("id as count")
         .first(),

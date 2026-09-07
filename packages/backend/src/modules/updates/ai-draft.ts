@@ -101,7 +101,7 @@ async function gatherWeeklyContext(
       .limit(10)
       .select<Array<{ label: string; target_date: Date | string }>>("label", "target_date"),
     db("approvals")
-      .where({ project_id: projectId })
+      .where({ project_id: projectId, kind: "client" })
       .whereIn("status", ["Pending", "Resubmit"])
       .count({ count: "*" })
       .first<{ count: string | number } | undefined>(),
