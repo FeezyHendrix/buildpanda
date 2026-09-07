@@ -1,8 +1,18 @@
 export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Resubmit";
 
+// Entering one of these stamps reviewer + reviewed_at, and is what the
+// reviewer-only route guard keys off.
+export const DECISION_STATUSES: readonly ApprovalStatus[] = ["Approved", "Rejected", "Resubmit"];
+
+// Both kinds share one lifecycle and one `approvals` table, so every read of
+// that table must filter on kind or it leaks the other workflow's records.
+export const APPROVAL_KINDS = ["client", "material"] as const;
+export type ApprovalKind = (typeof APPROVAL_KINDS)[number];
+
 export interface Approval {
   id: string;
   projectId: string;
+  kind: ApprovalKind;
   title: string;
   category: string | null;
   description: string | null;
@@ -38,6 +48,7 @@ export interface ApprovalDetail extends Approval {
 export interface ApprovalRow {
   id: string;
   project_id: string;
+  kind: ApprovalKind;
   title: string;
   category: string | null;
   description: string | null;
