@@ -157,17 +157,17 @@ export const viewer = ac.newRole({
   ...constructionReadOnly,
 });
 
-// Mirror of the backend `employee` floor: minimal, project-scoped, no
+// Mirror of the backend `employee` floor: org-project-visible, minimal, no
 // team-management. Real capabilities are admin-assigned via custom roles.
 const constructionEmployeeBase = {
   project: ["view"],
   tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
-  updates: ["view"],
+  updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
-  dailyLog: ["view"],
+  dailyLog: ["view", "create"],
   materials: ["view"],
 } as const;
 
@@ -184,10 +184,10 @@ export const roles = { owner, admin, member, viewer, employee };
 
 export type AppRoleName = keyof typeof roles;
 
-// Presentation mirror of the backend rule: an employee is scoped to assigned
-// projects and cannot manage the team. Backend enforces this; the UI hides
-// team-management for these members. Role may be comma-joined with a custom
-// role (e.g. "employee,foreman"), so match by token.
+// Presentation mirror of the backend rule: an employee can see org projects but
+// cannot manage the team. Backend enforces this; the UI hides team-management
+// for these members. Role may be comma-joined with a custom role (e.g.
+// "employee,foreman"), so match by token.
 export function isEmployeeRole(role: string | null | undefined): boolean {
   return (role ?? "")
     .split(",")

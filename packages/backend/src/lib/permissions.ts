@@ -171,7 +171,7 @@ export const viewer = ac.newRole({
 });
 
 // The `employee` role is the DEFAULT floor for an invited employee (see
-// isEmployeeRole): project-scoped, read-only, no org-management. It grants
+// isEmployeeRole): org-project-visible, read-only, no org-management. It grants
 // almost nothing on purpose — an org admin adds capabilities (project:create,
 // invitation:create, etc.) by unioning a custom role onto the member (RBAC),
 // so this preset must stay minimal, never a rich set.
@@ -180,10 +180,10 @@ const constructionEmployeeBase = {
   tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
-  updates: ["view"],
+  updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
-  dailyLog: ["view"],
+  dailyLog: ["view", "create"],
   materials: ["view"],
 } as const satisfies PresetShape;
 
@@ -211,11 +211,10 @@ export type PermissionMap = ReadonlyMap<string, ReadonlySet<string>>;
 /** The four built-in org roles. Used to skip the custom-role DB query on the common path. */
 export const BUILTIN_ROLES: ReadonlySet<string> = new Set(Object.keys(roles));
 
-// An "employee" is an org member scoped to their assigned projects (see
-// authorization.ts / listForUser). Their capabilities are pure RBAC — the
-// minimal `employee` role grants almost nothing, and an org admin grants more
-// via custom roles unioned onto the role field (e.g. "employee,foreman"), so
-// match by token, not string equality.
+// An "employee" is an org member with read visibility across the org's projects.
+// Their capabilities are pure RBAC — the minimal `employee` role grants almost
+// nothing, and an org admin grants more via custom roles unioned onto the role
+// field (e.g. "employee,foreman"), so match by token, not string equality.
 export function isEmployeeRole(role: string | null | undefined): boolean {
   return (role ?? "")
     .split(",")
