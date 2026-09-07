@@ -52,6 +52,8 @@ test("employee can post field updates and daily-log entries but cannot manage pr
   assert.equal(mapAllows(EMPLOYEE, "project", "view"), true);
   assert.equal(mapAllows(EMPLOYEE, "updates", "post"), true);
   assert.equal(mapAllows(EMPLOYEE, "dailyLog", "create"), true);
+  assert.equal(mapAllows(EMPLOYEE, "participants", "view"), true);
+  assert.equal(mapAllows(EMPLOYEE, "materials", "request"), true);
   assert.equal(mapAllows(EMPLOYEE, "documents", "upload"), false);
   assert.equal(mapAllows(EMPLOYEE, "project", "update"), false);
   assert.equal(mapAllows(EMPLOYEE, "participants", "manage"), false);

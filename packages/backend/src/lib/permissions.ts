@@ -183,8 +183,9 @@ const constructionEmployeeBase = {
   updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
+  participants: ["view"],
   dailyLog: ["view", "create"],
-  materials: ["view"],
+  materials: ["view", "request"],
 } as const satisfies PresetShape;
 
 export const employee = ac.newRole({
