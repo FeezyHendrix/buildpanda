@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 import IORedis, { type Redis } from "ioredis";
 import { config } from "../config/index.ts";
+import { logger } from "../lib/logger.ts";
 
 interface MemberRoleRow {
   organizationId: string;
@@ -50,14 +51,17 @@ const KEY_PREFIX = "buildpanda:access-ctx:";
 // This dels the same Redis key so a role change shows on the next request
 // instead of waiting out the 60s TTL. No-op without Redis (local dev), where
 // the per-worker Map is unreachable from here and the TTL self-heals anyway.
-let invalidationRedis: Redis | null = null;
-export function invalidateAccessContext(userId: string): void {
+export async function invalidateAccessContext(userId: string): Promise<void> {
   if (!config.redis.url) return;
-  if (!invalidationRedis) {
-    invalidationRedis = new IORedis(config.redis.url, { maxRetriesPerRequest: 1 });
-    invalidationRedis.on("error", () => undefined);
+  const redis = new IORedis(config.redis.url, { maxRetriesPerRequest: 1 });
+  redis.on("error", () => undefined);
+  try {
+    await redis.del(KEY_PREFIX + userId);
+  } catch (err) {
+    logger.warn({ err, userId }, "Access cache invalidation failed");
+  } finally {
+    await redis.quit().catch(() => undefined);
   }
-  void invalidationRedis.del(KEY_PREFIX + userId).catch(() => undefined);
 }
 
 function redisCache(redis: Redis, onError: (err: unknown) => void): AccessCache {

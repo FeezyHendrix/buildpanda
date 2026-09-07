@@ -358,16 +358,16 @@ export const auth = betterAuth({
       },
       organizationHooks: {
         afterUpdateMemberRole: async ({ member }) => {
-          invalidateAccessContext(member.userId);
+          await invalidateAccessContext(member.userId);
         },
         afterAcceptInvitation: async ({ member }) => {
-          if (member) invalidateAccessContext(member.userId);
+          if (member) await invalidateAccessContext(member.userId);
         },
         afterAddMember: async ({ member }) => {
-          invalidateAccessContext(member.userId);
+          await invalidateAccessContext(member.userId);
         },
         afterRemoveMember: async ({ member }) => {
-          invalidateAccessContext(member.userId);
+          await invalidateAccessContext(member.userId);
         },
       },
     }),
