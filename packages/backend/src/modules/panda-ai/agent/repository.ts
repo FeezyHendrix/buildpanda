@@ -347,11 +347,27 @@ export function agentRepository(db: Knex) {
     approvalsOpen(projectId: string) {
       return db("approvals as a")
         .leftJoin("user as u", "u.id", "a.submitted_by_id")
+        // Material approvals share this table; kind + material keep them from
+        // being reported to the PM as client sign-offs.
+        .leftJoin("material_approval_details as md", "md.approval_id", "a.id")
         .where("a.project_id", projectId)
         .whereIn("a.status", ["Pending", "Resubmit"])
         .orderBy("a.due_date", "asc")
         .limit(50)
-        .select("a.id", "a.title", "a.category", "a.status", "a.due_date", "u.name as submittedBy");
+        .select(
+          "a.id",
+          "a.kind",
+          "a.title",
+          "a.category",
+          "a.status",
+          "a.due_date",
+          "u.name as submittedBy",
+          "md.material_name as materialName",
+          "md.quantity as materialQuantity",
+          "md.unit as materialUnit",
+          "md.supplier as materialSupplier",
+          "md.needed_by as materialNeededBy",
+        );
     },
 
     drawingMarkupsOpen(projectId: string) {

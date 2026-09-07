@@ -722,7 +722,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_open_items", "Get the open items needing attention across RFIs, approvals, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', or 'what is pending sign-off'."), async (ctx) => {
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals, material approval requests, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
@@ -735,7 +735,8 @@ export function buildTools(): AgentTool[] {
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
-          approvals: approvals.map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          approvals: approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
+          materialApprovals: approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
           actionItems: actionItems.map((a) => ({ title: a.title, status: a.status, priority: a.priority, assignee: a.assignee, dueDate: a.due_date, overdue: overdue(a.due_date) })),
           queries: queries.map((q) => ({ title: q.title, status: q.status, assignee: q.assignee, dueDate: q.due_date, overdue: overdue(q.due_date) })),
         },
