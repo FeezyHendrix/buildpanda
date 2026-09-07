@@ -26,8 +26,10 @@ async function firstOrgId(knex: Knex): Promise<string | null> {
 }
 
 async function ensureProject(knex: Knex): Promise<void> {
-  const orgId = await firstOrgId(knex);
-  const existing = await knex("projects").where({ id: PROJECT_ID }).first<{ id: string }>();
+  const existing = await knex("projects")
+    .where({ id: PROJECT_ID })
+    .first<{ id: string; organization_id: string | null }>("id", "organization_id");
+  const orgId = existing?.organization_id ?? await firstOrgId(knex);
   const project = {
     owner_id: null,
     organization_id: orgId,
