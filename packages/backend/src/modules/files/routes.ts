@@ -32,9 +32,9 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       projectField && !Array.isArray(projectField) && projectField.type === "field"
         ? String(projectField.value) || null
         : null;
-    // Associating a file with a project both records ownership for later
-    // access checks and asserts the uploader may write to that project.
-    if (projectId) await request.requireProjectWrite(projectId);
+    // File upload is the staging step; the consuming feature route authorizes
+    // whether this file may become an update, daily-log entry, document, etc.
+    if (projectId) await request.requireProjectAccess(projectId);
 
     const uploaded = await service.upload(user.id, {
       fileName: part.filename,
