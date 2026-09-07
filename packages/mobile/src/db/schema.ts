@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Local mirror of the server, following the sync columns Ernest uses:
@@ -255,6 +255,71 @@ export const materialOrders = sqliteTable(
   (table) => [index("material_orders_project_idx").on(table.projectId, table.updatedAt)],
 );
 
+/**
+ * The server splits a material approval across `approvals` and
+ * `material_approval_details`; locally it is one row, because the device never
+ * reads the detail alone and a 1:1 join only adds a second write to keep in
+ * step. `quantity` is `real` to match the server's `decimal(14,2)` — part-bag
+ * and part-tonne quantities are ordinary on site.
+ */
+export const materialApprovals = sqliteTable(
+  "material_approvals",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id").notNull(),
+    title: text("title").notNull(),
+    materialName: text("material_name").notNull().default(""),
+    specification: text("specification"),
+    quantity: real("quantity").notNull().default(0),
+    unit: text("unit").notNull().default("item"),
+    supplier: text("supplier"),
+    neededBy: text("needed_by"),
+    phaseId: text("phase_id"),
+    phaseName: text("phase_name"),
+    activityId: text("activity_id"),
+    activityName: text("activity_name"),
+    description: text("description"),
+    status: text("status").notNull().default("Pending"),
+    response: text("response"),
+    dueDate: text("due_date"),
+    requestedReviewerId: text("requested_reviewer_id"),
+    requestedReviewerName: text("requested_reviewer_name"),
+    reviewedByName: text("reviewed_by_name"),
+    reviewedAt: text("reviewed_at"),
+    commentCount: integer("comment_count").notNull().default(0),
+    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
+    serverLastSyncedAt: integer("server_last_synced_at"),
+    updatedAt: integer("updated_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [index("material_approvals_project_idx").on(table.projectId, table.updatedAt)],
+);
+
+/**
+ * Append-only, and written by a different path than the request itself — a
+ * comment typed with no signal is a real record, so it lands here with
+ * `isPendingSync` and is pushed by the outbox.
+ */
+export const materialApprovalComments = sqliteTable(
+  "material_approval_comments",
+  {
+    id: text("id").primaryKey(),
+    approvalId: text("approval_id").notNull(),
+    projectId: text("project_id").notNull(),
+    authorName: text("author_name").notNull().default(""),
+    body: text("body").notNull(),
+    createdAt: integer("created_at")
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
+    serverLastSyncedAt: integer("server_last_synced_at"),
+  },
+  (table) => [
+    index("material_approval_comments_approval_idx").on(table.approvalId, table.createdAt),
+  ],
+);
+
 /** Per-feature, per-project pull cursor — Ernest's `featurePullSyncs`. */
 export const featurePullSyncs = sqliteTable("feature_pull_syncs", {
   id: text("id").primaryKey(),
@@ -275,3 +340,5 @@ export type DailyLogActivityRow = typeof dailyLogActivities.$inferSelect;
 export type ChangeRequestRow = typeof changeRequests.$inferSelect;
 export type LookAheadRow = typeof lookAheads.$inferSelect;
 export type MaterialOrderRow = typeof materialOrders.$inferSelect;
+export type MaterialApprovalRow = typeof materialApprovals.$inferSelect;
+export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferSelect;
