@@ -30,7 +30,6 @@ import { INVOICE_STATUS_TONE as STATUS_TONE } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import { toInput, toValues } from "./invoice-utils";
 import { InvoiceBudgetAllocations } from "./invoice-budget-allocations";
-import { PayApplicationAction } from "../finances/invoices/pay-application-action";
 
 function Metric({
   label,
@@ -167,12 +166,6 @@ export function InvoiceCard({
           >
             {invoicePdf.isPending ? "…" : "PDF"}
           </Button>
-          <PayApplicationAction
-            projectId={projectId}
-            invoice={invoice}
-            currency={invoice.currency || currency}
-            canManage={canManage}
-          />
           {canManage && (
             <Button
               variant="secondary"

@@ -2,7 +2,6 @@ export const projectKeys = {
   all: ["projects"] as const,
   list: () => [...projectKeys.all, "list"] as const,
   detail: (id: string) => [...projectKeys.all, "detail", id] as const,
-  settings: (id: string) => [...projectKeys.all, "settings", id] as const,
 };
 
 export const projectTemplateKeys = {
@@ -24,14 +23,6 @@ export const documentKeys = {
     [...documentKeys.all(projectId), "categories"] as const,
   versions: (projectId: string, documentId: string) =>
     [...documentKeys.all(projectId), "versions", documentId] as const,
-};
-
-export const drawingMarkupKeys = {
-  all: (projectId: string) => ["projects", projectId, "drawing-markups"] as const,
-  version: (projectId: string, documentVersionId: string, pageNo?: number) =>
-    [...drawingMarkupKeys.all(projectId), "version", documentVersionId, { pageNo }] as const,
-  document: (projectId: string, documentId: string) =>
-    [...drawingMarkupKeys.all(projectId), "document", documentId] as const,
 };
 
 export const inspectionKeys = {
@@ -99,8 +90,6 @@ export const invoiceKeys = {
   all: (projectId: string) => ["projects", projectId, "invoices"] as const,
   list: (projectId: string) => [...invoiceKeys.all(projectId), "list"] as const,
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
-  payApplication: (projectId: string, invoiceId: string) =>
-    [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
 };
 
 export const paymentClaimKeys = {
@@ -139,8 +128,6 @@ export const activityKeys = {
 export const stageKeys = {
   all: (projectId: string) => ["projects", projectId, "stages"] as const,
   list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,
-  scheduleOfValues: (projectId: string, stageId?: string) =>
-    [...stageKeys.all(projectId), "schedule-of-values", stageId ?? "all"] as const,
 };
 
 export const buildingKeys = {
@@ -344,4 +331,9 @@ export const preconKeys = {
   programme: (sessionId: string) => [...preconKeys.all, "programme", sessionId] as const,
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
+};
+
+export const onboardingKeys = {
+  all: ["onboarding"] as const,
+  status: () => [...onboardingKeys.all, "status"] as const,
 };

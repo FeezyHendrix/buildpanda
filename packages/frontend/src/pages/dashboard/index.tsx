@@ -1,52 +1,65 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
+import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
-import { Card } from "@/components/atoms/card";
-import { ProgressBar } from "@/components/atoms/progress-bar";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
-  ExternalLinkIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/atoms/dropdown-menu";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { useSession } from "@/stores/auth";
+import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
 import { useProjects, useDeleteProject } from "@/hooks/use-projects";
 import { useHasOrgPermission } from "@/hooks/use-organization";
+import { useSession } from "@/stores/auth";
 import { toast } from "@/lib/toast";
-import {
-  firstName,
-  formatCurrency,
-  formatTimeAgo,
-  timeOfDay,
-} from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/project-types";
-import emptyIcon from "@/assets/images/empty-icon.svg";
-import { icons } from "@/assets/icons/icons";
+import emptyIcon from "@/assets/images/empty-dashboard.svg";
+import { icons2 } from "@/assets/icons2/icon2";
 import { ReactSVG } from "react-svg";
-import { SuiteSwitcher } from "@/components/molecules/suite-switcher";
-import { PendingInvitesBanner } from "@/components/molecules/pending-invites-banner";
+
+function getGreeting(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function DotsMenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="9" cy="4" r="1.5" fill="#B0B0B0" />
+      <circle cx="9" cy="9" r="1.5" fill="#B0B0B0" />
+      <circle cx="9" cy="14" r="1.5" fill="#B0B0B0" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { data: session } = useSession();
   const { data: projects, isPending } = useProjects();
+  const { data: session } = useSession();
   const canCreateProject = useHasOrgPermission("project", "create");
-  const [fabOpen, setFabOpen] = useState(false);
-  const [fabClosing, setFabClosing] = useState(false);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const greeting = getGreeting(new Date().getHours());
+  const firstName = (session?.user?.name ?? "").trim().split(" ")[0];
 
-  function closeFab() {
-    setFabClosing(true);
-    setTimeout(() => {
-      setFabOpen(false);
-      setFabClosing(false);
-    }, 220);
-  }
-
-  if (isPending) {
-    return <LoadingSpinner />;
-  }
+  if (isPending) return <LoadingSpinner />;
 
   const list = projects ?? [];
 
@@ -59,116 +72,223 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col py-10 pb-36 lg:max-w-7xl mx-auto w-full max-w-full lg:px-3 px-4">
-      <div className="mb-4">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 lg:px-8">
+      <div className="mb-6">
         <PendingInvitesBanner />
       </div>
-      <div className="flex items-center justify-between mb-0">
-        <div className="flex justify-center flex-1">
-          <SuiteSwitcher variant="tabs" />
+
+      {/* Page header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h5 className="text-h5 font-semibold !text-[#686868]">
+            {greeting}
+            {firstName && <span className="text-black">, {firstName}</span>}
+          </h5>
+          <p className="mt-1 text-caption-m font-medium text-black-500 opacity-50">
+            {list.length} projects available
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {/* View toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => setView("list")}
+              className={cn(
+                "flex w-9 items-center justify-center transition-colors hover:bg-[#E6EDFD]",
+                view === "list" ? "border-primary bg-[#E6EDFD]" : "bg-white hover:bg-[#E6EDFD]",
+              )}
+              aria-label="List view"
+            >
+              <ReactSVG
+                src={icons2.list}
+                className={cn("transition-colors", view === "list" ? "[&_path]:fill-primary" : "[&_path]:fill-black")}
+              />
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={() => setView("grid")}
+              className={cn(
+                "flex w-9 items-center justify-center transition-colors",
+                view === "grid" ? "border-primary bg-[#E6EDFD]" : "bg-white hover:bg-[#F5F5F5]",
+              )}
+              aria-label="Grid view"
+            >
+              <ReactSVG
+                src={icons2.grid}
+                className={cn("transition-colors", view === "grid" ? "[&_path]:fill-primary" : "[&_path]:fill-black")}
+              />
+            </Button>
+          </div>
+
+          {/* New Project split button */}
+          {canCreateProject && (
+            <div className="relative flex">
+              <Button
+                variant="primary"
+                size="md"
+                className="rounded-none pr-3"
+                onClick={() => navigate("/project/create")}
+              >
+                <ReactSVG src={icons2.plus} className='[&_svg]:size-[14px] [&_path]:fill-white shrink-0' />
+                New Project
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="primary"
+                      size="md"
+                      className="flex items-center justify-center border-l border-[#3371EE] bg-[#004DE7] px-2.5 text-white transition-colors hover:bg-[#053DAB]"
+                      aria-label="More project options"
+                    >
+                      <ChevronDownIcon />
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className='p-2 w-[380px]'>
+                  <DropdownMenuItem onSelect={() => navigate("/project/create")} className='flex items-center gap-2'>
+                    <ReactSVG src={icons2.folderAdd} />
+                    <div className='flex flex-col'>
+                      <span className="text-caption-l font-semibold text-black-700">Start a New project</span>
+                      <span className="text-caption-m font-medium text-grey-450">Spin up a new construction project from scratch</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => navigate("/import")} className='flex items-center gap-2'>
+                    <ReactSVG src={icons2.folderImport} />
+                    <div className='flex flex-col'>
+                      <span className="text-caption-l font-semibold text-black-700">Import Project</span>
+                      <span className="text-caption-m font-medium text-grey-450">Import a programme, BOQ, drawings or BIM and we'll build the project for you</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </div>
 
-      <section className="flex flex-col gap-4 mt-10">
-        <div className="mx-auto w-full lg:w-fit flex flex-col gap-4">
-          <div className='flex flex-col !mb-6'>
-            <Greeting className='self-start !mb-2' name={session?.user.name ?? ""} />
-            <p className="text-[13px] font-medium text-black-300">Here’s what’s happening with your projects today</p>
-          </div>
-
-          <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between !mb-0 lg:gap-0 gap-4">
-            <div className="flex items-center gap-1">
-              <ReactSVG src={icons.folder} />
-              <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {list.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Desktop fixed footer */}
-      {canCreateProject && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-[#F0F0F0] bg-white px-4 py-4 lg:block lg:px-6">
-          <div className="mx-auto flex w-full max-w-fit gap-4 lg:max-w-4xl lg:px-3">
-            <NewProjectCard />
-            <ImportProgrammeCard />
-          </div>
-        </div>
-      )}
-
-      {/* Mobile FAB */}
-      {canCreateProject && (
-        <button
-          type="button"
-          onClick={() => setFabOpen(true)}
-          aria-label="Create or import project"
-          className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full shadow-xl transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
-          style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
-        >
-          <PlusIcon className="size-7 text-white" />
-        </button>
-      )}
-
-      {/* Mobile FAB popup */}
-      {fabOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
-            style={{
-              animation: fabClosing
-                ? "fab-backdrop-out 220ms ease-in forwards"
-                : "fab-backdrop-in 200ms ease-out",
-            }}
-            onClick={closeFab}
-          />
-          {/* Bottom sheet */}
-          <div
-            className="fixed bottom-0 left-0 right-0 z-40 flex flex-col items-center gap-3 px-4 pb-8 pt-4 lg:hidden"
-            style={{
-              animation: fabClosing
-                ? "fab-sheet-out 220ms ease-in forwards"
-                : "fab-sheet-in 250ms cubic-bezier(0.32, 0.72, 0, 1)",
-            }}
-          >
-            <div className="flex w-full flex-col gap-4 bg-white rounded-2xl p-4">
-              <NewProjectCard onNavigate={closeFab} />
-              <ImportProgrammeCard onNavigate={closeFab} />
-            </div>
-            <button
-              type="button"
-              onClick={closeFab}
-              aria-label="Close"
-              className="mt-1 flex size-12 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow-md text-xl font-light"
-            >
-              ✕
-            </button>
-          </div>
-        </>
-      )}
+      {/* Project grid / list */}
+      <div
+        className={cn(
+          "grid gap-4",
+          view === "grid"
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"
+            : "grid-cols-1",
+        )}
+      >
+        {list.map((project) => (
+          <ProjectCard key={project.id} project={project} view={view} />
+        ))}
+      </div>
     </div>
   );
 }
+
+// ── Project card ──────────────────────────────────────────────────────────────
+
+function ProjectCard({ project, view }: { project: Project; view: "grid" | "list" }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const deleteProject = useDeleteProject();
+
+  function handleDelete() {
+    deleteProject.mutate(project.id, {
+      onSuccess: () => toast(`"${project.name}" was deleted`, "success"),
+      onError: () => toast("Could not delete project. Please try again."),
+    });
+  }
+
+  const cardMenu = (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Project options"
+              className="flex size-7 items-center justify-center transition-colors hover:bg-[#F5F5F5]"
+            >
+              <DotsMenuIcon />
+            </button>
+          }
+        />
+        <DropdownMenuContent align="end" className='p-1 gap-1'>
+          <DropdownMenuItem className='py-1.5 cursor-pointer' onSelect={() => window.location.assign(`/project/${project.id}/overview`)}>
+            Edit Project
+          </DropdownMenuItem>
+          <DropdownMenuItem tone="danger" className='py-1.5 cursor-pointer' onSelect={() => setConfirmOpen(true)}>
+            Delete Project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={handleDelete}
+        title="Delete project"
+        description={`This permanently deletes "${project.name}" and all of its data. This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
+    </>
+  );
+
+  if (view === "list") {
+    return (
+      <div className="flex items-center gap-4 border border-[#F0F0F0] bg-white px-5 py-4 transition-shadow hover:shadow-sm">
+        <Link
+          to={`/project/${project.id}/overview`}
+          className="flex min-w-0 flex-1 items-center gap-4 outline-none"
+        >
+          <ReactSVG src={icons2.folder} className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-caption-l font-semibold text-black-700">{project.name}</p>
+            <p className="truncate text-[13px] text-[#B0B0B0]">{project.address}</p>
+          </div>
+          <Badge tone="danger" variant="soft" size="md" className="shrink-0">
+            {project.progressPercent}% Completed
+          </Badge>
+        </Link>
+        {cardMenu}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative border-[0.5px] border-[#DDDDDD] bg-white p-5 transition-shadow hover:shadow-md">
+      {/* Top row */}
+      <div className="relative z-10 mb-8 flex items-center justify-between">
+        <ReactSVG src={icons2.folder} className="[&_svg]:size-[60px] shrink-0" />
+        {cardMenu}
+      </div>
+
+      {/* Name + address — full card is clickable via the link */}
+      <Link
+        to={`/project/${project.id}/overview`}
+        className="mt-1 block outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
+      >
+        {/* Badge */}
+        <Badge variant="outline" size="sm" className="mb-3">
+          {project.progressPercent}% Completed
+        </Badge>
+        <p className="line-clamp-1 text-body-s font-semibold text-black-700">{project.name}</p>
+        <p className="mt-0.5 text-caption-m font-medium text-black-500 opacity-50">{project.address}</p>
+      </Link>
+    </div>
+  );
+}
+
+// ── Loading / empty states ────────────────────────────────────────────────────
 
 function LoadingSpinner() {
   return (
     <div className="flex flex-1 items-center justify-center pt-32">
       <Spinner size="lg" />
     </div>
-  );
-}
-
-function Greeting({ name, className }: { name: string, className?: string }) {
-  return (
-    <h1 className={`sm:text-[28px] mb-6 text-[25px] font-semibold  text-black-300 ${className}`}>
-      <span className="text-gray-500">Good {timeOfDay()}, </span>
-      <span className="text-gray-900">{firstName(name)}.</span>
-    </h1>
   );
 }
 
@@ -179,17 +299,16 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
         <PendingInvitesBanner />
       </div>
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
-        title="Welcome to Build Panda"
-        description="Build and manage your construction projects in Nigeria with complete transparency and control, no matter where you live."
+        icon={<img src={emptyIcon} alt="" className="size-90" />}
+        title="Welcome to your workspace!"
+        description="Your workspace is empty for now. Create your first project and start planning, building and collaborating with your team"
         action={
           <Button
-            variant="ghost"
-            size="md"
-            className="text-base font-semibold leading-[120%] text-[#004DE7] hover:bg-[#004DE7]/5 active:bg-[#004DE7]/10"
+            variant="primary"
+            size="lg"
+            className="text-base font-semibold w-full"
             onClick={onCreate}
           >
-            <PlusIcon className="size-5" />
             Create your first project
           </Button>
         }
@@ -212,190 +331,3 @@ function NoAssignedProjectsState() {
     </div>
   );
 }
-
-function TrashIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M3 6h18" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <line x1="10" y1="11" x2="10" y2="17" />
-      <line x1="14" y1="11" x2="14" y2="17" />
-    </svg>
-  );
-}
-
-function ProjectCard({ project }: { project: Project }) {
-  const progress = project.progressPercent;
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const deleteProject = useDeleteProject();
-
-  const handleDelete = () => {
-    deleteProject.mutate(project.id, {
-      onSuccess: () => toast(`"${project.name}" was deleted`, "success"),
-      onError: () => toast("Could not delete project. Please try again."),
-    });
-  };
-
-  return (
-    <Card
-      padding="md"
-      className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 lg:w-[334.82px] w-full"
-    >
-      <button
-        type="button"
-        aria-label={`Delete ${project.name}`}
-        onClick={() => setConfirmOpen(true)}
-        className="absolute right-3 top-3 z-20 inline-flex size-8 items-center justify-center rounded-lg text-gray-400 outline-none transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-red-500/30"
-      >
-        <TrashIcon className="size-4" />
-      </button>
-
-      <div className="flex gap-8">
-        {/* <IconBox
-          tone={project.folderTone}
-          size="md"
-          icon={<FolderIcon className="size-5" />}
-        /> */}
-        <ReactSVG src={icons.coloredFolder} />
-        <div className='text'>
-         <p className='text-[#0F172A] font-semibold'>{project.name}</p>
-         <p className='text-[13px] text-black-300'>{project.address}</p>   
-        </div>
-        {/* <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-gray-900">
-            {project.name}
-          </p>
-          <p className="line-clamp-2 text-xs text-gray-500">
-            {project.address}
-          </p>
-        </div> */}
-      </div>
-
-      {/* <div className='flex flex-col gap-2'>
-        <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
-          <span>Completion</span>
-          <span className="font-semibold tabular-nums text-gray-900">
-            {progress}%
-          </span>
-        </div>
-        <ProgressBar value={progress} tone="success" size="sm" />
-      </div> */}
-
-      <div className='flex flex-col gap-2'>
-        <div className="flex justify-between">
-          <p className='text-black-300 text-[11px]'>Completion</p>
-          <p className="text-[13px] text-black-500 font-semibold">{progress}%</p>
-        </div>
-        <ProgressBar value={progress} tone="success" size="sm" className='h-[7px]' />
-      </div>
-
-      <div>
-        <p className="text-black-300 text-[11px]">Budget Usage</p>
-        <p className="text-[13px] font-semibold text-black-500">
-          {formatCurrency(project.budgetUsed, project.currency)}
-          <span className="text-black-300">
-            {" "}
-            / {formatCurrency(project.budgetTotal, project.currency)}
-          </span>
-        </p>
-      </div>
-
-      {/* {activePhase && (
-        <Link
-          to={`/project/${project.id}/project-chart`}
-          className="relative z-10 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3 outline-none transition-colors hover:bg-[#F4F7FF] focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-900">
-                <CalendarIcon className="size-3.5 text-[#004DE7]" />
-                Project schedule
-              </p>
-              <p className="mt-1 truncate text-xs text-gray-500">
-                {activePhase.name}
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-medium text-gray-500 ring-1 ring-[#EDEDED]">
-              {activePhase.dateRange || "Timeline"}
-            </span>
-          </div>
-        </Link>
-      )} */}
-
-      <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-3">
-        <p className="text-xs text-gray-500">
-          Last updated {formatTimeAgo(project.updatedAt)}
-        </p>
-        <Link
-          to={`/project/${project.id}/overview`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] outline-none hover:underline after:absolute after:inset-0 after:z-[1] after:rounded-2xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
-        >
-          Open
-          <ExternalLinkIcon className="size-3.5" />
-        </Link>
-      </div>
-
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        onConfirm={handleDelete}
-        title="Delete project"
-        description={`This permanently deletes "${project.name}" and all of its data. This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="danger"
-      />
-    </Card>
-  );
-}
-
-function NewProjectCard({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <Link
-      to="/project/create"
-      onClick={onNavigate}
-      className="flex flex-1 items-center gap-4 rounded-2xl p-4 transition-opacity hover:opacity-90"
-      style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
-    >
-      <div className="shrink-0">
-        <ReactSVG src={icons.folderWhite} />
-      </div>
-      <div>
-        <p className="text-[16px] font-semibold text-white">New project</p>
-        <p className="text-[11px] text-white/75">
-          Spin up a new construction project from scratch.
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-function ImportProgrammeCard({ onNavigate }: { onNavigate?: () => void }) {
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      onClick={() => { onNavigate?.(); navigate("/import"); }}
-      className="flex flex-1 items-center gap-4 rounded-2xl border border-primary bg-white p-4 transition-colors hover:bg-gray-50"
-    >
-      <div className="shrink-0">
-        <ReactSVG src={icons.folderArrow} />
-      </div>
-      <div className="text-left">
-        <p className="text-[16px] font-semibold text-primary">Set up a project</p>
-        <p className="text-[11px] text-black-300">
-          Import a programme, BoQ, drawings or BIM models and we'll build the project for you.
-        </p>
-      </div>
-    </button>
-  );
-}
-

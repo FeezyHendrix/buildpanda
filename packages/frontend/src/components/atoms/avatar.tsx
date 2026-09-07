@@ -1,5 +1,6 @@
 import { forwardRef, useState, type ImgHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/formatters";
 
 type AvatarSize = "sm" | "md" | "lg";
 
@@ -15,13 +16,6 @@ const sizeStyles: Record<AvatarSize, string> = {
   lg: "size-12 text-base",
 };
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0]![0]?.toUpperCase() ?? "";
-  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
-}
-
 const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
   ({ name, src, size = "md", className, ...props }, ref) => {
     const [imgFailed, setImgFailed] = useState(false);
@@ -31,7 +25,7 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
       <div
         ref={ref}
         className={cn(
-          "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#004DE7] font-semibold text-white select-none",
+          "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-50 font-semibold text-primary select-none",
           sizeStyles[size],
           className,
         )}

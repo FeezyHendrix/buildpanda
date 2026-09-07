@@ -21,6 +21,7 @@ type NavbarProps = {
   sticky?: boolean;
   searchPlaceholder?: string;
   leadingSlot?: ReactNode;
+  centerSlot?: ReactNode;
   // Either is optional: a slim topbar (e.g. when the user lives in a sidebar)
   // can render with neither, leaving just search + notifications.
   userSlot?: ReactNode;
@@ -36,6 +37,7 @@ function Navbar({
   sticky = false,
   searchPlaceholder = "Search Build Panda",
   leadingSlot,
+  centerSlot,
   userSlot,
   className,
 }: NavbarProps) {
@@ -61,7 +63,7 @@ function Navbar({
   return (
     <nav
       className={cn(
-        "flex h-16 items-center justify-between border-b border-[#F6F6F6] bg-white px-4 py-3",
+        "flex h-16 items-stretch justify-between border-b border-[#F6F6F6] bg-white px-4",
         "lg:grid lg:grid-cols-3 lg:px-8",
         sticky && "sticky top-0 z-40",
         className,
@@ -81,13 +83,17 @@ function Navbar({
         )}
       </div>
 
-      {/* Search — hidden on mobile to avoid overflow, centered on desktop */}
+      {/* Center — tab nav when provided, otherwise search */}
       <div className="hidden lg:flex lg:justify-center">
-        <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+        {centerSlot ?? (
+          <div className="flex items-center">
+            <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-end">
-        <div className="flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
+        <div className="flex items-center gap-2 rounded-full p-1.5">
           {showNotifications && (
             <div ref={notificationsRef} className="relative">
               <NotificationBell

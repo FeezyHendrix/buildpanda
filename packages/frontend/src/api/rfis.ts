@@ -11,9 +11,6 @@ export interface RfiCreateInput {
   ballInCourtId?: string | null;
   ballInCourtName?: string | null;
   ballInCourtEmail?: string | null;
-  documentId?: string | null;
-  documentVersionId?: string | null;
-  sourceMarkupId?: string | null;
 }
 
 export interface RfiUpdateInput {

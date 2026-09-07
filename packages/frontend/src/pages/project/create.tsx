@@ -1,200 +1,119 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { authClient } from "@/lib/auth-client";
-import { useOrgProfile } from "@/hooks/use-org-profile";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
-import type { Currency } from "@/lib/project-types";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { WizardLayout } from "@/components/organisms/wizard-modal";
-import {
-  ProjectTypeStep,
-  type ProjectType,
-} from "@/components/molecules/project-type-step";
-import { LocationStep } from "@/components/molecules/location-step";
-import { ProjectDetailsStep } from "@/components/molecules/project-details-step";
-import {
-  ManagementStep,
-  type InvolvementLevel,
-  type RiskOption,
-  RISK_OPTIONS_CONFIG,
-} from "@/components/molecules/management-step";
 import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
-import { ProjectTitleStep } from "@/components/molecules/project-title-step";
-import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
-import { useCreateProject } from "@/hooks/use-projects";
-import { useUploadBimModel } from "@/hooks/use-bim";
+import {
+  ProjectInfoStep,
+  type InfoCurrency,
+  type ConstructionType,
+  type ConstructionTimeline,
+} from "@/components/molecules/project-info-step";
+import { useCreateProject, useProjects } from "@/hooks/use-projects";
+import { useOrgProfile } from "@/hooks/use-org-profile";
+import { RISK_OPTIONS_CONFIG } from "@/components/molecules/management-step";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import logo from "@/assets/images/logo.svg";
+import illustration from "@/assets/images/createProjectIllustration.png";
+import { OptionCard } from "@/components/atoms/option-card";
+import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
 
-// 1 type · 2 template · 3 location · 4 details · 5 management · 6 title
-const TOTAL_STEPS = 6;
+type Step = "choice" | "template" | "info";
 
-const DEFAULT_RISK_OPTIONS: RiskOption[] = RISK_OPTIONS_CONFIG.map((opt) => ({
-  id: opt.id,
-  enabled: !opt.comingSoon,
-}));
-
-function useWizardStep() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const raw = searchParams.get("step");
-  const isReview = raw === "review";
-  const step = isReview
-    ? TOTAL_STEPS
-    : raw
-      ? Math.max(1, Math.min(TOTAL_STEPS, Number(raw) || 1))
-      : 1;
-
-  const setStep = useCallback(
-    (next: number | "review") => {
-      if (next === "review") {
-        setSearchParams({ step: "review" }, { replace: true });
-      } else {
-        const clamped = Math.max(1, Math.min(TOTAL_STEPS, next));
-        setSearchParams({ step: String(clamped) }, { replace: true });
-      }
-    },
-    [setSearchParams],
-  );
-
-  return [step, isReview, setStep] as const;
-}
+// All non-coming-soon risk options submitted by default (UI no longer exposes them).
+const DEFAULT_RISK_IDS = RISK_OPTIONS_CONFIG
+  .filter((o) => !o.comingSoon)
+  .map((o) => o.id);
 
 export default function CreateProject() {
   const navigate = useNavigate();
-  const [step, isReview, setStep] = useWizardStep();
+  const { data: existingProjects, isPending: isProjectsPending } = useProjects();
+  // The choice screen (new vs. import) is only for a workspace's very first
+  // project — once there's at least one project, "New Project" always means
+  // starting from scratch (importing has its own entry point on the dashboard).
+  const hasExistingProjects = (existingProjects?.length ?? 0) > 0;
+  const [manualStep, setManualStep] = useState<Step | null>(null);
+  const step: Step | null =
+    manualStep ?? (isProjectsPending ? null : hasExistingProjects ? "template" : "choice");
+  const setStep = setManualStep;
+  const [creationType, setCreationType] = useState<"new" | "import" | null>(null);
   const createProject = useCreateProject();
-  const uploadBimModel = useUploadBimModel();
   const [submitting, setSubmitting] = useState(false);
 
-  const [projectType, setProjectType] = useState<ProjectType | null>(null);
-
-  // null = "Start blank"; templates seed stages + starter tasks server-side.
+  // ── Step 1: template ────────────────────────────────────────────────────────
   const [templateId, setTemplateId] = useState<string | null>(null);
 
+  // ── Step 2: project information ─────────────────────────────────────────────
+  const [projectName, setProjectName] = useState("");
+  const [address, setAddress] = useState("");
   const [locationState, setLocationState] = useState<string | null>(null);
   const [city, setCity] = useState("");
-
-  const [bimFiles, setBimFiles] = useState<FileList | null>(null);
   const { data: orgProfile } = useOrgProfile();
-  const { data: flagsData } = useFeatureFlags();
-  const bimEnabled = useMemo(() => {
-    const flag = (flagsData?.flags ?? []).find((f) => f.key === "projects.bim");
-    return flag ? flag.enabled : true;
-  }, [flagsData]);
-  const [buildingType, setBuildingType] = useState<string | null>(null);
-  const [currency, setCurrency] = useState<Currency>("NGN");
+  const [currency, setCurrency] = useState<InfoCurrency>("NGN");
   const [currencyTouched, setCurrencyTouched] = useState(false);
   useEffect(() => {
     if (!currencyTouched && orgProfile?.defaultCurrency) {
-      setCurrency(orgProfile.defaultCurrency as Currency);
+      setCurrency(orgProfile.defaultCurrency as InfoCurrency);
     }
   }, [orgProfile?.defaultCurrency, currencyTouched]);
-  const [budget, setBudget] = useState<[number, number]>([10_000_000, 50_000_000]);
-  const [timeline, setTimeline] = useState<string | null>(null);
-  const [fundingMethod, setFundingMethod] = useState<string | null>(null);
+  const [contractSum, setContractSum] = useState("");
+  const [constructionType, setConstructionType] = useState<ConstructionType | null>(null);
+  const [timeline, setTimeline] = useState<ConstructionTimeline | null>(null);
 
-  const { data: session } = authClient.useSession();
-  const accountType =
-    (session?.user as { accountType?: string } | undefined)?.accountType ?? null;
-  // Contractors and project managers run their own delivery, so the
-  // "level of involvement" question doesn't apply — default it and skip the step.
-  const skipInvolvementStep =
-    accountType === "construction_company" || accountType === "project_manager";
+  // ── Navigation ───────────────────────────────────────────────────────────────
+  const handleCancel = () => navigate("/dashboard");
+  const handlePrev = () => setStep("template");
 
-  const [involvementLevel, setInvolvementLevel] =
-    useState<InvolvementLevel | null>(null);
-  const [riskOptions, setRiskOptions] =
-    useState<RiskOption[]>(DEFAULT_RISK_OPTIONS);
-
-  useEffect(() => {
-    if (skipInvolvementStep && involvementLevel === null) {
-      setInvolvementLevel("contractors");
-    }
-  }, [skipInvolvementStep, involvementLevel]);
-
-  // Contractors and project managers skip the management step entirely, so the
-  // wizard runs on the active step ids rather than a fixed 1..N range.
-  const steps = skipInvolvementStep ? [1, 2, 3, 4, 6] : [1, 2, 3, 4, 5, 6];
-  const stepIndex = steps.indexOf(step);
-  const displayStep = stepIndex === -1 ? steps.length : stepIndex + 1;
-  const isLastStep = step === steps[steps.length - 1];
-
-  useEffect(() => {
-    if (!isReview && stepIndex === -1) setStep(4);
-  }, [isReview, stepIndex, setStep]);
-
-  const [projectTitle, setProjectTitle] = useState("");
-
-  const handleRiskToggle = (id: string) => {
-    setRiskOptions((prev) =>
-      prev.map((opt) =>
-        opt.id === id ? { ...opt, enabled: !opt.enabled } : opt,
-      ),
+  const canContinue = () => {
+    if (step === "template") return true; // template is optional
+    return (
+      projectName.trim() !== "" &&
+      !!locationState &&
+      !!constructionType &&
+      !!timeline
     );
   };
 
-  const canContinue = () => {
-    if (isReview) return true;
-    if (step === 1) return !!projectType;
-    if (step === 2) return true; // template is optional — blank is a valid choice
-    if (step === 3) return !!locationState && city.trim() !== "";
-    if (step === 4) return !!buildingType && !!timeline && !!fundingMethod;
-    if (step === 5) return skipInvolvementStep || !!involvementLevel;
-    if (step === 6) return !!projectTitle.trim();
-    return false;
+  const handleNext = () => {
+    if (step === "template") {
+      setStep("info");
+    } else {
+      void handleFinish();
+    }
   };
 
-  async function seedBimModel(projectId: string, files: FileList): Promise<void> {
-    const file = files[0];
-    if (!file || !/\.ifc$/i.test(file.name)) return;
-    try {
-      await uploadBimModel.mutateAsync({
-        projectId,
-        name: file.name.replace(/\.ifc$/i, ""),
-        file,
-      });
-    } catch {
-      void 0;
-    }
-  }
-
+  // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleFinish(): Promise<void> {
-    if (
-      !projectType ||
-      !locationState ||
-      !buildingType ||
-      !timeline ||
-      !fundingMethod ||
-      !involvementLevel
-    ) {
-      return;
-    }
+    if (!locationState || !constructionType || !timeline) return;
+
     setSubmitting(true);
     try {
+      const sumValue = contractSum ? Number(contractSum) : 0;
       const project = await createProject.mutateAsync({
-        title: projectTitle.trim(),
-        projectType,
+        title: projectName.trim(),
+        projectType: "build",
         templateId: templateId ?? undefined,
         location: {
           state: locationState,
-          city: city.trim(),
+          city: [address, city].filter(Boolean).join(", ") || locationState,
           ownsLand: true,
         },
         details: {
-          buildingType,
+          buildingType: constructionType,
           currency,
-          budgetMin: budget[0],
-          budgetMax: budget[1],
+          budgetMin: sumValue,
+          budgetMax: sumValue,
           timeline,
-          fundingMethod,
+          fundingMethod: "full",
         },
         management: {
-          involvementLevel,
-          riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
+          involvementLevel: "contractors",
+          riskOptions: DEFAULT_RISK_IDS,
         },
       });
-      if (bimEnabled && bimFiles && bimFiles.length > 0) {
-        await seedBimModel(project.id, bimFiles);
-      }
       navigate(`/project/${project.id}/overview`);
     } catch (err) {
       toast(
@@ -205,108 +124,119 @@ export default function CreateProject() {
     }
   }
 
-  const handleContinue = () => {
-    if (isReview) {
-      void handleFinish();
-    } else if (isLastStep) {
-      setStep("review");
-    } else {
-      setStep(steps[stepIndex + 1]!);
-    }
-  };
+  if (step === null) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-white">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
-  const handleBack = () => {
-    if (submitting) return;
-    if (isReview) {
-      setStep(steps[steps.length - 1]!);
-    } else if (stepIndex <= 0) {
-      navigate("/dashboard");
-    } else {
-      setStep(steps[stepIndex - 1]!);
-    }
-  };
+  if (step === "choice") {
+    return (
+      <div className="flex h-dvh flex-col bg-white">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b border-[#F0F0F0] bg-white px-8">
+          <Link to="/" className="shrink-0">
+            <img src={logo} alt="BuildPanda" className="h-8 lg:h-9" />
+          </Link>
+          <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-caption-l font-semibold text-black">
+            Create New Project
+          </span>
+        </header>
+        <div
+          className="flex-1 bg-cover bg-center bg-no-repeat flex items-center justify-center p-6"
+          style={{ backgroundImage: `url(${illustration})` }}
+        >
+          <div className="border border-black-500 bg-white p-12 max-w-[462px] w-full flex flex-col gap-10 shadow-sm">
+            <h4 className="text-h4 font-bold text-grey-800">Create Project</h4>
+
+            <div className="flex flex-col gap-4">
+              <OptionCard
+                icon={<ReactSVG src={icons2.folderAdd} />}
+                title="Start a New Project"
+                subtitle="Spin up a new construction project from scratch"
+                selected={creationType === "new"}
+                onClick={() => setCreationType("new")}
+              />
+              <OptionCard
+                icon={<ReactSVG src={icons2.folderImport} />}
+                title="Import a Project"
+                subtitle="Import a programme, BOQ, drawings or BIM and we'll build the project for you"
+                selected={creationType === "import"}
+                onClick={() => setCreationType("import")}
+              />
+            </div>
+
+            <div className='flex flex-col gap-4'>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full h-11 cursor-pointer"
+                disabled={!creationType}
+                onClick={() => {
+                  if (creationType === "new") {
+                    setStep("template");
+                  } else if (creationType === "import") {
+                    navigate("/import");
+                  }
+                }}
+              >
+                Continue
+              </Button>
+
+              <Button
+                type="button"
+                variant='ghost'
+                className="w-full h-11 cursor-pointer"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <WizardLayout
-      currentStep={displayStep}
-      totalSteps={steps.length}
-      onCancel={handleBack}
-      onContinue={handleContinue}
+      currentStep={step === "template" ? 1 : 2}
+      totalSteps={2}
+      onCancel={hasExistingProjects ? handleCancel : () => setStep("choice")}
+      onBack={handlePrev}
+      onContinue={handleNext}
       continueDisabled={!canContinue() || submitting}
-      continueLabel={
-        isReview ? (submitting ? "Creating…" : "Finish") : "Continue"
-      }
-      hideStepper={isReview}
-      hideContinue={isReview}
+      continueLabel={step === "info" ? (submitting ? "Creating…" : "Next") : "Next"}
+      backLabel={step === "info" ? "Previous" : undefined}
+      title="Create New Project"
+      namedSteps={["Project Template", "Project Information"]}
+      activeNamedStep={step === "template" ? 0 : 1}
     >
-      {!isReview && step === 1 && (
-        <ProjectTypeStep selected={projectType} onSelect={setProjectType} />
-      )}
-      {!isReview && step === 2 && (
+      {step === "template" && (
         <ProjectTemplateStep selected={templateId} onSelect={setTemplateId} />
       )}
-      {!isReview && step === 3 && (
-        <LocationStep
+      {step === "info" && (
+        <ProjectInfoStep
+          projectName={projectName}
+          onProjectNameChange={setProjectName}
+          address={address}
+          onAddressChange={setAddress}
           state={locationState}
-          city={city}
           onStateChange={setLocationState}
+          city={city}
           onCityChange={setCity}
-          onBimFileChange={setBimFiles}
-          showBim={bimEnabled}
-        />
-      )}
-      {!isReview && step === 4 && (
-        <ProjectDetailsStep
-          projectType={projectType}
-          buildingType={buildingType}
           currency={currency}
-          budget={budget}
-          timeline={timeline}
-          fundingMethod={fundingMethod}
-          onBuildingTypeChange={setBuildingType}
           onCurrencyChange={(c) => {
             setCurrencyTouched(true);
-            setCurrency(c as Currency);
+            setCurrency(c);
           }}
-          onBudgetChange={setBudget}
+          contractSum={contractSum}
+          onContractSumChange={setContractSum}
+          constructionType={constructionType}
+          onConstructionTypeChange={setConstructionType}
+          timeline={timeline}
           onTimelineChange={setTimeline}
-          onFundingMethodChange={setFundingMethod}
-        />
-      )}
-      {!isReview && step === 5 && (
-        <ManagementStep
-          involvementLevel={involvementLevel}
-          riskOptions={riskOptions}
-          onInvolvementChange={setInvolvementLevel}
-          onRiskOptionToggle={handleRiskToggle}
-        />
-      )}
-      {!isReview && step === 6 && (
-        <ProjectTitleStep
-          title={projectTitle}
-          onTitleChange={setProjectTitle}
-          onSubmit={() => setStep("review")}
-        />
-      )}
-      {isReview && (
-        <ProjectSummaryStep
-          data={{
-            projectTitle,
-            projectType,
-            locationState,
-            city,
-            buildingType,
-          currency,
-            budget,
-            timeline,
-            fundingMethod,
-            involvementLevel,
-            riskOptions,
-          }}
-          onEdit={(s) => setStep(s)}
-          onStart={handleContinue}
-          isStarting={createProject.isPending}
-          hideManagement={skipInvolvementStep}
         />
       )}
     </WizardLayout>

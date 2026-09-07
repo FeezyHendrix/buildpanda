@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Label } from "@/components/atoms/label";
 import { toast } from "@/lib/toast";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
 import { Spinner } from "@/components/atoms/spinner";
+import { FormSection } from "@/components/atoms/form-section";
+import { TextInput } from "@/components/atoms/text-input";
+import { TextArea } from "@/components/atoms/text-area";
+import { cn } from "@/lib/utils";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function OrgTab() {
   const { data: orgProfile, isPending } = useOrgProfile();
-  const updateOrgProfile = useUpdateOrgProfile();
+  const saveDetails = useUpdateOrgProfile();
+  const saveFinancials = useUpdateOrgProfile();
 
   const [name, setName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -50,7 +54,7 @@ export function OrgTab() {
       toast("Enter a valid contact email");
       return;
     }
-    updateOrgProfile.mutate(
+    saveDetails.mutate(
       {
         name: name.trim(),
         contactEmail: normalizedContactEmail || null,
@@ -66,7 +70,7 @@ export function OrgTab() {
   }
 
   function handleSaveFinancials() {
-    updateOrgProfile.mutate(
+    saveFinancials.mutate(
       {
         defaultCurrency: defaultCurrency.trim(),
         defaultTaxLabel: defaultTaxLabel.trim(),
@@ -82,136 +86,112 @@ export function OrgTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Organization details
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Basic information about your company.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 px-6 py-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-name">Company name</Label>
-              <input
-                id="org-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-email">Contact email</Label>
-              <input
-                id="org-email"
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                onBlur={(e) => setContactEmail(e.target.value.trim().toLowerCase())}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-phone">Phone</Label>
-              <input
-                id="org-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-website">Website</Label>
-              <input
-                id="org-website"
-                type="url"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <Label htmlFor="org-address">Address</Label>
-              <input
-                id="org-address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-end rounded-b-xl">
-          <Button onClick={handleSaveDetails} loading={updateOrgProfile.isPending}>
-            Save changes
-          </Button>
-        </div>
-      </div>
+      <FormSection title="Organisation Details">
+        <div className="grid grid-cols-2 gap-4">
+          <TextInput
+            label="Company Name"
+            placeholder="Give a name to your project"
+            value={name}
+            onChange={setName}
+          />
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Financial defaults
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Default settings for proposals, invoices, and payments.
-          </p>
+          <TextInput
+            type='email'
+            label="Company email"
+            placeholder="Enter your email"
+            value={contactEmail}
+            onChange={setContactEmail}
+            optional
+          />
         </div>
-        <div className="flex flex-col gap-4 px-6 py-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-currency">Default currency</Label>
-              <input
-                id="org-currency"
-                value={defaultCurrency}
-                onChange={(e) => setDefaultCurrency(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-tax-label">Tax label</Label>
-              <input
-                id="org-tax-label"
-                value={defaultTaxLabel}
-                onChange={(e) => setDefaultTaxLabel(e.target.value)}
-                placeholder="e.g. VAT, GST, Sales Tax"
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-tax-pct">Default tax %</Label>
-              <input
-                id="org-tax-pct"
-                type="number"
-                step="0.01"
-                min="0"
-                value={defaultTaxPct}
-                onChange={(e) => setDefaultTaxPct(Number(e.target.value))}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5 sm:col-span-3">
-              <Label htmlFor="org-payment-inst">Payment instructions</Label>
-              <textarea
-                id="org-payment-inst"
-                value={paymentInstructions}
-                onChange={(e) => setPaymentInstructions(e.target.value)}
-                rows={4}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
-                placeholder="Bank transfer details, payment terms, etc."
-              />
-            </div>
-          </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <TextInput
+          label="Phone"
+          placeholder="Enter your phone number"
+          value={phone}
+          onChange={setPhone}
+        />
+        <TextInput
+          label="Company Website"
+          placeholder="Enter your website"
+          value={website}
+          onChange={setWebsite}
+          optional
+        />
         </div>
-        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-end rounded-b-xl">
-          <Button onClick={handleSaveFinancials} loading={updateOrgProfile.isPending}>
-            Save defaults
+        <TextInput
+          label="Address"
+          placeholder="Enter your address"
+          value={address}
+          onChange={setAddress}
+        />
+        <div className="flex justify-end">
+          <Button
+            size='lg'
+            onClick={handleSaveDetails}
+            loading={saveDetails.isPending}
+            disabled={saveDetails.isPending}
+            className={cn(
+              saveDetails.isPending
+                ? "disabled:bg-primary-500 disabled:text-white disabled:opacity-100"
+                : "disabled:bg-grey-50 disabled:text-black-500 disabled:opacity-100"
+            )}
+          >
+            Save Changes
           </Button>
         </div>
-      </div>
+      </FormSection>
+
+      <FormSection title="Financial Details">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <TextInput
+            label="Default currency"
+            placeholder="Enter your default currency"
+            value={defaultCurrency}
+            onChange={setDefaultCurrency}
+          />
+
+          <TextInput
+            label="Tax label"
+            placeholder="e.g. VAT, GST, Sales Tax"
+            value={defaultTaxLabel}
+            onChange={setDefaultTaxLabel}
+          />
+
+          <TextInput
+            type='number'
+            label="Default tax %"
+            placeholder="Enter your tax percentage"
+            value={String(defaultTaxPct)}
+            onChange={(v) => setDefaultTaxPct(Number(v))}
+          />
+        </div>
+
+        <TextArea
+          label="Payment instructions"
+          placeholder="Bank transfer details, payment terms, etc."
+          value={paymentInstructions}
+          onChange={setPaymentInstructions}
+          optional
+        />
+
+        <div className="flex justify-end">
+          <Button
+            size='lg'
+            onClick={handleSaveFinancials}
+            loading={saveFinancials.isPending}
+            disabled={saveFinancials.isPending}
+            className={cn(
+              saveFinancials.isPending
+                ? "disabled:bg-primary-500 disabled:text-white disabled:opacity-100"
+                : "disabled:bg-grey-50 disabled:text-black-500 disabled:opacity-100"
+            )}
+          >
+            Save Changes
+          </Button>
+        </div>
+      </FormSection>
     </div>
   );
 }

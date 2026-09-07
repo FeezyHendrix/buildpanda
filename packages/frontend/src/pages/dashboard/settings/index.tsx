@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 import { OrgTab } from "./tabs/org-tab";
 import { AccountTab } from "./tabs/account-tab";
-import { MembersTab } from "./tabs/members-tab";
 import NotificationSettings from "./notifications";
 import { IntegrationTab } from "./tabs/integration-tab";
 import { ComplianceTab } from "./tabs/compliance-tab";
@@ -13,7 +12,7 @@ import { ComplianceTab } from "./tabs/compliance-tab";
 const TABS = [
   { id: "organization", label: "Organization" },
   { id: "account", label: "Account" },
-  { id: "members", label: "Members & Permissions" },
+  // { id: "members", label: "Members & Permissions" },
   { id: "notifications", label: "Notifications" },
   { id: "integration", label: "Integration" },
   { id: "compliance", label: "Compliance" },
@@ -26,24 +25,25 @@ export default function SettingsPage() {
   const activeTabId = (searchParams.get("tab") as TabId) || "organization";
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <div className="mb-4 flex items-start gap-3">
+    <div className="mx-auto max-w-[636px] w-full py-8">
+      <div className="mb-4 flex flex-col items-start gap-3">
         <Link
           to="/dashboard"
           aria-label="Back to dashboard"
-          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-gray-600 hover:bg-gray-200"
+          className="mt-0.5 inline-flex gap-2 shrink-0 items-center justify-center text-black-500 font-medium text-caption-l hover:underline"
         >
-          <BackArrowIcon className="size-4" />
+          <BackArrowIcon className="size-5" />
+          <span>Go Back</span>
         </Link>
         <PageHeader
           title="Settings"
-          description="Manage your account, organization, and preferences."
+          description="Manage your project preferences, permissions, and configuration."
           className="flex-1"
         />
       </div>
       <div className="mt-6 flex flex-col">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <div className="border-gray-200">
+          <nav className="-mb-px flex space-x-2" aria-label="Tabs">
             {TABS.map((tab) => {
               const isActive = activeTabId === tab.id;
               return (
@@ -51,10 +51,10 @@ export default function SettingsPage() {
                   key={tab.id}
                   to={`?tab=${tab.id}`}
                   className={cn(
-                    "whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium",
+                    "whitespace-nowrap px-4 py-2 !text-caption-l font-semibold border-[0.5px] rounded-full",
                     isActive
-                      ? "border-primary-600 text-primary-600"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                      ? "border-none bg-black-500 text-white"
+                      : "border-border border text-black-500 hover:border-gray-300 hover:text-gray-700",
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
@@ -65,15 +65,10 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        <div className="mt-8">
+        <div className="mx-auto mt-8 w-full max-w-[636px]">
           {activeTabId === "organization" && <OrgTab />}
           {activeTabId === "account" && <AccountTab />}
-          {activeTabId === "members" && <MembersTab />}
-          {activeTabId === "notifications" && (
-            <div className="-mx-6 -my-8 sm:-mx-10">
-              <NotificationSettings />
-            </div>
-          )}
+          {activeTabId === "notifications" && <NotificationSettings />}
           {activeTabId === "integration" && <IntegrationTab />}
           {activeTabId === "compliance" && <ComplianceTab />}
         </div>

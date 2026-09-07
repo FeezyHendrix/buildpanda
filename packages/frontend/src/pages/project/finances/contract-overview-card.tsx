@@ -105,8 +105,8 @@ function EditContractSumDialog({
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Set contract amount"
-      description="The base amount agreed with the contractor, before changes."
+      title="Set contract sum"
+      description="The base contract value agreed with the contractor, before variations."
       submitLabel="Save"
       submitDisabled={!isValid || !isChanged}
       submitting={update.isPending}
@@ -114,7 +114,7 @@ function EditContractSumDialog({
       onSubmit={handleSubmit}
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="contract-sum-inline">Contract amount</Label>
+        <Label htmlFor="contract-sum-inline">Contract sum</Label>
         <MoneyInput
           id="contract-sum-inline"
           value={value}
@@ -127,7 +127,7 @@ function EditContractSumDialog({
           <span className="tabular-nums font-medium text-gray-600">
             {formatCurrency(currentContractSum, currency)}
           </span>
-          . Changes and approvals are unchanged.
+          . Variations and certifications are unchanged.
         </p>
       </div>
     </FormDrawer>
@@ -163,7 +163,7 @@ export function ContractOverviewCard({
           <div>
             <h3 className="text-[13px] font-semibold text-black-300">Contract</h3>
             <p className="mt-1 text-xs text-gray-500">
-              Base amount plus recorded changes. Approved is work valued to date.
+              Base sum plus recorded variations. Certified is invoiced/valued work to date.
             </p>
           </div>
           {canManage && (
@@ -173,14 +173,14 @@ export function ContractOverviewCard({
                 size="sm"
                 onClick={() => setVariationOpen(true)}
               >
-                Record change
+                Record variation
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setEditOpen(true)}
               >
-                {contractSum > 0 ? "Edit contract amount" : "Set contract amount"}
+                {contractSum > 0 ? "Edit contract sum" : "Set contract sum"}
               </Button>
             </div>
           )}
@@ -188,28 +188,28 @@ export function ContractOverviewCard({
 
         <div className="mt-4 grid grid-cols-2 gap-6 sm:grid-cols-4">
           <StatBlock
-            label="Contract amount"
+            label="Contract sum"
             value={formatCurrency(contractSum, currency)}
           />
           <StatBlock
-            label="Changes"
+            label="Variations"
             value={variationValue}
             tone={variationTone}
           />
           <StatBlock
-            label="Revised contract"
+            label="Adjusted contract"
             value={formatCurrency(adjustedContract, currency)}
             tone="brand"
           />
           <StatBlock
-            label="Approved work value"
+            label="Certified to date"
             value={formatCurrency(certifiedGrossToDate, currency)}
           />
         </div>
 
         <div className="mt-5">
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Progress against contract</span>
+            <span>Progress against adjusted contract</span>
             <span className="font-semibold text-gray-900 tabular-nums">
               {percentCertified}%
             </span>

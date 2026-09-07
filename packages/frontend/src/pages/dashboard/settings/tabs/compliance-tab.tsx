@@ -1,23 +1,27 @@
 import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
+import { FormSection } from "@/components/atoms/form-section";
+import { icons2 } from "@/assets/icons2/icon2";
 
 export function ComplianceTab() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 py-24 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-          <ReactSVG src={icons.shield} className="h-6 w-6 text-gray-400" />
+      <FormSection 
+        title={'Compliance & Data Protection'}
+        description={'BuildPanda is committed to keeping your data secure and protected. Dedicated compliance tools are coming soon'}
+      >
+        <div className='grid grid-cols-2 gap-8 sm:grid-cols-2'>
+          <div className='flex flex-col gap-4 border-[0.5px] border-border p-6'>
+            <ReactSVG src={icons2.privacy} />
+            <p className="text-body-s text-grey-500 font-semibold">Privacy Policy</p>
+            <a href="#" target='_blank' rel="noopener noreferrer" className="text-caption-l text-primary font-semibold hover:underline w-4">Read</a>
+          </div>
+          <div className='flex flex-col gap-4 border-[0.5px] border-border p-6'>
+            <ReactSVG src={icons2.agreement} />
+            <p className="text-body-s text-grey-500 font-semibold">Data Processing Agreement</p>
+            <a href="#" target='_blank' rel="noopener noreferrer" className="text-caption-l text-primary font-semibold hover:underline w-4">Read</a>
+          </div>
         </div>
-        <h3 className="text-sm font-semibold text-gray-900">Compliance & Data Protection</h3>
-        <p className="mt-1 max-w-sm text-sm text-gray-500">
-          BuildPanda is committed to keeping your data secure and protected. Dedicated compliance tools are coming soon.
-        </p>
-        <div className="mt-6 flex gap-4 text-sm text-primary-600">
-          <a href="#" className="hover:underline">Privacy Policy</a>
-          <span>&middot;</span>
-          <a href="#" className="hover:underline">Data Processing Agreement</a>
-        </div>
-      </div>
+      </FormSection>
     </div>
   );
 }

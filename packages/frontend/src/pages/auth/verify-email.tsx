@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Button } from "@/components/atoms";
 import { authClient } from "@/lib/auth-client";
+import { useSession } from "@/stores/auth";
 import {
   PENDING_ORG_INVITE_KEY,
   PENDING_PROJECT_INVITE_KEY,
   homePathFor,
 } from "@/lib/route-guards";
+import { onboardingApi } from "@/api/onboarding";
 
 function continueAfterVerifyPath(redirectTo?: string | null): string {
   // Org invitations are auto-accepted at sign-up, so bouncing back to the
@@ -38,6 +40,8 @@ export default function VerifyEmailPage() {
   const [loading, setLoading] = useState(!!token);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
@@ -88,54 +92,74 @@ export default function VerifyEmailPage() {
 
     let isMounted = true;
 
-    async function verify() {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"}/api/auth/verify-email?token=${token}`,
-          { credentials: "include" }
-        );
+    async function verify(verificationToken: string) {
+      // Verify through authClient rather than a bare fetch: better-auth only
+      // refreshes the session store that backs useSession() (and therefore the
+      // route guards) for calls that go through the client.
+      const { error: verifyError } = await authClient.verifyEmail({
+        query: { token: verificationToken },
+      });
 
-        if (!isMounted) return;
+      if (!isMounted) return;
 
-        if (res.ok) {
-          setSuccess(true);
-          // autoSignInAfterVerification establishes a session on the verify
-          // response; refetch it and, if signed in, land the user in-app
-          // automatically instead of asking them to click Continue.
-          const { data: session } = await authClient.getSession();
-          if (isMounted && session?.user) {
-            const accountType = (session.user as { accountType?: string }).accountType;
-            const target = continueAfterVerifyPath(redirectTo);
-            navigate(target === "/" ? homePathFor(accountType) : target, { replace: true });
-          }
-        } else {
-          setError("Verification failed. The link may have expired.");
-        }
-      } catch (err) {
-        if (!isMounted) return;
+      if (verifyError) {
         setError("Verification failed. The link may have expired.");
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+      } else {
+        setSuccess(true);
+        setPendingRedirect(continueAfterVerifyPath(redirectTo));
       }
+      setLoading(false);
     }
 
-    verify();
+    verify(token);
 
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, redirectTo]);
+
+  // autoSignInAfterVerification signs the user in on the verify response, so
+  // land them in-app instead of asking them to click Continue — but only once
+  // useSession() reports the user, or the guard on the destination still sees a
+  // signed-out visitor and bounces to /auth/sign-in.
+  useEffect(() => {
+    if (!pendingRedirect || !session?.user) return;
+    const user = session.user as { accountType?: string; id?: string };
+
+    if (pendingRedirect !== "/") {
+      navigate(pendingRedirect, { replace: true });
+      return;
+    }
+
+    // An invited employee lands in an org whose onboarding may already be
+    // complete (done by whoever invited them) — check the server rather than
+    // trusting this browser's localStorage.
+    let cancelled = false;
+    void (async () => {
+      const status =
+        user.accountType === "project_owner"
+          ? null
+          : await onboardingApi.status().catch(() => null);
+      if (!cancelled) {
+        navigate(homePathFor(user.accountType, user.id, status?.completed), {
+          replace: true,
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingRedirect, session, navigate]);
 
   if (!token) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h4 className="text-h4 font-bold text-black-500">
             Check your email
-          </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          </h4>
+          <p className="text-caption-l text-grey-450 max-w-[412px]">
             We sent a verification link
             {email ? (
               <>
@@ -160,6 +184,7 @@ export default function VerifyEmailPage() {
 
           <Button
             type="button"
+            size='lg'
             className="w-full"
             onClick={handleResend}
             disabled={!email || resending || cooldown > 0}
@@ -178,7 +203,7 @@ export default function VerifyEmailPage() {
           ) : null}
 
           <Link to="/auth/sign-in">
-            <Button type="button" variant="secondary" className="w-full">
+            <Button type="button" size='lg' className="w-full">
               Back to sign in
             </Button>
           </Link>
@@ -218,7 +243,7 @@ export default function VerifyEmailPage() {
           Email verified!
         </p>
 
-        <Link to={continueAfterVerifyPath(redirectTo)}>
+        <Link to={pendingRedirect ?? "/"}>
           <Button type="button" className="w-full h-[48px]">
             Continue
           </Button>

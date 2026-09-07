@@ -11,8 +11,6 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { ImportProgrammeDialog } from "@/components/molecules/import-programme-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectActivities } from "@/hooks/use-activities";
-import { useKeyDates } from "@/hooks/use-key-dates";
-import { useStages } from "@/hooks/use-stages";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
@@ -23,21 +21,17 @@ import { useFeatureFlag } from "@/hooks/use-feature-flags";
 
 import {
   buildReport,
+  buildGanttData,
   SCALES,
   GANTT_ZOOM,
 } from "./schedule/schedule-utils";
-import { buildGanttData } from "./schedule/schedule-gantt-data";
 import { ScheduleReportPanel } from "./schedule/schedule-report-panel";
 
 export default function ProjectSchedule() {
   const { project, access } = useProjectContext();
   const { selectedBuildingId } = useBuildingScope();
-  const canViewStages = Boolean(access && canResourceAction(access, "stages", "view"));
-  const canViewKeyDates = Boolean(access && canResourceAction(access, "key-dates", "view"));
 
   const { data: activities = [], isPending } = useProjectActivities(project.id, selectedBuildingId);
-  const { data: stages = [], isPending: isStagesPending } = useStages(canViewStages ? project.id : undefined, selectedBuildingId);
-  const { data: keyDates = [], isPending: isKeyDatesPending } = useKeyDates(canViewKeyDates ? project.id : undefined, selectedBuildingId);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
   const milestones = finances?.milestones ?? [];
@@ -46,9 +40,9 @@ export default function ProjectSchedule() {
   const isProgrammeImportEnabled = useFeatureFlag("ai.programmeImport");
   const { attach, undo, redo, canUndo, canRedo } = useScheduleEditor(project.id, activities);
 
-  const { tasks, links, rangeStart, rangeEnd, delays, criticalCount } = useMemo(
-    () => buildGanttData(activities, project.timeline, stages, keyDates),
-    [activities, project.timeline, stages, keyDates],
+  const { tasks, links, rangeStart, rangeEnd, delays } = useMemo(
+    () => buildGanttData(activities, project.timeline),
+    [activities, project.timeline],
   );
   const markers = useMemo(() => [{ start: new Date(), text: "Today" }], []);
 
@@ -88,8 +82,7 @@ export default function ProjectSchedule() {
     URL.revokeObjectURL(url);
   }
 
-  const isSchedulePending = isPending || (canViewStages && isStagesPending) || (canViewKeyDates && isKeyDatesPending);
-  const hasSchedule = tasks.length > 0;
+  const hasSchedule = tasks.some((task) => task.type === "task");
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
@@ -117,30 +110,21 @@ export default function ProjectSchedule() {
             </div>
           }
           badges={
-            delays.total > 0 || criticalCount > 0 ? (
+            delays.total > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
-                {criticalCount > 0 && (
-                  <Badge tone="danger" size="md">
-                    Critical chain: {criticalCount} item{criticalCount === 1 ? "" : "s"}
-                  </Badge>
-                )}
-                {delays.total > 0 && (
-                  <>
-                    <Badge tone={delays.open > 0 ? "danger" : "neutral"} size="md" dot>
-                      {delays.open} open delay{delays.open === 1 ? "" : "s"}
-                    </Badge>
-                    <Badge tone="warning" size="md">
-                      {formatCurrency(delays.cost, project.currency, { compact: true })} delay cost
-                    </Badge>
-                  </>
-                )}
+                <Badge tone={delays.open > 0 ? "danger" : "neutral"} size="md" dot>
+                  {delays.open} open delay{delays.open === 1 ? "" : "s"}
+                </Badge>
+                <Badge tone="warning" size="md">
+                  {formatCurrency(delays.cost, project.currency, { compact: true })} delay cost
+                </Badge>
               </div>
             ) : null
           }
         />
       </div>
 
-      {isSchedulePending ? (
+      {isPending ? (
         <div className="flex flex-1 items-center justify-center p-6">
           <Card padding="lg" className="text-center text-sm text-gray-500">
             Loading schedule…
@@ -205,3 +189,4 @@ export default function ProjectSchedule() {
     </div>
   );
 }
+

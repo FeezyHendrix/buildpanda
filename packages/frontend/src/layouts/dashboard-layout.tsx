@@ -4,8 +4,7 @@ import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Spinner } from "@/components/atoms/spinner";
 import { Navbar } from "@/components/organisms/navbar";
 import { UserMenu } from "@/components/molecules/user-menu";
-import { WorkspaceSwitcher } from "@/components/molecules/workspace-switcher";
-import { LAST_SUITE_KEY, SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
+import { SuiteSwitcher, LAST_SUITE_KEY, SUITE_CONSTRUCTION } from "@/components/molecules/suite-switcher";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 
 export default function DashboardLayout() {
@@ -28,7 +27,7 @@ export default function DashboardLayout() {
       <Navbar
         showLogo
         sticky
-        leadingSlot={<WorkspaceSwitcher />}
+        centerSlot={<SuiteSwitcher variant="underline-tabs" />}
         userSlot={
           <UserMenu
             name={session.user.name}

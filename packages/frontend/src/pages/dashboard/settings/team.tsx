@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -19,8 +19,6 @@ import {
   useUpdateMemberRole,
   useUpdateRole,
 } from "@/hooks/use-organization";
-import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
-import { Label } from "@/components/atoms/label";
 import { toast } from "@/lib/toast";
 
 import { MembersSection } from "./team/members-section";
@@ -28,8 +26,21 @@ import { InvitationsSection } from "./team/invitations-section";
 import { RolesSection } from "./team/roles-section";
 import { formatRoleLabel } from "./team/utils";
 import type { Member, CustomRole } from "./team/types";
+import { Link, useSearchParams } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { ReactSVG } from "react-svg";
+import { icons2 } from "@/assets/icons2/icon2";
+
+const TABS = [
+  { id: "members", label: "Members" },
+  { id: "invitations", label: "Invitations" },
+  { id: "roles", label: "Roles & Permissions" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 export default function TeamSettings() {
+  const [searchParams] = useSearchParams();
   const { data: session } = authClient.useSession();
   const organizationId = useActiveOrganizationId();
   const currentUserId = session?.user.id;
@@ -51,15 +62,7 @@ export default function TeamSettings() {
   const [roleToEdit, setRoleToEdit] = useState<CustomRole | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<CustomRole | null>(null);
-
-  const { data: orgProfile } = useOrgProfile();
-  const updateOrgProfile = useUpdateOrgProfile();
-  const [orgName, setOrgName] = useState("");
-  const orgNameDirty = orgProfile ? orgName !== orgProfile.name : false;
-
-  useEffect(() => {
-    if (orgProfile?.name) setOrgName(orgProfile.name);
-  }, [orgProfile?.name]);
+  const activeTabId = (searchParams.get("tab") as TabId) || "members";
 
   const members = membersQuery.data?.members ?? [];
   const customRoles = rolesQuery.data ?? [];
@@ -118,72 +121,80 @@ export default function TeamSettings() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
-        title="Team settings"
-        description="Manage members, invitations, and custom roles."
+        title="My Team"
+        description="Manage people, invitations and roles in your workspace"
         actions={
           canManage && (
-            <Button onClick={() => setInviteOpen(true)}>Invite member</Button>
+            <Button size='lg' onClick={() => setInviteOpen(true)}>
+              <ReactSVG src={icons2.addUser} />
+              Invite member
+            </Button>
           )
         }
       />
 
-      <div className="mb-8 mt-6 rounded-xl border border-gray-200 p-5">
-        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Workspace name</Label>
-        <div className="mt-2 flex gap-3">
-          <input
-            id="org-name"
-            value={orgName}
-            onChange={(e) => setOrgName(e.target.value)}
-            className="h-10 flex-1 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-          />
-          <Button
-            size="sm"
-            onClick={() =>
-              updateOrgProfile.mutate(
-                { name: orgName.trim() },
-                {
-                  onSuccess: () => toast("Workspace name updated", "success"),
-                  onError: () => toast("Could not update workspace name"),
-                },
-              )
-            }
-            disabled={!orgNameDirty || !orgName.trim()}
-            loading={updateOrgProfile.isPending}
-          >
-            Save
-          </Button>
-        </div>
+      <div className="border-gray-200 my-6">
+        <nav className="-mb-px flex space-x-2" aria-label="Tabs">
+          {TABS.map((tab) => {
+            const isActive = activeTabId === tab.id;
+            return (
+              <Link
+                key={tab.id}
+                to={`?tab=${tab.id}`}
+                className={cn(
+                  "whitespace-nowrap px-4 py-2 !text-caption-l font-semibold border-[0.5px] rounded-full",
+                  isActive
+                    ? "border-none bg-black-500 text-white"
+                    : "border-border border text-black-500 hover:border-gray-300 hover:text-gray-700",
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
 
-      <MembersSection
-        members={members}
-        isLoading={membersQuery.isPending}
-        currentUserId={currentUserId}
-        canManage={canManage}
-        assignableRoles={assignableRoles}
-        isUpdatingRole={updateMemberRole.isPending}
-        onChangeRole={(memberId, role) =>
-          updateMemberRole.mutate({ memberId, role })
-        }
-        onRemove={setMemberToRemove}
-      />
-
-      {(canManage || pendingInvitations.length > 0) && (
-        <InvitationsSection
-          invitations={pendingInvitations}
-          isCancelling={cancelInvitation.isPending}
-          onCancel={(id) => cancelInvitation.mutate(id)}
-        />
-      )}
-
-      <RolesSection
-        roles={customRoles}
-        canManage={canManage}
-        isDeleting={deleteRole.isPending}
-        onCreate={() => setRoleBuilderOpen(true)}
-        onEdit={handleEditRole}
-        onDelete={setRoleToDelete}
-      />
+      <div className="mx-auto mt-8 w-full">
+        {activeTabId === 'members' && (
+          <MembersSection
+            members={members}
+            isLoading={membersQuery.isPending}
+            currentUserId={currentUserId}
+            canManage={canManage}
+            assignableRoles={assignableRoles}
+            isUpdatingRole={updateMemberRole.isPending}
+            onChangeRole={(memberId, role) =>
+              updateMemberRole.mutate({ memberId, role })
+            }
+            onRemove={setMemberToRemove}
+          />
+        )}
+        {activeTabId === 'invitations' && (
+          <>
+            {(canManage || pendingInvitations.length > 0) && (
+              <InvitationsSection
+                invitations={pendingInvitations}
+                isLoading={invitationsQuery.isPending}
+                canManage={canManage}
+                isCancelling={cancelInvitation.isPending}
+                onCancel={(id, options) => cancelInvitation.mutate(id, options)}
+              />
+            )}
+          </>
+        )}
+        {activeTabId === 'roles' && (
+          <RolesSection
+            roles={customRoles}
+            canManage={canManage}
+            isDeleting={deleteRole.isPending}
+            onCreate={() => setRoleBuilderOpen(true)}
+            onEdit={handleEditRole}
+            onDelete={setRoleToDelete}
+          />
+        )}
+      </div>
 
       <InviteMemberDialog
         open={inviteOpen}
@@ -211,8 +222,9 @@ export default function TeamSettings() {
         }
         isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
         error={
-          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
-          null
+          (roleToEdit
+            ? updateRole.error?.message
+            : createRole.error?.message) ?? null
         }
         onSubmit={handleSubmitRole}
       />
@@ -220,13 +232,13 @@ export default function TeamSettings() {
       <ConfirmDialog
         open={memberToRemove !== null}
         onOpenChange={(open) => !open && setMemberToRemove(null)}
-        title="Remove member"
+        title="Remove Team Member"
         description={
           memberToRemove
-            ? `Remove ${memberToRemove.user.name} from this workspace? They will lose access immediately.`
+            ? `Are you sure you want to remove ${memberToRemove.user.name}? They will lose access to your workspace and its projects. This action can be reversed later by sending a new invitation.`
             : ""
         }
-        confirmLabel="Remove"
+        confirmLabel="Remove member"
         variant="danger"
         onConfirm={() => {
           if (memberToRemove) removeMember.mutate(memberToRemove.id);

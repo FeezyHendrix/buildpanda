@@ -21,47 +21,48 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const softStyles: Record<BadgeTone, string> = {
-  neutral: "bg-[#F6F6F6] text-gray-700",
-  success: "bg-[#E8F7EE] text-[#1B8E45]",
-  warning: "bg-[#FFF3E0] text-[#C26A00]",
-  danger: "bg-[#FDECEC] text-[#C72525]",
-  info: "bg-[#E6EFFE] text-[#004DE7]",
-  accent: "bg-[#EDE7FF] text-[#5A3DD0]",
+  neutral: "bg-[#F5F5F5] border border-border text-[#1E1E1E]",
+  success: "bg-[#F0FDF4] border border-success-100 text-[#008236]",
+  warning: "bg-[#FFFBEB] border border-waring-100 text-[#BB4D00]",
+  danger:  "bg-[#FEF2F2] border border-[#FFC9C9]/50 text-[#C10007]",
+  info:    "bg-[#E6EDFD] text-[#004DE7]",
+  accent:  "bg-[#EDE7FF] text-[#5A3DD0]",
 };
 
 const solidStyles: Record<BadgeTone, string> = {
-  neutral: "bg-gray-700 text-white",
-  success: "bg-[#1B8E45] text-white",
-  warning: "bg-[#C26A00] text-white",
-  danger: "bg-[#C72525] text-white",
-  info: "bg-[#004DE7] text-white",
-  accent: "bg-[#5A3DD0] text-white",
+  neutral: "bg-[#1E1E1E] text-white",
+  success: "bg-[#008236] text-white",
+  warning: "bg-[#BB4D00] text-white",
+  danger:  "bg-[#C10007] text-white",
+  info:    "bg-[#004DE7] text-white",
+  accent:  "bg-[#5A3DD0] text-white",
 };
 
 const outlineStyles: Record<BadgeTone, string> = {
-  neutral: "border border-gray-300 text-gray-700",
-  success: "border border-[#1B8E45]/40 text-[#1B8E45]",
-  warning: "border border-[#C26A00]/40 text-[#C26A00]",
-  danger: "border border-[#C72525]/40 text-[#C72525]",
-  info: "border border-[#004DE7]/40 text-[#004DE7]",
-  accent: "border border-[#5A3DD0]/40 text-[#5A3DD0]",
+  neutral: "border-[0.5px] border-border text-[#1E1E1E]",
+  success: "border-[0.5px] border-border text-[#008236]",
+  warning: "border-[0.5px] border-border text-[#BB4D00]",
+  danger:  "border-[0.5px] border-border text-[#C10007]",
+  info:    "border-[0.5px] border-border text-[#004DE7]",
+  accent:  "border-[0.5px] border-border text-[#5A3DD0]",
 };
 
 const dotStyles: Record<BadgeTone, string> = {
-  neutral: "bg-gray-500",
-  success: "bg-success-500",
-  warning: "bg-[#C26A00]",
-  danger: "bg-[#C72525]",
-  info: "bg-[#004DE7]",
-  accent: "bg-[#5A3DD0]",
+  neutral: "bg-[#1E1E1E]",
+  success: "bg-[#008236]",
+  warning: "bg-[#BB4D00]",
+  danger:  "bg-[#C10007]",
+  info:    "bg-[#004DE7]",
+  accent:  "bg-[#5A3DD0]",
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
-  sm: "h-5 gap-1 rounded-full px-2 text-[11px]",
-  md: "h-6 gap-1.5 rounded-full px-2.5 text-xs",
+  sm: "h-5 gap-1 rounded-full px-2",
+  md: "h-6 gap-1.5 rounded-full px-2.5",
 };
 
-const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
+const 
+Badge = forwardRef<HTMLSpanElement, BadgeProps>(
   (
     {
       tone = "neutral",
@@ -85,7 +86,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          "inline-flex items-center font-medium leading-none whitespace-nowrap",
+          "inline-flex items-center font-medium leading-none whitespace-nowrap text-caption-m!",
           sizeStyles[size],
           variantClass,
           className,

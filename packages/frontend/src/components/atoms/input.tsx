@@ -71,10 +71,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           type={resolvedType}
           className={cn(
-            "flex h-14 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900",
-            "border-0 outline-none ring-0",
-            "placeholder:text-gray-400",
-            "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            "flex h-[45px] w-full bg-white px-4 font-sans text-caption-l text-gray-900",
+            "border-[0.5px] border-border outline-none ring-0 transition-colors",
+            "placeholder:text-grey-450 placeholder:text-caption-l placeholder:font-medium",
+            "focus:border-black-500",
             "disabled:cursor-not-allowed disabled:opacity-50",
             hasSuffix && "pr-11",
             className,

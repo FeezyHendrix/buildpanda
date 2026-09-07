@@ -1,14 +1,13 @@
-import { useMemo } from "react";
-import { PageHeader } from "@/components/molecules/page-header";
-import { ToggleRow } from "@/components/atoms/toggle-row";
-import { Switcher } from "@/components/atoms/switcher";
-import { Spinner } from "@/components/atoms/spinner";
+import { useMemo, useState } from "react";
+import { ToggleSwitch } from "@/components/atoms/toggle-switch";
 import {
   useNotificationPreferences,
   useSetNotificationPreference,
 } from "@/hooks/use-notification-preferences";
-import { usePushNotifications } from "@/hooks/use-push-notifications";
 import type { NotificationPreference } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/components";
 
 function groupPreferences(
   prefs: NotificationPreference[],
@@ -19,7 +18,7 @@ function groupPreferences(
     list.push(pref);
     groups.set(pref.group, list);
   }
-  return [...groups.entries()];
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
 function statusDescription(pref: NotificationPreference): string {
@@ -28,87 +27,75 @@ function statusDescription(pref: NotificationPreference): string {
     : "Off, you will not be notified";
 }
 
-function pushStatusText(push: ReturnType<typeof usePushNotifications>): string {
-  if (push.permissionDenied && !push.enabled) {
-    return "Notifications are blocked for this site in your browser settings.";
-  }
-  return push.enabled
-    ? "On, this device will receive notifications even when the app is closed"
-    : "Off, this device will not receive push notifications";
-}
-
-// Hidden entirely when the browser lacks push support or the server has no
-// VAPID keys configured (public key comes back empty).
-function PushNotificationsSection() {
-  const push = usePushNotifications();
-
-  if (!push.supported || push.isLoading || !push.configured) return null;
-
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-gray-900">This device</h2>
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-sm font-medium text-gray-900">
-            Push notifications on this device
-          </p>
-          <p className="text-xs text-gray-500">{pushStatusText(push)}</p>
-          {push.error !== null ? (
-            <p className="text-xs text-red-600">{push.error}</p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {push.isPending ? <Spinner size="xs" /> : null}
-          <Switcher
-            value={push.enabled ? "yes" : "no"}
-            onChange={(value) => {
-              if (push.isPending) return;
-              if (value === "yes") push.enable();
-              else push.disable();
-            }}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function NotificationSettings() {
   const { data: preferences = [], isLoading } = useNotificationPreferences();
   const setPreference = useSetNotificationPreference();
   const groups = useMemo(() => groupPreferences(preferences), [preferences]);
+  
+  const [expandedGroup, setExpandedGroup] = useState<string>("Project");
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Notifications"
-        description="Choose which in-app notifications you want to receive. Changes apply immediately."
-      />
-
+    <div className="flex w-full flex-col">
       {isLoading ? (
         <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
       ) : (
-        <div className="mt-6 flex flex-col gap-8">
-          <PushNotificationsSection />
-          {groups.map(([group, list]) => (
-            <section key={group} className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-gray-900">{group}</h2>
-              <div className="flex flex-col gap-3">
-                {list.map((pref) => (
-                  <ToggleRow
-                    key={pref.type}
-                    title={pref.label}
-                    description={statusDescription(pref)}
-                    checked={pref.inAppEnabled}
-                    disabled={setPreference.isPending}
-                    onChange={(checked) =>
-                      setPreference.mutate({ type: pref.type, inAppEnabled: checked })
-                    }
+        <div className="mt-4 w-full flex flex-col gap-2.5 pb-20">
+          {groups.map(([group, list]) => {
+            const isExpanded = expandedGroup === group;
+            
+            return (
+              <div 
+                key={group}
+                className="overflow-hidden w-full"
+              >
+                <Button
+                  type="button"
+                  size='lg'
+                  variant='outline'
+                  onClick={() => setExpandedGroup(isExpanded ? "" : group)}
+                  className="flex w-full cursor-pointer items-center justify-between px-5 py-4 transition-colors bg-[#F5F5F5] !rounded-none"
+                >
+                  <span className="text-body-s font-semibold text-gray-800">{group}</span>
+                  <ChevronDown  
+                    className={cn(
+                      "size-5 text-[#262626] transition-transform duration-200",
+                      isExpanded ? "rotate-180" : ""
+                    )} 
                   />
-                ))}
+                </Button>
+                
+                {isExpanded && (
+                  <div className="flex flex-col border-[0.5px] border-border bg-white">
+                    {list.map((pref, idx) => (
+                      <div
+                        key={pref.type}
+                        className={cn(
+                          "flex items-center justify-between gap-4 p-5",
+                          idx < list.length - 1 ? "border-b border-[#F0F0F0]" : ""
+                        )}
+                      >
+                        <div className="flex-1">
+                          <p className="text-body-s font-semibold text-black-500">
+                            {pref.label}
+                          </p>
+                          <p className="mt-1 text-caption-l font-light text-grey-450">
+                            {statusDescription(pref)}
+                          </p>
+                        </div>
+                        <ToggleSwitch
+                          checked={pref.inAppEnabled}
+                          disabled={setPreference.isPending}
+                          onChange={(checked) =>
+                            setPreference.mutate({ type: pref.type, inAppEnabled: checked })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </section>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

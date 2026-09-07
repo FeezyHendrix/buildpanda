@@ -1,14 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildingsApi, type BuildingInput } from "@/api/buildings";
+import { useFeatureFlagState } from "./use-feature-flags";
 import { buildingKeys, stageKeys } from "./query-keys";
 
 export type { BuildingInput };
 
-export function useBuildings(projectId: string | undefined, enabled = true) {
+export function useBuildings(projectId: string | undefined) {
+  // The API rejects /projects/:id/buildings outright while projects.multiBuilding
+  // is off, so requesting it anyway is a guaranteed 403 on every project page.
+  // Fail closed while the flags load — useFeatureFlag reads enabled when it has
+  // no data yet, which would still fire the doomed request on first paint.
+  const { enabled: multiBuilding, isLoading: flagsLoading } =
+    useFeatureFlagState("projects.multiBuilding");
+
   return useQuery({
     queryKey: buildingKeys.list(projectId ?? "__none__"),
     queryFn: () => buildingsApi.list(projectId!),
-    enabled: Boolean(projectId) && enabled,
+    enabled: Boolean(projectId) && !flagsLoading && multiBuilding,
   });
 }
 

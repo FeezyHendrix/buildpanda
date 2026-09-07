@@ -20,16 +20,16 @@ RUN npm run build
 FROM nginx:stable-alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Shipped as a TEMPLATE, not as conf.d/default.conf: the platform picks the port
-# at runtime via $PORT and nginx cannot read env vars from its config. The image
-# entrypoint renders /etc/nginx/templates/*.template into /etc/nginx/conf.d/,
-# which also overwrites the stock default.conf.
+# Shipped as a template so the entrypoint can substitute ${PORT} and
+# ${NGINX_LOCAL_RESOLVERS}, which nginx cannot read from the environment itself.
+# LOCAL_RESOLVERS=1 is required or 15-local-resolvers.envsh never populates it.
 #
-# NGINX_ENVSUBST_FILTER is not optional — without it envsubst would also expand
-# $uri, $host, $remote_addr and every other nginx runtime variable in the config
-# into empty strings.
+# The filter is an awk regex over env var NAMES and must match BOTH: the narrower
+# `PORT` leaves ${NGINX_LOCAL_RESOLVERS} literal and nginx refuses to start, while
+# dropping it blanks out $uri, $host and every other nginx runtime variable.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 ENV PORT=8080
-ENV NGINX_ENVSUBST_FILTER=PORT
+ENV NGINX_ENVSUBST_FILTER="^(PORT|NGINX_LOCAL_RESOLVERS)$"
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

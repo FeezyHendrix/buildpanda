@@ -1,8 +1,8 @@
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -11,38 +11,23 @@ import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInvoices, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { useProjectInvoices } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "./invoices/invoice-card";
 import { SummaryTile } from "./invoices/summary-tile";
-import { InvoiceComposer } from "./invoices/invoice-composer";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
 
 export default function ProjectInvoices() {
   const { project, access } = useProjectContext();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [scanOpen, setScanOpen] = useState(false);
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
     project.id,
   );
-
-  // The retired /invoices/new route (and any deep link) opens the composer via
-  // ?compose=1; consume the flag so a refresh doesn't reopen it.
-  useEffect(() => {
-    if (canManage && searchParams.get("compose") === "1") {
-      setScanResult(null);
-      setComposerOpen(true);
-      searchParams.delete("compose");
-      setSearchParams(searchParams, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const summary = useMemo(() => {
     return invoices.reduce(
@@ -57,36 +42,35 @@ export default function ProjectInvoices() {
     );
   }, [invoices]);
 
-  function openComposer(): void {
-    setScanResult(null);
-    setComposerOpen(true);
+  function goToCreate(): void {
+    navigate(`/project/${project.id}/finances/invoices/new`);
   }
-
-  const actions = canManage ? (
-    <div className="flex items-center gap-2">
-      <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
-        Scan invoice
-      </Button>
-      <Button variant="primary" size="md" onClick={openComposer}>
-        <PlusIcon className="size-4" />
-        Send invoice
-      </Button>
-    </div>
-  ) : undefined;
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
-          { label: "Finance", to: `/project/${project.id}/finances` },
+          { label: "Finances", to: `/project/${project.id}/finances` },
           { label: "Invoices" },
         ]}
         className="mb-4"
       />
       <PageHeader
         title="Invoices"
-        description="Send invoices and record the bills you pay on this project."
-        actions={actions}
+        description="Track vendor invoices, retainage withheld, and payments made across the project."
+        actions={
+          canManage ? (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+                Scan invoice
+              </Button>
+              <Button variant="primary" size="md" onClick={goToCreate}>
+                <PlusIcon className="size-4" />
+                New invoice
+              </Button>
+            </div>
+          ) : undefined
+        }
       />
 
       <section
@@ -94,19 +78,19 @@ export default function ProjectInvoices() {
         className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
       >
         <SummaryTile
-          label="Total invoiced"
+          label="Total Billed"
           value={formatCurrency(summary.billed, currency)}
         />
         <SummaryTile
-          label="Held back"
+          label="Retainage Held"
           value={formatCurrency(summary.retainage, currency)}
         />
         <SummaryTile
-          label="Paid"
+          label="Amount Paid"
           value={formatCurrency(summary.paid, currency)}
         />
         <SummaryTile
-          label="Outstanding"
+          label="Balance Due"
           value={formatCurrency(summary.balance, currency)}
           accent
         />
@@ -134,8 +118,20 @@ export default function ProjectInvoices() {
             <EmptyState
               icon={<FinancesIcon className="size-6" />}
               title="No invoices yet"
-              description="Send an invoice or record a bill to track what's billed, held back, and paid."
-              action={actions}
+              description="Record vendor invoices to track what you owe, retainage withheld, and payments made on this project."
+              action={
+                canManage ? (
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+                      Scan invoice
+                    </Button>
+                    <Button variant="primary" size="md" onClick={goToCreate}>
+                      <PlusIcon className="size-4" />
+                      New invoice
+                    </Button>
+                  </div>
+                ) : undefined
+              }
             />
           </Card>
         ) : (
@@ -152,26 +148,11 @@ export default function ProjectInvoices() {
           </div>
         )}
       </section>
-
       <ScanInvoiceDialog
         projectId={project.id}
         open={scanOpen}
         onOpenChange={setScanOpen}
-        onScanned={(result) => {
-          setScanResult(result);
-          setComposerOpen(true);
-        }}
       />
-
-      {canManage && (
-        <InvoiceComposer
-          projectId={project.id}
-          currency={currency}
-          open={composerOpen}
-          onOpenChange={setComposerOpen}
-          scan={scanResult}
-        />
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FormDrawer } from "./form-drawer";
-import { Label } from "@/components/atoms/label";
+import { FormSection } from "@/components/atoms/form-section";
 import { cn } from "@/lib/utils";
 import {
   ORG_MANAGEMENT_RESOURCES,
@@ -8,6 +8,8 @@ import {
   SALES_RESOURCES,
   statement,
 } from "@/lib/permissions";
+import { Button } from "../atoms";
+import { TextInput } from "../atoms/text-input";
 
 type Permission = Record<string, string[]>;
 
@@ -29,10 +31,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   project: "Projects",
   tasks: "Tasks",
   finances: "Finances",
-  transactions: "Expenses & receipts",
   schedule: "Schedule & Gantt",
-  stages: "Build stages",
-  buildings: "Buildings",
   documents: "Documents",
   inspections: "Inspections",
   materials: "Materials",
@@ -74,10 +73,6 @@ const ACTION_LABELS: Record<string, string> = {
   post: "Post",
   send: "Send",
   convert: "Convert",
-  edit: "Edit",
-  export: "Export",
-  dispute: "Dispute",
-  markup: "Markup drawings",
   void: "Void",
   report: "Generate report",
 };
@@ -160,13 +155,13 @@ function RoleBuilderDialog({
     <FormDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Edit role access" : "Create a custom role"}
+      title={isEditing ? "Edit Role Access" : "Create Custom Role"}
       description={
         isEditing
           ? "Change exactly which actions members with this role can perform."
           : "Name the role and choose exactly which actions members with this role can perform."
       }
-      submitLabel={isEditing ? "Save changes" : "Create role"}
+      submitLabel={isEditing ? "Save changes" : "Create Role"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? nameError}
@@ -174,19 +169,15 @@ function RoleBuilderDialog({
       className="w-[min(640px,calc(100vw-2rem))]"
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="role-name">Role name</Label>
-        <input
-          id="role-name"
+        <TextInput
+          label="Role Name"
           value={isEditing ? initial.role : roleName}
-          onChange={(e) => setRoleName(e.target.value)}
+          onChange={setRoleName}
           disabled={isEditing}
           autoFocus={!isEditing}
           maxLength={50}
           placeholder="e.g. Site supervisor"
-          className={cn(
-            "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            isEditing && "cursor-not-allowed text-gray-500",
-          )}
+          className={cn('', isEditing && "cursor-not-allowed text-gray-500")}
         />
         {isEditing ? (
           <p className="text-xs text-gray-400">Role name can&rsquo;t be changed.</p>
@@ -198,48 +189,48 @@ function RoleBuilderDialog({
         )}
       </div>
 
-      <div className="flex max-h-[46vh] flex-col gap-5 overflow-y-auto pr-1">
+      <div className="flex max-h-fit flex-col gap-4 overflow-y-auto pr-1">
         {RESOURCE_GROUPS.map((group) => (
-          <div key={group.label} className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-              {group.label}
-            </p>
-            {group.resources.map((resource) => {
-              const actions = statement[resource as keyof typeof statement] ?? [];
-              const selected = permission[resource] ?? [];
-              return (
-                <div
-                  key={resource}
-                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="text-sm font-medium text-gray-700">
-                    {RESOURCE_LABELS[resource] ?? resource}
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {actions.map((action) => {
-                      const active = selected.includes(action);
-                      return (
-                        <button
-                          key={action}
-                          type="button"
-                          onClick={() => toggleAction(resource, action)}
-                          className={cn(
-                            "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-                            active
-                              ? "bg-[#004DE7] text-white"
-                              : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
-                          )}
-                        >
-                          {ACTION_LABELS[action] ?? action}
-                        </button>
-                      );
-                    })}
+          <FormSection key={group.label} title={group.label}>
+            <div className="-mx-8 -my-6 divide-y divide-border">
+              {group.resources.map((resource) => {
+                const actions = statement[resource as keyof typeof statement] ?? [];
+                const selected = permission[resource] ?? [];
+                return (
+                  <div
+                    key={resource}
+                    className="flex flex-col gap-2 px-8 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="text-caption-l font-medium text-grey-500">
+                      {RESOURCE_LABELS[resource] ?? resource}
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {actions.map((action) => {
+                        const active = selected.includes(action);
+                        return (
+                          <Button
+                            key={action}
+                            variant='outline'
+                            type="button"
+                            onClick={() => toggleAction(resource, action)}
+                            className={cn(
+                              "rounded-full px-3 py-0.25 !text-caption-m font-medium transition-colors",
+                              "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                              active
+                                ? "bg-primary-50 text-primary border-none"
+                                : "text-gray-600 hover:bg-gray-200",
+                            )}
+                          >
+                            {ACTION_LABELS[action] ?? action}
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </FormSection>
         ))}
       </div>
     </FormDrawer>

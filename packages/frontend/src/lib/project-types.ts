@@ -537,7 +537,6 @@ export interface Stage {
   endDate: string | null;
   dateRange: string | null;
   progressPercent: number;
-  value: number;
   sortOrder: number;
 }
 
@@ -609,7 +608,7 @@ export interface UpdateComment {
   createdAt: string;
 }
 
-export type CategoryGroup = "document" | "plan" | "media";
+export type CategoryGroup = "document" | "plan";
 
 export interface DocumentCategory {
   id: string;
