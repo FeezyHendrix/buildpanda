@@ -32,6 +32,13 @@ const TOOLS: readonly FieldTool[] = [
     href: "/tools/change-requests",
   },
   { key: "materials", label: "Materials", helper: "Orders & requests", icon: "cube-outline", href: "/tools/materials" },
+  {
+    key: "material-approvals",
+    label: "Material Approvals",
+    helper: "Sign-off before ordering",
+    icon: "checkmark-done-outline",
+    href: "/tools/material-approvals",
+  },
 ] as const;
 
 function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
