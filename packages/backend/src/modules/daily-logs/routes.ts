@@ -155,7 +155,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       return service.listDays(project.id, request.query.from, request.query.to, request.query.buildingId);
     },
   );
