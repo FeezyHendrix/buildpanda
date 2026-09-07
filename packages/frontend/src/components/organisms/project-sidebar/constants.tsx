@@ -59,6 +59,14 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.materialsEquipment",
   },
   {
+    label: "Material Approvals",
+    slug: "material-approvals",
+    resource: "materials",
+    Icon: InspectionsIcon,
+    helper: "Spec sign-off requests",
+    flag: "commercial.materialsEquipment",
+  },
+  {
     label: "Material Log",
     slug: "material-log",
     resource: "materials",
