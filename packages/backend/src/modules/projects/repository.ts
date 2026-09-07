@@ -1,5 +1,4 @@
 import type { Knex } from "knex";
-import { isEmployeeRole } from "../../lib/permissions.ts";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   AiUpdateCadence,
@@ -112,8 +111,8 @@ export function projectsRepository(db: Knex) {
   return {
     // Lists projects the user can see, scoped to the active workspace(s) passed
     // in orgRoles: projects they own (personal, or in an active org), seed rows,
-    // projects in the active orgs where they have org-wide access (owner/admin/
-    // member/viewer — NOT employee), and projects they participate in within the
+    // projects in the active orgs where they have org-wide read access (all org
+    // member roles, including employee), and projects they participate in within the
     // active orgs. When no workspace is active (orgRoles empty), personal and
     // participant projects remain visible so external stakeholders still see them.
     async listForUser(
@@ -121,9 +120,6 @@ export function projectsRepository(db: Knex) {
       orgRoles: ReadonlyMap<string, string>,
     ): Promise<ProjectRow[]> {
       const activeOrgIds = [...orgRoles.keys()];
-      const orgWideProjectOrgIds = [...orgRoles.entries()]
-        .filter(([, role]) => !isEmployeeRole(role))
-        .map(([orgId]) => orgId);
 
       const participantQuery = db("project_participants as pp")
         .join("projects as p", "p.id", "pp.project_id")
@@ -142,7 +138,7 @@ export function projectsRepository(db: Knex) {
           }).orWhere(function () {
             this.whereNull("owner_id").whereNull("organization_id");
           });
-          if (orgWideProjectOrgIds.length) this.orWhereIn("organization_id", orgWideProjectOrgIds);
+          if (activeOrgIds.length) this.orWhereIn("organization_id", activeOrgIds);
           if (participantProjectIds.length) this.orWhereIn("id", participantProjectIds);
         })
         .orderBy("updated_at", "desc");

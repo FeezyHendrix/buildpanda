@@ -1,5 +1,5 @@
 import { ForbiddenError } from "./errors.ts";
-import { isEmployeeRole, mapAllows, statement, type PermissionMap } from "./permissions.ts";
+import { mapAllows, statement, type PermissionMap } from "./permissions.ts";
 
 // viewer is excluded: read-only stakeholders must not mutate project data.
 const WRITE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "member"]);
@@ -30,12 +30,11 @@ export interface EnrichedAccessContext extends AccessContext {
   orgPermissions: ReadonlyMap<string, PermissionMap>;
 }
 
-// Org membership grants access to every project in the org — except for
-// employee-role members, who are scoped to their assigned projects only.
+// Org membership grants read access to every project in the org. Mutating a
+// project still goes through WRITE_ROLES / resource-action checks below.
 function hasOrgWideProjectAccess(orgId: string | null, ctx: AccessContext): boolean {
   if (orgId === null) return false;
-  const role = ctx.orgRoles.get(orgId);
-  return role !== undefined && !isEmployeeRole(role);
+  return ctx.orgRoles.has(orgId);
 }
 
 /** The caller's participant role on this project, if any (e.g. "client"). */
