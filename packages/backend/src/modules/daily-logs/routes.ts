@@ -155,7 +155,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
       return service.listDays(project.id, request.query.from, request.query.to, request.query.buildingId);
     },
   );
@@ -176,7 +176,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date/entries",
     { schema: { params: dateParams, body: entryBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const role =
         request.projectRoles.get(project.id) ??
@@ -198,7 +198,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date/entries/:entryId/void",
     { schema: { params: entryParams, body: voidBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const canManage = canProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },

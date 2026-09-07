@@ -153,6 +153,16 @@ test("employee org member can read every org project without write access", () =
   assert.throws(() => assertCanModifyProject(PROJECT, ctx), ForbiddenError);
   assert.equal(allows(ctx, "project", "view"), true);
   assert.equal(allows(ctx, "project", "update"), false);
+  assert.equal(allows(ctx, "participants", "view"), true);
+  assert.equal(allows(ctx, "participants", "manage"), false);
+  assert.equal(allows(ctx, "materials", "request"), true);
+});
+
+test("client participant can view daily logs but cannot create entries", () => {
+  const ctx = ctxWithParticipantRole("client");
+  assert.equal(allows(ctx, "dailyLog", "view"), true);
+  assert.equal(allows(ctx, "dailyLog", "report"), true);
+  assert.equal(allows(ctx, "dailyLog", "create"), false);
 });
 
 test("non-member still cannot read an organization project", () => {
