@@ -49,6 +49,7 @@ import rfiRoutes from "./modules/rfis/routes.ts";
 import publicRfiRoutes from "./modules/rfis/public-routes.ts";
 import bimRoutes from "./modules/bim/routes.ts";
 import approvalRoutes from "./modules/approvals/routes.ts";
+import materialApprovalRoutes from "./modules/approvals/material-routes.ts";
 import selectionRoutes from "./modules/selections/routes.ts";
 import changeRequestRoutes from "./modules/change-requests/routes.ts";
 import permitRoutes from "./modules/permits/index.ts";
@@ -185,6 +186,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicRfiRoutes);
   await app.register(bimRoutes);
   await app.register(approvalRoutes);
+  await app.register(materialApprovalRoutes);
   await app.register(selectionRoutes);
   await app.register(changeRequestRoutes);
   await app.register(permitRoutes);
