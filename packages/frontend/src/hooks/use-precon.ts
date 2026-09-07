@@ -6,6 +6,7 @@ import {
   type PreconGeometryKind,
   type PreconProgramme,
   type PreconSummarySettings,
+  type TakeoffScope,
   type UpdateProgrammeTaskInput,
   type UpdateRowInput,
   type PreconSnapshot,
@@ -13,18 +14,39 @@ import {
 import { preconKeys, proposalKeys } from "@/hooks/query-keys";
 import { useRealtime } from "@/lib/realtime";
 
+const RUNNING_STATUSES = new Set(["uploading", "generating"]);
+
 export function usePreconSessions(proposalId?: string) {
   return useQuery({
     queryKey: [...preconKeys.sessions(), proposalId ?? "all"],
     queryFn: () => preconApi.listSessions(proposalId),
+    // the list has no realtime channel of its own, so a running take-off is
+    // polled until it settles; idle lists never poll
+    refetchInterval: (query) =>
+      query.state.data?.some((s) => RUNNING_STATUSES.has(s.status)) ? 4000 : false,
   });
 }
 
 export function useCreatePreconSessionFromPlan(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (planId: string) => preconApi.createSessionFromPlan(proposalId, planId),
+    mutationFn: ({ planId, scope }: { planId: string; scope: TakeoffScope }) =>
+      preconApi.createSessionFromPlan(proposalId, planId, scope),
     onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
+  });
+}
+
+export function useRetryPreconSession(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => preconApi.retrySession(sessionId),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev ? { ...prev, session, bills: [], rows: [], geometries: [] } : prev,
+      );
+      void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+      void qc.invalidateQueries({ queryKey: preconKeys.sessions() });
+    },
   });
 }
 
@@ -250,7 +272,13 @@ export function useApplyPreconToProposal(sessionId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => preconApi.applyToProposal(sessionId),
-    onSuccess: (result) => qc.invalidateQueries({ queryKey: proposalKeys.boq(result.proposalId) }),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: proposalKeys.boq(result.proposalId) });
+      // applying can create + link a proposal, so the workspace header and
+      // the take-off list both need a refresh
+      void qc.invalidateQueries({ queryKey: proposalKeys.detail(result.proposalId) });
+      void qc.invalidateQueries({ queryKey: preconKeys.sessions() });
+    },
   });
 }
 

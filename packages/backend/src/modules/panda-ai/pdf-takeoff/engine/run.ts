@@ -8,7 +8,8 @@ import { createWriteStream } from "node:fs";
 import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
-import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun } from "../types.ts";
+import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun, PreconPhase, TakeoffScope } from "../types.ts";
+import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
 import { calibrate } from "./calibrate.ts";
 import { clusterRegions, segmentsInRegion } from "./cluster.ts";
@@ -70,7 +71,7 @@ function besmmResolverFor(db: Knex): BesmmResolver {
   };
 }
 
-export type ProgressFn = (message: string, data?: Record<string, unknown>) => void;
+export type ProgressFn = (phase: PreconPhase, message: string, data?: Record<string, unknown>) => void | Promise<void>;
 
 async function withTempFile<T>(storagePath: string, ext: string, fn: (file: string) => Promise<T>): Promise<T> {
   const file = path.join(os.tmpdir(), `${generateId("pcg")}.${ext}`);
@@ -143,6 +144,7 @@ function measureSheetRegions(
   calibrationConfidence: number,
   pageNumber: number,
   sheetLabel: string,
+  roomsAsItems = false,
 ): SheetMeasurement {
   const regions = clusterRegions(extracted, mmPerPt);
   const items: MeasuredBoqItem[] = [];
@@ -259,7 +261,27 @@ function measureSheetRegions(
 
   const rooms = measureRoomAreas(regionSegments, extracted.texts, primary, mmPerPt);
   const totalFloorM2 = Math.round(rooms.reduce((s, r) => s + r.areaM2, 0) * 100) / 100;
-  if (rooms.length > 0) {
+  // Areas-only runs want each space on its own line — "kitchen 14.2 m²" — not
+  // one screed item with the rooms folded into its description.
+  if (roomsAsItems) {
+    for (const room of rooms) {
+      items.push({
+        elementGroup: MEASURED_AREAS_GROUP,
+        workSection: { code: "AREA", title: "MEASURED FLOOR AREAS BY SPACE" },
+        specNote: "Net floor area inside the wall enclosure, measured per labelled space.",
+        code: null,
+        description: `${room.name} — floor area`,
+        unit: "m2",
+        qtyGross: room.areaM2,
+        deductions: [],
+        qty: room.areaM2,
+        confidence: "high",
+        measurementBasis: `Flood-fill from the "${room.name}" label on ${sheetLabel}`,
+        geometries: [{ kind: "count" as const, vertices: [room.seed], quantity: room.areaM2, unit: "m2" }],
+        pageNumber,
+      });
+    }
+  } else if (rooms.length > 0) {
     items.push({
       elementGroup: "Floor finishings",
       workSection: { code: "M10", title: "SAND CEMENT SCREEDS/TOPPINGS" },
@@ -295,6 +317,9 @@ export async function generateForSession(
   progress: ProgressFn = () => {},
 ): Promise<void> {
   const repo = preconRepository(db);
+  const session = await repo.sessionById(sessionId);
+  const scope: TakeoffScope = session?.scope ?? FULL_TAKEOFF_SCOPE;
+  const areasOnly = scope.kind === "areas";
   const sheets = await repo.sheetsBySession(sessionId);
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
@@ -319,7 +344,7 @@ export async function generateForSession(
     try {
       await withTempFile(placeholder.storage_path, "pdf", async (file) => {
         const doc = await pdfjs.getDocument({ url: file, useSystemFonts: true }).promise;
-        progress(`Reading ${placeholder.file_name} (${doc.numPages} pages)`, { pages: doc.numPages });
+        await progress("reading", `Reading ${placeholder.file_name} (${doc.numPages} pages)`, { pages: doc.numPages });
 
         for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
           const globalPage = nextPageNumber++;
@@ -413,7 +438,7 @@ export async function generateForSession(
               civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
             }
             if (calibration && kind === "floor-plan") {
-              const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel);
+              const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly);
               if (measured.fingerprint) pageFingerprints.push(measured.fingerprint);
               // low calibration confidence demotes everything on the sheet
               const demoted =
@@ -421,12 +446,12 @@ export async function generateForSession(
                   ? measured.items.map((i) => ({ ...i, confidence: "low" as const }))
                   : measured.items;
               allItems.push(...demoted);
-              progress(`Measured ${sheetLabel}: ${demoted.length} items at 1:${Math.round(calibration.mmPerPt / 0.3528)}`, {
+              await progress("reading", `Measured ${sheetLabel}: ${demoted.length} items at 1:${Math.round(calibration.mmPerPt / 0.3528)}`, {
                 sheetId,
                 items: demoted.length,
               });
             } else if (!calibration) {
-              progress(`No reliable scale on ${sheetLabel}; sheet available for manual takeoff`, { sheetId });
+              await progress("reading", `No reliable scale on ${sheetLabel}; sheet available for manual takeoff`, { sheetId });
             }
           } catch (pageError) {
             const message = pageError instanceof Error ? pageError.message : "Page measurement failed";
@@ -448,7 +473,7 @@ export async function generateForSession(
   const dedupedItems = applyFloorRepetition(allItems, dup);
   for (const group of dup.groups.values()) {
     if (group.groupSize > 1) {
-      progress(`Floors on pages ${group.members.join(", ")} are identical — measured once x ${group.groupSize}`);
+      await progress("reading", `Floors on pages ${group.members.join(", ")} are identical — measured once x ${group.groupSize}`);
     }
   }
 
@@ -478,18 +503,20 @@ export async function generateForSession(
   }
 
   let billItems: MeasuredBoqItem[] = [...merged.values()];
+  // An areas-only run stops here: no schedules, no build-up, no pricing.
+  if (areasOnly) billItems = billItems.filter((item) => item.elementGroup === MEASURED_AREAS_GROUP);
 
-  for (const sheet of scheduleSheets) {
+  for (const sheet of areasOnly ? [] : scheduleSheets) {
     const reading = readBbs(sheet.lines);
     if (reading) {
       if (reading.unreadable) {
         billItems.push(provisionalRebarItem(sheet.pageNumber));
-        progress(`Bar bending schedule on page ${sheet.pageNumber} could not be read reliably — rebar left provisional`);
+        await progress("schedules", `Bar bending schedule on page ${sheet.pageNumber} could not be read reliably — rebar left provisional`);
       } else {
         const rebarItems = bbsToItems(reading, sheet.pageNumber);
         if (rebarItems.length > 0) {
           billItems.push(...rebarItems);
-          progress(`Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
+          await progress("schedules", `Read bar bending schedule on page ${sheet.pageNumber}: ${reading.totalTonnes.toFixed(2)} t reinforcement`);
         }
       }
     }
@@ -499,7 +526,7 @@ export async function generateForSession(
       if (pileItems.length > 0) {
         billItems.push(...pileItems);
         const totalPiles = Object.values(piles.byDiameter).reduce((s, d) => s + d.number, 0);
-        progress(`Read pile schedule on page ${sheet.pageNumber}: ${totalPiles} piles`);
+        await progress("schedules", `Read pile schedule on page ${sheet.pageNumber}: ${totalPiles} piles`);
       }
     }
   }
@@ -508,8 +535,8 @@ export async function generateForSession(
   // authoritative counts and carry sizes/materials; the tag census becomes
   // the cross-check and disagreements are flagged for review.
   let scheduleSummary = "";
-  if (isLlmConfigured() && scheduleSheets.length > 0) {
-    progress(`Reading ${scheduleSheets.length} schedule sheet(s)`);
+  if (!areasOnly && isLlmConfigured() && scheduleSheets.length > 0) {
+    await progress("schedules", `Reading ${scheduleSheets.length} schedule sheet(s)`);
     try {
       let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
         chatJsonValidated(messages, schema),
@@ -519,7 +546,7 @@ export async function generateForSession(
         const diagramSizes = measureDiagramSizes(scheduleTexts);
         if (diagramSizes.size > 0) {
           schedules = mergeDiagramSizes(schedules, diagramSizes);
-          progress(`Measured ${diagramSizes.size} type elevations on the schedule sheet`);
+          await progress("schedules", `Measured ${diagramSizes.size} type elevations on the schedule sheet`);
         }
         billItems = applySchedules(billItems, schedules);
         billItems = applyOpeningDeductions(billItems, schedules);
@@ -528,57 +555,72 @@ export async function generateForSession(
           .map((e) => `${e.type}: ${[e.material, e.remarks].filter(Boolean).join(", ")}`)
           .slice(0, 20);
         scheduleSummary = specs.length > 0 ? ` Schedule specs: ${specs.join("; ")}.` : "";
-        progress(`Applied schedules: ${schedules.windows.length} window types, ${schedules.doors.length} door types`);
+        await progress("schedules", `Applied schedules: ${schedules.windows.length} window types, ${schedules.doors.length} door types`);
       }
     } catch {
-      progress("Schedule sheets found but could not be read; tag census stands");
+      await progress("schedules", "Schedule sheets found but could not be read; tag census stands");
     }
   }
 
   const structure = classifyStructure({ sheetTitles: classifyTitles, sheets: classifySheets, text: classifyText.join(" \n ") });
   await repo.updateSessionStructure(sessionId, structure);
-  progress(
+  await progress("structure", 
     `Detected structure: ${structure.structureClass}${structure.buildingType ? ` (${structure.buildingType})` : ""}`,
     { structure },
   );
 
   const CIVIL_CLASSES = new Set(["road", "airport", "bridge", "infrastructure"]);
-  if (CIVIL_CLASSES.has(structure.structureClass) && civilSheets.length > 0) {
+  if (!areasOnly && CIVIL_CLASSES.has(structure.structureClass) && civilSheets.length > 0) {
     const best = civilSheets.reduce((a, b) => (b.segments.length > a.segments.length ? b : a));
     const civilItems = civilToItems(measureCivil(best.segments, best.mmPerPt), best.pageNumber);
     if (civilItems.length > 0) {
       billItems.push(...civilItems);
-      progress(`Measured civil surface geometry on page ${best.pageNumber}: ${civilItems.length} anchors`);
+      await progress("structure", `Measured civil surface geometry on page ${best.pageNumber}: ${civilItems.length} anchors`);
     }
   }
 
   // Build-up stage: parallel per-element QS agents expand the measured
   // anchors into a BESMM-granular bill. Quantities stay engine-computed —
   // agents only name anchors or formulas; provisional items carry none.
-  if (isLlmConfigured() && billItems.length > 0) {
-    progress("Building up the bill with parallel QS agents");
+  const briefs = briefsFor(structure.structureClass, { storeys: structure.storeys, foundationType: structure.foundationType })
+    .filter((brief) => scope.kind !== "sections" || scope.elements.includes(brief.element));
+  if (!areasOnly && isLlmConfigured() && billItems.length > 0 && briefs.length > 0) {
+    await progress(
+      "building",
+      scope.kind === "sections"
+        ? `Building up ${scope.elements.join(", ")} with QS agents`
+        : "Building up the bill with parallel QS agents",
+    );
     const sheetContext = `${sheets.length} sheets; measured anchors come from floor plans only (no structural, roof or MEP drawings).${scheduleSummary}`;
     const resolveBesmm = besmmResolverFor(db);
     const outcome = await buildUpBill(
       billItems,
       sheetContext,
       async (messages, schema) => chatJsonValidated(messages, schema),
-      (message) => progress(message),
-      briefsFor(structure.structureClass, { storeys: structure.storeys, foundationType: structure.foundationType }),
+      (message) => void progress("building", message),
+      briefs,
       resolveBesmm,
     );
     const failed = outcome.agentResults.filter((r) => r.failed).map((r) => r.element);
-    if (failed.length > 0) progress(`Elements left for manual billing: ${failed.join(", ")}`);
+    if (failed.length > 0) await progress("building", `Elements left for manual billing: ${failed.join(", ")}`);
     // enrichment replaces the bare wall/floor lines with its fuller sections,
     // but keeps measured geometry rows: merge by code+description, measured wins
     const measuredKeys = new Set(billItems.map((i) => `${i.code}|${i.description}`));
     billItems = [...billItems, ...outcome.items.filter((i) => !measuredKeys.has(`${i.code}|${i.description}`))];
   }
+  // Sections runs keep the measured anchors for the agents above but bill
+  // only the elements that were asked for.
+  if (scope.kind === "sections") {
+    const wanted = new Set(scope.elements);
+    const before = billItems.length;
+    billItems = billItems.filter((item) => wanted.has(item.elementGroup));
+    await progress("building", `Kept ${billItems.length} of ${before} measured lines for ${scope.elements.join(", ")}`);
+  }
 
   const { bills, rows, geometries } = draftBoq(sessionId, billItems, sheetIdByPage);
 
   // price measured items against the org's most recent rate card
-  const orgId = await repo.orgIdForSession(sessionId);
+  const orgId = areasOnly ? null : await repo.orgIdForSession(sessionId);
   if (orgId) {
     const [card] = await repo.rateCardsByOrg(orgId);
     if (card) {
@@ -594,14 +636,19 @@ export async function generateForSession(
           priced++;
         }
       }
-      if (priced > 0) progress(`Priced ${priced} items against "${card.name}"`);
+      if (priced > 0) await progress("pricing", `Priced ${priced} items against "${card.name}"`);
     }
   }
 
   await repo.insertBills(bills);
   await repo.insertBoqRows(rows);
   await repo.insertGeometries(geometries);
-  progress(`Draft BOQ ready: ${rows.filter((r) => r.row_type === "item").length} items across ${bills.length} bills`, {
-    rows: rows.length,
-  });
+  const itemCount = rows.filter((r) => r.row_type === "item").length;
+  await progress(
+    "draft",
+    areasOnly
+      ? `Measured areas ready: ${itemCount} spaces across ${bills.length} sheets`
+      : `Draft BOQ ready: ${itemCount} items across ${bills.length} bills`,
+    { rows: rows.length },
+  );
 }
