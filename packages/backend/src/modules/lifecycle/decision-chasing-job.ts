@@ -158,7 +158,7 @@ const PENDING_COLUMNS = [
 async function loadPendingDecisions(db: Knex): Promise<PendingDecision[]> {
   const [approvals, selections, queries] = await Promise.all([
     db("approvals")
-      .where({ status: "Pending" })
+      .where({ status: "Pending", kind: "client" })
       .where((b) => b.whereNull("reminder_level").orWhere("reminder_level", "<", 3))
       .select<PendingDecisionRow[]>(...PENDING_COLUMNS, "title"),
     db("project_selections")
