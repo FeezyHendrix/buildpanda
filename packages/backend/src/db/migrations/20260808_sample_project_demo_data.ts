@@ -153,20 +153,26 @@ async function ensureApprovals(knex: Knex): Promise<void> {
 }
 
 async function ensureMaterials(knex: Knex): Promise<void> {
+  const existingCatalog = await knex("materials_catalog")
+    .where({ project_id: PROJECT_ID, normalized_name: "portland cement", unit: "bag" })
+    .first<{ id: string }>("id");
+  const catalogId = existingCatalog?.id ?? "mcat_sample_cement";
+
   await knex("material_orders")
     .insert({ id: "mo_sample_cement", project_id: PROJECT_ID, title: "Cement for second pour", material_name: "Portland cement", quantity: "400.00", unit: "bag", supplier: "Dangote Cement", status: "Approved", priority: "High", phase_id: "phase_sample_shell", needed_by: daysFromNow(7), estimated_cost: "4200000.00", actual_cost: "0.00", currency: "NGN", delivery_location: "Main House dry room", notes: "Supplier confirmed stock for next pour." })
     .onConflict("id")
     .merge();
-  await knex("materials_catalog")
-    .insert({ id: "mcat_sample_cement", project_id: PROJECT_ID, name: "Portland cement", normalized_name: "portland cement", unit: "bag", low_stock_threshold: "100.00", active: true, reorder_quantity: "200.00", lead_time_days: 3, auto_reorder_enabled: false })
-    .onConflict("id")
-    .merge();
+  if (existingCatalog) {
+    await knex("materials_catalog").where({ id: catalogId }).update({ low_stock_threshold: "100.00", active: true, reorder_quantity: "200.00", lead_time_days: 3, auto_reorder_enabled: false });
+  } else {
+    await knex("materials_catalog").insert({ id: catalogId, project_id: PROJECT_ID, name: "Portland cement", normalized_name: "portland cement", unit: "bag", low_stock_threshold: "100.00", active: true, reorder_quantity: "200.00", lead_time_days: 3, auto_reorder_enabled: false });
+  }
   await knex("materials_stock")
-    .insert({ project_id: PROJECT_ID, material_id: "mcat_sample_cement", location_key: "default", on_hand_qty: "280.00", last_ledger_entry_id: null })
+    .insert({ project_id: PROJECT_ID, material_id: catalogId, location_key: "default", on_hand_qty: "280.00", last_ledger_entry_id: null })
     .onConflict(["project_id", "material_id", "location_key"])
     .merge();
   await knex("material_ledger_entries")
-    .insert({ id: "mle_sample_cement_in", project_id: PROJECT_ID, idempotency_key: "sample-cement-in", entry_type: "IN", status: "Posted", material_id: "mcat_sample_cement", material_name_snapshot: "Portland cement", unit_snapshot: "bag", location_key: "default", quantity: "400.00", stock_delta: "400.00", occurred_at: timestampDaysFromNow(-1), timestamp_suspect: false, negative_stock: false, reason: "Initial sample-project delivery", notes_html: "<p>Received against approved supplier quote.</p>", stage_id: "phase_sample_shell", approval_status: "Approved" })
+    .insert({ id: "mle_sample_cement_in", project_id: PROJECT_ID, idempotency_key: "sample-cement-in", entry_type: "IN", status: "Posted", material_id: catalogId, material_name_snapshot: "Portland cement", unit_snapshot: "bag", location_key: "default", quantity: "400.00", stock_delta: "400.00", occurred_at: timestampDaysFromNow(-1), timestamp_suspect: false, negative_stock: false, reason: "Initial sample-project delivery", notes_html: "<p>Received against approved supplier quote.</p>", stage_id: "phase_sample_shell", approval_status: "Approved" })
     .onConflict("id")
     .merge();
 }
@@ -198,17 +204,16 @@ async function ensureTasksAndDates(knex: Knex): Promise<void> {
 }
 
 async function ensureDocuments(knex: Knex): Promise<void> {
-  await knex("document_categories")
-    .insert([
-      { id: "cat_sample_docs", name: "Sample Documents", tone: "brand", group: "document" },
-      { id: "cat_sample_plans", name: "Sample Plans", tone: "orange", group: "plan" },
-    ])
-    .onConflict("id")
-    .merge();
+  const existingDocs = await knex("document_categories").where({ name: "Sample Documents" }).first<{ id: string }>("id");
+  const existingPlans = await knex("document_categories").where({ name: "Sample Plans" }).first<{ id: string }>("id");
+  const docCategoryId = existingDocs?.id ?? "cat_sample_docs";
+  const planCategoryId = existingPlans?.id ?? "cat_sample_plans";
+  if (!existingDocs) await knex("document_categories").insert({ id: docCategoryId, name: "Sample Documents", tone: "brand", group: "document" });
+  if (!existingPlans) await knex("document_categories").insert({ id: planCategoryId, name: "Sample Plans", tone: "orange", group: "plan" });
   await knex("project_documents")
     .insert([
-      { id: "doc_sample_method", project_id: PROJECT_ID, category_id: "cat_sample_docs", file_id: null, file_name: "Concrete pour method statement.pdf", size: "248 KB", status: "Verified", uploaded_at: daysFromNow(-12), current_version_id: null },
-      { id: "doc_sample_plan", project_id: PROJECT_ID, category_id: "cat_sample_plans", file_id: null, file_name: "GA floor plan Rev C.pdf", size: "1.4 MB", status: "Pending", uploaded_at: daysFromNow(-6), current_version_id: null },
+      { id: "doc_sample_method", project_id: PROJECT_ID, category_id: docCategoryId, file_id: null, file_name: "Concrete pour method statement.pdf", size: "248 KB", status: "Verified", uploaded_at: daysFromNow(-12), current_version_id: null },
+      { id: "doc_sample_plan", project_id: PROJECT_ID, category_id: planCategoryId, file_id: null, file_name: "GA floor plan Rev C.pdf", size: "1.4 MB", status: "Pending", uploaded_at: daysFromNow(-6), current_version_id: null },
     ])
     .onConflict("id")
     .merge();
