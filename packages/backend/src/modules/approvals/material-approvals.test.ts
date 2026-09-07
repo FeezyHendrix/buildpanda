@@ -301,5 +301,7 @@ test("material approval routes are guarded by materials permissions, never appro
   assert.match(source, /"\/projects\/:id\/material-approvals"[\s\S]*?"materials",\s*"view"/);
   assert.match(source, /"materials",\s*\n?\s*"request",/);
   assert.match(source, /deciding \? "approve" : "request"/);
+  assert.match(source, /Only a material approver can reassign the requested reviewer/);
+  assert.match(source, /Only pending material approvals can be deleted/);
   assert.doesNotMatch(source, /"approvals",\s*"(view|decide|manage)"/);
 });

@@ -188,6 +188,16 @@ export const materialApprovalsRepository = {
       .where(eq(materialApprovals.id, id));
   },
 
+  async replaceFromServer(db: Db, projectId: string, server: MaterialApproval): Promise<void> {
+    await db
+      .insert(materialApprovals)
+      .values(materialApprovalServerValues(projectId, server, Date.now()))
+      .onConflictDoUpdate({
+        target: materialApprovals.id,
+        set: materialApprovalServerValues(projectId, server, Date.now()),
+      });
+  },
+
   /**
    * Swaps the placeholder for the row the server assigned, and re-points
    * everything that still names the local id: queued decisions, and comments

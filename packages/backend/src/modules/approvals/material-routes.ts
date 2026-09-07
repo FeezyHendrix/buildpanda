@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { canProjectPermission } from "../../lib/authorization.ts";
 import { ForbiddenError } from "../../lib/errors.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
@@ -141,6 +142,23 @@ const materialApprovalRoutes: FastifyPluginAsync = async (fastify) => {
         "materials",
         deciding ? "approve" : "request",
       );
+      if (request.body.requestedReviewerId !== undefined) {
+        const canReassignReviewer = canProjectPermission(
+          { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+          {
+            userId: user.id,
+            orgRoles: request.orgRoles,
+            projectRoles: request.projectRoles,
+            orgPermissions: request.orgPermissions,
+            projectSectionPermissions: request.projectSectionPermissions,
+          },
+          "materials",
+          "approve",
+        );
+        if (!canReassignReviewer) {
+          throw new ForbiddenError("Only a material approver can reassign the requested reviewer");
+        }
+      }
       // A request directed at a named reviewer is theirs to decide, exactly as
       // for client approvals — holding materials:approve is not a licence to
       // sign off somebody else's assignment.
@@ -163,8 +181,12 @@ const materialApprovalRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(
         request.params.id,
         "materials",
-        "request",
+        "approve",
       );
+      const approval = await service.get(project.id, request.params.approvalId);
+      if (approval.status !== "Pending") {
+        throw new ForbiddenError("Only pending material approvals can be deleted");
+      }
       await service.remove(project.id, request.params.approvalId);
       return reply.status(204).send();
     },
