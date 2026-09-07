@@ -38,6 +38,7 @@ export interface ApprovalUpdatePatch {
 const SELECT = [
   "a.id",
   "a.project_id",
+  "a.kind",
   "a.title",
   "a.category",
   "a.description",
@@ -57,8 +58,13 @@ const SELECT = [
 ] as const;
 
 export function approvalsRepository(db: Knex) {
+  // Scoped to client approvals throughout. Material approval requests share the
+  // table (see 20260807_material_approvals) and are served by
+  // materialApprovalsRepository — this repository must never read or write one,
+  // including on findById, which guards update/delete/comment as well as reads.
   function base() {
     return db("approvals as a")
+      .where("a.kind", "client")
       .leftJoin("user as u", "u.id", "a.reviewed_by_id")
       .leftJoin("user as rr", "rr.id", "a.requested_reviewer_id");
   }
@@ -85,19 +91,19 @@ export function approvalsRepository(db: Knex) {
     },
 
     async create(record: NewApprovalRecord): Promise<ApprovalRow> {
-      await db("approvals").insert(record);
+      await db("approvals").insert({ ...record, kind: "client" });
       const row = await this.findById(record.id);
       if (!row) throw new Error("Failed to insert approval");
       return row;
     },
 
     async update(id: string, patch: ApprovalUpdatePatch): Promise<ApprovalRow | undefined> {
-      await db("approvals").where({ id }).update(patch);
+      await db("approvals").where({ id, kind: "client" }).update(patch);
       return this.findById(id);
     },
 
     async remove(id: string): Promise<void> {
-      await db("approvals").where({ id }).del();
+      await db("approvals").where({ id, kind: "client" }).del();
     },
 
     listComments(approvalId: string): Promise<ApprovalCommentRow[]> {
