@@ -22,6 +22,15 @@ const qtyFormat = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
 
 function LineRow({ row }: { row: PreconBoqRow }) {
   const priced = PRECON_PRICED_ROW_TYPES.includes(row.rowType);
+  if (row.rowType === "spec_note") {
+    return (
+      <tr>
+        <td colSpan={5} className="px-3 py-1 text-[11px] italic text-gray-400">
+          {row.description}
+        </td>
+      </tr>
+    );
+  }
   if (!priced) {
     return (
       <tr className="bg-gray-50">
@@ -76,6 +85,8 @@ export function TakeoffLinesView({ sessionId }: Props) {
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold text-gray-900">{session.title}</p>
             <Badge tone={PRECON_STATUS_TONE[session.status]}>{PRECON_STATUS_LABEL[session.status]}</Badge>
+            {session.planId ? <span className="font-mono text-[11px] text-gray-400">Rev {session.revision}</span> : null}
+            {session.supersededBy ? <Badge tone="neutral">Superseded</Badge> : null}
           </div>
           <p className="text-xs text-gray-500">
             {describeScope(session.scope)} · {progress.verified} of {progress.total} lines verified

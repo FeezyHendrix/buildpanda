@@ -203,6 +203,9 @@ export function DrawingsTab({ proposalId }: Props) {
           if (!open) setMeasureTargets([]);
         }}
         plans={measureTargets}
+        existing={sessions
+          .filter((s) => s.supersededBy === null && measureTargets.some((p) => p.id === s.planId))
+          .map((s) => ({ title: s.title, revision: s.revision, scope: s.scope }))}
         submitting={measurePlan.isPending || startDwgTakeoff.isPending}
         error={measureError}
         onConfirm={(scope) => void startMeasuring(scope)}

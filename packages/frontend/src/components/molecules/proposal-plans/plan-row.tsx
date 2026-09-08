@@ -39,29 +39,28 @@ function PlanIcon({ fileName }: { fileName: string }) {
 }
 PlanIcon.displayName = "PlanIcon";
 
-// Every run is kept for the audit trail, but the drawing shows one badge per
-// scope: the latest run, linked, with how many runs sit behind it.
-function latestPerScope(sessions: PreconSession[]): { latest: PreconSession; runs: number }[] {
-  const byScope = new Map<string, PreconSession[]>();
+// Every revision is kept for the audit trail, but the drawing shows one badge
+// per scope: the current revision, linked.
+function currentPerScope(sessions: PreconSession[]): PreconSession[] {
+  const byScope = new Map<string, PreconSession>();
   for (const s of sessions) {
+    if (s.supersededBy !== null) continue;
     const key = describeScope(s.scope);
-    byScope.set(key, [...(byScope.get(key) ?? []), s]);
+    const held = byScope.get(key);
+    if (!held || s.revision > held.revision) byScope.set(key, s);
   }
-  return [...byScope.values()].map((group) => {
-    const sorted = [...group].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return { latest: sorted[0]!, runs: group.length };
-  });
+  return [...byScope.values()];
 }
 
 function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]; staleSessions: PreconSession[] }) {
   if (sessions.length === 0 && staleSessions.length === 0) return null;
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {latestPerScope(sessions).map(({ latest, runs }) => (
-        <Link key={latest.id} to={`/sales/takeoff/${latest.id}`} className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-100" title="Open the latest take-off">
-          <Badge tone={latest.status === "failed" ? "danger" : "success"}>
-            Measured · {describeScope(latest.scope)}
-            {runs > 1 ? ` · ${runs} runs` : ""}
+      {currentPerScope(sessions).map((s) => (
+        <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-100" title="Open the current take-off">
+          <Badge tone={s.status === "failed" ? "danger" : "success"}>
+            Measured · {describeScope(s.scope)}
+            {s.revision > 1 ? ` · Rev ${s.revision}` : ""}
           </Badge>
         </Link>
       ))}

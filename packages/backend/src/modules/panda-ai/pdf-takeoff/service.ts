@@ -34,6 +34,7 @@ import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskB
 import { scheduleProgramme } from "./programme-schedule.ts";
 import { programmeEditor } from "./programme-editor.ts";
 import { reviewService } from "./review-service.ts";
+import { nextRevision } from "./revisions.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -57,10 +58,13 @@ function toSession(r: PreconSessionRow): PreconSession {
     extraction: r.extraction ?? null,
     structureContext: r.structure_context ?? null,
     layerMap: r.layer_map ?? null,
+    revision: r.revision ?? 1,
+    supersededBy: r.superseded_by ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
   };
 }
+
 
 function toSheet(r: PreconSheetRow): PreconSheet {
   return {
@@ -311,6 +315,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       if (scope.kind === "sections" && scope.elements.length === 0) {
         throw new BadRequestError("Pick at least one section to measure");
       }
+      const lineage = await nextRevision(repo, origin.planId ?? null, scope);
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -324,8 +329,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         scope: db_json(scope),
         plan_id: origin.planId ?? null,
         takeoff_kind: origin.takeoffKind ?? "pdf",
+        revision: lineage.revision,
+        superseded_by: null,
         created_by: userId,
       });
+      await repo.supersedeSessions(lineage.supersedes, session.id);
       // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
       await repo.insertSheets(
         files.map((f, i) => ({
@@ -381,7 +389,9 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     },
 
     async listSessions(orgId: string, proposalId?: string) {
-      return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
+      const rows = await repo.sessionsByOrg(orgId, proposalId);
+      const counts = await repo.lineCountsForSessions(rows.map((r: PreconSessionRow) => r.id));
+      return rows.map((r: PreconSessionRow): PreconSession => ({ ...toSession(r), lines: counts.get(r.id) ?? { total: 0, verified: 0, attention: 0 } }));
     },
 
     ...reviewService({ repo, audit, toSession, toSheet }),

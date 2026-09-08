@@ -93,6 +93,8 @@ function makeSnapshot(): PreconSnapshot {
       takeoffKind: "pdf",
       extraction: null,
       structureContext: null,
+      revision: 1,
+      supersededBy: null,
       createdBy: "u_1",
       createdAt: "2026-07-12T00:00:00.000Z",
     },

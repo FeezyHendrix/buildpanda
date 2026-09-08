@@ -27,6 +27,8 @@ interface Props {
   onConfirm: (scope: TakeoffScope) => void;
   // decides which scopes are offered; a labour-only job adds the materials schedule
   jobProfile?: string | null;
+  /** Current take-offs already on the chosen drawings, so re-measuring is explained. */
+  existing?: { title: string; revision: number; scope: TakeoffScope }[];
 }
 
 function SectionChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
@@ -76,7 +78,7 @@ function SectionPicker({ selected, onChange }: { selected: string[]; onChange: (
 }
 SectionPicker.displayName = "SectionPicker";
 
-export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error, onConfirm, jobProfile }: Props) {
+export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [] }: Props) {
   const scopes = (jobProfile && SCOPES_FOR_PROFILE[jobProfile]) || DEFAULT_MEASURE_SCOPES;
   const [kind, setKind] = useState<TakeoffScopeKind>(scopes[0] ?? "full");
   const [elements, setElements] = useState<string[]>(FINISHES_ELEMENTS);
@@ -85,6 +87,7 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
   const dwgCount = plans.length - pdfCount;
   const fileLabel = plans.length === 1 ? plans[0]!.fileName : `${plans.length} drawings`;
   const submitDisabled = kind === "sections" && elements.length === 0;
+  const replaced = existing.filter((e) => e.scope.kind === kind);
 
   return (
     <FormDialog
@@ -112,6 +115,15 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
         ))}
       </div>
       {kind === "sections" ? <SectionPicker selected={elements} onChange={setElements} /> : null}
+      {replaced.length > 0 ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {replaced.length === 1
+            ? `${replaced[0]!.title} already has this take-off (Rev ${replaced[0]!.revision}).`
+            : `${replaced.length} of these drawings already have this take-off.`}{" "}
+          Measuring again makes the next revision and marks the current one superseded. Verified lines are not carried
+          over; the earlier revision stays readable under the new one.
+        </p>
+      ) : null}
       {dwgCount > 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
           {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} read by the automated take-off into a

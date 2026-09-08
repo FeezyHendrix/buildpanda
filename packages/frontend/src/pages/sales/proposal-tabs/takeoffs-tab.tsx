@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { TakeoffList } from "@/components/molecules/proposal-plans/takeoff-list";
 import { TakeoffLinesView } from "@/components/molecules/proposal-plans/takeoff-lines-view";
+import { defaultTakeoff, groupTakeoffs } from "@/components/molecules/proposal-plans/takeoff-groups";
 import { useCreateBlankPreconSession, usePreconSessions } from "@/hooks/use-precon";
 import { useProposalTakeoffs } from "@/hooks/use-proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -23,7 +24,7 @@ export function TakeoffsTab({ proposalId }: Props) {
   const [fallbackId, setFallbackId] = useState<string | null>(null);
 
   const requested = searchParams.get("takeoff");
-  const selectedId = requested ?? fallbackId ?? sessions.find((s) => s.status === "reviewing")?.id ?? sessions[0]?.id ?? null;
+  const selectedId = requested ?? fallbackId ?? defaultTakeoff(groupTakeoffs(sessions))?.id ?? null;
 
   function select(sessionId: string) {
     setFallbackId(sessionId);

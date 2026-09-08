@@ -50,6 +50,8 @@ function fakeRepo(overrides: Partial<Record<keyof PreconRepository, unknown>> = 
     geometriesByRow: async () => [],
     rowsBySession: async () => [],
     sheetById: async () => null,
+    sessionsByPlan: async () => [],
+    supersedeSessions: async () => 0,
     ...overrides,
   } as unknown as PreconRepository;
 }
@@ -338,6 +340,8 @@ function sessionRow(overrides: Partial<PreconSessionRow> = {}): PreconSessionRow
     extraction: null,
     structure_context: null,
     programme_start_date: null,
+    revision: 1,
+    superseded_by: null,
     created_by: "usr_1",
     created_at: new Date("2026-07-12T00:00:00Z"),
     updated_at: new Date("2026-07-12T00:00:00Z"),

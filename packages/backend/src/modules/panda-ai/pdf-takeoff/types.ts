@@ -109,9 +109,18 @@ export interface PreconSessionRow {
   structure_context: StructureContext | null;
   programme_start_date: Date | string | null;
   layer_map?: SessionLayerMap | null;
+  // nth measurement of this drawing with this scope; earlier ones point at the session that replaced them
+  revision: number;
+  superseded_by: string | null;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface SessionLineCounts {
+  total: number;
+  verified: number;
+  attention: number;
 }
 
 export interface PreconSheetRow {
@@ -260,6 +269,10 @@ export interface PreconSession {
   extraction: SessionExtraction | null;
   structureContext: StructureContext | null;
   layerMap?: SessionLayerMap | null;
+  revision: number;
+  supersededBy: string | null;
+  // priced-line counts, filled on the list endpoint only
+  lines?: SessionLineCounts;
   createdBy: string | null;
   createdAt: string;
 }

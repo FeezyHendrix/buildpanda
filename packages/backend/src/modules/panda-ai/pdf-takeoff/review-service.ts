@@ -1,6 +1,7 @@
 import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
+import { nextRevision } from "./revisions.ts";
 import type {
   DwgTakeoffHandover,
   DwgTakeoffLine,
@@ -95,6 +96,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
       planId: string | null,
       file: { fileName: string; storagePath: string },
     ): Promise<PreconSession> {
+      const lineage = await nextRevision(repo, planId, FULL_TAKEOFF_SCOPE);
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -108,8 +110,11 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         scope: db_json(FULL_TAKEOFF_SCOPE),
         plan_id: planId,
         takeoff_kind: "dwg",
+        revision: lineage.revision,
+        superseded_by: null,
         created_by: userId,
       });
+      await repo.supersedeSessions(lineage.supersedes, session.id);
       await repo.insertSheets([
         {
           id: generateId("pcsh"),

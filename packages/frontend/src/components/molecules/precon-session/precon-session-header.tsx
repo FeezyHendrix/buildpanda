@@ -33,7 +33,16 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
           <Badge tone={PRECON_STATUS_TONE[session.status]} dot={running}>
             {PRECON_STATUS_LABEL[session.status]}
           </Badge>
+          {session.planId ? <span className="font-mono text-[11px] text-gray-400">Rev {session.revision}</span> : null}
         </div>
+        {session.supersededBy ? (
+          <p className="mt-1 inline-flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">
+            Superseded: the drawing was measured again after this revision.
+            <Link to={`/sales/takeoff/${session.supersededBy}`} className="font-medium underline">
+              Open the current revision
+            </Link>
+          </p>
+        ) : null}
         <p className="text-xs text-gray-500">
           {describeScope(session.scope)}
           {reviewing ? ` · ${progress.verified} of ${progress.total} lines verified` : null}
