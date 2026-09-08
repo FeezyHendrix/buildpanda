@@ -8,7 +8,10 @@ import { LineDetail } from "@/components/molecules/precon-session/line-detail";
 import { NeedsAttentionQueue, attentionRows, confidentDrafts } from "@/components/molecules/precon-session/needs-attention-queue";
 import { MEASURING_TOOLS, confidenceReasonLabel } from "@/lib/precon-meta";
 import { OpenCommentBadge, useOpenCommentCounts } from "@/components/molecules/precon-sheet-viewer/pins";
-import type { PreconBoqRow, PreconRowStatus, PreconSnapshot } from "@/api/precon";
+import { RowFocusAvatars } from "@/components/molecules/precon-session/presence-avatars";
+import { usePreconPresence } from "@/hooks/use-precon";
+import { useSession } from "@/stores/auth";
+import type { PreconBoqRow, PreconRowStatus, PreconSnapshot, PresenceUser } from "@/api/precon";
 
 const STATUS_META: Record<PreconRowStatus, { label: string; mark: string }> = {
   ai_generated: { label: "AI draft", mark: "◇" },
@@ -18,6 +21,19 @@ const STATUS_META: Record<PreconRowStatus, { label: string; mark: string }> = {
 };
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+const NO_USERS: PresenceUser[] = [];
+
+// WS-M3B: which other users are on which row, so a line can wear their avatar
+function focusByRow(users: PresenceUser[], currentUserId: string | null): Map<string, PresenceUser[]> {
+  const map = new Map<string, PresenceUser[]>();
+  for (const user of users) {
+    if (!user.rowId || user.id === currentUserId) continue;
+    const list = map.get(user.rowId);
+    if (list) list.push(user);
+    else map.set(user.rowId, [user]);
+  }
+  return map;
+}
 
 interface PanelProps {
   sessionId: string;
@@ -52,6 +68,7 @@ function BillRow({
   selected,
   sessionId,
   openComments,
+  focusedBy,
   onSelect,
   onConflict,
 }: {
@@ -59,6 +76,8 @@ function BillRow({
   selected: boolean;
   sessionId: string;
   openComments: number;
+  /** Other users whose focus is this row. */
+  focusedBy: PresenceUser[];
   onSelect: () => void;
   onConflict: (message: string) => void;
 }) {
@@ -90,6 +109,7 @@ function BillRow({
         <span className={cn("min-w-0 flex-1 truncate text-gray-800", row.status === "rejected" && "line-through")}>{row.description}</span>
         {reason ? <span className="hidden shrink-0 text-[10px] text-amber-700 xl:inline">{reason}</span> : null}
         <OpenCommentBadge count={openComments} />
+        <RowFocusAvatars users={focusedBy} />
         <span className="shrink-0 tabular-nums text-gray-600">
           {row.qty ?? "—"} {row.unit ?? ""}
         </span>
@@ -128,6 +148,10 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
   const [conflictNote, setConflictNote] = useState<string | null>(null);
   const createBill = useCreatePreconBill(sessionId);
   const openComments = useOpenCommentCounts(sessionId);
+  const presence = usePreconPresence(sessionId);
+  const { data: auth } = useSession();
+  const currentUserId = auth?.user?.id ?? null;
+  const focused = useMemo(() => focusByRow(presence, currentUserId), [presence, currentUserId]);
 
   const sheetByRow = useMemo(() => {
     const map = new Map<string, string>();
@@ -186,6 +210,7 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
                   row={row}
                   sessionId={sessionId}
                   openComments={openComments.get(row.id) ?? 0}
+                  focusedBy={focused.get(row.id) ?? NO_USERS}
                   selected={row.id === selectedRowId}
                   onSelect={() => onSelectRow(row.id === selectedRowId ? null : row.id, sheetByRow.get(row.id) ?? null)}
                   onConflict={setConflictNote}

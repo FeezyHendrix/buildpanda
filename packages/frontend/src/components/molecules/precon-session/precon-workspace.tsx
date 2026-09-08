@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
 import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
+import { StaleRevisionBanner } from "@/components/molecules/precon-session/stale-revision-banner";
 import { StructureFields } from "@/components/molecules/precon-session/structure-fields";
 import type { PreconSheet, PreconSnapshot } from "@/api/precon";
+import { usePreconFocus } from "@/hooks/use-precon";
 import { cn } from "@/lib/utils";
 
 export interface ZoomRequest {
@@ -38,9 +40,12 @@ export function PreconWorkspace({ sessionId, snapshot, view, onSelectSheet, onSe
   const [structureOpen, setStructureOpen] = useState(false);
   const hasDrawings = snapshot.sheets.length > 0;
   const manual = session.takeoffKind === "manual";
+  // WS-M3B: the selected row is this user's focus for everyone else on the session
+  usePreconFocus(sessionId, view.selectedRowId);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
+      {session.stale && !session.supersededBy ? <StaleRevisionBanner session={session} /> : null}
       {structureOpen ? (
         <StructureFields session={session} onClose={() => setStructureOpen(false)} />
       ) : hasDrawings && !manual ? (

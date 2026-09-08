@@ -134,6 +134,8 @@ export interface PreconSession {
   revision: number;
   /** Set when a later revision replaced this take-off; it stays readable. */
   supersededBy: string | null;
+  /** WS-M3B: the drawing this take-off measured has a newer revision; null when it is current. */
+  stale?: { newerPlanId: string; newerRevision: string | null } | null;
   /** Priced-line counts, present on the list endpoint. */
   lines?: { total: number; verified: number; attention: number };
   createdBy: string | null;
@@ -565,3 +567,68 @@ export interface CreateMeasurementResult {
   row: PreconBoqRow;
   geometry: PreconGeometry;
 }
+
+// ---- WS-M3B · assemblies, presence and focus (endpoints built by WS-M3A) ----
+
+/** One line an assembly puts in the bill per drawn quantity: qty = base × factor. */
+export interface AssemblyItem {
+  description: string;
+  unit: string;
+  factor: number;
+  elementGroup: string;
+  rateId: string | null;
+  code: string | null;
+}
+
+/** An org-level recipe: draw one shape, get every line the trade prices with it. */
+export interface Assembly {
+  id: string;
+  orgId: string;
+  name: string;
+  /** The unit the drawn base quantity is in (m, m2, nr…). */
+  unit: string;
+  elementGroup: string;
+  items: AssemblyItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpsertAssemblyInput {
+  name: string;
+  unit: string;
+  elementGroup: string;
+  items: AssemblyItem[];
+}
+
+/** `CreateMeasurementBody` without the description: the assembly names each line. */
+export type CreateAssemblyMeasurementBody = Omit<CreateMeasurementBody, "description"> & { assemblyId: string };
+
+export interface CreateAssemblyMeasurementResult {
+  rows: PreconBoqRow[];
+  geometry: PreconGeometry;
+}
+
+/** Who is on the session right now and, if they have one selected, which bill row. */
+export interface PresenceUser {
+  id: string;
+  name: string;
+  rowId: string | null;
+}
+
+export const preconAssembliesApi = {
+  list: () => api.get<Assembly[]>("/precon/assemblies").then((r) => r.data),
+  create: (body: UpsertAssemblyInput) => api.post<Assembly>("/precon/assemblies", body).then((r) => r.data),
+  update: (assemblyId: string, body: Partial<UpsertAssemblyInput>) =>
+    api.patch<Assembly>(`/precon/assemblies/${assemblyId}`, body).then((r) => r.data),
+  remove: (assemblyId: string) => api.delete(`/precon/assemblies/${assemblyId}`).then((r) => r.data),
+
+  /** One drawn shape becomes one geometry and one row per assembly item. */
+  createMeasurement: (sessionId: string, body: CreateAssemblyMeasurementBody) =>
+    api.post<CreateAssemblyMeasurementResult>(`/precon/sessions/${sessionId}/measurements/assembly`, body).then((r) => r.data),
+};
+
+export const preconPresenceApi = {
+  /** Tell the others which row this user is on; null clears it. The hub republishes `precon.presence`. */
+  focus: (sessionId: string, rowId: string | null) =>
+    api.post<void>(`/precon/sessions/${sessionId}/focus`, { rowId }).then((r) => r.data),
+};
