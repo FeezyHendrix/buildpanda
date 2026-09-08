@@ -8,6 +8,9 @@ import type { GeoSegment, GeoText, RoomAtResult, SheetGeometry } from "./types.t
 // small gaps sealed); one that still leaks is not a room.
 
 const GRID_MM = 25;
+// narrower than this and the enclosure is a wall cavity or a duct, not a room
+const MIN_ROOM_WIDTH_MM = 600;
+const MAX_SEED_TRIES = 400;
 const MAX_CELLS_PER_AXIS = 2000;
 // how far a room can extend from the click, and how large it can be
 const REACH_MM = 30_000;
@@ -35,6 +38,9 @@ interface Grid {
 interface Fill {
   cells: Uint8Array;
   leaked: boolean;
+  // filled cells, and filled cells touching a wall (the region's perimeter)
+  count: number;
+  edgeCount: number;
 }
 
 const NEIGHBOURS = [
@@ -64,25 +70,32 @@ function flood(grid: Grid, mask: Uint8Array, start: number, maxCells: number): F
   const stack = [start];
   cells[start] = 1;
   let count = 0;
+  let edgeCount = 0;
   let leaked = false;
   while (stack.length) {
     const idx = stack.pop()!;
-    if (++count > maxCells) return { cells, leaked: true };
+    if (++count > maxCells) return { cells, leaked: true, count, edgeCount };
     const x = idx % cols;
     const y = (idx - x) / cols;
     // reaching the window's edge means the space is open: no point filling on
-    if (x === 0 || x === cols - 1 || y === 0 || y === rows - 1) return { cells, leaked: true };
+    if (x === 0 || x === cols - 1 || y === 0 || y === rows - 1) return { cells, leaked: true, count, edgeCount };
+    let onEdge = false;
     for (const [dx, dy] of NEIGHBOURS) {
       const nx = x + dx;
       const ny = y + dy;
       if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
       const n = ny * cols + nx;
-      if (mask[n] || cells[n]) continue;
+      if (mask[n]) {
+        onEdge = true;
+        continue;
+      }
+      if (cells[n]) continue;
       cells[n] = 1;
       stack.push(n);
     }
+    if (onEdge) edgeCount += 1;
   }
-  return { cells, leaked };
+  return { cells, leaked, count, edgeCount };
 }
 
 /** Separable max filter: a cell takes `value` when any cell within r (Chebyshev) has it. */
@@ -291,7 +304,12 @@ function labelInside(texts: GeoText[], polygon: number[][], x: number, y: number
 /** The enclosed space around a point, or null when the fill runs out to the open. */
 export function roomAt(geo: SheetGeometry, point: [number, number], mmPerPt: number, opts: RoomAtOptions = {}): RoomAtResult | null {
   const penPt = opts.penPt ?? 0;
-  const walls = geo.segments.filter((s) => s.width >= penPt - 1e-6);
+  // on a DWG the layer says what a line is: fill against walls and columns,
+  // and let doors and windows seal an opening only when the room leaks
+  const tagged = geo.segments.some((s) => s.element !== undefined);
+  const isWall = (s: GeoSegment) => (tagged ? s.element === "walls" || s.element === "columns" : s.width >= penPt - 1e-6);
+  const walls = geo.segments.filter(isWall);
+  const openings = tagged ? geo.segments.filter((s) => s.element === "doors" || s.element === "windows") : [];
   const reach = REACH_MM / mmPerPt;
   const window = { minX: point[0] - reach, minY: point[1] - reach, maxX: point[0] + reach, maxY: point[1] + reach };
   if (geo.bounds) {
@@ -319,18 +337,40 @@ export function roomAt(geo: SheetGeometry, point: [number, number], mmPerPt: num
   const cy = Math.floor((point[1] - grid.minY) / cellPt);
   const maxCells = Math.ceil(MAX_ROOM_M2 / (gridMm / 1000) ** 2);
   let sealed: Uint8Array | null = null;
-  const sealedMask = () => (sealed ??= closed(mask, grid.cols, grid.rows, Math.min(30, Math.round(CLOSING_REACH_MM / gridMm))));
+  let withOpenings: Uint8Array | null = null;
+  const openingsMask = () => {
+    if (withOpenings) return withOpenings;
+    withOpenings = new Uint8Array(mask);
+    stamp(grid, withOpenings, openings);
+    return withOpenings;
+  };
+  const sealedMask = () => (sealed ??= closed(openings.length ? openingsMask() : mask, grid.cols, grid.rows, Math.min(30, Math.round(CLOSING_REACH_MM / gridMm))));
+
+  // The gap between a wall's two faces is an enclosed region too. A room
+  // is at least MIN_ROOM_WIDTH_MM wide somewhere; a cavity is not, and
+  // area / perimeter ≈ half the width of a long thin shape.
+  const minWidthCells = MIN_ROOM_WIDTH_MM / gridMm;
+  const isRoom = (f: Fill): boolean => f.count >= minWidthCells * minWidthCells && f.count / Math.max(1, f.edgeCount) >= minWidthCells / 4;
 
   let fill: Fill | null = null;
+  let tried = 0;
   for (const start of openCellsNear(grid, mask, cx, cy)) {
+    if (tried++ > MAX_SEED_TRIES) break;
     const raw = flood(grid, mask, start, maxCells);
-    if (!raw.leaked) {
+    if (!raw.leaked && isRoom(raw)) {
       fill = raw;
       break;
     }
+    if (openings.length && !openingsMask()[start]) {
+      const doored = flood(grid, openingsMask(), start, maxCells);
+      if (!doored.leaked && isRoom(doored)) {
+        fill = doored;
+        break;
+      }
+    }
     if (sealedMask()[start]) continue;
     const closedFill = flood(grid, sealedMask(), start, maxCells);
-    if (!closedFill.leaked) {
+    if (!closedFill.leaked && isRoom(closedFill)) {
       fill = closedFill;
       break;
     }
