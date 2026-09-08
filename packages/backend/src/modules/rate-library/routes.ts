@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { assemblyRoutes } from "./assembly-routes.ts";
 import { rateLibraryRepository } from "./repository.ts";
 import { rateLibraryService } from "./service.ts";
 import { BUILDUP_COMPONENTS } from "./types.ts";
@@ -114,6 +115,7 @@ const matchBody = {
 // is what a new card prices in.
 const rateLibraryRoutes: FastifyPluginAsync = async (fastify) => {
   const service = rateLibraryService(rateLibraryRepository(fastify.db));
+  await fastify.register(assemblyRoutes);
 
   async function orgCurrency(orgId: string): Promise<string> {
     const org = await fastify.db("organization").where({ id: orgId }).select("default_currency").first();

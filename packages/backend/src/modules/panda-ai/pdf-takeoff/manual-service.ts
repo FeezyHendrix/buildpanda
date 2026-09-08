@@ -277,5 +277,9 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       const snap = await snapshot(sessionId);
       return { fileName: csvFileName(snap.session.title), csv: buildTakeoffCsv(snap) };
     },
+
+    // The assembly path (assembly-measure.ts) measures one shape and bills it
+    // as several lines through the same bill lookup, insert and announcement.
+    manualLine: { targetBill, insert: insertManualLine, announce, audit, toRow, toGeometry },
   };
 }

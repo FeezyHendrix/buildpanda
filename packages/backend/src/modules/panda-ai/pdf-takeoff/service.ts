@@ -36,6 +36,7 @@ import { programmeEditor } from "./programme-editor.ts";
 import { reviewService } from "./review-service.ts";
 import { manualService } from "./manual-service.ts";
 import { lineageKindOf, nextRevision } from "./revisions.ts";
+import { noStaleLookup, withStale, type StaleLookup } from "./stale.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -226,7 +227,7 @@ export interface RowChangeEvent {
 
 export type PublishFn = (sessionId: string, event: RowChangeEvent) => void;
 
-export function preconService(repo: PreconRepository, publish: PublishFn = () => {}) {
+export function preconService(repo: PreconRepository, publish: PublishFn = () => {}, staleLookup: StaleLookup = noStaleLookup) {
   async function audit(
     sessionId: string,
     rowId: string | null,
@@ -395,7 +396,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     async listSessions(orgId: string, proposalId?: string) {
       const rows = await repo.sessionsByOrg(orgId, proposalId);
       const counts = await repo.lineCountsForSessions(rows.map((r: PreconSessionRow) => r.id));
-      return rows.map((r: PreconSessionRow): PreconSession => ({ ...toSession(r), lines: counts.get(r.id) ?? { total: 0, verified: 0, attention: 0 } }));
+      const sessions = rows.map((r: PreconSessionRow): PreconSession => ({ ...toSession(r), lines: counts.get(r.id) ?? { total: 0, verified: 0, attention: 0 } }));
+      return withStale(sessions, staleLookup);
     },
 
     ...reviewService({ repo, audit, toSession, toSheet }),
@@ -461,7 +463,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const total = statusCounts.reduce((s, c) => s + c.count, 0);
       const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
       return {
-        session: toSession(session),
+        session: (await withStale([toSession(session)], staleLookup))[0]!,
         sheets: sheets.map(toSheet),
         bills: bills.map(toBill),
         rows,
