@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 export const PRECON_STEPS = [
   { key: "measure", label: "Measure", hint: "Panda AI reads the drawings" },
   { key: "review", label: "Review", hint: "Verify every line" },
+  { key: "programme", label: "Programme", hint: "Draft the schedule from the bill" },
   { key: "output", label: "Output", hint: "Export or apply to the proposal" },
 ] as const;
 export type PreconStepKey = (typeof PRECON_STEPS)[number]["key"];

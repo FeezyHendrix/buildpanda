@@ -52,6 +52,8 @@ export interface Proposal {
   clientPhone: string | null;
   location: string | null;
   brief: string | null;
+  // set on creation; drives which take-off scopes are offered (see precon-meta)
+  jobProfile?: "full_contract" | "labour_only" | "supply_only";
   status: ProposalStatus;
   currency: string;
   validUntil: string | null;
@@ -132,6 +134,8 @@ export interface TakeoffJob {
   drawingCount: number;
   elementCount: number;
   error: string | null;
+  // set once the DWG lines land as a reviewable take-off session
+  sessionId?: string | null;
   result: {
     drawings: Array<{ id: number; kind: string; widthM: number; heightM: number; entityCount: number }>;
     selectedDrawingId: number | null;

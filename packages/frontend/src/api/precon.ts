@@ -36,13 +36,19 @@ export interface PreconProgressEntry {
   message: string;
 }
 
-export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas"] as const;
+export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas", "materials", "early"] as const;
 export type TakeoffScopeKind = (typeof TAKEOFF_SCOPE_KINDS)[number];
 
 export interface TakeoffScope {
   kind: TakeoffScopeKind;
   elements: string[];
 }
+
+export const TAKEOFF_KINDS = ["pdf", "dwg", "manual", "early"] as const;
+export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
+
+export const ROW_ORIGINS = ["ai", "manual", "prompt", "migrated"] as const;
+export type RowOrigin = (typeof ROW_ORIGINS)[number];
 export type PreconSheetKind = "floor-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
 
 export const PRECON_ROW_TYPES = ["heading", "work_section", "spec_note", "item", "provisional_sum"] as const;
@@ -61,6 +67,8 @@ export interface PreconSession {
   phase: PreconPhase | null;
   progressLog: PreconProgressEntry[];
   scope: TakeoffScope;
+  planId: string | null;
+  takeoffKind: TakeoffKind;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
@@ -106,9 +114,23 @@ export interface PreconBoqRow {
   status: PreconRowStatus | null;
   version: number;
   measurementBasis: string | null;
+  confidenceReason: string | null;
+  provenance: string | null;
+  origin: RowOrigin;
+  editedAt: string | null;
+  editedBy: string | null;
   verifiedBy: string | null;
   verifiedAt: string | null;
 }
+
+export interface UpdateSheetInput {
+  kind?: PreconSheetKind;
+  title?: string | null;
+  scaleMmPerPt?: number | null;
+  dimUnit?: "mm" | "cm" | "m" | null;
+}
+
+export type UpdateStructureInput = Partial<Omit<StructureContext, "signals" | "confidence">>;
 
 export interface PreconGeometry {
   id: string;
@@ -232,6 +254,18 @@ export const preconApi = {
 
   retrySession: (sessionId: string) =>
     api.post<PreconSession>(`/precon/sessions/${sessionId}/retry`).then((r) => r.data),
+
+  updateSheet: (sheetId: string, input: UpdateSheetInput) =>
+    api.patch<PreconSheet>(`/precon/sheets/${sheetId}`, input).then((r) => r.data),
+
+  remeasureSheet: (sheetId: string) =>
+    api.post<{ status: string }>(`/precon/sheets/${sheetId}/remeasure`).then((r) => r.data),
+
+  updateStructure: (sessionId: string, input: UpdateStructureInput) =>
+    api.patch<PreconSession>(`/precon/sessions/${sessionId}/structure`, input).then((r) => r.data),
+
+  redraftBill: (sessionId: string) =>
+    api.post<{ status: string }>(`/precon/sessions/${sessionId}/redraft-bill`).then((r) => r.data),
 
   createSession: (files: File[], title?: string) => {
     const form = new FormData();

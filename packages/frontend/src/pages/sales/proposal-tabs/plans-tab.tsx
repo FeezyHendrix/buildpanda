@@ -20,6 +20,7 @@ import {
   useDeletePlan,
   useProposalPlans,
   useProposalTakeoffs,
+  useProposalWorkspace,
   useStartProposalTakeoff,
 } from "@/hooks/use-proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -37,6 +38,8 @@ export function PlansTab({ proposalId }: Props) {
   const { data: plans = [], isPending: plansPending } = useProposalPlans(proposalId);
   const { data: jobs = [] } = useProposalTakeoffs(proposalId);
   const { data: sessions = [] } = usePreconSessions(proposalId);
+  const { data: workspace } = useProposalWorkspace(proposalId);
+  const jobProfile = workspace?.proposal.jobProfile ?? null;
   const uploadFile = useUploadFile();
   const addPlan = useAddPlan(proposalId);
   const deletePlan = useDeletePlan(proposalId);
@@ -159,6 +162,7 @@ export function PlansTab({ proposalId }: Props) {
         submitting={measurePlan.isPending || startDwgTakeoff.isPending}
         error={measureError}
         onConfirm={(scope) => void startMeasuring(scope)}
+        jobProfile={jobProfile}
       />
 
       <ConfirmDialog
