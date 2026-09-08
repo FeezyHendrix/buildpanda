@@ -52,8 +52,19 @@ export interface DwgSvg {
   bounds: Bounds | null;
 }
 
-export function renderDwgSvg(doc: DwgDoc): DwgSvg {
+export interface RenderOptions {
+  // draw only what falls inside this drawing-unit window: one sheet of the
+  // register rather than the whole model space
+  bounds?: Bounds;
+}
+
+export function renderDwgSvg(doc: DwgDoc, opts: RenderOptions = {}): DwgSvg {
   const byOwner = new Map<number, DwgEntity[]>();
+  const clip = opts.bounds;
+  const padX = clip ? Math.max((clip.maxX - clip.minX) * 0.02, 1) : 0;
+  const padY = clip ? Math.max((clip.maxY - clip.minY) * 0.02, 1) : 0;
+  const inside = (x: number, y: number): boolean =>
+    !clip || (x >= clip.minX - padX && x <= clip.maxX + padX && y >= clip.minY - padY && y <= clip.maxY + padY);
   const modelSpace: DwgEntity[] = [];
   let modelHeader: number | null = null;
   for (const e of doc.entities) {
@@ -88,6 +99,7 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
         if (!e.start || !e.end) return;
         const [x1, y1] = apply(m, e.start[0]!, e.start[1]!);
         const [x2, y2] = apply(m, e.end[0]!, e.end[1]!);
+        if (!inside(x1, y1) && !inside(x2, y2)) return;
         grow(x1, y1);
         grow(x2, y2);
         parts.push(`<line x1="${fmt(x1)}" y1="${fmt(y1)}" x2="${fmt(x2)}" y2="${fmt(y2)}"/>`);
@@ -98,6 +110,7 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
       case "POLYLINE_2D": {
         if (!e.points || e.points.length < 2) return;
         const pts = e.points.map((p) => apply(m, p[0]!, p[1]!));
+        if (!pts.some(([x, y]) => inside(x, y))) return;
         for (const [x, y] of pts) grow(x, y);
         const closed = e.flag !== undefined && (e.flag & 512) !== 0;
         parts.push(`<${closed ? "polygon" : "polyline"} points="${pts.map(([x, y]) => `${fmt(x)},${fmt(y)}`).join(" ")}"/>`);
@@ -108,6 +121,7 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
         if (!e.center || e.radius === undefined) return;
         const [cx, cy] = apply(m, e.center[0]!, e.center[1]!);
         const r = e.radius * Math.hypot(m[0], m[1]);
+        if (!inside(cx, cy)) return;
         grow(cx - r, cy - r);
         grow(cx + r, cy + r);
         parts.push(`<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="${fmt(r)}"/>`);
@@ -126,6 +140,7 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
         const [x1, y1] = apply(m, sx, sy);
         const [x2, y2] = apply(m, ex, ey);
         const rs = r * Math.hypot(m[0], m[1]);
+        if (!inside(x1, y1) && !inside(x2, y2)) return;
         grow(x1, y1);
         grow(x2, y2);
         // DWG arcs run counter-clockwise; the matrix may mirror, so pick the
@@ -143,6 +158,7 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
         if (!value) return;
         const [x, y] = apply(m, e.ins_pt[0]!, e.ins_pt[1]!);
         const size = (e.height ?? 2.5) * Math.hypot(m[0], m[1]);
+        if (!inside(x, y)) return;
         grow(x, y);
         // text is flipped back upright inside the y-inverted root group
         parts.push(
@@ -155,6 +171,13 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
         if (depth >= MAX_DEPTH || !e.ins_pt) return;
         const block = byOwner.get(abs(e.block_header) ?? -1);
         if (!block) return;
+        // an insert far outside the window cannot draw inside it (blocks are
+        // small relative to a drawing); one padded test avoids expanding it
+        if (clip) {
+          const [ix, iy] = apply(m, e.ins_pt[0]!, e.ins_pt[1]!);
+          const slack = Math.max(padX, padY) * 10;
+          if (ix < clip.minX - slack || ix > clip.maxX + slack || iy < clip.minY - slack || iy > clip.maxY + slack) return;
+        }
         const sx = e.scale?.[0] ?? 1;
         const sy = e.scale?.[1] ?? 1;
         const rot = e.rotation ?? 0;
@@ -174,6 +197,13 @@ export function renderDwgSvg(doc: DwgDoc): DwgSvg {
 
   if (!Number.isFinite(bounds.minX) || primitives === 0) {
     return { svg: "", primitives: 0, bounds: null };
+  }
+  // a clipped render frames the sheet's own window, not whatever leaked in
+  if (clip) {
+    bounds.minX = clip.minX;
+    bounds.minY = clip.minY;
+    bounds.maxX = clip.maxX;
+    bounds.maxY = clip.maxY;
   }
   const w = Math.max(bounds.maxX - bounds.minX, 1);
   const h = Math.max(bounds.maxY - bounds.minY, 1);

@@ -20,12 +20,14 @@ const ELEMENT_LABEL: Record<LayerElement, string> = {
   dimensions: "Dimensions",
   text: "Text",
   grid: "Grid",
-  ignored: "Ignored",
+  ignore: "Ignored",
+  levels: "Levels",
+  auto: "Auto",
 };
 
 const MEASURED: ReadonlySet<LayerElement> = new Set(["walls", "columns", "doors", "windows", "sanitary"]);
 
-const elementTone = (element: LayerElement): BadgeTone => (MEASURED.has(element) ? "success" : element === "ignored" ? "neutral" : "info");
+const elementTone = (element: LayerElement): BadgeTone => (MEASURED.has(element) ? "success" : element === "ignore" ? "neutral" : "info");
 
 const UNIT_LABEL: Record<string, string> = { mm: "millimetres", cm: "centimetres", m: "metres", in: "inches", ft: "feet", unknown: "page points" };
 

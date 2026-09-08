@@ -12,6 +12,7 @@ import type {
   PreconSheetRow,
   PreconSummarySettingsRow,
   RowStatus,
+  SessionLayerMap,
   SessionStatus,
   SheetStatus,
   PreconProgressEntry,
@@ -129,10 +130,19 @@ export function preconRepository(db: Knex) {
       db<PreconSessionRow>("precon_sessions")
         .where({ id })
         .update({ structure_context: db.raw("?::jsonb", [JSON.stringify(structure)]), updated_at: db.fn.now() }),
+    updateSessionLayerMap: (id: string, layerMap: SessionLayerMap | null) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({ layer_map: (layerMap === null ? null : db.raw("?::jsonb", [JSON.stringify(layerMap)])) as never, updated_at: db.fn.now() }),
 
     // sheets
     insertSheets: (rows: Omit<PreconSheetRow, "created_at" | "updated_at">[]) =>
-      rows.length ? db<PreconSheetRow>("precon_sheets").insert(rows) : Promise.resolve(),
+      rows.length
+        ? db<PreconSheetRow>("precon_sheets").insert(
+            rows.map((r) => ({ ...r, bounds: (r.bounds ? JSON.stringify(r.bounds) : null) as never })),
+          )
+        : Promise.resolve(),
+    deleteSheetsBySession: (sessionId: string) => db("precon_sheets").where({ session_id: sessionId }).delete(),
     sheetsBySession: (sessionId: string) =>
       db<PreconSheetRow>("precon_sheets").where({ session_id: sessionId }).orderBy("page_number", "asc"),
     sheetById: (id: string) => db<PreconSheetRow>("precon_sheets").where({ id }).first(),
@@ -197,7 +207,11 @@ export function preconRepository(db: Knex) {
       // chunked: a generated BOQ can be several hundred rows
       for (let i = 0; i < rows.length; i += 200) {
         await db<PreconBoqRowRow>("precon_boq_rows").insert(
-          rows.slice(i, i + 200).map((r) => ({ ...r, deductions: JSON.stringify(r.deductions) as never })),
+          rows.slice(i, i + 200).map((r) => ({
+            ...r,
+            deductions: JSON.stringify(r.deductions) as never,
+            evidence: (r.evidence ? JSON.stringify(r.evidence) : null) as never,
+          })),
         );
       }
     },

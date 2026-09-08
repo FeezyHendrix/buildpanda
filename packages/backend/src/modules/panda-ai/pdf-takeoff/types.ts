@@ -39,6 +39,17 @@ export type RowOrigin = (typeof ROW_ORIGINS)[number];
 export const SHEET_KINDS = ["floor-plan", "elevation", "section", "detail", "schedule", "unknown"] as const;
 export type SheetKind = (typeof SHEET_KINDS)[number];
 
+// The window of the DWG model space one register sheet occupies, in drawing units.
+export interface SheetBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+// Which element each DWG layer holds, as the engine proposed it and the reviewer corrected it.
+export type SessionLayerMap = Record<string, string>;
+
 export const SHEET_STATUSES = ["pending", "measured", "unmeasurable"] as const;
 export type SheetStatus = (typeof SHEET_STATUSES)[number];
 
@@ -97,6 +108,7 @@ export interface PreconSessionRow {
   extraction: SessionExtraction | null;
   structure_context: StructureContext | null;
   programme_start_date: Date | string | null;
+  layer_map?: SessionLayerMap | null;
   created_by: string | null;
   created_at: Date;
   updated_at: Date;
@@ -117,6 +129,7 @@ export interface PreconSheetRow {
   dim_unit: DimUnit | null;
   snap_index: number[][] | null;
   geo_summary: GeoSummary | null;
+  bounds?: SheetBounds | null;
   error: string | null;
   created_at: Date;
   updated_at: Date;
@@ -157,6 +170,8 @@ export interface PreconBoqRowRow {
   measurement_basis: string | null;
   confidence_reason: string | null;
   provenance: string | null;
+  // DWG entity handles the engine computed this line from
+  evidence?: number[] | null;
   origin: RowOrigin;
   edited_at: Date | null;
   edited_by: string | null;
@@ -244,6 +259,7 @@ export interface PreconSession {
   // what the parser found, per sheet, before measurement
   extraction: SessionExtraction | null;
   structureContext: StructureContext | null;
+  layerMap?: SessionLayerMap | null;
   createdBy: string | null;
   createdAt: string;
 }
@@ -261,6 +277,7 @@ export interface PreconSheet {
   scaleConfidence: number | null;
   dimUnit: DimUnit | null;
   geoSummary: GeoSummary | null;
+  bounds: SheetBounds | null;
   error: string | null;
 }
 
@@ -291,6 +308,7 @@ export interface PreconBoqRowDto {
   measurementBasis: string | null;
   confidenceReason: string | null;
   provenance: string | null;
+  evidence?: number[];
   origin: RowOrigin;
   editedAt: string | null;
   editedBy: string | null;
@@ -419,6 +437,10 @@ export interface UpdateSheetBody {
 
 export type UpdateStructureBody = Partial<Omit<StructureContext, "signals" | "confidence">>;
 
+export interface UpdateLayerMapBody {
+  layerMap: SessionLayerMap;
+}
+
 // Rows a DWG take-off hands over; the session stores them like any AI draft.
 export interface DwgTakeoffLine {
   trade: string;
@@ -427,6 +449,31 @@ export interface DwgTakeoffLine {
   unit: string;
   confidence: "high" | "medium" | "low";
   basis: string;
+  // the register sheet the line was measured on, and what checked it
+  sheetId?: number;
+  evidence?: number[];
+  reason?: string;
+  crossCheck?: string;
+}
+
+// One drawing of the DWG register, as the engine hands it to the session.
+export interface DwgRegisterSheet {
+  id: number;
+  code: string;
+  title: string;
+  kind: string;
+  bounds: SheetBounds;
+  levelMm: number | null;
+  multiplier: number;
+}
+
+// Everything the DWG engine hands the session: units, register, layer map, lines, notes.
+export interface DwgTakeoffHandover {
+  units: { unit: string; scaleToMm: number; errorPct: number; note: string };
+  layerMap: SessionLayerMap;
+  sheets: DwgRegisterSheet[];
+  items: DwgTakeoffLine[];
+  notes: string[];
 }
 
 export interface CreateBillBody {

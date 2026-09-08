@@ -115,7 +115,7 @@ export interface GeoDocument {
 // ---------- extraction report ----------
 
 // What a layer would be treated as by the measuring rules that exist today.
-// "ignored" is the honest answer for everything the engines never read.
+// "ignore" is the honest answer for everything the engines never read.
 export const LAYER_ELEMENTS = [
   "walls",
   "columns",
@@ -128,7 +128,7 @@ export const LAYER_ELEMENTS = [
   "dimensions",
   "text",
   "grid",
-  "ignored",
+  "ignore",
 ] as const;
 export type LayerElement = (typeof LAYER_ELEMENTS)[number];
 

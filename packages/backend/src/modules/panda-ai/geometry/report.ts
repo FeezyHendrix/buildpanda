@@ -23,7 +23,7 @@ const CONSUMED: ReadonlySet<LayerElement> = new Set(["walls", "columns", "doors"
 
 export function elementForLayer(name: string): LayerElement {
   for (const [pattern, element] of LAYER_RULES) if (pattern.test(name)) return element;
-  return "ignored";
+  return "ignore";
 }
 
 function median(values: number[]): number | null {
@@ -73,7 +73,7 @@ export function buildReport(doc: GeoDocument): ExtractionReport {
       name: key,
       count: 0,
       color: doc.layers.find((l) => l.name === key)?.color ?? null,
-      element: name ? elementForLayer(name) : "ignored",
+      element: name ? elementForLayer(name) : "ignore",
       byType: {},
     };
     byLayer.set(key, created);
