@@ -126,6 +126,11 @@ function row(overrides: Partial<PreconBoqRowDto>): PreconBoqRowDto {
     measurementBasis: null,
     verifiedBy: "usr_1",
     verifiedAt: null,
+    confidenceReason: null,
+    provenance: null,
+    origin: "ai",
+    editedAt: null,
+    editedBy: null,
     ...overrides,
   };
 }

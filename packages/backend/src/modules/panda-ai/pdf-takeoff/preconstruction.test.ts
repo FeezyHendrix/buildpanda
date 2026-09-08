@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeSummary, preconService, quantityFromVertices } from "./service.ts";
 import type { PreconRepository } from "./repository.ts";
-import type { PreconBoqRowDto, PreconBoqRowRow, PreconSessionRow } from "./types.ts";
+import type { PreconBoqRowDto, PreconBoqRowRow, PreconSessionRow, PreconSheetRow } from "./types.ts";
 
 function itemRow(overrides: Partial<PreconBoqRowRow> = {}): PreconBoqRowRow {
   return {
@@ -24,6 +24,11 @@ function itemRow(overrides: Partial<PreconBoqRowRow> = {}): PreconBoqRowRow {
     status: "ai_generated",
     version: 1,
     measurement_basis: "centreline x height",
+    confidence_reason: null,
+    provenance: "Measured on SHT-01: centreline x height",
+    origin: "ai",
+    edited_at: null,
+    edited_by: null,
     verified_by: null,
     verified_at: null,
     created_at: new Date("2026-07-12T00:00:00Z"),
@@ -328,6 +333,8 @@ function sessionRow(overrides: Partial<PreconSessionRow> = {}): PreconSessionRow
     phase: "building",
     progress_log: [{ at: "2026-07-12T00:00:00Z", phase: "building", message: "Building up the bill" }],
     scope: { kind: "full", elements: [] },
+    plan_id: null,
+    takeoff_kind: "pdf",
     structure_context: null,
     programme_start_date: null,
     created_by: "usr_1",
@@ -394,4 +401,136 @@ test("createSession rejects a sections scope with nothing selected and stores th
   });
   assert.deepEqual(inserted[0]?.scope, { kind: "areas", elements: [] });
   assert.equal(session.scope.kind, "areas");
+});
+
+function sheetRow(overrides: Partial<PreconSheetRow> = {}): PreconSheetRow {
+  return {
+    id: "pcsh_1",
+    session_id: "pcs_1",
+    file_name: "Ground floor.pdf",
+    storage_path: "uploads/ground.pdf",
+    page_number: 1,
+    code: "SHT-01",
+    title: null,
+    kind: "unknown",
+    status: "unmeasurable",
+    scale_mm_per_pt: null,
+    scale_confidence: null,
+    dim_unit: null,
+    snap_index: null,
+    error: "No reliable scale",
+    created_at: new Date("2026-07-12T00:00:00Z"),
+    updated_at: new Date("2026-07-12T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+test("updateSheet: a typed scale is authoritative and re-enables an unmeasurable sheet", async () => {
+  const patches: Record<string, unknown>[] = [];
+  let current = sheetRow();
+  const svc = preconService(
+    fakeRepo({
+      sheetById: async () => current,
+      updateSheet: async (_id: string, patch: Record<string, unknown>) => {
+        patches.push(patch);
+        current = { ...current, ...patch } as PreconSheetRow;
+      },
+    }),
+  );
+  const sheet = await svc.updateSheet("pcsh_1", { scaleMmPerPt: 17.68, kind: "floor-plan" }, "usr_1");
+  assert.equal(patches[0]?.["scale_confidence"], 1);
+  assert.equal(patches[0]?.["status"], "measured");
+  assert.equal(patches[0]?.["error"], null);
+  assert.equal(sheet.kind, "floor-plan");
+  assert.equal(sheet.scaleMmPerPt, 17.68);
+  await assert.rejects(svc.updateSheet("pcsh_1", { scaleMmPerPt: -1 }, "usr_1"), /positive/);
+});
+
+test("updateStructure: a reviewer's reading becomes high confidence and keeps the engine's signals", async () => {
+  let stored: unknown = null;
+  let current = sessionRow({
+    status: "reviewing",
+    structure_context: {
+      structureClass: "building",
+      buildingType: "bungalow",
+      storeys: 1,
+      structuralSystem: "unknown",
+      foundationType: "unknown",
+      confidence: "low",
+      signals: ["floor plan title"],
+    },
+  });
+  const svc = preconService(
+    fakeRepo({
+      sessionById: async () => current,
+      updateSessionStructure: async (_id: string, structure: unknown) => {
+        stored = structure;
+        current = { ...current, structure_context: structure as never };
+      },
+    }),
+  );
+  const session = await svc.updateStructure("pcs_1", { storeys: 2, foundationType: "strip" }, "usr_2");
+  assert.equal(session.structureContext?.storeys, 2);
+  assert.equal(session.structureContext?.foundationType, "strip");
+  assert.equal(session.structureContext?.confidence, "high");
+  assert.ok((stored as { signals: string[] }).signals[0] === "floor plan title");
+  await svc.assertRedraftable("pcs_1");
+});
+
+test("createDwgSession lands DWG lines as a reviewable session with reasons and provenance", async () => {
+  const inserted: { rows?: unknown[]; session?: unknown; bill?: unknown } = {};
+  const svc = preconService(
+    fakeRepo({
+      insertSession: async (row: Record<string, unknown>) => {
+        inserted.session = row;
+        return { ...sessionRow({ status: "reviewing" }), ...row };
+      },
+      insertSheets: async () => undefined,
+      insertBill: async (bill: Record<string, unknown>) => {
+        inserted.bill = bill;
+        return bill;
+      },
+      insertBoqRows: async (rows: unknown[]) => {
+        inserted.rows = rows;
+      },
+      upsertSettings: async () => undefined,
+    }),
+  );
+  const session = await svc.createDwgSession(
+    "org_1",
+    "usr_1",
+    "prp_1",
+    "pln_1",
+    { fileName: "Site.dwg", storagePath: "uploads/site.dwg" },
+    [
+      { trade: "Walls", description: "225mm blockwork", quantity: 120, unit: "m2", confidence: "high", basis: "double lines" },
+      { trade: "Walls", description: "150mm blockwork", quantity: 30, unit: "m2", confidence: "medium", basis: "single lines" },
+    ],
+  );
+  assert.equal(session.takeoffKind, "dwg");
+  assert.equal(session.planId, "pln_1");
+  assert.equal(session.status, "reviewing");
+  const rows = inserted.rows as { row_type: string; status: string | null; confidence_reason: string | null; provenance: string | null; origin: string }[];
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0]?.row_type, "heading");
+  assert.equal(rows[1]?.status, "ai_generated");
+  assert.equal(rows[2]?.status, "needs_review");
+  assert.equal(rows[2]?.confidence_reason, "medium confidence");
+  assert.ok(rows[1]?.provenance?.startsWith("Read from Site.dwg"));
+  assert.ok(rows.every((r) => r.origin === "ai"));
+});
+
+test("updateRow stamps who edited an AI line and createRow marks hand-entered lines", async () => {
+  const patches: Record<string, unknown>[] = [];
+  const svc = preconService(
+    fakeRepo({
+      updateRowVersioned: async (_id: string, version: number, patch: Record<string, unknown>) => {
+        patches.push(patch);
+        return version === 1 ? { ...itemRow(), ...patch, version: 2 } : null;
+      },
+    }),
+  );
+  await svc.updateRow("pbr_1", { version: 1, changes: { qty: 40 } }, "usr_9");
+  assert.equal(patches[0]?.["edited_by"], "usr_9");
+  assert.ok(patches[0]?.["edited_at"] instanceof Date);
 });

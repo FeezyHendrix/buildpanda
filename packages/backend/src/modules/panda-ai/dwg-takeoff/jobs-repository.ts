@@ -64,6 +64,21 @@ export function takeoffJobsRepository(db: Knex) {
         });
     },
 
+    async linkSession(id: string, sessionId: string): Promise<void> {
+      await db("takeoff_jobs").where({ id }).update({ session_id: sessionId, updated_at: new Date() });
+    },
+
+    // The proposal's org and the plan row the file came from, so the reviewed
+    // session can be created in the right workspace and pinned to its drawing.
+    async proposalContext(proposalId: string, fileId: string | null): Promise<{ orgId: string; planId: string | null } | null> {
+      const proposal = await db("proposals").where({ id: proposalId }).first<{ org_id: string }>("org_id");
+      if (!proposal) return null;
+      const plan = fileId
+        ? await db("proposal_plans").where({ proposal_id: proposalId, file_id: fileId }).first<{ id: string }>("id")
+        : null;
+      return { orgId: proposal.org_id, planId: plan?.id ?? null };
+    },
+
     async markFailed(id: string, error: string): Promise<void> {
       await db("takeoff_jobs")
         .where({ id })

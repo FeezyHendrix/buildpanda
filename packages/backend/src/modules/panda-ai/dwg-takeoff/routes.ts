@@ -26,6 +26,7 @@ function toDto(job: TakeoffJobRow): TakeoffJob {
     drawingCount: job.drawing_count,
     elementCount: job.element_count,
     error: job.error,
+    sessionId: job.session_id ?? null,
     createdAt: new Date(job.created_at).toISOString(),
     updatedAt: new Date(job.updated_at).toISOString(),
   };
@@ -115,7 +116,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/plans/:planId/automated-takeoff",
     { schema: { params: proposalPlanParams } },
     async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       const user = request.requireAuth();
       const proposal = await fastify.db("proposals")
         .where({ id: request.params.id, org_id: orgId })

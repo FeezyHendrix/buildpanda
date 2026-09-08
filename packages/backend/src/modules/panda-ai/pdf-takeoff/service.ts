@@ -24,6 +24,7 @@ import type {
   PreconSummary,
   PreconSummarySettings,
   ProgrammeDependency,
+  TakeoffKind,
   TakeoffScope,
   UpdateGeometryBody,
   UpdateRowBody,
@@ -32,6 +33,7 @@ import { FULL_TAKEOFF_SCOPE } from "./types.ts";
 import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskBody } from "./types.ts";
 import { scheduleProgramme } from "./programme-schedule.ts";
 import { programmeEditor } from "./programme-editor.ts";
+import { reviewService } from "./review-service.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -50,6 +52,8 @@ function toSession(r: PreconSessionRow): PreconSession {
     phase: r.phase ?? null,
     progressLog: r.progress_log ?? [],
     scope: r.scope ?? FULL_TAKEOFF_SCOPE,
+    planId: r.plan_id ?? null,
+    takeoffKind: r.takeoff_kind ?? "pdf",
     structureContext: r.structure_context ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
@@ -125,6 +129,11 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     status: r.status,
     version: r.version,
     measurementBasis: r.measurement_basis,
+    confidenceReason: r.confidence_reason ?? null,
+    provenance: r.provenance ?? null,
+    origin: r.origin ?? "ai",
+    editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
+    editedBy: r.edited_by ?? null,
     verifiedBy: r.verified_by,
     verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
   };
@@ -292,6 +301,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       files: { fileName: string; storagePath: string }[],
       proposalId: string | null = null,
       scope: TakeoffScope = FULL_TAKEOFF_SCOPE,
+      origin: { planId?: string | null; takeoffKind?: TakeoffKind } = {},
     ) {
       if (scope.kind === "sections" && scope.elements.length === 0) {
         throw new BadRequestError("Pick at least one section to measure");
@@ -307,6 +317,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         phase: null,
         progress_log: null,
         scope: db_json(scope),
+        plan_id: origin.planId ?? null,
+        takeoff_kind: origin.takeoffKind ?? "pdf",
         created_by: userId,
       });
       // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
@@ -347,6 +359,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         phase: null,
         progress_log: null,
         scope: db_json(FULL_TAKEOFF_SCOPE),
+        plan_id: null,
+        takeoff_kind: "manual",
         created_by: userId,
       });
       await repo.insertBill({
@@ -364,25 +378,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
     },
 
-    // A failed run is retried in place: the session keeps its id, settings and
-    // audit trail, and goes back to the queue as if freshly uploaded. Only
-    // sessions that actually have drawings can be re-run — a hand-priced
-    // sheet has nothing to generate.
-    async retryGeneration(sessionId: string, actor: string): Promise<PreconSession> {
-      const session = await repo.sessionById(sessionId);
-      if (!session) throw new NotFoundError("Preconstruction session");
-      if (session.status !== "failed") throw new BadRequestError("Only a failed take-off can be retried");
-      const sheets = await repo.sheetsBySession(sessionId);
-      if (sheets.length === 0) throw new BadRequestError("This sheet has no drawings to measure");
-      await repo.resetSessionForRetry(sessionId);
-      await audit(sessionId, null, actor, "session_retried", { error: session.error }, null);
-      const reset = await repo.sessionById(sessionId);
-      return toSession(reset ?? { ...session, status: "generating", error: null, phase: null, progress_log: null });
-    },
-
-    async linkToProposal(sessionId: string, proposalId: string) {
-      await repo.linkSessionToProposal(sessionId, proposalId);
-    },
+    ...reviewService({ repo, audit, toSession, toSheet }),
 
     // Every sales-suite access path must prove the session belongs to the
     // caller's active organization before touching its data.
@@ -398,6 +394,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const session = await repo.sessionById(sessionId);
       if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
       return sessionId;
+    },
+
+    async assertSheetOrg(sheetId: string, orgId: string) {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      const session = await repo.sessionById(sheet.session_id);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Sheet");
+      return sheet.session_id;
     },
 
     async assertBillOrg(billId: string, orgId: string) {
@@ -508,6 +512,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: priced ? "verified" : null,
         version: 1,
         measurement_basis: priced ? "Entered manually" : null,
+        confidence_reason: null,
+        provenance: priced ? "Entered by hand in review" : null,
+        origin: "manual",
+        edited_at: null,
+        edited_by: null,
         verified_by: priced ? actor : null,
         verified_at: priced ? new Date() : null,
       });
@@ -560,6 +569,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const qty = body.changes.qty ?? num(row.qty);
       const rate = body.changes.rate ?? num(row.rate);
       if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
+      patch.edited_at = new Date();
+      patch.edited_by = actor;
       // An edited AI measurement needs re-checking; a hand-entered row's author
       // is already its verifier, so it stays verified.
       if (row.status === "verified") {

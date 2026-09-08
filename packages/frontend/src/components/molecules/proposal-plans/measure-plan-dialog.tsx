@@ -2,8 +2,15 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { RadioCard } from "@/components/atoms/radio-card";
-import { TAKEOFF_SCOPE_KINDS, type TakeoffScope, type TakeoffScopeKind } from "@/api/precon";
-import { FINISHES_ELEMENTS, PDF_PLAN, TAKEOFF_SCOPE_META, TAKEOFF_SECTIONS } from "@/lib/precon-meta";
+import type { TakeoffScope, TakeoffScopeKind } from "@/api/precon";
+import {
+  DEFAULT_MEASURE_SCOPES,
+  FINISHES_ELEMENTS,
+  PDF_PLAN,
+  SCOPES_FOR_PROFILE,
+  TAKEOFF_SCOPE_META,
+  TAKEOFF_SECTIONS,
+} from "@/lib/precon-meta";
 import { cn } from "@/lib/utils";
 
 export interface MeasurablePlan {
@@ -18,6 +25,8 @@ interface Props {
   submitting: boolean;
   error: string | null;
   onConfirm: (scope: TakeoffScope) => void;
+  // decides which scopes are offered; a labour-only job adds the materials schedule
+  jobProfile?: string | null;
 }
 
 function SectionChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
@@ -67,8 +76,9 @@ function SectionPicker({ selected, onChange }: { selected: string[]; onChange: (
 }
 SectionPicker.displayName = "SectionPicker";
 
-export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error, onConfirm }: Props) {
-  const [kind, setKind] = useState<TakeoffScopeKind>("full");
+export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error, onConfirm, jobProfile }: Props) {
+  const scopes = (jobProfile && SCOPES_FOR_PROFILE[jobProfile]) || DEFAULT_MEASURE_SCOPES;
+  const [kind, setKind] = useState<TakeoffScopeKind>(scopes[0] ?? "full");
   const [elements, setElements] = useState<string[]>(FINISHES_ELEMENTS);
 
   const pdfCount = plans.filter((p) => PDF_PLAN.test(p.fileName)).length;
@@ -90,7 +100,7 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
       className="w-[min(560px,calc(100vw-2rem))]"
     >
       <div className="flex flex-col gap-2">
-        {TAKEOFF_SCOPE_KINDS.map((option) => (
+        {scopes.map((option) => (
           <RadioCard
             key={option}
             title={TAKEOFF_SCOPE_META[option].label}

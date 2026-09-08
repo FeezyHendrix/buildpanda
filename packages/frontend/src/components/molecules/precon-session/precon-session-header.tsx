@@ -49,6 +49,11 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
       {reviewing ? (
         <div className="flex shrink-0 items-center gap-2">
           {step === "review" ? (
+            <Button size="sm" onClick={() => onSelectStep(session.scope.kind === "areas" ? "output" : "programme")}>
+              {session.scope.kind === "areas" ? "Continue to output" : "Continue to programme"}
+              <ArrowRight className="ml-1.5 size-3.5" aria-hidden="true" />
+            </Button>
+          ) : step === "programme" ? (
             <Button size="sm" onClick={() => onSelectStep("output")}>
               Continue to output
               <ArrowRight className="ml-1.5 size-3.5" aria-hidden="true" />

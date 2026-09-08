@@ -188,6 +188,25 @@ export function preconRepository(db: Knex) {
       return inserted!;
     },
     deleteRow: (id: string) => db("precon_boq_rows").where({ id }).delete(),
+    deleteRows: (ids: string[]) => (ids.length ? db("precon_boq_rows").whereIn("id", ids).delete() : Promise.resolve(0)),
+    // The engine's unverified lines whose only evidence is this sheet — what a
+    // re-measure replaces. A line also drawn on another sheet is left alone.
+    aiRowIdsOnSheet: async (sheetId: string): Promise<string[]> => {
+      const onSheet = await db("precon_boq_rows as r")
+        .join("precon_geometries as g", "g.row_id", "r.id")
+        .where("g.sheet_id", sheetId)
+        .andWhere("r.origin", "ai")
+        .andWhereNot("r.status", "verified")
+        .distinct<{ id: string }[]>("r.id");
+      const ids = onSheet.map((r) => r.id);
+      if (ids.length === 0) return [];
+      const elsewhere = await db("precon_geometries")
+        .whereIn("row_id", ids)
+        .andWhereNot("sheet_id", sheetId)
+        .distinct<{ row_id: string }[]>("row_id");
+      const keep = new Set(elsewhere.map((e) => e.row_id));
+      return ids.filter((id) => !keep.has(id));
+    },
     rowsBySession: (sessionId: string) =>
       db<PreconBoqRowRow>("precon_boq_rows")
         .whereIn("bill_id", db("precon_bills").select("id").where({ session_id: sessionId }))
@@ -220,6 +239,8 @@ export function preconRepository(db: Knex) {
           | "measurement_basis"
           | "verified_by"
           | "verified_at"
+          | "edited_at"
+          | "edited_by"
         >
       >,
       trx?: Knex.Transaction,

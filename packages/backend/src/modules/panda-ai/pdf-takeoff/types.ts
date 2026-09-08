@@ -15,7 +15,7 @@ export interface PreconProgressEntry {
 // What the run should produce. `full` is the whole bill; `sections` keeps only
 // the named BESMM elements (a finishes-only bill, say); `areas` stops after
 // measurement and lists the floor area of every identifiable space in m².
-export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas"] as const;
+export const TAKEOFF_SCOPE_KINDS = ["full", "sections", "areas", "materials", "early"] as const;
 export type TakeoffScopeKind = (typeof TAKEOFF_SCOPE_KINDS)[number];
 
 export interface TakeoffScope {
@@ -25,6 +25,15 @@ export interface TakeoffScope {
 
 export const FULL_TAKEOFF_SCOPE: TakeoffScope = { kind: "full", elements: [] };
 export const MEASURED_AREAS_GROUP = "Measured areas";
+
+// How the drawings reached the session: a PDF read by the engine, a DWG read by
+// the automated take-off, a blank hand-priced sheet, or an early estimate.
+export const TAKEOFF_KINDS = ["pdf", "dwg", "manual", "early"] as const;
+export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
+
+// Who wrote a row: the engine, a person, a Panda AI prompt, or the migration.
+export const ROW_ORIGINS = ["ai", "manual", "prompt", "migrated"] as const;
+export type RowOrigin = (typeof ROW_ORIGINS)[number];
 
 export const SHEET_KINDS = ["floor-plan", "elevation", "section", "detail", "schedule", "unknown"] as const;
 export type SheetKind = (typeof SHEET_KINDS)[number];
@@ -82,6 +91,8 @@ export interface PreconSessionRow {
   phase: PreconPhase | null;
   progress_log: PreconProgressEntry[] | null;
   scope: TakeoffScope | null;
+  plan_id: string | null;
+  takeoff_kind: TakeoffKind;
   structure_context: StructureContext | null;
   programme_start_date: Date | string | null;
   created_by: string | null;
@@ -141,6 +152,11 @@ export interface PreconBoqRowRow {
   status: RowStatus | null;
   version: number;
   measurement_basis: string | null;
+  confidence_reason: string | null;
+  provenance: string | null;
+  origin: RowOrigin;
+  edited_at: Date | null;
+  edited_by: string | null;
   verified_by: string | null;
   verified_at: Date | null;
   created_at: Date;
@@ -220,6 +236,8 @@ export interface PreconSession {
   phase: PreconPhase | null;
   progressLog: PreconProgressEntry[];
   scope: TakeoffScope;
+  planId: string | null;
+  takeoffKind: TakeoffKind;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
@@ -265,6 +283,11 @@ export interface PreconBoqRowDto {
   status: RowStatus | null;
   version: number;
   measurementBasis: string | null;
+  confidenceReason: string | null;
+  provenance: string | null;
+  origin: RowOrigin;
+  editedAt: string | null;
+  editedBy: string | null;
   verifiedBy: string | null;
   verifiedAt: string | null;
 }
@@ -381,6 +404,25 @@ export interface CreateSessionFromPlanBody {
   scope?: TakeoffScope;
 }
 
+export interface UpdateSheetBody {
+  kind?: SheetKind;
+  title?: string | null;
+  scaleMmPerPt?: number | null;
+  dimUnit?: DimUnit | null;
+}
+
+export type UpdateStructureBody = Partial<Omit<StructureContext, "signals" | "confidence">>;
+
+// Rows a DWG take-off hands over; the session stores them like any AI draft.
+export interface DwgTakeoffLine {
+  trade: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  confidence: "high" | "medium" | "low";
+  basis: string;
+}
+
 export interface CreateBillBody {
   title: string;
 }
@@ -484,6 +526,8 @@ export interface MeasuredBoqItem {
   pageNumber: number;
   scope?: ItemScope;
   provisional?: boolean;
+  // why the engine doubted this line, in the reviewer's words ("scale", "vision", ...)
+  confidenceReason?: string | null;
 }
 
 // ── Programme of work ────────────────────────────────────────────────────────
