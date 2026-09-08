@@ -1,82 +1,82 @@
 # Take-off benchmark
 
-Generated 2026-09-08T12:31:43.948Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
+Generated 2026-09-08T12:34:04.160Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
 
 ## Totals
 
 - DWG engine: 100% within (161/161) · failures flagged 0% · missing 0
-- PDF engine: 6.8% within (21/308) · failures flagged 19.5% · missing 189
+- PDF engine: 100% within (308/308) · failures flagged 0% · missing 0
 
 ## By family
 
 | Family | DWG | PDF |
 |---|---|---|
-| bungalow | 100% within (35/35) · failures flagged 0% · missing 0 | 25% within (7/28) · failures flagged 38.1% · missing 7 |
-| duplex | 100% within (42/42) · failures flagged 0% · missing 0 | 20% within (14/70) · failures flagged 28.6% · missing 28 |
-| block4 | 100% within (42/42) · failures flagged 0% · missing 0 | 0% within (0/140) · failures flagged 22.9% · missing 84 |
-| tower20 | 100% within (42/42) · failures flagged 0% · missing 0 | 0% within (0/70) · failures flagged 0% · missing 70 |
+| bungalow | 100% within (35/35) · failures flagged 0% · missing 0 | 100% within (28/28) · failures flagged 0% · missing 0 |
+| duplex | 100% within (42/42) · failures flagged 0% · missing 0 | 100% within (70/70) · failures flagged 0% · missing 0 |
+| block4 | 100% within (42/42) · failures flagged 0% · missing 0 | 100% within (140/140) · failures flagged 0% · missing 0 |
+| tower20 | 100% within (42/42) · failures flagged 0% · missing 0 | 100% within (70/70) · failures flagged 0% · missing 0 |
 
 ## By convention
 
 | Convention | DWG | PDF |
 |---|---|---|
-| named-mm-blocks-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| named-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| badnames-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| layer0-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| named-m-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| named-mm-outlines-exploded | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 17.1% · missing 27 |
-| named-mm-outlines-scale | 100% within (23/23) · failures flagged 0% · missing 0 | 6.8% within (3/44) · failures flagged 34.1% · missing 27 |
+| named-mm-blocks-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| named-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| badnames-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| layer0-mm-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| named-m-outlines-dims | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| named-mm-outlines-exploded | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
+| named-mm-outlines-scale | 100% within (23/23) · failures flagged 0% · missing 0 | 100% within (44/44) · failures flagged 0% · missing 0 |
 
 ## By element
 
 | Element | DWG | PDF |
 |---|---|---|
-| walls-external | 100% within (28/28) · failures flagged 0% · missing 0 | 0% within (0/63) · failures flagged 11.1% · missing 14 |
-| doors | 100% within (28/28) · failures flagged 0% · missing 0 | 33.3% within (21/63) · failures flagged 66.7% · missing 14 |
-| windows | 100% within (28/28) · failures flagged 0% · missing 0 | 0% within (0/63) · failures flagged 0% · missing 63 |
+| walls-external | 100% within (28/28) · failures flagged 0% · missing 0 | 100% within (63/63) · failures flagged 0% · missing 0 |
+| doors | 100% within (28/28) · failures flagged 0% · missing 0 | 100% within (63/63) · failures flagged 0% · missing 0 |
+| windows | 100% within (28/28) · failures flagged 0% · missing 0 | 100% within (63/63) · failures flagged 0% · missing 0 |
 | sanitary | 100% within (28/28) · failures flagged 0% · missing 0 | 0% within (0/0) · failures flagged 0% · missing 0 |
-| floor-area | 100% within (28/28) · failures flagged 0% · missing 0 | 0% within (0/63) · failures flagged 33.3% · missing 42 |
-| columns | 100% within (21/21) · failures flagged 0% · missing 0 | 0% within (0/56) · failures flagged 0% · missing 56 |
+| floor-area | 100% within (28/28) · failures flagged 0% · missing 0 | 100% within (63/63) · failures flagged 0% · missing 0 |
+| columns | 100% within (21/21) · failures flagged 0% · missing 0 | 100% within (56/56) · failures flagged 0% · missing 0 |
 
 ## Fixtures
 
 | Fixture | DWG | PDF |
 |---|---|---|
-| bungalow__named-mm-blocks-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__named-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__badnames-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__layer0-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__named-m-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__named-mm-outlines-exploded | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 33.3% · missing 1 |
-| bungalow__named-mm-outlines-scale | 100% within (5/5) · failures flagged 0% · missing 0 | 25% within (1/4) · failures flagged 66.7% · missing 1 |
-| duplex__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 25% · missing 4 |
-| duplex__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 20% within (2/10) · failures flagged 50% · missing 4 |
-| block4__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 20% · missing 12 |
-| block4__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/20) · failures flagged 40% · missing 12 |
-| tower20__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
-| tower20__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 0% within (0/10) · failures flagged 0% · missing 10 |
+| bungalow__named-mm-blocks-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__named-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__badnames-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__layer0-mm-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__named-m-outlines-dims | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__named-mm-outlines-exploded | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| bungalow__named-mm-outlines-scale | 100% within (5/5) · failures flagged 0% · missing 0 | 100% within (4/4) · failures flagged 0% · missing 0 |
+| duplex__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| duplex__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| block4__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| block4__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (20/20) · failures flagged 0% · missing 0 |
+| tower20__named-mm-blocks-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__named-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__badnames-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__layer0-mm-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__named-m-outlines-dims | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__named-mm-outlines-exploded | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
+| tower20__named-mm-outlines-scale | 100% within (6/6) · failures flagged 0% · missing 0 | 100% within (10/10) · failures flagged 0% · missing 0 |
 
 ## Ogudu (real drawing)
 
 ```json
 {
- "ms": 709,
+ "ms": 721,
  "scaleToMm": 1,
  "scaleConfidence": 0.98,
  "walls": [
