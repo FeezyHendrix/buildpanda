@@ -1,7 +1,7 @@
 import { blockNameOf, centroid, extentOf, handleOf, type DwgDoc, type DwgEntity } from "./dwg.ts";
 import { elementOf, polySize } from "./taxonomy.ts";
 import { isClosedOutline, isDoorSwing, isFitting, isSquareColumn, isWindowFrame, shapeSides } from "./shapes.ts";
-import type { LayerElement, LayerMap, MeasuredItem, RegisterSheet, UnitsDecision } from "./types.ts";
+import type { LayerElement, LayerMap, MeasuredItem, MeasuredShape, RegisterSheet, UnitsDecision } from "./types.ts";
 
 // Every count is made by at least two methods where the drawing allows it.
 // Agreement is recorded on the line; disagreement is the review reason.
@@ -17,6 +17,8 @@ export interface Method {
   label: string;
   count: number;
   evidence: number[];
+  // where those same entities sit, in drawing units: the count's mark on the sheet
+  points?: number[][];
 }
 
 export function entitiesOf(ctx: SheetContext, element: LayerElement): DwgEntity[] {
@@ -69,6 +71,13 @@ export function groupByProximity(ents: DwgEntity[], radiusUnits: number): DwgEnt
 
 export const handles = (ents: DwgEntity[]): number[] => ents.map(handleOf).filter((h): h is number => h !== null);
 
+/** One point per entity, in drawing units: what a count marks on the drawing. */
+export const centroids = (ents: DwgEntity[]): number[][] =>
+  ents
+    .map(centroid)
+    .filter((c): c is [number, number] => c !== null)
+    .map(([x, y]) => [x, y]);
+
 /**
  * Combine methods into one line. The first method with evidence is the
  * quantity; the others are the cross-check. Agreement within 10 % is high
@@ -85,7 +94,9 @@ export function combine(
   if (!live.length) return null;
   const primary = live[0]!;
   const others = live.slice(1);
-  const base = { trade, description, unit, quantity: primary.count, sheetId: sheet.id, evidence: primary.evidence };
+  // the counted entities, marked where they stand: the same objects the evidence cites
+  const marks: MeasuredShape[] = primary.points?.length ? [{ kind: "count", vertices: primary.points }] : [];
+  const base = { trade, description, unit, quantity: primary.count, sheetId: sheet.id, evidence: primary.evidence, ...(marks.length ? { shapes: marks } : {}) };
   if (!others.length) {
     return { ...base, confidence: "medium", reason: "single method", basis: `${primary.count} ${primary.label} on ${sheet.code} (${sheet.title})`, crossCheck: "no second method available" };
   }
@@ -107,8 +118,8 @@ export function countColumns(ctx: SheetContext): MeasuredItem | null {
     "Reinforced concrete columns",
     "nr",
     [
-      { label: byOutline.length ? "column outlines" : "compact closed squares on unmapped layers", count: primary.length, evidence: handles(primary) },
-      { label: "column blocks", count: byBlock.length, evidence: handles(byBlock) },
+      { label: byOutline.length ? "column outlines" : "compact closed squares on unmapped layers", count: primary.length, evidence: handles(primary), points: centroids(primary) },
+      { label: "column blocks", count: byBlock.length, evidence: handles(byBlock), points: centroids(byBlock) },
     ],
     ctx.sheet,
   );
@@ -136,14 +147,14 @@ export function countDoors(ctx: SheetContext): MeasuredItem | null {
   });
   const blocks = insertsNamed(ctx, /door|dr-|^d\d/i);
   const methods: Method[] = [
-    { label: "door leaf outlines", count: leaves.length, evidence: handles(leaves) },
-    { label: "swing arcs", count: arcs.length, evidence: handles(arcs) },
-    { label: "door blocks", count: blocks.length, evidence: handles(blocks) },
+    { label: "door leaf outlines", count: leaves.length, evidence: handles(leaves), points: centroids(leaves) },
+    { label: "swing arcs", count: arcs.length, evidence: handles(arcs), points: centroids(arcs) },
+    { label: "door blocks", count: blocks.length, evidence: handles(blocks), points: centroids(blocks) },
   ];
   // no door layer: the swings on unmapped layers are the doors
   if (methods.every((m) => m.count === 0)) {
     const swings = entitiesOf(ctx, "auto").filter((e) => isDoorSwing(e, ctx.units.scaleToMm));
-    methods.push({ label: "swing arcs on unmapped layers", count: swings.length, evidence: handles(swings) });
+    methods.push({ label: "swing arcs on unmapped layers", count: swings.length, evidence: handles(swings), points: centroids(swings) });
   }
   return combine("doors", "Doors, as drawn (see door schedule for sizes)", "nr", methods, ctx.sheet);
 }
@@ -161,13 +172,13 @@ export function countWindowsOnPlan(ctx: SheetContext): MeasuredItem | null {
   const groups = groupByProximity(frames, 300 / ctx.units.scaleToMm);
   const blocks = insertsNamed(ctx, /win|window|^w\d/i);
   const methods: Method[] = [
-    { label: "window frame groups", count: groups.length, evidence: handles(frames) },
-    { label: "window blocks", count: blocks.length, evidence: handles(blocks) },
+    { label: "window frame groups", count: groups.length, evidence: handles(frames), points: centroids(frames) },
+    { label: "window blocks", count: blocks.length, evidence: handles(blocks), points: centroids(blocks) },
   ];
   // no window layer: thin closed frames on unmapped layers are the windows
   if (methods.every((m) => m.count === 0)) {
     const thin = entitiesOf(ctx, "auto").filter((e) => isWindowFrame(e, ctx.units.scaleToMm));
-    methods.push({ label: "thin closed frames on unmapped layers", count: groupByProximity(thin, 300 / ctx.units.scaleToMm).length, evidence: handles(thin) });
+    methods.push({ label: "thin closed frames on unmapped layers", count: groupByProximity(thin, 300 / ctx.units.scaleToMm).length, evidence: handles(thin), points: centroids(thin) });
   }
   return combine("windows", "Windows, as drawn on plan (see window schedule for sizes)", "nr", methods, ctx.sheet);
 }
@@ -220,13 +231,13 @@ export function countSanitary(ctx: SheetContext): MeasuredItem | null {
   const clear = groupByProximity(drawn.filter((e) => !near(e)), radius);
   const footprint = groupByProximity([...blocks, ...drawn], radius);
   const methods: Method[] = [
-    { label: "sanitary blocks and drawn fittings", count: blocks.length + clear.length, evidence: handles([...blocks, ...clear.flat()]) },
-    { label: "fitting footprints on the sanitary layer", count: footprint.length, evidence: handles(footprint.flat()) },
+    { label: "sanitary blocks and drawn fittings", count: blocks.length + clear.length, evidence: handles([...blocks, ...clear.flat()]), points: centroids([...blocks, ...clear.flat()]) },
+    { label: "fitting footprints on the sanitary layer", count: footprint.length, evidence: handles(footprint.flat()), points: centroids(footprint.flat()) },
   ];
   // no sanitary layer or blocks: compact oblong outlines on unmapped layers
   if (methods.every((m) => m.count === 0)) {
     const oblongs = entitiesOf(ctx, "auto").filter((e) => isFitting(e, ctx.units.scaleToMm));
-    methods.push({ label: "compact oblong outlines on unmapped layers", count: groupByProximity(oblongs, radius).length, evidence: handles(oblongs) });
+    methods.push({ label: "compact oblong outlines on unmapped layers", count: groupByProximity(oblongs, radius).length, evidence: handles(oblongs), points: centroids(oblongs) });
   }
   const item = combine("sanitary", "Sanitary fittings (WC, basin, sink, shower, bath)", "nr", methods, ctx.sheet);
   if (item && blocks.length) {
@@ -265,6 +276,8 @@ export function stairs(ctx: SheetContext, allLabels: string[]): MeasuredItem | n
     basis: `Architect's note "${note[0]}"${own.length ? "" : " (from another drawing)"}; ${stepLines.length} step lines on ${ctx.sheet.code}` + (others.length ? `; also noted: ${others.join(", ")}` : ""),
     sheetId: ctx.sheet.id,
     evidence: handles(stepLines),
+    // the steps themselves: the flight the architect's note was checked against
+    ...(stepLines.length ? { shapes: [{ kind: "count" as const, vertices: centroids(stepLines) }] } : {}),
     crossCheck: stepLines.length ? `${stepLines.length} step lines ≈ ${flightsFromLines} flight(s)` : "no step lines on the plan",
     reason: flightsFromLines >= 1 ? "note and step lines agree" : "note only",
   };

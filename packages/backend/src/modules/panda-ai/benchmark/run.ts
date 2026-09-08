@@ -6,9 +6,16 @@ import { scoreDwg, scorePdf, summarise, type Scored, type Summary } from "./comp
 import { CONVENTIONS } from "./conventions.ts";
 import { FIXTURES_ROOT, fixturePaths, generateFixture, hasDwgwrite, type Fixture } from "./generate.ts";
 import { FAMILIES, type Convention, type Family, type Truth } from "./types.ts";
+import type { MeasuredItem } from "../dwg-takeoff/types.ts";
 
 // Runs both engines over every fixture and writes results.json plus a
 // markdown summary. Baseline-recording only: nothing here fails the build.
+
+// The benchmark scores quantities, not annotations. A line's shapes are every
+// vertex the engine drew on the plan, so they are recorded as a count: a
+// twenty-storey fixture would otherwise bury the baseline in coordinates.
+const reportable = (items: MeasuredItem[]) =>
+  items.map(({ shapes, ...item }) => (shapes?.length ? { ...item, shapeCount: shapes.length } : item));
 
 export interface FixtureResult {
   id: string;
@@ -56,7 +63,7 @@ export async function runFixture(fixture: Fixture, truth: Truth): Promise<Fixtur
     id: fixture.id,
     family: fixture.family,
     convention: fixture.convention.id,
-    dwg: { ran: dwgRun.value !== null, error: dwgRun.error, ms: dwgRun.ms, scored: dwgScored, summary: summarise(dwgScored), raw: dwgRun.value ? { scaleToMm: dwgRun.value.scaleToMm, scaleConfidence: dwgRun.value.scaleConfidence, drawings: dwgRun.value.drawings, items: dwgRun.value.items, notes: dwgRun.value.notes, walls: dwgRun.value.wallSummaries ?? [] } : null },
+    dwg: { ran: dwgRun.value !== null, error: dwgRun.error, ms: dwgRun.ms, scored: dwgScored, summary: summarise(dwgScored), raw: dwgRun.value ? { scaleToMm: dwgRun.value.scaleToMm, scaleConfidence: dwgRun.value.scaleConfidence, drawings: dwgRun.value.drawings, items: reportable(dwgRun.value.items), notes: dwgRun.value.notes, walls: dwgRun.value.wallSummaries ?? [] } : null },
     pdf: {
       ran: pdfRun.value !== null,
       error: pdfRun.error,
@@ -131,7 +138,7 @@ export async function runBenchmark(opts: RunOptions = {}): Promise<BenchmarkResu
   const oguduPath = opts.oguduPath === undefined ? "/tmp/probe.dwg" : opts.oguduPath;
   if (oguduPath && (await fs.access(oguduPath).then(() => true, () => false))) {
     const run = await timed(() => runDwgTakeoff(oguduPath));
-    ogudu = run.value ? { ms: run.ms, scaleToMm: run.value.scaleToMm, scaleConfidence: run.value.scaleConfidence, walls: run.value.wallSummaries ?? [], drawings: run.value.drawings, items: run.value.items } : { error: run.error };
+    ogudu = run.value ? { ms: run.ms, scaleToMm: run.value.scaleToMm, scaleConfidence: run.value.scaleConfidence, walls: run.value.wallSummaries ?? [], drawings: run.value.drawings, items: reportable(run.value.items) } : { error: run.error };
   }
   const all = { dwg: results.flatMap((r) => r.dwg.scored), pdf: results.flatMap((r) => r.pdf.scored) };
   const out: BenchmarkResults = {

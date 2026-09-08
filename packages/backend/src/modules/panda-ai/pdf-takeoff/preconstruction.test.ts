@@ -48,6 +48,8 @@ function fakeRepo(overrides: Partial<Record<keyof PreconRepository, unknown>> = 
       audits.push(e);
     },
     geometriesByRow: async () => [],
+    insertGeometries: async () => undefined,
+    deleteAiGeometriesBySession: async () => 0,
     rowsBySession: async () => [],
     sheetById: async () => null,
     sessionsByPlan: async () => [],

@@ -1,3 +1,4 @@
+import { traceCells } from "../pdf-takeoff/cell-outline.ts";
 import type { WallSegment } from "./walls.ts";
 
 // Room areas by flood fill on a raster of the wall faces. The DWG gives exact
@@ -23,6 +24,8 @@ export interface FilledRoom {
   known: boolean;
   seed: [number, number];
   sealed: SealLevel;
+  // the outline of the fill, in drawing units: what the viewer shades
+  vertices: number[][];
   // other room labels inside the same enclosure (an open plan)
   sharedWith: string[];
 }
@@ -136,9 +139,43 @@ export function fillRooms(mask: WallSegment[], extras: WallSegment[], seeds: Roo
     }
     for (const c of fill.cells) claimed[c] = 1;
     const perimeterM = Math.round((fill.boundary * cellMm) / 10) / 100;
-    outcome.rooms.push({ name: seed.name, areaM2, perimeterM, known: seed.known, seed: [seed.x, seed.y], sealed, sharedWith: others });
+    const vertices = outlineOf(fill.cells, cols, (i, j) => [bounds.minX + (i - 1) * cell, bounds.minY + (j - 1) * cell]);
+    outcome.rooms.push({ name: seed.name, areaM2, perimeterM, known: seed.known, seed: [seed.x, seed.y], sealed, vertices, sharedWith: others });
   });
   return outcome;
+}
+
+/**
+ * The fill's outline in drawing units. The trace runs over a crop of the grid
+ * around the fill rather than the whole plan, so a floor of twenty rooms costs
+ * twenty room-sized scans, not twenty plan-sized ones.
+ */
+function outlineOf(cells: number[], cols: number, toPoint: (i: number, j: number) => number[]): number[][] {
+  if (!cells.length) return [];
+  let minCol = Infinity;
+  let maxCol = -Infinity;
+  let minRow = Infinity;
+  let maxRow = -Infinity;
+  for (const idx of cells) {
+    const x = idx % cols;
+    const y = (idx - x) / cols;
+    if (x < minCol) minCol = x;
+    if (x > maxCol) maxCol = x;
+    if (y < minRow) minRow = y;
+    if (y > maxRow) maxRow = y;
+  }
+  // one empty cell of margin all round so the region never touches the crop's edge
+  minCol -= 1;
+  minRow -= 1;
+  const subCols = maxCol - minCol + 2;
+  const subRows = maxRow - minRow + 2;
+  const sub = new Uint8Array(subCols * subRows);
+  for (const idx of cells) {
+    const x = idx % cols;
+    const y = (idx - x) / cols;
+    sub[(y - minRow) * subCols + (x - minCol)] = 1;
+  }
+  return traceCells(sub, subCols, subRows, (i, j) => toPoint(i + minCol, j + minRow));
 }
 
 /** The seed cell, or the nearest open cell within three cells of it. */
