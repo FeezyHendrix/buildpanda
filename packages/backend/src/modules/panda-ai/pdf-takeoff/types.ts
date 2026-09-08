@@ -465,6 +465,11 @@ export interface ProgrammeDependency {
   lagDays: number;
 }
 
+// Who last shaped a task: the drafter, a person in the editor, or a person
+// through a Panda AI prompt. Drives the "AI draft vs edited" presentation.
+export const PROGRAMME_TASK_ORIGINS = ["ai", "manual", "prompt"] as const;
+export type ProgrammeTaskOrigin = (typeof PROGRAMME_TASK_ORIGINS)[number];
+
 export interface PreconProgrammeTaskRow {
   id: string;
   session_id: string;
@@ -483,6 +488,9 @@ export interface PreconProgrammeTaskRow {
   version: number;
   verified_by: string | null;
   verified_at: Date | string | null;
+  total_float_days: number | null;
+  is_critical: boolean;
+  origin: ProgrammeTaskOrigin;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -506,6 +514,9 @@ export interface PreconProgrammeTaskBase {
   version: number;
   verifiedBy: string | null;
   verifiedAt: string | null;
+  totalFloatDays: number | null;
+  isCritical: boolean;
+  origin: ProgrammeTaskOrigin;
 }
 
 /** Base plus the dates resolved by the forward pass in programme-schedule.ts. */
@@ -528,4 +539,18 @@ export interface UpdateProgrammeTaskBody {
   durationDays?: number;
   isMilestone?: boolean;
   basis?: string;
+  outlineLevel?: number;
+  sort?: number;
+  predecessors?: ProgrammeDependency[];
+}
+
+export interface CreateProgrammeTaskBody {
+  name: string;
+  durationDays: number;
+  isMilestone?: boolean;
+  basis?: string;
+  outlineLevel?: number;
+  /** Insert directly after this task; omitted appends at the end. */
+  afterTaskId?: string;
+  predecessors?: ProgrammeDependency[];
 }

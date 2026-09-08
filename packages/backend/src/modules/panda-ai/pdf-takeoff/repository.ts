@@ -368,13 +368,46 @@ export function preconRepository(db: Knex) {
         .orderBy("sort", "asc"),
     programmeTaskById: (id: string) =>
       db<PreconProgrammeTaskRow>("precon_programme_tasks").where({ id }).first(),
+    insertProgrammeTask: async (row: Omit<PreconProgrammeTaskRow, "created_at" | "updated_at">) => {
+      const [inserted] = await db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .insert({ ...row, predecessors: JSON.stringify(row.predecessors) as never })
+        .returning("*");
+      return inserted!;
+    },
+    deleteProgrammeTask: (id: string) => db("precon_programme_tasks").where({ id }).delete(),
+    // Derived fields (parent, sort, float, critical) change as a consequence of
+    // another task's edit, so they bypass the optimistic version check.
+    updateProgrammeTaskDerived: (
+      id: string,
+      patch: Partial<
+        Pick<
+          PreconProgrammeTaskRow,
+          "parent_task_id" | "sort" | "total_float_days" | "is_critical" | "predecessors" | "outline_level"
+        >
+      >,
+    ) =>
+      db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .where({ id })
+        .update({
+          ...patch,
+          predecessors: patch.predecessors === undefined ? undefined : (JSON.stringify(patch.predecessors) as never),
+        }),
     updateProgrammeTaskVersioned: async (
       id: string,
       version: number,
       patch: Partial<
         Pick<
           PreconProgrammeTaskRow,
-          "name" | "duration_days" | "predecessors" | "is_milestone" | "basis" | "status" | "verified_by" | "verified_at"
+          | "name"
+          | "duration_days"
+          | "predecessors"
+          | "is_milestone"
+          | "basis"
+          | "status"
+          | "verified_by"
+          | "verified_at"
+          | "outline_level"
+          | "origin"
         >
       >,
     ): Promise<PreconProgrammeTaskRow | null> => {
