@@ -353,3 +353,11 @@ export const preconKeys = {
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };
+
+// WS-9: proposal-scoped safety pack (risk register, method statements, phase plan)
+export const preconSafetyKeys = {
+  all: (proposalId: string) => ["proposals", proposalId, "safety"] as const,
+  risks: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "risks"] as const,
+  statements: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "method-statements"] as const,
+  phasePlan: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "phase-plan"] as const,
+};
