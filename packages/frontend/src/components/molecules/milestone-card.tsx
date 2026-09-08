@@ -3,6 +3,7 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ExternalLinkIcon } from "@/components/atoms/project-nav-icons";
 import { formatCurrency } from "@/lib/formatters";
+import { MILESTONE_CLAIM_STATE_META } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import type {
   MilestonePayment,
@@ -51,7 +52,10 @@ function MilestoneCard({
             Phase: {milestone.phase || "-"}
           </p>
         </div>
-        <StatusBadge milestone={milestone} />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <StatusBadge milestone={milestone} />
+          <ClaimStateBadge milestone={milestone} />
+        </div>
       </header>
 
       <div className='flex flex-col gap-6'>
@@ -166,6 +170,16 @@ function MilestoneCard({
     >
       {body}
     </div>
+  );
+}
+
+function ClaimStateBadge({ milestone }: { milestone: MilestonePayment }) {
+  const meta = MILESTONE_CLAIM_STATE_META[milestone.claimState ?? "pending"];
+  return (
+    <Badge tone={meta.tone} size="sm" className="gap-1 text-[11px]">
+      <span aria-hidden="true">{meta.glyph}</span>
+      {meta.label}
+    </Badge>
   );
 }
 
