@@ -16,12 +16,16 @@ import { EstimateTab } from "./proposal-tabs/estimate-tab";
 import { MessagesTab } from "./proposal-tabs/messages-tab";
 import { OverviewTab } from "./proposal-tabs/overview-tab";
 import { PlansTab } from "./proposal-tabs/plans-tab";
+import { SafetyTab } from "./proposal-tabs/safety-tab";
 
+// WS-9 adds "safety" (risk register, method statements, phase plan). WS-4 may
+// fold it into the Pack tab at merge time.
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "plans", label: "Plans" },
   { id: "boq", label: "BoQ" },
   { id: "estimate", label: "Estimate" },
+  { id: "safety", label: "Safety" },
   { id: "messages", label: "Messages" },
   { id: "activity", label: "Activity" },
 ] as const;
@@ -119,6 +123,7 @@ export default function ProposalWorkspace() {
         {tab === "estimate" ? (
           <EstimateTab proposalId={id} estimate={estimate} currency={proposal.currency} projectId={proposal.projectId} />
         ) : null}
+        {tab === "safety" ? <SafetyTab proposalId={id} /> : null}
         {tab === "messages" ? <MessagesTab proposalId={id} /> : null}
         {tab === "activity" ? <ActivityTab proposalId={id} /> : null}
       </div>
