@@ -273,6 +273,20 @@ const PLAN_CATEGORY: Record<string, string> = {
   survey: "cat_plan_survey",
 };
 
+/**
+ * The document categories a conversion writes into. They are created by
+ * migrations, but a seed or a hand edit can remove them; the converter
+ * re-creates any that are missing rather than failing a foreign key.
+ */
+export const CONVERSION_DOCUMENT_CATEGORIES = [
+  { id: "cat_plan_architectural", name: "Architectural", tone: "brand", group: "plan" },
+  { id: "cat_plan_structural", name: "Structural", tone: "orange", group: "plan" },
+  { id: "cat_plan_mep", name: "MEP", tone: "green", group: "plan" },
+  { id: "cat_plan_civil", name: "Civil / Site", tone: "purple", group: "plan" },
+  { id: "cat_plan_survey", name: "Survey", tone: "amber", group: "plan" },
+  { id: "cat_proposal", name: "Proposal", tone: "brand", group: "contract" },
+] as const;
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const kb = bytes / 1024;
