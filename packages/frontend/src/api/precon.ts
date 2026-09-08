@@ -130,6 +130,12 @@ export interface PreconSession {
   structureContext: StructureContext | null;
   /** DWG only: which element each layer holds, as proposed by the engine and corrected in review. */
   layerMap?: LayerMap | null;
+  /** nth measurement of this drawing with this scope. */
+  revision: number;
+  /** Set when a later revision replaced this take-off; it stays readable. */
+  supersededBy: string | null;
+  /** Priced-line counts, present on the list endpoint. */
+  lines?: { total: number; verified: number; attention: number };
   createdBy: string | null;
   createdAt: string;
 }

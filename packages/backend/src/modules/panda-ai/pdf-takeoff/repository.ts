@@ -12,6 +12,7 @@ import type {
   PreconSheetRow,
   PreconSummarySettingsRow,
   RowStatus,
+  SessionLineCounts,
   SessionLayerMap,
   SessionStatus,
   SheetStatus,
@@ -24,7 +25,10 @@ export type PreconRepository = ReturnType<typeof preconRepository>;
 export function preconRepository(db: Knex) {
   return {
     // sessions
-    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date" | "extraction">) => {
+    insertSession: async (
+      row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date" | "extraction" | "revision" | "superseded_by"> &
+        Partial<Pick<PreconSessionRow, "revision" | "superseded_by">>,
+    ) => {
       // pg turns a JS array into a Postgres array literal, which jsonb rejects;
       // the JSON columns go in as text so an array-valued log inserts cleanly.
       const [inserted] = await db<PreconSessionRow>("precon_sessions")
@@ -37,6 +41,33 @@ export function preconRepository(db: Knex) {
       return inserted!;
     },
     sessionById: (id: string) => db<PreconSessionRow>("precon_sessions").where({ id }).first(),
+    // every take-off ever run on this drawing, newest first; the caller matches the scope
+    sessionsByPlan: (planId: string) => db<PreconSessionRow>("precon_sessions").where({ plan_id: planId }).orderBy("created_at", "desc"),
+    supersedeSessions: (ids: string[], byId: string) =>
+      ids.length === 0
+        ? Promise.resolve(0)
+        : db<PreconSessionRow>("precon_sessions").whereIn("id", ids).update({ superseded_by: byId, updated_at: db.fn.now() }),
+    // one grouped query for a whole list, never one per session
+    lineCountsForSessions: async (sessionIds: string[]): Promise<Map<string, SessionLineCounts>> => {
+      const out = new Map<string, SessionLineCounts>();
+      if (sessionIds.length === 0) return out;
+      const rows = (await db("precon_boq_rows")
+        .join("precon_bills", "precon_bills.id", "precon_boq_rows.bill_id")
+        .whereIn("precon_bills.session_id", sessionIds)
+        .whereIn("precon_boq_rows.row_type", ["item", "provisional_sum"])
+        .groupBy("precon_bills.session_id", "precon_boq_rows.status")
+        .select("precon_bills.session_id as session_id", "precon_boq_rows.status as status")
+        .count("* as count")) as unknown as { session_id: string; status: RowStatus | null; count: string }[];
+      for (const r of rows) {
+        const c = out.get(r.session_id) ?? { total: 0, verified: 0, attention: 0 };
+        const n = Number(r.count);
+        c.total += n;
+        if (r.status === "verified") c.verified += n;
+        if (r.status === "needs_review") c.attention += n;
+        out.set(r.session_id, c);
+      }
+      return out;
+    },
     sessionsByOrg: (orgId: string, proposalId?: string) =>
       db<PreconSessionRow>("precon_sessions")
         .where({ org_id: orgId })
