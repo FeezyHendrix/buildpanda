@@ -6,8 +6,6 @@ import type {
   AddDeductionBody,
   CreateRowBody,
   Deduction,
-  PreconRateCardRow,
-  PreconRateRow,
   PreconAuditEventRow,
   PreconBill,
   PreconBillRow,
@@ -230,21 +228,6 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
   }
 
   const editor = programmeEditor(repo, audit);
-
-  function toRateCard(r: PreconRateCardRow) {
-    return { id: r.id, name: r.name, region: r.region, currency: r.currency };
-  }
-
-  function toRate(r: PreconRateRow) {
-    return {
-      id: r.id,
-      rateCardId: r.rate_card_id,
-      codePrefix: r.code_prefix,
-      descriptionPattern: r.description_pattern,
-      unit: r.unit,
-      rate: Number(r.rate),
-    };
-  }
 
   function isAnchorRow(row: PreconBoqRowRow): boolean {
     if (row.code === "F10/125" || row.code === "M10") return true;
@@ -905,48 +888,6 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
 
       const safeTitle = title.replace(/[^a-z0-9]+/gi, "-").slice(0, 60);
       return { fileName: `Programme-${safeTitle}.xml`, xml };
-    },
-
-    async listRateCards(orgId: string) {
-      const cards = await repo.rateCardsByOrg(orgId);
-      const allRates = await Promise.all(cards.map((c) => repo.ratesByCard(c.id)));
-      return cards.map((c, i) => ({ ...toRateCard(c), rates: allRates[i]!.map(toRate) }));
-    },
-
-    async createRateCard(orgId: string, name: string, region: string | null) {
-      const card = await repo.insertRateCard({
-        id: generateId("prc"),
-        org_id: orgId,
-        name,
-        region,
-        currency: "NGN",
-      });
-      return { ...toRateCard(card), rates: [] };
-    },
-
-    async addRate(
-      orgId: string,
-      rateCardId: string,
-      input: { codePrefix: string | null; descriptionPattern: string | null; unit: string; rate: number },
-    ) {
-      const card = await repo.rateCardById(rateCardId);
-      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
-      const rate = await repo.insertRate({
-        id: generateId("prt"),
-        rate_card_id: rateCardId,
-        code_prefix: input.codePrefix,
-        description_pattern: input.descriptionPattern,
-        unit: input.unit,
-        rate: input.rate,
-      });
-      return toRate(rate);
-    },
-
-    async removeRate(orgId: string, rateCardId: string, rateId: string) {
-      const card = await repo.rateCardById(rateCardId);
-      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
-      await repo.deleteRate(rateId, rateCardId);
-      return { ok: true };
     },
 
     async updateSettings(sessionId: string, patch: Partial<PreconSummarySettings>, actor: string) {

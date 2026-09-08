@@ -34,6 +34,8 @@ export const NOTIFICATION_TYPES = [
   { type: "invoice_overdue", label: "An invoice is overdue", group: "Payments" },
   { type: "permit_expiring", label: "A permit is expiring soon", group: "Project" },
   { type: "permit_expired", label: "A permit has expired", group: "Project" },
+  { type: "compliance_doc_expiring", label: "A compliance document is expiring soon", group: "Project" },
+  { type: "compliance_doc_expired", label: "A compliance document has expired", group: "Project" },
   { type: "key_date_approaching", label: "A key date is approaching", group: "Project" },
   { type: "key_date_missed", label: "A key date was missed", group: "Project" },
   { type: "risk_high_added", label: "A high-severity risk was added", group: "Project" },
