@@ -29,6 +29,7 @@ export function usePreconSessions(proposalId?: string) {
     // polled until it settles; idle lists never poll
     refetchInterval: (query) =>
       query.state.data?.some((s) => RUNNING_STATUSES.has(s.status)) ? 4000 : false,
+    refetchIntervalInBackground: true,
   });
 }
 
@@ -118,8 +119,11 @@ export function usePreconSnapshot(sessionId: string) {
     queryKey: preconKeys.snapshot(sessionId),
     queryFn: () => preconApi.snapshot(sessionId),
     enabled: Boolean(sessionId),
-    // while the engine runs, poll as a fallback to the websocket feed
+    // while the engine runs, poll as a fallback to the websocket feed; keep
+    // polling when the tab is in the background so a run that finishes while
+    // the user is elsewhere is already in review when they come back
     refetchInterval: (query) => (query.state.data?.session.status === "generating" ? 4000 : false),
+    refetchIntervalInBackground: true,
   });
 }
 
