@@ -56,7 +56,7 @@ export async function runFixture(fixture: Fixture, truth: Truth): Promise<Fixtur
     id: fixture.id,
     family: fixture.family,
     convention: fixture.convention.id,
-    dwg: { ran: dwgRun.value !== null, error: dwgRun.error, ms: dwgRun.ms, scored: dwgScored, summary: summarise(dwgScored), raw: dwgRun.value ? { scaleToMm: dwgRun.value.scaleToMm, scaleConfidence: dwgRun.value.scaleConfidence, drawings: dwgRun.value.drawings, items: dwgRun.value.items, notes: dwgRun.value.notes } : null },
+    dwg: { ran: dwgRun.value !== null, error: dwgRun.error, ms: dwgRun.ms, scored: dwgScored, summary: summarise(dwgScored), raw: dwgRun.value ? { scaleToMm: dwgRun.value.scaleToMm, scaleConfidence: dwgRun.value.scaleConfidence, drawings: dwgRun.value.drawings, items: dwgRun.value.items, notes: dwgRun.value.notes, walls: dwgRun.value.wallSummaries ?? [] } : null },
     pdf: {
       ran: pdfRun.value !== null,
       error: pdfRun.error,
@@ -131,7 +131,7 @@ export async function runBenchmark(opts: RunOptions = {}): Promise<BenchmarkResu
   const oguduPath = opts.oguduPath === undefined ? "/tmp/probe.dwg" : opts.oguduPath;
   if (oguduPath && (await fs.access(oguduPath).then(() => true, () => false))) {
     const run = await timed(() => runDwgTakeoff(oguduPath));
-    ogudu = run.value ? { ms: run.ms, scaleToMm: run.value.scaleToMm, scaleConfidence: run.value.scaleConfidence, drawings: run.value.drawings, items: run.value.items } : { error: run.error };
+    ogudu = run.value ? { ms: run.ms, scaleToMm: run.value.scaleToMm, scaleConfidence: run.value.scaleConfidence, walls: run.value.wallSummaries ?? [], drawings: run.value.drawings, items: run.value.items } : { error: run.error };
   }
   const all = { dwg: results.flatMap((r) => r.dwg.scored), pdf: results.flatMap((r) => r.pdf.scored) };
   const out: BenchmarkResults = {
