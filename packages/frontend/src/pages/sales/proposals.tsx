@@ -8,6 +8,8 @@ import { FormDrawer } from "@/components/molecules/form-drawer";
 import { Input } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { useProposals, useCreateProposal } from "@/hooks/use-proposals";
+import { useCreateProposalFromTemplate, useProposalTemplates } from "@/hooks/use-proposal-templates";
+import { JOB_PROFILE_LABEL } from "@/api/proposal-templates";
 import { PROPOSAL_STATUSES, type ProposalStatus, type ProposalListItem } from "@/api/proposals";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
@@ -55,6 +57,7 @@ interface PrefillSource {
   clientPhone?: string;
   location?: string;
   brief?: string;
+  templateId?: string;
 }
 
 function CreateProposalDrawer({
@@ -68,6 +71,9 @@ function CreateProposalDrawer({
 }) {
   const navigate = useNavigate();
   const create = useCreateProposal();
+  const createFromTemplate = useCreateProposalFromTemplate();
+  const { data: templates = [] } = useProposalTemplates();
+  const template = prefill?.templateId ? templates.find((t) => t.id === prefill.templateId) ?? null : null;
 
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [clientName, setClientName] = useState(prefill?.clientName ?? "");
@@ -104,7 +110,7 @@ function CreateProposalDrawer({
 
   async function handleSubmit() {
     if (!isValid) return;
-    const proposal = await create.mutateAsync({
+    const input = {
       title: title.trim(),
       clientName: clientName.trim(),
       clientEmail: clientEmail.trim() || undefined,
@@ -112,9 +118,13 @@ function CreateProposalDrawer({
       location: location.trim() || undefined,
       brief: brief.trim() || undefined,
       leadId: prefill?.leadId,
-    });
+    };
+    // a template creates the proposal and its first revision in one call
+    const proposalId = prefill?.templateId
+      ? (await createFromTemplate.mutateAsync({ ...input, templateId: prefill.templateId })).proposal.id
+      : (await create.mutateAsync(input)).id;
     onOpenChange(false);
-    navigate(`/sales/proposals/${proposal.id}`);
+    navigate(`/sales/proposals/${proposalId}`);
   }
 
   const inputClass = "w-full";
@@ -127,10 +137,15 @@ function CreateProposalDrawer({
       description="Enter the client details to get started. You can add an estimate from the workspace."
       submitLabel="Create proposal"
       submitDisabled={!isValid}
-      submitting={create.isPending}
-      error={create.isError ? "Failed to create proposal. Please try again." : null}
+      submitting={create.isPending || createFromTemplate.isPending}
+      error={create.isError || createFromTemplate.isError ? "Failed to create proposal. Please try again." : null}
       onSubmit={handleSubmit}
     >
+      {template ? (
+        <p className="rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          Starting from the <strong>{template.name}</strong> template ({JOB_PROFILE_LABEL[template.jobProfile]}). Its payment stages, terms and pack text are applied to the first revision.
+        </p>
+      ) : null}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="prop-title">Project title *</Label>
         <Input
@@ -216,19 +231,20 @@ export default function ProposalsPage() {
     clientPhone: searchParams.get("clientPhone") ?? undefined,
     location: searchParams.get("location") ?? undefined,
     brief: searchParams.get("brief") ?? undefined,
+    templateId: searchParams.get("templateId") ?? undefined,
   };
 
   useEffect(() => {
-    if (searchParams.get("clientName") || searchParams.get("leadId")) {
+    if (searchParams.get("clientName") || searchParams.get("leadId") || searchParams.get("templateId")) {
       setDrawerOpen(true);
     }
   }, [searchParams]);
 
   function handleDrawerOpenChange(v: boolean) {
     setDrawerOpen(v);
-    if (!v && (searchParams.get("leadId") || searchParams.get("clientName"))) {
+    if (!v && (searchParams.get("leadId") || searchParams.get("clientName") || searchParams.get("templateId"))) {
       const next = new URLSearchParams(searchParams);
-      ["leadId", "title", "clientName", "clientEmail", "clientPhone", "location", "brief"].forEach((k) =>
+      ["leadId", "title", "clientName", "clientEmail", "clientPhone", "location", "brief", "templateId"].forEach((k) =>
         next.delete(k),
       );
       setSearchParams(next, { replace: true });

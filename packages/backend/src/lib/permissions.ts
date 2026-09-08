@@ -42,6 +42,10 @@ export const statement = {
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -143,6 +147,10 @@ export const owner = ac.newRole({
   ...constructionFull,
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 });
 
 export const admin = ac.newRole({
@@ -150,6 +158,10 @@ export const admin = ac.newRole({
   ...constructionFull,
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 });
 
 export const member = ac.newRole({
@@ -157,6 +169,10 @@ export const member = ac.newRole({
   ...constructionContributor,
   proposals: ["view", "create", "update", "send"],
   leads: ["view", "create", "update"],
+  takeoffs: ["view", "measure", "edit"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
 });
 
 export const viewer = ac.newRole({
@@ -168,6 +184,10 @@ export const viewer = ac.newRole({
   ...constructionReadOnly,
   proposals: ["view"],
   leads: ["view"],
+  takeoffs: ["view"],
+  estimates: ["view"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
 });
 
 // The `employee` role is the DEFAULT floor for an invited employee (see

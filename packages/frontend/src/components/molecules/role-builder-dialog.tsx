@@ -55,6 +55,10 @@ const RESOURCE_LABELS: Record<string, string> = {
   risks: "Risks",
   proposals: "Proposals",
   leads: "Leads",
+  takeoffs: "Take-offs",
+  estimates: "Estimates",
+  rateCards: "Rate library",
+  complianceDocs: "Compliance documents",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -79,6 +83,11 @@ const ACTION_LABELS: Record<string, string> = {
   markup: "Markup drawings",
   void: "Void",
   report: "Generate report",
+  measure: "Run Panda AI",
+  verify: "Verify lines",
+  apply: "Apply to estimate",
+  price: "Enter rates",
+  terms: "Set money terms",
 };
 
 const RESOURCE_GROUPS: { label: string; resources: readonly string[] }[] = [
