@@ -4,7 +4,8 @@ import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
 import { PICTURE_PLAN } from "./types.ts";
 import { buildTakeoffCsv, csvFileName } from "./export-csv.ts";
-import { applyTypical, manualBasis, measureVertices, normaliseTypical, quantityFromStated } from "./measurements.ts";
+import { manualBasis, measureVertices, netQuantity, normaliseTypical, quantityFromStated } from "./measurements.ts";
+import { scaleAt, scaleClause } from "./viewports.ts";
 import type {
   CreateMeasurementBody,
   CreateMeasurementResult,
@@ -50,7 +51,9 @@ interface ManualLine {
   elementGroup: string;
   code?: string;
   unit: string;
-  qty: number;
+  // the drawn or stated figure after the tool's factor; net = gross × typical
+  gross: number;
+  typical: number;
   rate?: number;
   basis: string;
   provenance: string;
@@ -77,6 +80,7 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
   // is theirs too, not a rate card's.
   async function insertManualLine(bill: PreconBillRow, line: ManualLine, actor: string): Promise<PreconBoqRowRow> {
     const rate = line.rate ?? null;
+    const qty = netQuantity(line.gross, [], line.typical);
     return repo.insertBoqRow({
       id: generateId("pbr"),
       bill_id: bill.id,
@@ -86,11 +90,12 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       code: line.code ?? null,
       description: line.description,
       unit: line.unit,
-      qty_gross: line.qty,
+      qty_gross: line.gross,
       deductions: [],
-      qty: line.qty,
+      typical: line.typical,
+      qty,
       rate,
-      amount: rate === null ? null : Math.round(line.qty * rate * 100) / 100,
+      amount: rate === null ? null : Math.round(qty * rate * 100) / 100,
       rate_source: rate === null ? null : "manual",
       confidence: "high",
       status: "verified",
@@ -200,10 +205,11 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       if (!session) throw new NotFoundError("Preconstruction session");
       const sheet = await repo.sheetById(body.sheetId);
       if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
-      if (!sheet.scale_mm_per_pt) throw new BadRequestError("Set the sheet scale first");
       if (!body.description.trim()) throw new BadRequestError("Give the line a description");
       const typical = normaliseTypical(body.typical);
-      const q = measureVertices(body.tool, body.vertices, sheet.scale_mm_per_pt, body.factor);
+      // the viewport under the first vertex sets the scale, else the sheet does
+      const pick = scaleAt(sheet, body.vertices);
+      const q = measureVertices(body.tool, body.vertices, pick.mmPerPt, body.factor);
       const unit = unitFor(body, q);
       const sheetCode = sheet.code ?? sheet.title ?? sheet.file_name;
       const bill = await targetBill(sessionId, body.billId);
@@ -214,9 +220,10 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           elementGroup: body.elementGroup,
           code: body.code,
           unit,
-          qty: applyTypical(q.gross, typical),
+          gross: q.gross,
+          typical,
           rate: body.rate,
-          basis: manualBasis(body.tool, q, `on ${sheetCode}`, body.factor, typical, unit),
+          basis: manualBasis(body.tool, q, `on ${sheetCode}${scaleClause(sheet, pick)}`, body.factor, typical, unit),
           provenance: `Measured by hand on ${sheetCode} by ${actor}`,
         },
         actor,
@@ -261,7 +268,8 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           elementGroup: body.elementGroup,
           code: body.code,
           unit,
-          qty: applyTypical(q.gross, typical),
+          gross: q.gross,
+          typical,
           rate: body.rate,
           basis: manualBasis(body.tool, q, "stated in prompt", body.factor, typical, unit),
           provenance: `Stated in a Panda AI prompt by ${actor}`,
