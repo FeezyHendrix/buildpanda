@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { ExtractionSummary } from "@/components/molecules/precon-session/extraction-report";
 import type { PreconSheet, PreconSheetKind } from "@/api/precon";
 import { useRemeasurePreconSheet, useUpdatePreconSheet } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -71,6 +72,8 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
           Close
         </button>
       </div>
+
+      {sheet.geoSummary ? <ExtractionSummary summary={sheet.geoSummary} /> : null}
 
       <label className="block text-xs text-gray-500">
         Sheet type

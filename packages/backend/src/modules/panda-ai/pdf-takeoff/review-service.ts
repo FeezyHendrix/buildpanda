@@ -120,6 +120,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           scale_confidence: null,
           dim_unit: null,
           snap_index: null,
+          geo_summary: null,
           error: "Drawn from the DWG model space. Lines were read by the automated take-off and carry no on-sheet geometry yet.",
         },
       ]);

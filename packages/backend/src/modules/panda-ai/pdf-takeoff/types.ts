@@ -1,3 +1,4 @@
+import type { GeoSummary, SessionExtraction } from "../geometry/types.ts";
 export const SESSION_STATUSES = ["uploading", "generating", "reviewing", "output", "failed"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
@@ -93,6 +94,7 @@ export interface PreconSessionRow {
   scope: TakeoffScope | null;
   plan_id: string | null;
   takeoff_kind: TakeoffKind;
+  extraction: SessionExtraction | null;
   structure_context: StructureContext | null;
   programme_start_date: Date | string | null;
   created_by: string | null;
@@ -114,6 +116,7 @@ export interface PreconSheetRow {
   scale_confidence: number | null;
   dim_unit: DimUnit | null;
   snap_index: number[][] | null;
+  geo_summary: GeoSummary | null;
   error: string | null;
   created_at: Date;
   updated_at: Date;
@@ -238,6 +241,8 @@ export interface PreconSession {
   scope: TakeoffScope;
   planId: string | null;
   takeoffKind: TakeoffKind;
+  // what the parser found, per sheet, before measurement
+  extraction: SessionExtraction | null;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
@@ -255,6 +260,7 @@ export interface PreconSheet {
   scaleMmPerPt: number | null;
   scaleConfidence: number | null;
   dimUnit: DimUnit | null;
+  geoSummary: GeoSummary | null;
   error: string | null;
 }
 
@@ -479,6 +485,9 @@ export interface ExtractedSheet {
   segments: Segment[];
   curves: Curve[];
   texts: TextRun[];
+  // the raw pdf.js operator list, kept so the extraction report can recover
+  // fills, scaled line widths and optional-content layers without a re-parse
+  ops?: { fnArray: number[]; argsArray: unknown[] };
 }
 
 export interface CalibrationResult {

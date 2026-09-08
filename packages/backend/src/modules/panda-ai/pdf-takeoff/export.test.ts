@@ -91,6 +91,7 @@ function makeSnapshot(): PreconSnapshot {
       scope: { kind: "full", elements: [] },
       planId: null,
       takeoffKind: "pdf",
+      extraction: null,
       structureContext: null,
       createdBy: "u_1",
       createdAt: "2026-07-12T00:00:00.000Z",

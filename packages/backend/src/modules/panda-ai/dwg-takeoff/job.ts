@@ -10,6 +10,9 @@ import { openStoredFile } from "../../../lib/file-storage.ts";
 import { generateId } from "../../../lib/ids.ts";
 import { takeoffJobsRepository } from "./jobs-repository.ts";
 import { runDwgTakeoff } from "./engine.ts";
+import { parseDwgToJson } from "./dwg.ts";
+import { fromDwg } from "../geometry/from-dwg.ts";
+import { buildReport, summarise } from "../geometry/report.ts";
 import { preconRepository } from "../pdf-takeoff/repository.ts";
 import { preconService } from "../pdf-takeoff/service.ts";
 
@@ -37,6 +40,18 @@ export async function withTempDwg<T>(storagePath: string, fn: (file: string) => 
   }
 }
 
+async function recordExtraction(db: Knex, sessionId: string, file: string): Promise<void> {
+  const precon = preconRepository(db);
+  const report = buildReport(fromDwg(await parseDwgToJson(file)));
+  const sheets = await precon.sheetsBySession(sessionId);
+  const bySheet: Record<string, typeof report> = {};
+  for (const sheet of sheets) {
+    bySheet[sheet.id] = report;
+    await precon.updateSheetGeoSummary(sheet.id, summarise(report));
+  }
+  await precon.updateSessionExtraction(sessionId, { sheets: bySheet, generatedAt: new Date().toISOString() });
+}
+
 export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> {
   const repo = takeoffJobsRepository(db);
   const job = await repo.rawById(data.jobId);
@@ -45,7 +60,12 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
   const precon = preconService(preconRepository(db));
   await repo.markProcessing(job.id);
   try {
-    const result = await withTempDwg(job.storage_path, (file) => runDwgTakeoff(file));
+    const result = await withTempDwg(job.storage_path, async (file) => {
+      // the extraction report is written before measuring so a failed or empty
+      // measure still leaves the reviewer with what the parser found
+      if (data.sessionId) await recordExtraction(db, data.sessionId, file);
+      return runDwgTakeoff(file);
+    });
     await repo.markComplete(job.id, result);
     // A proposal take-off becomes a reviewable session — the same object a PDF
     // produces — rather than lines appended straight onto the bill.
