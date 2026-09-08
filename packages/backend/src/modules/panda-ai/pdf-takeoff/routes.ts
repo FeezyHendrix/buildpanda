@@ -14,7 +14,16 @@ import {
   type PreconGenerateJobData,
   type PreconProgrammeJobData,
 } from "./job.ts";
-import { GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import {
+  DIM_UNITS,
+  FOUNDATION_TYPES,
+  GEOMETRY_KINDS,
+  ROW_TYPES,
+  SHEET_KINDS,
+  STRUCTURAL_SYSTEMS,
+  STRUCTURE_CLASSES,
+  TAKEOFF_SCOPE_KINDS,
+} from "./types.ts";
 import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
@@ -27,6 +36,8 @@ import type {
   UpdateGeometryBody,
   UpdateProgrammeTaskBody,
   UpdateRowBody,
+  UpdateSheetBody,
+  UpdateStructureBody,
 } from "./types.ts";
 
 const sessionParams = {
@@ -190,6 +201,29 @@ const createRowBody = {
   },
 } as const;
 
+const updateSheetBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    kind: { type: "string", enum: SHEET_KINDS },
+    title: { type: ["string", "null"], maxLength: 200 },
+    scaleMmPerPt: { type: ["number", "null"], exclusiveMinimum: 0 },
+    dimUnit: { type: ["string", "null"], enum: [...DIM_UNITS, null] },
+  },
+} as const;
+
+const updateStructureBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    structureClass: { type: "string", enum: STRUCTURE_CLASSES },
+    buildingType: { type: ["string", "null"], maxLength: 80 },
+    storeys: { type: ["integer", "null"], minimum: 0, maximum: 200 },
+    structuralSystem: { type: "string", enum: STRUCTURAL_SYSTEMS },
+    foundationType: { type: "string", enum: FOUNDATION_TYPES },
+  },
+} as const;
+
 const fromPlanBody = {
   type: "object",
   required: ["proposalId", "planId"],
@@ -277,7 +311,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { querystring: createSessionQuery } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "create");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       const proposalId = request.query.proposalId ?? null;
       if (proposalId) {
         const proposal = await proposalsRepository(fastify.db).getById(proposalId, orgId);
@@ -312,7 +346,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { body: fromPlanBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "create");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       const proposalsRepo = proposalsRepository(fastify.db);
       const proposal = await proposalsRepo.getById(request.body.proposalId, orgId);
       if (!proposal) throw new NotFoundError("Proposal");
@@ -331,6 +365,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         [{ fileName: file.file_name, storagePath: file.storage_path }],
         request.body.proposalId,
         request.body.scope,
+        { planId: plan.id, takeoffKind: "pdf" },
       );
       const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
       await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", jobData);
@@ -343,7 +378,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       const session = await service.retryGeneration(request.params.sessionId, user.id);
       const jobData: PreconGenerateJobData = { sessionId: session.id, orgId };
@@ -352,12 +387,63 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
+  // Reviewer corrections to what the engine read off a sheet.
+  fastify.patch<{ Params: { sheetId: string }; Body: UpdateSheetBody }>(
+    "/precon/sheets/:sheetId",
+    { schema: { params: sheetParams, body: updateSheetBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.assertSheetOrg(request.params.sheetId, orgId);
+      return service.updateSheet(request.params.sheetId, request.body, user.id);
+    },
+  );
+
+  fastify.post<{ Params: { sheetId: string } }>(
+    "/precon/sheets/:sheetId/remeasure",
+    { schema: { params: sheetParams } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
+      await service.assertSheetOrg(request.params.sheetId, orgId);
+      const sessionId = await service.assertRemeasurable(request.params.sheetId);
+      const jobData: PreconGenerateJobData = { sessionId, orgId, mode: "remeasure", sheetId: request.params.sheetId };
+      await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "remeasure", jobData);
+      return reply.status(202).send({ status: "queued" });
+    },
+  );
+
+  fastify.patch<{ Params: { sessionId: string }; Body: UpdateStructureBody }>(
+    "/precon/sessions/:sessionId/structure",
+    { schema: { params: sessionParams, body: updateStructureBody } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      return service.updateStructure(request.params.sessionId, request.body, user.id);
+    },
+  );
+
+  fastify.post<{ Params: { sessionId: string } }>(
+    "/precon/sessions/:sessionId/redraft-bill",
+    { schema: { params: sessionParams } },
+    async (request, reply) => {
+      request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      await service.assertRedraftable(request.params.sessionId);
+      const jobData: PreconGenerateJobData = { sessionId: request.params.sessionId, orgId, mode: "redraft" };
+      await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "redraft", jobData);
+      return reply.status(202).send({ status: "queued" });
+    },
+  );
+
   fastify.post<{ Body: CreateBlankSessionBody }>(
     "/precon/sessions/blank",
     { schema: { body: blankSessionBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "create");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       const proposalId = request.body.proposalId ?? null;
       if (proposalId) {
         const proposal = await proposalsRepository(fastify.db).getById(proposalId, orgId);
@@ -373,7 +459,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams, body: billBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       const bill = await service.createBill(request.params.sessionId, request.body.title, user.id);
       return reply.status(201).send(bill);
@@ -385,7 +471,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: billParams, body: billBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertBillOrg(request.params.billId, orgId);
       return service.renameBill(request.params.billId, request.body.title, user.id);
     },
@@ -396,7 +482,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: billParams } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertBillOrg(request.params.billId, orgId);
       return service.removeBill(request.params.billId, user.id);
     },
@@ -407,7 +493,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: billParams, body: createRowBody } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertBillOrg(request.params.billId, orgId);
       const row = await service.createRow(request.params.billId, request.body, user.id);
       return reply.status(201).send(row);
@@ -419,7 +505,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.removeRow(request.params.rowId, user.id);
     },
@@ -430,7 +516,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { querystring: listSessionsQuery } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       return service.listSessions(orgId, request.query.proposalId);
     },
   );
@@ -440,7 +526,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.getSnapshot(request.params.sessionId);
     },
@@ -453,7 +539,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       await fastify.queue.enqueue(PRECON_PROGRAMME_QUEUE, "programme", {
         sessionId: request.params.sessionId,
@@ -468,7 +554,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.getProgramme(request.params.sessionId);
     },
@@ -479,7 +565,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams, body: programmeStartBody } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.setProgrammeStart(request.params.sessionId, request.body.startDate);
     },
@@ -490,7 +576,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       const { fileName, xml } = await service.exportProgrammeXml(request.params.sessionId);
       return reply
@@ -505,7 +591,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: updateProgrammeTaskBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       const { version, ...patch } = request.body;
       return service.updateProgrammeTask(request.params.taskId, version, patch, user.id);
@@ -517,7 +603,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "verified", user.id);
     },
@@ -528,7 +614,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "rejected", user.id);
     },
@@ -539,7 +625,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams, body: updateRowBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.updateRow(request.params.rowId, request.body, user.id);
     },
@@ -550,7 +636,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.verifyRow(request.params.rowId, request.body.version, user.id);
     },
@@ -561,7 +647,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.rejectRow(request.params.rowId, request.body.version, user.id);
     },
@@ -572,7 +658,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams, body: updateGeometryBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.updateGeometry(request.params.rowId, request.body, user.id);
     },
@@ -583,7 +669,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rowParams, body: addDeductionBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertRowOrg(request.params.rowId, orgId);
       return service.addDeduction(request.params.rowId, request.body, user.id);
     },
@@ -594,7 +680,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams, body: settingsBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.updateSettings(request.params.sessionId, request.body, user.id);
     },
@@ -605,7 +691,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sheetParams } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       const sheet = await repo.sheetById(request.params.sheetId);
       if (!sheet) throw new NotFoundError("Sheet");
       await service.assertSessionOrg(sheet.session_id, orgId);
@@ -619,7 +705,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sheetParams } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       const sheet = await repo.sheetById(request.params.sheetId);
       if (!sheet) throw new NotFoundError("Sheet");
       await service.assertSessionOrg(sheet.session_id, orgId);
@@ -632,7 +718,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgScope();
+      const orgId = request.requireOrgPermission("takeoffs", "view");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       const { fileName, buffer } = await service.exportWorkbook(request.params.sessionId);
       return reply
@@ -647,7 +733,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "create");
+      const orgId = request.requireOrgPermission("takeoffs", "apply");
       const session = await service.assertSessionOrg(request.params.sessionId, orgId);
       const snapshot = await service.getSnapshot(request.params.sessionId);
       let proposalId = session.proposalId;
@@ -690,7 +776,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { body: rateCardBody } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "create");
+      const orgId = request.requireOrgPermission("rateCards", "manage");
       const card = await service.createRateCard(orgId, request.body.name, request.body.region ?? null);
       return reply.status(201).send(card);
     },
@@ -704,7 +790,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: cardParams, body: rateBody } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("rateCards", "manage");
       const rate = await service.addRate(orgId, request.params.cardId, {
         codePrefix: request.body.codePrefix ?? null,
         descriptionPattern: request.body.descriptionPattern ?? null,
@@ -720,7 +806,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: rateParams } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("rateCards", "manage");
       return service.removeRate(orgId, request.params.cardId, request.params.rateId);
     },
   );

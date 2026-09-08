@@ -26,9 +26,14 @@ import type {
   PreconSummary,
   PreconSummarySettings,
   ProgrammeDependency,
+  StructureContext,
+  TakeoffKind,
   TakeoffScope,
+  DwgTakeoffLine,
   UpdateGeometryBody,
   UpdateRowBody,
+  UpdateSheetBody,
+  UpdateStructureBody,
 } from "./types.ts";
 import { FULL_TAKEOFF_SCOPE } from "./types.ts";
 import { scheduleProgramme } from "./programme-schedule.ts";
@@ -37,6 +42,44 @@ const num = (v: string | number | null): number | null => (v === null ? null : N
 // pg serialises a plain object into jsonb; typed as the row field so the
 // repository insert stays honest about what it stores.
 const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
+
+// Shape a DWG take-off line into a bill row with everything review expects.
+function dwgRow(
+  billId: string,
+  sort: number,
+  seed: Partial<Omit<PreconBoqRowRow, "id" | "bill_id" | "sort" | "created_at" | "updated_at">> & {
+    row_type: PreconBoqRowRow["row_type"];
+    description: string;
+  },
+): Omit<PreconBoqRowRow, "created_at" | "updated_at"> {
+  return {
+    id: generateId("pbr"),
+    bill_id: billId,
+    sort,
+    row_type: seed.row_type,
+    element_group: seed.element_group ?? null,
+    code: seed.code ?? null,
+    description: seed.description,
+    unit: seed.unit ?? null,
+    qty_gross: seed.qty_gross ?? null,
+    deductions: [],
+    qty: seed.qty ?? null,
+    rate: null,
+    amount: null,
+    rate_source: null,
+    confidence: seed.confidence ?? null,
+    status: seed.status ?? null,
+    version: 1,
+    measurement_basis: seed.measurement_basis ?? null,
+    confidence_reason: seed.confidence_reason ?? null,
+    provenance: seed.provenance ?? null,
+    origin: "ai",
+    edited_at: null,
+    edited_by: null,
+    verified_by: null,
+    verified_at: null,
+  };
+}
 
 function toSession(r: PreconSessionRow): PreconSession {
   return {
@@ -50,6 +93,8 @@ function toSession(r: PreconSessionRow): PreconSession {
     phase: r.phase ?? null,
     progressLog: r.progress_log ?? [],
     scope: r.scope ?? FULL_TAKEOFF_SCOPE,
+    planId: r.plan_id ?? null,
+    takeoffKind: r.takeoff_kind ?? "pdf",
     structureContext: r.structure_context ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
@@ -122,6 +167,11 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     status: r.status,
     version: r.version,
     measurementBasis: r.measurement_basis,
+    confidenceReason: r.confidence_reason ?? null,
+    provenance: r.provenance ?? null,
+    origin: r.origin ?? "ai",
+    editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
+    editedBy: r.edited_by ?? null,
     verifiedBy: r.verified_by,
     verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
   };
@@ -302,6 +352,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       files: { fileName: string; storagePath: string }[],
       proposalId: string | null = null,
       scope: TakeoffScope = FULL_TAKEOFF_SCOPE,
+      origin: { planId?: string | null; takeoffKind?: TakeoffKind } = {},
     ) {
       if (scope.kind === "sections" && scope.elements.length === 0) {
         throw new BadRequestError("Pick at least one section to measure");
@@ -317,6 +368,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         phase: null,
         progress_log: null,
         scope: db_json(scope),
+        plan_id: origin.planId ?? null,
+        takeoff_kind: origin.takeoffKind ?? "pdf",
         created_by: userId,
       });
       // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
@@ -357,6 +410,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         phase: null,
         progress_log: null,
         scope: db_json(FULL_TAKEOFF_SCOPE),
+        plan_id: null,
+        takeoff_kind: "manual",
         created_by: userId,
       });
       await repo.insertBill({
@@ -372,6 +427,151 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
 
     async listSessions(orgId: string, proposalId?: string) {
       return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
+    },
+
+    // A DWG read by the automated take-off lands as a reviewable session, the
+    // same object a PDF produces, instead of being appended to the proposal bill.
+    async createDwgSession(
+      orgId: string,
+      userId: string,
+      proposalId: string,
+      planId: string | null,
+      file: { fileName: string; storagePath: string },
+      lines: DwgTakeoffLine[],
+    ): Promise<PreconSession> {
+      const session = await repo.insertSession({
+        id: generateId("pcs"),
+        org_id: orgId,
+        project_id: null,
+        proposal_id: proposalId,
+        status: "reviewing",
+        title: file.fileName,
+        error: null,
+        phase: "draft",
+        progress_log: [{ at: new Date().toISOString(), phase: "draft", message: `Read ${lines.length} lines from ${file.fileName}` }],
+        scope: db_json(FULL_TAKEOFF_SCOPE),
+        plan_id: planId,
+        takeoff_kind: "dwg",
+        created_by: userId,
+      });
+      await repo.insertSheets([
+        {
+          id: generateId("pcsh"),
+          session_id: session.id,
+          file_name: file.fileName,
+          storage_path: file.storagePath,
+          page_number: 1,
+          code: "DWG-01",
+          title: file.fileName,
+          kind: "floor-plan",
+          status: "unmeasurable",
+          scale_mm_per_pt: null,
+          scale_confidence: null,
+          dim_unit: null,
+          snap_index: null,
+          error: "Read by the automated take-off; no vector overlay for DWG yet",
+        },
+      ]);
+      const bill = await repo.insertBill({
+        id: generateId("pbl"),
+        session_id: session.id,
+        title: "Bill No. 1 — Automated take-off (DWG)",
+        sort: 0,
+      });
+      const rows: Omit<PreconBoqRowRow, "created_at" | "updated_at">[] = [];
+      const byTrade = new Map<string, DwgTakeoffLine[]>();
+      for (const line of lines) {
+        const list = byTrade.get(line.trade);
+        if (list) list.push(line);
+        else byTrade.set(line.trade, [line]);
+      }
+      for (const [trade, tradeLines] of byTrade) {
+        rows.push(dwgRow(bill.id, rows.length, { row_type: "heading", element_group: trade, description: trade.toUpperCase() }));
+        for (const line of tradeLines) {
+          const low = line.confidence !== "high";
+          rows.push(
+            dwgRow(bill.id, rows.length, {
+              row_type: "item",
+              element_group: trade,
+              description: line.description,
+              unit: line.unit,
+              qty_gross: line.quantity,
+              qty: line.quantity,
+              confidence: low ? "low" : "high",
+              status: low ? "needs_review" : "ai_generated",
+              measurement_basis: line.basis,
+              confidence_reason: line.confidence === "medium" ? "medium confidence" : low ? "low confidence" : null,
+              provenance: `Read from ${file.fileName} by the automated take-off: ${line.basis}`,
+            }),
+          );
+        }
+      }
+      await repo.insertBoqRows(rows);
+      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
+      await audit(session.id, null, userId, "session_created", null, { title: file.fileName, origin: "dwg", lines: lines.length });
+      return toSession(session);
+    },
+
+    // The reviewer corrects what the engine read off a sheet. A typed or drawn
+    // scale is authoritative (confidence 1), so the next re-measure uses it.
+    async updateSheet(sheetId: string, body: UpdateSheetBody, actor: string): Promise<PreconSheet> {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      const patch: Parameters<PreconRepository["updateSheet"]>[1] = {};
+      if (body.kind !== undefined) patch.kind = body.kind;
+      if (body.title !== undefined) patch.title = body.title;
+      if (body.scaleMmPerPt !== undefined) {
+        if (body.scaleMmPerPt !== null && !(body.scaleMmPerPt > 0)) throw new BadRequestError("Scale must be a positive number");
+        patch.scale_mm_per_pt = body.scaleMmPerPt;
+        patch.scale_confidence = body.scaleMmPerPt === null ? null : 1;
+        patch.error = null;
+        if (body.scaleMmPerPt !== null && sheet.status === "unmeasurable") patch.status = "measured";
+      }
+      if (body.dimUnit !== undefined) patch.dim_unit = body.dimUnit;
+      await repo.updateSheet(sheetId, patch);
+      await audit(sheet.session_id, null, actor, "sheet_updated", { kind: sheet.kind, scale: sheet.scale_mm_per_pt }, { ...body });
+      const updated = await repo.sheetById(sheetId);
+      return toSheet(updated ?? { ...sheet, ...patch });
+    },
+
+    async assertRemeasurable(sheetId: string): Promise<string> {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      if (!/\.pdf$/i.test(sheet.file_name)) throw new BadRequestError("Only PDF sheets can be re-measured");
+      return sheet.session_id;
+    },
+
+    // A person overriding the structure reading makes it high-confidence; the
+    // engine's signals are kept so the audit trail shows what it saw.
+    async updateStructure(sessionId: string, body: UpdateStructureBody, actor: string): Promise<PreconSession> {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
+      const current: StructureContext = session.structure_context ?? {
+        structureClass: "unknown",
+        buildingType: null,
+        storeys: null,
+        structuralSystem: "unknown",
+        foundationType: "unknown",
+        confidence: "low",
+        signals: [],
+      };
+      const next: StructureContext = {
+        ...current,
+        ...body,
+        confidence: "high",
+        signals: [...current.signals, `set by reviewer ${new Date().toISOString().slice(0, 10)}`],
+      };
+      await repo.updateSessionStructure(sessionId, next);
+      await audit(sessionId, null, actor, "structure_updated", { ...current }, { ...next });
+      const updated = await repo.sessionById(sessionId);
+      return toSession(updated ?? session);
+    },
+
+    async assertRedraftable(sessionId: string): Promise<void> {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
+      if (session.status !== "reviewing") throw new BadRequestError("Only a take-off in review can be redrafted");
+      if (!session.structure_context) throw new BadRequestError("Set the structure reading before redrafting");
     },
 
     // A failed run is retried in place: the session keeps its id, settings and
@@ -408,6 +608,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const session = await repo.sessionById(sessionId);
       if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
       return sessionId;
+    },
+
+    async assertSheetOrg(sheetId: string, orgId: string) {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      const session = await repo.sessionById(sheet.session_id);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Sheet");
+      return sheet.session_id;
     },
 
     async assertBillOrg(billId: string, orgId: string) {
@@ -518,6 +726,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: priced ? "verified" : null,
         version: 1,
         measurement_basis: priced ? "Entered manually" : null,
+        confidence_reason: null,
+        provenance: priced ? "Entered by hand in review" : null,
+        origin: "manual",
+        edited_at: null,
+        edited_by: null,
         verified_by: priced ? actor : null,
         verified_at: priced ? new Date() : null,
       });
@@ -570,6 +783,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const qty = body.changes.qty ?? num(row.qty);
       const rate = body.changes.rate ?? num(row.rate);
       if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
+      patch.edited_at = new Date();
+      patch.edited_by = actor;
       // An edited AI measurement needs re-checking; a hand-entered row's author
       // is already its verifier, so it stays verified.
       if (row.status === "verified") {
