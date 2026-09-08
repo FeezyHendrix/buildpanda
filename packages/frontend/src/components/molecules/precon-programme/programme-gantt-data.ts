@@ -16,6 +16,9 @@ export interface ProgrammeGanttTask {
   progress?: number;
   critical?: boolean;
   color?: string;
+  /** Working days, as the table and the scheduler count them. */
+  durationDays: number;
+  isMilestone: boolean;
 }
 
 const ROOT = 0;
@@ -84,6 +87,8 @@ export function buildProgrammeGantt(tasks: PreconProgrammeTask[]) {
         progress: t.status === "verified" ? 100 : 0,
         critical: t.isCritical,
         color: t.isCritical && !isSummary ? CRITICAL_COLOR : undefined,
+        durationDays: t.durationDays,
+        isMilestone: t.isMilestone,
       };
     });
 
