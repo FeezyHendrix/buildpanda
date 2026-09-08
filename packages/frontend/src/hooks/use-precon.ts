@@ -6,6 +6,8 @@ import {
   type CreateMeasurementBody,
   preconApplyApi,
   preconManualApi,
+  preconViewerApi,
+  type SheetViewport,
   type ApplyMode,
   type TakeoffMode,
   type CreateRowInput,
@@ -519,6 +521,51 @@ export function useCreateMeasurement(sessionId: string) {
             }
           : prev,
       );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+// ---- WS-M2B · viewer tools ----
+
+/** The proposal's take-offs, fetched only when a proposal is named (the overlay resolves the previous revision through it). */
+export function usePreconSessionsFor(proposalId: string | null) {
+  return useQuery({
+    queryKey: [...preconKeys.sessions(), proposalId ?? "all"],
+    queryFn: () => preconApi.listSessions(proposalId ?? undefined),
+    enabled: Boolean(proposalId),
+  });
+}
+
+/** Room fill: the enclosed space around a click, as a polygon the composer can name. */
+export function useRoomAt(sheetId: string | null) {
+  return useMutation({ mutationFn: (pt: { x: number; y: number }) => preconViewerApi.roomAt(sheetId!, pt) });
+}
+
+/** Find symbol: every match on the sheet of the symbol inside a dragged box. */
+export function useSymbolMatches(sheetId: string | null) {
+  return useMutation({ mutationFn: (rect: [number, number, number, number]) => preconViewerApi.symbolMatches(sheetId!, rect) });
+}
+
+/** Typical ×N on a bill line; the returned row (qty and basis recomputed) replaces the cached one. */
+export function useSetTypical(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, version, typical }: { rowId: string; version: number; typical: number }) => preconViewerApi.setTypical(rowId, { version, typical }),
+    onSuccess: (row) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, rows: prev.rows.map((r) => (r.id === row.id ? row : r)) } : prev));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+/** The sheet's viewports, replaced whole; the returned sheet replaces the cached one. */
+export function useUpdateSheetViewports(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sheetId, viewports }: { sheetId: string; viewports: SheetViewport[] }) => preconViewerApi.updateViewports(sheetId, viewports),
+    onSuccess: (sheet) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, sheets: prev.sheets.map((s) => (s.id === sheet.id ? sheet : s)) } : prev));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });

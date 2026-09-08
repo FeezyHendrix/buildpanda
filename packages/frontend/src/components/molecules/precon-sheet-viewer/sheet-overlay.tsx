@@ -12,6 +12,10 @@ interface Props {
   draftColor?: string;
   /** An area in progress or awaiting its name: drawn closed and filled. */
   draftClosed?: boolean;
+  /** The points to dot: the clicks, not every densified arc vertex. Defaults to the draft. */
+  draftMarkers?: number[][];
+  /** An Alt-clicked arc middle waiting for its end point. */
+  arcMid?: number[] | null;
   toPx: (pt: number[]) => [number, number];
   /** When set, only these rows draw at full strength; the rest are dimmed. */
   emphasisRowIds?: ReadonlySet<string> | null;
@@ -91,7 +95,9 @@ function GeometryShape({
 GeometryShape.displayName = "GeometryShape";
 
 /** The measurement overlay drawn over the rasterised sheet, in canvas pixels. */
-export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", draftClosed = false, toPx, emphasisRowIds = null }: Props) {
+export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", draftClosed = false, draftMarkers, arcMid = null, toPx, emphasisRowIds = null }: Props) {
+  const markers = draftMarkers ?? draft;
+  const mid = arcMid ? toPx(arcMid) : null;
   return (
     <svg className="absolute left-0 top-0" width={widthPx} height={heightPx} viewBox={`0 0 ${widthPx} ${heightPx}`}>
       {geometries.map((g) => {
@@ -117,10 +123,11 @@ export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedR
       ) : draft.length > 0 ? (
         <polyline points={draft.map((v) => toPx(v).join(",")).join(" ")} fill="none" stroke={draftColor} strokeWidth={2} strokeDasharray="4 3" />
       ) : null}
-      {draft.map((v, i) => {
+      {markers.map((v, i) => {
         const [x, y] = toPx(v);
         return <circle key={i} cx={x} cy={y} r={4} fill={draftColor} />;
       })}
+      {mid ? <circle cx={mid[0]} cy={mid[1]} r={4} fill="none" stroke={draftColor} strokeWidth={1.5} strokeDasharray="2 2" /> : null}
     </svg>
   );
 }
