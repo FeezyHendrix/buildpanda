@@ -359,3 +359,7 @@ export const preconAssistKeys = {
   all: ["precon-assist"] as const,
   forSession: (sessionId: string) => [...preconAssistKeys.all, "session", sessionId] as const,
 };
+
+export const proposalPackKeys = {
+  all: (proposalId: string) => ["proposals", "detail", proposalId, "pack"] as const,
+};
