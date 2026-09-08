@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import type { ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
-import { channelKeys, messageKeys, notificationKeys } from "@/hooks/query-keys";
+import { channelKeys, messageKeys, notificationKeys, preconPresenceKeys } from "@/hooks/query-keys";
 import { participantKeys } from "@/hooks/use-participants";
 import { cacheMessages, deleteCachedMessage } from "@/lib/chat-cache";
 import { playMessageChime } from "@/lib/notification-sound";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/desktop-notification";
 import { toast } from "@/lib/toast";
 import type { ChatMessage, Channel } from "@/lib/project-types";
+import type { PresenceUser } from "@/api/precon";
 
 // Lazy import avoids a static cycle with @/App (which is rendered *inside*
 // RealtimeProvider); the router is only needed when a notification is clicked.
@@ -35,6 +36,7 @@ type RealtimeEvent =
   | "row.rejected"
   | "geometry.updated"
   | "precon.progress"
+  | "precon.presence"
   | "access.updated";
 
 interface RealtimePayload {
@@ -266,6 +268,16 @@ function handleEvent(
         query.queryKey.includes(sessionId) &&
         (query.queryKey.includes("snapshot") || query.queryKey.includes("programme")),
     });
+    return;
+  }
+
+  // WS-M3B: who is on a take-off session and which row each is looking at.
+  // Pure presence — nothing to refetch; the list is the whole state.
+  if (payload.event === "precon.presence") {
+    const sessionId = payload.channelId?.startsWith("precon:") ? payload.channelId.slice("precon:".length) : null;
+    if (!sessionId) return;
+    const data = payload.data as { users?: PresenceUser[] } | undefined;
+    queryClient.setQueryData<PresenceUser[]>(preconPresenceKeys.session(sessionId), data?.users ?? []);
     return;
   }
 

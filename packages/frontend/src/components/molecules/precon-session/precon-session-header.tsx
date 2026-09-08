@@ -3,7 +3,10 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { PreconSnapshot } from "@/api/precon";
+import { usePreconPresence } from "@/hooks/use-precon";
 import { PRECON_STATUS_LABEL, PRECON_STATUS_TONE, describeScope, formatStructureContext } from "@/lib/precon-meta";
+import { useSession } from "@/stores/auth";
+import { PresenceAvatars } from "./presence-avatars";
 import type { PreconStepKey } from "./precon-stepper";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +19,10 @@ interface Props {
 
 export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }: Props) {
   const { session, progress } = snapshot;
+  // WS-M3B: who else is on this take-off, from the realtime presence feed
+  const presence = usePreconPresence(session.id);
+  const { data: auth } = useSession();
+  const currentUserId = auth?.user?.id ?? null;
   const ctx = session.structureContext;
   const ctxLabel = formatStructureContext(ctx);
   const backTo = session.proposalId ? `/sales/proposals/${session.proposalId}?tab=drawings` : "/sales/proposals";
@@ -62,7 +69,8 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
         </p>
       </div>
       {reviewing ? (
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
+          <PresenceAvatars users={presence} currentUserId={currentUserId} />
           {step === firstStep ? (
             <Button size="sm" onClick={() => onSelectStep(nextAfterFirst)}>
               {nextAfterFirst === "output" ? "Continue to output" : "Continue to programme"}

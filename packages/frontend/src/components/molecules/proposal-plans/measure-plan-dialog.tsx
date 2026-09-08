@@ -39,6 +39,8 @@ interface Props {
   existing?: ExistingTakeoff[];
   /** Who measures: Panda AI (default) or the person, drawing on the sheets. */
   mode?: TakeoffMode;
+  /** WS-M3B: re-measuring on a newer revision starts from the scope of the take-off it replaces. */
+  initialScope?: TakeoffScope;
 }
 
 // The same scope picker serves both; only the words change with who measures.
@@ -116,11 +118,11 @@ function replacedBy(existing: ExistingTakeoff[], kind: TakeoffScopeKind, mode: T
 }
 
 export function MeasurePlanDialog({
-  open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [], mode = "ai",
+  open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [], mode = "ai", initialScope,
 }: Props) {
   const scopes = (jobProfile && SCOPES_FOR_PROFILE[jobProfile]) || DEFAULT_MEASURE_SCOPES;
-  const [kind, setKind] = useState<TakeoffScopeKind>(scopes[0] ?? "full");
-  const [elements, setElements] = useState<string[]>(FINISHES_ELEMENTS);
+  const [kind, setKind] = useState<TakeoffScopeKind>(initialScope?.kind ?? scopes[0] ?? "full");
+  const [elements, setElements] = useState<string[]>(initialScope?.elements.length ? initialScope.elements : FINISHES_ELEMENTS);
 
   const pdfCount = plans.filter((p) => PDF_PLAN.test(p.fileName)).length;
   const pictureCount = plans.filter((p) => PICTURE_PLAN.test(p.fileName)).length;

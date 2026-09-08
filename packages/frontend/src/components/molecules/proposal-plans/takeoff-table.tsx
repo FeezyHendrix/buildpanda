@@ -28,11 +28,22 @@ function OriginBadge({ session }: { session: PreconSession }) {
 OriginBadge.displayName = "OriginBadge";
 
 function stateLabel(s: PreconSession): string {
-  return s.supersededBy ? "Superseded" : PRECON_STATUS_LABEL[s.status];
+  return s.supersededBy ? "Superseded" : s.stale ? "Drawing revised" : PRECON_STATUS_LABEL[s.status];
 }
 
 function StateCell({ session }: { session: PreconSession }) {
   if (session.supersededBy) return <Badge tone="neutral">Superseded</Badge>;
+  // WS-M3B: the drawing moved on; the take-off is still readable but needs re-measuring
+  if (session.stale) {
+    return (
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <Badge tone="warning">Drawing revised</Badge>
+        <span className="truncate text-[11px] text-amber-700">
+          Measured on an earlier revision{session.stale.newerRevision ? ` · now Rev ${session.stale.newerRevision}` : ""}
+        </span>
+      </span>
+    );
+  }
   const running = RUNNING.has(session.status);
   const latest = session.progressLog[session.progressLog.length - 1];
   return (
