@@ -97,6 +97,22 @@ export interface TakeoffResult {
   selectedDrawingId: number | null;
   items: MeasuredItem[];
   notes: string[];
+  // one per measured plan: what the wall lines were computed from
+  wallSummaries?: WallSummary[];
+}
+
+export interface WallSummary {
+  sheetId: number;
+  code: string;
+  byThickness: Array<{ thicknessMm: number; lengthM: number }>;
+  totalLengthM: number;
+  runs: number;
+  openings: { doors: number; windows: number; areaM2: number };
+  height: { mm: number; basis: string; assumed: boolean };
+  bridgedM: number;
+  unpairedM: number;
+  units: DrawingUnit;
+  checks: { dimensions: string; roomPerimeters: string };
 }
 
 export interface TakeoffJobRow {

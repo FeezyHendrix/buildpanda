@@ -1,12 +1,13 @@
 import { parseDwgToJson, type DwgDoc } from "./dwg.ts";
 import { inferUnits } from "./units.ts";
-import { proposeLayerMap } from "./taxonomy.ts";
+import { elementOf, proposeLayerMap } from "./taxonomy.ts";
 import { buildRegister } from "./register.ts";
 import { countColumns, countDoors, countSanitary, countWindowsOnPlan, doorWidthMm, outlines, stairs, windowGroupsOnElevation, handles, type SheetContext } from "./elements.ts";
-import { measureWallRuns, storeyHeight, wallItems, wallSegments } from "./walls.ts";
+import { autoWallSegments, measureWallRuns, storeyHeight, wallItems, wallSegments } from "./walls.ts";
 import { measureRooms, statedAreaNote } from "./rooms.ts";
+import { annotateWalls, dimensionCheck, perimeterCheck, wallSummary } from "./wall-checks.ts";
 import { checkItem } from "./plausibility.ts";
-import type { DrawingSummary, LayerMap, MeasuredItem, RegisterSheet, TakeoffResult } from "./types.ts";
+import type { DrawingSummary, LayerMap, MeasuredItem, RegisterSheet, TakeoffResult, WallSummary } from "./types.ts";
 
 export interface TakeoffEngineOptions {
   layerMap?: LayerMap;
@@ -40,6 +41,7 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
   const windowAreaM2 = median(windowsFromElevations.map((w) => w.medianAreaM2).filter((a): a is number => a !== null));
 
   const items: MeasuredItem[] = [];
+  const wallSummaries: WallSummary[] = [];
   for (const sheet of sheets) {
     if (sheet.kind !== "floor-plan" || !sheet.representative) continue;
     const ctx: SheetContext = { doc, sheet, map: layerMap, units };
@@ -48,18 +50,33 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
     const windows = countWindowsOnPlan(ctx);
     const sanitary = countSanitary(ctx);
     const stair = stairs(ctx, allLabels);
-    const segments = wallSegments(doc, sheet, layerMap);
-    const runs = measureWallRuns(segments, units.scaleToMm);
-    const walls = wallItems(
-      runs,
-      height,
-      { doors: doors?.quantity ?? 0, doorWidthMm: doorWidthMm(ctx), windows: windows?.quantity ?? 0, windowAreaM2 },
-      sheet,
-      units,
-    );
-    const rooms = measureRooms(doc, sheet, segments, units, layerMap);
+    const mapped = wallSegments(doc, sheet, layerMap);
+    // no layer mapped to walls on this plan: the wall rules run on every
+    // unmapped line, and the lines say so
+    const geometryOnly = mapped.length === 0;
+    const segments = geometryOnly ? autoWallSegments(doc, sheet, layerMap, units.scaleToMm) : mapped;
+    const runs = measureWallRuns(segments, units.scaleToMm, openingPoints(doc, sheet, layerMap));
+    const openings = { doors: doors?.quantity ?? 0, doorWidthMm: doorWidthMm(ctx), windows: windows?.quantity ?? 0, windowAreaM2 };
+    const walls = wallItems(runs, height, openings, sheet, units);
+    const rooms = measureRooms(doc, sheet, segments, runs.seals, units, layerMap);
     const areaNote = statedAreaNote(rooms, sheet.code);
     if (areaNote) notes.push(areaNote);
+    if (walls.length) {
+      const summary = wallSummary(runs, height, openings, sheet, units);
+      summary.checks.dimensions = dimensionCheck(doc, sheet, runs, units);
+      summary.checks.roomPerimeters = perimeterCheck(runs, { totalM: rooms.perimeterM, rooms: rooms.items.length, unmeasured: rooms.unmeasured.length });
+      annotateWalls(walls, summary);
+      wallSummaries.push(summary);
+    }
+    // walls found without a wall layer are never better than medium, whatever the checks say
+    if (geometryOnly) {
+      for (const w of walls) {
+        w.basis = `No layer mapped to walls: geometry only. ${w.basis}`;
+        if (w.confidence === "high") w.confidence = "medium";
+        w.reason = `no wall layer; paired faces on unmapped layers (${w.reason})`;
+      }
+      if (walls.length) notes.push(`${sheet.code}: no layer mapped to walls; walls measured from paired lines on unmapped layers.`);
+    }
     // a plan whose window layer holds far fewer windows than one elevation
     // shows has most of its windows drawn on the wall layer: say so
     const perElevation = median(windowsFromElevations.map((w) => w.groups.length).filter((n) => n > 0));
@@ -113,6 +130,7 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
     selectedDrawingId: representative?.id ?? null,
     items,
     notes,
+    wallSummaries,
   };
 }
 
@@ -166,6 +184,19 @@ function doorLeafWidths(doc: DwgDoc, map: LayerMap, scaleToMm: number): number[]
     widths.push(Math.max(maxX - minX, maxY - minY));
   }
   return widths;
+}
+
+// Where doors and windows sit: the midpoints of their lines and outlines and
+// the insertion points of their blocks. Wall runs bridge the gaps these fill.
+function openingPoints(doc: DwgDoc, sheet: RegisterSheet, map: LayerMap): Array<[number, number]> {
+  const points: Array<[number, number]> = wallSegments(doc, sheet, map, ["doors", "windows"]).map((s) => [(s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2]);
+  for (const i of sheet.members) {
+    const e = doc.entities[i]!;
+    if (e.entity !== "INSERT" || !e.ins_pt) continue;
+    const element = elementOf(doc, e, map);
+    if (element === "doors" || element === "windows") points.push([e.ins_pt[0]!, e.ins_pt[1]!]);
+  }
+  return points;
 }
 
 function median(xs: number[]): number | null {

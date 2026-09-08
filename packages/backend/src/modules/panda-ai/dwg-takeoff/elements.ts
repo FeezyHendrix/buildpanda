@@ -1,5 +1,6 @@
 import { blockNameOf, centroid, extentOf, handleOf, type DwgDoc, type DwgEntity } from "./dwg.ts";
 import { elementOf, polySize } from "./taxonomy.ts";
+import { isClosedOutline, isDoorSwing, isFitting, isSquareColumn, isWindowFrame, shapeSides } from "./shapes.ts";
 import type { LayerElement, LayerMap, MeasuredItem, RegisterSheet, UnitsDecision } from "./types.ts";
 
 // Every count is made by at least two methods where the drawing allows it.
@@ -18,29 +19,12 @@ export interface Method {
   evidence: number[];
 }
 
-const CLOSED = 512;
-
 export function entitiesOf(ctx: SheetContext, element: LayerElement): DwgEntity[] {
   return ctx.sheet.members.map((i) => ctx.doc.entities[i]!).filter((e) => elementOf(ctx.doc, e, ctx.map) === element);
 }
 
-const isClosed = (e: DwgEntity): boolean => e.entity === "LWPOLYLINE" && ((e.flag ?? 0) & CLOSED) !== 0 && (e.points?.length ?? 0) >= 3;
-
-function sides(e: DwgEntity, scaleToMm: number): { long: number; short: number } {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const p of e.points ?? []) {
-    minX = Math.min(minX, p[0]!);
-    maxX = Math.max(maxX, p[0]!);
-    minY = Math.min(minY, p[1]!);
-    maxY = Math.max(maxY, p[1]!);
-  }
-  const w = (maxX - minX) * scaleToMm;
-  const h = (maxY - minY) * scaleToMm;
-  return { long: Math.max(w, h), short: Math.min(w, h) };
-}
+const isClosed = isClosedOutline;
+const sides = shapeSides;
 
 /** Closed outlines on an element's layers within a size band (mm on the long side). */
 export function outlines(ctx: SheetContext, element: LayerElement, longMm: [number, number], shortMax = Infinity): DwgEntity[] {
@@ -115,7 +99,7 @@ export function combine(
 
 export function countColumns(ctx: SheetContext): MeasuredItem | null {
   const byOutline = outlines(ctx, "columns", [150, 900]);
-  const byAuto = ctx.map === undefined ? [] : outlines(ctx, "auto", [150, 900]).filter((e) => sides(e, ctx.units.scaleToMm).short >= 150);
+  const byAuto = entitiesOf(ctx, "auto").filter((e) => isSquareColumn(e, ctx.units.scaleToMm));
   const byBlock = insertsNamed(ctx, /col|column|stanchion|pillar/i);
   const primary = byOutline.length ? byOutline : byAuto;
   return combine(
@@ -144,17 +128,17 @@ export function countDoors(ctx: SheetContext): MeasuredItem | null {
     return r >= 500 && r <= 1500;
   });
   const blocks = insertsNamed(ctx, /door|dr-|^d\d/i);
-  return combine(
-    "doors",
-    "Doors, as drawn (see door schedule for sizes)",
-    "nr",
-    [
-      { label: "door leaf outlines", count: leaves.length, evidence: handles(leaves) },
-      { label: "swing arcs", count: arcs.length, evidence: handles(arcs) },
-      { label: "door blocks", count: blocks.length, evidence: handles(blocks) },
-    ],
-    ctx.sheet,
-  );
+  const methods: Method[] = [
+    { label: "door leaf outlines", count: leaves.length, evidence: handles(leaves) },
+    { label: "swing arcs", count: arcs.length, evidence: handles(arcs) },
+    { label: "door blocks", count: blocks.length, evidence: handles(blocks) },
+  ];
+  // no door layer: the swings on unmapped layers are the doors
+  if (methods.every((m) => m.count === 0)) {
+    const swings = entitiesOf(ctx, "auto").filter((e) => isDoorSwing(e, ctx.units.scaleToMm));
+    methods.push({ label: "swing arcs on unmapped layers", count: swings.length, evidence: handles(swings) });
+  }
+  return combine("doors", "Doors, as drawn (see door schedule for sizes)", "nr", methods, ctx.sheet);
 }
 
 export function countWindowsOnPlan(ctx: SheetContext): MeasuredItem | null {
@@ -169,16 +153,16 @@ export function countWindowsOnPlan(ctx: SheetContext): MeasuredItem | null {
   });
   const groups = groupByProximity(frames, 300 / ctx.units.scaleToMm);
   const blocks = insertsNamed(ctx, /win|window|^w\d/i);
-  return combine(
-    "windows",
-    "Windows, as drawn on plan (see window schedule for sizes)",
-    "nr",
-    [
-      { label: "window frame groups", count: groups.length, evidence: handles(frames) },
-      { label: "window blocks", count: blocks.length, evidence: handles(blocks) },
-    ],
-    ctx.sheet,
-  );
+  const methods: Method[] = [
+    { label: "window frame groups", count: groups.length, evidence: handles(frames) },
+    { label: "window blocks", count: blocks.length, evidence: handles(blocks) },
+  ];
+  // no window layer: thin closed frames on unmapped layers are the windows
+  if (methods.every((m) => m.count === 0)) {
+    const thin = entitiesOf(ctx, "auto").filter((e) => isWindowFrame(e, ctx.units.scaleToMm));
+    methods.push({ label: "thin closed frames on unmapped layers", count: groupByProximity(thin, 300 / ctx.units.scaleToMm).length, evidence: handles(thin) });
+  }
+  return combine("windows", "Windows, as drawn on plan (see window schedule for sizes)", "nr", methods, ctx.sheet);
 }
 
 /** Windows read off an elevation: frame outlines grouped so panes count once. */
@@ -226,16 +210,16 @@ export function countSanitary(ctx: SheetContext): MeasuredItem | null {
   };
   const clear = groupByProximity(drawn.filter((e) => !near(e)), radius);
   const footprint = groupByProximity([...blocks, ...drawn], radius);
-  const item = combine(
-    "sanitary",
-    "Sanitary fittings (WC, basin, sink, shower, bath)",
-    "nr",
-    [
-      { label: "sanitary blocks and drawn fittings", count: blocks.length + clear.length, evidence: handles([...blocks, ...clear.flat()]) },
-      { label: "fitting footprints on the sanitary layer", count: footprint.length, evidence: handles(footprint.flat()) },
-    ],
-    ctx.sheet,
-  );
+  const methods: Method[] = [
+    { label: "sanitary blocks and drawn fittings", count: blocks.length + clear.length, evidence: handles([...blocks, ...clear.flat()]) },
+    { label: "fitting footprints on the sanitary layer", count: footprint.length, evidence: handles(footprint.flat()) },
+  ];
+  // no sanitary layer or blocks: compact oblong outlines on unmapped layers
+  if (methods.every((m) => m.count === 0)) {
+    const oblongs = entitiesOf(ctx, "auto").filter((e) => isFitting(e, ctx.units.scaleToMm));
+    methods.push({ label: "compact oblong outlines on unmapped layers", count: groupByProximity(oblongs, radius).length, evidence: handles(oblongs) });
+  }
+  const item = combine("sanitary", "Sanitary fittings (WC, basin, sink, shower, bath)", "nr", methods, ctx.sheet);
   if (item && blocks.length) {
     const names = new Map<string, number>();
     for (const b of blocks) {
