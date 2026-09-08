@@ -54,6 +54,9 @@ function task(overrides: Partial<PreconProgrammeTask> = {}): PreconProgrammeTask
     verifiedAt: null,
     startAt: "2026-09-15T00:00:00.000Z",
     finishAt: "2026-10-12T00:00:00.000Z",
+    totalFloatDays: null,
+    isCritical: false,
+    origin: "ai",
     ...overrides,
   };
 }
