@@ -104,6 +104,7 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
       evidence: handles(w.groups.flat()),
       reason: "from an elevation; faces overlap between views",
       crossCheck: "reconcile with the window schedule and the plan count",
+      noteOnly: true,
     });
   });
 

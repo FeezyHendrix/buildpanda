@@ -454,6 +454,8 @@ export interface DwgTakeoffLine {
   evidence?: number[];
   reason?: string;
   crossCheck?: string;
+  // evidence for another line (an elevation's window count); lands as an unpriced note
+  noteOnly?: boolean;
 }
 
 // One drawing of the DWG register, as the engine hands it to the session.
