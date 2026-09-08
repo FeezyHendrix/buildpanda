@@ -195,6 +195,16 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
       return this.fillDwgSession(shell.id, file, lines);
     },
 
+    // Sheet lookup for file-serving routes: proves the org owns it and hands
+    // back the storage path the DTO deliberately hides.
+    async getSheetForOrg(sheetId: string, orgId: string): Promise<{ id: string; fileName: string; storagePath: string } | null> {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) return null;
+      const session = await repo.sessionById(sheet.session_id);
+      if (!session || session.org_id !== orgId) return null;
+      return { id: sheet.id, fileName: sheet.file_name, storagePath: sheet.storage_path };
+    },
+
     // The reviewer corrects what the engine read off a sheet. A typed or drawn
     // scale is authoritative (confidence 1), so the next re-measure uses it.
     async updateSheet(sheetId: string, body: UpdateSheetBody, actor: string): Promise<PreconSheet> {

@@ -22,6 +22,8 @@ export type { PreconTool };
 let sharedWorker: Worker | null = null;
 const SNAP_PX = 10;
 const BASE_RASTER = 1.5;
+// a DWG is fitted to this many pixels wide at the base raster before zoom
+const IMAGE_FIT_WIDTH_PX = 2400;
 
 interface ViewerProps {
   sessionId: string;
@@ -97,6 +99,26 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     setPage({ widthPx: viewport.width, heightPx: viewport.height, heightPt: viewport.height / scale, rasterScale: scale });
   }, []);
 
+  // A DWG sheet is served as SVG and drawn as an image. It shares the page
+  // state with the PDF path so pan, zoom and the overlay maths stay identical:
+  // "points" are image pixels at the base raster.
+  const imageRef = useRef<{ sheetId: string; img: HTMLImageElement } | null>(null);
+  const rasterizeImage = useCallback((img: HTMLImageElement, scale: number, isCancelled: () => boolean) => {
+    const canvas = canvasRef.current;
+    if (!canvas || isCancelled()) return;
+    const fit = IMAGE_FIT_WIDTH_PX / Math.max(1, img.naturalWidth);
+    const widthPx = Math.round(img.naturalWidth * fit * (scale / BASE_RASTER));
+    const heightPx = Math.round(img.naturalHeight * fit * (scale / BASE_RASTER));
+    canvas.width = widthPx;
+    canvas.height = heightPx;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthPx, heightPx);
+    ctx.drawImage(img, 0, 0, widthPx, heightPx);
+    setPage({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale });
+  }, []);
+
   const [activeRasterScale, setActiveRasterScale] = useState(BASE_RASTER);
   const targetRasterScale = Math.min(4.5, BASE_RASTER * Math.max(1, Math.ceil(view.userZoom)));
   useEffect(() => {
@@ -115,15 +137,39 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     setDraft([]);
     setScalePrompt(null);
     setActiveRasterScale(BASE_RASTER);
-    // A DWG has no vector overlay yet: its lines were read by the automated
-    // take-off, so there is nothing for pdf.js to draw and nothing to fail on.
+    setRendering(true);
+    // A DWG is drawn from the engine's own parse, served as SVG.
     if (/\.dwg$/i.test(activeSheet.fileName)) {
       pdfPageRef.current = null;
-      setRendering(false);
-      setNote("DWG drawings have no on-sheet overlay yet. The lines were read by the automated take-off; review them in the bill.");
-      return;
+      (async () => {
+        const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
+        if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        const img = new Image();
+        const url = URL.createObjectURL(blob);
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error("The drawing could not be decoded"));
+          img.src = url;
+        });
+        URL.revokeObjectURL(url);
+        if (cancelled) return;
+        imageRef.current = { sheetId, img };
+        rasterizeImage(img, BASE_RASTER, () => cancelled);
+        setView({ tx: 0, ty: 0, userZoom: 1 });
+        setRendering(false);
+      })().catch((error: unknown) => {
+        if (!cancelled) {
+          setRendering(false);
+          setNote(`Could not render this drawing: ${(error instanceof Error ? error.message : String(error)).slice(0, 160)}`);
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
     }
-    setRendering(true);
+    imageRef.current = null;
     (async () => {
       const pdfjs = await import("pdfjs-dist");
       if (!sharedWorker) sharedWorker = new PdfWorker();
@@ -150,9 +196,14 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   }, [activeSheet?.id]);
 
   useEffect(() => {
+    if (!activeSheet || !page || page.rasterScale === activeRasterScale) return;
+    const image = imageRef.current;
+    if (image && image.sheetId === activeSheet.id) {
+      rasterizeImage(image.img, activeRasterScale, () => false);
+      return;
+    }
     const cached = pdfPageRef.current;
-    if (!activeSheet || !cached || cached.sheetId !== activeSheet.id) return;
-    if (!page || page.rasterScale === activeRasterScale) return;
+    if (!cached || cached.sheetId !== activeSheet.id) return;
     let cancelled = false;
     void rasterize(cached.page, activeRasterScale, () => cancelled);
     return () => {
