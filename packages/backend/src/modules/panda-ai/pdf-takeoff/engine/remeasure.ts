@@ -3,7 +3,8 @@ import { generateId } from "../../../../lib/ids.ts";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
 import { preconRepository } from "../repository.ts";
 import type { DimUnit, MeasuredBoqItem, PreconBillRow } from "../types.ts";
-import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
+import { buildSnapIndex } from "./pdf-extract.ts";
+import { contextFromPages, extractAllPages } from "./measure-file.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
 import { buildReport, summarise } from "../../geometry/report.ts";
 import { calibrate } from "./calibrate.ts";
@@ -16,6 +17,8 @@ interface Calibration {
   mmPerPt: number;
   confidence: number;
   dimUnit: DimUnit;
+  // dimension strings that agreed; absent when the reviewer set the scale
+  matches?: number;
 }
 
 // The measured-works bill is where re-measured and redrafted lines land. A
@@ -54,8 +57,11 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
   await progress("reading", `Re-reading ${label}`);
   const items = await withTempFile(sheet.storage_path, "pdf", async (file): Promise<MeasuredBoqItem[]> => {
     const doc = await pdfjs.getDocument({ url: file, useSystemFonts: true }).promise;
-    const page = await doc.getPage(pageNo);
-    const extracted = await extractSheet(page as never, pdfjs.OPS as never);
+    // the whole file is read so this sheet's wall heights still come from the
+    // level marks on the other sheets
+    const extractedPages = await extractAllPages(doc, pdfjs.OPS);
+    const document = contextFromPages(extractedPages);
+    const extracted = extractedPages[pageNo - 1]!.extracted;
     await doc.cleanup();
     await repo.updateSheetGeoSummary(sheetId, summarise(buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never))));
     // a scale the reviewer typed or drew (confidence 1) beats the engine's guess
@@ -90,9 +96,11 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
       sheet.page_number,
       label,
       session?.scope?.kind === "areas",
+      // a scale the reviewer set counts as confirmed; the engine's own carries its match count
+      { calibrationMatches: calibration.matches ?? 1, dimUnit: calibration.dimUnit, document },
     );
     return calibration.confidence < 0.7
-      ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: "scale" }))
+      ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: i.confidenceReason ?? "scale" }))
       : measured.items;
   });
 
