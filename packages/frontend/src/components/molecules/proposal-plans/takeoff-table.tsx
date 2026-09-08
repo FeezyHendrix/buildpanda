@@ -1,6 +1,5 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { PencilRuler, Sparkles } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -21,15 +20,9 @@ const RUNNING = new Set(["generating", "uploading"]);
 function OriginBadge({ session }: { session: PreconSession }) {
   const byPandaAi = session.takeoffKind !== "manual";
   return byPandaAi ? (
-    <Badge tone="info">
-      <Sparkles className="mr-1 size-3" aria-hidden="true" />
-      Panda AI
-    </Badge>
+    <Badge tone="info">Panda AI</Badge>
   ) : (
-    <Badge tone="neutral">
-      <PencilRuler className="mr-1 size-3" aria-hidden="true" />
-      Manual
-    </Badge>
+    <Badge tone="neutral">Manual</Badge>
   );
 }
 OriginBadge.displayName = "OriginBadge";
