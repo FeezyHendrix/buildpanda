@@ -8,7 +8,19 @@ export const PRECON_STEPS = [
   { key: "output", label: "Output", hint: "Export or apply to the proposal" },
 ] as const;
 export type PreconStepKey = (typeof PRECON_STEPS)[number]["key"];
-export type PreconStep = (typeof PRECON_STEPS)[number];
+export interface PreconStep {
+  key: PreconStepKey;
+  label: string;
+  hint: string;
+}
+
+// A hand take-off has no review step: the person drawing the line is its
+// verifier, so measuring and reviewing are the same act on the sheet.
+export const MANUAL_PRECON_STEPS: readonly PreconStep[] = [
+  { key: "measure", label: "Measure (draw)", hint: "Draw every line on the sheets" },
+  { key: "programme", label: "Programme", hint: "Sequence the work, verify durations" },
+  { key: "output", label: "Output", hint: "Export or apply to the proposal" },
+];
 
 interface Props {
   steps: readonly PreconStep[];

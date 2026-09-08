@@ -20,6 +20,10 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
   const ctxLabel = formatStructureContext(ctx);
   const backTo = session.proposalId ? `/sales/proposals/${session.proposalId}?tab=drawings` : "/sales/proposals";
   const running = session.status === "generating" || session.status === "uploading";
+  const manual = session.takeoffKind === "manual";
+  // where "back" from output lands: the sheet for a hand take-off, review otherwise
+  const firstStep: PreconStepKey = manual ? "measure" : "review";
+  const nextAfterFirst: PreconStepKey = session.scope.kind === "areas" ? "output" : "programme";
 
   return (
     <div className="flex items-start justify-between gap-4">
@@ -31,8 +35,9 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
         <div className="mt-0.5 flex items-center gap-2">
           <h1 className="truncate text-lg font-semibold text-gray-900">{session.title}</h1>
           <Badge tone={PRECON_STATUS_TONE[session.status]} dot={running}>
-            {PRECON_STATUS_LABEL[session.status]}
+            {manual && running ? "Rendering sheets" : PRECON_STATUS_LABEL[session.status]}
           </Badge>
+          {manual ? <Badge tone="neutral">Measured by hand</Badge> : <Badge tone="info">Panda AI</Badge>}
           {session.planId ? <span className="font-mono text-[11px] text-gray-400">Rev {session.revision}</span> : null}
         </div>
         {session.supersededBy ? (
@@ -45,7 +50,8 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
         ) : null}
         <p className="text-xs text-gray-500">
           {describeScope(session.scope)}
-          {reviewing ? ` · ${progress.verified} of ${progress.total} lines verified` : null}
+          {reviewing && manual ? ` · ${progress.total} line${progress.total === 1 ? "" : "s"} measured by hand` : null}
+          {reviewing && !manual ? ` · ${progress.verified} of ${progress.total} lines verified` : null}
           {ctxLabel ? (
             <span className={cn(ctx?.confidence === "low" && "opacity-75")}>
               {" · "}
@@ -57,9 +63,9 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
       </div>
       {reviewing ? (
         <div className="flex shrink-0 items-center gap-2">
-          {step === "review" ? (
-            <Button size="sm" onClick={() => onSelectStep(session.scope.kind === "areas" ? "output" : "programme")}>
-              {session.scope.kind === "areas" ? "Continue to output" : "Continue to programme"}
+          {step === firstStep ? (
+            <Button size="sm" onClick={() => onSelectStep(nextAfterFirst)}>
+              {nextAfterFirst === "output" ? "Continue to output" : "Continue to programme"}
               <ArrowRight className="ml-1.5 size-3.5" aria-hidden="true" />
             </Button>
           ) : step === "programme" ? (
@@ -68,9 +74,9 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
               <ArrowRight className="ml-1.5 size-3.5" aria-hidden="true" />
             </Button>
           ) : step === "output" ? (
-            <Button size="sm" variant="secondary" onClick={() => onSelectStep("review")}>
+            <Button size="sm" variant="secondary" onClick={() => onSelectStep(firstStep)}>
               <ArrowLeft className="mr-1.5 size-3.5" aria-hidden="true" />
-              Back to review
+              {manual ? "Back to the sheets" : "Back to review"}
             </Button>
           ) : null}
         </div>

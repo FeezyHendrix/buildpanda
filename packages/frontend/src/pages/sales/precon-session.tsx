@@ -2,33 +2,40 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
-import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
+import type { PreconTool } from "@/components/molecules/precon-sheet-viewer";
 import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
 import { ProgrammeStep } from "@/components/molecules/precon-programme/programme-step";
 import { PreconGenerateFeed } from "@/components/molecules/precon-session/precon-generate-feed";
 import { ExtractionReportPanel } from "@/components/molecules/precon-session/extraction-report";
 import { PreconSessionHeader } from "@/components/molecules/precon-session/precon-session-header";
 import { PreconSessionSkeleton } from "@/components/molecules/precon-session/precon-session-skeleton";
+import { PreconWorkspace, type ZoomRequest } from "@/components/molecules/precon-session/precon-workspace";
 import { AssistDrawer } from "@/components/molecules/precon-assist/assist-drawer";
 import { Sparkles } from "lucide-react";
 import {
+  MANUAL_PRECON_STEPS,
   PRECON_STEPS,
   PreconStepper,
   type PreconStepKey,
 } from "@/components/molecules/precon-session/precon-stepper";
-import { StructureFields } from "@/components/molecules/precon-session/structure-fields";
 import { usePreconChannel, usePreconSnapshot, useRetryPreconSession } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
-import type { PreconSessionStatus } from "@/api/precon";
+import type { PreconSessionStatus, TakeoffKind } from "@/api/precon";
 
 const COMPLETION_HOLD_MS = 1200;
 const REVIEWABLE: ReadonlySet<PreconSessionStatus> = new Set(["reviewing", "output"]);
 
 function stepForStatus(status: PreconSessionStatus): PreconStepKey {
   return REVIEWABLE.has(status) ? "review" : "measure";
+}
+
+// Which steps a finished take-off can jump between. A hand take-off has no
+// review step: the sheet is where it is measured and verified in one act.
+function reachableSteps(reviewing: boolean, manual: boolean, areasOnly: boolean): ReadonlySet<PreconStepKey> {
+  if (!reviewing) return new Set();
+  const first: PreconStepKey = manual ? "measure" : "review";
+  return new Set<PreconStepKey>(areasOnly ? [first, "output"] : [first, "programme", "output"]);
 }
 
 export default function PreconSessionPage() {
@@ -43,27 +50,27 @@ export default function PreconSessionPage() {
   const [tool, setTool] = useState<PreconTool>("select");
   // a prompt can ask the viewer to zoom; handed down by value so the same
   // request can be made twice in a row
-  const [zoomRequest, setZoomRequest] = useState<{ seq: number; kind: "in" | "out" | "fit" } | null>(null);
+  const [zoomRequest, setZoomRequest] = useState<ZoomRequest | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
-  const [structureOpen, setStructureOpen] = useState(false);
 
   // Hold the "ready" card briefly when a run finishes in front of the user,
   // then move them into review. A session already reviewing on first load
-  // skips the ceremony.
+  // skips the ceremony, and so does a hand take-off: its sheets simply appear.
   const status = snapshot?.session.status;
+  const kind: TakeoffKind | undefined = snapshot?.session.takeoffKind;
   const previousStatus = useRef<PreconSessionStatus | undefined>(undefined);
   useEffect(() => {
     const finished = previousStatus.current === "generating" && status === "reviewing";
     previousStatus.current = status;
-    if (!finished) return;
+    if (!finished || kind === "manual") return;
     setJustCompleted(true);
     const timer = setTimeout(() => {
       setJustCompleted(false);
       setStep((prev) => (prev === null || prev === "measure" ? "review" : prev));
     }, COMPLETION_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [status]);
+  }, [status, kind]);
 
   const measurableSheets = useMemo(() => (snapshot?.sheets ?? []).filter((s) => s.status !== "pending"), [snapshot?.sheets]);
   const activeSheet =
@@ -92,20 +99,43 @@ export default function PreconSessionPage() {
   }
 
   const { session } = snapshot;
+  const manual = session.takeoffKind === "manual";
   const reviewing = REVIEWABLE.has(session.status);
   // All sheets, not just measurable ones: a session still generating has only
   // pending sheets and must not be mistaken for a hand-priced one.
   const hasDrawings = snapshot.sheets.length > 0;
   const areasOnly = session.scope.kind === "areas";
-  const steps = PRECON_STEPS.filter((s) => (s.key === "measure" ? hasDrawings : s.key === "programme" ? !areasOnly : true));
-  const reachable = new Set<PreconStepKey>(reviewing ? (areasOnly ? ["review", "output"] : ["review", "programme", "output"]) : []);
-  const effectiveStep: PreconStepKey = justCompleted ? "measure" : (step ?? (hasDrawings ? stepForStatus(session.status) : "review"));
+  const steps = (manual ? MANUAL_PRECON_STEPS : PRECON_STEPS).filter((s) =>
+    s.key === "measure" ? hasDrawings : s.key === "programme" ? !areasOnly : true,
+  );
+  const reachable = reachableSteps(reviewing, manual, areasOnly);
+  const workspaceStep: PreconStepKey = manual ? "measure" : "review";
+  const effectiveStep: PreconStepKey = justCompleted
+    ? "measure"
+    : (step ?? (manual ? "measure" : hasDrawings ? stepForStatus(session.status) : "review"));
+  // A hand take-off's Measure step is the sheet viewer once the sheets have
+  // rendered; until then it shows the same feed an AI run does.
+  const sheetsReady = manual && reviewing;
 
   const runRetry = () =>
     retry.mutate(undefined, {
       onSuccess: () => setStep(null),
       onError: (e) => toast(getApiErrorMessage(e, "Could not retry the take-off."), "error"),
     });
+
+  const workspace = (
+    <PreconWorkspace
+      sessionId={sessionId}
+      snapshot={snapshot}
+      view={{ sheets: measurableSheets, activeSheet, selectedRowId, tool, zoomRequest }}
+      onSelectSheet={setActiveSheetId}
+      onSelectRow={(rowId, sheetId) => {
+        setSelectedRowId(rowId);
+        if (sheetId) setActiveSheetId(sheetId);
+      }}
+      onToolChange={setTool}
+    />
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
@@ -119,7 +149,6 @@ export default function PreconSessionPage() {
           </Button>
         ) : null}
       </div>
-      {/* The programme lives on the output step until the programme workstream lands its own step. */}
       <AssistDrawer
         open={assistOpen}
         onOpenChange={setAssistOpen}
@@ -131,11 +160,11 @@ export default function PreconSessionPage() {
           if (sheetId) setActiveSheetId(sheetId);
           if (nextTool) setTool(nextTool);
           if (zoom) setZoomRequest({ seq: Date.now(), kind: zoom });
-          setStep("review");
+          setStep(workspaceStep);
         }}
       />
 
-      {effectiveStep === "measure" ? (
+      {effectiveStep === "measure" && !sheetsReady ? (
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           <PreconGenerateFeed
             session={session}
@@ -158,45 +187,7 @@ export default function PreconSessionPage() {
           <PreconOutputPanel snapshot={snapshot} />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          {structureOpen ? (
-            <StructureFields session={session} onClose={() => setStructureOpen(false)} />
-          ) : hasDrawings ? (
-            <button
-              type="button"
-              onClick={() => setStructureOpen(true)}
-              className="self-start text-xs font-medium text-primary-600 hover:underline"
-            >
-              {session.structureContext?.confidence === "high" ? "Structure reading confirmed · edit" : "Check the structure reading Panda AI used"}
-            </button>
-          ) : null}
-          <div className={cn("grid min-h-0 flex-1 gap-4", hasDrawings && "lg:grid-cols-[1fr_420px]")}>
-            {hasDrawings ? (
-              <PreconSheetViewer
-                sessionId={sessionId}
-                sheets={measurableSheets}
-                activeSheet={activeSheet}
-                onSelectSheet={setActiveSheetId}
-                geometries={snapshot.geometries}
-                rows={snapshot.rows}
-                selectedRowId={selectedRowId}
-                onSelectRow={setSelectedRowId}
-                tool={tool}
-                onToolChange={setTool}
-                zoomRequest={zoomRequest}
-              />
-            ) : null}
-            <PreconBoqPanel
-              sessionId={sessionId}
-              snapshot={snapshot}
-              selectedRowId={selectedRowId}
-              onSelectRow={(rowId, sheetId) => {
-                setSelectedRowId(rowId);
-                if (sheetId) setActiveSheetId(sheetId);
-              }}
-            />
-          </div>
-        </div>
+        workspace
       )}
     </div>
   );

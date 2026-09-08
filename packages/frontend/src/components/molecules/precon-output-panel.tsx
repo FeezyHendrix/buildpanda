@@ -1,16 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Download } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PreconApplyDialog } from "@/components/molecules/precon-apply-dialog";
-import { preconApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
+import { preconApi, preconManualApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
 import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 const squareMetres = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 60) || "takeoff";
+
+function saveBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 const SETTING_FIELDS: { key: keyof PreconSummarySettings; label: string }[] = [
   { key: "prelimsPct", label: "Preliminaries %" },
@@ -119,9 +132,24 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
   const applyToProposal = useApplyPreconToProposal(session.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const areas = session.scope.kind === "areas";
+  const manual = session.takeoffKind === "manual";
   const linked = Boolean(session.proposalId);
   const applyLabel = linked ? "Bring into the estimate" : "Create proposal from this take-off";
+
+  // The CSV comes through the axios client (credentials, 401 handling), then
+  // is handed to the browser as a file — the same path the programme XML takes.
+  async function downloadCsv() {
+    setExportingCsv(true);
+    try {
+      saveBlob(await preconManualApi.exportCsv(session.id), `${slugify(session.title)}-takeoff.csv`);
+    } catch (error) {
+      toast(getApiErrorMessage(error, "Could not export the CSV."), "error");
+    } finally {
+      setExportingCsv(false);
+    }
+  }
 
   const apply = () =>
     applyToProposal.mutate(undefined, {
@@ -153,6 +181,10 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
           <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(session.id), "_blank")}>
             {areas ? "Download areas (Excel)" : "Download BOQ (Excel)"}
           </Button>
+          <Button variant="secondary" className="w-full" loading={exportingCsv} onClick={() => void downloadCsv()}>
+            <Download className="mr-1.5 size-3.5" aria-hidden="true" />
+            Export CSV
+          </Button>
           <Button variant="secondary" className="w-full" onClick={() => (linked ? setApplyOpen(true) : setConfirmOpen(true))}>
             {applyLabel}
           </Button>
@@ -164,8 +196,9 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
           ) : null}
         </div>
         <p className="border-t border-gray-100 pt-3 text-[11px] text-gray-400">
-          Measured by Panda AI · verified line items carry the reviewer's name in the audit trail. A quantity surveyor
-          must review before the bill is used contractually.
+          {manual
+            ? "Measured by hand · every line carries the name of the person who drew it in the audit trail. A quantity surveyor must review before the bill is used contractually."
+            : "Measured by Panda AI · verified line items carry the reviewer's name in the audit trail. A quantity surveyor must review before the bill is used contractually."}
         </p>
       </Card>
 
