@@ -19,6 +19,7 @@ import { TAKEOFF_QUEUE, type TakeoffJobData } from "../dwg-takeoff/job.ts";
 import applyToEstimateRoutes from "./apply-to-estimate-routes.ts";
 import { reviewRoutes } from "./review-routes.ts";
 import { manualRoutes } from "./manual-routes.ts";
+import { sheetGeometryRoutes } from "./sheet-geometry-routes.ts";
 import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
@@ -127,6 +128,7 @@ const updateRowBody = {
         qty: { type: "number", minimum: 0 },
         rate: { type: "number", minimum: 0 },
         unit: { type: "string", maxLength: 20 },
+        typical: { type: "integer", minimum: 1, maximum: 500 },
       },
     },
   },
@@ -376,6 +378,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
 
   await fastify.register(reviewRoutes, { service });
   await fastify.register(manualRoutes, { service });
+  await fastify.register(sheetGeometryRoutes, { service });
 
   fastify.post<{ Body: CreateBlankSessionBody }>(
     "/precon/sessions/blank",

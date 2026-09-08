@@ -148,7 +148,9 @@ test("createMeasurement: a drawn wall lands verified by its author with evidence
   assert.equal(row.confidence, "high");
   assert.equal(row.confidenceReason, null);
   assert.equal(row.unit, "m2");
-  assert.equal(row.qtyGross, 133.92);
+  // the drawn figure (after the height factor) stays gross; typical multiplies it into net
+  assert.equal(row.qtyGross, 33.48);
+  assert.equal(row.typical, 4);
   assert.equal(row.qty, 133.92);
   assert.equal(row.amount, 1607040);
   assert.equal(row.rateSource, "manual");

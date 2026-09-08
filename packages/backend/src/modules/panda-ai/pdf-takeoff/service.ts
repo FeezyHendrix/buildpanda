@@ -36,6 +36,8 @@ import { programmeEditor } from "./programme-editor.ts";
 import { reviewService } from "./review-service.ts";
 import { manualService } from "./manual-service.ts";
 import { lineageKindOf, nextRevision } from "./revisions.ts";
+import { basisWithTypical, netQuantity, normaliseTypical } from "./measurements.ts";
+import { scaleAt, scaleClause } from "./viewports.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -82,6 +84,7 @@ function toSheet(r: PreconSheetRow): PreconSheet {
     dimUnit: r.dim_unit,
     geoSummary: r.geo_summary ?? null,
     bounds: r.bounds ?? null,
+    viewports: r.viewports ?? [],
     error: r.error,
   };
 }
@@ -130,6 +133,7 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     unit: r.unit,
     qtyGross: num(r.qty_gross),
     deductions: r.deductions ?? [],
+    typical: r.typical ?? 1,
     qty: num(r.qty),
     rate: num(r.rate),
     amount: num(r.amount),
@@ -288,13 +292,13 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     rowId: string,
     sessionId: string,
     sheetId?: string,
-  ): Promise<PreconSheetRow & { scale_mm_per_pt: number }> {
+  ): Promise<PreconSheetRow> {
     const target = sheetId ?? (await repo.geometriesByRow(rowId))[0]?.sheet_id;
     if (!target) throw new BadRequestError("Open the sheet you want to measure on first");
     const sheet = await repo.sheetById(target);
     if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
-    if (!sheet.scale_mm_per_pt) throw new BadRequestError("Sheet has no calibrated scale");
-    return sheet as PreconSheetRow & { scale_mm_per_pt: number };
+    // the scale is picked per drawing (a viewport or the sheet) by scaleAt
+    return sheet;
   }
 
   async function requireRow(rowId: string): Promise<{ row: PreconBoqRowRow; sessionId: string }> {
@@ -582,12 +586,22 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const patch: Parameters<PreconRepository["updateRowVersioned"]>[2] = {};
       if (body.changes.description !== undefined) patch.description = body.changes.description;
       if (body.changes.unit !== undefined) patch.unit = body.changes.unit;
+      // typical re-derives qty from the drawn figure; an explicit qty still wins
+      if (body.changes.typical !== undefined) {
+        if (row.row_type !== "item" && row.row_type !== "provisional_sum") throw new BadRequestError("Only priced rows repeat on typical floors");
+        const typical = normaliseTypical(body.changes.typical);
+        const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
+        const net = netQuantity(gross, row.deductions ?? [], typical);
+        patch.typical = typical;
+        patch.qty = net;
+        patch.measurement_basis = basisWithTypical(row.measurement_basis, gross, net, typical, body.changes.unit ?? row.unit);
+      }
       if (body.changes.qty !== undefined) patch.qty = body.changes.qty;
       if (body.changes.rate !== undefined) {
         patch.rate = body.changes.rate;
         patch.rate_source = "manual";
       }
-      const qty = body.changes.qty ?? num(row.qty);
+      const qty = patch.qty !== undefined ? num(patch.qty) : num(row.qty);
       const rate = body.changes.rate ?? num(row.rate);
       if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
       patch.edited_at = new Date();
@@ -670,15 +684,16 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const { row, sessionId } = await requireRow(rowId);
       const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
       const sheetId = sheet.id;
-      const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, sheet.scale_mm_per_pt);
-      const deductionTotal = (row.deductions ?? []).reduce((s, d) => s + d.qty, 0);
-      const net = Math.max(0, Math.round((quantity - deductionTotal) * 100) / 100);
+      const pick = scaleAt(sheet, body.vertices);
+      const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, pick.mmPerPt);
+      const typical = row.typical ?? 1;
+      const net = netQuantity(quantity, row.deductions ?? [], typical);
       const updated = await repo.updateRowVersioned(rowId, body.version, {
         qty_gross: quantity,
         qty: net,
         unit,
         status: "needs_review",
-        measurement_basis: `Manually re-measured (${body.kind}); gross ${quantity} ${unit}`,
+        measurement_basis: basisWithTypical(`Manually re-measured (${body.kind}); gross ${quantity} ${unit}${scaleClause(sheet, pick)}`, quantity, net, typical, unit),
         verified_by: null,
         verified_at: null,
         amount: row.rate !== null ? Math.round(net * Number(row.rate) * 100) / 100 : null,
@@ -711,11 +726,13 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const { row, sessionId } = await requireRow(rowId);
       const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
       const sheetId = sheet.id;
-      const { quantity } = quantityFromVertices("deduction", body.vertices, sheet.scale_mm_per_pt);
+      const pick = scaleAt(sheet, body.vertices);
+      const { quantity } = quantityFromVertices("deduction", body.vertices, pick.mmPerPt);
       const geometryId = generateId("pgeo");
-      const deductions: Deduction[] = [...(row.deductions ?? []), { label: body.label, qty: quantity, geometryId }];
+      const label = `${body.label}${scaleClause(sheet, pick)}`;
+      const deductions: Deduction[] = [...(row.deductions ?? []), { label, qty: quantity, geometryId }];
       const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
-      const net = Math.max(0, Math.round((gross - deductions.reduce((s, d) => s + d.qty, 0)) * 100) / 100);
+      const net = netQuantity(gross, deductions, row.typical ?? 1);
       const updated = await repo.updateRowVersioned(rowId, body.version, {
         deductions,
         qty: net,
