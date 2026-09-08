@@ -7,10 +7,20 @@ import { buildDoc, type DwgDoc, type DwgEntity } from "./dwg.ts";
 const MODEL_SPACE = 10;
 const PAPER_SPACE = 11;
 
+export interface InsertOptions {
+  scale?: number[];
+  rotation?: number;
+  // ATTRIB entities owned by the insert, tag → value
+  attributes?: Record<string, string>;
+}
+
+// a block member may name its own layer; without one it sits on layer 0
+export type BlockMember = DwgEntity & { layerName?: string };
+
 export interface Synth {
   doc: () => DwgDoc;
   layer: (name: string) => number;
-  block: (name: string, members: DwgEntity[]) => number;
+  block: (name: string, members: BlockMember[]) => number;
   line: (layer: string, a: number[], b: number[], opts?: { paper?: boolean }) => number;
   poly: (layer: string, points: number[][], closed?: boolean) => number;
   rect: (layer: string, x: number, y: number, w: number, h: number) => number;
@@ -18,8 +28,8 @@ export interface Synth {
   circle: (layer: string, center: number[], radius: number) => number;
   text: (layer: string, at: number[], value: string, height?: number) => number;
   mtext: (layer: string, at: number[], value: string, height?: number) => number;
-  insert: (layer: string, block: number, at: number[]) => number;
-  dim: (layer: string, measurement: number) => number;
+  insert: (layer: string, block: number, at: number[], opts?: InsertOptions) => number;
+  dim: (layer: string, measurement: number, userText?: string) => number;
   header: (h: Record<string, unknown>) => void;
 }
 
@@ -52,9 +62,9 @@ export function synth(): Synth {
     block: (name, members) => {
       const h = next++;
       entities.push({ object: "BLOCK_HEADER", name, handle: [5, 1, h, h] });
-      for (const m of members) {
+      for (const { layerName, ...m } of members) {
         const mh = handle();
-        const l = layer("0");
+        const l = layer(layerName ?? "0");
         entities.push({ ...m, handle: mh, layer: [5, 1, l, l], entmode: 0, ownerhandle: [4, 1, h, h] });
       }
       return h;
@@ -67,8 +77,16 @@ export function synth(): Synth {
     circle: (l, center, radius) => push({ entity: "CIRCLE", center, radius }, l),
     text: (l, at, value, height = 250) => push({ entity: "TEXT", ins_pt: at, text_value: value, height }, l),
     mtext: (l, at, value, height = 250) => push({ entity: "MTEXT", ins_pt: at, text: value, height }, l),
-    insert: (l, block, at) => push({ entity: "INSERT", ins_pt: at, block_header: [5, 1, block, block], scale: [1, 1, 1], rotation: 0 }, l),
-    dim: (l, measurement) => push({ entity: "DIMENSION_LINEAR", act_measurement: measurement, ins_pt: [0, 0] }, l),
+    insert: (l, block, at, opts) => {
+      const h = push({ entity: "INSERT", ins_pt: at, block_header: [5, 1, block, block], scale: opts?.scale ?? [1, 1, 1], rotation: opts?.rotation ?? 0 }, l);
+      for (const [tag, value] of Object.entries(opts?.attributes ?? {})) {
+        const ah = handle();
+        const tl = layer("TEXT");
+        entities.push({ entity: "ATTRIB", tag, text_value: value, ins_pt: at, height: 200, handle: ah, layer: [5, 1, tl, tl], entmode: 0, ownerhandle: [8, 1, h, h] });
+      }
+      return h;
+    },
+    dim: (l, measurement, userText) => push({ entity: "DIMENSION_LINEAR", act_measurement: measurement, ins_pt: [0, 0], ...(userText ? { user_text: userText } : {}) }, l),
     header: (h) => {
       header = h;
     },

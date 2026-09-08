@@ -1,4 +1,6 @@
 import { parseDwgToJson, type DwgDoc } from "./dwg.ts";
+import { expandInserts, realHandles } from "./dwg-inserts.ts";
+import { attributeSizes, median as medianOf } from "./attributes.ts";
 import { inferUnits } from "./units.ts";
 import { elementOf, proposeLayerMap } from "./taxonomy.ts";
 import { buildRegister } from "./register.ts";
@@ -23,8 +25,14 @@ export async function runDwgTakeoff(dwgPath: string, opts: TakeoffEngineOptions 
   return measureDoc(doc, opts);
 }
 
-export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): TakeoffResult {
+export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): TakeoffResult {
   const notes: string[] = [];
+  // block references become the geometry they place, so a handed flat or a
+  // door symbol is measured like anything drawn in place
+  const expansion = expandInserts(raw);
+  const doc = expansion.doc;
+  if (expansion.expanded) notes.push(`${expansion.inserts} block references expanded into ${expansion.expanded} entities.`);
+  if (expansion.skipped.length) notes.push(`Blocks not expanded: ${expansion.skipped.join(", ")}.`);
   // a first pass with a provisional map gives units their door-width cross-check
   const provisional = opts.layerMap ?? proposeLayerMap(doc, 1).map;
   const provisionalUnits = inferUnits(doc);
@@ -56,8 +64,16 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
     const geometryOnly = mapped.length === 0;
     const segments = geometryOnly ? autoWallSegments(doc, sheet, layerMap, units.scaleToMm) : mapped;
     const runs = measureWallRuns(segments, units.scaleToMm, openingPoints(doc, sheet, layerMap));
-    const openings = { doors: doors?.quantity ?? 0, doorWidthMm: doorWidthMm(ctx), windows: windows?.quantity ?? 0, windowAreaM2 };
+    // sizes stated on the blocks themselves beat what is drawn or seen elsewhere
+    const stated = attributeSizes(doc, sheet, layerMap);
+    const openings = {
+      doors: doors?.quantity ?? 0,
+      doorWidthMm: medianOf(stated.doorWidthsMm) ?? doorWidthMm(ctx),
+      windows: windows?.quantity ?? 0,
+      windowAreaM2: medianOf(stated.windowAreasM2) ?? windowAreaM2,
+    };
     const walls = wallItems(runs, height, openings, sheet, units);
+    if (stated.tagged) for (const w of walls) w.basis += `; opening sizes from ${stated.tagged} block attributes`;
     const rooms = measureRooms(doc, sheet, segments, runs.seals, units, layerMap);
     const areaNote = statedAreaNote(rooms, sheet.code);
     if (areaNote) notes.push(areaNote);
@@ -113,6 +129,8 @@ export function measureDoc(doc: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
       item.confidence = "low";
       item.reason = `plausibility: ${flags.join(", ")}`;
     }
+    // evidence cites real objects: geometry placed from a block cites the block reference
+    if (item.evidence?.length) item.evidence = realHandles(item.evidence, expansion.origin);
   }
   if (!sheets.some((s) => s.kind === "floor-plan")) notes.push("No floor plan found among the drawings; nothing was measured.");
   const unmapped = Object.entries(layerMap).filter(([, v]) => v === "auto").map(([k]) => k);

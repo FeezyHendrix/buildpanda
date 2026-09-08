@@ -37,6 +37,17 @@ export interface PdfOps {
   eoFillStroke?: number;
   closeFillStroke?: number;
   closeEOFillStroke?: number;
+  // image painting, so a scanned plan placed on a sheet is recognised as pixels
+  paintImageXObject?: number;
+  paintJpegXObject?: number;
+  paintImageMaskXObject?: number;
+  paintInlineImageXObject?: number;
+}
+
+export interface ImageSummary {
+  count: number;
+  // page area the images cover, in square points (the unit square under the CTM at paint time)
+  areaPt2: number;
 }
 
 // pdfjs 6.x packs path data as Float32Array runs: [op, ...coords] where
@@ -60,9 +71,11 @@ interface GraphicsState {
 // as well as the matrix, every subpath gets an id so closed outlines can be
 // rebuilt, and the optional-content group (the surviving CAD layer) and the
 // paint operator (fill vs stroke) travel on each segment.
-export function extractGeometry(ops: OperatorList, OPS: PdfOps): { segments: Segment[]; curves: Curve[] } {
+export function extractGeometry(ops: OperatorList, OPS: PdfOps): { segments: Segment[]; curves: Curve[]; images: ImageSummary } {
   const segments: Segment[] = [];
   const curves: Curve[] = [];
+  const images: ImageSummary = { count: 0, areaPt2: 0 };
+  const imageOps = new Set([OPS.paintImageXObject, OPS.paintJpegXObject, OPS.paintImageMaskXObject, OPS.paintInlineImageXObject].filter((v): v is number => typeof v === "number"));
   let state: GraphicsState = { ctm: IDENTITY, lineWidth: 1, color: "#000000" };
   const stack: GraphicsState[] = [];
   let layer: string | null = null;
@@ -96,6 +109,10 @@ export function extractGeometry(ops: OperatorList, OPS: PdfOps): { segments: Seg
       state.lineWidth = args[0] as number;
     } else if (fn === OPS.setStrokeRGBColor) {
       state.color = String(args[0] ?? args);
+    } else if (imageOps.has(fn)) {
+      const m = state.ctm;
+      images.count++;
+      images.areaPt2 += Math.abs(m[0] * m[3] - m[1] * m[2]);
     } else if (OPS.beginMarkedContentProps !== undefined && fn === OPS.beginMarkedContentProps) {
       layerStack.push(layer);
       const tag = String(args[0] ?? "");
@@ -171,7 +188,7 @@ export function extractGeometry(ops: OperatorList, OPS: PdfOps): { segments: Seg
       }
     }
   }
-  return { segments, curves };
+  return { segments, curves, images };
 }
 
 interface TextItem {
@@ -195,13 +212,17 @@ export function extractTexts(items: TextItem[]): TextRun[] {
 export interface PdfPageLike {
   getOperatorList(): Promise<OperatorList>;
   getTextContent(): Promise<{ items: unknown[] }>;
+  // the page's media box [x0, y0, x1, y1], when the caller is a real pdf.js page
+  view?: number[];
 }
 
 export async function extractSheet(page: PdfPageLike, OPS: PdfOps): Promise<ExtractedSheet> {
   const [ops, textContent] = await Promise.all([page.getOperatorList(), page.getTextContent()]);
-  const { segments, curves } = extractGeometry(ops, OPS);
+  const { segments, curves, images } = extractGeometry(ops, OPS);
   const texts = extractTexts(textContent.items as TextItem[]);
-  return { segments, curves, texts, ops };
+  const view = page.view;
+  const pageAreaPt2 = view && view.length === 4 ? Math.abs((view[2]! - view[0]!) * (view[3]! - view[1]!)) : null;
+  return { segments, curves, texts, ops, images: { ...images, pageShare: pageAreaPt2 ? Math.min(1, images.areaPt2 / pageAreaPt2) : null } };
 }
 
 // Snap index for the viewer: unique segment endpoints, rounded to 0.1pt,

@@ -9,14 +9,32 @@ export type Family = (typeof FAMILIES)[number];
 export const LAYER_SCHEMES = ["named", "badnames", "layer0"] as const;
 export type LayerScheme = (typeof LAYER_SCHEMES)[number];
 
-export const OPENING_STYLES = ["blocks", "outlines"] as const;
+// "attrib-blocks": doors and windows are blocks carrying MARK/WIDTH/SIZE
+// attributes, with a schedule sheet listing the marks.
+export const OPENING_STYLES = ["blocks", "outlines", "attrib-blocks"] as const;
 export type OpeningStyle = (typeof OPENING_STYLES)[number];
 
-export const DIMENSION_STYLES = ["dimensions", "exploded", "written-scale"] as const;
+// "imperial": real dimension entities whose text reads feet and inches.
+export const DIMENSION_STYLES = ["dimensions", "exploded", "written-scale", "imperial"] as const;
 export type DimensionStyle = (typeof DIMENSION_STYLES)[number];
 
-export const UNIT_STYLES = ["mm", "m"] as const;
+export const UNIT_STYLES = ["mm", "m", "in"] as const;
 export type UnitStyle = (typeof UNIT_STYLES)[number];
+
+// How the wall faces are drawn: closed with jambs at every opening; left open
+// at openings; broken into pieces with millimetre overlaps and gaps at the
+// joints; filled with a HATCH entity; or filled with the short diagonal lines
+// an exploded hatch leaves on the wall layer.
+export const WALL_STYLES = ["jambed", "unjambed", "split", "hatched", "hatched-exploded"] as const;
+export type WallStyle = (typeof WALL_STYLES)[number];
+
+export const PLAN_SHAPES = ["rect", "l-shape"] as const;
+export type PlanShape = (typeof PLAN_SHAPES)[number];
+
+// How the PDF is exported: pens by layer, one pen for everything, or the plan
+// as an embedded raster image with only the title block left as vectors.
+export const PDF_STYLES = ["layered", "single-pen", "raster"] as const;
+export type PdfStyle = (typeof PDF_STYLES)[number];
 
 export interface Convention {
   id: string;
@@ -24,6 +42,13 @@ export interface Convention {
   openings: OpeningStyle;
   dimensions: DimensionStyle;
   units: UnitStyle;
+  walls?: WallStyle;
+  shape?: PlanShape;
+  // the plan is a block inserted with a negative x scale (a handed flat)
+  mirror?: boolean;
+  // border, title block, scale bar, north arrow and a notes column on every sheet
+  annotations?: boolean;
+  pdf?: PdfStyle;
 }
 
 // Semantic layer roles; the convention maps them to actual layer names.
@@ -39,6 +64,7 @@ export type LayerRole =
   | "furniture"
   | "roof"
   | "step"
+  | "hatch"
   | "zero";
 
 export interface Line {
@@ -89,6 +115,8 @@ export interface Dimension {
   // perpendicular offset of the dimension line from the measured points
   offset: number;
   value: number;
+  // what the dimension reads when it is not the bare value (feet and inches)
+  text?: string;
 }
 export interface Insert {
   kind: "insert";
@@ -98,8 +126,19 @@ export interface Insert {
   x: number;
   y: number;
   rotationDeg: number;
+  // -1 mirrors the block about its own y axis
+  scaleX?: number;
+  // ATTRIB values by tag, drawn as text beside the insertion point
+  attributes?: Record<string, string>;
 }
-export type Primitive = Line | Polyline | Arc | Text | Dimension | Insert;
+// A solid hatch over a closed polygon.
+export interface Hatch {
+  kind: "hatch";
+  id: string;
+  layer: LayerRole;
+  points: number[][];
+}
+export type Primitive = Line | Polyline | Arc | Text | Dimension | Insert | Hatch;
 
 export interface BlockDef {
   name: string;
@@ -108,7 +147,7 @@ export interface BlockDef {
 
 export interface Sheet {
   id: string;
-  kind: "floor-plan" | "elevation" | "section" | "roof-plan" | "site-plan";
+  kind: "floor-plan" | "elevation" | "section" | "roof-plan" | "site-plan" | "schedule";
   title: string;
   level: string | null;
   // origin offset in model space when several drawings share one model space

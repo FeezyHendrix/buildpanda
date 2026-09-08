@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clusterRegions } from "./cluster.ts";
+import { clusterRegions, frameSegments } from "./cluster.ts";
 import type { ExtractedSheet, Segment } from "../types.ts";
 
 const MM_PER_PT = 35.28; // 1:100 sheet: 1 paper-pt = 0.3528mm * 100 = 35.28mm real, so 0.30m = ~8.5pt
@@ -28,6 +28,23 @@ test("clusterRegions: drops sub-0.30m noise so noise cannot bridge into the buil
 
   const scaleBlind = clusterRegions(sheet([...walls, ...noise]));
   assert.ok(scaleBlind[0]!.maxX >= 300, "without a scale, noise still bridges into the title block (legacy behaviour)");
+});
+
+test("clusterRegions: a sheet border (four lines meeting at their corners) is left out, so it cannot swallow the plan", () => {
+  const walls: Segment[] = [];
+  for (let i = 0; i < 40; i++) walls.push(seg(100, 100 + i * 3, 300, 100 + i * 3));
+  for (let i = 0; i < 40; i++) walls.push(seg(100 + i * 5, 100, 100 + i * 5, 220));
+  const border = [seg(0, 0, 1000, 0), seg(1000, 0, 1000, 700), seg(1000, 700, 0, 700), seg(0, 700, 0, 0)];
+  const titleBlock: Segment[] = [];
+  for (let i = 0; i < 35; i++) titleBlock.push(seg(800 + i * 5, 650, 800 + i * 5, 690));
+  const regions = clusterRegions(sheet([...walls, ...border, ...titleBlock]), MM_PER_PT);
+  const plan = regions.find((r) => r.segmentIdx.length === walls.length);
+  assert.ok(plan, "the plan is its own region");
+  assert.ok(plan!.maxX <= 300 && plan!.maxY <= 220, "not merged into the border");
+  assert.equal(frameSegments([...walls, ...border, ...titleBlock]).size, 4);
+  // a long dimension line that meets nothing is not a border
+  const dim = seg(0, 350, 990, 350);
+  assert.equal(frameSegments([...walls, dim, ...titleBlock]).size, 0);
 });
 
 test("clusterRegions: without a scale it keeps the legacy scale-blind behaviour", () => {

@@ -114,9 +114,16 @@ export function countColumns(ctx: SheetContext): MeasuredItem | null {
   );
 }
 
+// The leaf width: from door leaf outlines, else from the swing radius, which
+// is the leaf drawn as an arc (a block door expands to exactly that).
 export function doorWidthMm(ctx: SheetContext): number | null {
-  const leaves = outlines(ctx, "doors", [600, 1500]).map((e) => sides(e, ctx.units.scaleToMm).long).sort((a, b) => a - b);
-  return leaves.length ? leaves[leaves.length >> 1]! : null;
+  const leaves = outlines(ctx, "doors", [600, 1500]).map((e) => sides(e, ctx.units.scaleToMm).long);
+  const swings = entitiesOf(ctx, "doors")
+    .filter((e) => e.entity === "ARC" && typeof e.radius === "number")
+    .map((e) => e.radius! * ctx.units.scaleToMm)
+    .filter((r) => r >= 600 && r <= 1500);
+  const widths = (leaves.length ? leaves : swings).sort((a, b) => a - b);
+  return widths.length ? widths[widths.length >> 1]! : null;
 }
 
 export function countDoors(ctx: SheetContext): MeasuredItem | null {
@@ -200,7 +207,9 @@ const FITTING_BLOCK = /wc|clos|sink|snk|whb|basin|bath|shw|shower|urin|lav|toil|
 export function countSanitary(ctx: SheetContext): MeasuredItem | null {
   const blocks = insertsNamed(ctx, FITTING_BLOCK);
   const radius = 400 / ctx.units.scaleToMm;
-  const drawn = entitiesOf(ctx, "sanitary").filter((e) => isClosed(e) || e.entity === "CIRCLE");
+  // geometry placed from a counted block is that block, not a second fitting
+  const counted = new Set(handles(blocks));
+  const drawn = entitiesOf(ctx, "sanitary").filter((e) => (isClosed(e) || e.entity === "CIRCLE") && (e.insertHandle === undefined || !counted.has(e.insertHandle)));
   const near = (e: DwgEntity) => {
     const c = centroid(e);
     return !!c && blocks.some((b) => {

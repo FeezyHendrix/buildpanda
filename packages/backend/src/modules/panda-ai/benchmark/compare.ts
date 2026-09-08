@@ -95,14 +95,33 @@ export function scoreDwg(truth: Truth, result: Pick<TakeoffResult, "items" | "sh
   return out;
 }
 
+// A page the engine explicitly declared unmeasurable (a raster scan, no
+// scale) is a flagged failure on every line the truth expects: the engine
+// said so instead of guessing. A page it simply produced nothing for is missing.
+function declaredUnmeasurable(el: TruthElement, measure: Scored["measure"], truth: number, note: string): Scored {
+  return { sheet: el.sheet, element: el.element, measure, truth, measured: null, errorPct: null, outcome: "flagged", confidence: "low", basis: `unmeasurable: ${note}` };
+}
+
 // The PDF engine measures per page; page N is truth sheet N in drawing order.
-export function scorePdf(truth: Truth, pages: { pageNumber: number; items: MeasuredBoqItem[] }[]): Scored[] {
+export function scorePdf(truth: Truth, pages: { pageNumber: number; items: MeasuredBoqItem[]; note?: string | null }[]): Scored[] {
   const out: Scored[] = [];
   truth.sheets.forEach((sheet, index) => {
     if (sheet.kind !== "floor-plan") return;
     const page = pages.find((p) => p.pageNumber === index + 1);
     const items = page?.items ?? [];
     const els = truth.elements.filter((e) => e.sheet === sheet.id);
+    if (page && items.length === 0 && page.note && /unmeasurable|raster|scan/i.test(page.note)) {
+      const ext = els.find((e) => e.element === "walls-external");
+      const int = els.find((e) => e.element === "walls-internal");
+      if (ext && int) out.push(declaredUnmeasurable(ext, "areaM2", (ext.areaM2 ?? 0) + (int.areaM2 ?? 0), page.note));
+      for (const kind of ["doors", "windows", "columns"] as const) {
+        const el = els.find((e) => e.element === kind);
+        if (el?.count !== undefined) out.push(declaredUnmeasurable(el, "count", el.count, page.note));
+      }
+      const floor = els.find((e) => e.element === "floor-area");
+      if (floor?.areaM2 !== undefined) out.push(declaredUnmeasurable(floor, "areaM2", floor.areaM2, page.note));
+      return;
+    }
     const cand = (pred: (i: MeasuredBoqItem) => boolean): Candidate | null => {
       const matches = items.filter(pred);
       if (matches.length === 0) return null;

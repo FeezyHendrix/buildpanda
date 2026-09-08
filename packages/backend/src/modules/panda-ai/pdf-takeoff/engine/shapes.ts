@@ -117,6 +117,10 @@ function alongAndAcross(pair: WallPair, x: number, y: number): { along: number; 
   return pair.horizontal ? { along: x, across: Math.abs(y - centre) } : { along: y, across: Math.abs(x - centre) };
 }
 
+// a frame is thinner than the wall it sits in; a rectangle as wide as the
+// wall between its faces is the wall's own hatch
+const FRAME_OF_WALL_MAX = 0.8;
+
 // A window on plan is a thin closed rectangle whose long side lies along a
 // wall and whose centre sits on that wall's centreline.
 export function windowFrames(rects: ClosedRect[], pairs: WallPair[], mmPerPt: number): WindowFrame[] {
@@ -129,6 +133,7 @@ export function windowFrames(rects: ClosedRect[], pairs: WallPair[], mmPerPt: nu
     for (let i = 0; i < pairs.length; i++) {
       const p = pairs[i]!;
       if (p.horizontal !== alongX) continue;
+      if (short >= FRAME_OF_WALL_MAX * p.gapMm) continue;
       const { along, across } = alongAndAcross(p, r.cx, r.cy);
       if (across * mmPerPt > ON_WALL_MM || along < p.lo || along > p.hi) continue;
       out.push({ cx: r.cx, cy: r.cy, widthMm: Math.round(long), pair: i });

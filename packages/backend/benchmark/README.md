@@ -40,6 +40,26 @@ layer 0), how doors and windows are drawn (blocks vs arcs and outlines), how
 dimensions appear (dimension entities, exploded lines and text, none with a
 written scale) and the drawing unit (mm or m).
 
+The hard set adds the habits real offices have:
+
+| Convention | What is different |
+|---|---|
+| `named-mm-outlines-unjambed` | openings cut into the faces with no jamb lines closing the wall |
+| `named-mm-outlines-split` | every face broken into 1.5–3 m chunks with 1–5 mm overlaps and gaps at the joints |
+| `named-mm-outlines-mirrored` | the plan lives in a block inserted with a negative x scale; the block of flats is one flat inserted twice, the second mirrored |
+| `named-mm-outlines-hatched` | a solid HATCH entity fills every wall between its faces |
+| `named-mm-outlines-hatchexploded` | the hatch exploded: 45° strokes on the wall layer every 150 mm |
+| `named-in-outlines-imperial` | inch header units, coordinates in inches, dimensions and level marks in feet and inches, PDF at 1/8" = 1'-0" |
+| `named-mm-outlines-titleblock` | a border, a title block insert on layer 0, a scale bar, a north arrow and a notes column full of dimension-like numbers on every sheet |
+| `named-mm-outlines-singlepen` | the PDF drawn with one pen width and no optional-content layers |
+| `named-mm-outlines-lshape` | the top-right cells omitted, so the external wall steps |
+| `named-mm-attribs-schedule` | doors and windows as blocks carrying MARK/WIDTH/SIZE attributes (1,000 mm doors, 1,500 × 1,200 windows) plus a door and window schedule sheet |
+| `named-mm-outlines-raster` | the PDF plan is an embedded bitmap inside a vector title block; the DWG is the title-block drawing |
+
+A raster page has no vector plan to measure. The engine must say so: the
+scorer counts a page the engine explicitly declares unmeasurable as a flagged
+failure on every line the truth expects, never as within.
+
 Tolerances: counts exact, areas ±2 %, lengths ±3 %. A miss is *flagged* when
 the engine marked the line below high confidence, *silent* when it reported a
 wrong figure confidently, *missing* when no line came back.
