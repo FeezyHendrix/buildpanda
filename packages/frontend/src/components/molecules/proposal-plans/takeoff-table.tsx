@@ -1,9 +1,8 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
-import { Switcher } from "@/components/atoms/switcher";
 import { DataGrid, type DataGridColumn } from "@/components/molecules/data-grid";
 import { EmptyState } from "@/components/molecules/empty-state";
 import type { PreconSession } from "@/api/precon";
@@ -132,68 +131,36 @@ const COLUMNS: DataGridColumn<PreconSession>[] = [
 ];
 
 interface Props {
-  proposalId: string;
   sessions: PreconSession[];
   isLoading: boolean;
-  onCreateBlank: () => void;
-  creatingBlank: boolean;
 }
 
 /**
- * Every take-off on the proposal as one table: current revisions by default,
- * earlier revisions on request. A row opens the take-off workspace.
+ * Every current take-off on the proposal as one table; a row opens the
+ * take-off workspace. Superseded revisions stay in the database and reachable
+ * by link, but never clutter this list.
  */
-export function TakeoffTable({ proposalId, sessions, isLoading, onCreateBlank, creatingBlank }: Props) {
+export function TakeoffTable({ sessions, isLoading }: Props) {
   const navigate = useNavigate();
-  const [showEarlier, setShowEarlier] = useState(false);
-  const earlierCount = sessions.filter((s) => s.supersededBy !== null).length;
-  const rows = useMemo(() => (showEarlier ? sessions : sessions.filter((s) => s.supersededBy === null)), [sessions, showEarlier]);
-
+  const rows = useMemo(() => sessions.filter((s) => s.supersededBy === null), [sessions]);
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">Take-offs</p>
-          <p className="max-w-2xl text-xs text-gray-500">
-            A take-off is Panda AI's unpriced measurement of one drawing. Review its lines, then bring them into the
-            estimate. Measuring a drawing again makes the next revision of the same take-off and keeps the earlier one.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {earlierCount > 0 ? (
-            <label className="flex items-center gap-2 text-xs text-gray-600">
-              Earlier revisions ({earlierCount})
-              <Switcher value={showEarlier ? "yes" : "no"} onChange={(v) => setShowEarlier(v === "yes")} />
-            </label>
-          ) : null}
-          <Link to={`/sales/proposals/${proposalId}?tab=drawings`}>
-            <Button size="sm" variant="secondary">
-              Measure a drawing
-            </Button>
-          </Link>
-          <Button size="sm" variant="ghost" loading={creatingBlank} onClick={onCreateBlank}>
-            + Blank take-off
-          </Button>
-        </div>
-      </div>
-      <DataGrid
-        data={rows}
-        columns={COLUMNS}
-        getRowId={(s) => s.id}
-        searchKeys={[(s) => s.title, (s) => describeScope(s.scope)]}
-        searchPlaceholder="Search take-offs"
-        initialSort={{ columnId: "measured", direction: "desc" }}
-        isLoading={isLoading}
-        onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
-        emptyState={
-          <EmptyState
-            title="Nothing measured yet"
-            description="Upload a PDF or DWG on the Drawings tab and choose Measure with Panda AI."
-            className="py-2"
-          />
-        }
-      />
-    </section>
+    <DataGrid
+      data={rows}
+      columns={COLUMNS}
+      getRowId={(s) => s.id}
+      searchKeys={[(s) => s.title, (s) => describeScope(s.scope)]}
+      searchPlaceholder="Search take-offs"
+      initialSort={{ columnId: "measured", direction: "desc" }}
+      isLoading={isLoading}
+      onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
+      emptyState={
+        <EmptyState
+          title="Nothing measured yet"
+          description="Upload a PDF or DWG on the Drawings tab and choose Measure with Panda AI."
+          className="py-2"
+        />
+      }
+    />
   );
 }
 TakeoffTable.displayName = "TakeoffTable";
