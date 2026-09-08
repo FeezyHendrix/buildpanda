@@ -335,6 +335,7 @@ function sessionRow(overrides: Partial<PreconSessionRow> = {}): PreconSessionRow
     scope: { kind: "full", elements: [] },
     plan_id: null,
     takeoff_kind: "pdf",
+    extraction: null,
     structure_context: null,
     programme_start_date: null,
     created_by: "usr_1",
@@ -421,6 +422,7 @@ function sheetRow(overrides: Partial<PreconSheetRow> = {}): PreconSheetRow {
     error: "No reliable scale",
     created_at: new Date("2026-07-12T00:00:00Z"),
     updated_at: new Date("2026-07-12T00:00:00Z"),
+    geo_summary: null,
     ...overrides,
   };
 }

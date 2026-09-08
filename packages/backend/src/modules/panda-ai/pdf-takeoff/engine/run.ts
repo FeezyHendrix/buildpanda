@@ -7,6 +7,9 @@ import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } 
 export { regionShareOfSheet };
 import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
+import { fromPdf } from "../../geometry/from-pdf.ts";
+import { buildReport, summarise } from "../../geometry/report.ts";
+import type { ExtractionReport } from "../../geometry/types.ts";
 import { calibrate } from "./calibrate.ts";
 import { countDoorArcs } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
@@ -48,6 +51,7 @@ export async function generateForSession(
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
   const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
+  const extractionBySheet: Record<string, ExtractionReport> = {};
   const sheetCodeByPage = new Map<number, string>();
   const classifyTitles: string[] = [];
   const classifySheets: { kind: SheetKind; title: string }[] = [];
@@ -86,6 +90,7 @@ export async function generateForSession(
                   scale_confidence: null,
                   dim_unit: null,
                   snap_index: null,
+          geo_summary: null,
                   error: null,
                 };
           if (sheetRow) await repo.insertSheets([sheetRow]);
@@ -95,6 +100,10 @@ export async function generateForSession(
           try {
             const page = await doc.getPage(pageNo);
             const extracted = await extractSheet(page as never, pdfjs.OPS as never);
+            // what was found, recorded before any rule decides what to do with it
+            const sheetReport = buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never));
+            extractionBySheet[sheetId] = sheetReport;
+            await repo.updateSheetGeoSummary(sheetId, summarise(sheetReport));
             if (extracted.segments.length < 100) {
               const visionItems = await measureSheetViaVision(
                 {
@@ -186,6 +195,10 @@ export async function generateForSession(
       const message = fileError instanceof Error ? fileError.message : "File processing failed";
       await repo.updateSheetStatus(placeholder.id, "unmeasurable", message);
     }
+  }
+
+  if (Object.keys(extractionBySheet).length > 0) {
+    await repo.updateSessionExtraction(sessionId, { sheets: extractionBySheet, generatedAt: new Date().toISOString() });
   }
 
   // Repeated-floor handling: identical typical floors are one drawing repeated.
