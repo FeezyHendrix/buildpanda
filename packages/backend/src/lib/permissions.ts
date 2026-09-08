@@ -42,6 +42,12 @@ export const statement = {
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  // verify/apply are separate grants so a quantity surveyor's sign-off is a
+  // role, not a side effect of being allowed to edit a proposal.
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -138,25 +144,49 @@ const constructionReadOnly = {
   buildings: ["view"],
 } as const satisfies PresetShape;
 
+const preconFull = {
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
+} as const satisfies PresetShape;
+
+const preconContributor = {
+  proposals: ["view", "create", "update", "send"],
+  leads: ["view", "create", "update"],
+  takeoffs: ["view", "measure", "edit"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
+const preconReadOnly = {
+  proposals: ["view"],
+  leads: ["view"],
+  takeoffs: ["view"],
+  estimates: ["view"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
 export const owner = ac.newRole({
   ...ownerAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const admin = ac.newRole({
   ...adminAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const member = ac.newRole({
   ...memberAc.statements,
   ...constructionContributor,
-  proposals: ["view", "create", "update", "send"],
-  leads: ["view", "create", "update"],
+  ...preconContributor,
 });
 
 export const viewer = ac.newRole({
@@ -166,8 +196,7 @@ export const viewer = ac.newRole({
   team: [],
   ac: [],
   ...constructionReadOnly,
-  proposals: ["view"],
-  leads: ["view"],
+  ...preconReadOnly,
 });
 
 // The `employee` role is the DEFAULT floor for an invited employee (see

@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { PreconBoqPanel } from "@/components/molecules/precon-boq-panel";
 import { PreconSheetViewer, type PreconTool } from "@/components/molecules/precon-sheet-viewer";
 import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
-import { PreconProgrammePanel } from "@/components/molecules/precon-programme-panel";
+import { ProgrammeStep } from "@/components/molecules/precon-programme/programme-step";
 import { PreconGenerateFeed } from "@/components/molecules/precon-session/precon-generate-feed";
 import { PreconSessionHeader } from "@/components/molecules/precon-session/precon-session-header";
 import { PreconSessionSkeleton } from "@/components/molecules/precon-session/precon-session-skeleton";
@@ -90,8 +90,12 @@ export default function PreconSessionPage() {
   // All sheets, not just measurable ones: a session still generating has only
   // pending sheets and must not be mistaken for a hand-priced one.
   const hasDrawings = snapshot.sheets.length > 0;
-  const steps = hasDrawings ? PRECON_STEPS : PRECON_STEPS.filter((s) => s.key !== "measure");
-  const reachable = new Set<PreconStepKey>(reviewing ? ["review", "output"] : []);
+  // WS-1: the programme is a step of its own; an areas-only run has nothing to sequence.
+  const hasProgramme = session.scope.kind !== "areas";
+  const steps = PRECON_STEPS.filter(
+    (s) => (hasDrawings || s.key !== "measure") && (hasProgramme || s.key !== "programme"),
+  );
+  const reachable = new Set<PreconStepKey>(reviewing ? ["review", "programme", "output"] : []);
   const effectiveStep: PreconStepKey =
     justCompleted ? "measure" : (step ?? (hasDrawings ? stepForStatus(session.status) : "review"));
 
@@ -115,12 +119,11 @@ export default function PreconSessionPage() {
           onRetry={runRetry}
           retrying={retry.isPending}
         />
+      ) : effectiveStep === "programme" ? (
+        <ProgrammeStep sessionId={sessionId} sessionTitle={session.title} />
       ) : effectiveStep === "output" ? (
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           <PreconOutputPanel snapshot={snapshot} />
-          {session.scope.kind === "areas" ? null : (
-            <PreconProgrammePanel sessionId={sessionId} sessionTitle={session.title} />
-          )}
         </div>
       ) : (
         <div className={cn("grid min-h-0 flex-1 gap-4", hasDrawings && "lg:grid-cols-[1fr_420px]")}>

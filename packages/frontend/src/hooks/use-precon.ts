@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   preconApi,
+  type CreateProgrammeTaskInput,
   type CreateRowInput,
   type PreconGeometryKind,
   type PreconProgramme,
@@ -350,6 +351,22 @@ function useProgrammeStatusMutation(
     onError: (_err, _variables, context) => {
       if (context?.previous) qc.setQueryData(preconKeys.programme(sessionId), context.previous);
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.programme(sessionId) }),
+  });
+}
+
+export function useCreatePreconProgrammeTask(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateProgrammeTaskInput) => preconApi.createProgrammeTask(sessionId, input),
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.programme(sessionId) }),
+  });
+}
+
+export function useDeletePreconProgrammeTask(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => preconApi.deleteProgrammeTask(taskId),
     onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.programme(sessionId) }),
   });
 }
