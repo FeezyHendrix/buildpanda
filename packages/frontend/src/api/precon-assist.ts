@@ -1,4 +1,5 @@
 import api from "./client";
+import type { PreconTool } from "@/lib/precon-meta";
 
 export const ASSIST_SURFACES = ["bill", "programme", "estimate", "pack", "risks"] as const;
 export type AssistSurface = (typeof ASSIST_SURFACES)[number];
@@ -6,7 +7,8 @@ export type AssistSurface = (typeof ASSIST_SURFACES)[number];
 export type ChangeSetStatus = "proposed" | "applied" | "undone" | "discarded";
 export type ChangeOp = "update" | "create" | "delete";
 export type ChangeEntity = "boq_row" | "programme_task" | "estimate_item" | "pack_section" | "risk" | "sheet" | "viewer";
-export type ViewerTool = "select" | "area" | "linear" | "count" | "deduct" | "scale";
+// WS-M1B: the viewer palette owns the tool union; a prompt may name any of its tools.
+export type ViewerTool = PreconTool;
 export type ViewerZoom = "in" | "out" | "fit";
 export interface ViewerCommand {
   tool?: ViewerTool;

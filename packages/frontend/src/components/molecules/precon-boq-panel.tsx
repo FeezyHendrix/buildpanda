@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { useCreatePreconBill } from "@/hooks/use-precon";
 import { PreconRowComposer } from "@/components/molecules/precon-row-composer";
 import { LineDetail } from "@/components/molecules/precon-session/line-detail";
-import { NeedsAttentionQueue } from "@/components/molecules/precon-session/needs-attention-queue";
-import { confidenceReasonLabel } from "@/lib/precon-meta";
+import { NeedsAttentionQueue, attentionRows, confidentDrafts } from "@/components/molecules/precon-session/needs-attention-queue";
+import { MEASURING_TOOLS, confidenceReasonLabel } from "@/lib/precon-meta";
 import type { PreconBoqRow, PreconRowStatus, PreconSnapshot } from "@/api/precon";
 
 const STATUS_META: Record<PreconRowStatus, { label: string; mark: string }> = {
@@ -101,6 +101,25 @@ function BillRow({
 }
 BillRow.displayName = "BillRow";
 
+/** A manual take-off before its first line: the tools and their keys. */
+function ManualEmptyState() {
+  return (
+    <div className="px-3 py-6 text-center">
+      <p className="text-xs font-medium text-gray-700">Nothing measured yet — pick a tool and draw on the sheet.</p>
+      <ul className="mt-3 flex flex-wrap justify-center gap-1.5">
+        {MEASURING_TOOLS.map((meta) => (
+          <li key={meta.key} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+            <kbd className="rounded bg-white px-1 font-mono text-[10px] font-semibold text-gray-800 shadow-sm">{meta.shortcut}</kbd>
+            {meta.label}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-gray-400">Enter finishes a shape and asks for its name. Esc goes back to Select.</p>
+    </div>
+  );
+}
+ManualEmptyState.displayName = "ManualEmptyState";
+
 export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow }: PanelProps) {
   const [conflictNote, setConflictNote] = useState<string | null>(null);
   const createBill = useCreatePreconBill(sessionId);
@@ -122,6 +141,10 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
   }, [snapshot.rows]);
 
   const hasLines = snapshot.rows.some((r) => r.rowType === "item" || r.rowType === "provisional_sum");
+  const manual = snapshot.session.takeoffKind === "manual";
+  // Lines drawn by hand are verified as drawn, so a manual take-off only shows
+  // the queue once something (a prompt edit, say) actually needs a look.
+  const showQueue = hasLines && (!manual || attentionRows(snapshot.rows).length > 0 || confidentDrafts(snapshot.rows).length > 0);
 
   return (
     <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
@@ -135,14 +158,15 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
         <ProgressBar value={snapshot.progress.verified} max={snapshot.progress.total} tone="success" size="md" className="mt-2 bg-gray-100" />
       </div>
 
-      {hasLines ? (
+      {showQueue ? (
         <NeedsAttentionQueue sessionId={sessionId} rows={snapshot.rows} sheetByRow={sheetByRow} selectedRowId={selectedRowId} onSelectRow={onSelectRow} />
       ) : null}
 
       {conflictNote ? <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{conflictNote}</p> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {!hasLines ? (
+        {!hasLines && manual ? <ManualEmptyState /> : null}
+        {!hasLines && !manual ? (
           <p className="px-3 py-6 text-center text-xs text-gray-500">
             Nothing measured yet. Add a line by hand below, set a sheet's scale and re-measure it, or measure into a line with the drawing tools.
           </p>

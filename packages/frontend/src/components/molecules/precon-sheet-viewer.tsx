@@ -1,33 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
-// constructor — static hosts that serve .mjs as octet-stream (staging nginx)
-// break both workerSrc and the fake-worker fallback, so never fetch .mjs.
-import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 import { Spinner } from "@/components/atoms/spinner";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { Maximize2, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { preconApi, type PreconBoqRow, type PreconGeometry, type PreconSheet } from "@/api/precon";
+import type { PreconBoqRow, PreconGeometry, PreconSheet } from "@/api/precon";
 import { isVersionConflict, useAddPreconDeduction, usePreconSnapIndex, useUpdatePreconGeometry, useUpdatePreconSheet } from "@/hooks/use-precon";
-import { scaleRatioOf } from "@/lib/precon-meta";
+import { PRECON_TOOL_BY_KEY, scaleRatioOf, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
-import { SheetToolbar, type PreconTool } from "./precon-sheet-viewer/sheet-toolbar";
+import { SheetToolbar } from "./precon-sheet-viewer/sheet-toolbar";
 import { SheetOverlay } from "./precon-sheet-viewer/sheet-overlay";
-import { SheetLegend } from "./precon-sheet-viewer/sheet-legend";
+import { SheetLegend, buildLegendEntries } from "./precon-sheet-viewer/sheet-legend";
 import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
-import { getElementStyle, type ElementStyle } from "./precon-sheet-viewer/element-styles";
 import { SheetSettings } from "./precon-session/sheet-settings";
 import { FIT_VIEW, useSheetView } from "./precon-sheet-viewer/use-sheet-view";
+import { BASE_RASTER, useSheetLoader } from "./precon-sheet-viewer/use-sheet-loader";
+import { ToolPalette } from "./precon-sheet-viewer/tool-palette";
+import { SheetStatusBar } from "./precon-sheet-viewer/sheet-status-bar";
+import { ZoomControls } from "./precon-sheet-viewer/zoom-controls";
+import { useToolShortcuts } from "./precon-sheet-viewer/use-tool-shortcuts";
+import { MeasurementComposer, type PendingMeasurement } from "./precon-sheet-viewer/measurement-composer";
+import { MEASURE_GEOMETRY_KIND, MEASURE_MAX_VERTICES, MEASURE_MIN_VERTICES } from "./precon-sheet-viewer/measure-maths";
 
 export type { PreconTool };
 
-let sharedWorker: Worker | null = null;
 const SNAP_PX = 10;
-const BASE_RASTER = 1.5;
-// a DWG is fitted to this many pixels wide at the base raster before zoom
-const IMAGE_FIT_WIDTH_PX = 2400;
+const FLASH_MS = 1600;
 
-interface ViewerProps {
+export interface PreconSheetViewerProps {
   sessionId: string;
   sheets: PreconSheet[];
   activeSheet: PreconSheet | null;
@@ -39,50 +37,54 @@ interface ViewerProps {
   tool: PreconTool;
   onToolChange: (tool: PreconTool) => void;
   zoomRequest?: { seq: number; kind: "in" | "out" | "fit" } | null;
+  /** A line drawn by hand has been added to the bill (it is also selected). */
+  onMeasurementCreated?: (row: PreconBoqRow) => void;
 }
 
-interface PageInfo {
-  widthPx: number;
-  heightPx: number;
-  heightPt: number;
-  rasterScale: number;
-}
-
-type PdfPageProxy = import("pdfjs-dist").PDFPageProxy;
-
-function formatZoom(userZoom: number): string {
-  return Number.isFinite(userZoom) ? String(Math.round(userZoom * 100)) : "100";
-}
-
-// The engine's SVG carries only a viewBox; give it explicit pixel dimensions
-// so every browser reports a natural size and the canvas is never 0×0.
-function sizedSvg(svg: string): string {
-  const open = svg.match(/<svg\b[^>]*>/);
-  if (!open || /\swidth=/.test(open[0])) return svg;
-  const box = open[0].match(/viewBox="([^"]+)"/)?.[1]?.trim().split(/[\s,]+/).map(Number);
-  if (!box || box.length !== 4 || !box.every(Number.isFinite) || box[2]! <= 0 || box[3]! <= 0) return svg;
-  const width = IMAGE_FIT_WIDTH_PX;
-  const height = Math.max(1, Math.round((width * box[3]!) / box[2]!));
-  return svg.replace(open[0], open[0].replace(/<svg\b/, `<svg width="${width}" height="${height}"`));
-}
-
-/** Page number within the sheet's own PDF file (sheets are contiguous per file). */
-function pageWithinFile(sheet: PreconSheet, sheets: PreconSheet[]): number {
-  const siblings = [...sheets.filter((s) => s.fileName === sheet.fileName)].sort((a, b) => a.pageNumber - b.pageNumber);
-  return siblings.findIndex((s) => s.id === sheet.id) + 1;
-}
-
-export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange, zoomRequest }: ViewerProps) {
+/**
+ * The sheet canvas with its palette. With no bill line selected the measuring
+ * tools draw a new line (draw first, name after); with one selected they
+ * redraw it, as before. Vertices are sheet points in both cases.
+ */
+export function PreconSheetViewer({
+  sessionId,
+  sheets,
+  activeSheet,
+  onSelectSheet,
+  geometries,
+  rows,
+  selectedRowId,
+  onSelectRow,
+  tool,
+  onToolChange,
+  zoomRequest,
+  onMeasurementCreated,
+}: PreconSheetViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [page, setPage] = useState<PageInfo | null>(null);
-  const [rendering, setRendering] = useState(false);
   const { view, setView, zoomBy, zoomFit, onMouseDown, onMouseMove, endPan } = useSheetView(containerRef, tool === "select");
+  const fitView = useCallback(() => setView(FIT_VIEW), [setView]);
+  const { page, rendering, loadError } = useSheetLoader({ canvasRef, activeSheet, sheets, userZoom: view.userZoom, onLoaded: fitView });
+
   const [draft, setDraft] = useState<number[][]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // two drawn points whose real distance the reviewer is about to type
   const [scalePrompt, setScalePrompt] = useState<ScalePrompt | null>(null);
+  // a finished shape waiting for its name
+  const [pending, setPending] = useState<PendingMeasurement | null>(null);
+  const [legendOpen, setLegendOpen] = useState(true);
+  const [legendGroup, setLegendGroup] = useState<string | null>(null);
+  const [flashRowId, setFlashRowId] = useState<string | null>(null);
+
+  // A sheet change drops any half-drawn shape, scale prompt and legend pick.
+  const [draftSheetId, setDraftSheetId] = useState(activeSheet?.id ?? null);
+  if (draftSheetId !== (activeSheet?.id ?? null)) {
+    setDraftSheetId(activeSheet?.id ?? null);
+    setDraft([]);
+    setScalePrompt(null);
+    setLegendGroup(null);
+  }
 
   const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
   const updateGeometry = useUpdatePreconGeometry(sessionId);
@@ -91,144 +93,13 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
 
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const sheetGeometries = useMemo(() => geometries.filter((g) => g.sheetId === activeSheet?.id), [geometries, activeSheet?.id]);
-  const presentStyles = useMemo(() => {
-    const seen = new Map<string, ElementStyle>();
-    for (const g of sheetGeometries) {
-      const row = rowById.get(g.rowId);
-      if (!row || row.status === "rejected") continue;
-      const st = getElementStyle(row.elementGroup);
-      if (!seen.has(st.label)) seen.set(st.label, st);
-    }
-    return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
-  }, [sheetGeometries, rowById]);
-
-  // Rasterize a cached pdfjs page and publish the matching page-state in the
-  // same pass, so toPx/toPt/cssZoom always agree with the pixels on the canvas.
-  const rasterize = useCallback(async (pdfPage: PdfPageProxy, scale: number, isCancelled: () => boolean) => {
-    const viewport = pdfPage.getViewport({ scale });
-    const canvas = canvasRef.current;
-    if (!canvas || isCancelled()) return;
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
-    if (isCancelled()) return;
-    setPage({ widthPx: viewport.width, heightPx: viewport.height, heightPt: viewport.height / scale, rasterScale: scale });
-  }, []);
-
-  // A DWG sheet is served as SVG and drawn as an image. It shares the page
-  // state with the PDF path so pan, zoom and the overlay maths stay identical:
-  // "points" are image pixels at the base raster.
-  const imageRef = useRef<{ sheetId: string; img: HTMLImageElement } | null>(null);
-  const rasterizeImage = useCallback((img: HTMLImageElement, scale: number, isCancelled: () => boolean) => {
-    const canvas = canvasRef.current;
-    if (!canvas || isCancelled() || !Number.isFinite(scale) || scale <= 0) return;
-    const fit = IMAGE_FIT_WIDTH_PX / Math.max(1, img.naturalWidth);
-    const widthPx = Math.round(img.naturalWidth * fit * (scale / BASE_RASTER));
-    const heightPx = Math.round(img.naturalHeight * fit * (scale / BASE_RASTER));
-    canvas.width = widthPx;
-    canvas.height = heightPx;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, widthPx, heightPx);
-    ctx.drawImage(img, 0, 0, widthPx, heightPx);
-    setPage({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale });
-  }, []);
-
-  const [activeRasterScale, setActiveRasterScale] = useState(BASE_RASTER);
-  const targetRasterScale = Math.min(4.5, BASE_RASTER * Math.max(1, Math.ceil(Number.isFinite(view.userZoom) ? view.userZoom : 1)));
-  useEffect(() => {
-    if (targetRasterScale === activeRasterScale) return;
-    const timer = setTimeout(() => setActiveRasterScale(targetRasterScale), 200);
-    return () => clearTimeout(timer);
-  }, [targetRasterScale, activeRasterScale]);
-
-  // The loaded pdfjs page is cached per sheet so zoom re-rasters redraw from
-  // memory instead of re-downloading the whole PDF.
-  const pdfPageRef = useRef<{ sheetId: string; page: PdfPageProxy } | null>(null);
-  useEffect(() => {
-    if (!activeSheet) return;
-    let cancelled = false;
-    const sheetId = activeSheet.id;
-    setDraft([]);
-    setScalePrompt(null);
-    setActiveRasterScale(BASE_RASTER);
-    setRendering(true);
-    // A DWG is drawn from the engine's own parse, served as SVG.
-    if (/\.dwg$/i.test(activeSheet.fileName)) {
-      pdfPageRef.current = null;
-      (async () => {
-        const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
-        if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
-        const svg = sizedSvg(await res.text());
-        if (cancelled) return;
-        const img = new Image();
-        const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject(new Error("The drawing could not be decoded"));
-          img.src = url;
-        });
-        URL.revokeObjectURL(url);
-        if (cancelled) return;
-        imageRef.current = { sheetId, img };
-        rasterizeImage(img, BASE_RASTER, () => cancelled);
-        setView(FIT_VIEW);
-        setRendering(false);
-      })().catch((error: unknown) => {
-        if (!cancelled) {
-          setRendering(false);
-          setNote(`Could not render this drawing: ${(error instanceof Error ? error.message : String(error)).slice(0, 160)}`);
-        }
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-    imageRef.current = null;
-    (async () => {
-      const pdfjs = await import("pdfjs-dist");
-      if (!sharedWorker) sharedWorker = new PdfWorker();
-      pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
-      const doc = await pdfjs.getDocument({ url: preconApi.sheetFileUrl(sheetId), withCredentials: true }).promise;
-      if (cancelled) return;
-      const pdfPage = await doc.getPage(pageWithinFile(activeSheet, sheets));
-      if (cancelled) return;
-      pdfPageRef.current = { sheetId, page: pdfPage };
-      await rasterize(pdfPage, BASE_RASTER, () => cancelled);
-      if (cancelled) return;
-      setView(FIT_VIEW);
-      setRendering(false);
-    })().catch((error: unknown) => {
-      if (!cancelled) {
-        setRendering(false);
-        setNote(`Could not render this sheet: ${(error instanceof Error ? error.message : String(error)).slice(0, 160)}`);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSheet?.id]);
-
-  useEffect(() => {
-    if (!activeSheet || !page || page.rasterScale === activeRasterScale) return;
-    const image = imageRef.current;
-    if (image && image.sheetId === activeSheet.id) {
-      rasterizeImage(image.img, activeRasterScale, () => false);
-      return;
-    }
-    const cached = pdfPageRef.current;
-    if (!cached || cached.sheetId !== activeSheet.id) return;
-    let cancelled = false;
-    void rasterize(cached.page, activeRasterScale, () => cancelled);
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRasterScale, activeSheet?.id]);
+  const legendEntries = useMemo(() => buildLegendEntries(sheetGeometries, rowById), [sheetGeometries, rowById]);
+  const elementGroups = useMemo(() => [...new Set(rows.flatMap((r) => (r.elementGroup ? [r.elementGroup] : [])))], [rows]);
+  const emphasisRowIds = useMemo(() => {
+    if (flashRowId) return new Set([flashRowId]);
+    if (!legendGroup) return null;
+    return new Set(legendEntries.find((entry) => entry.group === legendGroup)?.rowIds ?? []);
+  }, [flashRowId, legendGroup, legendEntries]);
 
   const cssZoom = page ? (BASE_RASTER * view.userZoom) / page.rasterScale : view.userZoom;
   const toPx = useCallback(
@@ -269,34 +140,72 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     return [x, y];
   };
 
-  const selectedRow = selectedRowId ? rowById.get(selectedRowId) : null;
-  const blockedReasonFor = (t: PreconTool): string | null => {
+  const selectedRow = selectedRowId ? (rowById.get(selectedRowId) ?? null) : null;
+  const meta = PRECON_TOOL_BY_KEY[tool];
+  const blockedReasonFor = (m: PreconToolMeta): string | null => {
+    if (m.key === "select" || m.key === "legend") return null;
     if (!activeSheet) return "Open a sheet first";
-    if (t === "scale") return null;
-    if (!activeSheet.scaleMmPerPt) return "Set this sheet's scale first (Sheet → scale, or the Set scale tool)";
-    if (!selectedRow) return "Select a BOQ item on the right to measure into";
+    if (m.key === "scale") return null;
+    if (!activeSheet.scaleMmPerPt) return "Set this sheet's scale first (S, or Sheet settings)";
+    if (m.needsLine && !selectedRow) return "Select a bill line first";
+    if ((m.key === "volume" || m.key === "wall_area") && selectedRow) return "Draws a new line — clear the selection first";
     return null;
   };
-  const drawingEnabled = tool !== "select" && !blockedReasonFor(tool);
+  const drawingEnabled = tool !== "select" && !blockedReasonFor(meta);
 
-  const commitDraft = () => {
+  const changeTool = (next: PreconTool) => {
+    setDraft([]);
+    setScalePrompt(null);
+    setNote(null);
+    onToolChange(next);
+  };
+
+  const finishDraft = (vertices: number[][] = draft) => {
     if (tool === "scale") {
-      if (draft.length >= 2) setScalePrompt({ ptLength: Math.hypot(draft[1]![0]! - draft[0]![0]!, draft[1]![1]! - draft[0]![1]!), mm: "" });
+      if (vertices.length >= 2) setScalePrompt({ ptLength: Math.hypot(vertices[1]![0]! - vertices[0]![0]!, vertices[1]![1]! - vertices[0]![1]!), mm: "" });
       return;
     }
-    if (!selectedRow || draft.length === 0) {
+    if (vertices.length === 0) return;
+    const measure = meta.measure;
+    if (measure && !selectedRow) {
+      // draw first, name after: the composer owns the draft from here
+      if (vertices.length >= MEASURE_MIN_VERTICES[measure]) setPending({ tool: measure, vertices });
+      else setNote(`Add at least ${MEASURE_MIN_VERTICES[measure]} points before finishing.`);
+      return;
+    }
+    if (!selectedRow) {
       setDraft([]);
       return;
     }
     const onError = (error: unknown) =>
       setNote(isVersionConflict(error) ? "Row changed elsewhere — refreshed; redraw to apply." : getApiErrorMessage(error, "Measurement failed"));
     const base = { rowId: selectedRow.id, version: selectedRow.version, sheetId: activeSheet?.id };
-    if (tool === "deduct" && draft.length >= 3) addDeduction.mutate({ ...base, label: "Opening (manual)", vertices: draft }, { onError });
-    else if (tool === "area" && draft.length >= 3) updateGeometry.mutate({ ...base, kind: "area", vertices: draft }, { onError });
-    else if (tool === "linear" && draft.length >= 2) updateGeometry.mutate({ ...base, kind: "linear", vertices: draft }, { onError });
-    else if (tool === "count" && draft.length >= 1) updateGeometry.mutate({ ...base, kind: "count", vertices: draft }, { onError });
+    if (tool === "deduct" && vertices.length >= 3) addDeduction.mutate({ ...base, label: "Opening (manual)", vertices }, { onError });
+    else if (measure && vertices.length >= MEASURE_MIN_VERTICES[measure]) updateGeometry.mutate({ ...base, kind: MEASURE_GEOMETRY_KIND[measure], vertices }, { onError });
     setDraft([]);
   };
+
+  // Esc always returns to Select, dropping whatever was half-drawn.
+  const cancel = () => {
+    setDraft([]);
+    setScalePrompt(null);
+    setNote(null);
+    if (tool !== "select") onToolChange("select");
+  };
+
+  useToolShortcuts(
+    {
+      onEscape: cancel,
+      onEnter: () => {
+        if (!scalePrompt) finishDraft();
+      },
+      onTool: (next) => {
+        if (!blockedReasonFor(PRECON_TOOL_BY_KEY[next])) changeTool(next);
+      },
+      onToggleLegend: () => setLegendOpen((v) => !v),
+    },
+    !pending,
+  );
 
   const applyDrawnScale = () => {
     if (!scalePrompt || !activeSheet) return;
@@ -320,26 +229,26 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     );
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setDraft([]);
-        setScalePrompt(null);
-      }
-      if (e.key === "Enter" && !scalePrompt) commitDraft();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, tool, selectedRowId, scalePrompt]);
-
   const onCanvasClick = (e: React.MouseEvent) => {
-    if (!drawingEnabled || scalePrompt) return;
+    if (!drawingEnabled || scalePrompt || pending) return;
+    if (tool === "scale" && draft.length >= 2) return;
     const canvasPt = screenToCanvas(e.clientX, e.clientY);
     if (!canvasPt) return;
-    const pdfPt = toPt(canvasPt[0], canvasPt[1]);
-    setDraft((prev) => (tool === "scale" && prev.length >= 2 ? prev : [...prev, applySnapAndOrtho(pdfPt, e.shiftKey)]));
+    const next = [...draft, applySnapAndOrtho(toPt(canvasPt[0], canvasPt[1]), e.shiftKey)];
+    setDraft(next);
+    // a length is two clicks: it finishes itself
+    const max = meta.measure ? MEASURE_MAX_VERTICES[meta.measure] : undefined;
+    if (max && next.length >= max) finishDraft(next);
   };
+
+  const onCreated = (row: PreconBoqRow) => {
+    setDraft([]);
+    onSelectRow(row.id);
+    onMeasurementCreated?.(row);
+    setFlashRowId(row.id);
+    window.setTimeout(() => setFlashRowId((current) => (current === row.id ? null : current)), FLASH_MS);
+  };
+
   useEffect(() => {
     if (!zoomRequest) return;
     if (zoomRequest.kind === "in") zoomBy(1.5);
@@ -347,112 +256,77 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     else zoomFit();
   }, [zoomRequest, zoomBy, zoomFit]);
 
-
-  const statusLine = !activeSheet
-    ? null
-    : scalePrompt
-      ? null
-      : activeSheet.scaleMmPerPt
-        ? `1:${scaleRatioOf(activeSheet.scaleMmPerPt)} · dims in ${activeSheet.dimUnit ?? "mm"} · ${activeSheet.scaleConfidence === 1 ? "scale set by reviewer" : `calibration ${Math.round((activeSheet.scaleConfidence ?? 0) * 100)}%`}${tool === "scale" ? " — click two points a known distance apart, then Enter" : tool !== "select" && !selectedRow ? " — select a BOQ item to measure into" : drawingEnabled ? " — click to add points, Enter to finish, Esc to cancel, Shift for ortho" : ""}`
-        : null;
+  const banner = note ?? loadError;
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <SheetToolbar
-        sheets={sheets}
-        activeSheet={activeSheet}
-        onSelectSheet={onSelectSheet}
-        tool={tool}
-        onToolChange={(t) => {
-          setDraft([]);
-          setScalePrompt(null);
-          onToolChange(t);
-        }}
-        blockedReasonFor={blockedReasonFor}
-        settingsOpen={settingsOpen}
-        onToggleSettings={() => setSettingsOpen((v) => !v)}
-      />
+      <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={onSelectSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
 
-      {statusLine ? <p className="border-b border-gray-100 px-3 py-1 text-[11px] text-gray-400">{statusLine}</p> : null}
+      {activeSheet && !scalePrompt ? (
+        <SheetStatusBar sheet={activeSheet} tool={tool} selectedRow={selectedRow} drawingEnabled={drawingEnabled} draft={draft} onClearSelection={() => onSelectRow(null)} />
+      ) : null}
       {activeSheet && !activeSheet.scaleMmPerPt && !scalePrompt ? (
-        <NoScaleBanner
-          message={activeSheet.error ?? "No calibrated scale on this sheet."}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onDrawScale={() => onToolChange("scale")}
-        />
+        <NoScaleBanner message={activeSheet.error ?? "No calibrated scale on this sheet."} onOpenSettings={() => setSettingsOpen(true)} onDrawScale={() => changeTool("scale")} />
       ) : null}
       {scalePrompt ? (
-        <ScalePromptBanner
-          prompt={scalePrompt}
-          saving={updateSheet.isPending}
-          onChange={(mm) => setScalePrompt({ ...scalePrompt, mm })}
-          onApply={applyDrawnScale}
-          onRedraw={() => setScalePrompt(null)}
-        />
+        <ScalePromptBanner prompt={scalePrompt} saving={updateSheet.isPending} onChange={(mm) => setScalePrompt({ ...scalePrompt, mm })} onApply={applyDrawnScale} onRedraw={() => setScalePrompt(null)} />
       ) : null}
-      {note ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-[11px] text-amber-700">{note}</p> : null}
+      {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-[11px] text-amber-700">{banner}</p> : null}
 
-      <div
-        ref={containerRef}
-        className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : "cursor-crosshair")}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={endPan}
-        onMouseLeave={endPan}
-        onClick={onCanvasClick}
-        onDoubleClick={commitDraft}
-      >
-        {rendering ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Spinner size="md" />
+      <div className="flex min-h-0 flex-1">
+        <ToolPalette tool={tool} onToolChange={changeTool} blockedReasonFor={blockedReasonFor} legendOpen={legendOpen} onToggleLegend={() => setLegendOpen((v) => !v)} />
+        <div
+          ref={containerRef}
+          className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : "cursor-crosshair")}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={endPan}
+          onMouseLeave={endPan}
+          onClick={onCanvasClick}
+          onDoubleClick={() => finishDraft()}
+        >
+          {rendering ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Spinner size="md" />
+            </div>
+          ) : null}
+          <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${cssZoom})`, transformOrigin: "0 0" }}>
+            <canvas ref={canvasRef} className="block" />
+            {page ? (
+              <SheetOverlay
+                widthPx={page.widthPx}
+                heightPx={page.heightPx}
+                geometries={sheetGeometries}
+                rowById={rowById}
+                selectedRowId={selectedRowId}
+                onSelectRow={onSelectRow}
+                draft={draft}
+                draftColor={tool === "scale" ? "#B85C00" : "#004DE7"}
+                toPx={toPx}
+                emphasisRowIds={emphasisRowIds}
+              />
+            ) : null}
           </div>
-        ) : null}
-        <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${cssZoom})`, transformOrigin: "0 0" }}>
-          <canvas ref={canvasRef} className="block" />
-          {page ? (
-            <SheetOverlay
-              widthPx={page.widthPx}
-              heightPx={page.heightPx}
-              geometries={sheetGeometries}
-              rowById={rowById}
-              selectedRowId={selectedRowId}
-              onSelectRow={onSelectRow}
-              draft={draft}
-              draftColor={tool === "scale" ? "#B85C00" : "#004DE7"}
-              toPx={toPx}
+          <SheetLegend entries={legendEntries} open={legendOpen} onToggle={() => setLegendOpen((v) => !v)} activeGroup={legendGroup} onPickGroup={setLegendGroup} />
+          <ZoomControls userZoom={view.userZoom} onZoomBy={zoomBy} onFit={zoomFit} />
+          {settingsOpen && activeSheet ? (
+            <SheetSettings
+              key={activeSheet.id}
+              sessionId={sessionId}
+              sheet={activeSheet}
+              onClose={() => setSettingsOpen(false)}
+              onDrawScale={() => {
+                setSettingsOpen(false);
+                changeTool("scale");
+              }}
             />
           ) : null}
         </div>
-        <SheetLegend styles={presentStyles} />
-        <div
-          className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-sm"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button type="button" aria-label="Zoom out" title="Zoom out" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1 / 1.5)}>
-            <Minus className="size-4" aria-hidden="true" />
-          </button>
-          <span className="min-w-12 text-center font-mono text-[11px] tabular-nums text-gray-600">{formatZoom(view.userZoom)}%</span>
-          <button type="button" aria-label="Zoom in" title="Zoom in" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1.5)}>
-            <Plus className="size-4" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="Fit to view" title="Fit to view" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={zoomFit}>
-            <Maximize2 className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-        {settingsOpen && activeSheet ? (
-          <SheetSettings
-            key={activeSheet.id}
-            sessionId={sessionId}
-            sheet={activeSheet}
-            onClose={() => setSettingsOpen(false)}
-            onDrawScale={() => {
-              setSettingsOpen(false);
-              onToolChange("scale");
-            }}
-          />
-        ) : null}
       </div>
+
+      {pending && activeSheet ? (
+        <MeasurementComposer sessionId={sessionId} sheet={activeSheet} pending={pending} elementGroups={elementGroups} onClose={() => setPending(null)} onCreated={onCreated} />
+      ) : null}
     </div>
   );
 }
