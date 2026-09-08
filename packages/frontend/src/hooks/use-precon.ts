@@ -4,7 +4,9 @@ import {
   preconApi,
   type CreateProgrammeTaskInput,
   preconApplyApi,
+  preconManualApi,
   type ApplyMode,
+  type TakeoffMode,
   type CreateRowInput,
   type LayerMap,
   type PreconGeometryKind,
@@ -481,5 +483,16 @@ export function useApplyTakeoffToEstimate(sessionId: string, proposalId: string 
         void qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
       }
     },
+  });
+}
+
+// ---- WS-M1C · from-plan with a mode ----
+/** Start a take-off on a drawing, by Panda AI or by hand; both land on the sessions list. */
+export function useCreatePreconSessionFromPlanWithMode(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, scope, mode }: { planId: string; scope: TakeoffScope; mode: TakeoffMode }) =>
+      preconManualApi.createSessionFromPlan(proposalId, planId, scope, mode),
+    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
   });
 }
