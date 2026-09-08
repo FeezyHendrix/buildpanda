@@ -48,7 +48,9 @@ export interface PdfOpIds {
 const MOVE_TO = 0;
 const LINE_TO = 1;
 const CURVE_TO = 2;
-const CLOSE_PATH = 3;
+// pdf.js 6 DrawOPS: 3 is quadraticCurveTo (4 coords), 4 is closePath
+const QUAD_TO = 3;
+const CLOSE_PATH = 4;
 
 const PAGE_UNITS: GeoDocument["units"] = {
   unit: "unknown",
@@ -140,6 +142,11 @@ export function fromPdf(extracted: ExtractedSheet, ops?: PdfOperatorList, OPS?: 
               x = ex;
               y = ey;
               j += 7;
+            } else if (op === QUAD_TO) {
+              const [ex, ey] = apply(d[j + 3]!, d[j + 4]!);
+              x = ex;
+              y = ey;
+              j += 5;
             } else if (op === CLOSE_PATH) {
               if (x !== startX || y !== startY) {
                 segments.push({ id: `s${index++}`, x1: x, y1: y, x2: startX, y2: startY, layer, width: scaledWidth(), color: null, fill });

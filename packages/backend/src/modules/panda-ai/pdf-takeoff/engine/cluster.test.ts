@@ -37,6 +37,37 @@ test("clusterRegions: without a scale it keeps the legacy scale-blind behaviour"
   assert.ok(regions.length >= 1);
 });
 
+test("clusterRegions: long wall faces are rasterised end to end, so a big plan is one region", () => {
+  // a 30 m square of 6 m bays at 1:100: every face is ~170pt, far longer than a cell
+  const bay = 6000 / MM_PER_PT;
+  const walls: Segment[] = [];
+  for (let i = 0; i <= 5; i++) {
+    for (let j = 0; j < 5; j++) {
+      // door gaps of 0.9 m in the middle of every internal face
+      const gap = 900 / MM_PER_PT;
+      const a = j * bay;
+      const mid = a + bay / 2;
+      walls.push(seg(i * bay, a, i * bay, mid - gap / 2), seg(i * bay, mid + gap / 2, i * bay, a + bay));
+      walls.push(seg(a, i * bay, mid - gap / 2, i * bay), seg(mid + gap / 2, i * bay, a + bay, i * bay));
+    }
+  }
+  const regions = clusterRegions(sheet(walls), MM_PER_PT);
+  assert.equal(regions.length, 1, `expected one plan region, got ${regions.length}`);
+  assert.equal(regions[0]!.segmentIdx.length, walls.length);
+});
+
+test("clusterRegions: a cluster nested inside another's extent joins it; a plan beside it stays separate", () => {
+  const outer: Segment[] = [];
+  for (let i = 0; i < 40; i++) outer.push(seg(0, i * 10, 400, i * 10));
+  const inner: Segment[] = [];
+  for (let i = 0; i < 35; i++) inner.push(seg(150 + i, 150, 150 + i + 20, 150 + 20)); // sits well inside the outer block
+  const beside: Segment[] = [];
+  for (let i = 0; i < 40; i++) beside.push(seg(2000, i * 10, 2400, i * 10));
+  const regions = clusterRegions(sheet([...outer, ...inner, ...beside]), MM_PER_PT);
+  assert.equal(regions.length, 2);
+  assert.equal(regions[0]!.segmentIdx.length, outer.length + inner.length);
+});
+
 test("clusterRegions: an empty sheet yields no regions", () => {
   assert.deepEqual(clusterRegions(sheet([]), MM_PER_PT), []);
 });
