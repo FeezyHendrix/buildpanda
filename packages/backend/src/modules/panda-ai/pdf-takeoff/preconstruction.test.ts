@@ -494,9 +494,12 @@ test("createDwgSession lands DWG lines as a reviewable session with reasons and 
         inserted.rows = rows;
       },
       upsertSettings: async () => undefined,
-      sessionById: async () => ({ ...sessionRow({ status: "reviewing" }), ...(inserted.session as object) }),
+      sessionById: async () => ({ ...sessionRow(), ...(inserted.session as object) }),
       appendSessionProgress: async () => undefined,
-      updateSessionStatus: async () => undefined,
+      // the shell is inserted as generating and flipped to reviewing once the lines land
+      updateSessionStatus: async (_id: string, status: string) => {
+        inserted.session = { ...(inserted.session as object), status };
+      },
     }),
   );
   const session = await svc.createDwgSession(
@@ -513,6 +516,7 @@ test("createDwgSession lands DWG lines as a reviewable session with reasons and 
   assert.equal(session.takeoffKind, "dwg");
   assert.equal(session.planId, "pln_1");
   assert.equal(session.status, "reviewing");
+  assert.equal(session.progressLog[0]?.message, "Queued the automated take-off for Site.dwg");
   const rows = inserted.rows as { row_type: string; status: string | null; confidence_reason: string | null; provenance: string | null; origin: string }[];
   assert.equal(rows.length, 3);
   assert.equal(rows[0]?.row_type, "heading");
