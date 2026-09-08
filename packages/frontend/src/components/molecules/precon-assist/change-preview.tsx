@@ -49,7 +49,13 @@ function formatValue(value: unknown): string {
 
 function FieldDiff({ change }: { change: AssistChange }) {
   const source = change.op === "delete" ? (change.before ?? {}) : change.after;
-  const keys = Object.keys(source).filter((k) => k !== "billId" || change.op === "create");
+  // an update lists only the fields that actually move; a create or delete
+  // shows the whole row
+  const keys = Object.keys(source).filter(
+    (k) =>
+      (k !== "billId" || change.op === "create") &&
+      (change.op !== "update" || JSON.stringify(change.before?.[k] ?? null) !== JSON.stringify(change.after[k] ?? null)),
+  );
   return (
     <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
       {keys.map((key) => (

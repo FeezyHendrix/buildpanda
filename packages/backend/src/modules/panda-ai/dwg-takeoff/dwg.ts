@@ -21,6 +21,20 @@ export interface DwgEntity {
   act_measurement?: number;
   xline1_pt?: number[];
   xline2_pt?: number[];
+  // fields the SVG renderer reads; all optional because dwgread only emits
+  // what each entity type carries
+  entmode?: number;
+  ownerhandle?: number[];
+  flag?: number;
+  text_value?: string;
+  text?: string;
+  ins_pt?: number[];
+  height?: number;
+  scale?: number[];
+  rotation?: number;
+  block_header?: number[];
+  start_angle?: number;
+  end_angle?: number;
 }
 
 export interface DwgDoc {

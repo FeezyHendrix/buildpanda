@@ -26,7 +26,7 @@ export interface TakeoffJobData {
 
 // LibreDWG reads from a file path, so the stored object is streamed to a temp
 // file for the duration of the job and removed afterwards.
-async function withTempDwg<T>(storagePath: string, fn: (file: string) => Promise<T>): Promise<T> {
+export async function withTempDwg<T>(storagePath: string, fn: (file: string) => Promise<T>): Promise<T> {
   const file = path.join(os.tmpdir(), `${generateId("tko")}.dwg`);
   const stream = await openStoredFile(storagePath);
   await pipeline(stream as Readable, createWriteStream(file));
