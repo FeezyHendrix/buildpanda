@@ -1,5 +1,5 @@
 import type { Knex } from "knex";
-import type { QuoteSourceRow, RateBuildupRow, RateCardRow, RateRow } from "./types.ts";
+import type { PreconAssemblyRow, QuoteSourceRow, RateBuildupRow, RateCardRow, RateRow } from "./types.ts";
 
 export type RateLibraryRepository = ReturnType<typeof rateLibraryRepository>;
 
@@ -80,5 +80,33 @@ export function rateLibraryRepository(db: Knex) {
     },
     deleteQuote: (id: string, orgId: string) =>
       db("precon_quote_sources").where({ id, org_id: orgId }).delete(),
+
+    // assemblies
+    assembliesByOrg: (orgId: string) =>
+      db<PreconAssemblyRow>("precon_assemblies").where({ org_id: orgId }).orderBy("name", "asc"),
+    assemblyById: (id: string) => db<PreconAssemblyRow>("precon_assemblies").where({ id }).first(),
+    insertAssembly: async (row: Omit<PreconAssemblyRow, "created_at" | "updated_at">) => {
+      const [inserted] = await db<PreconAssemblyRow>("precon_assemblies")
+        .insert({ ...row, items: JSON.stringify(row.items) as never })
+        .returning("*");
+      return inserted!;
+    },
+    updateAssembly: async (id: string, patch: Partial<Pick<PreconAssemblyRow, "name" | "unit" | "element_group" | "items">>) => {
+      const dbPatch: Record<string, unknown> = { ...patch, updated_at: db.fn.now() };
+      if (patch.items) dbPatch["items"] = JSON.stringify(patch.items);
+      const [updated] = await db<PreconAssemblyRow>("precon_assemblies").where({ id }).update(dbPatch).returning("*");
+      return updated;
+    },
+    deleteAssembly: (id: string, orgId: string) => db("precon_assemblies").where({ id, org_id: orgId }).delete(),
+    // the rates an assembly's items point at, restricted to the org's own cards
+    // so a rate id from another organisation can never price a line here
+    ratesByIdsForOrg: (rateIds: string[], orgId: string) =>
+      rateIds.length
+        ? db<RateRow>("precon_rates")
+            .join("precon_rate_cards", "precon_rate_cards.id", "precon_rates.rate_card_id")
+            .where("precon_rate_cards.org_id", orgId)
+            .whereIn("precon_rates.id", rateIds)
+            .select<RateRow[]>("precon_rates.*")
+        : Promise.resolve([] as RateRow[]),
   };
 }

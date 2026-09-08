@@ -273,6 +273,8 @@ export interface PreconSession {
   supersededBy: string | null;
   // priced-line counts, filled on the list endpoint only
   lines?: SessionLineCounts;
+  // the drawing has a newer revision (list and snapshot); null while it is current
+  stale?: PreconSessionStale | null;
   createdBy: string | null;
   createdAt: string;
 }
@@ -783,4 +785,40 @@ export interface ManualQuantity {
   gross: number;
   unit: string;
   geometryKind: GeometryKind;
+}
+
+// ---- WS-M3A: assemblies, stale drawings, presence ----
+
+// The drawing this take-off measured has been superseded: the newest plan in
+// the supersession chain, so the bill can say "re-measure on revision C".
+export interface PreconSessionStale {
+  newerPlanId: string;
+  newerRevision: string | null;
+}
+
+// One drawn shape billed as every item of an assembly; descriptions, units,
+// element groups and rates come from the assembly's items, the rest from the
+// drawing. `elementGroup` and `rate` are fallbacks for items that carry none.
+export interface CreateAssemblyMeasurementBody extends Omit<CreateMeasurementBody, "description" | "elementGroup" | "unit"> {
+  assemblyId: string;
+  elementGroup?: string;
+}
+
+export interface AssemblyMeasurementResult {
+  rows: PreconBoqRowDto[];
+  // the first line's shape; every line carries a copy of the same vertices
+  geometry: PreconGeometry;
+  geometries: PreconGeometry[];
+}
+
+// Who has the session open, and which bill line each is on.
+export interface PresenceUser {
+  id: string;
+  name: string;
+  rowId: string | null;
+}
+
+export interface PresenceEvent {
+  type: "precon.presence";
+  users: PresenceUser[];
 }
