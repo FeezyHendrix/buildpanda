@@ -8,6 +8,7 @@ import { PRECON_TOOL_BY_KEY, scaleRatioOf, type PreconTool, type PreconToolMeta 
 import { toast } from "@/lib/toast";
 import { SheetToolbar } from "./precon-sheet-viewer/sheet-toolbar";
 import { SheetOverlay } from "./precon-sheet-viewer/sheet-overlay";
+import { PinLayer } from "./precon-sheet-viewer/pins";
 import { SheetLegend, buildLegendEntries } from "./precon-sheet-viewer/sheet-legend";
 import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
 import { SheetSettings } from "./precon-session/sheet-settings";
@@ -304,6 +305,23 @@ export function PreconSheetViewer({
                 draftColor={tool === "scale" ? "#B85C00" : "#004DE7"}
                 toPx={toPx}
                 emphasisRowIds={emphasisRowIds}
+              />
+            ) : null}
+            {page && activeSheet ? (
+              <PinLayer
+                key={activeSheet.id}
+                sessionId={sessionId}
+                sheetId={activeSheet.id}
+                widthPx={page.widthPx}
+                heightPx={page.heightPx}
+                toPx={toPx}
+                toPt={toPt}
+                cssZoom={cssZoom}
+                placing={tool === "comment"}
+                selectedRowId={selectedRowId}
+                rowById={rowById}
+                onPlaced={() => onToolChange("select")}
+                onSelectRow={onSelectRow}
               />
             ) : null}
           </div>

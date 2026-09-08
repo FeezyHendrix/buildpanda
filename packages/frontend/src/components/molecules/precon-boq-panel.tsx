@@ -7,6 +7,7 @@ import { PreconRowComposer } from "@/components/molecules/precon-row-composer";
 import { LineDetail } from "@/components/molecules/precon-session/line-detail";
 import { NeedsAttentionQueue, attentionRows, confidentDrafts } from "@/components/molecules/precon-session/needs-attention-queue";
 import { MEASURING_TOOLS, confidenceReasonLabel } from "@/lib/precon-meta";
+import { OpenCommentBadge, useOpenCommentCounts } from "@/components/molecules/precon-sheet-viewer/pins";
 import type { PreconBoqRow, PreconRowStatus, PreconSnapshot } from "@/api/precon";
 
 const STATUS_META: Record<PreconRowStatus, { label: string; mark: string }> = {
@@ -50,12 +51,14 @@ function BillRow({
   row,
   selected,
   sessionId,
+  openComments,
   onSelect,
   onConflict,
 }: {
   row: PreconBoqRow;
   selected: boolean;
   sessionId: string;
+  openComments: number;
   onSelect: () => void;
   onConflict: (message: string) => void;
 }) {
@@ -86,6 +89,7 @@ function BillRow({
         <span className="w-14 shrink-0 font-mono text-[10px] text-gray-400">{row.code}</span>
         <span className={cn("min-w-0 flex-1 truncate text-gray-800", row.status === "rejected" && "line-through")}>{row.description}</span>
         {reason ? <span className="hidden shrink-0 text-[10px] text-amber-700 xl:inline">{reason}</span> : null}
+        <OpenCommentBadge count={openComments} />
         <span className="shrink-0 tabular-nums text-gray-600">
           {row.qty ?? "—"} {row.unit ?? ""}
         </span>
@@ -123,6 +127,7 @@ ManualEmptyState.displayName = "ManualEmptyState";
 export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow }: PanelProps) {
   const [conflictNote, setConflictNote] = useState<string | null>(null);
   const createBill = useCreatePreconBill(sessionId);
+  const openComments = useOpenCommentCounts(sessionId);
 
   const sheetByRow = useMemo(() => {
     const map = new Map<string, string>();
@@ -180,6 +185,7 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
                   key={row.id}
                   row={row}
                   sessionId={sessionId}
+                  openComments={openComments.get(row.id) ?? 0}
                   selected={row.id === selectedRowId}
                   onSelect={() => onSelectRow(row.id === selectedRowId ? null : row.id, sheetByRow.get(row.id) ?? null)}
                   onConflict={setConflictNote}
