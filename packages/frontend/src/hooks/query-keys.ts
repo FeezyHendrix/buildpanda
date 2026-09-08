@@ -314,6 +314,7 @@ export const proposalKeys = {
   boq: (id: string) => [...proposalKeys.detail(id), "boq"] as const,
   takeoffs: (id: string) => [...proposalKeys.detail(id), "automated-takeoff"] as const,
   publicView: (token: string) => [...proposalKeys.all, "public", token] as const,
+  convertPreview: (id: string) => [...proposalKeys.detail(id), "convert-preview"] as const,
 };
 
 export const channelKeys = {
