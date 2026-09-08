@@ -58,7 +58,21 @@ export function isFitting(e: DwgEntity, scaleToMm: number): boolean {
 }
 
 /** A quarter-circle of door-leaf radius: a door swing. */
+/**
+ * A quarter-circle drawn as a polyline: the arc lives in the vertex bulges,
+ * so an architect's swing is often not an ARC entity at all. Its bounding box
+ * is about the leaf's length on both sides.
+ */
+export function isBulgedSwing(e: DwgEntity, scaleToMm: number): boolean {
+  if (e.entity !== "LWPOLYLINE" && e.entity !== "POLYLINE_2D") return false;
+  const bulges = (e as { bulges?: number[] }).bulges;
+  if (!Array.isArray(bulges) || !bulges.some((b) => Math.abs(b) > 1e-6)) return false;
+  const s = shapeSides(e, scaleToMm);
+  return s.long >= 500 && s.long <= 1600 && s.short >= 200;
+}
+
 export function isDoorSwing(e: DwgEntity, scaleToMm: number): boolean {
+  if (isBulgedSwing(e, scaleToMm)) return true;
   if (e.entity !== "ARC" || typeof e.radius !== "number") return false;
   const r = e.radius * scaleToMm;
   if (r < 500 || r > 1500) return false;
