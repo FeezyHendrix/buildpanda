@@ -554,9 +554,9 @@ test("createDwgSession lands DWG lines as a reviewable session with reasons and 
   assert.equal(rows[1]?.status, "ai_generated");
   assert.equal(rows[1]?.code, "DWG-01");
   assert.deepEqual(rows[1]?.evidence, [101, 102]);
-  assert.equal(rows[1]?.confidence_reason, "high · methods agree");
+  assert.equal(rows[1]?.confidence_reason, "methods agree");
   assert.equal(rows[2]?.status, "needs_review");
-  assert.equal(rows[2]?.confidence_reason, "medium · single method");
+  assert.equal(rows[2]?.confidence_reason, "medium confidence · single method");
   assert.ok(rows[1]?.provenance?.startsWith("Read from Site.dwg (DWG-01)"));
   assert.equal(rows[4]?.row_type, "spec_note");
   assert.ok(rows.every((r) => r.origin === "ai"));

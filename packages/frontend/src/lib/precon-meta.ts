@@ -215,9 +215,25 @@ export const CONFIDENCE_REASON_LABEL: Record<string, string> = {
   "low confidence": "Low confidence",
 };
 
+const CONFIDENCE_LEVEL_WORD = /^(high|medium|low)$/i;
+
+/**
+ * A stored reason is "why · check; check; check" (older rows start with the
+ * bare level word, which the badge already shows). Returns the parts in
+ * order, labelled where a short key has a friendlier label.
+ */
+export function confidenceReasonParts(reason: string | null): string[] {
+  if (!reason) return [];
+  return reason
+    .split(/\s·\s|;\s+(?=[a-z0-9])/i)
+    .map((part) => part.trim())
+    .filter((part) => part && !CONFIDENCE_LEVEL_WORD.test(part))
+    .map((part) => CONFIDENCE_REASON_LABEL[part] ?? part);
+}
+
+/** The headline reason, short enough for a bill row. */
 export function confidenceReasonLabel(reason: string | null): string | null {
-  if (!reason) return null;
-  return CONFIDENCE_REASON_LABEL[reason] ?? reason;
+  return confidenceReasonParts(reason)[0] ?? null;
 }
 
 export const ROW_ORIGIN_LABEL: Record<RowOrigin, string> = {

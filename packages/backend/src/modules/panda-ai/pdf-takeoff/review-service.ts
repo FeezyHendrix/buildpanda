@@ -207,7 +207,10 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
               confidence: low ? "low" : "high",
               status: low ? "needs_review" : "ai_generated",
               measurement_basis: line.basis,
-              confidence_reason: [line.confidence, line.reason, line.crossCheck].filter(Boolean).join(" · "),
+              // the row's confidence enum has no "medium", so the reason keeps that word
+              confidence_reason: [line.confidence === "medium" ? "medium confidence" : null, line.reason, line.crossCheck]
+                .filter(Boolean)
+                .join(" · "),
               provenance: `Read from ${file.fileName}${code ? ` (${code})` : ""} by the automated take-off: ${line.basis}`,
               evidence: line.evidence ?? [],
             }),

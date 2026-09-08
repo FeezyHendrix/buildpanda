@@ -3,7 +3,8 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { PreconBoqRow } from "@/api/precon";
 import { isVersionConflict, useDeletePreconRow, useRejectPreconRow, useUpdatePreconRow, useVerifyPreconRow } from "@/hooks/use-precon";
-import { ROW_ORIGIN_LABEL, confidenceReasonLabel } from "@/lib/precon-meta";
+import { ROW_ORIGIN_LABEL } from "@/lib/precon-meta";
+import { LineEvidence } from "./line-evidence";
 import { formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -27,7 +28,6 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
   const [rateDraft, setRateDraft] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const measuredByAi = row.origin === "ai" || row.origin === "prompt";
-  const reason = confidenceReasonLabel(row.confidenceReason);
 
   const handleError = (error: unknown) => {
     onConflict(
@@ -56,18 +56,13 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
 
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{ROW_ORIGIN_LABEL[row.origin]}</p>
-          {row.provenance ? <p className="mt-1 text-xs text-gray-700">{row.provenance}</p> : row.measurementBasis ? <p className="mt-1 text-xs text-gray-600">{row.measurementBasis}</p> : null}
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          {row.confidence ? (
-            <Badge tone={row.confidence === "high" ? "success" : "warning"}>{row.confidence === "high" ? "High confidence" : "Low confidence"}</Badge>
-          ) : null}
-          {reason ? <span className="text-[11px] text-amber-700">{reason}</span> : null}
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{ROW_ORIGIN_LABEL[row.origin]}</p>
+        {row.confidence ? (
+          <Badge tone={row.confidence === "high" ? "success" : "warning"}>{row.confidence === "high" ? "High confidence" : "Low confidence"}</Badge>
+        ) : null}
       </div>
+      <LineEvidence row={row} />
 
       {row.editedAt ? (
         <p className="rounded-md bg-white px-2 py-1 text-[11px] text-gray-600">

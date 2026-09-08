@@ -1,4 +1,5 @@
 import { FileText, Image as ImageIcon, PencilRuler, Sparkles, Pencil, Upload } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { ProposalPlan } from "@/api/proposals";
@@ -38,14 +39,31 @@ function PlanIcon({ fileName }: { fileName: string }) {
 }
 PlanIcon.displayName = "PlanIcon";
 
+// Every run is kept for the audit trail, but the drawing shows one badge per
+// scope: the latest run, linked, with how many runs sit behind it.
+function latestPerScope(sessions: PreconSession[]): { latest: PreconSession; runs: number }[] {
+  const byScope = new Map<string, PreconSession[]>();
+  for (const s of sessions) {
+    const key = describeScope(s.scope);
+    byScope.set(key, [...(byScope.get(key) ?? []), s]);
+  }
+  return [...byScope.values()].map((group) => {
+    const sorted = [...group].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return { latest: sorted[0]!, runs: group.length };
+  });
+}
+
 function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]; staleSessions: PreconSession[] }) {
   if (sessions.length === 0 && staleSessions.length === 0) return null;
   return (
     <span className="flex flex-wrap items-center gap-1">
-      {sessions.map((s) => (
-        <Badge key={s.id} tone={s.status === "failed" ? "danger" : "success"}>
-          Measured · {describeScope(s.scope)}
-        </Badge>
+      {latestPerScope(sessions).map(({ latest, runs }) => (
+        <Link key={latest.id} to={`/sales/takeoff/${latest.id}`} className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-100" title="Open the latest take-off">
+          <Badge tone={latest.status === "failed" ? "danger" : "success"}>
+            Measured · {describeScope(latest.scope)}
+            {runs > 1 ? ` · ${runs} runs` : ""}
+          </Badge>
+        </Link>
       ))}
       {staleSessions.length > 0 ? (
         <Badge tone="warning">
