@@ -26,6 +26,10 @@ export function useSheetCoords({ page, view, containerRef, snapPoints }: Args) {
     (pt: number[]): [number, number] => {
       const frame = page?.frame;
       if (frame && page) return [((pt[0]! - frame.x) / frame.w) * page.widthPx, ((-pt[1]! - frame.y) / frame.h) * page.heightPx];
+      // a PDF page places its points through pdf.js's own transform, which
+      // also carries the page origin (a CAD export often centres it on zero)
+      const m = page?.matrix;
+      if (m) return [m[0] * pt[0]! + m[2] * pt[1]! + m[4], m[1] * pt[0]! + m[3] * pt[1]! + m[5]];
       const rs = page?.rasterScale ?? BASE_RASTER;
       return [pt[0]! * rs, page!.heightPx - pt[1]! * rs];
     },
@@ -36,6 +40,13 @@ export function useSheetCoords({ page, view, containerRef, snapPoints }: Args) {
     (pxX: number, pxY: number): [number, number] => {
       const frame = page?.frame;
       if (frame && page) return [frame.x + (pxX / page.widthPx) * frame.w, -(frame.y + (pxY / page.heightPx) * frame.h)];
+      const m = page?.matrix;
+      if (m) {
+        const det = m[0] * m[3] - m[1] * m[2];
+        const x = pxX - m[4];
+        const y = pxY - m[5];
+        return [(m[3] * x - m[2] * y) / det, (-m[1] * x + m[0] * y) / det];
+      }
       const rs = page?.rasterScale ?? BASE_RASTER;
       return [pxX / rs, (page!.heightPx - pxY) / rs];
     },

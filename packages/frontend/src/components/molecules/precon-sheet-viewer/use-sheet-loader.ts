@@ -31,6 +31,12 @@ export interface PageInfo {
    * is 1 mm per unit), mapped through this frame instead of the raster scale.
    */
   frame?: DrawingFrame;
+  /**
+   * Present for a PDF: pdf.js's viewport transform at the raster scale, which
+   * places PDF user-space points on the canvas. A CAD export often centres its
+   * page on the origin, so points can be negative; the transform knows.
+   */
+  matrix?: [number, number, number, number, number, number];
 }
 
 export function parseViewBox(svg: string): DrawingFrame | null {
@@ -157,7 +163,14 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
       if (!ctx) return;
       await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (isCancelled()) return;
-      setPage({ widthPx: viewport.width, heightPx: viewport.height, heightPt: viewport.height / scale, rasterScale: scale });
+      const t = viewport.transform as number[];
+      setPage({
+        widthPx: viewport.width,
+        heightPx: viewport.height,
+        heightPt: viewport.height / scale,
+        rasterScale: scale,
+        matrix: [t[0]!, t[1]!, t[2]!, t[3]!, t[4]!, t[5]!],
+      });
     },
     [canvasRef],
   );
