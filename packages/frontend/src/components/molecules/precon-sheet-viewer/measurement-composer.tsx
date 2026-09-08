@@ -14,6 +14,8 @@ import { MEASURE_DEFAULT_UNIT, formatQty, previewQuantity, unitLabel } from "./m
 export interface PendingMeasurement {
   tool: MeasureTool;
   vertices: number[][];
+  /** Prefilled by Room fill (the room label) and Find symbol ("<name> × <count>"). */
+  description?: string;
 }
 
 interface Props {
@@ -44,7 +46,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
   const create = useCreateMeasurement(sessionId);
   const { data: cards = [] } = useRateCards();
 
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(pending.description ?? "");
   const [elementGroup, setElementGroup] = useState<string | null>(null);
   const [unit, setUnit] = useState(MEASURE_DEFAULT_UNIT[pending.tool]);
   const [code, setCode] = useState("");

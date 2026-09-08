@@ -83,6 +83,42 @@ async function loadPicture(sheetId: string): Promise<HTMLImageElement> {
   return loadImageFromUrl(URL.createObjectURL(await res.blob()), true);
 }
 
+/** pdf.js with the shared worker attached; imported on demand so the chunk stays out of the initial route. */
+async function loadPdfjs() {
+  const pdfjs = await import("pdfjs-dist");
+  if (!sharedWorker) sharedWorker = new PdfWorker();
+  pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
+  return pdfjs;
+}
+
+async function loadDwgSvg(sheetId: string): Promise<{ img: HTMLImageElement; frame: DrawingFrame | null }> {
+  const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
+  if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
+  const raw = await res.text();
+  return { img: await loadImage(sizedSvg(raw)), frame: parseViewBox(raw) };
+}
+
+/**
+ * Any sheet as something drawImage accepts, sized to `widthPx` wide — for the
+ * revision overlay, which stretches it onto the current sheet's canvas.
+ */
+export async function loadSheetBitmap(sheet: PreconSheet, sheets: PreconSheet[], widthPx: number): Promise<CanvasImageSource> {
+  if (/\.dwg$/i.test(sheet.fileName)) return (await loadDwgSvg(sheet.id)).img;
+  if (PICTURE_PLAN.test(sheet.fileName)) return loadPicture(sheet.id);
+  const pdfjs = await loadPdfjs();
+  const doc = await pdfjs.getDocument({ url: preconApi.sheetFileUrl(sheet.id), withCredentials: true }).promise;
+  const pdfPage = await doc.getPage(pageWithinFile(sheet, sheets));
+  const scale = widthPx / pdfPage.getViewport({ scale: 1 }).width;
+  const viewport = pdfPage.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2d context");
+  await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
+  return canvas;
+}
+
 interface Args {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   activeSheet: PreconSheet | null;
@@ -171,13 +207,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
     imageRef.current = null;
     (async () => {
       if (isDwg) {
-        const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
-        if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
-        const raw = await res.text();
-        const svg = sizedSvg(raw);
-        const frame = parseViewBox(raw);
-        if (cancelled) return;
-        const img = await loadImage(svg);
+        const { img, frame } = await loadDwgSvg(sheetId);
         if (cancelled) return;
         imageRef.current = { sheetId, img, frame };
         rasterizeImage(img, BASE_RASTER, frame);
@@ -187,9 +217,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
         imageRef.current = { sheetId, img, frame: null };
         rasterizeImage(img, BASE_RASTER, null);
       } else {
-        const pdfjs = await import("pdfjs-dist");
-        if (!sharedWorker) sharedWorker = new PdfWorker();
-        pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
+        const pdfjs = await loadPdfjs();
         const doc = await pdfjs.getDocument({ url: preconApi.sheetFileUrl(sheetId), withCredentials: true }).promise;
         if (cancelled) return;
         const pdfPage = await doc.getPage(pageWithinFile(activeSheet, sheets));

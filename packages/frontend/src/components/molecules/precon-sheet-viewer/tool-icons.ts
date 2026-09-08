@@ -1,6 +1,7 @@
 import {
   BrickWall,
   Box,
+  Frame,
   Layers,
   Layers2,
   ListTree,
@@ -34,6 +35,7 @@ export const TOOL_ICONS: Record<PreconTool, LucideIcon> = {
   deduct: Scissors,
   typical: Layers2,
   scale: Scaling,
+  viewports: Frame,
   find_symbol: ScanSearch,
   overlay: Layers,
   legend: ListTree,
