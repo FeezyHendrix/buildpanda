@@ -148,6 +148,9 @@ export async function generateProgrammeForSession(
         version: 1,
         verified_by: null,
         verified_at: null,
+        total_float_days: null,
+        is_critical: false,
+        origin: "ai",
       };
     },
   );

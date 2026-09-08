@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   addWorkingDays,
+  deriveParentIds,
+  findDependencyCycle,
   scheduleProgramme,
   workingDaysBetween,
   type SchedulableTask,
@@ -134,4 +136,83 @@ test("a predecessor that does not exist is ignored", () => {
 
 test("workingDaysBetween excludes weekends", () => {
   assert.equal(workingDaysBetween(MONDAY, new Date("2026-09-14T00:00:00Z")), 5);
+});
+
+// ---------- backward pass: float and critical path ----------
+
+test("the longer of two parallel chains is critical and the shorter carries float", () => {
+  const tasks = [
+    task("long", 8),
+    task("short", 2),
+    task("join", 1, {
+      predecessors: [
+        { taskId: "long", type: "FS", lagDays: 0 },
+        { taskId: "short", type: "FS", lagDays: 0 },
+      ],
+    }),
+  ];
+  const dates = scheduleProgramme(tasks, MONDAY);
+  assert.equal(dates.get("long")!.isCritical, true);
+  assert.equal(dates.get("join")!.isCritical, true);
+  assert.equal(dates.get("short")!.isCritical, false);
+  assert.equal(dates.get("short")!.totalFloatDays, 6, "short can slip 6 working days before it delays join");
+  assert.equal(iso(dates.get("short")!.lateStart), "2026-09-15", "late start = 6 working days after Monday");
+});
+
+test("finish-to-finish links schedule the successor to end together, not to start after", () => {
+  const tasks = [
+    task("pour", 10),
+    task("cure-check", 3, { predecessors: [{ taskId: "pour", type: "FF", lagDays: 0 }] }),
+  ];
+  const dates = scheduleProgramme(tasks, MONDAY);
+  assert.equal(iso(dates.get("cure-check")!.finish), iso(dates.get("pour")!.finish));
+  assert.equal(iso(dates.get("cure-check")!.start), "2026-09-16", "starts three working days before the shared finish");
+  assert.equal(dates.get("cure-check")!.isCritical, true);
+});
+
+test("a negative lag pulls the successor forward", () => {
+  const tasks = [
+    task("a", 5),
+    task("b", 2, { predecessors: [{ taskId: "a", type: "FS", lagDays: -2 }] }),
+  ];
+  const dates = scheduleProgramme(tasks, MONDAY);
+  assert.equal(iso(dates.get("b")!.start), "2026-09-10", "two working days before a finishes");
+});
+
+test("a summary task is critical when one of its children is", () => {
+  const tasks = [
+    task("phase", 0, { outlineLevel: 1 }),
+    task("first", 5, { parentTaskId: "phase" }),
+    task("side", 1, { parentTaskId: "phase" }),
+    task("second", 5, { parentTaskId: "phase", predecessors: [{ taskId: "first", type: "FS", lagDays: 0 }] }),
+  ];
+  const dates = scheduleProgramme(tasks, MONDAY);
+  assert.equal(dates.get("phase")!.isCritical, true);
+  assert.equal(dates.get("side")!.totalFloatDays, 9);
+});
+
+test("findDependencyCycle names the loop and clears on an acyclic graph", () => {
+  const cyclic = [
+    task("a", 2, { predecessors: [{ taskId: "c", type: "FS", lagDays: 0 }] }),
+    task("b", 2, { predecessors: [{ taskId: "a", type: "FS", lagDays: 0 }] }),
+    task("c", 2, { predecessors: [{ taskId: "b", type: "FS", lagDays: 0 }] }),
+  ];
+  const loop = findDependencyCycle(cyclic);
+  assert.ok(loop && loop.length >= 3, "cycle reported");
+  assert.equal(findDependencyCycle([task("a", 1), task("b", 1, { predecessors: [{ taskId: "a", type: "FS", lagDays: 0 }] })]), null);
+});
+
+test("deriveParentIds follows outline levels in sort order", () => {
+  const parents = deriveParentIds([
+    { id: "p1", outlineLevel: 1 },
+    { id: "c1", outlineLevel: 2 },
+    { id: "g1", outlineLevel: 3 },
+    { id: "c2", outlineLevel: 2 },
+    { id: "p2", outlineLevel: 1 },
+  ]);
+  assert.equal(parents.get("p1"), null);
+  assert.equal(parents.get("c1"), "p1");
+  assert.equal(parents.get("g1"), "c1");
+  assert.equal(parents.get("c2"), "p1");
+  assert.equal(parents.get("p2"), null);
 });
