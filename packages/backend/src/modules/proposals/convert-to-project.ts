@@ -10,6 +10,8 @@ import { sendEmail } from "../../lib/mail.ts";
 import { projectInviteEmail } from "../../lib/email-templates.ts";
 import { config } from "../../config/index.ts";
 import { loadConvertSources, type ConvertSources } from "./convert-sources.ts";
+import { carryRisksAndStatementsToProject } from "../method-statements/handoff.ts";
+import { ADVANCE_MILESTONE } from "../finances/claim-chain.ts";
 import {
   areasToSelections,
   buildBudgetCategories,
@@ -109,6 +111,15 @@ function previewSections(sources: ConvertSources, seeds: ReturnType<typeof build
     ["documents", "Proposal snapshot", 1, sources.snapshotFileId ? "Sent proposal PDF and acceptance record" : "Placeholder row until a snapshot PDF exists", true],
     ["permits", "Permits", 0, "Permit checklist on proposals is not available yet", false],
     ["selections", "Finishes selections", seeds.selections.length, seeds.selections.length > 0 ? "One per measured space" : "No measured-areas take-off", seeds.selections.length > 0],
+    [
+      "safety",
+      "Risk register and method statements",
+      sources.safety.risks + sources.safety.methodStatements + (sources.safety.phasePlan ? 1 : 0),
+      sources.safety.risks + sources.safety.methodStatements > 0 || sources.safety.phasePlan
+        ? `${sources.safety.risks} risks · ${sources.safety.methodStatements} method statements${sources.safety.phasePlan ? " · phase plan" : ""} · confirmed rows travel first`
+        : "Nothing drafted on the proposal's Safety tab",
+      sources.safety.risks + sources.safety.methodStatements > 0 || sources.safety.phasePlan,
+    ],
     ["client", "Client participant", sources.proposal.client_email ? 1 : 0, sources.proposal.client_email ? `Invite ${sources.proposal.client_name}` : "No client email on the proposal", Boolean(sources.proposal.client_email)],
   ];
   return rows.map(([key, label, count, detail, available]) => ({ key, label, count, detail, available }));
@@ -241,13 +252,24 @@ export async function convertProposalToProject(
     }
 
     if (include.budget && seeds.budget.length > 0) await trx("project_budget_categories").insert(seeds.budget);
-    if (include.milestones && seeds.milestones.length > 0) await trx("milestone_payments").insert(seeds.milestones);
+    if (include.milestones && seeds.milestones.length > 0) {
+      await trx("milestone_payments").insert(seeds.milestones);
+      // the advance is claimable the day the contract is signed; WS-7's claim
+      // chain owns the column, so only touch it when the migration has run
+      if (await trx.schema.hasColumn("milestone_payments", "claim_state")) {
+        await trx("milestone_payments")
+          .where({ project_id: projectId })
+          .andWhere("name", "~*", ADVANCE_MILESTONE.source)
+          .update({ claim_state: "claimable" });
+      }
+    }
     if (include.materials && seeds.materials.orders.length > 0) await trx("material_orders").insert(seeds.materials.orders);
     if (include.drawings && seeds.drawings.documents.length > 0) {
       await trx("project_documents").insert(seeds.drawings.documents);
       await trx("document_versions").insert(seeds.drawings.versions);
     }
     if (include.selections && seeds.selections.length > 0) await trx("selections").insert(seeds.selections);
+    if (include.safety) await carryRisksAndStatementsToProject(trx, proposal.id, projectId);
 
     if (include.documents) {
       const label = `Proposal BP-${String(proposal.number).padStart(4, "0")}`;
