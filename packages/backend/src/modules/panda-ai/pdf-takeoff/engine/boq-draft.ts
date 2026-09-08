@@ -42,9 +42,43 @@ interface RowSeed {
   confidence?: PreconBoqRowRow["confidence"];
   status?: PreconBoqRowRow["status"];
   measurement_basis?: string | null;
+  confidence_reason?: string | null;
+  provenance?: string | null;
 }
 
-export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByPage: Map<number, string>): DraftedBoq {
+// A reviewer reads a reason, not a score. Engine paths that know why they
+// doubted a line set it directly; older paths are read off the basis text.
+const REASON_PATTERNS: [RegExp, string][] = [
+  [/summed across/i, "two sheets summed"],
+  [/schedule/i, "schedule differs"],
+  [/vision|raster|scanned/i, "vision"],
+  [/could not be isolated/i, "envelope"],
+  [/scale|calibrat/i, "scale"],
+  [/flood-fill/i, "room fill"],
+  [/derived|formula|agent/i, "agent estimate"],
+];
+
+export function confidenceReasonFor(item: MeasuredBoqItem): string | null {
+  if (item.confidenceReason) return item.confidenceReason;
+  if (item.provisional) return "provisional";
+  if (item.confidence !== "low") return null;
+  for (const [pattern, reason] of REASON_PATTERNS) if (pattern.test(item.measurementBasis)) return reason;
+  return "low confidence";
+}
+
+function provenanceFor(item: MeasuredBoqItem, sheetCode: string | null): string {
+  const basis = item.measurementBasis.replace(/\s+/g, " ").trim();
+  if (item.geometries.length > 0) return `Measured on ${sheetCode ?? `page ${item.pageNumber}`}: ${basis}`;
+  if (item.provisional) return `Provisional: ${basis}`;
+  return `Built up by the QS agent: ${basis}`;
+}
+
+export function draftBoq(
+  sessionId: string,
+  items: MeasuredBoqItem[],
+  sheetIdByPage: Map<number, string>,
+  sheetCodeByPage: Map<number, string> = new Map(),
+): DraftedBoq {
   const prelimsBill: Omit<PreconBillRow, "created_at"> = {
     id: generateId("pbl"),
     session_id: sessionId,
@@ -81,6 +115,7 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
       status: "ai_generated",
       confidence: "high",
       measurement_basis: "Standard preliminaries clause",
+      provenance: "Standard preliminaries clause; price or strike in review",
     });
   }
 
@@ -148,6 +183,8 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
           confidence: item.confidence,
           status: item.confidence === "high" ? "ai_generated" : "needs_review",
           measurement_basis: item.measurementBasis,
+          confidence_reason: confidenceReasonFor(item),
+          provenance: provenanceFor(item, sheetCodeByPage.get(item.pageNumber) ?? null),
         };
         seeds.push(seed);
         rowsWithGeometry.push({ seed, item });
@@ -174,6 +211,11 @@ export function draftBoq(sessionId: string, items: MeasuredBoqItem[], sheetIdByP
     status: seed.status ?? null,
     version: 1,
     measurement_basis: seed.measurement_basis ?? null,
+    confidence_reason: seed.confidence_reason ?? null,
+    provenance: seed.provenance ?? null,
+    origin: "ai",
+    edited_at: null,
+    edited_by: null,
     verified_by: null,
     verified_at: null,
   }));

@@ -10,6 +10,8 @@ import { openStoredFile } from "../../../lib/file-storage.ts";
 import { generateId } from "../../../lib/ids.ts";
 import { takeoffJobsRepository } from "./jobs-repository.ts";
 import { runDwgTakeoff } from "./engine.ts";
+import { preconRepository } from "../pdf-takeoff/repository.ts";
+import { preconService } from "../pdf-takeoff/service.ts";
 
 // Queue name is the pre-rename "automated-takeoff" string: it is a BullMQ key
 // in Redis, so changing it would strand jobs enqueued before a deploy.
@@ -42,25 +44,20 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
   try {
     const result = await withTempDwg(job.storage_path, (file) => runDwgTakeoff(file));
     await repo.markComplete(job.id, result);
+    // A proposal take-off becomes a reviewable session — the same object a PDF
+    // produces — rather than lines appended straight onto the bill.
     if (job.proposal_id) {
-      const maxSort = await db("proposal_boq_items")
-        .where({ proposal_id: job.proposal_id })
-        .max<{ sort: number | null }>("sort as sort")
-        .first();
-      const startSort = Number(maxSort?.sort ?? -1) + 1;
-      if (result.items.length > 0) {
-        await db("proposal_boq_items").insert(
-          result.items.map((item, idx) => ({
-            id: generateId("boq"),
-            proposal_id: job.proposal_id,
-            group_label: `AUTO TAKE-OFF — ${job.file_name}`,
-          description: item.description,
-            description_html: null,
-          qty: item.quantity,
-          unit: item.unit,
-            sort: startSort + idx,
-        })),
+      const context = await repo.proposalContext(job.proposal_id, job.file_id);
+      if (context) {
+        const session = await preconService(preconRepository(db)).createDwgSession(
+          context.orgId,
+          job.requested_by ?? "system",
+          job.proposal_id,
+          context.planId,
+          { fileName: job.file_name, storagePath: job.storage_path },
+          result.items,
         );
+        await repo.linkSession(job.id, session.id);
       }
     }
   } catch (error) {

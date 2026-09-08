@@ -40,6 +40,7 @@ export interface TakeoffJobRow {
   element_count: number;
   error: string | null;
   requested_by: string | null;
+  session_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -55,6 +56,7 @@ export interface TakeoffJob {
   drawingCount: number;
   elementCount: number;
   error: string | null;
+  sessionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
