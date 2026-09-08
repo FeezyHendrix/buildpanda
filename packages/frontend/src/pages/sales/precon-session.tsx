@@ -9,6 +9,8 @@ import { PreconProgrammePanel } from "@/components/molecules/precon-programme-pa
 import { PreconGenerateFeed } from "@/components/molecules/precon-session/precon-generate-feed";
 import { PreconSessionHeader } from "@/components/molecules/precon-session/precon-session-header";
 import { PreconSessionSkeleton } from "@/components/molecules/precon-session/precon-session-skeleton";
+import { AssistDrawer } from "@/components/molecules/precon-assist/assist-drawer";
+import { Sparkles } from "lucide-react";
 import {
   PRECON_STEPS,
   PreconStepper,
@@ -38,6 +40,7 @@ export default function PreconSessionPage() {
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [tool, setTool] = useState<PreconTool>("select");
   const [justCompleted, setJustCompleted] = useState(false);
+  const [assistOpen, setAssistOpen] = useState(false);
 
   // Hold the "ready" card briefly when a run finishes in front of the user,
   // then move them into review. A session that is already reviewing on first
@@ -104,7 +107,23 @@ export default function PreconSessionPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-6">
       <PreconSessionHeader snapshot={snapshot} step={effectiveStep} reviewing={reviewing} onSelectStep={setStep} />
-      <PreconStepper steps={steps} active={effectiveStep} reachable={reachable} onSelect={setStep} />
+      <div className="flex items-end justify-between gap-4">
+        <PreconStepper steps={steps} active={effectiveStep} reachable={reachable} onSelect={setStep} />
+        {reviewing ? (
+          <Button size="sm" variant="secondary" className="mb-3 shrink-0" onClick={() => setAssistOpen(true)}>
+            <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
+            Ask Panda AI
+          </Button>
+        ) : null}
+      </div>
+      {/* The programme lives on the output step until the programme workstream lands its own step. */}
+      <AssistDrawer
+        open={assistOpen}
+        onOpenChange={setAssistOpen}
+        sessionId={sessionId}
+        surface={effectiveStep === "output" ? "programme" : "bill"}
+        surfaceLabel={effectiveStep === "output" ? "Programme" : "Bill"}
+      />
 
       {effectiveStep === "measure" ? (
         <PreconGenerateFeed
