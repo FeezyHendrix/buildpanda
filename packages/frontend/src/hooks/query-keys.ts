@@ -391,3 +391,9 @@ export const preconSafetyKeys = {
   statements: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "method-statements"] as const,
   phasePlan: (proposalId: string) => [...preconSafetyKeys.all(proposalId), "phase-plan"] as const,
 };
+
+// WS-M1D: pinned comments on take-off sheets (drawing-markup register, precon anchor)
+export const preconMarkupKeys = {
+  all: ["precon", "markups"] as const,
+  session: (sessionId: string) => [...preconMarkupKeys.all, sessionId] as const,
+};
