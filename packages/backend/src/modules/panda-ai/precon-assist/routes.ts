@@ -4,7 +4,7 @@ import { preconRepository } from "../pdf-takeoff/repository.ts";
 import { preconService } from "../pdf-takeoff/service.ts";
 import { preconAssistRepository } from "./repository.ts";
 import { preconAssistService } from "./service.ts";
-import { ASSIST_SURFACES, type AssistRequestBody, type CanFn, type ChangeSetParams } from "./types.ts";
+import { ASSIST_SURFACES, VIEWER_TOOLS, type AssistRequestBody, type CanFn, type ChangeSetParams } from "./types.ts";
 
 const assistBody = {
   type: "object",
@@ -15,6 +15,14 @@ const assistBody = {
     proposalId: { type: "string", minLength: 1, maxLength: 100 },
     surface: { type: "string", enum: ASSIST_SURFACES },
     prompt: { type: "string", minLength: 3, maxLength: 2000 },
+    context: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        activeSheetId: { type: "string", maxLength: 100 },
+        tool: { type: "string", enum: VIEWER_TOOLS },
+      },
+    },
   },
 } as const;
 

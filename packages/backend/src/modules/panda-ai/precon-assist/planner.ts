@@ -1,16 +1,25 @@
 import { z } from "zod";
 import { chatJsonValidated, type LlmMessage } from "../../../lib/llm.ts";
 import { ValidationError } from "../../../lib/errors.ts";
-import type { PreconBill, PreconBoqRowDto, PreconProgrammeTask } from "../pdf-takeoff/types.ts";
+import type { PreconBill, PreconBoqRowDto, PreconProgrammeTask, PreconSheet } from "../pdf-takeoff/types.ts";
 import {
   BOQ_ROW_CREATE_FIELDS,
   BOQ_ROW_UPDATE_FIELDS,
   CHANGE_ENTITIES,
   CHANGE_OPS,
   PROGRAMME_TASK_UPDATE_FIELDS,
+  SHEET_UPDATE_FIELDS,
+  VIEWER_FIELDS,
+  VIEWER_TOOLS,
+  VIEWER_ZOOMS,
   type AssistChange,
   type AssistSurface,
+  type AssistViewerContext,
 } from "./types.ts";
+
+const MM_PER_PT_AT_1_TO_1 = 0.3528;
+export const scaleRatioOf = (mmPerPt: number | null): number | null => (mmPerPt ? Math.round(mmPerPt / MM_PER_PT_AT_1_TO_1) : null);
+export const mmPerPtForRatio = (ratio: number): number => ratio * MM_PER_PT_AT_1_TO_1;
 
 const changeSchema = z.object({
   op: z.enum(CHANGE_OPS),
@@ -38,6 +47,8 @@ export const defaultDraftLlm: DraftLlm = async (messages) => {
 export interface BillContext {
   bills: PreconBill[];
   rows: PreconBoqRowDto[];
+  sheets: PreconSheet[];
+  viewer?: AssistViewerContext;
 }
 
 export interface ProgrammeContext {
@@ -53,6 +64,19 @@ const SYSTEM_RULES = [
   "Only reference ids that appear in the context. Never invent ids. Only set the allowed fields. Quantities and rates are numbers, never strings.",
   "If the request cannot be done with the allowed operations, return an empty changes list and explain why in the plan.",
 ];
+
+function compactSheet(sheet: PreconSheet) {
+  return {
+    id: sheet.id,
+    code: sheet.code,
+    title: sheet.title,
+    kind: sheet.kind,
+    status: sheet.status,
+    scaleRatio: scaleRatioOf(sheet.scaleMmPerPt),
+    dimUnit: sheet.dimUnit,
+    fileName: sheet.fileName,
+  };
+}
 
 function compactRow(row: PreconBoqRowDto) {
   return {
@@ -91,15 +115,25 @@ export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[
       role: "system",
       content: [
         ...SYSTEM_RULES,
-        "Surface: the bill of quantities. Entity is always \"boq_row\".",
-        `update: id required; allowed after fields: ${BOQ_ROW_UPDATE_FIELDS.join(", ")}. status may only be \"verified\" or \"rejected\".`,
-        `create: allowed after fields: ${BOQ_ROW_CREATE_FIELDS.join(", ")}; billId required and must be one of the bills; rowType defaults to \"item\".`,
-        "delete: id required. Only rows of type item or provisional_sum may be priced; headings and notes carry no qty or rate.",
+        "Surface: the take-off review. Entities: \"boq_row\" (bill lines), \"sheet\" (the drawing sheets), \"viewer\" (the drawing viewer's tools).",
+        `boq_row update: id required; allowed after fields: ${BOQ_ROW_UPDATE_FIELDS.join(", ")}. status may only be \"verified\" or \"rejected\".`,
+        `boq_row create: allowed after fields: ${BOQ_ROW_CREATE_FIELDS.join(", ")}; billId required and must be one of the bills; rowType defaults to \"item\".`,
+        "boq_row delete: id required. Only rows of type item or provisional_sum may be priced; headings and notes carry no qty or rate.",
+        `sheet update: id is a sheet id; allowed after fields: ${SHEET_UPDATE_FIELDS.join(", ")}. kind is one of floor-plan, elevation, section, detail, schedule, unknown. scaleRatio is the drawing scale as a number, e.g. 100 for 1:100. dimUnit is mm, cm or m.`,
+        `viewer update: no id; after fields: ${VIEWER_FIELDS.join(", ")}. tool is one of ${VIEWER_TOOLS.join(", ")} (area measures m², linear measures m, count counts items, deduct subtracts an opening, scale sets the scale by drawing a known length, select picks lines). sheetId switches the sheet shown. zoom is one of ${VIEWER_ZOOMS.join(", ")}. Use it when the user wants to measure, count, calibrate, zoom or look at a sheet themselves.`,
+        "\"this sheet\" or \"the current sheet\" means context.viewer.activeSheetId. A request to measure or draw something the assistant cannot do itself becomes a viewer change that puts the right tool in the user's hand, with the plan telling them what to draw.",
       ].join("\n"),
     },
     {
       role: "user",
-      content: JSON.stringify({ request: prompt, bills: ctx.bills, rows, truncated: ctx.rows.length > rows.length }),
+      content: JSON.stringify({
+        request: prompt,
+        viewer: ctx.viewer ?? null,
+        sheets: (ctx.sheets ?? []).map(compactSheet),
+        bills: ctx.bills,
+        rows,
+        truncated: ctx.rows.length > rows.length,
+      }),
     },
   ];
 }
@@ -139,7 +173,44 @@ function requireStatus(after: Record<string, unknown>): void {
 export function normaliseBillChanges(draft: AssistDraft, ctx: BillContext): AssistChange[] {
   const rowById = new Map(ctx.rows.map((r) => [r.id, r]));
   const billIds = new Set(ctx.bills.map((b) => b.id));
-  return draft.changes.map((change) => {
+  const sheetById = new Map((ctx.sheets ?? []).map((s) => [s.id, s]));
+  return draft.changes.map((change): AssistChange => {
+    if (change.entity === "viewer") {
+      if (change.op !== "update") throw new ValidationError("Panda AI proposed something other than an update to the viewer");
+      const after = pick(change.after, VIEWER_FIELDS);
+      if ("tool" in after && !(VIEWER_TOOLS as readonly unknown[]).includes(after["tool"])) {
+        throw new ValidationError("Panda AI proposed a viewer tool that does not exist");
+      }
+      if ("sheetId" in after && !sheetById.has(String(after["sheetId"]))) {
+        throw new ValidationError("Panda AI referenced a sheet that does not exist");
+      }
+      if ("zoom" in after && !(VIEWER_ZOOMS as readonly unknown[]).includes(after["zoom"])) {
+        throw new ValidationError("Panda AI proposed a zoom that is not in, out or fit");
+      }
+      if (Object.keys(after).length === 0) throw new ValidationError("Panda AI proposed a viewer change with nothing in it");
+      const before = { tool: ctx.viewer?.tool ?? null, sheetId: ctx.viewer?.activeSheetId ?? null };
+      const sheet = "sheetId" in after ? sheetById.get(String(after["sheetId"])) : undefined;
+      const label = [
+        "tool" in after ? `Switch to the ${String(after["tool"])} tool` : null,
+        sheet ? `show ${sheet.code ?? sheet.fileName}` : null,
+        "zoom" in after ? `zoom ${String(after["zoom"])}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return { op: "update", entity: "viewer", before: pick(before, Object.keys(after)), after, label };
+    }
+    if (change.entity === "sheet") {
+      if (change.op !== "update") throw new ValidationError("Sheets can only be updated by a prompt");
+      const sheet = change.id ? sheetById.get(change.id) : undefined;
+      if (!sheet) throw new ValidationError("Panda AI referenced a sheet that does not exist");
+      const after = pick(change.after, SHEET_UPDATE_FIELDS);
+      if ("scaleRatio" in after && !(typeof after["scaleRatio"] === "number" && after["scaleRatio"] > 0)) {
+        throw new ValidationError("Panda AI proposed a scale that is not a positive number");
+      }
+      if (Object.keys(after).length === 0) throw new ValidationError("Panda AI proposed a sheet update with no allowed fields");
+      const before = pick(compactSheet(sheet) as Record<string, unknown>, Object.keys(after));
+      return { op: "update", entity: "sheet", id: sheet.id, before, after, label: `${sheet.code ?? sheet.fileName} · ${Object.keys(after).join(", ")}` };
+    }
     if (change.entity !== "boq_row") throw new ValidationError(`Panda AI proposed a ${change.entity} change on the bill`);
     if (change.op === "create") {
       const after = pick(change.after, BOQ_ROW_CREATE_FIELDS);

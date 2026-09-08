@@ -11,8 +11,17 @@ export type ChangeSetStatus = (typeof CHANGE_SET_STATUSES)[number];
 export const CHANGE_OPS = ["update", "create", "delete"] as const;
 export type ChangeOp = (typeof CHANGE_OPS)[number];
 
-export const CHANGE_ENTITIES = ["boq_row", "programme_task", "estimate_item", "pack_section", "risk"] as const;
+export const CHANGE_ENTITIES = ["boq_row", "programme_task", "estimate_item", "pack_section", "risk", "sheet", "viewer"] as const;
 export type ChangeEntity = (typeof CHANGE_ENTITIES)[number];
+
+// The viewer's tools, so a prompt can drive them: "switch to the area tool
+// on sheet 2" is a viewer change the client executes after apply.
+export const VIEWER_TOOLS = ["select", "area", "linear", "count", "deduct", "scale"] as const;
+export type ViewerTool = (typeof VIEWER_TOOLS)[number];
+export const VIEWER_FIELDS = ["tool", "sheetId", "zoom"] as const;
+export const VIEWER_ZOOMS = ["in", "out", "fit"] as const;
+// Sheet corrections a prompt may make; scaleRatio is the human "1:100" number.
+export const SHEET_UPDATE_FIELDS = ["kind", "title", "scaleRatio", "dimUnit"] as const;
 
 // Fields the model may set per entity. Anything else in `after` is dropped
 // before the change is stored, so a hallucinated column never reaches a service.
@@ -95,11 +104,18 @@ export interface ChangeSet {
   appliedAt: string | null;
 }
 
+export interface AssistViewerContext {
+  activeSheetId?: string;
+  tool?: ViewerTool;
+}
+
 export interface AssistRequestBody {
   sessionId?: string;
   proposalId?: string;
   surface: AssistSurface;
   prompt: string;
+  // what the user is looking at, so "this sheet" and "the current tool" resolve
+  context?: AssistViewerContext;
 }
 
 export interface ChangeSetParams {

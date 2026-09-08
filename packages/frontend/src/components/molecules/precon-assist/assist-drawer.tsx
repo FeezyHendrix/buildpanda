@@ -4,7 +4,7 @@ import { Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ChangePreview } from "@/components/molecules/precon-assist/change-preview";
-import type { AssistSurface, ChangeSet } from "@/api/precon-assist";
+import type { AssistSurface, AssistViewerContext, ChangeSet, ViewerCommand, ViewerTool } from "@/api/precon-assist";
 import {
   useApplyChangeSet,
   useDiscardChangeSet,
@@ -21,10 +21,14 @@ interface Props {
   sessionId: string;
   surface: AssistSurface;
   surfaceLabel: string;
+  // what the user is looking at, so "this sheet" resolves on the server
+  context?: AssistViewerContext;
+  // viewer changes are executed here, in the browser, once the set is applied
+  onViewerCommand?: (command: ViewerCommand) => void;
 }
 
 const SURFACE_HINT: Record<AssistSurface, string> = {
-  bill: 'Try "reject every line under 0.5 m²", "price all blockwork at 4,800", or "verify the door and window lines".',
+  bill: 'Try "reject every line under 0.5 m²", "set this sheet to 1:100", "zoom in", "switch to the area tool so I can measure the kitchen", or "verify the door and window lines".',
   programme: 'Try "shorten blockwork by five days without moving roof-on" or "mark the substructure tasks verified".',
   estimate: "Not available on the estimate yet.",
   pack: "Not available on the pack yet.",
@@ -48,7 +52,7 @@ function PlanList({ plan }: { plan: string[] }) {
 }
 PlanList.displayName = "PlanList";
 
-export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLabel }: Props) {
+export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLabel, context, onViewerCommand }: Props) {
   const [prompt, setPrompt] = useState("");
   const [changeSet, setChangeSet] = useState<ChangeSet | null>(null);
   const [editing, setEditing] = useState(true);
@@ -62,7 +66,7 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
     const text = prompt.trim();
     if (text.length < 3) return;
     propose.mutate(
-      { sessionId, surface, prompt: text },
+      { sessionId, surface, prompt: text, context },
       {
         onSuccess: (set) => {
           setChangeSet(set);
@@ -78,6 +82,16 @@ export function AssistDrawer({ open, onOpenChange, sessionId, surface, surfaceLa
     action.mutate(changeSet.id, {
       onSuccess: (set) => {
         setChangeSet(set);
+        if (verb === "Applied" && onViewerCommand) {
+          for (const change of set.changes) {
+            if (change.entity !== "viewer") continue;
+            onViewerCommand({
+              tool: typeof change.after["tool"] === "string" ? (change.after["tool"] as ViewerTool) : undefined,
+              sheetId: typeof change.after["sheetId"] === "string" ? change.after["sheetId"] : undefined,
+              zoom: typeof change.after["zoom"] === "string" ? (change.after["zoom"] as ViewerCommand["zoom"]) : undefined,
+            });
+          }
+        }
         toast(`${verb} ${set.appliedResult?.applied ?? set.changes.length} change${set.changes.length === 1 ? "" : "s"}.`, "success");
       },
       onError: (e) => toast(getApiErrorMessage(e, `Could not ${verb.toLowerCase()} the changes.`), "error"),

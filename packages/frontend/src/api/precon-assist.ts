@@ -5,7 +5,18 @@ export type AssistSurface = (typeof ASSIST_SURFACES)[number];
 
 export type ChangeSetStatus = "proposed" | "applied" | "undone" | "discarded";
 export type ChangeOp = "update" | "create" | "delete";
-export type ChangeEntity = "boq_row" | "programme_task" | "estimate_item" | "pack_section" | "risk";
+export type ChangeEntity = "boq_row" | "programme_task" | "estimate_item" | "pack_section" | "risk" | "sheet" | "viewer";
+export type ViewerTool = "select" | "area" | "linear" | "count" | "deduct" | "scale";
+export type ViewerZoom = "in" | "out" | "fit";
+export interface ViewerCommand {
+  tool?: ViewerTool;
+  sheetId?: string;
+  zoom?: ViewerZoom;
+}
+export interface AssistViewerContext {
+  activeSheetId?: string;
+  tool?: ViewerTool;
+}
 
 export interface AssistChange {
   op: ChangeOp;
@@ -48,6 +59,7 @@ export interface AssistRequest {
   proposalId?: string;
   surface: AssistSurface;
   prompt: string;
+  context?: AssistViewerContext;
 }
 
 export const preconAssistApi = {

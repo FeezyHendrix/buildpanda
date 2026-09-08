@@ -18,8 +18,31 @@ export interface LiveState {
 // carries its own grant; everything else is an edit.
 export function permissionFor(change: AssistChange): [string, string] {
   const status = change.after["status"];
+  if (change.entity === "viewer") return ["takeoffs", "view"];
   if (change.op === "update" && (status === "verified" || status === "rejected")) return ["takeoffs", "verify"];
   return ["takeoffs", "edit"];
+}
+
+const MM_PER_PT_AT_1_TO_1 = 0.3528;
+
+// A sheet correction goes through the same service the sheet settings panel
+// calls, so a prompt-set scale is exactly as authoritative as a typed one.
+async function applySheet(index: number, change: AssistChange, precon: PreconService, actor: string): Promise<AppliedChange> {
+  if (!change.id) return skip(index, "No sheet id");
+  const a = change.after;
+  const body: Record<string, unknown> = {};
+  if (typeof a["kind"] === "string") body["kind"] = a["kind"];
+  if ("title" in a) body["title"] = a["title"] === null ? null : String(a["title"]);
+  if (typeof a["scaleRatio"] === "number") body["scaleMmPerPt"] = a["scaleRatio"] * MM_PER_PT_AT_1_TO_1;
+  if ("dimUnit" in a) body["dimUnit"] = a["dimUnit"];
+  const before = change.before ?? {};
+  const undoBody: Record<string, unknown> = {};
+  if ("kind" in before) undoBody["kind"] = before["kind"];
+  if ("title" in before) undoBody["title"] = before["title"];
+  if ("scaleRatio" in before) undoBody["scaleMmPerPt"] = typeof before["scaleRatio"] === "number" ? before["scaleRatio"] * MM_PER_PT_AT_1_TO_1 : null;
+  if ("dimUnit" in before) undoBody["dimUnit"] = before["dimUnit"];
+  await precon.updateSheet(change.id, body as Parameters<PreconService["updateSheet"]>[1], actor);
+  return done(index, { kind: "update", id: change.id, before: undoBody });
 }
 
 const skip = (index: number, reason: string): AppliedChange => ({ index, outcome: "skipped", reason });
@@ -129,6 +152,10 @@ async function applyProgrammeTask(index: number, change: AssistChange, live: Liv
 }
 
 export async function applyChange(index: number, change: AssistChange, live: LiveState, precon: PreconService, actor: string): Promise<AppliedChange> {
+  // the viewer lives in the browser: the server records the change as applied
+  // and the client switches tool or sheet when the set lands
+  if (change.entity === "viewer") return done(index);
+  if (change.entity === "sheet") return applySheet(index, change, precon, actor);
   if (change.entity === "boq_row") return applyBoqRow(index, change, live, precon, actor);
   if (change.entity === "programme_task") return applyProgrammeTask(index, change, live, precon, actor);
   return skip(index, `${change.entity} changes are not supported yet`);
@@ -138,6 +165,12 @@ export async function applyChange(index: number, change: AssistChange, live: Liv
 // the services expose (verify / reject); a line that was AI-drafted before
 // verification comes back as an edited row, which the UI shows as needs review.
 export async function undoChange(step: UndoStep, entity: AssistChange["entity"], live: LiveState, precon: PreconService, actor: string): Promise<AppliedChange["outcome"]> {
+  if (entity === "viewer") return "applied";
+  if (entity === "sheet") {
+    if (!step.id || !step.before) return "skipped";
+    await precon.updateSheet(step.id, step.before as Parameters<PreconService["updateSheet"]>[1], actor);
+    return "applied";
+  }
   if (step.kind === "remove" && step.id) {
     if (live.rows.has(step.id)) await precon.removeRow(step.id, actor);
     return "applied";

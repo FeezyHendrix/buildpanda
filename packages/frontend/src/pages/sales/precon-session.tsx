@@ -40,6 +40,9 @@ export default function PreconSessionPage() {
   const [activeSheetId, setActiveSheetId] = useState<string | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [tool, setTool] = useState<PreconTool>("select");
+  // a prompt can ask the viewer to zoom; handed down by value so the same
+  // request can be made twice in a row
+  const [zoomRequest, setZoomRequest] = useState<{ seq: number; kind: "in" | "out" | "fit" } | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
@@ -122,6 +125,13 @@ export default function PreconSessionPage() {
         sessionId={sessionId}
         surface={effectiveStep === "programme" ? "programme" : "bill"}
         surfaceLabel={effectiveStep === "programme" ? "Programme" : "Bill"}
+        context={{ activeSheetId: activeSheet?.id, tool }}
+        onViewerCommand={({ tool: nextTool, sheetId, zoom }) => {
+          if (sheetId) setActiveSheetId(sheetId);
+          if (nextTool) setTool(nextTool);
+          if (zoom) setZoomRequest({ seq: Date.now(), kind: zoom });
+          setStep("review");
+        }}
       />
 
       {effectiveStep === "measure" ? (
@@ -165,6 +175,7 @@ export default function PreconSessionPage() {
                 onSelectRow={setSelectedRowId}
                 tool={tool}
                 onToolChange={setTool}
+                zoomRequest={zoomRequest}
               />
             ) : null}
             <PreconBoqPanel
