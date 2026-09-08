@@ -34,7 +34,8 @@ import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskB
 import { scheduleProgramme } from "./programme-schedule.ts";
 import { programmeEditor } from "./programme-editor.ts";
 import { reviewService } from "./review-service.ts";
-import { nextRevision } from "./revisions.ts";
+import { manualService } from "./manual-service.ts";
+import { lineageKindOf, nextRevision } from "./revisions.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -302,7 +303,10 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     return { row, sessionId };
   }
 
-  return {
+  // the manual path exports from the same snapshot review reads
+  const snapshot = (sessionId: string): Promise<PreconSnapshot> => api.getSnapshot(sessionId);
+
+  const api = {
     async createSession(
       orgId: string,
       title: string,
@@ -315,7 +319,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       if (scope.kind === "sections" && scope.elements.length === 0) {
         throw new BadRequestError("Pick at least one section to measure");
       }
-      const lineage = await nextRevision(repo, origin.planId ?? null, scope);
+      const lineage = await nextRevision(repo, origin.planId ?? null, scope, lineageKindOf(origin.takeoffKind));
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -395,6 +399,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     },
 
     ...reviewService({ repo, audit, toSession, toSheet }),
+    ...manualService({ repo, audit, publish, toSession, toRow, toGeometry, snapshot }),
 
     // Every sales-suite access path must prove the session belongs to the
     // caller's active organization before touching its data.
@@ -932,4 +937,5 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return { prelimsPct: next.prelims_pct, contingencyPct: next.contingency_pct, vatPct: next.vat_pct };
     },
   };
+  return api;
 }

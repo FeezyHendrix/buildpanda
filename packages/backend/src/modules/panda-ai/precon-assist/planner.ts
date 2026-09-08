@@ -16,6 +16,7 @@ import {
   type AssistSurface,
   type AssistViewerContext,
 } from "./types.ts";
+import { MEASUREMENT_PROMPT_LINES, normaliseMeasurementChange } from "./measurement-change.ts";
 
 const MM_PER_PT_AT_1_TO_1 = 0.3528;
 export const scaleRatioOf = (mmPerPt: number | null): number | null => (mmPerPt ? Math.round(mmPerPt / MM_PER_PT_AT_1_TO_1) : null);
@@ -131,7 +132,8 @@ export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[
       role: "system",
       content: [
         ...SYSTEM_RULES,
-        "Surface: the take-off review. Entities: \"boq_row\" (bill lines), \"sheet\" (the drawing sheets), \"viewer\" (the drawing viewer's tools).",
+        "Surface: the take-off review. Entities: \"boq_row\" (bill lines), \"sheet\" (the drawing sheets), \"viewer\" (the drawing viewer's tools), \"measurement\" (a line measured by hand).",
+        ...MEASUREMENT_PROMPT_LINES,
         `boq_row update: id required; allowed after fields: ${BOQ_ROW_UPDATE_FIELDS.join(", ")}. status may only be \"verified\" or \"rejected\".`,
         `boq_row create: allowed after fields: ${BOQ_ROW_CREATE_FIELDS.join(", ")}; billId required and must be one of the bills; rowType defaults to \"item\".`,
         "boq_row delete: id required. Only rows of type item or provisional_sum may be priced; headings and notes carry no qty or rate.",
@@ -227,6 +229,7 @@ export function normaliseBillChanges(draft: AssistDraft, ctx: BillContext): Assi
       const before = pick(compactSheet(sheet) as Record<string, unknown>, Object.keys(after));
       return { op: "update", entity: "sheet", id: sheet.id, before, after, label: `${sheet.code ?? sheet.fileName} · ${Object.keys(after).join(", ")}` };
     }
+    if (change.entity === "measurement") return normaliseMeasurementChange(change, ctx);
     if (change.entity !== "boq_row") throw new ValidationError(`Panda AI proposed a ${change.entity} change on the bill`);
     if (change.op === "create") {
       const after = pick(change.after, BOQ_ROW_CREATE_FIELDS);
