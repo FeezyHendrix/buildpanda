@@ -1,8 +1,14 @@
 import type { BadgeTone } from "@/components/atoms/badge";
 import type {
+  FoundationType,
   PreconPhase,
   PreconSessionStatus,
+  PreconSheetKind,
+  RowOrigin,
+  StructuralSystem,
+  StructureClass,
   StructureContext,
+  TakeoffKind,
   TakeoffScope,
   TakeoffScopeKind,
 } from "@/api/precon";
@@ -30,7 +36,7 @@ export const PRECON_STATUS_TONE: Record<PreconSessionStatus, BadgeTone> = {
 export const DWG_STATUS_LABEL: Record<TakeoffStatus, string> = {
   pending: "Queued",
   processing: "Measuring",
-  completed: "Added to BoQ",
+  completed: "Ready to review",
   failed: "Failed",
 };
 
@@ -85,7 +91,26 @@ export const TAKEOFF_SCOPE_META: Record<TakeoffScopeKind, { label: string; descr
     description: "Skip the bill. Just list the floor area of every identifiable room or space in m², ready to export.",
     noun: "Measured areas",
   },
+  materials: {
+    label: "Materials schedule",
+    description: "A buying list with quantities and needed-by dates for a labour-only job where the client buys materials.",
+    noun: "Materials schedule",
+  },
+  early: {
+    label: "Early estimate",
+    description: "No drawings yet: floor areas per level against benchmark rates, re-measured once drawings arrive.",
+    noun: "Early estimate",
+  },
 };
+
+// Which scopes the measure dialog offers for a job profile. Materials only
+// makes sense when the client buys them; early estimates start from a lead.
+export const SCOPES_FOR_PROFILE: Record<string, readonly TakeoffScopeKind[]> = {
+  full_contract: ["full", "sections", "areas"],
+  labour_only: ["full", "sections", "areas", "materials"],
+  supply_only: ["materials", "areas"],
+};
+export const DEFAULT_MEASURE_SCOPES: readonly TakeoffScopeKind[] = SCOPES_FOR_PROFILE["full_contract"]!;
 
 // Mirrors BESMM_ELEMENT_ORDER on the backend; the API validates against it.
 export const TAKEOFF_SECTIONS = [
@@ -130,3 +155,75 @@ export function formatStructureContext(ctx: StructureContext | null): string | n
   if (ctx.foundationType !== "unknown") parts.push(`${capitalise(ctx.foundationType)} foundation`);
   return parts.join(" · ");
 }
+
+export const TAKEOFF_KIND_LABEL: Record<TakeoffKind, string> = {
+  pdf: "PDF drawing",
+  dwg: "DWG automated take-off",
+  manual: "Hand-priced sheet",
+  early: "Early estimate",
+};
+
+// The engine's doubt, in the reviewer's words. Keys are what the backend writes.
+export const CONFIDENCE_REASON_LABEL: Record<string, string> = {
+  scale: "Scale uncertain",
+  "schedule differs": "Schedule disagrees with plan",
+  "two sheets summed": "Summed across sheets",
+  vision: "Read from a raster image",
+  envelope: "Building not isolated",
+  "room fill": "Room area by flood fill",
+  "agent estimate": "Estimated by QS agent",
+  provisional: "Provisional sum",
+  "medium confidence": "Medium confidence",
+  "low confidence": "Low confidence",
+};
+
+export function confidenceReasonLabel(reason: string | null): string | null {
+  if (!reason) return null;
+  return CONFIDENCE_REASON_LABEL[reason] ?? reason;
+}
+
+export const ROW_ORIGIN_LABEL: Record<RowOrigin, string> = {
+  ai: "Measured by Panda AI",
+  manual: "Entered by hand",
+  prompt: "Changed by a Panda AI prompt",
+  migrated: "Migrated from the old BoQ grid",
+};
+
+export const SHEET_KIND_OPTIONS: { value: PreconSheetKind; label: string }[] = [
+  { value: "floor-plan", label: "Floor plan" },
+  { value: "elevation", label: "Elevation" },
+  { value: "section", label: "Section" },
+  { value: "detail", label: "Detail" },
+  { value: "schedule", label: "Schedule" },
+  { value: "unknown", label: "Unknown" },
+];
+
+export const STRUCTURE_CLASS_OPTIONS: { value: StructureClass; label: string }[] = [
+  { value: "building", label: "Building" },
+  { value: "road", label: "Road" },
+  { value: "bridge", label: "Bridge" },
+  { value: "airport", label: "Airport" },
+  { value: "infrastructure", label: "Infrastructure" },
+  { value: "unknown", label: "Unknown" },
+];
+
+export const STRUCTURAL_SYSTEM_OPTIONS: { value: StructuralSystem; label: string }[] = [
+  { value: "load-bearing-masonry", label: "Load-bearing masonry" },
+  { value: "reinforced-concrete-frame", label: "Reinforced concrete frame" },
+  { value: "steel-frame", label: "Steel frame" },
+  { value: "composite", label: "Composite" },
+  { value: "unknown", label: "Unknown" },
+];
+
+export const FOUNDATION_TYPE_OPTIONS: { value: FoundationType; label: string }[] = [
+  { value: "strip", label: "Strip" },
+  { value: "raft", label: "Raft" },
+  { value: "pad", label: "Pad" },
+  { value: "pile", label: "Pile" },
+  { value: "unknown", label: "Unknown" },
+];
+
+// Points per mm at 1:1; a sheet at 1:N has N × this many mm per point.
+export const MM_PER_PT_AT_1_TO_1 = 0.3528;
+export const scaleRatioOf = (mmPerPt: number): number => Math.round(mmPerPt / MM_PER_PT_AT_1_TO_1);
+export const mmPerPtForRatio = (ratio: number): number => ratio * MM_PER_PT_AT_1_TO_1;

@@ -7,7 +7,8 @@ import { FULL_TAKEOFF_SCOPE } from "../types.ts";
 import { buildUpBill } from "./enrich.ts";
 import { briefsFor } from "./besmm-reference.ts";
 import { draftBoq } from "./boq-draft.ts";
-import { besmmResolverFor, type ProgressFn } from "./run.ts";
+import type { ProgressFn } from "./run.ts";
+import { besmmResolverFor } from "./besmm-resolver.ts";
 import { measuredBillFor } from "./remeasure.ts";
 
 // Measured and verified lines are the anchors the agents build from; the
