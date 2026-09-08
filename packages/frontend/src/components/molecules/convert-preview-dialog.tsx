@@ -26,6 +26,7 @@ const OPTIONAL: ReadonlySet<ConvertSection> = new Set([
   "drawings",
   "documents",
   "selections",
+  "safety",
   "client",
 ]);
 

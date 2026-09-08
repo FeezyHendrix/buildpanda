@@ -5,6 +5,8 @@ import type { PreconBoqRowDto, PreconProgramme, PreconSession, PreconSnapshot } 
 import type { ProposalsRepository } from "./repository.ts";
 import type { Estimate, EstimateItem, JobProfile, PaymentScheduleItem, ProposalPlan, ProposalRow } from "./types.ts";
 import { JOB_PROFILES } from "./types.ts";
+import { risksRepository } from "../risks/repository.ts";
+import { methodStatementsRepository } from "../method-statements/repository.ts";
 
 /**
  * Everything the handoff reads, loaded once so preview and convert see the
@@ -24,6 +26,7 @@ export interface ConvertSources {
   jobProfile: JobProfile;
   snapshotFileId: string | null;
   leadTimeByName: Map<string, number>;
+  safety: { risks: number; methodStatements: number; phasePlan: boolean };
 }
 
 const RUNNING = new Set(["uploading", "generating"]);
@@ -84,7 +87,22 @@ export async function loadConvertSources(
       )
     : null;
 
+  // the safety pack lives in tables another migration creates; count it only
+  // once they exist so an older database still converts
+  const safety = (await db.schema.hasTable("method_statements"))
+    ? await (async () => {
+        const scope = { proposalId: proposal.id };
+        const [risks, statements, plan] = await Promise.all([
+          risksRepository(db).listByProposal(proposal.id),
+          methodStatementsRepository(db).listByScope(scope),
+          methodStatementsRepository(db).phasePlanByScope(scope),
+        ]);
+        return { risks: risks.length, methodStatements: statements.length, phasePlan: Boolean(plan) };
+      })()
+    : { risks: 0, methodStatements: 0, phasePlan: false };
+
   return {
+    safety,
     proposal,
     estimate,
     items,

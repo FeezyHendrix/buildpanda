@@ -430,6 +430,7 @@ export const CONVERT_SECTIONS = [
   "documents",
   "permits",
   "selections",
+  "safety",
   "client",
 ] as const;
 export type ConvertSection = (typeof CONVERT_SECTIONS)[number];
