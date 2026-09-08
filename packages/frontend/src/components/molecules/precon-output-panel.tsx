@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { PreconApplyDialog } from "@/components/molecules/precon-apply-dialog";
 import { preconApi, type PreconSnapshot, type PreconSummarySettings } from "@/api/precon";
 import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -117,19 +118,17 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
   const { session, progress } = snapshot;
   const applyToProposal = useApplyPreconToProposal(session.id);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
   const areas = session.scope.kind === "areas";
   const linked = Boolean(session.proposalId);
-  const applyLabel = linked ? "Apply to proposal BoQ" : "Create proposal from this sheet";
+  const applyLabel = linked ? "Bring into the estimate" : "Create proposal from this take-off";
 
   const apply = () =>
     applyToProposal.mutate(undefined, {
       onSuccess: (result) => {
         setConfirmOpen(false);
-        toast(
-          `${result.itemCount} line${result.itemCount === 1 ? "" : "s"} ${linked ? "applied to" : "added to the new"} proposal BoQ.`,
-          "success",
-        );
-        navigate(`/sales/proposals/${result.proposalId}?tab=boq`);
+        toast(`Proposal created with ${result.itemCount} line${result.itemCount === 1 ? "" : "s"} as its first take-off.`, "success");
+        navigate(`/sales/proposals/${result.proposalId}?tab=takeoffs`);
       },
       onError: (error) => {
         setConfirmOpen(false);
@@ -146,15 +145,15 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
           <h2 className="text-sm font-semibold text-gray-900">{areas ? "Areas schedule" : "Bid pack"}</h2>
           <p className="text-xs text-gray-500">
             {areas
-              ? "Export the areas workbook or push the spaces onto the proposal as BoQ lines."
-              : "Export the BOQ workbook or apply the reviewed bill to the proposal."}
+              ? "Export the areas workbook or bring the spaces into the estimate as lines."
+              : "Export the BOQ workbook or bring the reviewed bill into the estimate. You will see every change first."}
           </p>
         </div>
         <div className="space-y-2">
           <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(session.id), "_blank")}>
             {areas ? "Download areas (Excel)" : "Download BOQ (Excel)"}
           </Button>
-          <Button variant="secondary" className="w-full" onClick={() => setConfirmOpen(true)}>
+          <Button variant="secondary" className="w-full" onClick={() => (linked ? setApplyOpen(true) : setConfirmOpen(true))}>
             {applyLabel}
           </Button>
           {progress.total > 0 && progress.verified < progress.total ? (
@@ -170,16 +169,15 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
         </p>
       </Card>
 
+      {session.proposalId ? (
+        <PreconApplyDialog open={applyOpen} onOpenChange={setApplyOpen} sessionId={session.id} proposalId={session.proposalId} />
+      ) : null}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={linked ? "Replace the proposal's BoQ?" : "Create a proposal from this sheet?"}
-        description={
-          linked
-            ? "Every line currently on the proposal's BoQ tab is replaced with the lines from this sheet. Rejected lines are left out. This cannot be undone from here."
-            : "A new proposal is created with these lines as its BoQ and this sheet is linked to it."
-        }
-        confirmLabel={linked ? "Replace BoQ" : "Create proposal"}
+        title="Create a proposal from this take-off?"
+        description="A new proposal is created and this take-off is linked to it. Bring the lines into its estimate from there."
+        confirmLabel="Create proposal"
         loading={applyToProposal.isPending}
         onConfirm={apply}
       />

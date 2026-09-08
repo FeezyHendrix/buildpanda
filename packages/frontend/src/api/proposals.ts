@@ -25,6 +25,13 @@ export const ESTIMATE_STATUSES = [
 
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number];
 
+export const JOB_PROFILES = ["full_contract", "labour_only", "supply_only"] as const;
+export type JobProfile = (typeof JOB_PROFILES)[number];
+
+export const PLAN_DISCIPLINES = ["architectural", "structural", "mep", "civil", "survey", "other"] as const;
+export type PlanDiscipline = (typeof PLAN_DISCIPLINES)[number];
+export type PlanRevisionStatus = "current" | "superseded";
+
 export interface ProposalListItem {
   id: string;
   number: number;
@@ -55,6 +62,7 @@ export interface Proposal {
   status: ProposalStatus;
   currency: string;
   validUntil: string | null;
+  jobProfile: JobProfile;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -69,7 +77,9 @@ export interface EstimateItem {
   unit: string;
   unitRate: number;
   total: number;
+  /** The take-off line this quantity came from, or null when typed by hand. */
   boqItemId: string | null;
+  takeoffSessionId: string | null;
   sort: number;
 }
 
@@ -230,6 +240,22 @@ export interface CreateProposalInput {
   currency?: string;
   validUntil?: string;
   leadId?: string;
+  jobProfile?: JobProfile;
+}
+
+export interface AddPlanInput {
+  fileId: string;
+  label?: string;
+  sheetCode?: string;
+  discipline?: PlanDiscipline;
+  revision?: string;
+}
+
+export interface UpdatePlanInput {
+  label?: string | null;
+  sheetCode?: string | null;
+  discipline?: PlanDiscipline | null;
+  revision?: string | null;
 }
 
 export interface ProposalComment {
@@ -329,8 +355,11 @@ export const proposalsApi = {
   listPlans: (proposalId: string) =>
     api.get<ProposalPlan[]>(`/proposals/${proposalId}/plans`).then((r) => r.data),
 
-  addPlan: (proposalId: string, body: { fileId: string; label?: string }) =>
+  addPlan: (proposalId: string, body: AddPlanInput) =>
     api.post<ProposalPlan[]>(`/proposals/${proposalId}/plans`, body).then((r) => r.data),
+
+  updatePlan: (proposalId: string, planId: string, body: UpdatePlanInput) =>
+    api.patch<ProposalPlan[]>(`/proposals/${proposalId}/plans/${planId}`, body).then((r) => r.data),
 
   deletePlan: (proposalId: string, planId: string) =>
     api.delete(`/proposals/${proposalId}/plans/${planId}`),
@@ -340,15 +369,6 @@ export const proposalsApi = {
 
   listAutomatedTakeoffs: (proposalId: string) =>
     api.get<TakeoffJob[]>(`/proposals/${proposalId}/automated-takeoff`).then((r) => r.data),
-
-  exportBoq: (proposalId: string) =>
-    api.get(`/proposals/${proposalId}/boq/export`, { responseType: "blob" }).then((r) => r.data as Blob),
-
-  listBoq: (proposalId: string) =>
-    api.get<ProposalBoqItem[]>(`/proposals/${proposalId}/boq`).then((r) => r.data),
-
-  replaceBoq: (proposalId: string, items: Omit<ProposalBoqItem, "id" | "proposalId">[]) =>
-    api.put<ProposalBoqItem[]>(`/proposals/${proposalId}/boq`, items).then((r) => r.data),
 
   // Public endpoints — no auth required
   getPublic: (token: string) =>
@@ -401,17 +421,12 @@ export interface ProposalPlan {
   sizeBytes: number;
   mimeType: string;
   label: string | null;
+  sheetCode: string | null;
+  discipline: PlanDiscipline | null;
+  revision: string | null;
+  revisionStatus: PlanRevisionStatus;
+  supersedesPlanId: string | null;
   uploadedBy: string | null;
   uploadedAt: string;
-  sort: number;
-}
-
-export interface ProposalBoqItem {
-  id: string;
-  proposalId: string;
-  groupLabel: string;
-  description: string;
-  qty: number;
-  unit: string;
   sort: number;
 }

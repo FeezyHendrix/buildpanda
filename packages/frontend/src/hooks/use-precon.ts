@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   preconApi,
   type CreateProgrammeTaskInput,
+  preconApplyApi,
+  type ApplyMode,
   type CreateRowInput,
   type PreconGeometryKind,
   type PreconProgramme,
@@ -388,4 +390,18 @@ export function isVersionConflict(error: unknown): boolean {
   return Boolean(
     error && typeof error === "object" && "response" in error && (error as { response?: { status?: number } }).response?.status === 409,
   );
+}
+
+/** Preview or apply a take-off's lines onto an estimate revision (WS-3). */
+export function useApplyTakeoffToEstimate(sessionId: string, proposalId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ estimateId, mode }: { estimateId: string; mode: ApplyMode }) =>
+      preconApplyApi.applyToEstimate(sessionId, estimateId, mode),
+    onSuccess: (_result, variables) => {
+      if (variables.mode === "apply" && proposalId) {
+        void qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+      }
+    },
+  });
 }
