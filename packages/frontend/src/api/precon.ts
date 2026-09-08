@@ -70,9 +70,38 @@ export interface PreconSession {
   planId: string | null;
   takeoffKind: TakeoffKind;
   structureContext: StructureContext | null;
+  /** DWG only: which element each layer holds, as proposed by the engine and corrected in review. */
+  layerMap?: LayerMap | null;
   createdBy: string | null;
   createdAt: string;
   /** The drawing revision this take-off measured, once the session records it. */
+}
+
+export const LAYER_ELEMENTS = [
+  "walls",
+  "columns",
+  "doors",
+  "windows",
+  "sanitary",
+  "stairs",
+  "roof",
+  "furniture",
+  "dimensions",
+  "text",
+  "grid",
+  "levels",
+  "ignore",
+  "auto",
+] as const;
+export type LayerElement = (typeof LAYER_ELEMENTS)[number];
+export type LayerMap = Record<string, LayerElement>;
+
+/** The window of the DWG model space a register sheet occupies, in drawing units. */
+export interface SheetBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 }
 
 export interface PreconSheet {
@@ -87,6 +116,7 @@ export interface PreconSheet {
   scaleMmPerPt: number | null;
   scaleConfidence: number | null;
   dimUnit: "mm" | "cm" | "m" | null;
+  bounds?: SheetBounds | null;
   error: string | null;
 }
 
@@ -117,6 +147,8 @@ export interface PreconBoqRow {
   measurementBasis: string | null;
   confidenceReason: string | null;
   provenance: string | null;
+  /** DWG entity handles the engine computed this line from. */
+  evidence?: number[];
   origin: RowOrigin;
   editedAt: string | null;
   editedBy: string | null;
@@ -285,6 +317,10 @@ export const preconApi = {
 
   updateStructure: (sessionId: string, input: UpdateStructureInput) =>
     api.patch<PreconSession>(`/precon/sessions/${sessionId}/structure`, input).then((r) => r.data),
+
+  /** Stores the corrected layer map and re-measures the DWG with it (202: the run is queued). */
+  updateLayerMap: (sessionId: string, layerMap: LayerMap) =>
+    api.patch<PreconSession>(`/precon/sessions/${sessionId}/layer-map`, { layerMap }).then((r) => r.data),
 
   redraftBill: (sessionId: string) =>
     api.post<{ status: string }>(`/precon/sessions/${sessionId}/redraft-bill`).then((r) => r.data),

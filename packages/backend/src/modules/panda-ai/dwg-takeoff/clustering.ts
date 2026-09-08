@@ -1,4 +1,6 @@
-import { centroid, type DwgDoc } from "./dwg.ts";
+import { centroid, isModelSpace, type DwgDoc } from "./dwg.ts";
+import { elementOf } from "./taxonomy.ts";
+import type { LayerMap } from "./types.ts";
 
 export interface Cluster {
   id: number;
@@ -12,29 +14,14 @@ export interface Cluster {
   members: number[];
 }
 
-// A DWG sheet holds many drawings (plans, elevations, sections, details) laid
-// out in separate regions of model space. Summing geometry across all of them
-// overcounts by the number of drawings. Grid-accelerated DBSCAN over entity
-// centroids recovers the individual drawings as dense regions separated by the
-// whitespace gutters between them.
-export function clusterDrawings(
-  doc: DwgDoc,
-  scaleToMm: number,
-  opts: { epsMm?: number; minPts?: number } = {},
-): Cluster[] {
-  const epsMm = opts.epsMm ?? 4000;
-  const minPts = opts.minPts ?? 8;
-  const eps = epsMm / (scaleToMm || 1);
+export interface ClusterPoint {
+  i: number;
+  x: number;
+  y: number;
+}
 
-  const pts: Array<{ i: number; x: number; y: number }> = [];
-  for (let i = 0; i < doc.entities.length; i++) {
-    const e = doc.entities[i]!;
-    if (!e.entity) continue;
-    if (/dim|text|defpoint|grid/i.test(doc.layerName(e))) continue;
-    const c = centroid(e);
-    if (c) pts.push({ i, x: c[0], y: c[1] });
-  }
-
+/** Grid-accelerated DBSCAN. Returns a label per point; -1 is noise. */
+export function dbscan(pts: ClusterPoint[], eps: number, minPts: number): number[] {
   const cell = eps;
   const grid = new Map<string, number[]>();
   const cellKey = (x: number, y: number): string => `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
@@ -44,7 +31,6 @@ export function clusterDrawings(
     if (bucket) bucket.push(idx);
     else grid.set(k, [idx]);
   });
-
   const neighbours = (idx: number): number[] => {
     const p = pts[idx]!;
     const out: number[] = [];
@@ -62,7 +48,6 @@ export function clusterDrawings(
     }
     return out;
   };
-
   const UNVISITED = -2;
   const NOISE = -1;
   const labels = new Array<number>(pts.length).fill(UNVISITED);
@@ -86,7 +71,41 @@ export function clusterDrawings(
     }
     clusterId += 1;
   }
+  return labels;
+}
 
+const ANNOTATION = new Set(["dimensions", "text", "grid", "levels", "ignore"]);
+
+/**
+ * A DWG model space holds many drawings (plans, elevations, sections, details)
+ * laid out in separate regions. Summing geometry across all of them overcounts
+ * by the number of drawings. DBSCAN over the centroids of model-space geometry
+ * recovers the individual drawings as dense regions separated by the gutters
+ * between them. Annotation layers are left out so a dimension string bridging
+ * two drawings does not merge them; block inserts are in, so a plan drawn
+ * mostly from blocks still forms a region.
+ */
+export function clusterDrawings(
+  doc: DwgDoc,
+  scaleToMm: number,
+  opts: { epsMm?: number; minPts?: number; map?: LayerMap } = {},
+): Cluster[] {
+  const epsMm = opts.epsMm ?? 4000;
+  const minPts = opts.minPts ?? 8;
+  const eps = epsMm / (scaleToMm || 1);
+  const map = opts.map ?? {};
+
+  const pts: ClusterPoint[] = [];
+  for (let i = 0; i < doc.entities.length; i++) {
+    const e = doc.entities[i]!;
+    if (!isModelSpace(doc, e)) continue;
+    if (String(e.entity).startsWith("DIMENSION") || e.entity === "TEXT" || e.entity === "MTEXT") continue;
+    if (ANNOTATION.has(elementOf(doc, e, map))) continue;
+    const c = centroid(e);
+    if (c) pts.push({ i, x: c[0], y: c[1] });
+  }
+
+  const labels = dbscan(pts, eps, minPts);
   const clusters = new Map<number, Cluster>();
   pts.forEach((p, idx) => {
     const label = labels[idx]!;
@@ -111,18 +130,19 @@ export function clusterDrawings(
     .sort((a, b) => b.count - a.count);
 }
 
-export function classifyDrawing(doc: DwgDoc, c: Cluster): string {
+// Geometry-only fallback for a drawing that carries no usable labels.
+export function classifyDrawing(doc: DwgDoc, c: Cluster, map: LayerMap = {}): string {
   let walls = 0;
   let openings = 0;
   for (const i of c.members) {
-    const ln = doc.layerName(doc.entities[i]!);
-    if (/wall/i.test(ln)) walls++;
-    if (/door|wind/i.test(ln)) openings++;
+    const el = elementOf(doc, doc.entities[i]!, map);
+    if (el === "walls") walls++;
+    if (el === "doors" || el === "windows") openings++;
   }
   const aspect = c.widthM / Math.max(c.heightM, 0.1);
-  const squareish = aspect > 0.5 && aspect < 2.0;
-  if (squareish && walls > 20 && openings > 5 && c.widthM > 8 && c.heightM > 8) return "floor-plan";
+  const squareish = aspect > 0.4 && aspect < 2.5;
+  if (squareish && walls > 20 && openings > 5 && c.widthM > 6 && c.heightM > 6) return "floor-plan";
   if (aspect > 2.5 && openings === 0) return "elevation";
-  if (c.widthM < 8 || c.heightM < 8) return "detail";
+  if (c.widthM < 6 || c.heightM < 6) return "detail";
   return "unknown";
 }

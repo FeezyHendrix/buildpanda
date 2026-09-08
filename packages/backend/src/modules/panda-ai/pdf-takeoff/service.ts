@@ -55,6 +55,7 @@ function toSession(r: PreconSessionRow): PreconSession {
     planId: r.plan_id ?? null,
     takeoffKind: r.takeoff_kind ?? "pdf",
     structureContext: r.structure_context ?? null,
+    layerMap: r.layer_map ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -73,6 +74,7 @@ function toSheet(r: PreconSheetRow): PreconSheet {
     scaleMmPerPt: r.scale_mm_per_pt,
     scaleConfidence: r.scale_confidence,
     dimUnit: r.dim_unit,
+    bounds: r.bounds ?? null,
     error: r.error,
   };
 }
@@ -131,6 +133,7 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     measurementBasis: r.measurement_basis,
     confidenceReason: r.confidence_reason ?? null,
     provenance: r.provenance ?? null,
+    evidence: r.evidence ?? [],
     origin: r.origin ?? "ai",
     editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
     editedBy: r.edited_by ?? null,
