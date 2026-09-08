@@ -437,6 +437,10 @@ export const preconApi = {
     input: { version: number; label: string; vertices: number[][]; sheetId?: string },
   ) => api.post<PreconBoqRow>(`/precon/rows/${rowId}/deductions`, input).then((r) => r.data),
 
+  /** WS-M1B: a line drawn by hand becomes a verified manual bill row with its geometry. */
+  createMeasurement: (sessionId: string, body: CreateMeasurementBody) =>
+    api.post<CreateMeasurementResult>(`/precon/sessions/${sessionId}/measurements`, body).then((r) => r.data),
+
   updateSettings: (sessionId: string, patch: Partial<PreconSummarySettings>) =>
     api.patch<PreconSummarySettings>(`/precon/sessions/${sessionId}/settings`, patch).then((r) => r.data),
 
@@ -515,3 +519,30 @@ export const preconApplyApi = {
       .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode })
       .then((r) => r.data),
 };
+
+// ---- manual measurements (WS-M1B; body defined by WS-M1A in pdf-takeoff/types.ts) ----
+
+export const MEASURE_TOOLS = ["length", "polyline", "area", "count", "volume", "wall_area"] as const;
+export type MeasureTool = (typeof MEASURE_TOOLS)[number];
+
+export interface CreateMeasurementBody {
+  sheetId: string;
+  tool: MeasureTool;
+  /** Sheet points, the same space the viewer sends to `PUT /precon/rows/:rowId/geometry`. */
+  vertices: number[][];
+  description: string;
+  elementGroup: string;
+  code?: string;
+  /** Defaults by tool: length/polyline m, area m2, count nr, volume m3, wall_area m2. */
+  unit?: string;
+  /** wall_area needs heightM, volume needs depthM. */
+  factor?: { heightM?: number; depthM?: number };
+  /** × identical floors or areas; stated in the basis. Default 1. */
+  typical?: number;
+  rate?: number;
+}
+
+export interface CreateMeasurementResult {
+  row: PreconBoqRow;
+  geometry: PreconGeometry;
+}

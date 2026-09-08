@@ -11,6 +11,8 @@ interface Props {
   draft: number[][];
   draftColor?: string;
   toPx: (pt: number[]) => [number, number];
+  /** When set, only these rows draw at full strength; the rest are dimmed. */
+  emphasisRowIds?: ReadonlySet<string> | null;
 }
 
 function StatusBadge({ at, status }: { at: [number, number]; status: PreconBoqRow["status"] }) {
@@ -24,22 +26,25 @@ function GeometryShape({
   geometry,
   row,
   selected,
+  dimmed,
   onPick,
   toPx,
 }: {
   geometry: PreconGeometry;
   row: PreconBoqRow;
   selected: boolean;
+  dimmed: boolean;
   onPick: (e: React.MouseEvent) => void;
   toPx: Props["toPx"];
 }) {
   const stroke = getElementStyle(row.elementGroup).color;
   const pts = geometry.vertices.map(toPx);
   const badge = pts.length > 0 ? <StatusBadge at={pts[0]!} status={row.status} /> : null;
+  const opacity = dimmed ? 0.15 : 1;
 
   if (geometry.kind === "count") {
     return (
-      <g onClick={onPick} className="cursor-pointer">
+      <g onClick={onPick} className="cursor-pointer" opacity={opacity}>
         {pts.map(([x, y], i) => (
           <circle
             key={`${geometry.id}-${i}`}
@@ -59,7 +64,7 @@ function GeometryShape({
   const path = pts.map(([x, y]) => `${x},${y}`).join(" ");
   if (geometry.kind === "linear") {
     return (
-      <g onClick={onPick} className="cursor-pointer">
+      <g onClick={onPick} className="cursor-pointer" opacity={opacity}>
         {selected ? <polyline points={path} fill="none" stroke="#004DE7" strokeWidth={6} strokeOpacity={0.3} strokeLinecap="round" /> : null}
         <polyline points={path} fill="none" stroke={stroke} strokeWidth={selected ? 3 : 2.5} strokeLinecap="round" />
         {badge}
@@ -67,7 +72,7 @@ function GeometryShape({
     );
   }
   return (
-    <g onClick={onPick} className="cursor-pointer">
+    <g onClick={onPick} className="cursor-pointer" opacity={opacity}>
       {selected ? <polygon points={path} fill="none" stroke="#004DE7" strokeWidth={4} strokeOpacity={0.3} /> : null}
       <polygon
         points={path}
@@ -84,7 +89,7 @@ function GeometryShape({
 GeometryShape.displayName = "GeometryShape";
 
 /** The measurement overlay drawn over the rasterised sheet, in canvas pixels. */
-export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", toPx }: Props) {
+export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", toPx, emphasisRowIds = null }: Props) {
   return (
     <svg className="absolute left-0 top-0" width={widthPx} height={heightPx} viewBox={`0 0 ${widthPx} ${heightPx}`}>
       {geometries.map((g) => {
@@ -96,6 +101,7 @@ export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedR
             geometry={g}
             row={row}
             selected={g.rowId === selectedRowId}
+            dimmed={emphasisRowIds !== null && !emphasisRowIds.has(g.rowId)}
             toPx={toPx}
             onPick={(e) => {
               e.stopPropagation();
