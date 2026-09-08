@@ -1,7 +1,15 @@
 import type { FastifyPluginAsync } from "fastify";
+import { preconRepository } from "../panda-ai/pdf-takeoff/repository.ts";
+import { preconService } from "../panda-ai/pdf-takeoff/service.ts";
 import { drawingMarkupRepository } from "./repository.ts";
 import { drawingMarkupService } from "./service.ts";
-import { MARKUP_KINDS, MEDIA_KINDS, type CreateCommentInput, type CreateMarkupInput } from "./types.ts";
+import {
+  MARKUP_KINDS,
+  MEDIA_KINDS,
+  type CreateCommentInput,
+  type CreateMarkupInput,
+  type CreatePreconMarkupInput,
+} from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -106,8 +114,46 @@ const resolveBody = {
   properties: { resolved: { type: "boolean" } },
 } as const;
 
+// ── WS-M1D: markups on take-off sheets ────────────────────────────────────
+
+const sessionParams = {
+  type: "object",
+  required: ["sessionId"],
+  additionalProperties: false,
+  properties: { sessionId: { type: "string", minLength: 1 } },
+} as const;
+
+const preconMarkupParams = {
+  type: "object",
+  required: ["id"],
+  additionalProperties: false,
+  properties: { id: { type: "string", minLength: 1 } },
+} as const;
+
+const sessionListQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: { sheetId: { type: "string", minLength: 1 } },
+} as const;
+
+const createPreconMarkupBody = {
+  type: "object",
+  required: ["sheetId", "kind", "geometry"],
+  additionalProperties: false,
+  properties: {
+    sheetId: { type: "string", minLength: 1, maxLength: 100 },
+    rowId: { type: ["string", "null"], maxLength: 100 },
+    kind: { type: "string", enum: MARKUP_KINDS },
+    geometry,
+    color: { type: "string", minLength: 1, maxLength: 20 },
+  },
+} as const;
+
 const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = drawingMarkupService(drawingMarkupRepository(fastify.db));
+  const service = drawingMarkupService(
+    drawingMarkupRepository(fastify.db),
+    preconService(preconRepository(fastify.db)),
+  );
 
   fastify.get<{ Params: { id: string }; Querystring: { documentVersionId: string; pageNo?: number } }>(
     "/projects/:id/drawing-markups",
@@ -169,6 +215,63 @@ const drawingMarkupRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       await request.requireProjectPermission(request.params.id, "documents", "markup");
       await service.remove(request.params.markupId);
+      return { ok: true };
+    },
+  );
+
+  // ── WS-M1D: pinned comments on take-off sheets (org-scoped via the session) ──
+
+  fastify.get<{ Params: { sessionId: string }; Querystring: { sheetId?: string } }>(
+    "/precon/sessions/:sessionId/markups",
+    { schema: { params: sessionParams, querystring: sessionListQuery } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "view");
+      await service.assertPreconSessionOrg(request.params.sessionId, orgId);
+      return service.listForSession(request.params.sessionId, request.query.sheetId);
+    },
+  );
+
+  fastify.post<{ Params: { sessionId: string }; Body: CreatePreconMarkupInput }>(
+    "/precon/sessions/:sessionId/markups",
+    { schema: { params: sessionParams, body: createPreconMarkupBody } },
+    async (request, reply) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      const markup = await service.createForSession(request.params.sessionId, orgId, user.id, request.body);
+      return reply.status(201).send(markup);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: CreateCommentInput }>(
+    "/precon/markups/:id/comments",
+    { schema: { params: preconMarkupParams, body: createCommentBody } },
+    async (request, reply) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      await service.preconSessionOf(request.params.id, orgId);
+      const comment = await service.addComment(request.params.id, user.id, request.body);
+      return reply.status(201).send(comment);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: { resolved: boolean } }>(
+    "/precon/markups/:id/resolve",
+    { schema: { params: preconMarkupParams, body: resolveBody } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      const user = request.requireAuth();
+      await service.preconSessionOf(request.params.id, orgId);
+      return service.setResolved(request.params.id, user.id, request.body.resolved);
+    },
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    "/precon/markups/:id",
+    { schema: { params: preconMarkupParams } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.preconSessionOf(request.params.id, orgId);
+      await service.remove(request.params.id);
       return { ok: true };
     },
   );
