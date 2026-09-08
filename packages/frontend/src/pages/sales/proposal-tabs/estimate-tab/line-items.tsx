@@ -6,6 +6,9 @@ import { proposalsApi } from "@/api/proposals";
 import type { Estimate } from "@/api/proposals";
 import { cn } from "@/lib/utils";
 import { UnitInput } from "@/components/atoms/unit-input";
+import { useMatchRates } from "@/hooks/use-rate-library";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 
 interface ItemDraft {
   groupLabel: string;
@@ -49,6 +52,35 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
   );
   const [savingItems, setSavingItems] = useState(false);
   const [saveItemsError, setSaveItemsError] = useState<string | null>(null);
+  const matchRates = useMatchRates();
+
+  // Fills only the lines whose rate is still zero, so hand-entered figures survive.
+  function fillRatesFromLibrary() {
+    matchRates.mutate(
+      items.map((item) => ({ description: item.description, unit: item.unit })),
+      {
+        onSuccess: (matches) => {
+          const byIndex = new Map(matches.map((m) => [m.index, m]));
+          let filled = 0;
+          setItems((prev) =>
+            prev.map((item, i) => {
+              const hit = byIndex.get(i);
+              if (!hit || (parseFloat(item.unitRate) || 0) > 0) return item;
+              filled++;
+              return { ...item, unitRate: String(hit.rate) };
+            }),
+          );
+          toast(
+            filled > 0
+              ? `${filled} line${filled === 1 ? "" : "s"} priced from ${matches[0]?.cardName ?? "the rate library"}. Save items to keep them.`
+              : "No library rates matched the unpriced lines. Check units and descriptions against the rate card.",
+            filled > 0 ? "success" : "info",
+          );
+        },
+        onError: (e) => toast(getApiErrorMessage(e, "Could not look up rates."), "error"),
+      },
+    );
+  }
 
   useEffect(() => {
     setItems(
@@ -172,6 +204,9 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
           <div className="mt-3 flex items-center gap-3">
             <Button variant="secondary" size="sm" onClick={addItem}>
               + Add line
+            </Button>
+            <Button variant="secondary" size="sm" onClick={fillRatesFromLibrary} loading={matchRates.isPending} disabled={items.length === 0}>
+              Fill rates from library
             </Button>
             <Button
               variant="primary"

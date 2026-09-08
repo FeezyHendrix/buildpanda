@@ -67,6 +67,9 @@ const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
 const SalesPreconSession = lazy(() => import("@/pages/sales/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
+const SalesRateLibrary = lazy(() => import("@/pages/sales/settings/rate-library"));
+const SalesComplianceDocs = lazy(() => import("@/pages/sales/settings/compliance-docs"));
+const SalesProposalTemplates = lazy(() => import("@/pages/sales/settings/templates"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/settings"));
@@ -217,6 +220,9 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "settings", element: <SalesSettings /> },
+      { path: "settings/rate-library", element: <SalesRateLibrary /> },
+      { path: "settings/compliance-docs", element: <SalesComplianceDocs /> },
+      { path: "settings/templates", element: sf("sales.proposals", <SalesProposalTemplates />) },
     ],
   },
   {
