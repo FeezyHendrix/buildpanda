@@ -86,7 +86,8 @@ export function documentsRepository(db: Knex) {
           "c.tone",
           "c.group",
           db.raw("COUNT(d.id)::text as file_count"),
-          db.raw("STRING_AGG(d.size, ', ' ORDER BY d.created_at DESC) as total_size"),
+          // the folder's real total, not the newest file's size
+          db.raw("COALESCE(SUM(d.size_bytes), 0)::text as total_bytes"),
         )
         .groupBy("c.id", "c.name", "c.tone", "c.group")
         .orderBy("c.name", "asc");
