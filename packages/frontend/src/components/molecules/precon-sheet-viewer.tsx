@@ -17,6 +17,7 @@ import { SheetLegend } from "./precon-sheet-viewer/sheet-legend";
 import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
 import { getElementStyle, type ElementStyle } from "./precon-sheet-viewer/element-styles";
 import { SheetSettings } from "./precon-session/sheet-settings";
+import { FIT_VIEW, useSheetView } from "./precon-sheet-viewer/use-sheet-view";
 
 export type { PreconTool };
 
@@ -49,6 +50,22 @@ interface PageInfo {
 
 type PdfPageProxy = import("pdfjs-dist").PDFPageProxy;
 
+function formatZoom(userZoom: number): string {
+  return Number.isFinite(userZoom) ? String(Math.round(userZoom * 100)) : "100";
+}
+
+// The engine's SVG carries only a viewBox; give it explicit pixel dimensions
+// so every browser reports a natural size and the canvas is never 0×0.
+function sizedSvg(svg: string): string {
+  const open = svg.match(/<svg\b[^>]*>/);
+  if (!open || /\swidth=/.test(open[0])) return svg;
+  const box = open[0].match(/viewBox="([^"]+)"/)?.[1]?.trim().split(/[\s,]+/).map(Number);
+  if (!box || box.length !== 4 || !box.every(Number.isFinite) || box[2]! <= 0 || box[3]! <= 0) return svg;
+  const width = IMAGE_FIT_WIDTH_PX;
+  const height = Math.max(1, Math.round((width * box[3]!) / box[2]!));
+  return svg.replace(open[0], open[0].replace(/<svg\b/, `<svg width="${width}" height="${height}"`));
+}
+
 /** Page number within the sheet's own PDF file (sheets are contiguous per file). */
 function pageWithinFile(sheet: PreconSheet, sheets: PreconSheet[]): number {
   const siblings = [...sheets.filter((s) => s.fileName === sheet.fileName)].sort((a, b) => a.pageNumber - b.pageNumber);
@@ -60,13 +77,12 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const containerRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<PageInfo | null>(null);
   const [rendering, setRendering] = useState(false);
-  const [view, setView] = useState({ tx: 0, ty: 0, userZoom: 1 });
+  const { view, setView, zoomBy, zoomFit, onMouseDown, onMouseMove, endPan } = useSheetView(containerRef, tool === "select");
   const [draft, setDraft] = useState<number[][]>([]);
   const [note, setNote] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // two drawn points whose real distance the reviewer is about to type
   const [scalePrompt, setScalePrompt] = useState<ScalePrompt | null>(null);
-  const panRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
 
   const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
   const updateGeometry = useUpdatePreconGeometry(sessionId);
@@ -107,7 +123,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const imageRef = useRef<{ sheetId: string; img: HTMLImageElement } | null>(null);
   const rasterizeImage = useCallback((img: HTMLImageElement, scale: number, isCancelled: () => boolean) => {
     const canvas = canvasRef.current;
-    if (!canvas || isCancelled()) return;
+    if (!canvas || isCancelled() || !Number.isFinite(scale) || scale <= 0) return;
     const fit = IMAGE_FIT_WIDTH_PX / Math.max(1, img.naturalWidth);
     const widthPx = Math.round(img.naturalWidth * fit * (scale / BASE_RASTER));
     const heightPx = Math.round(img.naturalHeight * fit * (scale / BASE_RASTER));
@@ -122,7 +138,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   }, []);
 
   const [activeRasterScale, setActiveRasterScale] = useState(BASE_RASTER);
-  const targetRasterScale = Math.min(4.5, BASE_RASTER * Math.max(1, Math.ceil(view.userZoom)));
+  const targetRasterScale = Math.min(4.5, BASE_RASTER * Math.max(1, Math.ceil(Number.isFinite(view.userZoom) ? view.userZoom : 1)));
   useEffect(() => {
     if (targetRasterScale === activeRasterScale) return;
     const timer = setTimeout(() => setActiveRasterScale(targetRasterScale), 200);
@@ -146,10 +162,10 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
       (async () => {
         const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
         if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
-        const blob = await res.blob();
+        const svg = sizedSvg(await res.text());
         if (cancelled) return;
         const img = new Image();
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
         await new Promise<void>((resolve, reject) => {
           img.onload = () => resolve();
           img.onerror = () => reject(new Error("The drawing could not be decoded"));
@@ -159,7 +175,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
         if (cancelled) return;
         imageRef.current = { sheetId, img };
         rasterizeImage(img, BASE_RASTER, () => cancelled);
-        setView({ tx: 0, ty: 0, userZoom: 1 });
+        setView(FIT_VIEW);
         setRendering(false);
       })().catch((error: unknown) => {
         if (!cancelled) {
@@ -183,7 +199,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
       pdfPageRef.current = { sheetId, page: pdfPage };
       await rasterize(pdfPage, BASE_RASTER, () => cancelled);
       if (cancelled) return;
-      setView({ tx: 0, ty: 0, userZoom: 1 });
+      setView(FIT_VIEW);
       setRendering(false);
     })().catch((error: unknown) => {
       if (!cancelled) {
@@ -324,35 +340,6 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     const pdfPt = toPt(canvasPt[0], canvasPt[1]);
     setDraft((prev) => (tool === "scale" && prev.length >= 2 ? prev : [...prev, applySnapAndOrtho(pdfPt, e.shiftKey)]));
   };
-  const onMouseDown = (e: React.MouseEvent) => {
-    if (tool !== "select") return;
-    panRef.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty };
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    const pan = panRef.current;
-    if (!pan) return;
-    setView((v) => ({ ...v, tx: pan.tx + e.clientX - pan.x, ty: pan.ty + e.clientY - pan.y }));
-  };
-  const endPan = () => {
-    panRef.current = null;
-  };
-
-  const wheelDeltaRef = useRef(0);
-  const wheelRafRef = useRef<number | null>(null);
-  // Zoom about the middle of the visible canvas, the same maths the wheel uses,
-  // for the toolbar buttons and for prompts that ask to zoom.
-  const zoomBy = useCallback((factor: number) => {
-    const box = containerRef.current?.getBoundingClientRect();
-    const cx = box ? box.width / 2 : 0;
-    const cy = box ? box.height / 2 : 0;
-    setView((v) => {
-      const newZoom = Math.min(8, Math.max(0.2, v.userZoom * factor));
-      if (newZoom === v.userZoom) return v;
-      const ratio = newZoom / v.userZoom;
-      return { ...v, userZoom: newZoom, tx: cx - (cx - v.tx) * ratio, ty: cy - (cy - v.ty) * ratio };
-    });
-  }, []);
-  const zoomFit = useCallback(() => setView({ tx: 0, ty: 0, userZoom: 1 }), []);
   useEffect(() => {
     if (!zoomRequest) return;
     if (zoomRequest.kind === "in") zoomBy(1.5);
@@ -360,28 +347,6 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     else zoomFit();
   }, [zoomRequest, zoomBy, zoomFit]);
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    wheelDeltaRef.current += e.deltaY;
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const cursorX = e.clientX - rect.left;
-    const cursorY = e.clientY - rect.top;
-    if (wheelRafRef.current !== null) return;
-    wheelRafRef.current = requestAnimationFrame(() => {
-      const delta = wheelDeltaRef.current;
-      wheelDeltaRef.current = 0;
-      wheelRafRef.current = null;
-      if (delta === 0) return;
-      const factor = Math.pow(1.15, -delta / 100);
-      setView((v) => {
-        const newZoom = Math.min(8, Math.max(0.2, v.userZoom * factor));
-        if (newZoom === v.userZoom) return v;
-        const ratio = newZoom / v.userZoom;
-        return { ...v, userZoom: newZoom, tx: cursorX - (cursorX - v.tx) * ratio, ty: cursorY - (cursorY - v.ty) * ratio };
-      });
-    });
-  }, []);
 
   const statusLine = !activeSheet
     ? null
@@ -434,7 +399,6 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
         onMouseMove={onMouseMove}
         onMouseUp={endPan}
         onMouseLeave={endPan}
-        onWheel={onWheel}
         onClick={onCanvasClick}
         onDoubleClick={commitDraft}
       >
@@ -468,7 +432,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
           <button type="button" aria-label="Zoom out" title="Zoom out" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1 / 1.5)}>
             <Minus className="size-4" aria-hidden="true" />
           </button>
-          <span className="min-w-12 text-center font-mono text-[11px] tabular-nums text-gray-600">{Math.round(view.userZoom * 100)}%</span>
+          <span className="min-w-12 text-center font-mono text-[11px] tabular-nums text-gray-600">{formatZoom(view.userZoom)}%</span>
           <button type="button" aria-label="Zoom in" title="Zoom in" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1.5)}>
             <Plus className="size-4" aria-hidden="true" />
           </button>
