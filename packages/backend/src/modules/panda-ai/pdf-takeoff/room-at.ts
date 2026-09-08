@@ -1,4 +1,8 @@
+import { simplify, traceCells } from "./cell-outline.ts";
 import type { GeoSegment, GeoText, RoomAtResult, SheetGeometry } from "./types.ts";
+
+// the tracer moved to cell-outline.ts, where the DWG room fill shares it
+export { simplify };
 
 // "Room fill": the person clicks inside a space and gets its outline. The
 // sheet's segments are stamped into a fine grid around the click, the open
@@ -146,130 +150,6 @@ function openCellsNear(grid: Grid, mask: Uint8Array, cx: number, cy: number): nu
   return out;
 }
 
-// Boundary edges of the filled cells, oriented so the fill sits on the
-// right of travel, walked from the top-left cell preferring the turn that
-// hugs the outside: one loop around the whole region, pinch points and all.
-function traceOutline(grid: Grid, cells: Uint8Array): number[][] {
-  const { cols, rows } = grid;
-  const key = (i: number, j: number) => j * (cols + 1) + i;
-  const edges = new Map<number, Array<[number, number, number, number]>>(); // start corner → [i, j, di, dj]
-  const add = (i: number, j: number, di: number, dj: number) => {
-    const k = key(i, j);
-    const list = edges.get(k);
-    if (list) list.push([i, j, di, dj]);
-    else edges.set(k, [[i, j, di, dj]]);
-  };
-  let start: [number, number] | null = null;
-  const filled = (x: number, y: number) => x >= 0 && x < cols && y >= 0 && y < rows && cells[y * cols + x] === 1;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (!filled(x, y)) continue;
-      if (!start) start = [x, y];
-      if (!filled(x, y - 1)) add(x, y, 1, 0);
-      if (!filled(x + 1, y)) add(x + 1, y, 0, 1);
-      if (!filled(x, y + 1)) add(x + 1, y + 1, -1, 0);
-      if (!filled(x - 1, y)) add(x, y + 1, 0, -1);
-    }
-  }
-  if (!start) return [];
-  const corners: number[][] = [];
-  let [i, j] = start;
-  let di = 1;
-  let dj = 0;
-  const startKey = key(i, j);
-  for (let guard = 0; guard < edges.size + 1; guard++) {
-    corners.push([i, j]);
-    const list = edges.get(key(i, j));
-    if (!list || list.length === 0) break;
-    // left turn first (hugs the exterior), then straight, then right
-    const prefs: Array<[number, number]> = [
-      [dj, -di],
-      [di, dj],
-      [-dj, di],
-    ];
-    let pick = -1;
-    for (const [px, py] of prefs) {
-      pick = list.findIndex((e) => e[2] === px && e[3] === py);
-      if (pick >= 0) break;
-    }
-    if (pick < 0) pick = 0;
-    const [, , ndi, ndj] = list.splice(pick, 1)[0]!;
-    di = ndi;
-    dj = ndj;
-    i += di;
-    j += dj;
-    if (key(i, j) === startKey) break;
-  }
-  return corners;
-}
-
-// Consecutive cell edges along one straight run collapse to their ends; a
-// corner then moves half a cell outward, because the wall line sits inside
-// its own cell and the true face is on average half a cell beyond the fill.
-function tidy(corners: number[][], grid: Grid): number[][] {
-  const n = corners.length;
-  if (n < 4) return [];
-  const kept: number[][] = [];
-  for (let k = 0; k < n; k++) {
-    const a = corners[(k - 1 + n) % n]!;
-    const b = corners[k]!;
-    const c = corners[(k + 1) % n]!;
-    const straight = (b[0]! - a[0]!) * (c[1]! - b[1]!) - (b[1]! - a[1]!) * (c[0]! - b[0]!) === 0;
-    if (!straight) kept.push(b);
-  }
-  const m = kept.length;
-  const out: number[][] = [];
-  for (let k = 0; k < m; k++) {
-    const a = kept[(k - 1 + m) % m]!;
-    const b = kept[k]!;
-    const c = kept[(k + 1) % m]!;
-    const inn = [Math.sign(b[0]! - a[0]!), Math.sign(b[1]! - a[1]!)];
-    const outd = [Math.sign(c[0]! - b[0]!), Math.sign(c[1]! - b[1]!)];
-    // exterior is on the left of travel: normal (dy, -dx)
-    const nx = (inn[1]! + outd[1]!) / 2;
-    const ny = (-inn[0]! - outd[0]!) / 2;
-    out.push([grid.minX + (b[0]! + nx * 0.5) * grid.cellPt, grid.minY + (b[1]! + ny * 0.5) * grid.cellPt]);
-  }
-  return simplify(out, grid.cellPt * 0.75);
-}
-
-function pointLineDistance(p: number[], a: number[], b: number[]): number {
-  const dx = b[0]! - a[0]!;
-  const dy = b[1]! - a[1]!;
-  const len = Math.hypot(dx, dy);
-  if (len === 0) return Math.hypot(p[0]! - a[0]!, p[1]! - a[1]!);
-  return Math.abs(dy * p[0]! - dx * p[1]! + b[0]! * a[1]! - b[1]! * a[0]!) / len;
-}
-
-/** Runs of near-collinear points (staircases along an angled wall) become one straight edge. */
-export function simplify(points: number[][], eps: number): number[][] {
-  const n = points.length;
-  if (n < 4) return points;
-  const out: number[][] = [points[0]!];
-  let i = 0;
-  while (i < n - 1) {
-    let j = i + 1;
-    while (j + 1 < n) {
-      const a = points[i]!;
-      const b = points[j + 1]!;
-      let within = true;
-      for (let k = i + 1; k <= j; k++) {
-        if (pointLineDistance(points[k]!, a, b) > eps) {
-          within = false;
-          break;
-        }
-      }
-      if (!within) break;
-      j++;
-    }
-    out.push(points[j]!);
-    i = j;
-  }
-  // the closing run: drop the last point when it lies on first→second-last
-  if (out.length >= 4 && pointLineDistance(out[out.length - 1]!, out[out.length - 2]!, out[0]!) <= eps) out.pop();
-  return out;
-}
-
 export function polygonArea(vertices: number[][]): number {
   let doubled = 0;
   for (let i = 0; i < vertices.length; i++) {
@@ -376,7 +256,8 @@ export function roomAt(geo: SheetGeometry, point: [number, number], mmPerPt: num
     }
   }
   if (!fill) return null;
-  const vertices = tidy(traceOutline(grid, fill.cells), grid).map(([x, y]) => [Math.round(x! * 100) / 100, Math.round(y! * 100) / 100]);
+  const toPoint = (i: number, j: number) => [grid.minX + i * grid.cellPt, grid.minY + j * grid.cellPt];
+  const vertices = traceCells(fill.cells, grid.cols, grid.rows, toPoint).map(([x, y]) => [Math.round(x! * 100) / 100, Math.round(y! * 100) / 100]);
   if (vertices.length < 3) return null;
   const toM = mmPerPt / 1000;
   return { vertices, label: labelInside(geo.texts, vertices, point[0], point[1]), areaM2: Math.round(polygonArea(vertices) * toM * toM * 100) / 100 };

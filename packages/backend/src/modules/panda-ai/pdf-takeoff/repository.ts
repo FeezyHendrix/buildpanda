@@ -364,6 +364,12 @@ export function preconRepository(db: Knex) {
         .whereIn("sheet_id", db("precon_sheets").select("id").where({ session_id: sessionId }))
         .orderBy("created_at", "asc"),
     geometriesByRow: (rowId: string) => db<PreconGeometryRow>("precon_geometries").where({ row_id: rowId }),
+    // an engine re-run redraws its own annotations; a person's stay
+    deleteAiGeometriesBySession: (sessionId: string) =>
+      db("precon_geometries")
+        .where({ source: "ai" })
+        .whereIn("sheet_id", db("precon_sheets").select("id").where({ session_id: sessionId }))
+        .delete(),
     replaceRowGeometry: async (rowId: string, geometry: Omit<PreconGeometryRow, "created_at">) => {
       await db("precon_geometries").where({ row_id: rowId, kind: geometry.kind, source: "manual" }).delete();
       await db<PreconGeometryRow>("precon_geometries").insert({

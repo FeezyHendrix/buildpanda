@@ -1,5 +1,6 @@
 import { levelMarks } from "./register.ts";
-import type { MeasuredItem, RegisterSheet, UnitsDecision } from "./types.ts";
+import { wallCentrelines } from "./wall-shapes.ts";
+import type { MeasuredItem, MeasuredShape, RegisterSheet, UnitsDecision } from "./types.ts";
 import type { WallMeasure } from "./walls.ts";
 
 // From measured wall runs to bill lines: storey height from the level marks,
@@ -45,6 +46,9 @@ export interface ThicknessMode {
   thicknessMm: number;
   lengthM: number;
   evidence: number[];
+  // the measured thicknesses this mode stands for: its own, plus the noise
+  // thicknesses folded into it. The runs drawn for the line come from all of them.
+  sources: number[];
 }
 
 /**
@@ -53,7 +57,7 @@ export interface ThicknessMode {
  * folds into the nearest real thickness.
  */
 export function thicknessModes(measure: WallMeasure): ThicknessMode[] {
-  const modes = [...measure.byThickness.entries()].map(([thicknessMm, m]) => ({ thicknessMm, lengthM: m.lengthM, evidence: [...m.evidence] }));
+  const modes = [...measure.byThickness.entries()].map(([thicknessMm, m]) => ({ thicknessMm, lengthM: m.lengthM, evidence: [...m.evidence], sources: [thicknessMm] }));
   const totalLen = modes.reduce((s, m) => s + m.lengthM, 0);
   if (totalLen <= 0) return [];
   const major = modes.filter((m) => m.lengthM / totalLen >= 0.05);
@@ -63,6 +67,7 @@ export function thicknessModes(measure: WallMeasure): ThicknessMode[] {
     const nearest = major.reduce((a, b) => (Math.abs(b.thicknessMm - m.thicknessMm) < Math.abs(a.thicknessMm - m.thicknessMm) ? b : a));
     nearest.lengthM += m.lengthM;
     nearest.evidence.push(...m.evidence);
+    nearest.sources.push(m.thicknessMm);
   }
   return major.sort((a, b) => b.lengthM - a.lengthM);
 }
@@ -86,9 +91,13 @@ export function wallItems(
   if (!modes.length) return items;
   const heightM = height.mm / 1000;
   const openingArea = Math.round(openingAreaM2(openings) * 100) / 100;
+  // one centreline per paired run, in drawing units, so the viewer draws the
+  // wall the line was measured from rather than a handle list
+  const centrelines = wallCentrelines(measure.lines, units.scaleToMm);
   // openings come out of the dominant thickness, where doors and windows live
-  modes.forEach(({ thicknessMm, ...m }, idx) => {
+  modes.forEach(({ thicknessMm, sources, ...m }, idx) => {
     if (m.lengthM < 1) return;
+    const shapes: MeasuredShape[] = centrelines.filter((c) => sources.includes(c.thicknessMm)).map((c) => ({ kind: "linear", vertices: c.vertices }));
     const gross = Math.round(m.lengthM * heightM * 100) / 100;
     const deduct = idx === 0 ? Math.min(gross * 0.6, openingArea) : 0;
     const net = Math.round((gross - deduct) * 100) / 100;
@@ -105,6 +114,7 @@ export function wallItems(
         scaleNote,
       sheetId: sheet.id,
       evidence: [...m.evidence],
+      ...(shapes.length ? { shapes } : {}),
       reason: height.assumed ? "height assumed" : "thickness measured from paired faces",
       crossCheck:
         (measure.bridgedM > 0 ? `${Math.round(measure.bridgedM * 10) / 10} m of centreline runs through openings; ` : "") +

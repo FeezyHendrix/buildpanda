@@ -111,6 +111,7 @@ function fakeRepo(overrides: Partial<Record<keyof PreconRepository, unknown>> = 
     sheetsBySession: async () => [sheet()],
     rowsBySession: async () => [],
     deleteRows: async () => 0,
+    deleteAiGeometriesBySession: async () => 0,
     deleteSheetsBySession: async () => 0,
     updateSessionLayerMap: async () => undefined,
     appendSessionProgress: async () => undefined,

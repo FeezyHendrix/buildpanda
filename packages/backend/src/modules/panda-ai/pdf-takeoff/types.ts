@@ -474,6 +474,13 @@ export interface UpdateLayerMapBody {
 }
 
 // Rows a DWG take-off hands over; the session stores them like any AI draft.
+// A line's annotation on the drawing, in the drawing's own coordinates: the
+// space the DWG engine measures in and the sheet's bounds frame.
+export interface DwgTakeoffShape {
+  kind: "linear" | "area" | "count";
+  vertices: number[][];
+}
+
 export interface DwgTakeoffLine {
   trade: string;
   description: string;
@@ -484,6 +491,7 @@ export interface DwgTakeoffLine {
   // the register sheet the line was measured on, and what checked it
   sheetId?: number;
   evidence?: number[];
+  shapes?: DwgTakeoffShape[];
   reason?: string;
   crossCheck?: string;
   // evidence for another line (an elevation's window count); lands as an unpriced note
