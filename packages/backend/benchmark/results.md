@@ -1,6 +1,6 @@
 # Take-off benchmark
 
-Generated 2026-09-08T13:25:18.865Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
+Generated 2026-09-08T13:28:09.840Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
 
 ## Totals
 
@@ -131,7 +131,7 @@ Generated 2026-09-08T13:25:18.865Z. Tolerances: counts exact, areas ±2 %, lengt
 
 ```json
 {
- "ms": 2540,
+ "ms": 2526,
  "scaleToMm": 1,
  "scaleConfidence": 0.98,
  "walls": [
