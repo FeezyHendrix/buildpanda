@@ -6,6 +6,7 @@ import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals"
 import { useAbility } from "@/contexts/ability-context";
 import type { ConvertInclude } from "@/api/proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveTemplateDialog } from "@/components/molecules/save-template-dialog";
 import { formatDayMonth, formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -18,8 +19,9 @@ export function OverviewTab({ proposalId }: Props) {
   const navigate = useNavigate();
   const ability = useAbility();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   if (!data) return null;
-  const { proposal, events } = data;
+  const { proposal, events, estimate } = data;
 
   function handleConvert(include: ConvertInclude) {
     convert.mutate(include, {
@@ -99,6 +101,26 @@ export function OverviewTab({ proposalId }: Props) {
           <p className="whitespace-pre-line text-sm text-gray-700">{proposal.brief}</p>
         </div>
       )}
+
+      {estimate && ability.can("update", "proposals") ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Reuse this proposal</h3>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Save its payment stages, terms, tax settings and pack text as a template for the next job.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setTemplateOpen(true)}>
+            Save as template
+          </Button>
+          <SaveTemplateDialog
+            open={templateOpen}
+            onOpenChange={setTemplateOpen}
+            proposalId={proposalId}
+            suggestedName={proposal.title}
+          />
+        </div>
+      ) : null}
 
       {events.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">

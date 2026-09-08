@@ -367,3 +367,19 @@ export const proposalPackKeys = {
 export const takeoffLinkKeys = {
   lineStatuses: (sessionId: string) => ["precon", "line-statuses", sessionId] as const,
 };
+
+export const rateLibraryKeys = {
+  all: ["rate-library"] as const,
+  cards: () => [...rateLibraryKeys.all, "cards"] as const,
+  quotes: () => [...rateLibraryKeys.all, "quotes"] as const,
+};
+
+export const complianceDocKeys = {
+  all: ["compliance-docs"] as const,
+  list: () => [...complianceDocKeys.all, "list"] as const,
+};
+
+export const proposalTemplateKeys = {
+  all: ["proposal-templates"] as const,
+  list: () => [...proposalTemplateKeys.all, "list"] as const,
+};
