@@ -23,6 +23,17 @@ export const ESTIMATE_STATUSES = [
 
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number];
 
+// Who supplies what. Decides the take-off scopes offered, whether material
+// lines are priced, what the client receives, and who owns material orders.
+export const JOB_PROFILES = ["full_contract", "labour_only", "supply_only"] as const;
+export type JobProfile = (typeof JOB_PROFILES)[number];
+
+export const PLAN_DISCIPLINES = ["architectural", "structural", "mep", "civil", "survey", "other"] as const;
+export type PlanDiscipline = (typeof PLAN_DISCIPLINES)[number];
+
+export const PLAN_REVISION_STATUSES = ["current", "superseded"] as const;
+export type PlanRevisionStatus = (typeof PLAN_REVISION_STATUSES)[number];
+
 export interface ProposalRow {
   id: string;
   org_id: string;
@@ -38,6 +49,7 @@ export interface ProposalRow {
   status: ProposalStatus;
   currency: string;
   valid_until: string | null;
+  job_profile: JobProfile;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -59,6 +71,7 @@ export interface Proposal {
   status: ProposalStatus;
   currency: string;
   validUntil: string | null;
+  jobProfile: JobProfile;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -117,6 +130,7 @@ export interface EstimateItemRow {
   unit_rate: number | string;
   total: number | string;
   boq_item_id: string | null;
+  takeoff_session_id: string | null;
   sort: number;
 }
 
@@ -130,7 +144,9 @@ export interface EstimateItem {
   unit: string;
   unitRate: number;
   total: number;
+  // boqItemId is the take-off line (precon_boq_rows.id) this item's quantity came from
   boqItemId: string | null;
+  takeoffSessionId: string | null;
   sort: number;
 }
 
@@ -182,6 +198,7 @@ export interface CreateProposalInput {
   currency?: string;
   validUntil?: string;
   leadId?: string;
+  jobProfile?: JobProfile;
 }
 
 export interface CreateEstimateItemInput {
@@ -191,7 +208,8 @@ export interface CreateEstimateItemInput {
   qty: number;
   unit: string;
   unitRate: number;
-  boqItemId?: string;
+  boqItemId?: string | null;
+  takeoffSessionId?: string | null;
   sort?: number;
 }
 
@@ -208,6 +226,11 @@ export interface ProposalPlanRow {
   proposal_id: string;
   file_id: string;
   label: string | null;
+  sheet_code: string | null;
+  discipline: PlanDiscipline | null;
+  revision: string | null;
+  revision_status: PlanRevisionStatus;
+  supersedes_plan_id: string | null;
   uploaded_by: string | null;
   uploaded_at: string;
   sort: number;
@@ -221,6 +244,11 @@ export interface ProposalPlan {
   sizeBytes: number;
   mimeType: string;
   label: string | null;
+  sheetCode: string | null;
+  discipline: PlanDiscipline | null;
+  revision: string | null;
+  revisionStatus: PlanRevisionStatus;
+  supersedesPlanId: string | null;
   uploadedBy: string | null;
   uploadedAt: string;
   sort: number;
@@ -229,6 +257,16 @@ export interface ProposalPlan {
 export interface CreateProposalPlanInput {
   fileId: string;
   label?: string;
+  sheetCode?: string;
+  discipline?: PlanDiscipline;
+  revision?: string;
+}
+
+export interface UpdateProposalPlanInput {
+  label?: string | null;
+  sheetCode?: string | null;
+  discipline?: PlanDiscipline | null;
+  revision?: string | null;
 }
 
 export interface ProposalBoqItemRow {

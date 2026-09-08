@@ -55,6 +55,10 @@ const RESOURCE_LABELS: Record<string, string> = {
   risks: "Risks",
   proposals: "Proposals",
   leads: "Leads",
+  takeoffs: "Take-offs",
+  estimates: "Estimates",
+  rateCards: "Rate library",
+  complianceDocs: "Compliance documents",
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -73,6 +77,11 @@ const ACTION_LABELS: Record<string, string> = {
   post: "Post",
   send: "Send",
   convert: "Convert",
+  measure: "Run Panda AI",
+  verify: "Verify lines",
+  apply: "Apply to estimate",
+  price: "Enter rates",
+  terms: "Set payment terms",
   edit: "Edit",
   export: "Export",
   dispute: "Dispute",

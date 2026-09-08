@@ -6,11 +6,12 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import type { PreconSession } from "@/api/precon";
 import type { TakeoffJob } from "@/api/proposals";
-import { proposalKeys } from "@/hooks/query-keys";
+import { preconKeys } from "@/hooks/query-keys";
 import { useRetryPreconSession } from "@/hooks/use-precon";
 import { formatTimeAgo } from "@/lib/formatters";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import {
   DWG_STATUS_LABEL,
   DWG_STATUS_TONE,
@@ -23,6 +24,8 @@ interface Props {
   proposalId: string;
   sessions: PreconSession[];
   jobs: TakeoffJob[];
+  selectedId?: string | null;
+  onSelect?: (sessionId: string) => void;
   onCreateBlank: () => void;
   creatingBlank: boolean;
 }
@@ -36,11 +39,27 @@ function sessionDetail(session: PreconSession): string {
   return `${describeScope(session.scope)} · started ${formatTimeAgo(session.createdAt)}`;
 }
 
-function SessionRow({ session }: { session: PreconSession }) {
+function SessionRow({
+  session,
+  selected,
+  onSelect,
+}: {
+  session: PreconSession;
+  selected: boolean;
+  onSelect?: (sessionId: string) => void;
+}) {
   const retry = useRetryPreconSession(session.id);
   const running = session.status === "generating" || session.status === "uploading";
   return (
-    <li className="flex items-center justify-between gap-3 px-4 py-3">
+    <li
+      className={cn(
+        "flex items-center justify-between gap-3 px-4 py-3",
+        onSelect && "cursor-pointer hover:bg-gray-50",
+        selected && "bg-primary-50/60",
+      )}
+      aria-selected={selected || undefined}
+      onClick={onSelect ? () => onSelect(session.id) : undefined}
+    >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-medium text-gray-900">{session.title}</p>
@@ -56,16 +75,17 @@ function SessionRow({ session }: { session: PreconSession }) {
             size="sm"
             variant="ghost"
             loading={retry.isPending}
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               retry.mutate(undefined, {
-                onError: (e) => toast(getApiErrorMessage(e, "Could not retry the take-off."), "error"),
-              })
-            }
+                onError: (err) => toast(getApiErrorMessage(err, "Could not retry the take-off."), "error"),
+              });
+            }}
           >
             Retry
           </Button>
         ) : null}
-        <Link to={`/sales/takeoff/${session.id}`}>
+        <Link to={`/sales/takeoff/${session.id}`} onClick={(e) => e.stopPropagation()}>
           <Button size="sm" variant={session.status === "reviewing" ? "primary" : "ghost"}>
             {session.status === "reviewing" ? "Review" : "Open"}
           </Button>
@@ -102,10 +122,10 @@ JobRow.displayName = "JobRow";
 
 type Entry = { kind: "session"; at: string; session: PreconSession } | { kind: "job"; at: string; job: TakeoffJob };
 
-export function TakeoffList({ proposalId, sessions, jobs, onCreateBlank, creatingBlank }: Props) {
+export function TakeoffList({ proposalId, sessions, jobs, selectedId = null, onSelect, onCreateBlank, creatingBlank }: Props) {
   const qc = useQueryClient();
 
-  // A DWG job writes straight into the proposal BoQ, so the BoQ tab is refreshed
+  // A completed DWG job becomes a take-off, so the session list is refreshed
   // once when a job flips to completed — not on every poll while it runs, and
   // not for jobs that were already complete when the tab opened.
   const seenCompleted = useRef<Set<string> | null>(null);
@@ -119,7 +139,7 @@ export function TakeoffList({ proposalId, sessions, jobs, onCreateBlank, creatin
     const fresh = completed.filter((id) => !seen.has(id));
     if (fresh.length === 0) return;
     for (const id of fresh) seen.add(id);
-    void qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
+    void qc.invalidateQueries({ queryKey: [...preconKeys.sessions(), proposalId] });
   }, [jobs, proposalId, qc]);
 
   // fresh array built here, so sorting in place cannot touch the query cache
@@ -135,11 +155,11 @@ export function TakeoffList({ proposalId, sessions, jobs, onCreateBlank, creatin
           <Sparkles className="size-4 text-primary-600" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-gray-900">Panda AI take-offs</p>
-            <p className="text-xs text-gray-500">Measured drawings and hand-priced sheets. Review each one before applying it.</p>
+            <p className="text-xs text-gray-500">Each take-off is a bill of quantities. Verify its lines, then bring them into the estimate.</p>
           </div>
         </div>
         <Button size="sm" variant="secondary" loading={creatingBlank} onClick={onCreateBlank}>
-          + Blank pricing sheet
+          + Blank take-off
         </Button>
       </div>
       {entries.length === 0 ? (
@@ -150,7 +170,12 @@ export function TakeoffList({ proposalId, sessions, jobs, onCreateBlank, creatin
         <ul className="divide-y divide-gray-100">
           {entries.map((entry) =>
             entry.kind === "session" ? (
-              <SessionRow key={entry.session.id} session={entry.session} />
+              <SessionRow
+                key={entry.session.id}
+                session={entry.session}
+                selected={entry.session.id === selectedId}
+                onSelect={onSelect}
+              />
             ) : (
               <JobRow key={entry.job.id} job={entry.job} />
             ),

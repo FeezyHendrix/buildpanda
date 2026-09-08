@@ -1,5 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { proposalsApi, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
+import {
+  proposalsApi,
+  type AddPlanInput,
+  type CreateProposalInput,
+  type ProposalStatus,
+  type UpdatePlanInput,
+} from "@/api/proposals";
 import { proposalKeys } from "./query-keys";
 
 export function usePublicProposal(token: string) {
@@ -61,7 +67,18 @@ export function useProposalPlans(proposalId: string) {
 export function useAddPlan(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { fileId: string; label?: string }) => proposalsApi.addPlan(proposalId, body),
+    mutationFn: (body: AddPlanInput) => proposalsApi.addPlan(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
+    },
+  });
+}
+
+export function useUpdatePlan(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, ...body }: UpdatePlanInput & { planId: string }) =>
+      proposalsApi.updatePlan(proposalId, planId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.plans(proposalId) });
     },
@@ -96,26 +113,6 @@ export function useStartProposalTakeoff(proposalId: string) {
     mutationFn: (planId: string) => proposalsApi.startAutomatedTakeoff(proposalId, planId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.takeoffs(proposalId) });
-      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
-    },
-  });
-}
-
-export function useProposalBoq(proposalId: string) {
-  return useQuery({
-    queryKey: proposalKeys.boq(proposalId),
-    queryFn: () => proposalsApi.listBoq(proposalId),
-    enabled: !!proposalId,
-  });
-}
-
-export function useReplaceBoq(proposalId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (items: Array<{ groupLabel: string; description: string; qty: number; unit: string; sort: number }>) =>
-      proposalsApi.replaceBoq(proposalId, items),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: proposalKeys.boq(proposalId) });
     },
   });
 }
@@ -125,30 +122,6 @@ export function useProposals(filters?: { status?: string; limit?: number; offset
     queryKey: proposalKeys.list(filters),
     queryFn: () => proposalsApi.list(filters),
     placeholderData: keepPreviousData,
-  });
-}
-
-// Seeds the estimate from the BoQ rows. The estimate lives on the workspace
-// query, so that is what gets invalidated — the Estimate tab must not show
-// yesterday's revision after this runs.
-export function usePriceBoqIntoEstimate(proposalId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      estimateId,
-      items,
-    }: {
-      estimateId: string;
-      items: Array<{ groupLabel: string; description: string; qty: number; unit: string; sort: number }>;
-    }) =>
-      proposalsApi.replaceItems(
-        proposalId,
-        estimateId,
-        items.map((item) => ({ ...item, unitRate: 0, boqItemId: null })),
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
-    },
   });
 }
 
