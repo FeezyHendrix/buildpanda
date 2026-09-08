@@ -503,8 +503,16 @@ export interface Segment {
   x2: number;
   y2: number;
   len: number;
+  // pen width in page points, already scaled by the transform it was drawn under
   width: number;
   color: string;
+  // painted with a fill operator (a hatch or solid outline) rather than stroked
+  fill?: boolean;
+  // optional-content group the path sat in: the CAD layer that survived export
+  layer?: string | null;
+  // subpath id and whether that subpath was closed, so outlines can be rebuilt
+  path?: number;
+  closed?: boolean;
 }
 
 export interface Curve {
