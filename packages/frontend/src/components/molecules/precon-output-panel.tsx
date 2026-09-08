@@ -179,8 +179,14 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
         </div>
         <div className="space-y-2">
           <Button className="w-full" onClick={() => window.open(preconApi.exportUrl(session.id), "_blank")}>
-            {areas ? "Download areas (Excel)" : "Download BOQ (Excel)"}
+            {areas ? "Download areas (Excel)" : "Export Excel"}
           </Button>
+          {areas ? null : (
+            <p className="text-[11px] text-gray-500">
+              Live formulas, not pasted figures: net = gross − deductions × typical, amount = net × rate, subtotals and the grand total as SUM.
+              Change a rate in the workbook and the bill re-adds itself. A Measurements sheet lists every line's sheet, tool, gross and basis.
+            </p>
+          )}
           <Button variant="secondary" className="w-full" loading={exportingCsv} onClick={() => void downloadCsv()}>
             <Download className="mr-1.5 size-3.5" aria-hidden="true" />
             Export CSV
