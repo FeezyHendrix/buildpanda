@@ -17,6 +17,7 @@ import { MessagesTab } from "./proposal-tabs/messages-tab";
 import { OverviewTab } from "./proposal-tabs/overview-tab";
 import { PackTab } from "./proposal-tabs/pack-tab";
 import { TakeoffsTab } from "./proposal-tabs/takeoffs-tab";
+import { SafetyTab } from "./proposal-tabs/safety-tab";
 import { JOB_PROFILE_META } from "@/lib/precon-meta";
 
 // The take-off is the bill of quantities, so there is no separate BoQ grid.
@@ -27,6 +28,7 @@ const TABS = [
   { id: "takeoffs", label: "Take-offs" },
   { id: "estimate", label: "Estimate" },
   { id: "pack", label: "Pack" },
+  { id: "safety", label: "Safety" },
   { id: "activity", label: "Activity" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -141,6 +143,7 @@ export default function ProposalWorkspace() {
             </section>
           </div>
         ) : null}
+        {tab === "safety" ? <SafetyTab proposalId={id} /> : null}
       </div>
     </div>
   );

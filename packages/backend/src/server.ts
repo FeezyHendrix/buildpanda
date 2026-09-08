@@ -31,6 +31,7 @@ import drawingMarkupRoutes from "./modules/drawing-markup/routes.ts";
 import inspectionRoutes from "./modules/inspections/routes.ts";
 import financeRoutes from "./modules/finances/routes.ts";
 import riskRoutes from "./modules/risks/routes.ts";
+import methodStatementRoutes from "./modules/method-statements/routes.ts";
 import notificationRoutes from "./modules/notifications/routes.ts";
 import searchRoutes from "./modules/search/routes.ts";
 import fileRoutes from "./modules/files/routes.ts";
@@ -173,6 +174,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(inspectionRoutes);
   await app.register(financeRoutes);
   await app.register(riskRoutes);
+  await app.register(methodStatementRoutes);
   await app.register(notificationRoutes);
   await app.register(searchRoutes);
   await app.register(fileRoutes);
