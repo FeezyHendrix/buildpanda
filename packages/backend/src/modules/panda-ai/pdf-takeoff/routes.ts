@@ -14,9 +14,11 @@ import {
   type PreconGenerateJobData,
   type PreconProgrammeJobData,
 } from "./job.ts";
-import { GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import { FULL_TAKEOFF_SCOPE, GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_MODES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import { TAKEOFF_QUEUE, type TakeoffJobData } from "../dwg-takeoff/job.ts";
 import applyToEstimateRoutes from "./apply-to-estimate-routes.ts";
 import { reviewRoutes } from "./review-routes.ts";
+import { manualRoutes } from "./manual-routes.ts";
 import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
@@ -229,6 +231,7 @@ const fromPlanBody = {
   properties: {
     proposalId: { type: "string", minLength: 1 },
     planId: { type: "string", minLength: 1 },
+    mode: { type: "string", enum: TAKEOFF_MODES },
     scope: {
       type: "object",
       required: ["kind", "elements"],
@@ -317,6 +320,26 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
       }
       const file = await filesRepository(fastify.db).findById(plan.fileId);
       if (!file) throw new NotFoundError("Plan file");
+      // Measured by hand: the sheets are rendered (PDF pages) or registered
+      // (DWG drawings) by the same jobs, in sheets-only mode; no engine lines.
+      if (request.body.mode === "manual") {
+        const manual = await service.createManualSession(
+          orgId,
+          user.id,
+          request.body.proposalId,
+          plan.id,
+          { fileName: file.file_name, storagePath: file.storage_path },
+          request.body.scope ?? FULL_TAKEOFF_SCOPE,
+        );
+        if (/\.dwg$/i.test(file.file_name)) {
+          const dwgJob: TakeoffJobData = { sessionId: manual.id, orgId, sheetsOnly: true };
+          await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", dwgJob);
+        } else {
+          const pdfJob: PreconGenerateJobData = { sessionId: manual.id, orgId, sheetsOnly: true };
+          await fastify.queue.enqueue(PRECON_GENERATE_QUEUE, "generate", pdfJob);
+        }
+        return reply.status(202).send(manual);
+      }
       const session = await service.createSession(
         orgId,
         plan.fileName,
@@ -347,6 +370,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   await fastify.register(reviewRoutes, { service });
+  await fastify.register(manualRoutes, { service });
 
   fastify.post<{ Body: CreateBlankSessionBody }>(
     "/precon/sessions/blank",
