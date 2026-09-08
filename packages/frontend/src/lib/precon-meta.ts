@@ -305,6 +305,7 @@ export const PRECON_TOOLS = [
   "find_symbol",
   "overlay",
   "legend",
+  "comment",
 ] as const;
 export type PreconTool = (typeof PRECON_TOOLS)[number];
 
@@ -344,6 +345,7 @@ export const PRECON_TOOL_META: readonly PreconToolMeta[] = [
   { key: "find_symbol", label: "Find symbol", shortcut: "F", unit: "nr", group: "check", hint: "Find every match of a symbol on the sheet", deferred: "M3" },
   { key: "overlay", label: "Overlay", shortcut: "O", unit: null, group: "check", hint: "Previous drawing revision under this one", deferred: "M4" },
   { key: "legend", label: "Legend", shortcut: "G", unit: null, group: "check", hint: "Element groups and totals on this sheet" },
+  { key: "comment", label: "Comment", shortcut: "N", unit: null, group: "check", hint: "Pin a comment on the sheet, on the selected line if there is one" },
 ];
 
 export const PRECON_TOOL_BY_KEY: Record<PreconTool, PreconToolMeta> = Object.fromEntries(

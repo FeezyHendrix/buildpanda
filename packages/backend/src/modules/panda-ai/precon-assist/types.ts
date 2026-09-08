@@ -35,7 +35,11 @@ export const MEASUREMENT_CREATE_FIELDS = [
 
 // The viewer's tools, so a prompt can drive them: "switch to the area tool
 // on sheet 2" is a viewer change the client executes after apply.
-export const VIEWER_TOOLS = ["select", "area", "linear", "count", "deduct", "scale"] as const;
+// mirrors PRECON_TOOLS in the frontend's lib/precon-meta.ts
+export const VIEWER_TOOLS = [
+  "select", "magnifier", "length", "linear", "area", "room_fill", "count", "volume", "wall_area",
+  "deduct", "typical", "scale", "find_symbol", "overlay", "legend", "comment",
+] as const;
 export type ViewerTool = (typeof VIEWER_TOOLS)[number];
 export const VIEWER_FIELDS = ["tool", "sheetId", "zoom"] as const;
 export const VIEWER_ZOOMS = ["in", "out", "fit"] as const;

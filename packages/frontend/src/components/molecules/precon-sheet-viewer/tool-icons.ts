@@ -5,6 +5,7 @@ import {
   Layers2,
   ListTree,
   MapPin,
+  MessageSquare,
   MousePointer2,
   PaintBucket,
   Pentagon,
@@ -36,4 +37,5 @@ export const TOOL_ICONS: Record<PreconTool, LucideIcon> = {
   find_symbol: ScanSearch,
   overlay: Layers,
   legend: ListTree,
+  comment: MessageSquare,
 };
