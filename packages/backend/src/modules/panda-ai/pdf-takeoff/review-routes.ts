@@ -34,6 +34,22 @@ const updateSheetBody = {
     title: { type: ["string", "null"], maxLength: 200 },
     scaleMmPerPt: { type: ["number", "null"], exclusiveMinimum: 0 },
     dimUnit: { type: ["string", "null"], enum: [...DIM_UNITS, null] },
+    // a details sheet's regions at their own scale; rect in sheet points
+    viewports: {
+      type: "array",
+      maxItems: 50,
+      items: {
+        type: "object",
+        required: ["label", "rect", "scaleMmPerPt"],
+        additionalProperties: false,
+        properties: {
+          id: { type: "string", minLength: 1, maxLength: 80 },
+          label: { type: "string", minLength: 1, maxLength: 120 },
+          rect: { type: "array", minItems: 4, maxItems: 4, items: { type: "number" } },
+          scaleMmPerPt: { type: "number", exclusiveMinimum: 0 },
+        },
+      },
+    },
   },
 } as const;
 

@@ -17,6 +17,7 @@ function row(overrides: Partial<PreconBoqRowDto>): PreconBoqRowDto {
     description: "225mm blockwork",
     unit: "m2",
     qtyGross: 50,
+    typical: 1,
     deductions: [],
     qty: 46.2,
     rate: null,
