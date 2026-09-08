@@ -28,9 +28,9 @@ function inWindow(e: DwgEntity, bounds: SheetBounds | null): boolean {
   return ext.maxX >= bounds.minX && ext.minX <= bounds.maxX && ext.maxY >= bounds.minY && ext.minY <= bounds.maxY;
 }
 
-const seg = (a: number[], b: number[]): GeoSegment => ({ x1: a[0]!, y1: a[1]!, x2: b[0]!, y2: b[1]!, width: 0 });
+const seg = (a: number[], b: number[], element?: string): GeoSegment => ({ x1: a[0]!, y1: a[1]!, x2: b[0]!, y2: b[1]!, width: 0, ...(element ? { element } : {}) });
 
-function chords(center: number[], radius: number, start: number, end: number, n: number, out: GeoSegment[]): number[][] {
+function chords(center: number[], radius: number, start: number, end: number, n: number, out: GeoSegment[], element?: string): number[][] {
   let sweep = end - start;
   if (sweep <= 0) sweep += Math.PI * 2;
   const pts: number[][] = [];
@@ -39,7 +39,7 @@ function chords(center: number[], radius: number, start: number, end: number, n:
   for (let k = 1; k <= n; k++) {
     const a = start + (sweep * k) / n;
     const next = [center[0]! + radius * Math.cos(a), center[1]! + radius * Math.sin(a)];
-    out.push(seg(prev, next));
+    out.push(seg(prev, next, element));
     pts.push(next);
     prev = next;
   }
@@ -47,7 +47,7 @@ function chords(center: number[], radius: number, start: number, end: number, n:
 }
 
 /** Everything drawable inside the sheet's window, as segments, outlines, texts and inserts. */
-export function sheetPrimitives(doc: DwgDoc, bounds: SheetBounds | null): SheetPrimitives {
+export function sheetPrimitives(doc: DwgDoc, bounds: SheetBounds | null, elementOf?: (layer: string) => string): SheetPrimitives {
   const out: SheetPrimitives = { segments: [], texts: [], inserts: [], outlines: [] };
   // block references first, from the raw document: the expansion replaces
   // nothing, but the INSERT is the object a symbol search names
@@ -62,29 +62,30 @@ export function sheetPrimitives(doc: DwgDoc, bounds: SheetBounds | null): SheetP
   const expanded = expandInserts(doc).doc;
   for (const e of expanded.entities) {
     if (!isModelSpace(expanded, e) || !inWindow(e, bounds)) continue;
+    const element = elementOf ? elementOf(expanded.layerName(e)) : undefined;
     switch (e.entity) {
       case "LINE":
-        if (e.start && e.end) out.segments.push(seg(e.start, e.end));
+        if (e.start && e.end) out.segments.push(seg(e.start, e.end, element));
         break;
       case "LWPOLYLINE":
       case "POLYLINE_2D": {
         const pts = e.points;
         if (!pts || pts.length < 2) break;
-        for (let k = 1; k < pts.length; k++) out.segments.push(seg(pts[k - 1]!, pts[k]!));
+        for (let k = 1; k < pts.length; k++) out.segments.push(seg(pts[k - 1]!, pts[k]!, element));
         if (((e.flag ?? 0) & CLOSED_FLAG) !== 0) {
-          out.segments.push(seg(pts[pts.length - 1]!, pts[0]!));
+          out.segments.push(seg(pts[pts.length - 1]!, pts[0]!, element));
           if (pts.length >= 3) out.outlines.push({ vertices: pts.map((p) => [p[0]!, p[1]!]) });
         }
         break;
       }
       case "ARC":
         if (e.center && e.radius !== undefined && e.start_angle !== undefined && e.end_angle !== undefined) {
-          chords(e.center, e.radius, e.start_angle, e.end_angle, ARC_CHORDS, out.segments);
+          chords(e.center, e.radius, e.start_angle, e.end_angle, ARC_CHORDS, out.segments, element);
         }
         break;
       case "CIRCLE":
         if (e.center && e.radius !== undefined) {
-          const pts = chords(e.center, e.radius, 0, Math.PI * 2, CIRCLE_CHORDS, out.segments);
+          const pts = chords(e.center, e.radius, 0, Math.PI * 2, CIRCLE_CHORDS, out.segments, element);
           out.outlines.push({ vertices: pts.slice(0, CIRCLE_CHORDS) });
         }
         break;

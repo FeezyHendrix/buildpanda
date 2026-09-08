@@ -1,10 +1,12 @@
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { createHash } from "node:crypto";
 import { AppError, NotFoundError, ValidationError } from "../../../lib/errors.ts";
 import { parseDwgToJson } from "../dwg-takeoff/dwg.ts";
 import { withTempDwg } from "../dwg-takeoff/job.ts";
 import { sheetPrimitives } from "../dwg-takeoff/sheet-primitives.ts";
+import { elementForLayerName, proposeLayerMap } from "../dwg-takeoff/taxonomy.ts";
 import { withTempFile } from "./engine/measure-sheet.ts";
 import { extractSheet } from "./engine/pdf-extract.ts";
 import { wallPenThreshold } from "./engine/measure.ts";
@@ -22,13 +24,17 @@ import type { PreconSheetRow, RoomAtBody, RoomAtResult, Segment, SheetGeometry, 
 
 const CACHE_DIR = path.join(os.tmpdir(), "precon-geo");
 
-export type GeometryLoader = (sheet: PreconSheetRow, pageInFile: number) => Promise<SheetGeometry>;
+export type GeometryLoader = (sheet: PreconSheetRow, pageInFile: number, layerMap?: Record<string, string> | null) => Promise<SheetGeometry>;
 
 const NOT_VECTOR = "Not a vector drawing";
 
-async function readDwg(sheet: PreconSheetRow): Promise<SheetGeometry> {
+async function readDwg(sheet: PreconSheetRow, layerMap: Record<string, string> | null): Promise<SheetGeometry> {
   const doc = await withTempDwg(sheet.storage_path, (file) => parseDwgToJson(file));
-  return { kind: "dwg", ...sheetPrimitives(doc, sheet.bounds ?? null), bounds: sheet.bounds ?? null };
+  // the reviewer's layer map wins; otherwise the engine's own reading of the
+  // layers, so room fill sees walls the way the take-off did
+  const proposed = layerMap && Object.keys(layerMap).length ? layerMap : proposeLayerMap(doc, sheet.scale_mm_per_pt ?? 1).map;
+  const elementOf = (layer: string) => proposed[layer] ?? elementForLayerName(layer);
+  return { kind: "dwg", ...sheetPrimitives(doc, sheet.bounds ?? null, elementOf), bounds: sheet.bounds ?? null };
 }
 
 async function readPdfPage(sheet: PreconSheetRow, pageInFile: number): Promise<SheetGeometry> {
@@ -48,11 +54,13 @@ async function readPdfPage(sheet: PreconSheetRow, pageInFile: number): Promise<S
 }
 
 /** The sheet's primitives, from the cache when it has been read before. Pictures have none. */
-export const loadSheetGeometry: GeometryLoader = async (sheet, pageInFile) => {
+export const loadSheetGeometry: GeometryLoader = async (sheet, pageInFile, layerMap = null) => {
   if (PICTURE_PLAN.test(sheet.file_name)) throw new ValidationError(NOT_VECTOR);
   const isDwg = /\.dwg$/i.test(sheet.file_name);
   if (!isDwg && !/\.pdf$/i.test(sheet.file_name)) throw new ValidationError(NOT_VECTOR);
-  const cached = path.join(CACHE_DIR, `${sheet.id}.json`);
+  // a corrected layer map changes which lines are walls, so it is part of the key
+  const mapKey = isDwg && layerMap ? `-${createHash("sha1").update(JSON.stringify(layerMap)).digest("hex").slice(0, 8)}` : "";
+  const cached = path.join(CACHE_DIR, `${sheet.id}${mapKey}.json`);
   const hit = await fs.readFile(cached, "utf8").catch(() => null);
   if (hit !== null) {
     try {
@@ -61,7 +69,7 @@ export const loadSheetGeometry: GeometryLoader = async (sheet, pageInFile) => {
       // a half-written cache file is re-read from the source below
     }
   }
-  const geometry = isDwg ? await readDwg(sheet) : await readPdfPage(sheet, pageInFile);
+  const geometry = isDwg ? await readDwg(sheet, layerMap) : await readPdfPage(sheet, pageInFile);
   await fs.mkdir(CACHE_DIR, { recursive: true }).catch(() => undefined);
   await fs.writeFile(cached, JSON.stringify(geometry), "utf8").catch(() => undefined);
   return geometry;
@@ -79,7 +87,7 @@ function wallPen(geo: SheetGeometry): number {
   return wallPenThreshold(segments);
 }
 
-type GeometryRepo = Pick<PreconRepository, "sheetById" | "sheetsBySession">;
+type GeometryRepo = Pick<PreconRepository, "sheetById" | "sheetsBySession" | "sessionById">;
 
 export function sheetGeometryService(repo: GeometryRepo, load: GeometryLoader = loadSheetGeometry) {
   async function geometryFor(sheetId: string): Promise<{ sheet: PreconSheetRow; geo: SheetGeometry }> {
@@ -90,7 +98,8 @@ export function sheetGeometryService(repo: GeometryRepo, load: GeometryLoader = 
       .filter((s) => s.storage_path === sheet.storage_path)
       .sort((a, b) => a.page_number - b.page_number);
     const pageInFile = Math.max(1, siblings.findIndex((s) => s.id === sheet.id) + 1);
-    return { sheet, geo: await load(sheet, pageInFile) };
+    const session = await repo.sessionById(sheet.session_id);
+    return { sheet, geo: await load(sheet, pageInFile, session?.layer_map ?? null) };
   }
 
   return {

@@ -853,6 +853,8 @@ export interface GeoSegment {
   y2: number;
   // pen width in sheet points (0 on a DWG, where the pen says nothing)
   width: number;
+  // on a DWG: what the layer holds (walls, doors, furniture…), from the layer map
+  element?: string;
 }
 
 export interface GeoText {
