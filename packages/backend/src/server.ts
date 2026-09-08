@@ -74,6 +74,7 @@ import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import dataCommitmentRoutes from "./modules/data-commitment/routes.ts";
 import proposalRoutes from "./modules/proposals/routes.ts";
 import publicProposalRoutes from "./modules/proposals/public-routes.ts";
+import proposalPackRoutes from "./modules/proposals/pack-routes.ts";
 import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
@@ -211,6 +212,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(dataCommitmentRoutes);
   await app.register(proposalRoutes);
   await app.register(publicProposalRoutes);
+  await app.register(proposalPackRoutes);
   await app.register(fileSharesRoutes);
   await app.register(publicFileShareRoutes);
   await app.register(taskRoutes);

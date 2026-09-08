@@ -73,6 +73,9 @@ export interface EstimateItem {
   sort: number;
 }
 
+export const SCHEDULE_KINDS = ["advance", "stage"] as const;
+export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
+
 export interface PaymentScheduleItem {
   id: string;
   estimateId: string;
@@ -80,9 +83,31 @@ export interface PaymentScheduleItem {
   percent: number;
   description: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programmeTaskId: string | null;
 }
 
-export interface Estimate {
+export const RETENTION_MODES = ["none", "cash", "bond"] as const;
+export type RetentionMode = (typeof RETENTION_MODES)[number];
+export const CLIENT_VISIBLE_DETAIL = ["groups", "lines"] as const;
+export type ClientVisibleDetail = (typeof CLIENT_VISIBLE_DETAIL)[number];
+export const WHT_RATES = [0, 2, 5] as const;
+
+export interface EstimateTerms {
+  retentionPct: number | null;
+  retentionMode: RetentionMode | null;
+  advancePct: number | null;
+  whtPct: number | null;
+  paymentTermsDays: number | null;
+  defectsLiabilityDays: number | null;
+  clientVisibleDetail: ClientVisibleDetail;
+}
+
+export interface UpdateEstimateTermsInput extends Partial<EstimateTerms> {
+  validUntil?: string | null;
+}
+
+export interface Estimate extends EstimateTerms {
   id: string;
   proposalId: string;
   revisionNo: number;
@@ -99,11 +124,59 @@ export interface Estimate {
   sentAt: string | null;
   acceptedAt: string | null;
   acceptedByName: string | null;
+  acceptedIp: string | null;
+  acceptedUserAgent: string | null;
+  acceptedPdfHash: string | null;
+  snapshotFileId: string | null;
+  responseMessage: string | null;
   createdAt: string;
   updatedAt: string;
   items: EstimateItem[];
   schedule: PaymentScheduleItem[];
 }
+
+export const PACK_SECTION_KINDS = [
+  "scope",
+  "exclusions",
+  "assumptions",
+  "provisional_sums",
+  "warranties",
+  "terms",
+  "site_survey",
+] as const;
+export type PackSectionKind = (typeof PACK_SECTION_KINDS)[number];
+export type PackOrigin = "ai" | "manual" | "prompt" | "template";
+
+export interface PackSection {
+  id: string;
+  proposalId: string;
+  estimateId: string | null;
+  kind: PackSectionKind;
+  bodyHtml: string;
+  sort: number;
+  origin: PackOrigin;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface PublicCompany {
+  name: string;
+  logo: string | null;
+  phone: string | null;
+  address: string | null;
+  email: string | null;
+  website: string | null;
+  insuranceReference: string | null;
+}
+
+export interface BuyingListLine {
+  description: string;
+  qty: number;
+  unit: string;
+  section: string | null;
+}
+
+export type ClientResponse = "accept" | "decline" | "change_requested";
 
 export interface ProposalEvent {
   id: string;
@@ -169,8 +242,12 @@ export interface ProposalComment {
 }
 
 export interface PublicProposalView {
-  proposal: Proposal;
+  proposal: Proposal & { jobProfile: string };
   estimate: Estimate;
+  company: PublicCompany;
+  sections: PackSection[];
+  buyingList: BuyingListLine[];
+  viewCount: number;
 }
 
 export const proposalsApi = {
@@ -196,10 +273,28 @@ export const proposalsApi = {
       .put<EstimateItem[]>(`/proposals/${proposalId}/estimates/${estimateId}/items`, items)
       .then((r) => r.data),
 
-  replaceSchedule: (proposalId: string, estimateId: string, items: Omit<PaymentScheduleItem, "id" | "estimateId">[]) =>
+  replaceSchedule: (
+    proposalId: string,
+    estimateId: string,
+    items: Array<Omit<PaymentScheduleItem, "id" | "estimateId" | "description"> & { description?: string }>,
+  ) =>
     api
       .put<PaymentScheduleItem[]>(`/proposals/${proposalId}/estimates/${estimateId}/payment-schedule`, items)
       .then((r) => r.data),
+
+  patchEstimateTerms: (proposalId: string, estimateId: string, body: UpdateEstimateTermsInput) =>
+    api.patch<Estimate>(`/proposals/${proposalId}/estimates/${estimateId}/terms`, body).then((r) => r.data),
+
+  listPack: (proposalId: string) => api.get<PackSection[]>(`/proposals/${proposalId}/pack`).then((r) => r.data),
+
+  upsertPackSection: (proposalId: string, body: { kind: PackSectionKind; bodyHtml: string; origin?: PackOrigin }) =>
+    api.put<PackSection>(`/proposals/${proposalId}/pack`, body).then((r) => r.data),
+
+  deletePackSection: (proposalId: string, kind: PackSectionKind) =>
+    api.delete(`/proposals/${proposalId}/pack/${kind}`).then((r) => r.data),
+
+  draftPack: (proposalId: string, kinds?: PackSectionKind[]) =>
+    api.post<PackSection[]>(`/proposals/${proposalId}/pack/draft`, { kinds }).then((r) => r.data),
 
   patchEstimate: (
     proposalId: string,
@@ -212,7 +307,7 @@ export const proposalsApi = {
 
   sendEstimate: (proposalId: string, estimateId: string) =>
     api
-      .post<{ shareUrl: string; token: string }>(
+      .post<{ shareUrl: string; token: string; snapshotFileId: string; pdfHash: string }>(
         `/proposals/${proposalId}/estimates/${estimateId}/send`,
       )
       .then((r) => r.data),
@@ -256,9 +351,9 @@ export const proposalsApi = {
   getPublic: (token: string) =>
     api.get<PublicProposalView>(`/proposals/public/${token}`).then((r) => r.data),
 
-  respond: (token: string, action: "accept" | "decline" | "change_requested", name?: string) =>
+  respond: (token: string, body: { action: ClientResponse; name?: string; message?: string }) =>
     api
-      .post<{ ok: boolean; action: string }>(`/proposals/public/${token}/respond`, { action, name })
+      .post<{ ok: boolean; action: string; acceptedAt: string | null }>(`/proposals/public/${token}/respond`, body)
       .then((r) => r.data),
 };
 

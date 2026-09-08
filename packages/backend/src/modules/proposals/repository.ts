@@ -81,6 +81,18 @@ function toEstimate(row: EstimateRow): Estimate {
     sentAt: row.sent_at,
     acceptedAt: row.accepted_at,
     acceptedByName: row.accepted_by_name,
+    retentionPct: row.retention_pct === null || row.retention_pct === undefined ? null : Number(row.retention_pct),
+    retentionMode: row.retention_mode ?? null,
+    advancePct: row.advance_pct === null || row.advance_pct === undefined ? null : Number(row.advance_pct),
+    whtPct: row.wht_pct === null || row.wht_pct === undefined ? null : Number(row.wht_pct),
+    paymentTermsDays: row.payment_terms_days ?? null,
+    defectsLiabilityDays: row.defects_liability_days ?? null,
+    clientVisibleDetail: row.client_visible_detail ?? "lines",
+    acceptedIp: row.accepted_ip ?? null,
+    acceptedUserAgent: row.accepted_user_agent ?? null,
+    acceptedPdfHash: row.accepted_pdf_hash ?? null,
+    snapshotFileId: row.snapshot_file_id ?? null,
+    responseMessage: row.response_message ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -111,6 +123,8 @@ function toScheduleItem(row: PaymentScheduleRow): PaymentScheduleItem {
     description: row.description,
     descriptionHtml: row.description_html,
     sort: row.sort,
+    kind: row.kind ?? "stage",
+    programmeTaskId: row.programme_task_id ?? null,
   };
 }
 
@@ -470,6 +484,8 @@ export function proposalsRepository(db: Knex) {
             description: item.description ?? null,
             description_html: item.descriptionHtml ?? null,
             sort: item.sort ?? i,
+            kind: item.kind ?? "stage",
+            programme_task_id: item.programmeTaskId ?? null,
           })),
         );
       }

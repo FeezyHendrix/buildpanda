@@ -353,3 +353,7 @@ export const preconKeys = {
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };
+
+export const proposalPackKeys = {
+  all: (proposalId: string) => ["proposals", "detail", proposalId, "pack"] as const,
+};
