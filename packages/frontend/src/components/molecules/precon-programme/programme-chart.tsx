@@ -11,6 +11,7 @@ import { toast } from "@/lib/toast";
 import {
   GANTT_LINK_TO_DEPENDENCY,
   buildProgrammeGantt,
+  type ProgrammeGanttTask,
   parseLinkId,
   workingDaysBetween,
 } from "./programme-gantt-data";
@@ -44,6 +45,21 @@ interface Props {
 }
 
 const sameDay = (a: Date, b: Date) => a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10);
+
+// The grid beside the bars shows the same working days the table and the
+// scheduler use; the library's own duration column counts calendar days.
+const DurationCell = ({ row }: { row: unknown }) => {
+  const task = row as ProgrammeGanttTask;
+  return <span>{task.isMilestone ? "—" : `${task.durationDays} d`}</span>;
+};
+DurationCell.displayName = "DurationCell";
+
+const COLUMNS = [
+  { id: "text", header: "Task", flexgrow: 1 },
+  { id: "start", header: "Start", align: "center" as const, width: 110 },
+  { id: "duration", header: "Duration", align: "center" as const, width: 100, cell: DurationCell },
+  { id: "action", header: "", width: 50, align: "center" as const },
+];
 
 export function ProgrammeChart({ sessionId, programme, editable, onSelectTask }: Props) {
   const qc = useQueryClient();
@@ -137,6 +153,7 @@ export function ProgrammeChart({ sessionId, programme, editable, onSelectTask }:
         <Gantt
           tasks={tasks}
           links={links}
+          columns={COLUMNS}
           scales={SCALES}
           start={rangeStart}
           end={rangeEnd}
