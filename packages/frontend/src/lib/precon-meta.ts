@@ -139,8 +139,13 @@ export function describeScope(scope: TakeoffScope): string {
   return TAKEOFF_SCOPE_META[scope.kind].noun;
 }
 
+/** Panda AI reads these. */
 export const MEASURABLE_PLAN = /\.(pdf|dwg)$/i;
 export const PDF_PLAN = /\.pdf$/i;
+/** A photo or scan: no engine, but a person can calibrate it and measure by hand. */
+export const PICTURE_PLAN = /\.(png|jpe?g|webp)$/i;
+/** Anything a person can open on the sheet viewer and measure. */
+export const HAND_MEASURABLE_PLAN = /\.(pdf|dwg|png|jpe?g|webp)$/i;
 
 const STRUCTURAL_SYSTEM_LABEL: Record<string, string> = {
   "reinforced-concrete-frame": "RC frame",

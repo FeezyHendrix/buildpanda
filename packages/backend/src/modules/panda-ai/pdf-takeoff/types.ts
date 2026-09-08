@@ -720,6 +720,11 @@ export interface CreateProgrammeTaskBody {
 
 // ── Manual take-off (measured by hand) ───────────────────────────────────────
 
+// A photo or scan of a drawing: Panda AI cannot measure it, a person can,
+// after calibrating the scale from two points.
+export const PICTURE_PLAN = /\.(png|jpe?g|webp)$/i;
+export const PICTURE_CONTENT_TYPE: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+
 export const MEASURE_TOOLS = ["length", "polyline", "area", "count", "volume", "wall_area"] as const;
 export type MeasureTool = (typeof MEASURE_TOOLS)[number];
 

@@ -2,6 +2,7 @@ import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
+import { PICTURE_PLAN } from "./types.ts";
 import { buildTakeoffCsv, csvFileName } from "./export-csv.ts";
 import { applyTypical, manualBasis, measureVertices, normaliseTypical, quantityFromStated } from "./measurements.ts";
 import type {
@@ -130,17 +131,25 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
       scope: TakeoffScope,
     ): Promise<PreconSession> {
       const isDwg = /\.dwg$/i.test(file.fileName);
+      // a picture needs no rendering job: it is the sheet, ready now, unscaled
+      const isPicture = PICTURE_PLAN.test(file.fileName);
       const lineage = await nextRevision(repo, planId, scope, "manual");
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
         project_id: null,
         proposal_id: proposalId,
-        status: "generating",
+        status: isPicture ? "reviewing" : "generating",
         title: file.fileName,
         error: null,
-        phase: "reading",
-        progress_log: [{ at: new Date().toISOString(), phase: "reading", message: `Preparing ${file.fileName} for measuring by hand` }],
+        phase: isPicture ? null : "reading",
+        progress_log: [
+          {
+            at: new Date().toISOString(),
+            phase: "reading",
+            message: isPicture ? `${file.fileName} is a picture: set its scale from two known points, then measure` : `Preparing ${file.fileName} for measuring by hand`,
+          },
+        ],
         scope: db_json(scope),
         plan_id: planId,
         takeoff_kind: "manual",
@@ -156,10 +165,10 @@ export function manualService({ repo, audit, publish, toSession, toRow, toGeomet
           file_name: file.fileName,
           storage_path: file.storagePath,
           page_number: 1,
-          code: isDwg ? "DWG-01" : null,
-          title: isDwg ? file.fileName : null,
+          code: isDwg ? "DWG-01" : isPicture ? "IMG-01" : null,
+          title: isDwg || isPicture ? file.fileName : null,
           kind: isDwg ? "floor-plan" : "unknown",
-          status: "pending",
+          status: isPicture ? "measured" : "pending",
           scale_mm_per_pt: null,
           scale_confidence: null,
           dim_unit: null,

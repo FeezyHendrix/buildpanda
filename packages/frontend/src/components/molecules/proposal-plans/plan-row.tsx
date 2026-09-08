@@ -6,7 +6,7 @@ import type { ProposalPlan } from "@/api/proposals";
 import type { PreconSession } from "@/api/precon";
 import { filesApi } from "@/api/files";
 import { formatShortDate } from "@/lib/formatters";
-import { MEASURABLE_PLAN, PDF_PLAN, PLAN_DISCIPLINE_LABEL, describeScope } from "@/lib/precon-meta";
+import { HAND_MEASURABLE_PLAN, MEASURABLE_PLAN, PDF_PLAN, PLAN_DISCIPLINE_LABEL, describeScope } from "@/lib/precon-meta";
 
 interface Props {
   plan: ProposalPlan;
@@ -79,6 +79,7 @@ MeasuredBadges.displayName = "MeasuredBadges";
 
 export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByHand, onDetails, onNewRevision, onRemove }: Props) {
   const measurable = MEASURABLE_PLAN.test(plan.fileName);
+  const handMeasurable = HAND_MEASURABLE_PLAN.test(plan.fileName);
   const meta = [
     plan.sheetCode,
     plan.discipline ? PLAN_DISCIPLINE_LABEL[plan.discipline] : null,
@@ -109,16 +110,16 @@ export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByH
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {measurable ? (
-          <>
-            <Button size="sm" variant="secondary" className="text-primary-700" onClick={() => onMeasure(plan)}>
-              <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
-              Measure with Panda AI
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => onMeasureByHand(plan)}>
-              <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
-              Measure by hand
-            </Button>
-          </>
+          <Button size="sm" variant="secondary" className="text-primary-700" onClick={() => onMeasure(plan)}>
+            <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
+            Measure with Panda AI
+          </Button>
+        ) : null}
+        {handMeasurable ? (
+          <Button size="sm" variant="secondary" onClick={() => onMeasureByHand(plan)} title={measurable ? undefined : "A picture: set the scale from two known points, then measure"}>
+            <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
+            Measure by hand
+          </Button>
         ) : null}
         <Button size="sm" variant="ghost" onClick={() => onNewRevision(plan)} aria-label="Upload a new revision">
           <Upload className="mr-1.5 size-3.5" aria-hidden="true" />

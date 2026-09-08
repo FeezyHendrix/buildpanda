@@ -14,7 +14,7 @@ import {
   type PreconGenerateJobData,
   type PreconProgrammeJobData,
 } from "./job.ts";
-import { FULL_TAKEOFF_SCOPE, GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_MODES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import { FULL_TAKEOFF_SCOPE, GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_MODES, TAKEOFF_SCOPE_KINDS, PICTURE_CONTENT_TYPE, PICTURE_PLAN } from "./types.ts";
 import { TAKEOFF_QUEUE, type TakeoffJobData } from "../dwg-takeoff/job.ts";
 import applyToEstimateRoutes from "./apply-to-estimate-routes.ts";
 import { reviewRoutes } from "./review-routes.ts";
@@ -315,8 +315,11 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
       const plans = await proposalsRepo.listPlans(request.body.proposalId);
       const plan = plans.find((p) => p.id === request.body.planId);
       if (!plan) throw new NotFoundError("Plan");
-      if (!/\.(pdf|dwg)$/i.test(plan.fileName)) {
-        throw new BadRequestError("Panda AI can measure PDF or DWG drawings only");
+      const picture = PICTURE_PLAN.test(plan.fileName);
+      if (!/\.(pdf|dwg)$/i.test(plan.fileName) && !(picture && request.body.mode === "manual")) {
+        throw new BadRequestError(
+          picture ? "Panda AI cannot measure a picture; open it with Measure by hand instead" : "Panda AI can measure PDF or DWG drawings only",
+        );
       }
       const file = await filesRepository(fastify.db).findById(plan.fileId);
       if (!file) throw new NotFoundError("Plan file");
@@ -331,7 +334,9 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
           { fileName: file.file_name, storagePath: file.storage_path },
           request.body.scope ?? FULL_TAKEOFF_SCOPE,
         );
-        if (/\.dwg$/i.test(file.file_name)) {
+        if (picture) {
+          // nothing to render: the picture is the sheet, calibrated by hand
+        } else if (/\.dwg$/i.test(file.file_name)) {
           const dwgJob: TakeoffJobData = { sessionId: manual.id, orgId, sheetsOnly: true };
           await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", dwgJob);
         } else {
@@ -653,7 +658,8 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
       if (!sheet) throw new NotFoundError("Sheet");
       await service.assertSessionOrg(sheet.session_id, orgId);
       const stream = await openStoredFile(sheet.storage_path);
-      return reply.header("content-type", "application/pdf").send(stream);
+      const ext = sheet.file_name.split(".").pop()?.toLowerCase() ?? "";
+      return reply.header("content-type", PICTURE_CONTENT_TYPE[ext] ?? "application/pdf").send(stream);
     },
   );
 

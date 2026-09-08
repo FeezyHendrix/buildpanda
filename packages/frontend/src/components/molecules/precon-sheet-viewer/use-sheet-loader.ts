@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 // constructor — static hosts that serve .mjs as octet-stream (staging nginx)
 // break both workerSrc and the fake-worker fallback, so never fetch .mjs.
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+import { PICTURE_PLAN } from "@/lib/precon-meta";
 import { preconApi, type PreconSheet } from "@/api/precon";
 
 let sharedWorker: Worker | null = null;
@@ -60,13 +61,26 @@ function pageWithinFile(sheet: PreconSheet, sheets: PreconSheet[]): number {
 }
 
 function loadImage(svg: string): Promise<HTMLImageElement> {
+  return loadImageFromUrl(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), true);
+}
+
+function loadImageFromUrl(url: string, revoke = false): Promise<HTMLImageElement> {
   const img = new Image();
-  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   return new Promise<HTMLImageElement>((resolve, reject) => {
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("The drawing could not be decoded"));
     img.src = url;
-  }).finally(() => URL.revokeObjectURL(url));
+  }).finally(() => {
+    if (revoke) URL.revokeObjectURL(url);
+  });
+}
+
+// A picture sheet is fetched with credentials and drawn like a DWG raster,
+// but its points are plain image pixels over the raster scale, as for a PDF.
+async function loadPicture(sheetId: string): Promise<HTMLImageElement> {
+  const res = await fetch(preconApi.sheetFileUrl(sheetId), { credentials: "include" });
+  if (!res.ok) throw new Error(`Picture ${res.status}`);
+  return loadImageFromUrl(URL.createObjectURL(await res.blob()), true);
 }
 
 interface Args {
@@ -149,6 +163,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
     let cancelled = false;
     const sheetId = activeSheet.id;
     const isDwg = /\.dwg$/i.test(activeSheet.fileName);
+    const isPicture = PICTURE_PLAN.test(activeSheet.fileName);
     setLoadError(null);
     setActiveRasterScale(BASE_RASTER);
     setRendering(true);
@@ -166,6 +181,11 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
         if (cancelled) return;
         imageRef.current = { sheetId, img, frame };
         rasterizeImage(img, BASE_RASTER, frame);
+      } else if (isPicture) {
+        const img = await loadPicture(sheetId);
+        if (cancelled) return;
+        imageRef.current = { sheetId, img, frame: null };
+        rasterizeImage(img, BASE_RASTER, null);
       } else {
         const pdfjs = await import("pdfjs-dist");
         if (!sharedWorker) sharedWorker = new PdfWorker();
