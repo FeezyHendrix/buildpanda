@@ -1,5 +1,6 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { PencilRuler, Sparkles } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -14,6 +15,24 @@ import { PRECON_STATUS_LABEL, PRECON_STATUS_TONE, describeScope } from "@/lib/pr
 import { toast } from "@/lib/toast";
 
 const RUNNING = new Set(["generating", "uploading"]);
+
+// Who measured it: the engine or a person. A hand-built take-off has no
+// drawing behind it; a measured one always does.
+function OriginBadge({ session }: { session: PreconSession }) {
+  const byPandaAi = session.takeoffKind !== "manual";
+  return byPandaAi ? (
+    <Badge tone="info">
+      <Sparkles className="mr-1 size-3" aria-hidden="true" />
+      Panda AI
+    </Badge>
+  ) : (
+    <Badge tone="neutral">
+      <PencilRuler className="mr-1 size-3" aria-hidden="true" />
+      Manual
+    </Badge>
+  );
+}
+OriginBadge.displayName = "OriginBadge";
 
 function stateLabel(s: PreconSession): string {
   return s.supersededBy ? "Superseded" : PRECON_STATUS_LABEL[s.status];
@@ -76,9 +95,9 @@ const COLUMNS: DataGridColumn<PreconSession>[] = [
     accessor: (s) => s.title,
     sortable: true,
     cell: (s) => (
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 items-center gap-2">
         <span className="truncate font-medium text-gray-900">{s.title}</span>
-        <span className="truncate text-[11px] text-gray-500">{s.planId ? "From the drawing" : "Built by hand"}</span>
+        <OriginBadge session={s} />
       </span>
     ),
   },
