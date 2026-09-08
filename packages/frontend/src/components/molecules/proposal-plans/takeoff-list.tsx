@@ -100,7 +100,9 @@ function JobRow({ job }: { job: TakeoffJob }) {
   const running = job.status === "pending" || job.status === "processing";
   const detail =
     job.status === "completed"
-      ? `${job.elementCount} lines added to the BoQ tab`
+      ? job.sessionId
+        ? `${job.elementCount} lines ready to review`
+        : `${job.elementCount} lines added to the BoQ tab`
       : job.status === "failed"
         ? (job.error ?? "The automated take-off failed.")
         : `DWG automated take-off · started ${formatTimeAgo(job.createdAt)}`;
@@ -115,6 +117,13 @@ function JobRow({ job }: { job: TakeoffJob }) {
         </div>
         <p className="mt-0.5 truncate text-xs text-gray-500">{detail}</p>
       </div>
+      {job.sessionId ? (
+        <Link to={`/sales/takeoff/${job.sessionId}`} className="shrink-0">
+          <Button size="sm" variant="primary">
+            Review
+          </Button>
+        </Link>
+      ) : null}
     </li>
   );
 }

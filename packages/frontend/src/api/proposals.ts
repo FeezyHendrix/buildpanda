@@ -215,6 +215,8 @@ export interface TakeoffJob {
   drawingCount: number;
   elementCount: number;
   error: string | null;
+  // set once the DWG lines land as a reviewable take-off session
+  sessionId?: string | null;
   result: {
     drawings: Array<{ id: number; kind: string; widthM: number; heightM: number; entityCount: number }>;
     selectedDrawingId: number | null;
@@ -240,7 +242,6 @@ export interface CreateProposalInput {
   currency?: string;
   validUntil?: string;
   leadId?: string;
-  jobProfile?: JobProfile;
 }
 
 export interface AddPlanInput {

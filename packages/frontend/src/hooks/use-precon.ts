@@ -12,6 +12,8 @@ import {
   type TakeoffScope,
   type UpdateProgrammeTaskInput,
   type UpdateRowInput,
+  type UpdateSheetInput,
+  type UpdateStructureInput,
   type PreconSnapshot,
 } from "@/api/precon";
 import { preconKeys, proposalKeys } from "@/hooks/query-keys";
@@ -50,6 +52,64 @@ export function useRetryPreconSession(sessionId: string) {
       void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
       void qc.invalidateQueries({ queryKey: preconKeys.sessions() });
     },
+  });
+}
+
+export function useUpdatePreconSheet(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sheetId, input }: { sheetId: string; input: UpdateSheetInput }) =>
+      preconApi.updateSheet(sheetId, input),
+    onSuccess: (sheet) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev ? { ...prev, sheets: prev.sheets.map((s) => (s.id === sheet.id ? sheet : s)) } : prev,
+      );
+      void qc.invalidateQueries({ queryKey: preconKeys.snap(sheet.id) });
+    },
+  });
+}
+
+// Re-measure runs on the queue; the snapshot polls/streams the result in.
+export function useRemeasurePreconSheet(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sheetId: string) => preconApi.remeasureSheet(sheetId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+export function useUpdatePreconStructure(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateStructureInput) => preconApi.updateStructure(sessionId, input),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, session } : prev));
+    },
+  });
+}
+
+export function useRedraftPreconBill(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => preconApi.redraftBill(sessionId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+// Batch verify: one request per row, sequential so version conflicts surface
+// per row instead of a partial failure hiding inside Promise.all.
+export function useVerifyPreconRows(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { rowId: string; version: number }[]) => {
+      let done = 0;
+      for (const row of rows) {
+        await preconApi.verifyRow(row.rowId, row.version);
+        done++;
+      }
+      return done;
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });
 }
 

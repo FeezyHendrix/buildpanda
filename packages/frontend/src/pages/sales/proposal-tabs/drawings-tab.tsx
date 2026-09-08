@@ -11,7 +11,9 @@ import type { PlanDiscipline, ProposalPlan, UpdatePlanInput } from "@/api/propos
 import type { PreconSession, TakeoffScope } from "@/api/precon";
 import { useUploadFile } from "@/hooks/use-files";
 import { useCreatePreconSessionFromPlan, usePreconSessions } from "@/hooks/use-precon";
-import { useAddPlan, useDeletePlan, useProposalPlans, useStartProposalTakeoff, useUpdatePlan } from "@/hooks/use-proposals";
+import { useAddPlan, useDeletePlan, useProposalPlans, useStartProposalTakeoff, useUpdatePlan,
+  useProposalWorkspace,
+} from "@/hooks/use-proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { MEASURABLE_PLAN, PDF_PLAN } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
@@ -37,6 +39,8 @@ function staleSessionsFor(plan: ProposalPlan, plans: ProposalPlan[], sessions: P
 export function DrawingsTab({ proposalId }: Props) {
   const navigate = useNavigate();
   const { data: plans = [], isPending: plansPending } = useProposalPlans(proposalId);
+  const { data: workspace } = useProposalWorkspace(proposalId);
+  const jobProfile = workspace?.proposal.jobProfile ?? null;
   const { data: sessions = [] } = usePreconSessions(proposalId);
   const uploadFile = useUploadFile();
   const addPlan = useAddPlan(proposalId);
@@ -189,6 +193,7 @@ export function DrawingsTab({ proposalId }: Props) {
       )}
 
       <MeasurePlanDialog
+        jobProfile={jobProfile}
         open={measureTargets.length > 0}
         onOpenChange={(open) => {
           if (!open) setMeasureTargets([]);

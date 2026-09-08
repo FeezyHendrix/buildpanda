@@ -3,13 +3,22 @@ import type { QueueManager } from "../../../lib/queue/index.ts";
 import type { RealtimePayload } from "../../../lib/realtime/index.ts";
 import { preconRepository } from "./repository.ts";
 import { generateForSession, type ProgressFn } from "./engine/run.ts";
+import { remeasureSheet } from "./engine/remeasure.ts";
+import { redraftBill } from "./engine/redraft.ts";
 import type { PreconPhase } from "./types.ts";
 
 export const PRECON_GENERATE_QUEUE = "precon-generate";
 
+export const PRECON_JOB_MODES = ["generate", "remeasure", "redraft"] as const;
+export type PreconJobMode = (typeof PRECON_JOB_MODES)[number];
+
 export interface PreconGenerateJobData {
   sessionId: string;
   orgId?: string;
+  // remeasure re-reads one sheet; redraft re-runs the build-up. Both leave
+  // session.status alone — the session is already in review.
+  mode?: PreconJobMode;
+  sheetId?: string;
 }
 
 export type RealtimePublish = (payload: RealtimePayload) => void;
@@ -31,6 +40,19 @@ export async function runGenerate(db: Knex, data: PreconGenerateJobData, publish
       data: { sessionId: session.id, phase, message, at, ...extra },
     });
   };
+
+  const mode: PreconJobMode = data.mode ?? "generate";
+  if (mode !== "generate") {
+    try {
+      if (mode === "remeasure" && data.sheetId) await remeasureSheet(db, data.sheetId, progress);
+      else if (mode === "redraft") await redraftBill(db, session.id, progress);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${mode} failed`;
+      await progress("draft", `${mode === "remeasure" ? "Re-measure" : "Redraft"} failed: ${message}`);
+      throw error;
+    }
+    return;
+  }
 
   await repo.updateSessionStatus(session.id, "generating");
   await progress("reading", "Generation started");

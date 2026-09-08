@@ -16,6 +16,7 @@ import {
   PreconStepper,
   type PreconStepKey,
 } from "@/components/molecules/precon-session/precon-stepper";
+import { StructureFields } from "@/components/molecules/precon-session/structure-fields";
 import { usePreconChannel, usePreconSnapshot, useRetryPreconSession } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
@@ -41,10 +42,11 @@ export default function PreconSessionPage() {
   const [tool, setTool] = useState<PreconTool>("select");
   const [justCompleted, setJustCompleted] = useState(false);
   const [assistOpen, setAssistOpen] = useState(false);
+  const [structureOpen, setStructureOpen] = useState(false);
 
   // Hold the "ready" card briefly when a run finishes in front of the user,
-  // then move them into review. A session that is already reviewing on first
-  // load skips the ceremony.
+  // then move them into review. A session already reviewing on first load
+  // skips the ceremony.
   const status = snapshot?.session.status;
   const previousStatus = useRef<PreconSessionStatus | undefined>(undefined);
   useEffect(() => {
@@ -59,10 +61,7 @@ export default function PreconSessionPage() {
     return () => clearTimeout(timer);
   }, [status]);
 
-  const measurableSheets = useMemo(
-    () => (snapshot?.sheets ?? []).filter((s) => s.status !== "pending"),
-    [snapshot?.sheets],
-  );
+  const measurableSheets = useMemo(() => (snapshot?.sheets ?? []).filter((s) => s.status !== "pending"), [snapshot?.sheets]);
   const activeSheet =
     measurableSheets.find((s) => s.id === activeSheetId) ??
     measurableSheets.find((s) => s.status === "measured" && s.kind === "floor-plan") ??
@@ -93,14 +92,10 @@ export default function PreconSessionPage() {
   // All sheets, not just measurable ones: a session still generating has only
   // pending sheets and must not be mistaken for a hand-priced one.
   const hasDrawings = snapshot.sheets.length > 0;
-  // WS-1: the programme is a step of its own; an areas-only run has nothing to sequence.
-  const hasProgramme = session.scope.kind !== "areas";
-  const steps = PRECON_STEPS.filter(
-    (s) => (hasDrawings || s.key !== "measure") && (hasProgramme || s.key !== "programme"),
-  );
-  const reachable = new Set<PreconStepKey>(reviewing ? ["review", "programme", "output"] : []);
-  const effectiveStep: PreconStepKey =
-    justCompleted ? "measure" : (step ?? (hasDrawings ? stepForStatus(session.status) : "review"));
+  const areasOnly = session.scope.kind === "areas";
+  const steps = PRECON_STEPS.filter((s) => (s.key === "measure" ? hasDrawings : s.key === "programme" ? !areasOnly : true));
+  const reachable = new Set<PreconStepKey>(reviewing ? (areasOnly ? ["review", "output"] : ["review", "programme", "output"]) : []);
+  const effectiveStep: PreconStepKey = justCompleted ? "measure" : (step ?? (hasDrawings ? stepForStatus(session.status) : "review"));
 
   const runRetry = () =>
     retry.mutate(undefined, {
@@ -125,8 +120,8 @@ export default function PreconSessionPage() {
         open={assistOpen}
         onOpenChange={setAssistOpen}
         sessionId={sessionId}
-        surface={effectiveStep === "output" ? "programme" : "bill"}
-        surfaceLabel={effectiveStep === "output" ? "Programme" : "Bill"}
+        surface={effectiveStep === "programme" ? "programme" : "bill"}
+        surfaceLabel={effectiveStep === "programme" ? "Programme" : "Bill"}
       />
 
       {effectiveStep === "measure" ? (
@@ -145,30 +140,43 @@ export default function PreconSessionPage() {
           <PreconOutputPanel snapshot={snapshot} />
         </div>
       ) : (
-        <div className={cn("grid min-h-0 flex-1 gap-4", hasDrawings && "lg:grid-cols-[1fr_420px]")}>
-          {hasDrawings ? (
-            <PreconSheetViewer
-              sessionId={sessionId}
-              sheets={measurableSheets}
-              activeSheet={activeSheet}
-              onSelectSheet={setActiveSheetId}
-              geometries={snapshot.geometries}
-              rows={snapshot.rows}
-              selectedRowId={selectedRowId}
-              onSelectRow={setSelectedRowId}
-              tool={tool}
-              onToolChange={setTool}
-            />
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          {structureOpen ? (
+            <StructureFields session={session} onClose={() => setStructureOpen(false)} />
+          ) : hasDrawings ? (
+            <button
+              type="button"
+              onClick={() => setStructureOpen(true)}
+              className="self-start text-xs font-medium text-primary-600 hover:underline"
+            >
+              {session.structureContext?.confidence === "high" ? "Structure reading confirmed · edit" : "Check the structure reading Panda AI used"}
+            </button>
           ) : null}
-          <PreconBoqPanel
-            sessionId={sessionId}
-            snapshot={snapshot}
-            selectedRowId={selectedRowId}
-            onSelectRow={(rowId, sheetId) => {
-              setSelectedRowId(rowId);
-              if (sheetId) setActiveSheetId(sheetId);
-            }}
-          />
+          <div className={cn("grid min-h-0 flex-1 gap-4", hasDrawings && "lg:grid-cols-[1fr_420px]")}>
+            {hasDrawings ? (
+              <PreconSheetViewer
+                sessionId={sessionId}
+                sheets={measurableSheets}
+                activeSheet={activeSheet}
+                onSelectSheet={setActiveSheetId}
+                geometries={snapshot.geometries}
+                rows={snapshot.rows}
+                selectedRowId={selectedRowId}
+                onSelectRow={setSelectedRowId}
+                tool={tool}
+                onToolChange={setTool}
+              />
+            ) : null}
+            <PreconBoqPanel
+              sessionId={sessionId}
+              snapshot={snapshot}
+              selectedRowId={selectedRowId}
+              onSelectRow={(rowId, sheetId) => {
+                setSelectedRowId(rowId);
+                if (sheetId) setActiveSheetId(sheetId);
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

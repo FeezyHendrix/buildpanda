@@ -1,35 +1,20 @@
 import type { Knex } from "knex";
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { createWriteStream } from "node:fs";
-import { openStoredFile } from "../../../../lib/file-storage.ts";
 import { generateId } from "../../../../lib/ids.ts";
 import { preconRepository } from "../repository.ts";
 import type { MeasuredBoqItem, PreconSheetRow, Segment, SheetKind, TextRun, PreconPhase, TakeoffScope } from "../types.ts";
+import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } from "./measure-sheet.ts";
+
+export { regionShareOfSheet };
 import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
 import { calibrate } from "./calibrate.ts";
-import { clusterRegions, segmentsInRegion } from "./cluster.ts";
-import {
-  countDoorArcs,
-  countTags,
-  curvesInRegion,
-  geometryFromWallPairs,
-  measureRoomAreas,
-  measureWalls,
-  textsInRegion,
-  wallConfidence,
-} from "./measure.ts";
+import { countDoorArcs } from "./measure.ts";
 import { draftBoq } from "./boq-draft.ts";
 import { measureSheetViaVision, VISION_MAX_SHEETS_PER_SESSION } from "./vision-takeoff.ts";
-import { findDuplicatePlans, applyFloorRepetition, tagSignature, type PlanFingerprint } from "./fingerprint.ts";
-import { buildUpBill, staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
-import { besmmRag } from "../../../../lib/besmm-rag.ts";
-import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
+import { findDuplicatePlans, applyFloorRepetition, type PlanFingerprint } from "./fingerprint.ts";
+import { buildUpBill } from "./enrich.ts";
 import { briefsFor } from "./besmm-reference.ts";
+import { besmmResolverFor } from "./besmm-resolver.ts";
 import { classifyStructure } from "./classify.ts";
 import { readBbs, bbsToItems, provisionalRebarItem, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
 import { measureCivil, civilToItems } from "./civil-measure.ts";
@@ -42,274 +27,8 @@ import { priceRow } from "./price.ts";
 // raster/vision fallback, schedule reading and BESMM enrichment on top of the
 // same vector-first measurement. Quantities still come from geometry only --
 // the LLM shapes descriptions and rules, never numbers.
-const DEFAULT_WALL_HEIGHT_M = 2.7;
-
-function besmmResolverFor(db: Knex): BesmmResolver {
-  if (!isEmbeddingConfigured()) return staticBesmmResolver;
-  const rag = besmmRag(db);
-  return async (brief) => {
-    try {
-      const query = brief.retrievalQuery ?? `${brief.element}. ${brief.guidance}`;
-      const matches = await rag.search(query, { sectionCodes: brief.sectionCodes, limit: 6 });
-      if (matches.length === 0) return staticBesmmResolver(brief);
-      const pages = matches.map((m) => m.pageFrom).join(", ");
-      const body = matches.map((m) => `[p.${m.pageFrom}] ${m.content.trim()}`).join("\n\n");
-      return [
-        `<besmm_reference source="BESMM4 NIQS 4th Ed 2015" pages="${pages}">`,
-        body,
-        `</besmm_reference>`,
-        "BESMM REFERENCE RULES:",
-        "- Use these clauses to shape measurement decisions and produce BESMM-conformant description text.",
-        "- PARAPHRASE. Never quote the reference text verbatim into a bill item description.",
-        "- The billing template's unit is AUTHORITATIVE. If the reference implies a different unit, keep the template's unit.",
-        "- The reference is OCR-extracted and table columns may be interleaved. Only rely on a threshold or number when it appears clearly and un-fragmented; otherwise ignore it.",
-        `- For each item you rely on the reference for, set refPages to the page numbers you used, from this list only: ${pages}. Never invent page numbers.`,
-      ].join("\n");
-    } catch {
-      return staticBesmmResolver(brief);
-    }
-  };
-}
 
 export type ProgressFn = (phase: PreconPhase, message: string, data?: Record<string, unknown>) => void | Promise<void>;
-
-async function withTempFile<T>(storagePath: string, ext: string, fn: (file: string) => Promise<T>): Promise<T> {
-  const file = path.join(os.tmpdir(), `${generateId("pcg")}.${ext}`);
-  const stream = await openStoredFile(storagePath);
-  await pipeline(stream as Readable, createWriteStream(file));
-  try {
-    return await fn(file);
-  } finally {
-    await fs.rm(file, { force: true });
-  }
-}
-
-const SHEET_TITLE_KINDS: [RegExp, SheetKind][] = [
-  [/floor\s*plan|ground\s*floor|first\s*floor|typical\s*floor/i, "floor-plan"],
-  [/elevation/i, "elevation"],
-  [/section/i, "section"],
-  [/schedule/i, "schedule"],
-  [/detail/i, "detail"],
-];
-
-function classifySheet(texts: { str: string }[], hasDoorArcs: boolean, hasRoomLabels: boolean): {
-  kind: SheetKind;
-  title: string | null;
-} {
-  const joined = texts.map((t) => t.str);
-  let title: string | null = null;
-  let kind: SheetKind = "unknown";
-  for (const [pattern, k] of SHEET_TITLE_KINDS) {
-    const hit = joined.find((s) => pattern.test(s) && s.length < 80);
-    if (hit) {
-      title = hit;
-      kind = k;
-      break;
-    }
-  }
-  if (kind === "unknown" && (hasDoorArcs || hasRoomLabels)) kind = "floor-plan";
-  return { kind, title };
-}
-
-interface SheetMeasurement {
-  items: MeasuredBoqItem[];
-  fingerprint: PlanFingerprint | null;
-}
-
-// One region = one drawing. Measure only floor-plan-looking regions, and only
-// the largest one per sheet — repeated plans on a sheet must not multiply
-// quantities; the QS duplicates verified items per floor in review instead.
-export function regionShareOfSheet(
-  region: { minX: number; minY: number; maxX: number; maxY: number },
-  segments: Segment[],
-): number {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const s of segments) {
-    minX = Math.min(minX, s.x1, s.x2);
-    maxX = Math.max(maxX, s.x1, s.x2);
-    minY = Math.min(minY, s.y1, s.y2);
-    maxY = Math.max(maxY, s.y1, s.y2);
-  }
-  const sheetArea = (maxX - minX) * (maxY - minY);
-  if (sheetArea <= 0) return 1;
-  return ((region.maxX - region.minX) * (region.maxY - region.minY)) / sheetArea;
-}
-
-function measureSheetRegions(
-  extracted: Awaited<ReturnType<typeof extractSheet>>,
-  mmPerPt: number,
-  calibrationConfidence: number,
-  pageNumber: number,
-  sheetLabel: string,
-  roomsAsItems = false,
-): SheetMeasurement {
-  const regions = clusterRegions(extracted, mmPerPt);
-  const items: MeasuredBoqItem[] = [];
-  if (regions.length === 0) return { items, fingerprint: null };
-
-  const primary = regions[0]!;
-  const regionSegments = segmentsInRegion(extracted.segments, primary);
-  const regionTexts = textsInRegion(extracted.texts, primary);
-  const regionCurves = curvesInRegion(extracted.curves, primary);
-
-  // If the isolated region still fills almost the whole sheet, envelope
-  // isolation failed (walls are being measured over title block, notes and
-  // dimension lines). Emit the wall item as provisional — a null-quantity sum
-  // for manual takeoff — rather than silently billing a wrong contract figure.
-  const envelopeUntrustworthy = regionShareOfSheet(primary, extracted.segments) >= 0.85;
-
-  const walls = measureWalls(regionSegments, mmPerPt);
-  if (walls.centrelineM > 0) {
-    const grossM2 = Math.round(walls.centrelineM * DEFAULT_WALL_HEIGHT_M * 100) / 100;
-    items.push({
-      elementGroup: "Internal and external walls",
-      workSection: { code: "F10", title: "BRICK/BLOCK WALLING" },
-      specNote: "Sandcrete block walls; cement mortar (1:6); wall height assumed 2.70m pending elevations.",
-      code: "F10/125",
-      description: "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; skin of hollow walls; laid in stretcher bond",
-      unit: "m2",
-      qtyGross: grossM2,
-      deductions: [],
-      qty: grossM2,
-      confidence: envelopeUntrustworthy ? "low" : wallConfidence(walls.pairs.length, calibrationConfidence),
-      measurementBasis: envelopeUntrustworthy
-        ? `Building could not be isolated from the sheet (measured extent fills the whole drawing); wall quantity left provisional for manual takeoff (${sheetLabel})`
-        : `${walls.centrelineM.toFixed(1)}m centreline from ${walls.pairs.length} parallel wall pairs x ${DEFAULT_WALL_HEIGHT_M}m assumed height (${sheetLabel})`,
-      geometries: geometryFromWallPairs(walls.pairs),
-      pageNumber,
-      provisional: envelopeUntrustworthy,
-    });
-  }
-
-  const doors = countDoorArcs(regionCurves, mmPerPt);
-  const tags = countTags(regionTexts);
-  const toM = mmPerPt / 1000;
-  const fingerprint: PlanFingerprint = {
-    pageNumber,
-    centrelineM: walls.centrelineM,
-    wallPairs: walls.pairs.length,
-    widthM: Math.round((primary.maxX - primary.minX) * toM * 10) / 10,
-    heightM: Math.round((primary.maxY - primary.minY) * toM * 10) / 10,
-    doorArcs: doors.count,
-    tagSignature: tagSignature(tags),
-  };
-
-  if (tags.doors.size > 0) {
-    for (const [tag, occurrences] of [...tags.doors.entries()].sort()) {
-      items.push({
-        elementGroup: "Doors",
-        workSection: { code: "L20", title: "DOORS/SHUTTERS/HATCHES" },
-        specNote: "Door types per architect's door schedule.",
-        code: "L20",
-        description: `Door type ${tag}; as door schedule`,
-        unit: "nr",
-        qtyGross: occurrences.length,
-        deductions: [],
-        qty: occurrences.length,
-        confidence: "high",
-        measurementBasis: `${occurrences.length} "${tag}" tags on ${sheetLabel}${doors.count ? `; ${doors.count} swing arcs on sheet as cross-check` : ""}`,
-        geometries: [
-          {
-            kind: "count",
-            vertices: occurrences.map((t) => [t.x, t.y]),
-            quantity: occurrences.length,
-            unit: "nr",
-          },
-        ],
-        pageNumber,
-      });
-    }
-  } else if (doors.count > 0) {
-    items.push({
-      elementGroup: "Doors",
-      workSection: { code: "L20", title: "DOORS/SHUTTERS/HATCHES" },
-      specNote: null,
-      code: "L20",
-      description: "Doors; type not tagged on plan — confirm against door schedule",
-      unit: "nr",
-      qtyGross: doors.count,
-      deductions: [],
-      qty: doors.count,
-      confidence: "low",
-      measurementBasis: `${doors.count} door-swing arcs (r 600-1200mm) on ${sheetLabel}`,
-      geometries: [{ kind: "count", vertices: doors.centres, quantity: doors.count, unit: "nr" }],
-      pageNumber,
-    });
-  }
-  for (const [tag, occurrences] of [...tags.windows.entries()].sort()) {
-    items.push({
-      elementGroup: "Windows",
-      workSection: { code: "L11", title: "WINDOWS/ROOFLIGHTS/SCREENS" },
-      specNote: "Window types per architect's window schedule.",
-      code: "L11",
-      description: `Window type ${tag}; as window schedule`,
-      unit: "nr",
-      qtyGross: occurrences.length,
-      deductions: [],
-      qty: occurrences.length,
-      confidence: "high",
-      measurementBasis: `${occurrences.length} "${tag}" tags on ${sheetLabel}`,
-      geometries: [
-        { kind: "count", vertices: occurrences.map((t) => [t.x, t.y]), quantity: occurrences.length, unit: "nr" },
-      ],
-      pageNumber,
-    });
-  }
-
-  const rooms = measureRoomAreas(regionSegments, extracted.texts, primary, mmPerPt);
-  const totalFloorM2 = Math.round(rooms.reduce((s, r) => s + r.areaM2, 0) * 100) / 100;
-  // Areas-only runs want each space on its own line — "kitchen 14.2 m²" — not
-  // one screed item with the rooms folded into its description.
-  if (roomsAsItems) {
-    for (const room of rooms) {
-      items.push({
-        elementGroup: MEASURED_AREAS_GROUP,
-        workSection: { code: "AREA", title: "MEASURED FLOOR AREAS BY SPACE" },
-        specNote: "Net floor area inside the wall enclosure, measured per labelled space.",
-        code: null,
-        description: `${room.name} — floor area`,
-        unit: "m2",
-        qtyGross: room.areaM2,
-        deductions: [],
-        qty: room.areaM2,
-        confidence: "high",
-        measurementBasis: `Flood-fill from the "${room.name}" label on ${sheetLabel}`,
-        geometries: [{ kind: "count" as const, vertices: [room.seed], quantity: room.areaM2, unit: "m2" }],
-        pageNumber,
-      });
-    }
-  } else if (rooms.length > 0) {
-    items.push({
-      elementGroup: "Floor finishings",
-      workSection: { code: "M10", title: "SAND CEMENT SCREEDS/TOPPINGS" },
-      specNote: "Floor areas measured room-by-room from wall enclosure; finishes to specification.",
-      code: "M10",
-      description: `Cement/sand screeded beds to floors (${rooms.length} rooms: ${rooms
-        .slice(0, 6)
-        .map((r) => r.name)
-        .join(", ")}${rooms.length > 6 ? "…" : ""})`,
-      unit: "m2",
-      qtyGross: totalFloorM2,
-      deductions: [],
-      qty: totalFloorM2,
-      confidence: "low",
-      measurementBasis: `Flood-fill room areas from ${rooms.length} room labels on ${sheetLabel}`,
-      geometries: rooms.map((r) => ({
-        kind: "count" as const,
-        vertices: [r.seed],
-        quantity: r.areaM2,
-        unit: "m2",
-      })),
-      pageNumber,
-    });
-  }
-
-  for (const item of items) item.scope = "per-floor";
-  return { items, fingerprint };
-}
 
 export async function generateForSession(
   db: Knex,
@@ -329,6 +48,7 @@ export async function generateForSession(
   const scheduleSheets: { pageNumber: number; lines: string[] }[] = [];
   const scheduleTexts: TextRun[] = [];
   const sheetIdByPage = new Map<number, string>();
+  const sheetCodeByPage = new Map<number, string>();
   const classifyTitles: string[] = [];
   const classifySheets: { kind: SheetKind; title: string }[] = [];
   const classifyText: string[] = [];
@@ -386,7 +106,8 @@ export async function generateForSession(
                 visionBudget,
               );
               if (visionItems && visionItems.length > 0) {
-                allItems.push(...visionItems);
+                allItems.push(...visionItems.map((i) => ({ ...i, confidenceReason: i.confidenceReason ?? "vision" })));
+                sheetCodeByPage.set(globalPage, `SHT-${String(globalPage).padStart(2, "0")}`);
                 await repo.updateSheet(sheetId, {
                   code: `SHT-${String(globalPage).padStart(2, "0")}`,
                   title: placeholder.file_name,
@@ -421,6 +142,7 @@ export async function generateForSession(
             if (classifyText.length < 40) classifyText.push(extracted.texts.map((t) => t.str).join(" ").slice(0, 2000));
             const sheetLabel = `${placeholder.file_name} p${pageNo}`;
             const code = `SHT-${String(globalPage).padStart(2, "0")}`;
+            sheetCodeByPage.set(globalPage, code);
 
             await repo.updateSheet(sheetId, {
               code,
@@ -443,7 +165,7 @@ export async function generateForSession(
               // low calibration confidence demotes everything on the sheet
               const demoted =
                 calibration.confidence < 0.7
-                  ? measured.items.map((i) => ({ ...i, confidence: "low" as const }))
+                  ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: "scale" }))
                   : measured.items;
               allItems.push(...demoted);
               await progress("reading", `Measured ${sheetLabel}: ${demoted.length} items at 1:${Math.round(calibration.mmPerPt / 0.3528)}`, {
@@ -499,6 +221,7 @@ export async function generateForSession(
     if (pages.length > 1) {
       item.measurementBasis = `${item.measurementBasis.split(" (")[0]} — summed across ${pages.length} sheets (pages ${pages.join(", ")}); repeated floor views may double-count, review per sheet`;
       item.confidence = "low";
+      item.confidenceReason = "two sheets summed";
     }
   }
 
@@ -617,7 +340,7 @@ export async function generateForSession(
     await progress("building", `Kept ${billItems.length} of ${before} measured lines for ${scope.elements.join(", ")}`);
   }
 
-  const { bills, rows, geometries } = draftBoq(sessionId, billItems, sheetIdByPage);
+  const { bills, rows, geometries } = draftBoq(sessionId, billItems, sheetIdByPage, sheetCodeByPage);
 
   // price measured items against the org's most recent rate card
   const orgId = areasOnly ? null : await repo.orgIdForSession(sessionId);
