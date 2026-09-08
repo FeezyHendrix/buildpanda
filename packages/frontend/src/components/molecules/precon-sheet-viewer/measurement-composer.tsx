@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ComboInput } from "@/components/atoms/combo-input";
 import { UnitInput } from "@/components/atoms/unit-input";
-import { FormDrawer } from "@/components/molecules/form-drawer";
+import { X } from "lucide-react";
+import { Button } from "@/components/atoms/button";
 import type { CreateMeasurementBody, MeasureTool, PreconBoqRow, PreconSheet } from "@/api/precon";
 import { useCreateMeasurement } from "@/hooks/use-precon";
 import { useRateCards } from "@/hooks/use-rate-library";
@@ -87,20 +88,29 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
     });
   };
 
+  const error = create.error ? getApiErrorMessage(create.error, "Could not add the measurement") : null;
+  // A floating card, not a modal: the shape just drawn stays visible on the
+  // sheet while it is named, and the sheet can still be panned behind it.
   return (
-    <FormDrawer
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
+    <form
+      className="absolute right-3 top-3 z-20 flex w-[22rem] max-h-[calc(100%-1.5rem)] flex-col gap-3 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
       }}
-      title={`Name this ${meta.label.toLowerCase()}`}
-      description={`Measured by hand on ${sheet.code ?? sheet.fileName}. It joins the bill as a verified line with the drawn shape as evidence.`}
-      submitLabel="Add to bill"
-      submitDisabled={!canSubmit}
-      submitting={create.isPending}
-      error={create.error ? getApiErrorMessage(create.error, "Could not add the measurement") : null}
-      onSubmit={submit}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Name this {meta.label.toLowerCase()}</p>
+          <p className="text-xs text-gray-500">On {sheet.code ?? sheet.fileName}. It joins the bill as a verified line with the drawn shape as evidence.</p>
+        </div>
+        <button type="button" aria-label="Discard this shape" className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" onClick={onClose}>
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
       <p className="rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800">
         {preview ? (
           <>
@@ -180,7 +190,16 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
           <input className={FIELD} inputMode="decimal" value={rateRaw} placeholder="unpriced" onChange={(e) => setRateRaw(e.target.value)} />
         </label>
       </div>
-    </FormDrawer>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      <div className="flex justify-end gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={onClose}>
+          Discard
+        </Button>
+        <Button type="submit" size="sm" loading={create.isPending} disabled={!canSubmit}>
+          Add to bill
+        </Button>
+      </div>
+    </form>
   );
 }
 MeasurementComposer.displayName = "MeasurementComposer";

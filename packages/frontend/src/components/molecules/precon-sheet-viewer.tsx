@@ -74,6 +74,10 @@ export function PreconSheetViewer({
   const [scalePrompt, setScalePrompt] = useState<ScalePrompt | null>(null);
   // a finished shape waiting for its name
   const [pending, setPending] = useState<PendingMeasurement | null>(null);
+  // Measuring tools draw a new line by default; redrawing the selected line
+  // is an explicit choice from the status bar, never a side effect of having
+  // a line selected (the line just created is selected, for one).
+  const [redrawTargetId, setRedrawTargetId] = useState<string | null>(null);
   const [legendOpen, setLegendOpen] = useState(true);
   const [legendGroup, setLegendGroup] = useState<string | null>(null);
   const [flashRowId, setFlashRowId] = useState<string | null>(null);
@@ -103,14 +107,21 @@ export function PreconSheetViewer({
   }, [flashRowId, legendGroup, legendEntries]);
 
   const cssZoom = page ? (BASE_RASTER * view.userZoom) / page.rasterScale : view.userZoom;
+  // A PDF point is a pdf.js point (y up from the page bottom); a DWG point is
+  // a drawing unit read through the SVG frame, so the sheet's 1 mm/unit scale,
+  // the snap index and the engine's evidence all share one space.
   const toPx = useCallback(
     (pt: number[]): [number, number] => {
+      const frame = page?.frame;
+      if (frame && page) return [((pt[0]! - frame.x) / frame.w) * page.widthPx, ((-pt[1]! - frame.y) / frame.h) * page.heightPx];
       const rs = page?.rasterScale ?? BASE_RASTER;
       return [pt[0]! * rs, page!.heightPx - pt[1]! * rs];
     },
     [page],
   );
   const toPt = (pxX: number, pxY: number): [number, number] => {
+    const frame = page?.frame;
+    if (frame && page) return [frame.x + (pxX / page.widthPx) * frame.w, -(frame.y + (pxY / page.heightPx) * frame.h)];
     const rs = page?.rasterScale ?? BASE_RASTER;
     return [pxX / rs, (page!.heightPx - pxY) / rs];
   };
@@ -122,7 +133,9 @@ export function PreconSheetViewer({
   };
   const applySnapAndOrtho = (pt: [number, number], shift: boolean): [number, number] => {
     let [x, y] = pt;
-    const thresholdPt = SNAP_PX / (BASE_RASTER * view.userZoom);
+    // ten screen pixels, expressed in sheet points for this sheet's point space
+    const ptPerCanvasPx = page?.frame ? page.frame.w / page.widthPx : 1 / (page?.rasterScale ?? BASE_RASTER);
+    const thresholdPt = (SNAP_PX / cssZoom) * ptPerCanvasPx;
     let best: number[] | null = null;
     let bestDist = thresholdPt;
     for (const p of snapPoints) {
@@ -149,13 +162,13 @@ export function PreconSheetViewer({
     if (m.key === "scale") return null;
     if (!activeSheet.scaleMmPerPt) return "Set this sheet's scale first (S, or Sheet settings)";
     if (m.needsLine && !selectedRow) return "Select a bill line first";
-    if ((m.key === "volume" || m.key === "wall_area") && selectedRow) return "Draws a new line — clear the selection first";
     return null;
   };
   const drawingEnabled = tool !== "select" && !blockedReasonFor(meta);
 
   const changeTool = (next: PreconTool) => {
     setDraft([]);
+    setPending(null);
     setScalePrompt(null);
     setNote(null);
     onToolChange(next);
@@ -168,8 +181,9 @@ export function PreconSheetViewer({
     }
     if (vertices.length === 0) return;
     const measure = meta.measure;
-    if (measure && !selectedRow) {
-      // draw first, name after: the composer owns the draft from here
+    const redrawing = Boolean(selectedRow && redrawTargetId === selectedRow.id);
+    if (measure && !redrawing) {
+      // draw first, name after: the shape stays on the sheet while the composer names it
       if (vertices.length >= MEASURE_MIN_VERTICES[measure]) setPending({ tool: measure, vertices });
       else setNote(`Add at least ${MEASURE_MIN_VERTICES[measure]} points before finishing.`);
       return;
@@ -244,6 +258,7 @@ export function PreconSheetViewer({
 
   const onCreated = (row: PreconBoqRow) => {
     setDraft([]);
+    setRedrawTargetId(null);
     onSelectRow(row.id);
     onMeasurementCreated?.(row);
     setFlashRowId(row.id);
@@ -264,7 +279,15 @@ export function PreconSheetViewer({
       <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={onSelectSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
 
       {activeSheet && !scalePrompt ? (
-        <SheetStatusBar sheet={activeSheet} tool={tool} selectedRow={selectedRow} drawingEnabled={drawingEnabled} draft={draft} onClearSelection={() => onSelectRow(null)} />
+        <SheetStatusBar
+          sheet={activeSheet}
+          tool={tool}
+          selectedRow={selectedRow}
+          redrawing={Boolean(selectedRow && redrawTargetId === selectedRow.id)}
+          onToggleRedraw={() => setRedrawTargetId((current) => (selectedRow && current !== selectedRow.id ? selectedRow.id : null))}
+          drawingEnabled={drawingEnabled}
+          draft={draft}
+        />
       ) : null}
       {activeSheet && !activeSheet.scaleMmPerPt && !scalePrompt ? (
         <NoScaleBanner message={activeSheet.error ?? "No calibrated scale on this sheet."} onOpenSettings={() => setSettingsOpen(true)} onDrawScale={() => changeTool("scale")} />
@@ -303,6 +326,7 @@ export function PreconSheetViewer({
                 onSelectRow={onSelectRow}
                 draft={draft}
                 draftColor={tool === "scale" ? "#B85C00" : "#004DE7"}
+                draftClosed={tool === "area" || tool === "volume"}
                 toPx={toPx}
                 emphasisRowIds={emphasisRowIds}
               />
@@ -343,7 +367,10 @@ export function PreconSheetViewer({
       </div>
 
       {pending && activeSheet ? (
-        <MeasurementComposer sessionId={sessionId} sheet={activeSheet} pending={pending} elementGroups={elementGroups} onClose={() => setPending(null)} onCreated={onCreated} />
+        <MeasurementComposer sessionId={sessionId} sheet={activeSheet} pending={pending} elementGroups={elementGroups} onClose={() => {
+            setPending(null);
+            setDraft([]);
+          }} onCreated={onCreated} />
       ) : null}
     </div>
   );

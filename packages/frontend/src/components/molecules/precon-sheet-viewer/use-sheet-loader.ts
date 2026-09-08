@@ -12,11 +12,31 @@ const MAX_RASTER = 4.5;
 // a DWG is fitted to this many pixels wide at the base raster before zoom
 const IMAGE_FIT_WIDTH_PX = 2400;
 
+/** A DWG's SVG viewBox in drawing units; y runs down as in SVG. */
+export interface DrawingFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface PageInfo {
   widthPx: number;
   heightPx: number;
   heightPt: number;
   rasterScale: number;
+  /**
+   * Present for a DWG: sheet "points" are then drawing units (the stored scale
+   * is 1 mm per unit), mapped through this frame instead of the raster scale.
+   */
+  frame?: DrawingFrame;
+}
+
+export function parseViewBox(svg: string): DrawingFrame | null {
+  const open = svg.match(/<svg\b[^>]*>/);
+  const box = open?.[0].match(/viewBox="([^"]+)"/)?.[1]?.trim().split(/[\s,]+/).map(Number);
+  if (!box || box.length !== 4 || !box.every(Number.isFinite) || box[2]! <= 0 || box[3]! <= 0) return null;
+  return { x: box[0]!, y: box[1]!, w: box[2]!, h: box[3]! };
 }
 
 type PdfPageProxy = import("pdfjs-dist").PDFPageProxy;
@@ -93,7 +113,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
   );
 
   const rasterizeImage = useCallback(
-    (img: HTMLImageElement, scale: number) => {
+    (img: HTMLImageElement, scale: number, frame: DrawingFrame | null) => {
       const canvas = canvasRef.current;
       if (!canvas || !Number.isFinite(scale) || scale <= 0) return;
       const fit = IMAGE_FIT_WIDTH_PX / Math.max(1, img.naturalWidth);
@@ -106,7 +126,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, widthPx, heightPx);
       ctx.drawImage(img, 0, 0, widthPx, heightPx);
-      setPage({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale });
+      setPage({ widthPx, heightPx, heightPt: heightPx / scale, rasterScale: scale, frame: frame ?? undefined });
     },
     [canvasRef],
   );
@@ -122,7 +142,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
   // The loaded page is cached per sheet so zoom re-rasters redraw from memory
   // instead of re-downloading the whole file.
   const pdfPageRef = useRef<{ sheetId: string; page: PdfPageProxy } | null>(null);
-  const imageRef = useRef<{ sheetId: string; img: HTMLImageElement } | null>(null);
+  const imageRef = useRef<{ sheetId: string; img: HTMLImageElement; frame: DrawingFrame | null } | null>(null);
 
   useEffect(() => {
     if (!activeSheet) return;
@@ -138,12 +158,14 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
       if (isDwg) {
         const res = await fetch(preconApi.sheetSvgUrl(sheetId), { credentials: "include" });
         if (!res.ok) throw new Error(res.status === 404 ? "Nothing drawable in this DWG's model space" : `SVG ${res.status}`);
-        const svg = sizedSvg(await res.text());
+        const raw = await res.text();
+        const svg = sizedSvg(raw);
+        const frame = parseViewBox(raw);
         if (cancelled) return;
         const img = await loadImage(svg);
         if (cancelled) return;
-        imageRef.current = { sheetId, img };
-        rasterizeImage(img, BASE_RASTER);
+        imageRef.current = { sheetId, img, frame };
+        rasterizeImage(img, BASE_RASTER, frame);
       } else {
         const pdfjs = await import("pdfjs-dist");
         if (!sharedWorker) sharedWorker = new PdfWorker();
@@ -174,7 +196,7 @@ export function useSheetLoader({ canvasRef, activeSheet, sheets, userZoom, onLoa
     if (!activeSheet || !page || page.rasterScale === activeRasterScale) return;
     const image = imageRef.current;
     if (image && image.sheetId === activeSheet.id) {
-      rasterizeImage(image.img, activeRasterScale);
+      rasterizeImage(image.img, activeRasterScale, image.frame);
       return;
     }
     const cached = pdfPageRef.current;
