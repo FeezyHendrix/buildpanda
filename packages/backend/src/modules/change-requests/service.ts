@@ -40,6 +40,13 @@ export interface UpdateChangeRequestInput {
 
 export interface ChangeRequestsDeps {
   notifications?: NotificationsService;
+  // An approved change is a variation against the accepted estimate, so the
+  // contract sum moves through the finances module, never by editing it here.
+  recordVariation?: (
+    projectId: string,
+    input: { amount: number; description: string; changeRequestId: string },
+    actor: { id: string; name: string },
+  ) => Promise<void>;
 }
 
 const DECISIONS: ChangeStatus[] = ["Approved", "Rejected"];
@@ -98,6 +105,7 @@ function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
     decidedAt: row.decided_at,
     assigneeId: row.assignee_id,
     assigneeName: row.assignee_name,
+    estimateId: row.estimate_id ?? null,
     commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -158,6 +166,7 @@ export function changeRequestsService(
       id: string,
       input: UpdateChangeRequestInput,
       userId: string,
+      actorName = "Team member",
     ): Promise<ChangeRequest> {
       const existing = await repository.findById(id);
       if (!existing || existing.project_id !== projectId) throw new NotFoundError("Change request");
@@ -187,8 +196,21 @@ export function changeRequestsService(
         input.assigneeId !== undefined && input.assigneeId !== existing.assignee_id;
       if (input.assigneeId !== undefined) patch.assignee_id = input.assigneeId;
 
+      const approvedNow = input.status === "Approved" && existing.status !== "Approved";
+      if (approvedNow && !existing.estimate_id) {
+        patch.estimate_id = await repository.projectEstimateId(projectId);
+      }
+
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
+      const costImpact = Number(updated.cost_impact);
+      if (approvedNow && costImpact !== 0 && deps.recordVariation) {
+        await deps.recordVariation(
+          projectId,
+          { amount: costImpact, description: `Change request · ${updated.title}`, changeRequestId: updated.id },
+          { id: userId, name: actorName },
+        );
+      }
       if (reassigned) {
         notifyChangeAssignee(deps, updated.assignee_id, projectId, updated.title, userId);
       }
