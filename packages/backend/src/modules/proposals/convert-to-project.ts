@@ -21,8 +21,8 @@ import {
   programmeWeeks,
   rowsToMaterialOrders,
   scheduleToMilestones,
-  setupFromStructure,
-} from "./convert-mappers.ts";
+  setupFromStructure } from "./convert-mappers.ts";
+import { resolveConversionCategories } from "./convert-categories.ts";
 
 export interface ConvertResult {
   projectId: string;
@@ -264,9 +264,22 @@ export async function convertProposalToProject(
       }
     }
     if (include.materials && seeds.materials.orders.length > 0) await trx("material_orders").insert(seeds.materials.orders);
+    // a seed can have replaced the migrated categories; the documents need real ones
+    const categories = include.drawings || include.documents ? await resolveConversionCategories(trx) : new Map<string, string>();
     if (include.drawings && seeds.drawings.documents.length > 0) {
-      await trx("project_documents").insert(seeds.drawings.documents);
+      // a document points at its current version and the version at its
+      // document, so the document goes in first without the pointer
+      await trx("project_documents").insert(
+        seeds.drawings.documents.map((d) => ({
+          ...d,
+          category_id: categories.get(String(d.category_id)) ?? d.category_id,
+          current_version_id: null,
+        })),
+      );
       await trx("document_versions").insert(seeds.drawings.versions);
+      for (const d of seeds.drawings.documents) {
+        if (d.current_version_id) await trx("project_documents").where({ id: d.id }).update({ current_version_id: d.current_version_id });
+      }
     }
     if (include.selections && seeds.selections.length > 0) await trx("selections").insert(seeds.selections);
     if (include.safety) await carryRisksAndStatementsToProject(trx, proposal.id, projectId);
@@ -279,7 +292,7 @@ export async function convertProposalToProject(
       await trx("project_documents").insert({
         id: generateId("doc"),
         project_id: projectId,
-        category_id: "cat_proposal",
+        category_id: categories.get("cat_proposal") ?? "cat_proposal",
         file_id: snapshot ? sources.snapshotFileId : null,
         file_name: snapshot ? snapshot.file_name : `${label} — snapshot`,
         size: snapshot ? formatBytes(Number(snapshot.size_bytes)) : "—",
