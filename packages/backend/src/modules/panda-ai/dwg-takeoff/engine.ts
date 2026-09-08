@@ -155,6 +155,13 @@ export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
 
 // A quantity measured on the representative floor is multiplied by the number
 // of identical floors, and the basis says so, with the levels it stands for.
+// The multiplication belongs to the line's own measurement sentence, not to
+// the sheet summary that may follow it.
+function withMultiplier(basis: string, suffix: string): string {
+  const [first, ...rest] = basis.split(/\. (?=[A-Z])/);
+  return [`${first} ${suffix}`, ...rest].join(". ");
+}
+
 function multiply(item: MeasuredItem, sheet: RegisterSheet, sheets: RegisterSheet[]): MeasuredItem {
   if (sheet.multiplier <= 1) return item;
   const group = sheets.filter((s) => s.group === sheet.group).map((s) => (s.levelMm !== null ? `+${s.levelMm}` : s.code));
@@ -162,7 +169,7 @@ function multiply(item: MeasuredItem, sheet: RegisterSheet, sheets: RegisterShee
     ...item,
     quantity: Math.round(item.quantity * sheet.multiplier * 100) / 100,
     multiplier: sheet.multiplier,
-    basis: `${item.basis} × ${sheet.multiplier} identical floors (${group.join(", ")})`,
+    basis: withMultiplier(item.basis, `× ${sheet.multiplier} identical floors (${group.join(", ")})`),
   };
 }
 

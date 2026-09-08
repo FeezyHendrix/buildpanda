@@ -35,7 +35,7 @@ export function wallSummary(measure: WallMeasure, height: HeightDecision, openin
 
 export function summarySentence(s: WallSummary): string {
   const modes = s.byThickness.map((m) => `${m.thicknessMm} mm ${m.lengthM} m`).join(", ");
-  return `Sheet walls: ${modes} (${s.totalLengthM} m in ${s.runs} runs); ${s.openings.doors + s.openings.windows} openings deducted (${s.openings.areaM2} m²); height ${s.height.mm / 1000} m (${s.height.basis})`;
+  return `Sheet walls: ${modes} (${s.totalLengthM} m in ${s.runs} runs); ${s.openings.doors + s.openings.windows} openings deducted (${s.openings.areaM2} m²)`;
 }
 
 /**

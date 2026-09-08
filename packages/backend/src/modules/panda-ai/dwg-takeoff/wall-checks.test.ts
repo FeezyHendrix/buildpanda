@@ -41,7 +41,7 @@ test("the summary carries every thickness, the run count, the openings and the h
   assert.equal(s.height.mm, 3000);
   const items = wallItems(measure, height, openings, sheet(synth().doc()), units);
   annotateWalls(items, s);
-  assert.match(items[0]!.basis, /Sheet walls: 225 mm 32 m, 150 mm 5\.78 m \(37\.78 m in 10 runs\); 3 openings deducted \(5\.22 m²\); height 3 m \(level marks\)/);
+  assert.match(items[0]!.basis, /Sheet walls: 225 mm 32 m, 150 mm 5\.78 m \(37\.78 m in 10 runs\); 3 openings deducted \(5\.22 m²\)/);
 });
 
 test("dimension strings along the external walls confirm the paired length, or send the line to review", () => {
