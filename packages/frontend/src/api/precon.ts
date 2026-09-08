@@ -56,6 +56,75 @@ export type PreconRowType = (typeof PRECON_ROW_TYPES)[number];
 
 export const PRECON_PRICED_ROW_TYPES: readonly PreconRowType[] = ["item", "provisional_sum"];
 
+// ---- extraction report (mirrors backend geometry/types.ts) ----
+export type GeoUnit = "mm" | "cm" | "m" | "in" | "ft" | "unknown";
+export interface GeoUnits {
+  unit: GeoUnit;
+  basis: "header" | "dimensions" | "text" | "assumed";
+  confidence: number;
+  note: string;
+}
+export type LayerElement =
+  | "walls"
+  | "columns"
+  | "doors"
+  | "windows"
+  | "sanitary"
+  | "stairs"
+  | "roof"
+  | "furniture"
+  | "dimensions"
+  | "text"
+  | "grid"
+  | "ignored";
+export interface ExtractionTotals {
+  segments: number;
+  shapes: number;
+  arcs: number;
+  inserts: number;
+  texts: number;
+  dimensions: number;
+  all: number;
+}
+export interface ExtractionCoverage {
+  measuredShare: number;
+  measuredLayers: string[];
+  ignoredLayers: string[];
+}
+export interface ExtractionDimensions {
+  count: number;
+  min: number | null;
+  median: number | null;
+  max: number | null;
+}
+export interface ExtractionReport {
+  source: "dwg" | "pdf";
+  units: GeoUnits;
+  totals: ExtractionTotals;
+  layers: { name: string; count: number; color: number | null; element: LayerElement; byType: Record<string, number> }[];
+  blocks: { name: string; inserts: number; entities: number }[];
+  dimensions: ExtractionDimensions;
+  texts: { text: string; count: number }[];
+  unreadable: { what: string; count: number; note: string }[];
+  coverage: ExtractionCoverage;
+  extents: { width: number; height: number } | null;
+  warnings: string[];
+}
+export interface GeoSummary {
+  source: "dwg" | "pdf";
+  units: GeoUnits;
+  totals: ExtractionTotals;
+  coverage: ExtractionCoverage;
+  topLayers: { name: string; count: number; element: LayerElement }[];
+  dimensions: ExtractionDimensions;
+  unreadable: number;
+  warnings: string[];
+}
+export interface SessionExtraction {
+  sheets: Record<string, ExtractionReport>;
+  generatedAt: string;
+}
+
 export interface PreconSession {
   id: string;
   orgId: string;
@@ -69,10 +138,11 @@ export interface PreconSession {
   scope: TakeoffScope;
   planId: string | null;
   takeoffKind: TakeoffKind;
+  /** What the parser found per sheet, before anything was measured. */
+  extraction: SessionExtraction | null;
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
-  /** The drawing revision this take-off measured, once the session records it. */
 }
 
 export interface PreconSheet {
@@ -87,6 +157,7 @@ export interface PreconSheet {
   scaleMmPerPt: number | null;
   scaleConfidence: number | null;
   dimUnit: "mm" | "cm" | "m" | null;
+  geoSummary: GeoSummary | null;
   error: string | null;
 }
 

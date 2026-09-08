@@ -4,6 +4,8 @@ import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
 import { preconRepository } from "../repository.ts";
 import type { DimUnit, MeasuredBoqItem, PreconBillRow } from "../types.ts";
 import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
+import { fromPdf } from "../../geometry/from-pdf.ts";
+import { buildReport, summarise } from "../../geometry/report.ts";
 import { calibrate } from "./calibrate.ts";
 import { countDoorArcs } from "./measure.ts";
 import { classifySheet, measureSheetRegions, withTempFile } from "./measure-sheet.ts";
@@ -55,6 +57,7 @@ export async function remeasureSheet(db: Knex, sheetId: string, progress: Progre
     const page = await doc.getPage(pageNo);
     const extracted = await extractSheet(page as never, pdfjs.OPS as never);
     await doc.cleanup();
+    await repo.updateSheetGeoSummary(sheetId, summarise(buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never))));
     // a scale the reviewer typed or drew (confidence 1) beats the engine's guess
     const userScale: Calibration | null =
       sheet.scale_confidence === 1 && sheet.scale_mm_per_pt

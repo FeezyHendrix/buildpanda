@@ -1,3 +1,4 @@
+import type { GeoSummary, SessionExtraction } from "../geometry/types.ts";
 import type { Knex } from "knex";
 import type {
   PreconAuditEventRow,
@@ -22,7 +23,7 @@ export type PreconRepository = ReturnType<typeof preconRepository>;
 export function preconRepository(db: Knex) {
   return {
     // sessions
-    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date">) => {
+    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date" | "extraction">) => {
       // pg turns a JS array into a Postgres array literal, which jsonb rejects;
       // the JSON columns go in as text so an array-valued log inserts cleanly.
       const [inserted] = await db<PreconSessionRow>("precon_sessions")
@@ -112,6 +113,17 @@ export function preconRepository(db: Knex) {
             updated_at: trx.fn.now(),
           });
       }),
+
+    // Extraction reports are written once per run, replacing the previous set;
+    // the sheet summary is the compact cut the viewer reads without the session.
+    updateSessionExtraction: (id: string, extraction: SessionExtraction) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({ extraction: db.raw("?::jsonb", [JSON.stringify(extraction)]) as never, updated_at: db.fn.now() }),
+    updateSheetGeoSummary: (id: string, summary: GeoSummary) =>
+      db<PreconSheetRow>("precon_sheets")
+        .where({ id })
+        .update({ geo_summary: db.raw("?::jsonb", [JSON.stringify(summary)]) as never, updated_at: db.fn.now() }),
 
     updateSessionStructure: (id: string, structure: StructureContext) =>
       db<PreconSessionRow>("precon_sessions")

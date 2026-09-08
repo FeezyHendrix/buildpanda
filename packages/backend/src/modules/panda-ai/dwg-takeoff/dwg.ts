@@ -35,11 +35,29 @@ export interface DwgEntity {
   block_header?: number[];
   start_angle?: number;
   end_angle?: number;
+  // read by the geometry document builder
+  color?: number;
+  linewt?: number;
+  tag?: string;
+  user_text?: string;
+  blkisxref?: number | boolean;
+  xref?: number[] | null;
+}
+
+// The subset of the DWG header the geometry document reads: declared units
+// and the model-space extents.
+export interface DwgHeader {
+  INSUNITS?: number | null;
+  MEASUREMENT?: number | null;
+  DIMLFAC?: number | null;
+  EXTMIN?: number[] | null;
+  EXTMAX?: number[] | null;
 }
 
 export interface DwgDoc {
   entities: DwgEntity[];
   layerName(e: DwgEntity): string;
+  header?: DwgHeader;
 }
 
 export interface Calibration {
@@ -57,8 +75,9 @@ export async function parseDwgToJson(dwgPath: string): Promise<DwgDoc> {
   try {
     await run("dwgread", ["-O", "JSON", "-o", tmp, dwgPath]);
     const raw = await fs.readFile(tmp, "utf8");
-    const parsed = JSON.parse(raw) as { OBJECTS?: DwgEntity[] };
+    const parsed = JSON.parse(raw) as { OBJECTS?: DwgEntity[]; HEADER?: DwgHeader };
     const entities = parsed.OBJECTS ?? [];
+    const header = parsed.HEADER;
     const names = new Map<number, string>();
     for (const e of entities) {
       if (e.object === "LAYER" && e.name) {
@@ -69,6 +88,7 @@ export async function parseDwgToJson(dwgPath: string): Promise<DwgDoc> {
     return {
       entities,
       layerName: (e) => (lastRef(e.layer) !== null && names.get(lastRef(e.layer)!)) || "0",
+      header,
     };
   } finally {
     await fs.rm(tmp, { force: true });
