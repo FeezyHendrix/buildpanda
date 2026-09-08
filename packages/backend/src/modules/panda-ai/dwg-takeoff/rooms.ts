@@ -101,6 +101,8 @@ export function measureRooms(doc: DwgDoc, sheet: RegisterSheet, walls: WallSegme
       basis: `Flood fill inside the wall faces from the "${r.name}" label on ${sheet.code} (${fill.cellMm} mm grid${r.sealed === "walls" ? "" : r.sealed === "openings" ? ", door and window geometry added to seal it" : ", gaps closed morphologically"})`,
       sheetId: sheet.id,
       evidence: [],
+      // the traced fill, in drawing units: the room the figure was taken from
+      ...(r.vertices.length >= 3 ? { shapes: [{ kind: "area" as const, vertices: r.vertices }] } : {}),
       reason,
       crossCheck: check,
     };

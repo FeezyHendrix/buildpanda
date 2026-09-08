@@ -3,10 +3,12 @@ import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
 import { dwgRow } from "./dwg-row.ts";
+import { dwgGeometryRows } from "./dwg-geometry.ts";
 import type {
   DwgTakeoffHandover,
   DwgTakeoffLine,
   PreconBoqRowRow,
+  PreconGeometryRow,
   PreconSession,
   PreconSessionRow,
   PreconSheet,
@@ -120,6 +122,9 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
       const storagePath = (await repo.sheetsBySession(session.id))[0]?.storage_path ?? "";
       const existing = await repo.rowsBySession(session.id);
       await repo.deleteRows(existing.filter((r) => r.origin === "ai" && r.status !== "verified").map((r) => r.id));
+      // the engine's annotations go with its rows: a re-run draws the sheet
+      // again from scratch, and what a person drew by hand is untouched
+      await repo.deleteAiGeometriesBySession(session.id);
       await repo.deleteSheetsBySession(session.id);
 
       const sheetIds = new Map<number, string>();
@@ -168,6 +173,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         bills[0] ??
         (await repo.insertBill({ id: generateId("pbl"), session_id: session.id, title: "Bill No. 1 — Automated take-off (DWG)", sort: 0 }));
       const rows: Omit<PreconBoqRowRow, "created_at" | "updated_at">[] = [];
+      const geometries: Omit<PreconGeometryRow, "created_at">[] = [];
       const byTrade = new Map<string, DwgTakeoffLine[]>();
       for (const line of handover.items) {
         const list = byTrade.get(line.trade);
@@ -180,27 +186,32 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         for (const line of tradeLines) {
           const low = line.confidence !== "high";
           const code = codeOf(line);
-          rows.push(
-            dwgRow(bill.id, rows.length, {
-              // a note-only line is evidence for a priced line, never a quantity of its own
-              row_type: line.noteOnly ? "spec_note" : "item",
-              element_group: trade,
-              code,
-              description: line.noteOnly ? `${line.description} (cross-check only: ${line.quantity} ${line.unit})` : line.description,
-              unit: line.unit,
-              qty_gross: line.noteOnly ? null : line.quantity,
-              qty: line.noteOnly ? null : line.quantity,
-              confidence: low ? "low" : "high",
-              status: low ? "needs_review" : "ai_generated",
-              measurement_basis: line.basis,
-              // the row's confidence enum has no "medium", so the reason keeps that word
-              confidence_reason: [line.confidence === "medium" ? "medium confidence" : null, line.reason, line.crossCheck]
-                .filter(Boolean)
-                .join(" · "),
-              provenance: `Read from ${file.fileName}${code ? ` (${code})` : ""} by the automated take-off: ${line.basis}`,
-              evidence: line.evidence ?? [],
-            }),
-          );
+          const row = dwgRow(bill.id, rows.length, {
+            // a note-only line is evidence for a priced line, never a quantity of its own
+            row_type: line.noteOnly ? "spec_note" : "item",
+            element_group: trade,
+            code,
+            description: line.noteOnly ? `${line.description} (cross-check only: ${line.quantity} ${line.unit})` : line.description,
+            unit: line.unit,
+            qty_gross: line.noteOnly ? null : line.quantity,
+            qty: line.noteOnly ? null : line.quantity,
+            confidence: low ? "low" : "high",
+            status: low ? "needs_review" : "ai_generated",
+            measurement_basis: line.basis,
+            // the row's confidence enum has no "medium", so the reason keeps that word
+            confidence_reason: [line.confidence === "medium" ? "medium confidence" : null, line.reason, line.crossCheck]
+              .filter(Boolean)
+              .join(" · "),
+            provenance: `Read from ${file.fileName}${code ? ` (${code})` : ""} by the automated take-off: ${line.basis}`,
+            evidence: line.evidence ?? [],
+          });
+          rows.push(row);
+          // what the line looks like on the drawing: a note-only line is
+          // evidence for another line and marks nothing of its own
+          const sheetId = line.sheetId === undefined ? undefined : sheetIds.get(line.sheetId);
+          if (!line.noteOnly && sheetId) {
+            geometries.push(...dwgGeometryRows(row.id, sheetId, line.shapes, handover.units.scaleToMm));
+          }
         }
       }
       if (handover.notes.length) {
@@ -210,6 +221,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         }
       }
       await repo.insertBoqRows(rows);
+      await repo.insertGeometries(geometries);
       await repo.appendSessionProgress(session.id, {
         at: new Date().toISOString(),
         phase: "draft",

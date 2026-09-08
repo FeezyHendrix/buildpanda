@@ -67,6 +67,15 @@ export interface RegisterSheet {
   textMembers: number[];
 }
 
+// What the line looks like on the drawing, in the drawing's own coordinates —
+// the space the engine measures in and the viewer frames through the sheet's
+// bounds. A linear shape is a run's centreline, an area shape a traced room
+// outline, a count shape one vertex per counted entity.
+export interface MeasuredShape {
+  kind: "linear" | "area" | "count";
+  vertices: number[][];
+}
+
 export interface MeasuredItem {
   trade: string;
   description: string;
@@ -78,6 +87,8 @@ export interface MeasuredItem {
   sheetId?: number;
   // the object handles the quantity was computed from; the viewer can cite them
   evidence?: number[];
+  // where the quantity sits on the sheet, in drawing units: the viewer draws these
+  shapes?: MeasuredShape[];
   // what the second method said, and whether it agreed
   crossCheck?: string;
   // short machine-readable reason behind the confidence
