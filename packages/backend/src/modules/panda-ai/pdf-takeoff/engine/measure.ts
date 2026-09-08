@@ -129,6 +129,9 @@ function sharedOpenings(a: RunSpan, b: RunSpan, lo: number, hi: number, minPt: n
   return out.sort((p, q) => p.lo - q.lo);
 }
 
+// Each run takes the partner it shares the most length with, not the nearest
+// one: on a single-pen export a window frame's edge lies between the faces
+// of the wall it sits in, and the nearest partner would be the frame.
 function pairSpans(spans: Span[], mmPerPt: number, horizontal: boolean): WallPair[] {
   const toM = mmPerPt / 1000;
   const eligible = mergeCollinearSpans(spans, mmPerPt).filter((r) => {
@@ -140,43 +143,70 @@ function pairSpans(spans: Span[], mmPerPt: number, horizontal: boolean): WallPai
   const pairs: WallPair[] = [];
   for (let i = 0; i < eligible.length; i++) {
     if (used[i]) continue;
+    const a = eligible[i]!;
+    let best: { j: number; lo: number; hi: number; gapMm: number } | null = null;
     for (let j = i + 1; j < eligible.length; j++) {
       if (used[j]) continue;
-      const a = eligible[i]!;
       const b = eligible[j]!;
       const gapMm = Math.abs(a.fixed - b.fixed) * mmPerPt;
       if (gapMm > WALL_GAP_MAX_MM) break; // sorted by fixed axis: no closer partner further on
       if (gapMm < WALL_GAP_MIN_MM) continue;
-      // Annotate the full overlap of the two merged runs — the whole wall span.
+      // the full overlap of the two merged runs — the whole wall span
       const lo = Math.max(a.lo, b.lo);
       const hi = Math.min(a.hi, b.hi);
-      const overlapM = (hi - lo) * toM;
-      if (overlapM < WALL_MIN_OVERLAP_M) continue;
-      used[i] = true;
-      used[j] = true;
-      const centre = (a.fixed + b.fixed) / 2;
-      pairs.push({
-        vertices: horizontal
-          ? [
-              [lo, centre],
-              [hi, centre],
-            ]
-          : [
-              [centre, lo],
-              [centre, hi],
-            ],
-        lengthM: Math.round(overlapM * 100) / 100,
-        gapMm: Math.round(gapMm),
-        horizontal,
-        faces: [a.fixed, b.fixed],
-        lo,
-        hi,
-        openings: sharedOpenings(a, b, lo, hi, 300 / mmPerPt),
-      });
-      break;
+      if ((hi - lo) * toM < WALL_MIN_OVERLAP_M) continue;
+      if (!best || hi - lo > best.hi - best.lo) best = { j, lo, hi, gapMm };
     }
+    if (!best) continue;
+    const b = eligible[best.j]!;
+    used[i] = true;
+    used[best.j] = true;
+    const { lo, hi, gapMm } = best;
+    const centre = (a.fixed + b.fixed) / 2;
+    pairs.push({
+      vertices: horizontal
+        ? [
+            [lo, centre],
+            [hi, centre],
+          ]
+        : [
+            [centre, lo],
+            [centre, hi],
+          ],
+      lengthM: Math.round((hi - lo) * toM * 100) / 100,
+      gapMm: Math.round(gapMm),
+      horizontal,
+      faces: [a.fixed, b.fixed],
+      lo,
+      hi,
+      openings: sharedOpenings(a, b, lo, hi, 300 / mmPerPt),
+    });
   }
   return pairs;
+}
+
+// the edges of a small closed outline (a window frame, a column, a fitting)
+// are never wall faces, whatever pen they are drawn with
+const OUTLINE_MAX_M = 2.4;
+
+export function wallFaceCandidates(segments: Segment[], mmPerPt: number, penPt: number): Segment[] {
+  const extents = new Map<number, { minX: number; minY: number; maxX: number; maxY: number }>();
+  for (const s of segments) {
+    if (!s.closed || s.path === undefined) continue;
+    const e = extents.get(s.path) ?? { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    e.minX = Math.min(e.minX, s.x1, s.x2);
+    e.maxX = Math.max(e.maxX, s.x1, s.x2);
+    e.minY = Math.min(e.minY, s.y1, s.y2);
+    e.maxY = Math.max(e.maxY, s.y1, s.y2);
+    extents.set(s.path, e);
+  }
+  const maxPt = (OUTLINE_MAX_M * 1000) / mmPerPt;
+  return segments.filter((s) => {
+    if (s.width < penPt - 1e-6) return false;
+    if (!s.closed || s.path === undefined) return true;
+    const e = extents.get(s.path)!;
+    return Math.max(e.maxX - e.minX, e.maxY - e.minY) > maxPt;
+  });
 }
 
 // The wall pen is whatever pen is clearly heavier than the rest of the sheet,
@@ -211,7 +241,7 @@ export function wallPenThreshold(segments: Segment[]): number {
 // contributes its overlap as centreline length — no halving needed because
 // pairing already collapses the double line.
 export function measureWalls(segments: Segment[], mmPerPt: number, penPt = wallPenThreshold(segments)): WallMeasurement {
-  const heavy = segments.filter((s) => s.width >= penPt - 1e-6);
+  const heavy = wallFaceCandidates(segments, mmPerPt, penPt);
   const pairs = [...pairSpans(toSpansH(heavy), mmPerPt, true), ...pairSpans(toSpansV(heavy), mmPerPt, false)];
   const centrelineM = Math.round(pairs.reduce((sum, p) => sum + p.lengthM, 0) * 100) / 100;
   return { centrelineM, pairs, penPt };

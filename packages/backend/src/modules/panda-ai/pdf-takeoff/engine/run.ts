@@ -7,7 +7,7 @@ import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } 
 export { regionShareOfSheet };
 import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
 import { buildSnapIndex } from "./pdf-extract.ts";
-import { contextFromPages, extractAllPages } from "./measure-file.ts";
+import { contextFromPages, extractAllPages, rasterNote } from "./measure-file.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
 import { buildReport, summarise } from "../../geometry/report.ts";
 import type { ExtractionReport } from "../../geometry/types.ts";
@@ -108,7 +108,8 @@ export async function generateForSession(
             const sheetReport = buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never));
             extractionBySheet[sheetId] = sheetReport;
             await repo.updateSheetGeoSummary(sheetId, summarise(sheetReport));
-            if (extracted.segments.length < 100) {
+            // a scanned plan on a vector sheet has a title block's worth of lines and an image: still not measurable
+            if (extracted.segments.length < 100 || rasterNote(extracted)) {
               const visionItems = await measureSheetViaVision(
                 {
                   storagePath: placeholder.storage_path,
@@ -131,7 +132,7 @@ export async function generateForSession(
               } else {
                 await repo.updateSheet(sheetId, {
                   status: "unmeasurable",
-                  error: "No vector content — likely a scanned/raster drawing; use manual takeoff",
+                  error: rasterNote(extracted) ?? "No vector content — likely a scanned/raster drawing; use manual takeoff",
                   page_number: globalPage,
                 });
               }

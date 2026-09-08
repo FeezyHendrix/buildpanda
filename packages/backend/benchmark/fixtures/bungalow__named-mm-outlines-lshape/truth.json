@@ -1,0 +1,258 @@
+{
+  "family": "bungalow",
+  "storeys": 1,
+  "storeyHeightM": 3,
+  "sheets": [
+    {
+      "id": "gf",
+      "kind": "floor-plan",
+      "title": "GROUND FLOOR PLAN",
+      "level": "+450",
+      "repeats": 1
+    },
+    {
+      "id": "elev",
+      "kind": "elevation",
+      "title": "NORTH ELEVATION",
+      "level": null,
+      "repeats": 1
+    },
+    {
+      "id": "sec",
+      "kind": "section",
+      "title": "SECTION A-A",
+      "level": null,
+      "repeats": 1
+    }
+  ],
+  "rooms": [
+    {
+      "name": "LOUNGE",
+      "areaM2": 17.3,
+      "perimeterM": 16.65,
+      "sheet": "gf"
+    },
+    {
+      "name": "DINING",
+      "areaM2": 12.64,
+      "perimeterM": 14.33,
+      "sheet": "gf"
+    },
+    {
+      "name": "KITCHEN",
+      "areaM2": 13.69,
+      "perimeterM": 14.85,
+      "sheet": "gf"
+    },
+    {
+      "name": "STORE",
+      "areaM2": 9.7,
+      "perimeterM": 13.13,
+      "sheet": "gf"
+    },
+    {
+      "name": "BATH",
+      "areaM2": 7.09,
+      "perimeterM": 10.8,
+      "sheet": "gf"
+    },
+    {
+      "name": "WC",
+      "areaM2": 7.55,
+      "perimeterM": 11.25,
+      "sheet": "gf"
+    },
+    {
+      "name": "BEDROOM",
+      "areaM2": 16.01,
+      "perimeterM": 16.05,
+      "sheet": "gf"
+    },
+    {
+      "name": "BEDROOM",
+      "areaM2": 11.56,
+      "perimeterM": 13.65,
+      "sheet": "gf"
+    }
+  ],
+  "elements": [
+    {
+      "element": "walls-external",
+      "sheet": "gf",
+      "lengthM": 43.8,
+      "areaM2": 114.12,
+      "thicknessMm": 225,
+      "heightM": 3,
+      "ids": [
+        "wl_21",
+        "wl_22",
+        "wl_23",
+        "wl_24",
+        "wl_27",
+        "wl_28",
+        "wl_29",
+        "wl_30",
+        "wl_33",
+        "wl_34",
+        "wl_35",
+        "wl_36",
+        "wl_39",
+        "wl_40",
+        "wl_41",
+        "wl_42",
+        "wl_45",
+        "wl_46",
+        "wl_47",
+        "wl_48",
+        "wl_51",
+        "wl_52",
+        "wl_53",
+        "wl_54",
+        "wl_57",
+        "wl_58",
+        "wl_59",
+        "wl_60",
+        "wl_63",
+        "wl_64",
+        "wl_65",
+        "wl_66",
+        "wl_69",
+        "wl_70",
+        "wl_71",
+        "wl_72",
+        "wl_75",
+        "wl_76",
+        "wl_77",
+        "wl_78",
+        "wl_81",
+        "wl_82",
+        "wl_83",
+        "wl_84",
+        "wl_87",
+        "wl_88",
+        "wl_89",
+        "wl_90"
+      ]
+    },
+    {
+      "element": "walls-internal",
+      "sheet": "gf",
+      "lengthM": 36.3,
+      "areaM2": 93.78,
+      "thicknessMm": 150,
+      "heightM": 3,
+      "ids": [
+        "wl_93",
+        "wl_94",
+        "wl_95",
+        "wl_96",
+        "wl_99",
+        "wl_100",
+        "wl_101",
+        "wl_102",
+        "wl_103",
+        "wl_104",
+        "wl_107",
+        "wl_108",
+        "wl_109",
+        "wl_110",
+        "wl_113",
+        "wl_114",
+        "wl_115",
+        "wl_116",
+        "wl_119",
+        "wl_120",
+        "wl_121",
+        "wl_122",
+        "wl_125",
+        "wl_126",
+        "wl_127",
+        "wl_128",
+        "wl_131",
+        "wl_132",
+        "wl_133",
+        "wl_134",
+        "wl_137",
+        "wl_138",
+        "wl_139",
+        "wl_140",
+        "wl_141",
+        "wl_142"
+      ]
+    },
+    {
+      "element": "doors",
+      "sheet": "gf",
+      "count": 8,
+      "ids": [
+        "door_13",
+        "door_14",
+        "door_15",
+        "door_16",
+        "door_17",
+        "door_18",
+        "door_19",
+        "door_20"
+      ]
+    },
+    {
+      "element": "windows",
+      "sheet": "gf",
+      "count": 12,
+      "ids": [
+        "win_1",
+        "win_2",
+        "win_3",
+        "win_4",
+        "win_5",
+        "win_6",
+        "win_7",
+        "win_8",
+        "win_9",
+        "win_10",
+        "win_11",
+        "win_12"
+      ]
+    },
+    {
+      "element": "sanitary",
+      "sheet": "gf",
+      "count": 2,
+      "ids": [
+        "san_150",
+        "san_152"
+      ]
+    },
+    {
+      "element": "floor-area",
+      "sheet": "gf",
+      "areaM2": 95.54,
+      "ids": [
+        "LOUNGE",
+        "DINING",
+        "KITCHEN",
+        "STORE",
+        "BATH",
+        "WC",
+        "BEDROOM",
+        "BEDROOM"
+      ]
+    }
+  ],
+  "building": {
+    "floorAreaM2": 95.54,
+    "columns": 0,
+    "doors": 8,
+    "windows": 12,
+    "wallsExternalM2": 114.12,
+    "wallsInternalM2": 93.78
+  },
+  "convention": {
+    "id": "named-mm-outlines-lshape",
+    "layers": "named",
+    "openings": "outlines",
+    "dimensions": "dimensions",
+    "units": "mm",
+    "shape": "l-shape"
+  }
+}

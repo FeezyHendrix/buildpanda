@@ -53,6 +53,23 @@ export function hasRoomWords(extracted: ExtractedSheet): boolean {
   return /bed\s*room|kitchen|living|lounge/i.test(extracted.texts.map((t) => t.str).join(" "));
 }
 
+// an image covering this much of the page is the drawing itself, not a logo
+const RASTER_PAGE_SHARE = 0.2;
+
+/**
+ * A page whose drawing is an embedded image is pixels: the vector engine
+ * cannot measure it and says so, instead of measuring the title block.
+ */
+export function rasterNote(extracted: ExtractedSheet): string | null {
+  const img = extracted.images;
+  if (!img || img.count === 0) return null;
+  const share = img.pageShare;
+  if (share !== null && share < RASTER_PAGE_SHARE) return null;
+  if (share === null && extracted.segments.length >= 100) return null;
+  const pct = share === null ? "" : ` covering ${Math.round(share * 100)}% of the page`;
+  return `raster drawing: ${img.count} embedded image${img.count > 1 ? "s" : ""}${pct} with ${extracted.segments.length} vector lines around it; the plan is pixels and cannot be measured from vectors — unmeasurable here, needs vision or a CAD export`;
+}
+
 export async function measurePdfFile(filePath: string, opts: { roomsAsItems?: boolean } = {}): Promise<MeasuredPage[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const doc = await pdfjs.getDocument({ url: filePath, useSystemFonts: true }).promise;
@@ -62,6 +79,12 @@ export async function measurePdfFile(filePath: string, opts: { roomsAsItems?: bo
     const document = contextFromPages(extractedPages);
     for (const { pageNumber: pageNo, extracted, calibration } of extractedPages) {
       const base = { pageNumber: pageNo, segments: extracted.segments.length, texts: extracted.texts.length };
+      const raster = rasterNote(extracted);
+      if (raster) {
+        const { kind, title } = classifySheet(extracted.texts, false, hasRoomWords(extracted));
+        pages.push({ ...base, kind, title, calibration: null, items: [], note: raster });
+        continue;
+      }
       if (extracted.segments.length < 100) {
         pages.push({ ...base, kind: "unknown", title: null, calibration: null, items: [], note: "fewer than 100 segments: the session path would try vision here" });
         continue;

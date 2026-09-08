@@ -38,6 +38,44 @@ test("truth manifest is internally consistent for every family", () => {
   assert.equal(buildDrawing("tower20", conv("named-mm-outlines-dims")).truth.storeys, 20);
 });
 
+test("the hard conventions keep the truth honest: L-shapes lose a corner, mirrors keep their counts, attributes state the sizes", () => {
+  const plain = buildDrawing("bungalow", conv("named-mm-outlines-dims")).truth;
+  const lshape = buildDrawing("bungalow", conv("named-mm-outlines-lshape")).truth;
+  assert.equal(lshape.rooms.length, plain.rooms.length - 1, "the notch removes one room");
+  assert.ok(lshape.building.floorAreaM2 < plain.building.floorAreaM2);
+  assert.equal(lshape.elements.find((e) => e.element === "windows")!.count, 12, "the notch's two new external faces each get a window");
+  const floorArea = lshape.elements.find((e) => e.element === "floor-area")!.areaM2!;
+  assert.ok(Math.abs(floorArea - lshape.rooms.reduce((a, r) => a + r.areaM2, 0)) < 0.05);
+
+  const mirrored = buildDrawing("block4", conv("named-mm-outlines-mirrored"));
+  assert.deepEqual(mirrored.truth.building, buildDrawing("block4", conv("named-mm-outlines-dims")).truth.building);
+  const flat = mirrored.drawing.blocks.find((b) => b.name === "FLAT-TYPE-A")!;
+  assert.ok(flat.primitives.length > 50, "the flat's geometry lives in the block");
+  const plan = mirrored.drawing.sheets.find((s) => s.kind === "floor-plan")!;
+  const inserts = plan.primitives.filter((p) => p.kind === "insert" && p.block === "FLAT-TYPE-A");
+  assert.equal(inserts.length, 2);
+  assert.ok(inserts.some((p) => p.kind === "insert" && p.scaleX === -1));
+
+  const attribs = buildDrawing("duplex", conv("named-mm-attribs-schedule"));
+  assert.ok(attribs.drawing.sheets.some((s) => s.kind === "schedule"));
+  const door = attribs.drawing.sheets[0]!.primitives.find((p) => p.kind === "insert" && p.block === "DOOR");
+  assert.deepEqual(door && door.kind === "insert" ? door.attributes : null, { MARK: "D01", WIDTH: "1000" });
+  const plainWalls = plain.elements.find((e) => e.element === "walls-external")!.areaM2!;
+  const attribWalls = buildDrawing("bungalow", conv("named-mm-attribs-schedule")).truth.elements.find((e) => e.element === "walls-external")!.areaM2!;
+  assert.ok(attribWalls < plainWalls, "wider windows deduct more");
+
+  const imperial = buildDrawing("bungalow", conv("named-in-outlines-imperial"));
+  assert.ok(imperial.drawing.sheets[0]!.primitives.some((p) => p.kind === "dimension" && /^\d+'-\d+/.test(p.text ?? "")));
+  assert.ok(imperial.drawing.sheets[0]!.primitives.some((p) => p.kind === "text" && /^\+\d+'-/.test(p.text)));
+  const hatched = buildDrawing("bungalow", conv("named-mm-outlines-hatched")).drawing;
+  assert.ok(hatched.sheets[0]!.primitives.some((p) => p.kind === "hatch"));
+  const exploded = buildDrawing("bungalow", conv("named-mm-outlines-hatchexploded")).drawing;
+  assert.ok(exploded.sheets[0]!.primitives.filter((p) => p.kind === "line" && p.layer === "wall" && !p.heavy).length > 100, "hatch strokes on the wall layer");
+  const unjambed = buildDrawing("bungalow", conv("named-mm-outlines-unjambed")).drawing;
+  const jambed = buildDrawing("bungalow", conv("named-mm-outlines-dims")).drawing;
+  assert.ok(unjambed.sheets[0]!.primitives.length < jambed.sheets[0]!.primitives.length, "no jambs drawn");
+});
+
 test("generator writes DXF, LibreDWG JSON, truth and PDF for one fixture", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "bp-benchmark-"));
   try {

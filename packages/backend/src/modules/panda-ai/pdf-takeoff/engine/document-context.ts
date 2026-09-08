@@ -1,3 +1,4 @@
+import { parseLevelMark } from "../../geometry/length-text.ts";
 import type { Segment, TextRun } from "../types.ts";
 import { closedRects } from "./shapes.ts";
 
@@ -37,21 +38,16 @@ export const ASSUMED_CONTEXT: DocumentContext = {
   doorHeightBasis: "assumed",
 };
 
-// "+450", "+3450 FIRST FLOOR SLAB", "FFL +3.450", "-1200": a signed number,
-// in mm or (with three decimals) in metres.
-const LEVEL_MARK = /(?:^|[\s(])([+\-−±])\s?(\d{1,3}[.,]\d{3}|\d{3,5})(?=$|[\s)])/g;
+// "+450", "+3450 FIRST FLOOR SLAB", "FFL +3.450", "-1200", "+11'-3 7/8"": a
+// signed number, in mm, in metres with three decimals, or in feet and inches.
 const STOREY_MIN_MM = 2400;
 const STOREY_MAX_MM = 4500;
 
 export function levelMarks(texts: TextRun[]): number[] {
   const out = new Set<number>();
   for (const t of texts) {
-    for (const m of t.str.matchAll(LEVEL_MARK)) {
-      const raw = m[2]!;
-      const value = /[.,]/.test(raw) ? Math.round(Number(raw.replace(",", ".")) * 1000) : Number(raw);
-      if (!Number.isFinite(value)) continue;
-      out.add(m[1] === "-" || m[1] === "−" ? -value : value);
-    }
+    const m = parseLevelMark(t.str);
+    if (m && Math.abs(m.mm) >= 100) out.add(m.mm);
   }
   return [...out].sort((a, b) => a - b);
 }

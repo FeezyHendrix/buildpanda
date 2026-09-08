@@ -1,5 +1,6 @@
 import { buildPlan, resetIds, type OpeningStyleHooks, type PlanSpec } from "./plan.ts";
-import type { Family, Line, Primitive, Sheet, Text, Truth, TruthElement, TruthRoom, TruthSheet } from "./types.ts";
+import { scheduleSheet } from "./schedule.ts";
+import type { Family, Line, PlanShape, Primitive, Sheet, Text, Truth, TruthElement, TruthRoom, TruthSheet, WallStyle } from "./types.ts";
 
 // The building families the benchmark covers, from a three-bed bungalow to a
 // twenty-storey tower. Each family yields plan sheets plus an elevation and a
@@ -13,7 +14,28 @@ const GROUND_LEVEL_MM = 450;
 interface FamilyBuild {
   sheets: Sheet[];
   truth: Omit<Truth, "convention">;
+  // width of the plan in mm, for the mirror convention
+  planWidthMm: number;
 }
+
+export interface FamilyOptions {
+  hooks: OpeningStyleHooks;
+  walls: WallStyle;
+  shape: PlanShape;
+  doorMm?: number;
+  windowMm?: number;
+  windowHeadMm?: number;
+  // add a door and window schedule sheet
+  schedule?: boolean;
+}
+
+// The notch that turns each family's rectangle into an L: the top-right cells.
+const NOTCH: Record<Family, Array<[number, number]>> = {
+  bungalow: [[2, 2]],
+  duplex: [[2, 2]],
+  block4: [[2, 4], [2, 5]],
+  tower20: [[4, 4], [4, 3], [3, 4]],
+};
 
 function levelText(storey: number): string {
   const mm = GROUND_LEVEL_MM + storey * STOREY_M * 1000;
@@ -21,7 +43,7 @@ function levelText(storey: number): string {
   return `+${mm} ${name}`;
 }
 
-function elevationSheet(id: string, widthMm: number, storeys: number, windowsPerStorey: number, originX: number): Sheet {
+function elevationSheet(id: string, widthMm: number, storeys: number, windowsPerStorey: number, originX: number, win: { w: number; h: number }): Sheet {
   const totalH = storeys * STOREY_M * 1000 + 1200;
   const prims: Primitive[] = [];
   let n = 0;
@@ -36,7 +58,8 @@ function elevationSheet(id: string, widthMm: number, storeys: number, windowsPer
       const pitch = widthMm / (windowsPerStorey + 1);
       for (let w = 1; w <= windowsPerStorey; w++) {
         const cx = w * pitch;
-        prims.push({ kind: "polyline", id: `${id}_w${s}_${w}`, layer: "window", closed: true, points: [[cx - 600, y + 900], [cx + 600, y + 900], [cx + 600, y + 2100], [cx - 600, y + 2100]] });
+        const hw = win.w / 2;
+        prims.push({ kind: "polyline", id: `${id}_w${s}_${w}`, layer: "window", closed: true, points: [[cx - hw, y + 900], [cx + hw, y + 900], [cx + hw, y + 900 + win.h], [cx - hw, y + 900 + win.h]] });
       }
     }
   }
@@ -60,8 +83,9 @@ function sectionSheet(id: string, depthMm: number, storeys: number, originX: num
   return { id, kind: "section", title: "SECTION A-A", level: null, originX, originY: 0, primitives: prims };
 }
 
-function planSheet(spec: PlanSpec, hooks: OpeningStyleHooks, originX: number) {
-  const built = buildPlan(spec, hooks);
+function planSheet(spec: PlanSpec, family: Family, opts: FamilyOptions, originX: number) {
+  const shaped: PlanSpec = { ...spec, omit: opts.shape === "l-shape" ? NOTCH[family] : undefined, doorMm: opts.doorMm, windowMm: opts.windowMm, windowHeadMm: opts.windowHeadMm };
+  const built = buildPlan(shaped, { hooks: opts.hooks, walls: opts.walls });
   const sheet: Sheet = { id: spec.id, kind: "floor-plan", title: spec.title, level: spec.level, originX, originY: 0, primitives: built.primitives };
   return { sheet, built };
 }
@@ -118,7 +142,7 @@ const TOWER_FLOOR: Omit<PlanSpec, "id" | "title" | "level"> = {
   storeyHeightM: STOREY_M,
 };
 
-export function buildFamily(family: Family, hooks: OpeningStyleHooks): FamilyBuild {
+export function buildFamily(family: Family, opts: FamilyOptions): FamilyBuild {
   resetIds();
   const sheets: Sheet[] = [];
   const rooms: TruthRoom[] = [];
@@ -128,7 +152,7 @@ export function buildFamily(family: Family, hooks: OpeningStyleHooks): FamilyBui
   let planWidth = 0;
   let planDepth = 0;
   const addPlan = (spec: PlanSpec, repeats: number) => {
-    const { sheet, built } = planSheet(spec, hooks, x);
+    const { sheet, built } = planSheet(spec, family, opts, x);
     sheets.push(sheet);
     rooms.push(...built.rooms);
     elements.push(...built.elements);
@@ -157,11 +181,20 @@ export function buildFamily(family: Family, hooks: OpeningStyleHooks): FamilyBui
   }
 
   const windowsPerStorey = family === "tower20" ? 5 : 3;
-  sheets.push(elevationSheet("elev", planWidth, storeys, windowsPerStorey, x));
+  sheets.push(elevationSheet("elev", planWidth, storeys, windowsPerStorey, x, { w: opts.windowMm ?? 1200, h: opts.windowHeadMm ?? 1200 }));
   truthSheets.push({ id: "elev", kind: "elevation", title: "NORTH ELEVATION", level: null, repeats: 1 });
   x += planWidth + GUTTER_MM;
   sheets.push(sectionSheet("sec", planDepth, storeys, x));
   truthSheets.push({ id: "sec", kind: "section", title: "SECTION A-A", level: null, repeats: 1 });
+
+  if (opts.schedule) {
+    x += planDepth + GUTTER_MM;
+    const repeats = new Map(truthSheets.map((s) => [s.id, s.repeats]));
+    const count = (kind: TruthElement["element"]) => elements.filter((e) => e.element === kind).reduce((a, e) => a + (e.count ?? 0) * (repeats.get(e.sheet) ?? 1), 0);
+    const sched = scheduleSheet([{ mark: "D01", widthMm: opts.doorMm ?? 900, heightMm: 2100, nr: count("doors") }], [{ mark: "W01", widthMm: opts.windowMm ?? 1200, heightMm: opts.windowHeadMm ?? 1200, nr: count("windows") }], x);
+    sheets.push(sched.sheet);
+    truthSheets.push(sched.truth);
+  }
 
   const repeatOf = new Map(truthSheets.map((s) => [s.id, s.repeats]));
   const total = (kind: TruthElement["element"], field: "count" | "areaM2") =>
@@ -176,6 +209,7 @@ export function buildFamily(family: Family, hooks: OpeningStyleHooks): FamilyBui
 
   return {
     sheets,
+    planWidthMm: planWidth,
     truth: {
       family,
       storeys,
