@@ -10,6 +10,8 @@ interface Props {
   onSelectRow: (rowId: string | null) => void;
   draft: number[][];
   draftColor?: string;
+  /** An area in progress or awaiting its name: drawn closed and filled. */
+  draftClosed?: boolean;
   toPx: (pt: number[]) => [number, number];
   /** When set, only these rows draw at full strength; the rest are dimmed. */
   emphasisRowIds?: ReadonlySet<string> | null;
@@ -89,7 +91,7 @@ function GeometryShape({
 GeometryShape.displayName = "GeometryShape";
 
 /** The measurement overlay drawn over the rasterised sheet, in canvas pixels. */
-export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", toPx, emphasisRowIds = null }: Props) {
+export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedRowId, onSelectRow, draft, draftColor = "#004DE7", draftClosed = false, toPx, emphasisRowIds = null }: Props) {
   return (
     <svg className="absolute left-0 top-0" width={widthPx} height={heightPx} viewBox={`0 0 ${widthPx} ${heightPx}`}>
       {geometries.map((g) => {
@@ -110,7 +112,9 @@ export function SheetOverlay({ widthPx, heightPx, geometries, rowById, selectedR
           />
         );
       })}
-      {draft.length > 0 ? (
+      {draft.length > 0 && draftClosed && draft.length >= 3 ? (
+        <polygon points={draft.map((v) => toPx(v).join(",")).join(" ")} fill={draftColor} fillOpacity={0.12} stroke={draftColor} strokeWidth={2} strokeDasharray="4 3" />
+      ) : draft.length > 0 ? (
         <polyline points={draft.map((v) => toPx(v).join(",")).join(" ")} fill="none" stroke={draftColor} strokeWidth={2} strokeDasharray="4 3" />
       ) : null}
       {draft.map((v, i) => {
