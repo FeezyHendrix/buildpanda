@@ -65,6 +65,7 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
   async function loadLive(surface: AssistSurface, sessionId: string): Promise<LiveState> {
     const ctx = await loadContext(surface, sessionId);
     return {
+      sessionId,
       rows: new Map("rows" in ctx ? ctx.rows.map((r) => [r.id, r]) : []),
       tasks: new Map("tasks" in ctx ? ctx.tasks.map((t) => [t.id, t]) : []),
     };

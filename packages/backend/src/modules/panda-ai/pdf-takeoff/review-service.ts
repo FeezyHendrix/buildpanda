@@ -2,6 +2,7 @@ import { generateId } from "../../../lib/ids.ts";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
 import type { PreconRepository } from "./repository.ts";
 import { nextRevision } from "./revisions.ts";
+import { dwgRow } from "./dwg-row.ts";
 import type {
   DwgTakeoffHandover,
   DwgTakeoffLine,
@@ -38,46 +39,6 @@ interface Deps {
 
 const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
 
-// Shape a DWG take-off line into a bill row with everything review expects.
-function dwgRow(
-  billId: string,
-  sort: number,
-  seed: Partial<Omit<PreconBoqRowRow, "id" | "bill_id" | "sort" | "created_at" | "updated_at">> & {
-    row_type: PreconBoqRowRow["row_type"];
-    description: string;
-  },
-): Omit<PreconBoqRowRow, "created_at" | "updated_at"> {
-  return {
-    id: generateId("pbr"),
-    bill_id: billId,
-    sort,
-    row_type: seed.row_type,
-    element_group: seed.element_group ?? null,
-    code: seed.code ?? null,
-    description: seed.description,
-    unit: seed.unit ?? null,
-    qty_gross: seed.qty_gross ?? null,
-    deductions: [],
-    qty: seed.qty ?? null,
-    rate: null,
-    amount: null,
-    rate_source: null,
-    confidence: seed.confidence ?? null,
-    status: seed.status ?? null,
-    version: 1,
-    measurement_basis: seed.measurement_basis ?? null,
-    confidence_reason: seed.confidence_reason ?? null,
-    provenance: seed.provenance ?? null,
-    evidence: seed.evidence ?? null,
-    origin: "ai",
-    edited_at: null,
-    edited_by: null,
-    verified_by: null,
-    verified_at: null,
-  };
-}
-
-
 /**
  * The review-side corrections: what the engine read off a sheet, what it took
  * the building to be, and the DWG path landing as a session. Split from the
@@ -96,7 +57,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
       planId: string | null,
       file: { fileName: string; storagePath: string },
     ): Promise<PreconSession> {
-      const lineage = await nextRevision(repo, planId, FULL_TAKEOFF_SCOPE);
+      const lineage = await nextRevision(repo, planId, FULL_TAKEOFF_SCOPE, "ai");
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -145,8 +106,14 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
     // the handles it was computed from, and the session moves to review. A
     // re-run (after the reviewer corrected the layer map) replaces the
     // engine's unverified rows and the register; verified and hand-entered
-    // rows stay.
-    async fillDwgSession(sessionId: string, file: { fileName: string }, handover: DwgTakeoffHandover): Promise<PreconSession> {
+    // rows stay. In sheets-only mode (a take-off measured by hand) the
+    // register lands with every drawing open for measuring and no rows at all.
+    async fillDwgSession(
+      sessionId: string,
+      file: { fileName: string },
+      handover: DwgTakeoffHandover,
+      opts: { sheetsOnly?: boolean } = {},
+    ): Promise<PreconSession> {
       const session = await repo.sessionById(sessionId);
       if (!session) throw new NotFoundError("Preconstruction session");
       const storagePath = (await repo.sheetsBySession(session.id))[0]?.storage_path ?? "";
@@ -156,10 +123,12 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
 
       const sheetIds = new Map<number, string>();
       const unit = handover.units.unit;
+      const sheetsOnly = Boolean(opts.sheetsOnly);
       await repo.insertSheets(
         handover.sheets.map((s, i) => {
           const id = generateId("pcsh");
           sheetIds.set(s.id, id);
+          const drawable = sheetsOnly || s.kind === "floor-plan";
           return {
             id,
             session_id: session.id,
@@ -170,17 +139,28 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
             code: s.code,
             title: s.title,
             kind: (SHEET_KINDS as readonly string[]).includes(s.kind) ? (s.kind as PreconSheet["kind"]) : "unknown",
-            status: s.kind === "floor-plan" ? "measured" : "unmeasurable",
+            status: drawable ? "measured" : "unmeasurable",
             scale_mm_per_pt: handover.units.scaleToMm,
             scale_confidence: Math.max(0, 1 - handover.units.errorPct),
             dim_unit: (DIM_UNITS as readonly string[]).includes(unit) ? (unit as PreconSheet["dimUnit"]) : null,
             snap_index: null,
             bounds: s.bounds,
-            error: s.kind === "floor-plan" ? null : `${s.kind}: read for context, not measured`,
+            error: drawable ? null : `${s.kind}: read for context, not measured`,
           };
         }),
       );
       await repo.updateSessionLayerMap(session.id, handover.layerMap);
+
+      if (sheetsOnly) {
+        await repo.appendSessionProgress(session.id, {
+          at: new Date().toISOString(),
+          phase: "draft",
+          message: `Read ${handover.sheets.length} drawings from ${file.fileName} (${handover.units.note}) — ready to measure by hand`,
+        });
+        await repo.updateSessionStatus(session.id, "reviewing");
+        const ready = await repo.sessionById(session.id);
+        return toSession(ready ?? { ...session, status: "reviewing" });
+      }
 
       const bills = await repo.billsBySession(session.id);
       const bill =

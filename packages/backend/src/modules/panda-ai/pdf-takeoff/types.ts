@@ -435,10 +435,16 @@ export interface ApplyPreview {
   items: ApplyPreviewItem[];
 }
 
+// "ai" runs the engine; "manual" renders the sheets and leaves the bill to
+// the person drawing on them.
+export const TAKEOFF_MODES = ["ai", "manual"] as const;
+export type TakeoffMode = (typeof TAKEOFF_MODES)[number];
+
 export interface CreateSessionFromPlanBody {
   proposalId: string;
   planId: string;
   scope?: TakeoffScope;
+  mode?: TakeoffMode;
 }
 
 export interface UpdateSheetBody {
@@ -710,4 +716,66 @@ export interface CreateProgrammeTaskBody {
   /** Insert directly after this task; omitted appends at the end. */
   afterTaskId?: string;
   predecessors?: ProgrammeDependency[];
+}
+
+// ── Manual take-off (measured by hand) ───────────────────────────────────────
+
+export const MEASURE_TOOLS = ["length", "polyline", "area", "count", "volume", "wall_area"] as const;
+export type MeasureTool = (typeof MEASURE_TOOLS)[number];
+
+export interface MeasureFactor {
+  heightM?: number;
+  depthM?: number;
+}
+
+// A line a person drew on a sheet. Vertices are sheet points, the same space
+// PreconGeometry.vertices uses; the sheet's scale turns them into metres.
+export interface CreateMeasurementBody {
+  sheetId: string;
+  tool: MeasureTool;
+  vertices: number[][];
+  description: string;
+  elementGroup: string;
+  code?: string;
+  // defaults by tool: length/polyline m, area m2, count nr, volume m3, wall_area m2
+  unit?: string;
+  // wall_area needs heightM, volume needs depthM
+  factor?: MeasureFactor;
+  // × identical floors/areas, default 1, stated in the basis
+  typical?: number;
+  rate?: number;
+  // the bill the line lands in; defaults to the session's first bill
+  billId?: string;
+}
+
+// A quantity stated rather than drawn ("add 12 m of 225 wall"): a plain manual
+// row whose basis says so. Used by the Panda AI assist path.
+export interface StatedMeasurementBody {
+  tool: MeasureTool;
+  qty: number;
+  description: string;
+  elementGroup: string;
+  code?: string;
+  unit?: string;
+  factor?: MeasureFactor;
+  typical?: number;
+  rate?: number;
+  sheetId?: string;
+  billId?: string;
+}
+
+export interface CreateMeasurementResult {
+  row: PreconBoqRowDto;
+  geometry: PreconGeometry;
+}
+
+// What the geometry maths produces before it becomes a bill row.
+export interface ManualQuantity {
+  // the drawn figure in its natural unit: metres, m2 or a count
+  base: number;
+  baseUnit: string;
+  // after the tool's factor (height, depth) but before typical
+  gross: number;
+  unit: string;
+  geometryKind: GeometryKind;
 }
