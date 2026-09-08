@@ -565,3 +565,53 @@ export interface CreateMeasurementResult {
   row: PreconBoqRow;
   geometry: PreconGeometry;
 }
+
+// ---- WS-M2B · viewer tools: typical, viewports, room fill, find symbol ----
+// Shapes come from scratchpad/CONTRACT-MANUAL-2.md (WS-M2A builds the endpoints).
+
+/** A window on a details sheet with its own scale; `rect` is [x1, y1, x2, y2] in sheet points. */
+export interface SheetViewport {
+  id: string;
+  label: string;
+  rect: [number, number, number, number];
+  scaleMmPerPt: number;
+}
+
+// Interface merging: the sheet and row DTOs gain the M2 columns without
+// touching their declarations above (this file is append-only for streams).
+export interface PreconSheet {
+  viewports?: SheetViewport[] | null;
+}
+export interface PreconBoqRow {
+  /** × identical floors or areas: net = (gross − deductions) × typical. */
+  typical?: number;
+}
+
+export interface RoomAtResult {
+  vertices: number[][];
+  label: string | null;
+  areaM2: number;
+}
+
+export interface SymbolMatchesResult {
+  points: number[][];
+  name: string | null;
+  count: number;
+}
+
+export const preconViewerApi = {
+  /** The enclosed space around a point, or 404 "No enclosed space here" / 422 on a picture. */
+  roomAt: (sheetId: string, pt: { x: number; y: number }) =>
+    api.post<RoomAtResult>(`/precon/sheets/${sheetId}/room-at`, pt).then((r) => r.data),
+
+  /** Every match on the sheet of the symbol inside the rect ([x1, y1, x2, y2] in sheet points). */
+  symbolMatches: (sheetId: string, rect: [number, number, number, number]) =>
+    api.post<SymbolMatchesResult>(`/precon/sheets/${sheetId}/symbol-matches`, { rect }).then((r) => r.data),
+
+  /** Same line on N floors or areas; the backend recomputes qty and the basis. */
+  setTypical: (rowId: string, input: { version: number; typical: number }) =>
+    api.patch<PreconBoqRow>(`/precon/rows/${rowId}`, { version: input.version, changes: { typical: input.typical } }).then((r) => r.data),
+
+  updateViewports: (sheetId: string, viewports: SheetViewport[]) =>
+    api.patch<PreconSheet>(`/precon/sheets/${sheetId}`, { viewports }).then((r) => r.data),
+};

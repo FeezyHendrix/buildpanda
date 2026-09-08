@@ -9,7 +9,11 @@ interface Props {
   blockedReasonFor: (meta: PreconToolMeta) => string | null;
   legendOpen: boolean;
   onToggleLegend: () => void;
+  /** Tools that are toggles, not drawing modes (Overlay, a sticky Magnifier): their own on/off state. */
+  toggles?: Partial<Record<PreconTool, boolean>>;
 }
+
+const NO_TOGGLES: Partial<Record<PreconTool, boolean>> = {};
 
 /** "Length · m · L", with the reason appended when the tool is disabled. */
 export function toolTooltip(meta: PreconToolMeta, blocked: string | null): string {
@@ -53,7 +57,7 @@ PaletteButton.displayName = "PaletteButton";
  * dividers, icon plus label at every size, the active tool in the accent
  * colour, tools that are not built yet visible but disabled.
  */
-export function ToolPalette({ tool, onToolChange, blockedReasonFor, legendOpen, onToggleLegend }: Props) {
+export function ToolPalette({ tool, onToolChange, blockedReasonFor, legendOpen, onToggleLegend, toggles = NO_TOGGLES }: Props) {
   return (
     <nav aria-label="Measuring tools" className="flex w-16 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 bg-white px-1 py-1.5">
       {PRECON_TOOL_GROUPS.map((group, index) => (
@@ -65,7 +69,7 @@ export function ToolPalette({ tool, onToolChange, blockedReasonFor, legendOpen, 
               <PaletteButton
                 key={meta.key}
                 meta={meta}
-                active={isLegend ? legendOpen : tool === meta.key}
+                active={isLegend ? legendOpen : (toggles[meta.key] ?? tool === meta.key)}
                 blocked={blocked}
                 onClick={() => (isLegend ? onToggleLegend() : onToolChange(meta.key))}
               />

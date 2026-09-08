@@ -13,18 +13,34 @@ import { SheetLegend, buildLegendEntries } from "./precon-sheet-viewer/sheet-leg
 import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
 import { SheetSettings } from "./precon-session/sheet-settings";
 import { FIT_VIEW, useSheetView } from "./precon-sheet-viewer/use-sheet-view";
-import { BASE_RASTER, useSheetLoader } from "./precon-sheet-viewer/use-sheet-loader";
+import { useSheetLoader } from "./precon-sheet-viewer/use-sheet-loader";
+import { useSheetCoords } from "./precon-sheet-viewer/use-sheet-coords";
 import { ToolPalette } from "./precon-sheet-viewer/tool-palette";
 import { SheetStatusBar } from "./precon-sheet-viewer/sheet-status-bar";
 import { ZoomControls } from "./precon-sheet-viewer/zoom-controls";
 import { useToolShortcuts } from "./precon-sheet-viewer/use-tool-shortcuts";
 import { MeasurementComposer, type PendingMeasurement } from "./precon-sheet-viewer/measurement-composer";
 import { MEASURE_GEOMETRY_KIND, MEASURE_MAX_VERTICES, MEASURE_MIN_VERTICES } from "./precon-sheet-viewer/measure-maths";
+import { rectOf, rectangleVertices, scaleForDraft, viewportAt } from "./precon-sheet-viewer/draft-maths";
+import { useDraft, useDragRect } from "./precon-sheet-viewer/use-draft";
+import { useViewerTools } from "./precon-sheet-viewer/use-viewer-tools";
+import { blockedReasonFor } from "./precon-sheet-viewer/tool-availability";
+import { ViewportLayer } from "./precon-sheet-viewer/viewport-layer";
+import { ViewportPromptBanner } from "./precon-sheet-viewer/viewport-prompt";
+import { Magnifier, useMagnifierHold } from "./precon-sheet-viewer/magnifier";
+import { OverlayLayer } from "./precon-sheet-viewer/overlay-layer";
+import { TypicalPopover } from "./precon-sheet-viewer/typical-popover";
+import { SymbolMatchesBanner, SymbolMatchesLayer } from "./precon-sheet-viewer/symbol-matches-layer";
 
 export type { PreconTool };
 
-const SNAP_PX = 10;
 const FLASH_MS = 1600;
+/** Tools that take a mousedown-drag-mouseup box. */
+const DRAG_TOOLS = new Set<PreconTool>(["area", "volume", "viewports", "find_symbol"]);
+/** Tools that never add a point on click (toggles, popovers, the pin layer's own click). */
+const NON_DRAWING_TOOLS = new Set<PreconTool>(["select", "legend", "magnifier", "overlay", "typical", "comment", "find_symbol"]);
+const DRAFT_COLOR = "#004DE7";
+const SCALE_COLOR = "#B85C00";
 
 export interface PreconSheetViewerProps {
   sessionId: string;
@@ -45,29 +61,20 @@ export interface PreconSheetViewerProps {
 /**
  * The sheet canvas with its palette. With no bill line selected the measuring
  * tools draw a new line (draw first, name after); with one selected they
- * redraw it, as before. Vertices are sheet points in both cases.
+ * redraw it. Vertices are sheet points in both cases.
  */
-export function PreconSheetViewer({
-  sessionId,
-  sheets,
-  activeSheet,
-  onSelectSheet,
-  geometries,
-  rows,
-  selectedRowId,
-  onSelectRow,
-  tool,
-  onToolChange,
-  zoomRequest,
-  onMeasurementCreated,
-}: PreconSheetViewerProps) {
+export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange, zoomRequest, onMeasurementCreated }: PreconSheetViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { view, setView, zoomBy, zoomFit, onMouseDown, onMouseMove, endPan } = useSheetView(containerRef, tool === "select");
   const fitView = useCallback(() => setView(FIT_VIEW), [setView]);
   const { page, rendering, loadError } = useSheetLoader({ canvasRef, activeSheet, sheets, userZoom: view.userZoom, onLoaded: fitView });
+  const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
+  const { cssZoom, toPx, toPt, screenToCanvas, screenToPt, snapAndOrtho } = useSheetCoords({ page, view, containerRef, snapPoints });
 
-  const [draft, setDraft] = useState<number[][]>([]);
+  const draftApi = useDraft();
+  const { draft, anchors, arcMid } = draftApi;
+  const dragRect = useDragRect(screenToPt);
   const [note, setNote] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   // two drawn points whose real distance the reviewer is about to type
@@ -81,17 +88,20 @@ export function PreconSheetViewer({
   const [legendOpen, setLegendOpen] = useState(true);
   const [legendGroup, setLegendGroup] = useState<string | null>(null);
   const [flashRowId, setFlashRowId] = useState<string | null>(null);
+  const [magnifierSticky, setMagnifierSticky] = useState(false);
+  const magnifierHeld = useMagnifierHold();
+  const tools = useViewerTools({ sessionId, activeSheet, onToolChange, draft: draftApi, setPending, setNote });
 
-  // A sheet change drops any half-drawn shape, scale prompt and legend pick.
+  // A sheet change drops any half-drawn shape, prompt, matches and legend pick.
   const [draftSheetId, setDraftSheetId] = useState(activeSheet?.id ?? null);
   if (draftSheetId !== (activeSheet?.id ?? null)) {
     setDraftSheetId(activeSheet?.id ?? null);
-    setDraft([]);
+    draftApi.clear();
     setScalePrompt(null);
     setLegendGroup(null);
+    tools.reset();
   }
 
-  const { data: snapPoints = [] } = usePreconSnapIndex(activeSheet?.id ?? null);
   const updateGeometry = useUpdatePreconGeometry(sessionId);
   const addDeduction = useAddPreconDeduction(sessionId);
   const updateSheet = useUpdatePreconSheet(sessionId);
@@ -106,71 +116,24 @@ export function PreconSheetViewer({
     return new Set(legendEntries.find((entry) => entry.group === legendGroup)?.rowIds ?? []);
   }, [flashRowId, legendGroup, legendEntries]);
 
-  const cssZoom = page ? (BASE_RASTER * view.userZoom) / page.rasterScale : view.userZoom;
-  // A PDF point is a pdf.js point (y up from the page bottom); a DWG point is
-  // a drawing unit read through the SVG frame, so the sheet's 1 mm/unit scale,
-  // the snap index and the engine's evidence all share one space.
-  const toPx = useCallback(
-    (pt: number[]): [number, number] => {
-      const frame = page?.frame;
-      if (frame && page) return [((pt[0]! - frame.x) / frame.w) * page.widthPx, ((-pt[1]! - frame.y) / frame.h) * page.heightPx];
-      const rs = page?.rasterScale ?? BASE_RASTER;
-      return [pt[0]! * rs, page!.heightPx - pt[1]! * rs];
-    },
-    [page],
-  );
-  const toPt = (pxX: number, pxY: number): [number, number] => {
-    const frame = page?.frame;
-    if (frame && page) return [frame.x + (pxX / page.widthPx) * frame.w, -(frame.y + (pxY / page.heightPx) * frame.h)];
-    const rs = page?.rasterScale ?? BASE_RASTER;
-    return [pxX / rs, (page!.heightPx - pxY) / rs];
-  };
-  const screenToCanvas = (clientX: number, clientY: number): [number, number] | null => {
-    const container = containerRef.current;
-    if (!container || !page) return null;
-    const rect = container.getBoundingClientRect();
-    return [(clientX - rect.left - view.tx) / cssZoom, (clientY - rect.top - view.ty) / cssZoom];
-  };
-  const applySnapAndOrtho = (pt: [number, number], shift: boolean): [number, number] => {
-    let [x, y] = pt;
-    // ten screen pixels, expressed in sheet points for this sheet's point space
-    const ptPerCanvasPx = page?.frame ? page.frame.w / page.widthPx : 1 / (page?.rasterScale ?? BASE_RASTER);
-    const thresholdPt = (SNAP_PX / cssZoom) * ptPerCanvasPx;
-    let best: number[] | null = null;
-    let bestDist = thresholdPt;
-    for (const p of snapPoints) {
-      const d = Math.hypot(p[0]! - x, p[1]! - y);
-      if (d < bestDist) {
-        bestDist = d;
-        best = p;
-      }
-    }
-    if (best) [x, y] = [best[0]!, best[1]!];
-    if (shift && draft.length > 0) {
-      const prev = draft[draft.length - 1]!;
-      if (Math.abs(x - prev[0]!) > Math.abs(y - prev[1]!)) y = prev[1]!;
-      else x = prev[0]!;
-    }
-    return [x, y];
-  };
-
   const selectedRow = selectedRowId ? (rowById.get(selectedRowId) ?? null) : null;
   const meta = PRECON_TOOL_BY_KEY[tool];
-  const blockedReasonFor = (m: PreconToolMeta): string | null => {
-    if (m.key === "select" || m.key === "legend") return null;
-    if (!activeSheet) return "Open a sheet first";
-    if (m.key === "scale") return null;
-    if (!activeSheet.scaleMmPerPt) return "Set this sheet's scale first (S, or Sheet settings)";
-    if (m.needsLine && !selectedRow) return "Select a bill line first";
-    return null;
-  };
-  const drawingEnabled = tool !== "select" && !blockedReasonFor(meta);
+  const viewports = activeSheet?.viewports ?? [];
+  const draftViewport = viewportAt(viewports, draft[0]);
+  const blockedFor = (m: PreconToolMeta) => blockedReasonFor(m, activeSheet, selectedRow);
+  const drawingEnabled = tool !== "select" && !blockedFor(meta);
+  const calibratingViewport = tools.viewportDraft?.mode === "points" && tools.viewportDraft.ptLength === null;
+  const dragEnabled = drawingEnabled && DRAG_TOOLS.has(tool) && !pending && !scalePrompt && !tools.viewportDraft && !tools.matches;
 
   const changeTool = (next: PreconTool) => {
-    setDraft([]);
+    if (next === "overlay") return tools.toggleOverlay();
+    if (next === "magnifier") return setMagnifierSticky((on) => !on);
+    draftApi.clear();
+    dragRect.cancel();
     setPending(null);
     setScalePrompt(null);
     setNote(null);
+    tools.reset();
     onToolChange(next);
   };
 
@@ -188,23 +151,23 @@ export function PreconSheetViewer({
       else setNote(`Add at least ${MEASURE_MIN_VERTICES[measure]} points before finishing.`);
       return;
     }
-    if (!selectedRow) {
-      setDraft([]);
-      return;
-    }
+    if (!selectedRow) return draftApi.clear();
     const onError = (error: unknown) =>
       setNote(isVersionConflict(error) ? "Row changed elsewhere — refreshed; redraw to apply." : getApiErrorMessage(error, "Measurement failed"));
     const base = { rowId: selectedRow.id, version: selectedRow.version, sheetId: activeSheet?.id };
     if (tool === "deduct" && vertices.length >= 3) addDeduction.mutate({ ...base, label: "Opening (manual)", vertices }, { onError });
     else if (measure && vertices.length >= MEASURE_MIN_VERTICES[measure]) updateGeometry.mutate({ ...base, kind: MEASURE_GEOMETRY_KIND[measure], vertices }, { onError });
-    setDraft([]);
+    draftApi.clear();
   };
 
   // Esc always returns to Select, dropping whatever was half-drawn.
   const cancel = () => {
-    setDraft([]);
+    draftApi.clear();
+    dragRect.cancel();
     setScalePrompt(null);
     setNote(null);
+    setMagnifierSticky(false);
+    tools.reset();
     if (tool !== "select") onToolChange("select");
   };
 
@@ -212,10 +175,13 @@ export function PreconSheetViewer({
     {
       onEscape: cancel,
       onEnter: () => {
-        if (!scalePrompt) finishDraft();
+        if (tools.matches) tools.confirmMatches();
+        else if (!scalePrompt && !tools.viewportDraft) finishDraft();
       },
       onTool: (next) => {
-        if (!blockedReasonFor(PRECON_TOOL_BY_KEY[next])) changeTool(next);
+        // Z is a hold (useMagnifierHold); the palette button makes it sticky
+        if (next === "magnifier") return;
+        if (!blockedFor(PRECON_TOOL_BY_KEY[next])) changeTool(next);
       },
       onToggleLegend: () => setLegendOpen((v) => !v),
     },
@@ -225,10 +191,7 @@ export function PreconSheetViewer({
   const applyDrawnScale = () => {
     if (!scalePrompt || !activeSheet) return;
     const mm = Number(scalePrompt.mm);
-    if (!Number.isFinite(mm) || mm <= 0) {
-      toast("Enter the real distance between the two points in millimetres.", "error");
-      return;
-    }
+    if (!Number.isFinite(mm) || mm <= 0) return toast("Enter the real distance between the two points in millimetres.", "error");
     const mmPerPt = mm / scalePrompt.ptLength;
     updateSheet.mutate(
       { sheetId: activeSheet.id, input: { scaleMmPerPt: mmPerPt, dimUnit: "mm" } },
@@ -236,7 +199,7 @@ export function PreconSheetViewer({
         onSuccess: () => {
           toast(`Scale set to 1:${scaleRatioOf(mmPerPt)}. Re-measure the sheet from Sheet settings to redraw its lines.`, "success");
           setScalePrompt(null);
-          setDraft([]);
+          draftApi.clear();
           onToolChange("select");
         },
         onError: (e) => toast(getApiErrorMessage(e, "Could not set the scale."), "error"),
@@ -245,19 +208,33 @@ export function PreconSheetViewer({
   };
 
   const onCanvasClick = (e: React.MouseEvent) => {
-    if (!drawingEnabled || scalePrompt || pending) return;
-    if (tool === "scale" && draft.length >= 2) return;
-    const canvasPt = screenToCanvas(e.clientX, e.clientY);
-    if (!canvasPt) return;
-    const next = [...draft, applySnapAndOrtho(toPt(canvasPt[0], canvasPt[1]), e.shiftKey)];
-    setDraft(next);
-    // a length is two clicks: it finishes itself
-    const max = meta.measure ? MEASURE_MAX_VERTICES[meta.measure] : undefined;
-    if (max && next.length >= max) finishDraft(next);
+    if (dragRect.consumeClick()) return;
+    if (!drawingEnabled || scalePrompt || pending || tools.matches || tools.searching) return;
+    if (NON_DRAWING_TOOLS.has(tool) || (tool === "viewports" && !calibratingViewport)) return;
+    const raw = screenToPt(e.clientX, e.clientY);
+    if (!raw) return;
+    if (tool === "room_fill") return tools.roomFillAt(raw);
+    if (tool === "scale" && anchors.length >= 2) return;
+    const last = draft[draft.length - 1] ?? null;
+    const arcs = tool !== "scale" && tool !== "count" && tool !== "viewports";
+    const next = draftApi.addPoint(snapAndOrtho(raw, e.shiftKey, last), arcs && e.altKey);
+    if (tool === "viewports") return tools.calibrateViewport(next.vertices);
+    // a length (and the scale bar) is two clicks: it finishes itself
+    const max = tool === "scale" ? 2 : meta.measure ? MEASURE_MAX_VERTICES[meta.measure] : undefined;
+    if (max && next.anchors.length >= max && !next.arcMid) finishDraft(next.vertices);
+  };
+
+  const onDragEnd = ({ start, current }: { start: [number, number]; current: [number, number] }) => {
+    if (tool === "area" || tool === "volume") {
+      const vertices = rectangleVertices(start, current);
+      draftApi.replace(vertices);
+      finishDraft(vertices);
+    } else if (tool === "viewports") tools.startViewport(rectOf(start, current));
+    else if (tool === "find_symbol") tools.findSymbolIn(rectOf(start, current));
   };
 
   const onCreated = (row: PreconBoqRow) => {
-    setDraft([]);
+    draftApi.clear();
     setRedrawTargetId(null);
     onSelectRow(row.id);
     onMeasurementCreated?.(row);
@@ -273,12 +250,16 @@ export function PreconSheetViewer({
   }, [zoomRequest, zoomBy, zoomFit]);
 
   const banner = note ?? loadError;
+  const magnifierOn = (magnifierHeld || magnifierSticky) && Boolean(page);
+  const overlaySheet = tools.overlayOn && tools.previous.status === "ready" ? tools.previous.sheet : null;
+  // The composer previews with the scale the backend will use: the viewport's when the shape starts in one.
+  const composerSheet = activeSheet && pending ? { ...activeSheet, scaleMmPerPt: scaleForDraft(activeSheet.scaleMmPerPt, viewports, pending.vertices) } : activeSheet;
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
       <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={onSelectSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
 
-      {activeSheet && !scalePrompt ? (
+      {activeSheet && !scalePrompt && !tools.viewportDraft && !tools.matches ? (
         <SheetStatusBar
           sheet={activeSheet}
           tool={tool}
@@ -287,35 +268,62 @@ export function PreconSheetViewer({
           onToggleRedraw={() => setRedrawTargetId((current) => (selectedRow && current !== selectedRow.id ? selectedRow.id : null))}
           drawingEnabled={drawingEnabled}
           draft={draft}
+          viewport={draftViewport}
         />
       ) : null}
-      {activeSheet && !activeSheet.scaleMmPerPt && !scalePrompt ? (
+      {activeSheet && !activeSheet.scaleMmPerPt && !scalePrompt && !tools.viewportDraft ? (
         <NoScaleBanner message={activeSheet.error ?? "No calibrated scale on this sheet."} onOpenSettings={() => setSettingsOpen(true)} onDrawScale={() => changeTool("scale")} />
       ) : null}
       {scalePrompt ? (
         <ScalePromptBanner prompt={scalePrompt} saving={updateSheet.isPending} onChange={(mm) => setScalePrompt({ ...scalePrompt, mm })} onApply={applyDrawnScale} onRedraw={() => setScalePrompt(null)} />
       ) : null}
+      {tools.viewportDraft ? (
+        <ViewportPromptBanner draft={tools.viewportDraft} saving={tools.savingViewport} onChange={(patch) => {
+            if (patch.mode || patch.ptLength === null) draftApi.clear();
+            tools.patchViewport(patch);
+          }} onSave={tools.saveViewport} onDiscard={() => changeTool("select")} />
+      ) : null}
+      {tools.matches ? <SymbolMatchesBanner matches={tools.matches} onConfirm={tools.confirmMatches} onDiscard={() => changeTool("select")} /> : null}
+      {tools.overlayOn && tools.previous.status === "ready" ? (
+        <p className="border-b border-red-100 bg-red-50 px-3 py-1 text-[11px] text-red-700">
+          Overlay: the previous revision{tools.previous.revision ? ` (rev ${tools.previous.revision})` : ""} in red under this sheet. O to hide.
+        </p>
+      ) : null}
       {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-[11px] text-amber-700">{banner}</p> : null}
 
       <div className="flex min-h-0 flex-1">
-        <ToolPalette tool={tool} onToolChange={changeTool} blockedReasonFor={blockedReasonFor} legendOpen={legendOpen} onToggleLegend={() => setLegendOpen((v) => !v)} />
+        <ToolPalette tool={tool} onToolChange={changeTool} blockedReasonFor={blockedFor} legendOpen={legendOpen} onToggleLegend={() => setLegendOpen((v) => !v)} toggles={{ overlay: tools.overlayOn, magnifier: magnifierSticky }} />
         <div
           ref={containerRef}
-          className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : "cursor-crosshair")}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={endPan}
-          onMouseLeave={endPan}
+          className={cn("relative min-h-0 flex-1 overflow-hidden bg-gray-100", tool === "select" ? "cursor-grab" : magnifierOn ? "cursor-none" : "cursor-crosshair")}
+          onMouseDown={(e) => {
+            onMouseDown(e);
+            if (dragEnabled) dragRect.begin(e);
+          }}
+          onMouseMove={(e) => {
+            onMouseMove(e);
+            dragRect.move(e);
+          }}
+          onMouseUp={() => {
+            endPan();
+            const box = dragRect.end();
+            if (box) onDragEnd(box);
+          }}
+          onMouseLeave={() => {
+            endPan();
+            dragRect.cancel();
+          }}
           onClick={onCanvasClick}
           onDoubleClick={() => finishDraft()}
         >
-          {rendering ? (
-            <div className="absolute inset-0 flex items-center justify-center">
+          {rendering || tools.searching || (tools.overlayOn && tools.previous.status === "loading") ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <Spinner size="md" />
             </div>
           ) : null}
           <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${cssZoom})`, transformOrigin: "0 0" }}>
             <canvas ref={canvasRef} className="block" />
+            {page && overlaySheet ? <OverlayLayer sheet={overlaySheet} sheets={tools.previous.sheets} widthPx={page.widthPx} heightPx={page.heightPx} onError={setNote} /> : null}
             {page ? (
               <SheetOverlay
                 widthPx={page.widthPx}
@@ -325,12 +333,18 @@ export function PreconSheetViewer({
                 selectedRowId={selectedRowId}
                 onSelectRow={onSelectRow}
                 draft={draft}
-                draftColor={tool === "scale" ? "#B85C00" : "#004DE7"}
-                draftClosed={tool === "area" || tool === "volume"}
+                draftMarkers={anchors}
+                arcMid={arcMid}
+                draftColor={tool === "scale" || tool === "viewports" ? SCALE_COLOR : DRAFT_COLOR}
+                draftClosed={tool === "area" || tool === "volume" || tool === "room_fill"}
                 toPx={toPx}
                 emphasisRowIds={emphasisRowIds}
               />
             ) : null}
+            {page && (viewports.length > 0 || dragRect.rect) ? (
+              <ViewportLayer widthPx={page.widthPx} heightPx={page.heightPx} viewports={viewports} toPx={toPx} cssZoom={cssZoom} dragRect={dragRect.rect} dragColor={tool === "viewports" ? SCALE_COLOR : DRAFT_COLOR} onRemove={tool === "viewports" ? tools.removeViewport : undefined} />
+            ) : null}
+            {page && tools.matches ? <SymbolMatchesLayer widthPx={page.widthPx} heightPx={page.heightPx} matches={tools.matches} toPx={toPx} onToggle={tools.onToggleMatch} /> : null}
             {page && activeSheet ? (
               <PinLayer
                 key={activeSheet.id}
@@ -349,27 +363,23 @@ export function PreconSheetViewer({
               />
             ) : null}
           </div>
+          {magnifierOn ? <Magnifier containerRef={containerRef} canvasRef={canvasRef} screenToCanvas={screenToCanvas} cssZoom={cssZoom} /> : null}
           <SheetLegend entries={legendEntries} open={legendOpen} onToggle={() => setLegendOpen((v) => !v)} activeGroup={legendGroup} onPickGroup={setLegendGroup} />
           <ZoomControls userZoom={view.userZoom} onZoomBy={zoomBy} onFit={zoomFit} />
           {settingsOpen && activeSheet ? (
-            <SheetSettings
-              key={activeSheet.id}
-              sessionId={sessionId}
-              sheet={activeSheet}
-              onClose={() => setSettingsOpen(false)}
-              onDrawScale={() => {
+            <SheetSettings key={activeSheet.id} sessionId={sessionId} sheet={activeSheet} onClose={() => setSettingsOpen(false)} onDrawScale={() => {
                 setSettingsOpen(false);
                 changeTool("scale");
-              }}
-            />
+              }} />
           ) : null}
+          {tool === "typical" && selectedRow ? <TypicalPopover key={selectedRow.id} sessionId={sessionId} row={selectedRow} onClose={() => onToolChange("select")} /> : null}
         </div>
       </div>
 
-      {pending && activeSheet ? (
-        <MeasurementComposer sessionId={sessionId} sheet={activeSheet} pending={pending} elementGroups={elementGroups} onClose={() => {
+      {pending && composerSheet ? (
+        <MeasurementComposer sessionId={sessionId} sheet={composerSheet} pending={pending} elementGroups={elementGroups} onClose={() => {
             setPending(null);
-            setDraft([]);
+            draftApi.clear();
           }} onCreated={onCreated} />
       ) : null}
     </div>
