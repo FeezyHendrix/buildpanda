@@ -3,8 +3,8 @@ import { ComboInput } from "@/components/atoms/combo-input";
 import { UnitInput } from "@/components/atoms/unit-input";
 import { X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
-import type { CreateMeasurementBody, MeasureTool, PreconBoqRow, PreconSheet } from "@/api/precon";
-import { useCreateMeasurement } from "@/hooks/use-precon";
+import type { Assembly, CreateMeasurementBody, MeasureTool, PreconBoqRow, PreconSheet } from "@/api/precon";
+import { useAssemblies, useCreateAssemblyMeasurement, useCreateMeasurement } from "@/hooks/use-precon";
 import { useRateCards } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { PRECON_TOOL_META, TAKEOFF_SECTIONS } from "@/lib/precon-meta";
@@ -35,6 +35,27 @@ function parsePositive(raw: string): number | undefined {
   return raw.trim() !== "" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+/** WS-M3B: what one drawn quantity becomes when an assembly names the lines. */
+function AssemblyItemsPreview({ assembly, gross }: { assembly: Assembly; gross: number | null }) {
+  return (
+    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs">
+      {assembly.items.map((item, index) => (
+        <li key={`${item.description}-${index}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
+          <span className="min-w-0 truncate text-gray-800">
+            {item.description}
+            {item.code ? <span className="ml-1 font-mono text-[10px] text-gray-400">{item.code}</span> : null}
+          </span>
+          <span className="shrink-0 tabular-nums text-gray-500">
+            × {item.factor}
+            {gross !== null ? ` = ${formatQty(gross * item.factor)} ${unitLabel(item.unit)}` : ` ${unitLabel(item.unit)}`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+AssemblyItemsPreview.displayName = "AssemblyItemsPreview";
+
 /**
  * Draw first, name after: the drawn shape becomes a verified manual bill line
  * once it has a description, an element group and any factor its tool needs.
@@ -42,8 +63,13 @@ function parsePositive(raw: string): number | undefined {
 export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, onClose, onCreated }: Props) {
   const meta = PRECON_TOOL_META.find((m) => m.measure === pending.tool)!;
   const create = useCreateMeasurement(sessionId);
+  const createFromAssembly = useCreateAssemblyMeasurement(sessionId);
   const { data: cards = [] } = useRateCards();
+  const { data: assemblies = [] } = useAssemblies();
 
+  // WS-M3B: an assembly names the lines itself, so description and unit go away
+  const [assemblyId, setAssemblyId] = useState("");
+  const assembly = assemblies.find((a) => a.id === assemblyId) ?? null;
   const [description, setDescription] = useState("");
   const [elementGroup, setElementGroup] = useState<string | null>(null);
   const [unit, setUnit] = useState(MEASURE_DEFAULT_UNIT[pending.tool]);
@@ -63,10 +89,36 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
   const factor = needsHeight ? { heightM: factorValue } : needsDepth ? { depthM: factorValue } : {};
   const preview = previewQuantity(pending.tool, pending.vertices, sheet.scaleMmPerPt ?? 0, factor, typical);
 
-  const canSubmit = description.trim() !== "" && Boolean(elementGroup?.trim()) && (!(needsHeight || needsDepth) || factorValue !== undefined);
+  const effectiveGroup = elementGroup?.trim() || assembly?.elementGroup || "";
+  const canSubmit =
+    (assembly !== null || description.trim() !== "") && effectiveGroup !== "" && (!(needsHeight || needsDepth) || factorValue !== undefined);
+
+  const submitAssembly = (picked: Assembly) => {
+    createFromAssembly.mutate(
+      {
+        assemblyId: picked.id,
+        sheetId: sheet.id,
+        tool: pending.tool,
+        vertices: pending.vertices,
+        elementGroup: effectiveGroup,
+        code: code.trim() || undefined,
+        typical: typical > 1 ? typical : undefined,
+        ...(needsHeight || needsDepth ? { factor } : {}),
+      },
+      {
+        onSuccess: ({ rows }) => {
+          toast(`${picked.name}: ${rows.length} line${rows.length === 1 ? "" : "s"} added to the bill`, "success");
+          if (rows[0]) onCreated(rows[0]);
+          onClose();
+        },
+      },
+    );
+  };
 
   const submit = () => {
-    if (!canSubmit || !elementGroup) return;
+    if (!canSubmit) return;
+    if (assembly) return submitAssembly(assembly);
+    if (!elementGroup) return;
     const body: CreateMeasurementBody = {
       sheetId: sheet.id,
       tool: pending.tool,
@@ -88,7 +140,9 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
     });
   };
 
-  const error = create.error ? getApiErrorMessage(create.error, "Could not add the measurement") : null;
+  const activeError = create.error ?? createFromAssembly.error;
+  const error = activeError ? getApiErrorMessage(activeError, "Could not add the measurement") : null;
+  const submitting = create.isPending || createFromAssembly.isPending;
   // A floating card, not a modal: the shape just drawn stays visible on the
   // sheet while it is named, and the sheet can still be panned behind it.
   return (
@@ -130,9 +184,33 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
       </p>
 
       <label className={LABEL}>
-        Description
-        <input autoFocus className={FIELD} value={description} placeholder="225 mm blockwork wall" onChange={(e) => setDescription(e.target.value)} />
+        From an assembly
+        <select
+          className={FIELD}
+          value={assemblyId}
+          onChange={(e) => {
+            setAssemblyId(e.target.value);
+            const picked = assemblies.find((a) => a.id === e.target.value);
+            if (picked && !elementGroup) setElementGroup(picked.elementGroup);
+          }}
+        >
+          <option value="">{assemblies.length === 0 ? "No assemblies in the library" : "Name the line yourself…"}</option>
+          {assemblies.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} · {a.items.length} line{a.items.length === 1 ? "" : "s"} per {unitLabel(a.unit)}
+            </option>
+          ))}
+        </select>
       </label>
+
+      {assembly ? (
+        <AssemblyItemsPreview assembly={assembly} gross={preview ? preview.gross * typical : null} />
+      ) : (
+        <label className={LABEL}>
+          Description
+          <input autoFocus className={FIELD} value={description} placeholder="225 mm blockwork wall" onChange={(e) => setDescription(e.target.value)} />
+        </label>
+      )}
 
       <label className={LABEL}>
         Element group
@@ -140,10 +218,12 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className={LABEL}>
-          Unit
-          <UnitInput value={unit} onChange={setUnit} className="mt-1 h-9 px-3" />
-        </label>
+        {assembly ? null : (
+          <label className={LABEL}>
+            Unit
+            <UnitInput value={unit} onChange={setUnit} className="mt-1 h-9 px-3" />
+          </label>
+        )}
         <label className={LABEL}>
           Work section / code
           <input className={FIELD} value={code} placeholder="optional" onChange={(e) => setCode(e.target.value)} />
@@ -163,40 +243,42 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className={LABEL}>
-          From the rate library
-          <select
-            className={FIELD}
-            value=""
-            onChange={(e) => {
-              const picked = rates.find((r) => r.id === e.target.value);
-              if (picked) {
-                setRateRaw(String(picked.rate));
-                if (picked.unit) setUnit(picked.unit);
-              }
-            }}
-          >
-            <option value="">{rates.length === 0 ? "No rates in the library" : "Pick a rate…"}</option>
-            {rates.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label ?? r.descriptionPattern ?? r.codePrefix ?? r.cardName} · ₦{r.rate.toLocaleString("en-NG")}/{unitLabel(r.unit)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={LABEL}>
-          Rate (₦, optional)
-          <input className={FIELD} inputMode="decimal" value={rateRaw} placeholder="unpriced" onChange={(e) => setRateRaw(e.target.value)} />
-        </label>
-      </div>
+      {assembly ? null : (
+        <div className="grid grid-cols-2 gap-3">
+          <label className={LABEL}>
+            From the rate library
+            <select
+              className={FIELD}
+              value=""
+              onChange={(e) => {
+                const picked = rates.find((r) => r.id === e.target.value);
+                if (picked) {
+                  setRateRaw(String(picked.rate));
+                  if (picked.unit) setUnit(picked.unit);
+                }
+              }}
+            >
+              <option value="">{rates.length === 0 ? "No rates in the library" : "Pick a rate…"}</option>
+              {rates.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label ?? r.descriptionPattern ?? r.codePrefix ?? r.cardName} · ₦{r.rate.toLocaleString("en-NG")}/{unitLabel(r.unit)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={LABEL}>
+            Rate (₦, optional)
+            <input className={FIELD} inputMode="decimal" value={rateRaw} placeholder="unpriced" onChange={(e) => setRateRaw(e.target.value)} />
+          </label>
+        </div>
+      )}
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <div className="flex justify-end gap-2">
         <Button type="button" size="sm" variant="secondary" onClick={onClose}>
           Discard
         </Button>
-        <Button type="submit" size="sm" loading={create.isPending} disabled={!canSubmit}>
-          Add to bill
+        <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
+          {assembly ? `Add ${assembly.items.length} line${assembly.items.length === 1 ? "" : "s"}` : "Add to bill"}
         </Button>
       </div>
     </form>

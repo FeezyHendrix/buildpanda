@@ -523,3 +523,98 @@ export function useCreateMeasurement(sessionId: string) {
     onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });
 }
+
+// ---- WS-M3B · assemblies, presence and focus ----
+import {
+  preconAssembliesApi,
+  preconPresenceApi,
+  type CreateAssemblyMeasurementBody,
+  type PresenceUser,
+  type UpsertAssemblyInput,
+} from "@/api/precon";
+import { preconAssemblyKeys, preconPresenceKeys } from "@/hooks/query-keys";
+
+export function useAssemblies() {
+  return useQuery({ queryKey: preconAssemblyKeys.list(), queryFn: () => preconAssembliesApi.list() });
+}
+
+function useInvalidateAssemblies() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: preconAssemblyKeys.all });
+}
+
+export function useCreateAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({ mutationFn: (body: UpsertAssemblyInput) => preconAssembliesApi.create(body), onSuccess: invalidate });
+}
+
+export function useUpdateAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({
+    mutationFn: ({ assemblyId, body }: { assemblyId: string; body: Partial<UpsertAssemblyInput> }) =>
+      preconAssembliesApi.update(assemblyId, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({ mutationFn: (assemblyId: string) => preconAssembliesApi.remove(assemblyId), onSuccess: invalidate });
+}
+
+/**
+ * One drawn shape, several bill lines. Like `useCreateMeasurement`, the rows
+ * and geometry land in the snapshot before the refetch so the viewer can
+ * select the first of them without a flash.
+ */
+export function useCreateAssemblyMeasurement(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateAssemblyMeasurementBody) => preconAssembliesApi.createMeasurement(sessionId, body),
+    onSuccess: ({ rows, geometry }) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => {
+        if (!prev) return prev;
+        const incoming = new Set(rows.map((r) => r.id));
+        return {
+          ...prev,
+          rows: [...prev.rows.filter((r) => !incoming.has(r.id)), ...rows],
+          geometries: [...prev.geometries.filter((g) => g.id !== geometry.id), geometry],
+        };
+      });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+/**
+ * Everyone on the session right now. The list is written by the realtime
+ * handler on `precon.presence`; nothing is fetched, so an unsubscribed tab
+ * simply sees nobody.
+ */
+export function usePreconPresence(sessionId: string): PresenceUser[] {
+  const { data = [] } = useQuery<PresenceUser[]>({
+    queryKey: preconPresenceKeys.session(sessionId),
+    queryFn: () => [],
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+  return data;
+}
+
+/**
+ * Tell the others which row this user is on. Posts on every change and clears
+ * on unmount; a failed post is not worth a toast — presence is a courtesy.
+ */
+export function usePreconFocus(sessionId: string | null, rowId: string | null): void {
+  useEffect(() => {
+    if (!sessionId) return;
+    void preconPresenceApi.focus(sessionId, rowId).catch(() => undefined);
+  }, [sessionId, rowId]);
+  useEffect(() => {
+    if (!sessionId) return;
+    return () => {
+      void preconPresenceApi.focus(sessionId, null).catch(() => undefined);
+    };
+  }, [sessionId]);
+}

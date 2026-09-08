@@ -4,6 +4,7 @@ import { Button } from "@/components/atoms/button";
 import { Input } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { AssembliesPanel } from "@/components/molecules/rate-library/assemblies-panel";
 import { RateBuildupDrawer } from "@/components/molecules/rate-library/rate-buildup-drawer";
 import { RateCardPanel } from "@/components/molecules/rate-library/rate-card-panel";
 import { QuoteSourcesPanel } from "@/components/molecules/rate-library/quote-sources-panel";
@@ -12,6 +13,14 @@ import { useAbility } from "@/contexts/ability-context";
 import { useCreateRateCard, useRateCards } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+
+// WS-M3B: rates and assemblies share the page; assemblies price from the cards.
+const TABS = [
+  { id: "rates", label: "Rate cards" },
+  { id: "assemblies", label: "Assemblies" },
+] as const;
+type LibraryTab = (typeof TABS)[number]["id"];
 
 function NewCardForm() {
   const create = useCreateRateCard();
@@ -50,6 +59,7 @@ export default function RateLibraryPage() {
   const canManage = ability.can("manage", "rateCards");
   const { data: cards = [], isPending, isError } = useRateCards();
   const [buildUp, setBuildUp] = useState<{ cardId: string; currency: string; rate: Rate } | null>(null);
+  const [tab, setTab] = useState<LibraryTab>("rates");
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -62,9 +72,28 @@ export default function RateLibraryPage() {
         </p>
       </div>
 
-      {canManage ? <NewCardForm /> : null}
+      <div role="tablist" className="flex gap-1 border-b border-gray-100">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={cn(
+              "px-4 py-2 text-sm font-medium transition-colors",
+              tab === t.id ? "border-b-2 border-primary-500 text-primary-600" : "text-gray-500 hover:text-gray-700",
+            )}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {isPending ? (
+      {tab === "assemblies" ? <AssembliesPanel cards={cards} canManage={canManage} /> : null}
+      {tab === "rates" && canManage ? <NewCardForm /> : null}
+
+      {tab !== "rates" ? null : isPending ? (
         <div className="flex justify-center py-10"><Spinner size="sm" /></div>
       ) : isError ? (
         <EmptyState title="Could not load the rate library" description="Refresh the page to try again." />
@@ -81,7 +110,7 @@ export default function RateLibraryPage() {
         ))
       )}
 
-      {isPending ? null : <QuoteSourcesPanel cards={cards} canManage={canManage} />}
+      {isPending || tab !== "rates" ? null : <QuoteSourcesPanel cards={cards} canManage={canManage} />}
 
       <RateBuildupDrawer
         open={buildUp !== null}

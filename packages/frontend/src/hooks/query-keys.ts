@@ -397,3 +397,14 @@ export const preconMarkupKeys = {
   all: ["precon", "markups"] as const,
   session: (sessionId: string) => [...preconMarkupKeys.all, sessionId] as const,
 };
+
+// WS-M3B: assemblies in the rate library, and who is on a take-off session
+export const preconAssemblyKeys = {
+  all: ["precon", "assemblies"] as const,
+  list: () => [...preconAssemblyKeys.all, "list"] as const,
+};
+
+export const preconPresenceKeys = {
+  all: ["precon", "presence"] as const,
+  session: (sessionId: string) => [...preconPresenceKeys.all, sessionId] as const,
+};
