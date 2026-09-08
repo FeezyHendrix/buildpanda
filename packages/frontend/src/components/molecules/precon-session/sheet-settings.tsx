@@ -6,6 +6,7 @@ import { useRemeasurePreconSheet, useUpdatePreconSheet } from "@/hooks/use-preco
 import { getApiErrorMessage } from "@/lib/api-error";
 import { SHEET_KIND_OPTIONS, mmPerPtForRatio, scaleRatioOf } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
+import { LayerMapTable } from "./layer-map-table";
 
 interface Props {
   sessionId: string;
@@ -129,6 +130,7 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
           Re-measure
         </Button>
       </div>
+      {isPdf ? null : <LayerMapTable sessionId={sessionId} />}
     </div>
   );
 }

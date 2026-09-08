@@ -3,13 +3,14 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { NotFoundError, BadRequestError } from "../../../lib/errors.ts";
-import { withTempDwg } from "../dwg-takeoff/job.ts";
+import { TAKEOFF_QUEUE, withTempDwg, type TakeoffJobData } from "../dwg-takeoff/job.ts";
 import { parseDwgToJson } from "../dwg-takeoff/dwg.ts";
 import { renderDwgSvg } from "../dwg-takeoff/svg.ts";
+import { LAYER_ELEMENTS } from "../dwg-takeoff/types.ts";
 import { PRECON_GENERATE_QUEUE, type PreconGenerateJobData } from "./job.ts";
 import type { preconService } from "./service.ts";
 import { DIM_UNITS, FOUNDATION_TYPES, SHEET_KINDS, STRUCTURAL_SYSTEMS, STRUCTURE_CLASSES } from "./types.ts";
-import type { UpdateSheetBody, UpdateStructureBody } from "./types.ts";
+import type { UpdateLayerMapBody, UpdateSheetBody, UpdateStructureBody } from "./types.ts";
 
 const sessionParams = {
   type: "object",
@@ -33,6 +34,20 @@ const updateSheetBody = {
     title: { type: ["string", "null"], maxLength: 200 },
     scaleMmPerPt: { type: ["number", "null"], exclusiveMinimum: 0 },
     dimUnit: { type: ["string", "null"], enum: [...DIM_UNITS, null] },
+  },
+} as const;
+
+// layer name → element; every value must be one the engine knows
+const updateLayerMapBody = {
+  type: "object",
+  required: ["layerMap"],
+  additionalProperties: false,
+  properties: {
+    layerMap: {
+      type: "object",
+      maxProperties: 500,
+      additionalProperties: { type: "string", enum: LAYER_ELEMENTS },
+    },
   },
 } as const;
 
@@ -68,9 +83,10 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
     },
   );
 
-  // A DWG sheet is drawn from the same parse the engine measured. The SVG is
-  // cached on disk per sheet: parsing a large model takes seconds, viewing
-  // it happens on every visit.
+  // A DWG sheet is drawn from the same parse the engine measured, framed to
+  // the drawing's own window of the model space. The SVG is cached on disk
+  // per sheet: parsing a large model takes seconds, viewing it happens on
+  // every visit.
   fastify.get<{ Params: { sheetId: string } }>(
     "/precon/sheets/:sheetId/svg",
     { schema: { params: sheetParams } },
@@ -84,7 +100,9 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
       const cached = path.join(cacheDir, `${sheet.id}.svg`);
       let svg: string | null = await fs.readFile(cached, "utf8").catch(() => null);
       if (svg === null) {
-        const rendered = await withTempDwg(sheet.storagePath, async (file) => renderDwgSvg(await parseDwgToJson(file)));
+        const rendered = await withTempDwg(sheet.storagePath, async (file) =>
+          renderDwgSvg(await parseDwgToJson(file), { bounds: sheet.bounds ?? undefined }),
+        );
         svg = rendered.svg;
         if (svg) {
           await fs.mkdir(cacheDir, { recursive: true });
@@ -118,6 +136,22 @@ export const reviewRoutes: FastifyPluginAsync<ReviewRoutesOptions> = async (fast
       const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.updateStructure(request.params.sessionId, request.body, user.id);
+    },
+  );
+
+  // The reviewer's layer map is stored on the session and the DWG is
+  // measured again with it; the engine's unverified rows are replaced.
+  fastify.patch<{ Params: { sessionId: string }; Body: UpdateLayerMapBody }>(
+    "/precon/sessions/:sessionId/layer-map",
+    { schema: { params: sessionParams, body: updateLayerMapBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      const session = await service.updateLayerMap(request.params.sessionId, request.body, user.id);
+      const jobData: TakeoffJobData = { sessionId: session.id, orgId, rerun: true };
+      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", jobData);
+      return reply.status(202).send(session);
     },
   );
 

@@ -56,6 +56,7 @@ function toSession(r: PreconSessionRow): PreconSession {
     takeoffKind: r.takeoff_kind ?? "pdf",
     extraction: r.extraction ?? null,
     structureContext: r.structure_context ?? null,
+    layerMap: r.layer_map ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -75,6 +76,7 @@ function toSheet(r: PreconSheetRow): PreconSheet {
     scaleConfidence: r.scale_confidence,
     dimUnit: r.dim_unit,
     geoSummary: r.geo_summary ?? null,
+    bounds: r.bounds ?? null,
     error: r.error,
   };
 }
@@ -133,6 +135,7 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     measurementBasis: r.measurement_basis,
     confidenceReason: r.confidence_reason ?? null,
     provenance: r.provenance ?? null,
+    evidence: r.evidence ?? [],
     origin: r.origin ?? "ai",
     editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
     editedBy: r.edited_by ?? null,
