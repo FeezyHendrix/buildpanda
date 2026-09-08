@@ -83,7 +83,7 @@ function harness(): Harness {
   let createdSeq = 0;
   const precon = {
     assertSessionOrg: async () => undefined,
-    getSnapshot: async () => ({ bills: [{ id: "pbl_1", title: "Bill 1", sort: 0 }], rows: [...rows.values()] }),
+    getSnapshot: async () => ({ bills: [{ id: "pbl_1", title: "Bill 1", sort: 0 }], rows: [...rows.values()], sheets: [] }),
     getProgramme: async () => ({ tasks: [...tasks.values()] }),
     updateRow: async (id: string, body: { version: number; changes: Record<string, unknown> }) => {
       calls.push(`updateRow:${id}:${JSON.stringify(body.changes)}`);

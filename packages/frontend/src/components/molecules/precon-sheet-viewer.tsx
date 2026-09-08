@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
 import { Spinner } from "@/components/atoms/spinner";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { Maximize2, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { preconApi, type PreconBoqRow, type PreconGeometry, type PreconSheet } from "@/api/precon";
 import { isVersionConflict, useAddPreconDeduction, usePreconSnapIndex, useUpdatePreconGeometry, useUpdatePreconSheet } from "@/hooks/use-precon";
@@ -36,6 +37,7 @@ interface ViewerProps {
   onSelectRow: (rowId: string | null) => void;
   tool: PreconTool;
   onToolChange: (tool: PreconTool) => void;
+  zoomRequest?: { seq: number; kind: "in" | "out" | "fit" } | null;
 }
 
 interface PageInfo {
@@ -53,7 +55,7 @@ function pageWithinFile(sheet: PreconSheet, sheets: PreconSheet[]): number {
   return siblings.findIndex((s) => s.id === sheet.id) + 1;
 }
 
-export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange }: ViewerProps) {
+export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectSheet, geometries, rows, selectedRowId, onSelectRow, tool, onToolChange, zoomRequest }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState<PageInfo | null>(null);
@@ -337,6 +339,27 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
 
   const wheelDeltaRef = useRef(0);
   const wheelRafRef = useRef<number | null>(null);
+  // Zoom about the middle of the visible canvas, the same maths the wheel uses,
+  // for the toolbar buttons and for prompts that ask to zoom.
+  const zoomBy = useCallback((factor: number) => {
+    const box = containerRef.current?.getBoundingClientRect();
+    const cx = box ? box.width / 2 : 0;
+    const cy = box ? box.height / 2 : 0;
+    setView((v) => {
+      const newZoom = Math.min(8, Math.max(0.2, v.userZoom * factor));
+      if (newZoom === v.userZoom) return v;
+      const ratio = newZoom / v.userZoom;
+      return { ...v, userZoom: newZoom, tx: cx - (cx - v.tx) * ratio, ty: cy - (cy - v.ty) * ratio };
+    });
+  }, []);
+  const zoomFit = useCallback(() => setView({ tx: 0, ty: 0, userZoom: 1 }), []);
+  useEffect(() => {
+    if (!zoomRequest) return;
+    if (zoomRequest.kind === "in") zoomBy(1.5);
+    else if (zoomRequest.kind === "out") zoomBy(1 / 1.5);
+    else zoomFit();
+  }, [zoomRequest, zoomBy, zoomFit]);
+
   const onWheel = useCallback((e: React.WheelEvent) => {
     wheelDeltaRef.current += e.deltaY;
     const container = containerRef.current;
@@ -437,6 +460,22 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
           ) : null}
         </div>
         <SheetLegend styles={presentStyles} />
+        <div
+          className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-sm"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" aria-label="Zoom out" title="Zoom out" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1 / 1.5)}>
+            <Minus className="size-4" aria-hidden="true" />
+          </button>
+          <span className="min-w-12 text-center font-mono text-[11px] tabular-nums text-gray-600">{Math.round(view.userZoom * 100)}%</span>
+          <button type="button" aria-label="Zoom in" title="Zoom in" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={() => zoomBy(1.5)}>
+            <Plus className="size-4" aria-hidden="true" />
+          </button>
+          <button type="button" aria-label="Fit to view" title="Fit to view" className="flex size-8 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100" onClick={zoomFit}>
+            <Maximize2 className="size-4" aria-hidden="true" />
+          </button>
+        </div>
         {settingsOpen && activeSheet ? (
           <SheetSettings
             key={activeSheet.id}

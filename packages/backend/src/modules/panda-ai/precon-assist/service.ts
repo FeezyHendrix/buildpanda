@@ -22,6 +22,7 @@ import {
   type CanFn,
   type ChangeSet,
   type ChangeSetRow,
+  type AssistViewerContext,
 } from "./types.ts";
 
 export interface PreconAssistDeps {
@@ -52,10 +53,10 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
   const llm = deps.llm ?? defaultDraftLlm;
   const configured = deps.llmConfigured ?? isLlmConfigured;
 
-  async function loadContext(surface: AssistSurface, sessionId: string): Promise<BillContext | ProgrammeContext> {
+  async function loadContext(surface: AssistSurface, sessionId: string, viewer?: AssistViewerContext): Promise<BillContext | ProgrammeContext> {
     if (surface === "bill") {
       const snapshot = await deps.precon.getSnapshot(sessionId);
-      return { bills: snapshot.bills, rows: snapshot.rows };
+      return { bills: snapshot.bills, rows: snapshot.rows, sheets: snapshot.sheets, viewer };
     }
     const programme = await deps.precon.getProgramme(sessionId);
     return { tasks: programme.tasks };
@@ -99,7 +100,7 @@ export function preconAssistService(repo: PreconAssistRepository, deps: PreconAs
       await deps.precon.assertSessionOrg(body.sessionId, orgId);
       if (!configured()) throw new BadRequestError("Panda AI is not configured on this server");
 
-      const ctx = await loadContext(body.surface, body.sessionId);
+      const ctx = await loadContext(body.surface, body.sessionId, body.context);
       const draft = await llm(messagesFor(body.surface, body.prompt, ctx));
       if (!draft) throw new BadRequestError("Panda AI did not return a plan. Try rephrasing the request.");
       const changes =

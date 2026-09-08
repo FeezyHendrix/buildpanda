@@ -120,7 +120,7 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           scale_confidence: null,
           dim_unit: null,
           snap_index: null,
-          error: "Read by the automated take-off; no vector overlay for DWG yet",
+          error: "Drawn from the DWG model space. Lines were read by the automated take-off and carry no on-sheet geometry yet.",
         },
       ]);
       await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
