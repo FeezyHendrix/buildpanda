@@ -128,7 +128,7 @@ export async function extractSheet(page: PdfPageLike, OPS: PdfOps): Promise<Extr
   const [ops, textContent] = await Promise.all([page.getOperatorList(), page.getTextContent()]);
   const { segments, curves } = extractGeometry(ops, OPS);
   const texts = extractTexts(textContent.items as TextItem[]);
-  return { segments, curves, texts };
+  return { segments, curves, texts, ops };
 }
 
 // Snap index for the viewer: unique segment endpoints, rounded to 0.1pt,

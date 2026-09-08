@@ -54,6 +54,7 @@ function toSession(r: PreconSessionRow): PreconSession {
     scope: r.scope ?? FULL_TAKEOFF_SCOPE,
     planId: r.plan_id ?? null,
     takeoffKind: r.takeoff_kind ?? "pdf",
+    extraction: r.extraction ?? null,
     structureContext: r.structure_context ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
@@ -73,6 +74,7 @@ function toSheet(r: PreconSheetRow): PreconSheet {
     scaleMmPerPt: r.scale_mm_per_pt,
     scaleConfidence: r.scale_confidence,
     dimUnit: r.dim_unit,
+    geoSummary: r.geo_summary ?? null,
     error: r.error,
   };
 }
@@ -337,6 +339,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
           scale_confidence: null,
           dim_unit: null,
           snap_index: null,
+          geo_summary: null,
           error: null,
         })),
       );

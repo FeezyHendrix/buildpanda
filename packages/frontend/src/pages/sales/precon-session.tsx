@@ -7,6 +7,7 @@ import { PreconSheetViewer, type PreconTool } from "@/components/molecules/preco
 import { PreconOutputPanel } from "@/components/molecules/precon-output-panel";
 import { ProgrammeStep } from "@/components/molecules/precon-programme/programme-step";
 import { PreconGenerateFeed } from "@/components/molecules/precon-session/precon-generate-feed";
+import { ExtractionReportPanel } from "@/components/molecules/precon-session/extraction-report";
 import { PreconSessionHeader } from "@/components/molecules/precon-session/precon-session-header";
 import { PreconSessionSkeleton } from "@/components/molecules/precon-session/precon-session-skeleton";
 import { AssistDrawer } from "@/components/molecules/precon-assist/assist-drawer";
@@ -135,14 +136,21 @@ export default function PreconSessionPage() {
       />
 
       {effectiveStep === "measure" ? (
-        <PreconGenerateFeed
-          session={session}
-          justCompleted={justCompleted}
-          itemsCount={snapshot.rows.filter((r) => r.rowType === "item").length}
-          billsCount={snapshot.bills.length}
-          onRetry={runRetry}
-          retrying={retry.isPending}
-        />
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
+          <PreconGenerateFeed
+            session={session}
+            justCompleted={justCompleted}
+            itemsCount={snapshot.rows.filter((r) => r.rowType === "item").length}
+            billsCount={snapshot.bills.length}
+            onRetry={runRetry}
+            retrying={retry.isPending}
+          />
+          {session.extraction
+            ? Object.entries(session.extraction.sheets).map(([sheetId, report]) => (
+                <ExtractionReportPanel key={sheetId} report={report} title={snapshot.sheets.find((s) => s.id === sheetId)?.code ?? undefined} />
+              ))
+            : null}
+        </div>
       ) : effectiveStep === "programme" ? (
         <ProgrammeStep sessionId={sessionId} sessionTitle={session.title} />
       ) : effectiveStep === "output" ? (
