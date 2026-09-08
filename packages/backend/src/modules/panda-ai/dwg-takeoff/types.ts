@@ -84,6 +84,9 @@ export interface MeasuredItem {
   reason?: string;
   // how many identical drawings this quantity already includes
   multiplier?: number;
+  // evidence for another line, never a priced quantity of its own (an
+  // elevation's window count, say); lands in the bill as a note
+  noteOnly?: boolean;
 }
 
 export interface TakeoffResult {

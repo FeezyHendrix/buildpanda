@@ -196,13 +196,14 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           const code = codeOf(line);
           rows.push(
             dwgRow(bill.id, rows.length, {
-              row_type: "item",
+              // a note-only line is evidence for a priced line, never a quantity of its own
+              row_type: line.noteOnly ? "spec_note" : "item",
               element_group: trade,
               code,
-              description: line.description,
+              description: line.noteOnly ? `${line.description} (cross-check only: ${line.quantity} ${line.unit})` : line.description,
               unit: line.unit,
-              qty_gross: line.quantity,
-              qty: line.quantity,
+              qty_gross: line.noteOnly ? null : line.quantity,
+              qty: line.noteOnly ? null : line.quantity,
               confidence: low ? "low" : "high",
               status: low ? "needs_review" : "ai_generated",
               measurement_basis: line.basis,

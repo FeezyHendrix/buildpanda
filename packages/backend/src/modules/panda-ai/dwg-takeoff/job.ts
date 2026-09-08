@@ -85,6 +85,7 @@ export function toHandover(result: TakeoffResult): DwgTakeoffHandover {
       evidence: i.evidence,
       reason: i.reason,
       crossCheck: i.crossCheck,
+      noteOnly: i.noteOnly,
     })),
     notes: result.notes,
   };
