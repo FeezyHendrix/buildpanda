@@ -1,6 +1,15 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { proposalsApi, type ConvertInclude, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
-import { proposalKeys } from "./query-keys";
+import {
+  proposalsApi,
+  type ConvertInclude,
+  type CreateProposalInput,
+  type PackOrigin,
+  type PackSectionKind,
+  type PaymentScheduleItem,
+  type ProposalStatus,
+  type UpdateEstimateTermsInput,
+} from "@/api/proposals";
+import { proposalKeys, proposalPackKeys } from "./query-keys";
 
 export function usePublicProposal(token: string) {
   return useQuery({
@@ -216,6 +225,62 @@ export function usePatchEstimate(proposalId: string) {
     }) => proposalsApi.patchEstimate(proposalId, estimateId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function usePatchEstimateTerms(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ estimateId, ...body }: { estimateId: string } & UpdateEstimateTermsInput) =>
+      proposalsApi.patchEstimateTerms(proposalId, estimateId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function useReplacePaymentSchedule(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      estimateId,
+      items,
+    }: {
+      estimateId: string;
+      items: Array<Omit<PaymentScheduleItem, "id" | "estimateId" | "description"> & { description?: string }>;
+    }) => proposalsApi.replaceSchedule(proposalId, estimateId, items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+    },
+  });
+}
+
+export function useProposalPack(proposalId: string) {
+  return useQuery({
+    queryKey: proposalPackKeys.all(proposalId),
+    queryFn: () => proposalsApi.listPack(proposalId),
+    enabled: !!proposalId,
+  });
+}
+
+export function useUpsertPackSection(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: PackSectionKind; bodyHtml: string; origin?: PackOrigin }) =>
+      proposalsApi.upsertPackSection(proposalId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalPackKeys.all(proposalId) });
+    },
+  });
+}
+
+export function useDraftPack(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (kinds?: PackSectionKind[]) => proposalsApi.draftPack(proposalId, kinds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: proposalPackKeys.all(proposalId) });
     },
   });
 }

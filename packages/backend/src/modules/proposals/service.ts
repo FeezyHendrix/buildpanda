@@ -1,9 +1,5 @@
 import type { ProposalsRepository } from "./repository.ts";
-import type {
-  CreateProposalInput,
-  CreateEstimateItemInput,
-  CreatePaymentScheduleInput,
-} from "./types.ts";
+import type { CreateProposalInput, CreateEstimateItemInput } from "./types.ts";
 import { generateId } from "../../lib/ids.ts";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 
@@ -110,25 +106,6 @@ export function proposalsService(repo: ProposalsRepository) {
     return saved;
   }
 
-  async function savePaymentSchedule(
-    estimateId: string,
-    proposalId: string,
-    orgId: string,
-    schedule: CreatePaymentScheduleInput[],
-  ) {
-    const proposal = await repo.getById(proposalId, orgId);
-    if (!proposal) throw new ForbiddenError("No access to this proposal");
-
-    const estimate = await repo.getEstimate(estimateId);
-    if (!estimate || estimate.proposalId !== proposalId) throw new NotFoundError("Estimate");
-    if (estimate.status !== "Draft") {
-      throw new BadRequestError("Only Draft estimates can be edited.");
-    }
-
-    const ids = schedule.map(() => generateId("sched"));
-    return repo.replaceSchedule(estimateId, schedule, ids);
-  }
-
   async function updateEstimateMeta(
     estimateId: string,
     proposalId: string,
@@ -155,7 +132,6 @@ export function proposalsService(repo: ProposalsRepository) {
     getWorkspace,
     createEstimateRevision,
     saveEstimateItems,
-    savePaymentSchedule,
     updateEstimateMeta,
   };
 }
