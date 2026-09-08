@@ -19,6 +19,12 @@ test("levelMarks: reads signed mm and metre marks, ignores unsigned dimensions",
   assert.deepEqual(levels, [-1200, 450, 3450, 6450]);
 });
 
+test("levelMarks: feet-and-inches marks give the storey height in millimetres", () => {
+  const levels = levelMarks([txt(`+1'-5 3/4" GROUND FLOOR LEVEL`), txt(`+11'-3 7/8" FIRST FLOOR SLAB`), txt(`+21'-2" ROOF LEVEL`)]);
+  assert.deepEqual(levels, [451, 3451, 6452]);
+  assert.equal(storeyHeightFromLevels(levels), 3);
+});
+
 test("storeyHeightFromLevels: the modal step between consecutive marks, in metres", () => {
   assert.equal(storeyHeightFromLevels([450, 3450, 6450, 9450, 60450]), 3);
   assert.equal(storeyHeightFromLevels([450]), null);

@@ -18,6 +18,10 @@ const OPS: Required<PdfOps> = {
   eoFillStroke: 25,
   closeFillStroke: 26,
   closeEOFillStroke: 27,
+  paintJpegXObject: 82,
+  paintImageMaskXObject: 83,
+  paintImageXObject: 85,
+  paintInlineImageXObject: 86,
 };
 const STROKE = 20;
 

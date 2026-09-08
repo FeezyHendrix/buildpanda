@@ -1,7 +1,11 @@
+import { parseLengthText } from "../../geometry/length-text.ts";
 import type { CalibrationResult, DimUnit, Segment, TextRun } from "../types.ts";
 
-// Standard architectural scales the multiplier search snaps to.
+// Standard architectural scales the multiplier search snaps to; the imperial
+// set (1" = 1'-0" down to 1/16" = 1'-0") only when the dimensions read in
+// feet and inches, so a metric 1:100 is never mistaken for 1:96.
 const STANDARD_SCALES = [20, 25, 50, 75, 100, 125, 200, 250, 500] as const;
+const IMPERIAL_SCALES = [12, 24, 48, 96, 128, 192] as const;
 const PT_TO_MM = 0.3528; // 1 pt at paper scale
 
 const CLUSTER_TOLERANCE = 1.03;
@@ -10,14 +14,22 @@ const MAX_DIM_VALUE = 20000;
 const SCALE_SNAP_MAX_ERROR = 0.06;
 
 interface DimensionText extends TextRun {
+  // the bare number as written, or millimetres when the text carries feet and inches
   value: number;
+  imperial: boolean;
 }
 
 function dimensionTexts(texts: TextRun[]): DimensionText[] {
-  return texts
-    .filter((t) => /^[0-9][0-9,]*$/.test(t.str))
-    .map((t) => ({ ...t, value: Number(t.str.replace(/,/g, "")) }))
-    .filter((t) => t.value >= MIN_DIM_VALUE && t.value <= MAX_DIM_VALUE);
+  const out: DimensionText[] = [];
+  for (const t of texts) {
+    if (!/^[0-9][0-9,]*$/.test(t.str) && !/['"]/.test(t.str)) continue;
+    const parsed = parseLengthText(t.str);
+    if (!parsed) continue;
+    if (parsed.imperial) {
+      if (parsed.mm !== null && parsed.mm >= MIN_DIM_VALUE) out.push({ ...t, value: parsed.mm, imperial: true });
+    } else if (parsed.value !== null && parsed.value >= MIN_DIM_VALUE && parsed.value <= MAX_DIM_VALUE) out.push({ ...t, value: parsed.value, imperial: false });
+  }
+  return out;
 }
 
 // A dimension line is the segment its text annotation sits on: parallel to the
@@ -66,21 +78,36 @@ function densestCluster(sorted: number[]): { count: number; value: number } {
 // exact scale. Drawings are drawn at an exact standard scale, so the true mmPerPt
 // is standard * PT_TO_MM — snapping removes the dimension-measurement noise (a raw
 // ratio 4% off 1:100 would otherwise put a 4% error on every quantity).
-function inferUnit(rawMmPerPt: number): { mmPerPt: number; unit: DimUnit; error: number } {
+function inferUnit(rawMmPerPt: number, imperial: boolean): { mmPerPt: number; unit: DimUnit; error: number } {
   let best: { mmPerPt: number; unit: DimUnit; error: number } = { mmPerPt: rawMmPerPt, unit: "mm", error: Infinity };
-  const units: { mul: number; unit: DimUnit }[] = [
-    { mul: 1, unit: "mm" },
-    { mul: 10, unit: "cm" },
-    { mul: 1000, unit: "m" },
-  ];
+  // feet-and-inches dimensions are already millimetres, so only the 1:1 multiplier applies
+  const units: { mul: number; unit: DimUnit }[] = imperial
+    ? [{ mul: 1, unit: "mm" }]
+    : [
+        { mul: 1, unit: "mm" },
+        { mul: 10, unit: "cm" },
+        { mul: 1000, unit: "m" },
+      ];
+  const scales: readonly number[] = imperial ? IMPERIAL_SCALES : STANDARD_SCALES;
   for (const { mul, unit } of units) {
     const implied = (rawMmPerPt * mul) / PT_TO_MM;
-    for (const standard of STANDARD_SCALES) {
+    for (const standard of scales) {
       const error = Math.abs(implied - standard) / standard;
       if (error < best.error) best = { mmPerPt: standard * PT_TO_MM, unit, error };
     }
   }
   return best;
+}
+
+// 1/8" = 1'-0" is 1:96; 1/4" = 1'-0" is 1:48; 1" = 1'-0" is 1:12.
+function writtenImperialScale(texts: TextRun[]): number | null {
+  const joined = texts.map((t) => t.str).join(" ");
+  const m = joined.match(/(\d+(?:\/\d+)?)\s*"\s*=\s*1\s*'(?:\s*-?\s*0\s*")?/);
+  if (!m) return null;
+  const [num, den] = m[1]!.split("/").map(Number);
+  const inches = den ? num! / den : num!;
+  if (!inches || inches <= 0) return null;
+  return Math.round(12 / inches);
 }
 
 // The drawing's own stated scale ("SCALE 1:100", "1 : 100", "1:50 @ A3") is the
@@ -106,13 +133,15 @@ function writtenScale(texts: TextRun[]): number | null {
 
 export function calibrate(texts: TextRun[], segments: Segment[]): CalibrationResult | null {
   const dims = dimensionTexts(texts);
-  const ratios = matchRatios(dims, segments).sort((a, b) => a - b);
+  // a sheet dimensioned in feet and inches is read as one; a stray bare number does not change that
+  const imperial = dims.filter((d) => d.imperial).length > dims.length / 2;
+  const ratios = matchRatios(dims.filter((d) => d.imperial === imperial), segments).sort((a, b) => a - b);
 
   // Dimension-line geometry gives the strongest calibration when it agrees.
   if (ratios.length >= 3) {
     const cluster = densestCluster(ratios);
     const clusterAgreement = cluster.count / ratios.length;
-    const { mmPerPt, unit, error } = inferUnit(cluster.value);
+    const { mmPerPt, unit, error } = inferUnit(cluster.value, imperial);
     if (clusterAgreement >= 0.3 && error <= SCALE_SNAP_MAX_ERROR) {
       const snapConfidence = 1 - error / SCALE_SNAP_MAX_ERROR;
       return {
@@ -126,7 +155,7 @@ export function calibrate(texts: TextRun[], segments: Segment[]): CalibrationRes
 
   // Fallback: the drawing states its scale in text. Trust it (medium confidence)
   // rather than refusing to measure a fully-dimensioned sheet.
-  const stated = writtenScale(texts);
+  const stated = writtenScale(texts) ?? writtenImperialScale(texts);
   if (stated !== null) {
     return { mmPerPt: stated * PT_TO_MM, confidence: 0.6, dimUnit: "mm", matches: 0 };
   }
