@@ -28,10 +28,26 @@ const changeSchema = z.object({
   after: z.record(z.string(), z.unknown()),
 });
 
+// Models often send `"id": null` or `""` for changes that have no target (viewer) and
+// omit `after` on deletes; both are legal shapes, so they are normalised
+// before validation instead of failing it.
+function normaliseDraftShape(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || !Array.isArray((raw as { changes?: unknown }).changes)) return raw;
+  const changes = ((raw as { changes: unknown[] }).changes).map((c) => {
+    if (!c || typeof c !== "object") return c;
+    const change = { ...(c as Record<string, unknown>) };
+    if (change["id"] === null || change["id"] === "") delete change["id"];
+    if (change["after"] === null || change["after"] === undefined) change["after"] = {};
+    return change;
+  });
+  return { ...(raw as object), changes };
+}
+
 const draftSchema = z.object({
   plan: z.array(z.string().min(1).max(300)).min(1).max(12),
   changes: z.array(changeSchema).max(80),
 });
+export const draftSchemaLoose = z.preprocess(normaliseDraftShape, draftSchema);
 
 export type AssistDraft = z.infer<typeof draftSchema>;
 
@@ -40,7 +56,7 @@ export type AssistDraft = z.infer<typeof draftSchema>;
 export type DraftLlm = (messages: LlmMessage[]) => Promise<AssistDraft | null>;
 
 export const defaultDraftLlm: DraftLlm = async (messages) => {
-  const result = await chatJsonValidated(messages, draftSchema);
+  const result = await chatJsonValidated(messages, draftSchemaLoose);
   return result?.data ?? null;
 };
 
