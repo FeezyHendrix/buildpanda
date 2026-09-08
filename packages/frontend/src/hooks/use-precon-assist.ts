@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { preconAssistApi, type AssistRequest } from "@/api/precon-assist";
+import { preconAssistApi, type ChangeSet, type AssistRequest } from "@/api/precon-assist";
 import { preconAssistKeys, preconKeys } from "@/hooks/query-keys";
 
 export function useChangeSets(sessionId: string) {
@@ -20,7 +20,7 @@ export function useProposeChangeSet(sessionId: string) {
 
 // Applying or undoing edits the same rows the buttons edit, so the snapshot
 // and programme queries refresh exactly as they would after a manual edit.
-function useChangeSetAction(sessionId: string, action: (changeSetId: string) => Promise<unknown>) {
+function useChangeSetAction(sessionId: string, action: (changeSetId: string) => Promise<ChangeSet>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (changeSetId: string) => action(changeSetId),
