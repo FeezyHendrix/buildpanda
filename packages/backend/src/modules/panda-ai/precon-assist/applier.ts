@@ -6,19 +6,23 @@ import {
   type AssistChange,
   type UndoStep,
 } from "./types.ts";
+import { applyMeasurement } from "./measurement-change.ts";
 
 export type PreconService = ReturnType<typeof preconService>;
 
 export interface LiveState {
+  sessionId: string;
   rows: Map<string, PreconBoqRowDto>;
   tasks: Map<string, PreconProgrammeTask>;
 }
 
 // The resource/action a change needs. Verifying or rejecting is a sign-off and
-// carries its own grant; everything else is an edit.
+// carries its own grant; measuring by hand is the measure grant; everything
+// else is an edit.
 export function permissionFor(change: AssistChange): [string, string] {
   const status = change.after["status"];
   if (change.entity === "viewer") return ["takeoffs", "view"];
+  if (change.entity === "measurement") return ["takeoffs", "measure"];
   if (change.op === "update" && (status === "verified" || status === "rejected")) return ["takeoffs", "verify"];
   return ["takeoffs", "edit"];
 }
@@ -155,6 +159,7 @@ export async function applyChange(index: number, change: AssistChange, live: Liv
   // the viewer lives in the browser: the server records the change as applied
   // and the client switches tool or sheet when the set lands
   if (change.entity === "viewer") return done(index);
+  if (change.entity === "measurement") return applyMeasurement(index, change, live.sessionId, precon, actor);
   if (change.entity === "sheet") return applySheet(index, change, precon, actor);
   if (change.entity === "boq_row") return applyBoqRow(index, change, live, precon, actor);
   if (change.entity === "programme_task") return applyProgrammeTask(index, change, live, precon, actor);

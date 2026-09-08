@@ -19,6 +19,9 @@ export interface PreconGenerateJobData {
   // session.status alone — the session is already in review.
   mode?: PreconJobMode;
   sheetId?: string;
+  // a take-off measured by hand: render the pages with their snap index and
+  // scale, draft nothing
+  sheetsOnly?: boolean;
 }
 
 export type RealtimePublish = (payload: RealtimePayload) => void;
@@ -55,8 +58,15 @@ export async function runGenerate(db: Knex, data: PreconGenerateJobData, publish
   }
 
   await repo.updateSessionStatus(session.id, "generating");
-  await progress("reading", "Generation started");
+  await progress("reading", data.sheetsOnly ? "Preparing sheets for measuring by hand" : "Generation started");
   try {
+    if (data.sheetsOnly) {
+      const { renderSheetsOnly } = await import("./engine/sheets-only.ts");
+      const { sheets } = await renderSheetsOnly(db, session.id, progress);
+      await repo.updateSessionStatus(session.id, "reviewing");
+      await progress("draft", `${sheets} sheet${sheets === 1 ? "" : "s"} ready — pick a tool and draw to measure`);
+      return;
+    }
     await generateForSession(db, session.id, progress);
     await repo.updateSessionStatus(session.id, "reviewing");
     await progress("draft", "Generation complete — ready for review");

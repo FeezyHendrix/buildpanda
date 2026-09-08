@@ -9,7 +9,7 @@ import type { QueueManager } from "../../../lib/queue/index.ts";
 import { openStoredFile } from "../../../lib/file-storage.ts";
 import { generateId } from "../../../lib/ids.ts";
 import { takeoffJobsRepository } from "./jobs-repository.ts";
-import { runDwgTakeoff } from "./engine.ts";
+import { registerDoc, runDwgTakeoff } from "./engine.ts";
 import { parseDwgToJson } from "./dwg.ts";
 import { fromDwg } from "../geometry/from-dwg.ts";
 import { buildReport, summarise } from "../geometry/report.ts";
@@ -31,6 +31,9 @@ export interface TakeoffJobData {
   sessionId?: string;
   // measure the session's DWG again with its stored layer map
   rerun?: boolean;
+  // a take-off measured by hand: build the drawing register (sheets, bounds,
+  // units) for the session's DWG and draft no lines
+  sheetsOnly?: boolean;
 }
 
 // LibreDWG reads from a file path, so the stored object is streamed to a temp
@@ -112,8 +115,28 @@ async function rerun(precon: ReturnType<typeof preconService>, sessionId: string
   }
 }
 
+// The register only: the person measuring by hand gets every drawing, framed
+// and scaled, and an empty bill. The extraction report is still recorded so
+// the sheet summaries read the same as on an engine run.
+async function sheetsOnly(db: Knex, precon: ReturnType<typeof preconService>, sessionId: string): Promise<void> {
+  const context = await precon.sheetsOnlyDwgContext(sessionId);
+  if (!context) return;
+  try {
+    const result = await withTempDwg(context.storagePath, async (file) => {
+      await recordExtraction(db, sessionId, file);
+      return registerDoc(await parseDwgToJson(file));
+    });
+    await precon.fillDwgSession(sessionId, { fileName: context.fileName }, toHandover(result), { sheetsOnly: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Reading the drawing failed";
+    await precon.failDwgSession(sessionId, message).catch(() => undefined);
+    throw error;
+  }
+}
+
 export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> {
   const precon = preconService(preconRepository(db));
+  if (data.sheetsOnly && data.sessionId) return sheetsOnly(db, precon, data.sessionId);
   if (data.rerun && data.sessionId) return rerun(precon, data.sessionId);
   if (!data.jobId) return;
   const repo = takeoffJobsRepository(db);

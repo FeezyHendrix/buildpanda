@@ -25,7 +25,9 @@ export async function runDwgTakeoff(dwgPath: string, opts: TakeoffEngineOptions 
   return measureDoc(doc, opts);
 }
 
-export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): TakeoffResult {
+// The reading every pass starts from: blocks expanded, units inferred with the
+// door-width cross-check, layers mapped, and the drawing register built.
+function readDoc(raw: DwgDoc, opts: TakeoffEngineOptions) {
   const notes: string[] = [];
   // block references become the geometry they place, so a handed flat or a
   // door symbol is measured like anything drawn in place
@@ -41,6 +43,32 @@ export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
   const layerMap = opts.layerMap ?? proposeLayerMap(doc, units.scaleToMm).map;
   const sheets = buildRegister(doc, units, layerMap);
   notes.push(units.note);
+  return { notes, expansion, doc, units, layerMap, sheets };
+}
+
+/**
+ * The register without the measurement: a take-off measured by hand needs the
+ * drawings, their windows into the model space and the units, and no lines.
+ */
+export function registerDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): TakeoffResult {
+  const { units, layerMap, sheets } = readDoc(raw, opts);
+  const drawings: DrawingSummary[] = sheets.map((s) => ({ id: s.id, kind: s.kind, widthM: s.widthM, heightM: s.heightM, entityCount: s.entityCount }));
+  return {
+    scaleToMm: units.scaleToMm,
+    scaleConfidence: 1 - units.errorPct,
+    units,
+    sheets,
+    layerMap,
+    drawings,
+    selectedDrawingId: null,
+    items: [],
+    notes: [],
+    wallSummaries: [],
+  };
+}
+
+export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): TakeoffResult {
+  const { notes, expansion, doc, units, layerMap, sheets } = readDoc(raw, opts);
 
   const allLabels = sheets.flatMap((s) => s.labels);
   const height = storeyHeight(sheets);

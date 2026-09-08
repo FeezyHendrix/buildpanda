@@ -11,8 +11,27 @@ export type ChangeSetStatus = (typeof CHANGE_SET_STATUSES)[number];
 export const CHANGE_OPS = ["update", "create", "delete"] as const;
 export type ChangeOp = (typeof CHANGE_OPS)[number];
 
-export const CHANGE_ENTITIES = ["boq_row", "programme_task", "estimate_item", "pack_section", "risk", "sheet", "viewer"] as const;
+export const CHANGE_ENTITIES = ["boq_row", "programme_task", "estimate_item", "pack_section", "risk", "sheet", "viewer", "measurement"] as const;
 export type ChangeEntity = (typeof CHANGE_ENTITIES)[number];
+
+// A line measured by hand through a prompt: drawn (vertices on a sheet) or
+// stated (a figure in the prompt). heightM/depthM are the tool's factor,
+// flattened so the model has one level of fields to fill.
+export const MEASUREMENT_CREATE_FIELDS = [
+  "sheetId",
+  "tool",
+  "vertices",
+  "qty",
+  "description",
+  "elementGroup",
+  "code",
+  "unit",
+  "heightM",
+  "depthM",
+  "typical",
+  "rate",
+  "billId",
+] as const;
 
 // The viewer's tools, so a prompt can drive them: "switch to the area tool
 // on sheet 2" is a viewer change the client executes after apply.
