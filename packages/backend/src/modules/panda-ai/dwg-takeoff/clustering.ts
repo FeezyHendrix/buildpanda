@@ -106,6 +106,14 @@ export function clusterDrawings(
   }
 
   const labels = dbscan(pts, eps, minPts);
+  // a small drawing (a simple elevation or section is a dozen lines) never
+  // reaches minPts neighbours; a looser pass over the leftovers finds it
+  const noise = pts.map((p, idx) => ({ p, idx })).filter(({ idx }) => labels[idx]! < 0);
+  const rescued = dbscan(noise.map(({ p }) => p), eps, 3);
+  const firstPass = Math.max(-1, ...labels) + 1;
+  noise.forEach(({ idx }, k) => {
+    if (rescued[k]! >= 0) labels[idx] = firstPass + rescued[k]!;
+  });
   const clusters = new Map<number, Cluster>();
   pts.forEach((p, idx) => {
     const label = labels[idx]!;
@@ -126,7 +134,7 @@ export function clusterDrawings(
   const toM = scaleToMm / 1000;
   return [...clusters.values()]
     .map((c) => ({ ...c, widthM: (c.maxX - c.minX) * toM, heightM: (c.maxY - c.minY) * toM }))
-    .filter((c) => c.count >= minPts * 3)
+    .filter((c) => (c.id < firstPass ? c.count >= minPts * 3 : c.count >= minPts && Math.max(c.widthM, c.heightM) >= 2))
     .sort((a, b) => b.count - a.count);
 }
 

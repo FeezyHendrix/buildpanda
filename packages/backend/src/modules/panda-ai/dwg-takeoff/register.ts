@@ -138,7 +138,7 @@ function decideKind(doc: DwgDoc, c: Cluster, map: LayerMap, labels: string[], le
   return geo === "floor-plan" || geo === "elevation" || geo === "detail" ? geo : "unknown";
 }
 
-function levelMarks(labels: string[]): { mm: number; name: string | null }[] {
+export function levelMarks(labels: string[]): { mm: number; name: string | null }[] {
   const out: { mm: number; name: string | null }[] = [];
   for (const l of labels) {
     const m = l.match(LEVEL_MARK);
