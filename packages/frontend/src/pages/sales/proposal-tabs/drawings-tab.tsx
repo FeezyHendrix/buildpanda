@@ -99,13 +99,17 @@ export function DrawingsTab({ proposalId }: Props) {
     const dwgs = measureTargets.filter((p) => !PDF_PLAN.test(p.fileName));
     try {
       const started = await Promise.all(pdfs.map((p) => measurePlan.mutateAsync({ planId: p.id, scope })));
-      await Promise.all(dwgs.map((p) => startDwgTakeoff.mutateAsync(p.id)));
+      const dwgJobs = await Promise.all(dwgs.map((p) => startDwgTakeoff.mutateAsync(p.id)));
+      // measuring always opens the take-off: the first session started, with a
+      // note about the rest when several drawings went in together
+      const sessionIds = [...started.map((s) => s.id), ...dwgJobs.flatMap((j) => (j.sessionId ? [j.sessionId] : []))];
       setMeasureTargets([]);
-      if (started.length === 1 && dwgs.length === 0) {
-        navigate(`/sales/takeoff/${started[0]!.id}`);
+      const count = started.length + dwgs.length;
+      if (count > 1) toast(`Panda AI is measuring ${count} drawings. The others show on the Take-offs tab.`, "success");
+      if (sessionIds[0]) {
+        navigate(`/sales/takeoff/${sessionIds[0]}`);
         return;
       }
-      const count = started.length + dwgs.length;
       toast(`Panda AI is measuring ${count} drawing${count === 1 ? "" : "s"}. Progress shows on the Take-offs tab.`, "success");
     } catch (err) {
       setMeasureError(getApiErrorMessage(err, "Could not start the take-off."));

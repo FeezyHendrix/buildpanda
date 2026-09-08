@@ -20,6 +20,8 @@ export const TAKEOFF_QUEUE = "automated-takeoff";
 export interface TakeoffJobData {
   jobId: string;
   orgId?: string;
+  // set when the route already created the reviewable session up front
+  sessionId?: string;
 }
 
 // LibreDWG reads from a file path, so the stored object is streamed to a temp
@@ -40,16 +42,19 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
   const job = await repo.rawById(data.jobId);
   if (!job) return;
 
+  const precon = preconService(preconRepository(db));
   await repo.markProcessing(job.id);
   try {
     const result = await withTempDwg(job.storage_path, (file) => runDwgTakeoff(file));
     await repo.markComplete(job.id, result);
     // A proposal take-off becomes a reviewable session — the same object a PDF
     // produces — rather than lines appended straight onto the bill.
-    if (job.proposal_id) {
+    if (data.sessionId) {
+      await precon.fillDwgSession(data.sessionId, { fileName: job.file_name }, result.items);
+    } else if (job.proposal_id) {
       const context = await repo.proposalContext(job.proposal_id, job.file_id);
       if (context) {
-        const session = await preconService(preconRepository(db)).createDwgSession(
+        const session = await precon.createDwgSession(
           context.orgId,
           job.requested_by ?? "system",
           job.proposal_id,
@@ -63,6 +68,7 @@ export async function runTakeoff(db: Knex, data: TakeoffJobData): Promise<void> 
   } catch (error) {
     const message = error instanceof Error ? error.message : "Take-off failed";
     await repo.markFailed(job.id, message);
+    if (data.sessionId) await precon.failDwgSession(data.sessionId, message).catch(() => undefined);
     throw error;
   }
 }
