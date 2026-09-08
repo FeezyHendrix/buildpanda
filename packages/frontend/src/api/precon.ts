@@ -515,3 +515,22 @@ export const preconApplyApi = {
       .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode })
       .then((r) => r.data),
 };
+
+// ---- WS-M1C · manual take-off entry points and CSV export ----
+/** Who draws the lines: the engine ("ai", the default) or a person ("manual"). */
+export const TAKEOFF_MODES = ["ai", "manual"] as const;
+export type TakeoffMode = (typeof TAKEOFF_MODES)[number];
+
+export const preconManualApi = {
+  /**
+   * Same from-plan endpoint as the AI take-off; `mode: "manual"` makes a
+   * session of kind manual whose sheets render with no measured rows. PDF and
+   * DWG both go here — the backend decides by file extension.
+   */
+  createSessionFromPlan: (proposalId: string, planId: string, scope: TakeoffScope, mode: TakeoffMode) =>
+    api.post<PreconSession>(`/precon/sessions/from-plan`, { proposalId, planId, scope, mode }).then((r) => r.data),
+
+  /** One row per priced line and note; the bill as a spreadsheet-ready file. */
+  exportCsv: (sessionId: string) =>
+    api.get(`/precon/sessions/${sessionId}/export.csv`, { responseType: "blob" }).then((r) => r.data as Blob),
+};

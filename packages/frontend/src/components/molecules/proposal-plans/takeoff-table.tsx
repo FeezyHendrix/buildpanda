@@ -1,5 +1,6 @@
 import { useMemo, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { PencilRuler } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -133,6 +134,8 @@ const COLUMNS: DataGridColumn<PreconSession>[] = [
 interface Props {
   sessions: PreconSession[];
   isLoading: boolean;
+  /** The table's one primary action: open a drawing and draw the lines yourself. */
+  onMeasureByHand: () => void;
 }
 
 /**
@@ -140,27 +143,36 @@ interface Props {
  * take-off workspace. Superseded revisions stay in the database and reachable
  * by link, but never clutter this list.
  */
-export function TakeoffTable({ sessions, isLoading }: Props) {
+export function TakeoffTable({ sessions, isLoading, onMeasureByHand }: Props) {
   const navigate = useNavigate();
   const rows = useMemo(() => sessions.filter((s) => s.supersededBy === null), [sessions]);
   return (
-    <DataGrid
-      data={rows}
-      columns={COLUMNS}
-      getRowId={(s) => s.id}
-      searchKeys={[(s) => s.title, (s) => describeScope(s.scope)]}
-      searchPlaceholder="Search take-offs"
-      initialSort={{ columnId: "measured", direction: "desc" }}
-      isLoading={isLoading}
-      onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
-      emptyState={
-        <EmptyState
-          title="Nothing measured yet"
-          description="Upload a PDF or DWG on the Drawings tab and choose Measure with Panda AI."
-          className="py-2"
-        />
-      }
-    />
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-gray-900">Take-offs</h2>
+        <Button size="sm" onClick={onMeasureByHand}>
+          <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
+          Measure by hand
+        </Button>
+      </div>
+      <DataGrid
+        data={rows}
+        columns={COLUMNS}
+        getRowId={(s) => s.id}
+        searchKeys={[(s) => s.title, (s) => describeScope(s.scope)]}
+        searchPlaceholder="Search take-offs"
+        initialSort={{ columnId: "measured", direction: "desc" }}
+        isLoading={isLoading}
+        onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
+        emptyState={
+          <EmptyState
+            title="Nothing measured yet"
+            description="Measure a drawing by hand here, or choose Measure with Panda AI on the Drawings tab."
+            className="py-2"
+          />
+        }
+      />
+    </div>
   );
 }
 TakeoffTable.displayName = "TakeoffTable";

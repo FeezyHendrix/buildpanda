@@ -8,9 +8,9 @@ import { PlanDetailsDialog, type PlanDetailsMode } from "@/components/molecules/
 import { PlanRow } from "@/components/molecules/proposal-plans/plan-row";
 import { PlanUploadCard, type UploadItem } from "@/components/molecules/proposal-plans/plan-upload-card";
 import type { PlanDiscipline, ProposalPlan, UpdatePlanInput } from "@/api/proposals";
-import type { PreconSession, TakeoffScope } from "@/api/precon";
+import type { PreconSession, TakeoffMode, TakeoffScope } from "@/api/precon";
 import { useUploadFile } from "@/hooks/use-files";
-import { useCreatePreconSessionFromPlan, usePreconSessions } from "@/hooks/use-precon";
+import { useCreatePreconSessionFromPlan, useCreatePreconSessionFromPlanWithMode, usePreconSessions } from "@/hooks/use-precon";
 import { useAddPlan, useDeletePlan, useProposalPlans, useStartProposalTakeoff, useUpdatePlan,
   useProposalWorkspace,
 } from "@/hooks/use-proposals";
@@ -48,9 +48,12 @@ export function DrawingsTab({ proposalId }: Props) {
   const deletePlan = useDeletePlan(proposalId);
   const measurePlan = useCreatePreconSessionFromPlan(proposalId);
   const startDwgTakeoff = useStartProposalTakeoff(proposalId);
+  const measureByHand = useCreatePreconSessionFromPlanWithMode(proposalId);
 
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [measureTargets, setMeasureTargets] = useState<MeasurablePlan[]>([]);
+  // who measures the drawings queued in the dialog: Panda AI or the person
+  const [measureMode, setMeasureMode] = useState<TakeoffMode>("ai");
   const [measureError, setMeasureError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<ProposalPlan | null>(null);
   const [details, setDetails] = useState<{ plan: ProposalPlan; mode: PlanDetailsMode } | null>(null);
@@ -87,13 +90,33 @@ export function DrawingsTab({ proposalId }: Props) {
     const added = (await Promise.all(files.map((f) => uploadOne(f)))).filter((p): p is ProposalPlan => p !== null);
     setUploads((prev) => prev.filter((u) => u.state !== "done"));
     const measurable = added.filter((p) => MEASURABLE_PLAN.test(p.fileName)).map((p) => ({ id: p.id, fileName: p.fileName }));
-    if (measurable.length > 0) {
-      setMeasureError(null);
-      setMeasureTargets(measurable);
+    if (measurable.length > 0) openMeasure(measurable, "ai");
+  }
+
+  function openMeasure(targets: MeasurablePlan[], mode: TakeoffMode) {
+    setMeasureError(null);
+    setMeasureMode(mode);
+    setMeasureTargets(targets);
+  }
+
+  // A hand take-off renders the sheets and opens the workspace; PDF and DWG go
+  // through the same call, so several drawings just make several sessions.
+  async function startMeasuringByHand(scope: TakeoffScope) {
+    setMeasureError(null);
+    try {
+      const started = await Promise.all(
+        measureTargets.map((p) => measureByHand.mutateAsync({ planId: p.id, scope, mode: "manual" })),
+      );
+      setMeasureTargets([]);
+      if (started.length > 1) toast(`${started.length} take-offs opened. The others show on the Take-offs tab.`, "success");
+      if (started[0]) navigate(`/sales/takeoff/${started[0].id}`);
+    } catch (err) {
+      setMeasureError(getApiErrorMessage(err, "Could not open the drawing for measuring."));
     }
   }
 
   async function startMeasuring(scope: TakeoffScope) {
+    if (measureMode === "manual") return startMeasuringByHand(scope);
     setMeasureError(null);
     const pdfs = measureTargets.filter((p) => PDF_PLAN.test(p.fileName));
     const dwgs = measureTargets.filter((p) => !PDF_PLAN.test(p.fileName));
@@ -139,7 +162,7 @@ export function DrawingsTab({ proposalId }: Props) {
     }
     setDetails(null);
     toast(`Rev ${meta.revision} uploaded. The previous revision is kept as superseded.`, "success");
-    if (MEASURABLE_PLAN.test(added.fileName)) setMeasureTargets([{ id: added.id, fileName: added.fileName }]);
+    if (MEASURABLE_PLAN.test(added.fileName)) openMeasure([{ id: added.id, fileName: added.fileName }], "ai");
   }
 
   const current = plans.filter((p) => p.revisionStatus === "current");
@@ -168,10 +191,8 @@ export function DrawingsTab({ proposalId }: Props) {
                 plan={plan}
                 sessions={sessions.filter((s) => s.planId === plan.id)}
                 staleSessions={plan.revisionStatus === "current" ? staleSessionsFor(plan, plans, sessions) : []}
-                onMeasure={(p) => {
-                  setMeasureError(null);
-                  setMeasureTargets([{ id: p.id, fileName: p.fileName }]);
-                }}
+                onMeasure={(p) => openMeasure([{ id: p.id, fileName: p.fileName }], "ai")}
+                onMeasureByHand={(p) => openMeasure([{ id: p.id, fileName: p.fileName }], "manual")}
                 onDetails={(p) => {
                   setDetailsError(null);
                   setDetails({ plan: p, mode: "details" });
@@ -203,10 +224,11 @@ export function DrawingsTab({ proposalId }: Props) {
           if (!open) setMeasureTargets([]);
         }}
         plans={measureTargets}
+        mode={measureMode}
         existing={sessions
           .filter((s) => s.supersededBy === null && measureTargets.some((p) => p.id === s.planId))
-          .map((s) => ({ title: s.title, revision: s.revision, scope: s.scope }))}
-        submitting={measurePlan.isPending || startDwgTakeoff.isPending}
+          .map((s) => ({ title: s.title, revision: s.revision, scope: s.scope, takeoffKind: s.takeoffKind }))}
+        submitting={measurePlan.isPending || startDwgTakeoff.isPending || measureByHand.isPending}
         error={measureError}
         onConfirm={(scope) => void startMeasuring(scope)}
       />
