@@ -20,6 +20,7 @@ import type {
   AddDeductionBody,
   CreateBillBody,
   CreateBlankSessionBody,
+  CreateProgrammeTaskBody,
   CreateSessionFromPlanBody,
   CreateRowBody,
   PreconSummarySettings,
@@ -64,6 +65,17 @@ const programmeStartBody = {
   properties: { startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" } },
 } as const;
 
+const programmeLink = {
+  type: "object",
+  required: ["taskId", "type"],
+  additionalProperties: false,
+  properties: {
+    taskId: { type: "string", minLength: 1 },
+    type: { type: "string", enum: ["FS", "SS", "FF", "SF"] },
+    lagDays: { type: "number", minimum: -60, maximum: 60, default: 0 },
+  },
+} as const;
+
 const updateProgrammeTaskBody = {
   type: "object",
   required: ["version"],
@@ -75,6 +87,24 @@ const updateProgrammeTaskBody = {
     durationDays: { type: "number", minimum: 0, maximum: 400 },
     isMilestone: { type: "boolean" },
     basis: { type: "string", maxLength: 200 },
+    outlineLevel: { type: "integer", minimum: 1, maximum: 5 },
+    sort: { type: "integer", minimum: 0 },
+    predecessors: { type: "array", maxItems: 20, items: programmeLink },
+  },
+} as const;
+
+const createProgrammeTaskBody = {
+  type: "object",
+  required: ["name", "durationDays"],
+  additionalProperties: false,
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 120 },
+    durationDays: { type: "number", minimum: 0, maximum: 400 },
+    isMilestone: { type: "boolean" },
+    basis: { type: "string", maxLength: 200 },
+    outlineLevel: { type: "integer", minimum: 1, maximum: 5 },
+    afterTaskId: { type: "string", minLength: 1 },
+    predecessors: { type: "array", maxItems: 20, items: programmeLink },
   },
 } as const;
 
@@ -453,7 +483,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams } },
     async (request, reply) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       await fastify.queue.enqueue(PRECON_PROGRAMME_QUEUE, "programme", {
         sessionId: request.params.sessionId,
@@ -479,9 +509,32 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: sessionParams, body: programmeStartBody } },
     async (request) => {
       request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertSessionOrg(request.params.sessionId, orgId);
       return service.setProgrammeStart(request.params.sessionId, request.body.startDate);
+    },
+  );
+
+  fastify.post<{ Params: { sessionId: string }; Body: CreateProgrammeTaskBody }>(
+    "/precon/sessions/:sessionId/programme/tasks",
+    { schema: { params: sessionParams, body: createProgrammeTaskBody } },
+    async (request, reply) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.assertSessionOrg(request.params.sessionId, orgId);
+      const task = await service.createProgrammeTask(request.params.sessionId, request.body, user.id);
+      return reply.status(201).send(task);
+    },
+  );
+
+  fastify.delete<{ Params: { taskId: string } }>(
+    "/precon/programme-tasks/:taskId",
+    { schema: { params: taskParams } },
+    async (request) => {
+      const user = request.requireAuth();
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
+      await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
+      return service.deleteProgrammeTask(request.params.taskId, user.id);
     },
   );
 
@@ -505,7 +558,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: updateProgrammeTaskBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "edit");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       const { version, ...patch } = request.body;
       return service.updateProgrammeTask(request.params.taskId, version, patch, user.id);
@@ -517,7 +570,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "verified", user.id);
     },
@@ -528,7 +581,7 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: taskParams, body: versionOnlyBody } },
     async (request) => {
       const user = request.requireAuth();
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "verify");
       await service.assertProgrammeTaskOrg(request.params.taskId, orgId);
       return service.setProgrammeTaskStatus(request.params.taskId, request.body.version, "rejected", user.id);
     },

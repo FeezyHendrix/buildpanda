@@ -31,7 +31,9 @@ import type {
   UpdateRowBody,
 } from "./types.ts";
 import { FULL_TAKEOFF_SCOPE } from "./types.ts";
+import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskBody } from "./types.ts";
 import { scheduleProgramme } from "./programme-schedule.ts";
+import { programmeEditor } from "./programme-editor.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
 // pg serialises a plain object into jsonb; typed as the row field so the
@@ -93,6 +95,9 @@ function toProgrammeTask(r: PreconProgrammeTaskRow): PreconProgrammeTaskBase {
         ? (JSON.parse(r.predecessors) as ProgrammeDependency[])
         : r.predecessors,
     isMilestone: r.is_milestone,
+    totalFloatDays: r.total_float_days ?? null,
+    isCritical: Boolean(r.is_critical),
+    origin: r.origin ?? "ai",
     basis: r.basis,
     confidence: r.confidence,
     status: r.status,
@@ -223,6 +228,8 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       after,
     } as Omit<PreconAuditEventRow, "created_at">);
   }
+
+  const editor = programmeEditor(repo, audit);
 
   function toRateCard(r: PreconRateCardRow) {
     return { id: r.id, name: r.name, region: r.region, currency: r.currency };
@@ -766,10 +773,26 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         const window = dates.get(task.id);
         return {
           ...task,
+          totalFloatDays: window?.totalFloatDays ?? null,
+          isCritical: window?.isCritical ?? false,
           startAt: (window?.start ?? startDate).toISOString(),
           finishAt: (window?.finish ?? startDate).toISOString(),
         };
       });
+
+      // Persist the analysis so the handoff and the assistant can read float
+      // and critical flags straight off the rows without re-running the pass.
+      await Promise.all(
+        rows.flatMap((row) => {
+          const window = dates.get(row.id);
+          if (!window) return [];
+          const unchanged =
+            (row.total_float_days ?? null) === window.totalFloatDays && Boolean(row.is_critical) === window.isCritical;
+          return unchanged
+            ? []
+            : [repo.updateProgrammeTaskDerived(row.id, { total_float_days: window.totalFloatDays, is_critical: window.isCritical })];
+        }),
+      );
 
       const total = statusCounts.reduce((sum, c) => sum + c.count, 0);
       const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
@@ -795,24 +818,24 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     async updateProgrammeTask(
       taskId: string,
       version: number,
-      patch: { name?: string; durationDays?: number; isMilestone?: boolean; basis?: string },
+      patch: Omit<UpdateProgrammeTaskBody, "version">,
       actor: string,
+      origin: ProgrammeTaskOrigin = "manual",
     ): Promise<PreconProgrammeTaskBase> {
-      const existing = await repo.programmeTaskById(taskId);
-      if (!existing) throw new NotFoundError("Programme task");
-      const updated = await repo.updateProgrammeTaskVersioned(taskId, version, {
-        ...(patch.name === undefined ? {} : { name: patch.name }),
-        ...(patch.durationDays === undefined ? {} : { duration_days: patch.durationDays }),
-        ...(patch.isMilestone === undefined ? {} : { is_milestone: patch.isMilestone }),
-        ...(patch.basis === undefined ? {} : { basis: patch.basis }),
-        // An edited task is the planner's call now, not the model's.
-        status: "needs_review",
-      });
-      if (!updated) {
-        throw new ConflictError("Task changed since you loaded it; refresh and retry");
-      }
-      await audit(existing.session_id, taskId, actor, "programme.updated", { ...patch }, null);
-      return toProgrammeTask(updated);
+      return toProgrammeTask(await editor.updateTask(taskId, version, patch, actor, origin));
+    },
+
+    async createProgrammeTask(
+      sessionId: string,
+      body: CreateProgrammeTaskBody,
+      actor: string,
+      origin: ProgrammeTaskOrigin = "manual",
+    ): Promise<PreconProgrammeTaskBase> {
+      return toProgrammeTask(await editor.createTask(sessionId, body, actor, origin));
+    },
+
+    async deleteProgrammeTask(taskId: string, actor: string): Promise<{ ok: true }> {
+      return editor.deleteTask(taskId, actor);
     },
 
     async setProgrammeTaskStatus(

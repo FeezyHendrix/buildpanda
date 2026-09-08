@@ -197,7 +197,14 @@ export interface PreconProgrammeTaskBase {
   version: number;
   verifiedBy: string | null;
   verifiedAt: string | null;
+  /** Working days the task can slip without moving the finish; from the scheduler's backward pass. */
+  totalFloatDays: number | null;
+  isCritical: boolean;
+  origin: ProgrammeTaskOrigin;
 }
+
+export const PROGRAMME_TASK_ORIGINS = ["ai", "manual", "prompt"] as const;
+export type ProgrammeTaskOrigin = (typeof PROGRAMME_TASK_ORIGINS)[number];
 
 /** Base plus the dates the server derives from the programme start date. */
 export interface PreconProgrammeTask extends PreconProgrammeTaskBase {
@@ -219,6 +226,20 @@ export interface UpdateProgrammeTaskInput {
   durationDays?: number;
   isMilestone?: boolean;
   basis?: string;
+  outlineLevel?: number;
+  /** Target position in the list; the server renumbers everything else. */
+  sort?: number;
+  predecessors?: ProgrammeDependency[];
+}
+
+export interface CreateProgrammeTaskInput {
+  name: string;
+  durationDays: number;
+  isMilestone?: boolean;
+  basis?: string;
+  outlineLevel?: number;
+  afterTaskId?: string;
+  predecessors?: ProgrammeDependency[];
 }
 
 export const preconApi = {
@@ -307,6 +328,12 @@ export const preconApi = {
 
   updateProgrammeTask: (taskId: string, input: UpdateProgrammeTaskInput) =>
     api.patch<PreconProgrammeTaskBase>(`/precon/programme-tasks/${taskId}`, input).then((r) => r.data),
+
+  createProgrammeTask: (sessionId: string, input: CreateProgrammeTaskInput) =>
+    api.post<PreconProgrammeTaskBase>(`/precon/sessions/${sessionId}/programme/tasks`, input).then((r) => r.data),
+
+  deleteProgrammeTask: (taskId: string) =>
+    api.delete<{ ok: true }>(`/precon/programme-tasks/${taskId}`).then((r) => r.data),
 
   verifyProgrammeTask: (taskId: string, version: number) =>
     api.post<PreconProgrammeTaskBase>(`/precon/programme-tasks/${taskId}/verify`, { version }).then((r) => r.data),
