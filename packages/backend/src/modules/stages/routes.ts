@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { buildingsRepository } from "../buildings/repository.ts";
+import { claimChain } from "../finances/claim-chain.ts";
 import { financesRepository } from "../finances/repository.ts";
 import { stagesRepository } from "./repository.ts";
 import {
@@ -107,6 +108,9 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     async (projectId) => {
       const summary = await finances.findSummary(projectId);
       return summary ? Number(summary.contract_sum) : 0;
+    },
+    async (projectId, stage) => {
+      await claimChain(finances).markStageMilestonesClaimable(projectId, stage, null);
     },
   );
 
