@@ -20,6 +20,10 @@ import applyToEstimateRoutes from "./apply-to-estimate-routes.ts";
 import { reviewRoutes } from "./review-routes.ts";
 import { manualRoutes } from "./manual-routes.ts";
 import { sheetGeometryRoutes } from "./sheet-geometry-routes.ts";
+import { assemblyMeasurementRoutes } from "./assembly-routes.ts";
+import { presenceRoutes } from "./presence-routes.ts";
+import { staleLookupFromPlans } from "./stale.ts";
+import { plansRepository } from "../../proposals/plans-repository.ts";
 import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
@@ -266,9 +270,13 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   const repo = preconRepository(fastify.db);
-  const service = preconService(repo, (sessionId, event) => {
-    fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
-  });
+  const service = preconService(
+    repo,
+    (sessionId, event) => {
+      fastify.realtime.publish({ event: event.type, channelId: `precon:${sessionId}`, data: event });
+    },
+    staleLookupFromPlans(plansRepository(fastify.db)),
+  );
 
   fastify.post<{ Querystring: { title?: string; proposalId?: string } }>(
     "/precon/sessions",
@@ -379,6 +387,8 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(reviewRoutes, { service });
   await fastify.register(manualRoutes, { service });
   await fastify.register(sheetGeometryRoutes, { service });
+  await fastify.register(assemblyMeasurementRoutes, { service, repo });
+  await fastify.register(presenceRoutes, { service });
 
   fastify.post<{ Body: CreateBlankSessionBody }>(
     "/precon/sessions/blank",

@@ -159,3 +159,53 @@ export interface MatchedRate {
   cardName: string;
   label: string | null;
 }
+
+// ---------- assemblies (one drawn quantity, several bill items) ----------
+
+export interface AssemblyItem {
+  description: string;
+  unit: string;
+  /** quantity of this item per one unit of the assembly's measured quantity */
+  factor: number;
+  elementGroup: string;
+  rateId: string | null;
+  code: string | null;
+}
+
+export interface PreconAssemblyRow {
+  id: string;
+  org_id: string;
+  name: string;
+  unit: string;
+  element_group: string;
+  items: AssemblyItem[];
+  created_by: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface PreconAssembly {
+  id: string;
+  name: string;
+  unit: string;
+  elementGroup: string;
+  items: AssemblyItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertAssemblyInput {
+  name: string;
+  unit: string;
+  elementGroup: string;
+  items: AssemblyItem[];
+}
+
+/** An assembly with every item's rate resolved from the org's cards, ready to bill. */
+export interface PricedAssemblyItem extends AssemblyItem {
+  rate: number | null;
+}
+
+export interface PricedAssembly extends Omit<PreconAssembly, "items"> {
+  items: PricedAssemblyItem[];
+}
