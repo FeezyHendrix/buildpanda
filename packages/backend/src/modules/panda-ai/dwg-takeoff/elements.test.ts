@@ -44,8 +44,8 @@ test("doors: leaf outlines up to 2.4 m wide (a sliding door) and swing arcs 0.5â
   smallBuilding(s, { floors: 1 });
   s.rect("DOOR", 4000, 7770, 2250, 230); // a sliding door across the north wall
   const doors = countDoors(plan(s));
-  assert.equal(doors?.quantity, 4);
-  assert.equal(doors?.confidence, "low", "three arcs against four leaves is a real disagreement to review");
+  assert.equal(doors?.quantity, 4, "three swings plus the sliding door, which has a leaf and no swing");
+  assert.equal(doors?.confidence, "medium", "an unpaired leaf leaves nothing to corroborate the count with");
 });
 
 test("windows on plan: anything on the window layer within 300 mm is one window", () => {
