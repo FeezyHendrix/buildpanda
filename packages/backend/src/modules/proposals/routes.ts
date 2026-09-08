@@ -3,8 +3,8 @@ import * as XLSX from "xlsx";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
-import { convertProposalToProject } from "./convert-to-project.ts";
-import { PROPOSAL_STATUSES } from "./types.ts";
+import { convertProposalToProject, previewConversion } from "./convert-to-project.ts";
+import { CONVERT_SECTIONS, PROPOSAL_STATUSES } from "./types.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
@@ -12,10 +12,23 @@ import { proposalSentEmail } from "../../lib/email-templates.ts";
 import { generateId } from "../../lib/ids.ts";
 import { config } from "../../config/index.ts";
 import type {
+  ConvertBody,
   CreateProposalInput,
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
 } from "./types.ts";
+
+const convertBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    include: {
+      type: "object",
+      additionalProperties: false,
+      properties: Object.fromEntries(CONVERT_SECTIONS.map((key) => [key, { type: "boolean" }])),
+    },
+  },
+} as const;
 
 const proposalEstimateParams = {
   type: "object",
@@ -584,16 +597,28 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
 
   // --- Convert proposal → construction project ---
 
+  // What conversion would create, section by section, so the user confirms
+  // with counts in front of them rather than a generic "are you sure".
   fastify.post<{ Params: { id: string } }>(
-    "/proposals/:id/convert",
+    "/proposals/:id/convert/preview",
     { schema: { params: idParams } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("proposals", "convert");
+      const user = request.requireAuth();
+      return previewConversion({ db: fastify.db, repo }, { proposalId: request.params.id, orgId, userId: user.id });
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: ConvertBody }>(
+    "/proposals/:id/convert",
+    { schema: { params: idParams, body: convertBody } },
     async (request, reply) => {
       const orgId = request.requireOrgPermission("proposals", "convert");
       const user = request.requireAuth();
 
       const result = await convertProposalToProject(
         { db: fastify.db, repo, log: request.log },
-        { proposalId: request.params.id, orgId, user },
+        { proposalId: request.params.id, orgId, user, include: request.body?.include },
       );
       return reply
         .status(result.created ? 201 : 200)

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { ConvertPreviewDialog } from "@/components/molecules/convert-preview-dialog";
 import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals";
 import { useAbility } from "@/contexts/ability-context";
+import type { ConvertInclude } from "@/api/proposals";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { formatDayMonth, formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -19,14 +21,13 @@ export function OverviewTab({ proposalId }: Props) {
   if (!data) return null;
   const { proposal, events } = data;
 
-  function handleConvert() {
-    convert.mutate(undefined, {
+  function handleConvert(include: ConvertInclude) {
+    convert.mutate(include, {
       onSuccess: ({ projectId }) => {
         setConfirmOpen(false);
         localStorage.setItem("buildpanda:last-suite", "construction");
         navigate(`/project/${projectId}/overview`);
       },
-      onError: () => setConfirmOpen(false),
     });
   }
 
@@ -127,11 +128,6 @@ export function OverviewTab({ proposalId }: Props) {
           </p>
           {ability.can("convert", "proposals") ? (
             <>
-              {convert.error && (
-                <p className="mb-3 text-xs text-red-600">
-                  Conversion failed. Please try again.
-                </p>
-              )}
               <Button
                 variant="primary"
                 onClick={() => setConfirmOpen(true)}
@@ -139,18 +135,13 @@ export function OverviewTab({ proposalId }: Props) {
               >
                 Convert to project
               </Button>
-              <ConfirmDialog
+              <ConvertPreviewDialog
+                proposalId={proposalId}
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
+                submitting={convert.isPending}
+                error={convert.error ? getApiErrorMessage(convert.error, "Conversion failed. Please try again.") : null}
                 onConfirm={handleConvert}
-                loading={convert.isPending}
-                title="Convert to project?"
-                confirmLabel="Convert to project"
-                description={
-                  proposal.clientEmail
-                    ? `This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate, and invites ${proposal.clientName} (${proposal.clientEmail}) as the client.`
-                    : "This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate."
-                }
               />
             </>
           ) : (

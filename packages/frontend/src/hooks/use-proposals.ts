@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { proposalsApi, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
+import { proposalsApi, type ConvertInclude, type CreateProposalInput, type ProposalStatus } from "@/api/proposals";
 import { proposalKeys } from "./query-keys";
 
 export function usePublicProposal(token: string) {
@@ -42,11 +42,22 @@ export function useSendEstimate(proposalId: string) {
 export function useConvertProposal(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => proposalsApi.convert(proposalId),
+    mutationFn: (include?: ConvertInclude) => proposalsApi.convert(proposalId, include),
     onSuccess: () => {
       // Conversion changes the proposal status, so lists go stale too.
       qc.invalidateQueries({ queryKey: proposalKeys.all });
     },
+  });
+}
+
+// The preview is a POST that writes nothing; it is queried on demand when the
+// convert dialog opens so the counts reflect the take-off as it stands now.
+export function useConvertPreview(proposalId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: proposalKeys.convertPreview(proposalId),
+    queryFn: () => proposalsApi.convertPreview(proposalId),
+    enabled: enabled && !!proposalId,
+    staleTime: 0,
   });
 }
 
