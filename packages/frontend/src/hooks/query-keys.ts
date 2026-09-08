@@ -363,3 +363,7 @@ export const preconAssistKeys = {
 export const proposalPackKeys = {
   all: (proposalId: string) => ["proposals", "detail", proposalId, "pack"] as const,
 };
+
+export const takeoffLinkKeys = {
+  lineStatuses: (sessionId: string) => ["precon", "line-statuses", sessionId] as const,
+};

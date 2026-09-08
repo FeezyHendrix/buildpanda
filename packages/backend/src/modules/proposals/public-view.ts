@@ -98,7 +98,7 @@ export function publicViewService(db: Knex, repo: ProposalsRepository, terms: Pr
       }
       const estimate = repo.toEstimate(estimateRow);
       const proposal = repo.toProposal(proposalRow);
-      const jobProfile = (proposalRow as { job_profile?: string }).job_profile ?? "full_contract";
+      const jobProfile = proposalRow.job_profile ?? "full_contract";
       const [items, schedule, sections, identity, viewCount] = await Promise.all([
         repo.getItems(estimate.id),
         repo.getSchedule(estimate.id),

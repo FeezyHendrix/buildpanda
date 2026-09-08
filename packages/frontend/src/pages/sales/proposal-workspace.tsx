@@ -11,20 +11,22 @@ import {
 } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import { ActivityTab } from "./proposal-tabs/activity-tab";
-import { BoqTab } from "./proposal-tabs/boq-tab";
+import { DrawingsTab } from "./proposal-tabs/drawings-tab";
 import { EstimateTab } from "./proposal-tabs/estimate-tab";
 import { MessagesTab } from "./proposal-tabs/messages-tab";
 import { OverviewTab } from "./proposal-tabs/overview-tab";
-import { PlansTab } from "./proposal-tabs/plans-tab";
 import { PackTab } from "./proposal-tabs/pack-tab";
+import { TakeoffsTab } from "./proposal-tabs/takeoffs-tab";
+import { JOB_PROFILE_META } from "@/lib/precon-meta";
 
+// The take-off is the bill of quantities, so there is no separate BoQ grid.
+// Messages fold into Activity as internal notes.
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "plans", label: "Plans" },
-  { id: "boq", label: "BoQ" },
+  { id: "drawings", label: "Drawings" },
+  { id: "takeoffs", label: "Take-offs" },
   { id: "estimate", label: "Estimate" },
   { id: "pack", label: "Pack" },
-  { id: "messages", label: "Messages" },
   { id: "activity", label: "Activity" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -88,7 +90,9 @@ export default function ProposalWorkspace() {
             <span className="text-sm font-semibold text-gray-700">{fmt(estimate.total, proposal.currency)}</span>
           ) : null}
         </div>
-        <p className="mt-1 text-sm text-gray-500">{proposal.clientName}</p>
+        <p className="mt-1 text-sm text-gray-500">
+          {proposal.clientName} · {JOB_PROFILE_META[proposal.jobProfile].label}
+        </p>
       </div>
 
       <div role="tablist" className="flex gap-1 border-b border-gray-100 px-6">
@@ -116,8 +120,8 @@ export default function ProposalWorkspace() {
 
       <div className="p-6">
         {tab === "overview" ? <OverviewTab proposalId={id} /> : null}
-        {tab === "plans" ? <PlansTab proposalId={id} /> : null}
-        {tab === "boq" ? <BoqTab proposalId={id} estimateId={estimate?.id ?? null} /> : null}
+        {tab === "drawings" ? <DrawingsTab proposalId={id} /> : null}
+        {tab === "takeoffs" ? <TakeoffsTab proposalId={id} /> : null}
         {tab === "estimate" ? (
           <EstimateTab
             proposalId={id}
@@ -128,8 +132,15 @@ export default function ProposalWorkspace() {
           />
         ) : null}
         {tab === "pack" ? <PackTab proposalId={id} /> : null}
-        {tab === "messages" ? <MessagesTab proposalId={id} /> : null}
-        {tab === "activity" ? <ActivityTab proposalId={id} /> : null}
+        {tab === "activity" ? (
+          <div className="flex flex-col gap-8">
+            <ActivityTab proposalId={id} />
+            <section className="flex flex-col gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Internal notes</h2>
+              <MessagesTab proposalId={id} />
+            </section>
+          </div>
+        ) : null}
       </div>
     </div>
   );

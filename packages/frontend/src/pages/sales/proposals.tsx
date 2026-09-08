@@ -5,6 +5,8 @@ import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { JobProfilePicker } from "@/components/molecules/job-profile-picker";
+import type { JobProfile } from "@/api/proposals";
 import { Input } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { useProposals, useCreateProposal } from "@/hooks/use-proposals";
@@ -75,9 +77,11 @@ function CreateProposalDrawer({
   const [clientPhone, setClientPhone] = useState(prefill?.clientPhone ?? "");
   const [location, setLocation] = useState(prefill?.location ?? "");
   const [brief, setBrief] = useState(prefill?.brief ?? "");
+  const [jobProfile, setJobProfile] = useState<JobProfile>("full_contract");
 
   useEffect(() => {
     if (!open) return;
+    setJobProfile("full_contract");
     setTitle(prefill?.title ?? "");
     setClientName(prefill?.clientName ?? "");
     setClientEmail(prefill?.clientEmail ?? "");
@@ -112,6 +116,7 @@ function CreateProposalDrawer({
       location: location.trim() || undefined,
       brief: brief.trim() || undefined,
       leadId: prefill?.leadId,
+      jobProfile,
     });
     onOpenChange(false);
     navigate(`/sales/proposals/${proposal.id}`);
@@ -182,6 +187,10 @@ function CreateProposalDrawer({
           onChange={(e) => setLocation(e.target.value)}
           placeholder="City, State"
         />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Job profile *</Label>
+        <JobProfilePicker value={jobProfile} onChange={setJobProfile} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="prop-brief">Brief / notes</Label>

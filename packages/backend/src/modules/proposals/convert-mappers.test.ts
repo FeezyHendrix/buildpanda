@@ -163,9 +163,9 @@ test("rowsToMaterialOrders dates orders from the matching activity, flags long l
 
 test("plansToDocuments skips superseded revisions and files current ones under the right discipline", () => {
   const plans = [
-    { id: "pp_1", proposalId: "prp", fileId: "f_1", fileName: "GF.pdf", sizeBytes: 2048, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 0, discipline: "structural", revision: "B" },
-    { id: "pp_2", proposalId: "prp", fileId: "f_2", fileName: "GF-old.pdf", sizeBytes: 1024, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 1, revisionStatus: "superseded" },
-    { id: "pp_3", proposalId: "prp", fileId: "f_3", fileName: "Site.pdf", sizeBytes: 1024, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 2 },
+    { id: "pp_1", proposalId: "prp", fileId: "f_1", fileName: "GF.pdf", sizeBytes: 2048, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 0, sheetCode: "GF", discipline: "structural", revision: "B", revisionStatus: "current", supersedesPlanId: null },
+    { id: "pp_2", proposalId: "prp", fileId: "f_2", fileName: "GF-old.pdf", sizeBytes: 1024, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 1, sheetCode: "GF", discipline: null, revision: "A", revisionStatus: "superseded", supersedesPlanId: null },
+    { id: "pp_3", proposalId: "prp", fileId: "f_3", fileName: "Site.pdf", sizeBytes: 1024, mimeType: "application/pdf", label: null, uploadedBy: null, uploadedAt: "", sort: 2, sheetCode: null, discipline: null, revision: null, revisionStatus: "current", supersedesPlanId: null },
   ] as ProposalPlan[];
   const seed = plansToDocuments(plans, { projectId: "prj_1", uploadedBy: "usr_1", now: "2026-09-15T00:00:00.000Z" });
   assert.equal(seed.documents.length, 2);

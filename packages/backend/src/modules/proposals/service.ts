@@ -1,5 +1,10 @@
 import type { ProposalsRepository } from "./repository.ts";
-import type { CreateProposalInput, CreateEstimateItemInput } from "./types.ts";
+import type {
+  CreateProposalInput,
+  CreateEstimateItemInput,
+  CreateProposalPlanInput,
+  UpdateProposalPlanInput,
+} from "./types.ts";
 import { generateId } from "../../lib/ids.ts";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 
@@ -23,8 +28,47 @@ export function proposalsService(repo: ProposalsRepository) {
       currency: input.currency ?? "NGN",
       validUntil: input.validUntil,
       leadId: input.leadId,
+      jobProfile: input.jobProfile,
       createdBy: userId,
     });
+  }
+
+  // A drawing revision never replaces a file: uploading the same sheet code
+  // marks the previous current revision superseded and links the pair, so a
+  // take-off measured on the old revision keeps pointing at what it measured.
+  async function addPlan(proposalId: string, orgId: string, userId: string, input: CreateProposalPlanInput) {
+    const proposal = await repo.getById(proposalId, orgId);
+    if (!proposal) throw new NotFoundError("Proposal");
+    const sheetCode = input.sheetCode?.trim() || null;
+    const previous = sheetCode ? await repo.findCurrentPlanBySheetCode(proposalId, sheetCode) : null;
+    const existing = await repo.listPlans(proposalId);
+    const id = generateId("plan");
+    await repo.insertPlan({
+      id,
+      proposalId,
+      fileId: input.fileId,
+      label: input.label?.trim() || null,
+      sheetCode,
+      discipline: input.discipline ?? null,
+      revision: input.revision?.trim() || null,
+      uploadedBy: userId,
+      sort: existing.length,
+    });
+    if (previous) await repo.supersedePlan(previous.id, id);
+    return repo.listPlans(proposalId);
+  }
+
+  async function updatePlan(proposalId: string, orgId: string, planId: string, input: UpdateProposalPlanInput) {
+    const proposal = await repo.getById(proposalId, orgId);
+    if (!proposal) throw new NotFoundError("Proposal");
+    const updated = await repo.updatePlan(planId, proposalId, {
+      label: input.label === undefined ? undefined : input.label?.trim() || null,
+      sheetCode: input.sheetCode === undefined ? undefined : input.sheetCode?.trim() || null,
+      discipline: input.discipline,
+      revision: input.revision === undefined ? undefined : input.revision?.trim() || null,
+    });
+    if (updated === 0) throw new NotFoundError("Plan");
+    return repo.listPlans(proposalId);
   }
 
   async function getWorkspace(proposalId: string, orgId: string) {
@@ -129,6 +173,8 @@ export function proposalsService(repo: ProposalsRepository) {
 
   return {
     createProposal,
+    addPlan,
+    updatePlan,
     getWorkspace,
     createEstimateRevision,
     saveEstimateItems,

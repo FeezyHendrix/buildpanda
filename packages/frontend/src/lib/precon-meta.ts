@@ -130,3 +130,35 @@ export function formatStructureContext(ctx: StructureContext | null): string | n
   if (ctx.foundationType !== "unknown") parts.push(`${capitalise(ctx.foundationType)} foundation`);
   return parts.join(" · ");
 }
+
+// ---- job profiles and drawing metadata (WS-3) ----
+
+import type { JobProfile, PlanDiscipline } from "@/api/proposals";
+
+export const JOB_PROFILE_META: Record<JobProfile, { label: string; description: string; short: string }> = {
+  full_contract: {
+    label: "Full contract",
+    short: "Labour and materials",
+    description: "You supply labour and materials. Every line is priced; material orders are yours at handoff.",
+  },
+  labour_only: {
+    label: "Labour-only",
+    short: "Client buys materials",
+    description:
+      "The client buys materials. Labour rates only; the client receives a buying list with quantities and needed-by dates.",
+  },
+  supply_only: {
+    label: "Supply-only",
+    short: "Materials, no site labour",
+    description: "Material lines priced, no preliminaries. Delivery stages instead of build stages.",
+  },
+};
+
+export const PLAN_DISCIPLINE_LABEL: Record<PlanDiscipline, string> = {
+  architectural: "Architectural",
+  structural: "Structural",
+  mep: "MEP",
+  civil: "Civil / site",
+  survey: "Survey",
+  other: "Other",
+};

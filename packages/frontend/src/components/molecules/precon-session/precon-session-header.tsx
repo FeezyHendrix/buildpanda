@@ -18,7 +18,7 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
   const { session, progress } = snapshot;
   const ctx = session.structureContext;
   const ctxLabel = formatStructureContext(ctx);
-  const backTo = session.proposalId ? `/sales/proposals/${session.proposalId}?tab=plans` : "/sales/proposals";
+  const backTo = session.proposalId ? `/sales/proposals/${session.proposalId}?tab=drawings` : "/sales/proposals";
   const running = session.status === "generating" || session.status === "uploading";
 
   return (
