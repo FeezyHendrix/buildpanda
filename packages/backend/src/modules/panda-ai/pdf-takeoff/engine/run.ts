@@ -6,7 +6,8 @@ import { classifySheet, measureSheetRegions, regionShareOfSheet, withTempFile } 
 
 export { regionShareOfSheet };
 import { FULL_TAKEOFF_SCOPE, MEASURED_AREAS_GROUP } from "../types.ts";
-import { extractSheet, buildSnapIndex } from "./pdf-extract.ts";
+import { buildSnapIndex } from "./pdf-extract.ts";
+import { contextFromPages, extractAllPages } from "./measure-file.ts";
 import { fromPdf } from "../../geometry/from-pdf.ts";
 import { buildReport, summarise } from "../../geometry/report.ts";
 import type { ExtractionReport } from "../../geometry/types.ts";
@@ -69,6 +70,10 @@ export async function generateForSession(
       await withTempFile(placeholder.storage_path, "pdf", async (file) => {
         const doc = await pdfjs.getDocument({ url: file, useSystemFonts: true }).promise;
         await progress("reading", `Reading ${placeholder.file_name} (${doc.numPages} pages)`, { pages: doc.numPages });
+        // every page first, so level marks and elevation window heights are
+        // known before any plan's walls are turned into areas
+        const extractedPages = await extractAllPages(doc, pdfjs.OPS);
+        const document = contextFromPages(extractedPages);
 
         for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
           const globalPage = nextPageNumber++;
@@ -98,8 +103,7 @@ export async function generateForSession(
           sheetIdByPage.set(globalPage, sheetId);
 
           try {
-            const page = await doc.getPage(pageNo);
-            const extracted = await extractSheet(page as never, pdfjs.OPS as never);
+            const extracted = extractedPages[pageNo - 1]!.extracted;
             // what was found, recorded before any rule decides what to do with it
             const sheetReport = buildReport(fromPdf(extracted, extracted.ops, pdfjs.OPS as never));
             extractionBySheet[sheetId] = sheetReport;
@@ -169,12 +173,16 @@ export async function generateForSession(
               civilSheets.push({ segments: extracted.segments, mmPerPt: calibration.mmPerPt, pageNumber: globalPage });
             }
             if (calibration && kind === "floor-plan") {
-              const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly);
+              const measured = measureSheetRegions(extracted, calibration.mmPerPt, calibration.confidence, globalPage, sheetLabel, areasOnly, {
+                calibrationMatches: calibration.matches,
+                dimUnit: calibration.dimUnit,
+                document,
+              });
               if (measured.fingerprint) pageFingerprints.push(measured.fingerprint);
               // low calibration confidence demotes everything on the sheet
               const demoted =
                 calibration.confidence < 0.7
-                  ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: "scale" }))
+                  ? measured.items.map((i) => ({ ...i, confidence: "low" as const, confidenceReason: i.confidenceReason ?? "scale" }))
                   : measured.items;
               allItems.push(...demoted);
               await progress("reading", `Measured ${sheetLabel}: ${demoted.length} items at 1:${Math.round(calibration.mmPerPt / 0.3528)}`, {
