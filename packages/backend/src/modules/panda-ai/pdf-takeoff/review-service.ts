@@ -81,24 +81,25 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
   return {
     // A DWG read by the automated take-off lands as a reviewable session, the
     // same object a PDF produces, instead of being appended to the proposal bill.
-    async createDwgSession(
+    // The session exists before the DWG engine runs so the user lands on the
+    // take-off page immediately and watches it fill, exactly as with a PDF.
+    async createDwgSessionShell(
       orgId: string,
       userId: string,
       proposalId: string,
       planId: string | null,
       file: { fileName: string; storagePath: string },
-      lines: DwgTakeoffLine[],
     ): Promise<PreconSession> {
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
         project_id: null,
         proposal_id: proposalId,
-        status: "reviewing",
+        status: "generating",
         title: file.fileName,
         error: null,
-        phase: "draft",
-        progress_log: [{ at: new Date().toISOString(), phase: "draft", message: `Read ${lines.length} lines from ${file.fileName}` }],
+        phase: "reading",
+        progress_log: [{ at: new Date().toISOString(), phase: "reading", message: `Queued the automated take-off for ${file.fileName}` }],
         scope: db_json(FULL_TAKEOFF_SCOPE),
         plan_id: planId,
         takeoff_kind: "dwg",
@@ -122,6 +123,16 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
           error: "Read by the automated take-off; no vector overlay for DWG yet",
         },
       ]);
+      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
+      await audit(session.id, null, userId, "session_created", null, { title: file.fileName, origin: "dwg" });
+      return toSession(session);
+    },
+
+    // The engine's lines land in the shell: one bill, one row per line, and the
+    // session moves to review.
+    async fillDwgSession(sessionId: string, file: { fileName: string }, lines: DwgTakeoffLine[]): Promise<PreconSession> {
+      const session = await repo.sessionById(sessionId);
+      if (!session) throw new NotFoundError("Preconstruction session");
       const bill = await repo.insertBill({
         id: generateId("pbl"),
         session_id: session.id,
@@ -157,9 +168,31 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         }
       }
       await repo.insertBoqRows(rows);
-      await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
-      await audit(session.id, null, userId, "session_created", null, { title: file.fileName, origin: "dwg", lines: lines.length });
-      return toSession(session);
+      await repo.appendSessionProgress(session.id, {
+        at: new Date().toISOString(),
+        phase: "draft",
+        message: `Read ${lines.length} lines from ${file.fileName}`,
+      });
+      await repo.updateSessionStatus(session.id, "reviewing");
+      const updated = await repo.sessionById(session.id);
+      return toSession(updated ?? { ...session, status: "reviewing" });
+    },
+
+    async failDwgSession(sessionId: string, message: string): Promise<void> {
+      await repo.updateSessionStatus(sessionId, "failed", message);
+    },
+
+    // Kept for callers that have the lines in hand (tests, one-shot imports).
+    async createDwgSession(
+      orgId: string,
+      userId: string,
+      proposalId: string,
+      planId: string | null,
+      file: { fileName: string; storagePath: string },
+      lines: DwgTakeoffLine[],
+    ): Promise<PreconSession> {
+      const shell = await this.createDwgSessionShell(orgId, userId, proposalId, planId, file);
+      return this.fillDwgSession(shell.id, file, lines);
     },
 
     // The reviewer corrects what the engine read off a sheet. A typed or drawn

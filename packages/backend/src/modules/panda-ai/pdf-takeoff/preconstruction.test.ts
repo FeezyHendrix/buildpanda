@@ -494,6 +494,9 @@ test("createDwgSession lands DWG lines as a reviewable session with reasons and 
         inserted.rows = rows;
       },
       upsertSettings: async () => undefined,
+      sessionById: async () => ({ ...sessionRow({ status: "reviewing" }), ...(inserted.session as object) }),
+      appendSessionProgress: async () => undefined,
+      updateSessionStatus: async () => undefined,
     }),
   );
   const session = await svc.createDwgSession(

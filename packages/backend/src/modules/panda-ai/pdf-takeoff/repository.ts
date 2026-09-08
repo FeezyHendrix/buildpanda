@@ -23,7 +23,15 @@ export function preconRepository(db: Knex) {
   return {
     // sessions
     insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date">) => {
-      const [inserted] = await db<PreconSessionRow>("precon_sessions").insert(row).returning("*");
+      // pg turns a JS array into a Postgres array literal, which jsonb rejects;
+      // the JSON columns go in as text so an array-valued log inserts cleanly.
+      const [inserted] = await db<PreconSessionRow>("precon_sessions")
+        .insert({
+          ...row,
+          progress_log: (row.progress_log === null ? null : JSON.stringify(row.progress_log)) as never,
+          scope: (row.scope === null ? null : JSON.stringify(row.scope)) as never,
+        })
+        .returning("*");
       return inserted!;
     },
     sessionById: (id: string) => db<PreconSessionRow>("precon_sessions").where({ id }).first(),

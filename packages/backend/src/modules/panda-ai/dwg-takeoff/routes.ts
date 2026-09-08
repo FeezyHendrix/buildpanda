@@ -1,3 +1,5 @@
+import { preconService } from "../pdf-takeoff/service.ts";
+import { preconRepository } from "../pdf-takeoff/repository.ts";
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
@@ -147,8 +149,20 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         storage_path: plan.storage_path,
         requested_by: user.id,
       });
-      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", { jobId: job.id, orgId } satisfies TakeoffJobData);
-      return reply.status(202).send(toDto(job));
+      const session = await preconService(preconRepository(fastify.db)).createDwgSessionShell(
+        orgId,
+        user.id,
+        request.params.id,
+        request.params.planId,
+        { fileName: plan.file_name, storagePath: plan.storage_path },
+      );
+      await jobs.linkSession(job.id, session.id);
+      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", {
+        jobId: job.id,
+        orgId,
+        sessionId: session.id,
+      } satisfies TakeoffJobData);
+      return reply.status(202).send(toDto({ ...job, session_id: session.id }));
     },
   );
 
