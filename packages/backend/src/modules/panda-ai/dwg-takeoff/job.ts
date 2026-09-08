@@ -86,6 +86,8 @@ export function toHandover(result: TakeoffResult): DwgTakeoffHandover {
       basis: i.basis,
       sheetId: i.sheetId,
       evidence: i.evidence,
+      // drawing-unit shapes, so the sheet viewer can annotate what was measured
+      shapes: i.shapes,
       reason: i.reason,
       crossCheck: i.crossCheck,
       noteOnly: i.noteOnly,
