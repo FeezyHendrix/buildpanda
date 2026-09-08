@@ -39,6 +39,10 @@ export const statement = {
   risks: ["view", "manage"],
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -242,4 +246,4 @@ export const PROJECT_RESOURCES = [
   "risks",
 ] as const;
 
-export const SALES_RESOURCES = ["proposals", "leads"] as const;
+export const SALES_RESOURCES = ["proposals", "leads", "takeoffs", "estimates", "rateCards", "complianceDocs"] as const;

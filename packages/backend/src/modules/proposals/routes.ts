@@ -4,7 +4,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
 import { convertProposalToProject } from "./convert-to-project.ts";
-import { PROPOSAL_STATUSES } from "./types.ts";
+import planRoutes from "./plan-routes.ts";
+import { JOB_PROFILES, PROPOSAL_STATUSES } from "./types.ts";
 import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
@@ -50,6 +51,7 @@ const createProposalBody = {
     currency: { type: "string", maxLength: 10 },
     validUntil: { type: "string", maxLength: 30 },
     leadId: { type: "string", maxLength: 100 },
+    jobProfile: { type: "string", enum: JOB_PROFILES },
   },
 } as const;
 
@@ -67,6 +69,7 @@ const patchProposalBody = {
     status: { type: "string", enum: PROPOSAL_STATUSES },
     currency: { type: "string", maxLength: 10 },
     validUntil: { type: ["string", "null"], maxLength: 30 },
+    jobProfile: { type: "string", enum: JOB_PROFILES },
   },
 } as const;
 
@@ -89,7 +92,8 @@ const estimateItemSchema = {
     qty: { type: "number", minimum: 0 },
     unit: { type: "string", minLength: 1, maxLength: 50 },
     unitRate: { type: "number", minimum: 0 },
-    boqItemId: { type: "string", maxLength: 100 },
+    boqItemId: { type: ["string", "null"], maxLength: 100 },
+    takeoffSessionId: { type: ["string", "null"], maxLength: 100 },
     sort: { type: "integer", minimum: 0 },
   },
 } as const;
@@ -175,6 +179,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
         status: request.body.status as import("./types.ts").ProposalStatus | undefined,
         currency: request.body.currency,
         validUntil: (request.body as { validUntil?: string | null }).validUntil,
+        jobProfile: request.body.jobProfile,
       });
       if (!updated) throw new NotFoundError("Proposal");
       return repo.toProposal(updated);
@@ -202,88 +207,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  // --- Plans ---
-
-  fastify.get<{ Params: { id: string } }>(
-    "/proposals/:id/plans",
-    { schema: { params: idParams } },
-    async (request) => {
-      const orgId = request.requireOrgScope();
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-      return repo.listPlans(request.params.id);
-    },
-  );
-
-  fastify.post<{
-    Params: { id: string };
-    Body: { fileId: string; label?: string };
-  }>(
-    "/proposals/:id/plans",
-    {
-      schema: {
-        params: idParams,
-        body: {
-          type: "object",
-          required: ["fileId"],
-          additionalProperties: false,
-          properties: {
-            fileId: { type: "string", minLength: 1, maxLength: 100 },
-            label: { type: "string", maxLength: 200 },
-          },
-        } as const,
-      },
-    },
-    async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      const user = request.requireAuth();
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-
-      const file = await fastify.db("uploaded_files")
-        .where({ id: request.body.fileId, owner_id: user.id })
-        .first();
-      if (!file) throw new NotFoundError("File");
-
-      const existing = await repo.listPlans(request.params.id);
-      await repo.insertPlan({
-        id: generateId("plan"),
-        proposalId: request.params.id,
-        fileId: request.body.fileId,
-        label: request.body.label?.trim() || null,
-        uploadedBy: user.id,
-        sort: existing.length,
-      });
-
-      const plans = await repo.listPlans(request.params.id);
-      return reply.status(201).send(plans);
-    },
-  );
-
-  fastify.delete<{ Params: { id: string; planId: string } }>(
-    "/proposals/:id/plans/:planId",
-    {
-      schema: {
-        params: {
-          type: "object",
-          required: ["id", "planId"],
-          additionalProperties: false,
-          properties: {
-            id: { type: "string", minLength: 1 },
-            planId: { type: "string", minLength: 1 },
-          },
-        } as const,
-      },
-    },
-    async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-      const removed = await repo.deletePlan(request.params.planId, request.params.id);
-      if (removed === 0) throw new NotFoundError("Plan");
-      return reply.status(204).send();
-    },
-  );
+  await fastify.register(planRoutes);
 
   // --- BoQ items ---
 

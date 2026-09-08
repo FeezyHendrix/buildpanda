@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { generateId } from "../../lib/ids.ts";
+import { plansRepository } from "./plans-repository.ts";
 import type {
   Proposal,
   ProposalRow,
@@ -15,8 +16,7 @@ import type {
   ProposalEventRow,
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
-  ProposalPlan,
-  ProposalPlanRow,
+  JobProfile,
   ProposalBoqItem,
   ProposalBoqItemRow,
   CreateBoqItemInput,
@@ -57,6 +57,7 @@ function toProposal(row: ProposalRow): Proposal {
     status: row.status,
     currency: row.currency,
     validUntil: row.valid_until,
+    jobProfile: row.job_profile ?? "full_contract",
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -98,6 +99,7 @@ function toEstimateItem(row: EstimateItemRow): EstimateItem {
     unitRate: Number(row.unit_rate),
     total: Number(row.total),
     boqItemId: row.boq_item_id,
+    takeoffSessionId: row.takeoff_session_id ?? null,
     sort: row.sort,
   };
 }
@@ -167,6 +169,7 @@ export function proposalsRepository(db: Knex) {
     currency: string;
     validUntil?: string;
     leadId?: string;
+    jobProfile?: JobProfile;
     createdBy: string;
   }): Promise<Proposal> {
     return db.transaction(async (trx) => {
@@ -185,6 +188,7 @@ export function proposalsRepository(db: Knex) {
           currency: data.currency,
           valid_until: data.validUntil ?? null,
           lead_id: data.leadId ?? null,
+          job_profile: data.jobProfile ?? "full_contract",
           created_by: data.createdBy,
         })
         .returning("*");
@@ -282,6 +286,7 @@ export function proposalsRepository(db: Knex) {
     status: ProposalStatus;
     currency: string;
     validUntil: string | null;
+    jobProfile: JobProfile;
   }>): Promise<ProposalRow | null> {
     const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) dbPatch["title"] = patch.title;
@@ -293,6 +298,7 @@ export function proposalsRepository(db: Knex) {
     if (patch.status !== undefined) dbPatch["status"] = patch.status;
     if (patch.currency !== undefined) dbPatch["currency"] = patch.currency;
     if (patch.validUntil !== undefined) dbPatch["valid_until"] = patch.validUntil;
+    if (patch.jobProfile !== undefined) dbPatch["job_profile"] = patch.jobProfile;
     await db("proposals").where({ id, org_id: orgId }).update(dbPatch);
     return getById(id, orgId);
   }
@@ -433,6 +439,7 @@ export function proposalsRepository(db: Knex) {
             unit_rate: item.unitRate,
             total: Math.round(item.qty * item.unitRate * 100) / 100,
             boq_item_id: item.boqItemId ?? null,
+            takeoff_session_id: item.takeoffSessionId ?? null,
             sort: item.sort ?? i,
           })),
         );
@@ -605,69 +612,6 @@ export function proposalsRepository(db: Knex) {
     }));
   }
 
-  async function listPlans(proposalId: string): Promise<ProposalPlan[]> {
-    const rows = await db<ProposalPlanRow>("proposal_plans as pp")
-      .where("pp.proposal_id", proposalId)
-      .leftJoin("uploaded_files as f", "f.id", "pp.file_id")
-      .orderBy("pp.sort", "asc")
-      .orderBy("pp.uploaded_at", "asc")
-      .select(
-        "pp.id",
-        "pp.proposal_id",
-        "pp.file_id",
-        "pp.label",
-        "pp.uploaded_by",
-        "pp.uploaded_at",
-        "pp.sort",
-        "f.file_name as file_name",
-        "f.size_bytes as size_bytes",
-        "f.mime_type as mime_type",
-      );
-    return rows.map((r) => {
-      const joined = r as unknown as ProposalPlanRow & {
-        file_name: string | null;
-        size_bytes: string | number | null;
-        mime_type: string | null;
-      };
-      return {
-        id: joined.id,
-        proposalId: joined.proposal_id,
-        fileId: joined.file_id,
-        fileName: joined.file_name ?? "(missing file)",
-        sizeBytes: Number(joined.size_bytes ?? 0),
-        mimeType: joined.mime_type ?? "application/octet-stream",
-        label: joined.label,
-        uploadedBy: joined.uploaded_by,
-        uploadedAt: joined.uploaded_at,
-        sort: joined.sort,
-      };
-    });
-  }
-
-  async function insertPlan(data: {
-    id: string;
-    proposalId: string;
-    fileId: string;
-    label: string | null;
-    uploadedBy: string;
-    sort: number;
-  }): Promise<void> {
-    await db<ProposalPlanRow>("proposal_plans").insert({
-      id: data.id,
-      proposal_id: data.proposalId,
-      file_id: data.fileId,
-      label: data.label,
-      uploaded_by: data.uploadedBy,
-      sort: data.sort,
-    });
-  }
-
-  async function deletePlan(planId: string, proposalId: string): Promise<number> {
-    return db("proposal_plans")
-      .where({ id: planId, proposal_id: proposalId })
-      .delete();
-  }
-
   async function listBoqItems(proposalId: string): Promise<ProposalBoqItem[]> {
     const rows = await db<ProposalBoqItemRow>("proposal_boq_items")
       .where({ proposal_id: proposalId })
@@ -733,9 +677,7 @@ export function proposalsRepository(db: Knex) {
     getProposalsExpiringWithinDays,
     toProposal,
     toEstimate,
-    listPlans,
-    insertPlan,
-    deletePlan,
+    ...plansRepository(db),
     listBoqItems,
     replaceBoqItems,
   };

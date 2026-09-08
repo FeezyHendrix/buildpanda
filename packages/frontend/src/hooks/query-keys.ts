@@ -353,3 +353,7 @@ export const preconKeys = {
   progressFeed: (sessionId: string) => [...preconKeys.all, "progress-feed", sessionId] as const,
   snap: (sheetId: string) => [...preconKeys.all, "snap", sheetId] as const,
 };
+
+export const takeoffLinkKeys = {
+  lineStatuses: (sessionId: string) => ["precon", "line-statuses", sessionId] as const,
+};

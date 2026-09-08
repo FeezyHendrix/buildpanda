@@ -15,6 +15,7 @@ import {
   type PreconProgrammeJobData,
 } from "./job.ts";
 import { GEOMETRY_KINDS, ROW_TYPES, TAKEOFF_SCOPE_KINDS } from "./types.ts";
+import applyToEstimateRoutes from "./apply-to-estimate-routes.ts";
 import { BESMM_ELEMENT_ORDER } from "./engine/besmm-reference.ts";
 import type {
   AddDeductionBody,
@@ -641,6 +642,8 @@ const pdfTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         .send(buffer);
     },
   );
+
+  await fastify.register(applyToEstimateRoutes);
 
   fastify.post<{ Params: { sessionId: string } }>(
     "/precon/sessions/:sessionId/apply-to-proposal",

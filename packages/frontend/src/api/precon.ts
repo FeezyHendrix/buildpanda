@@ -64,6 +64,8 @@ export interface PreconSession {
   structureContext: StructureContext | null;
   createdBy: string | null;
   createdAt: string;
+  /** The drawing revision this take-off measured, once the session records it. */
+  planId?: string | null;
 }
 
 export interface PreconSheet {
@@ -317,5 +319,38 @@ export const preconApi = {
   applyToProposal: (sessionId: string) =>
     api
       .post<{ proposalId: string; itemCount: number }>(`/precon/sessions/${sessionId}/apply-to-proposal`)
+      .then((r) => r.data),
+};
+
+// ---- take-off → estimate (WS-3) ----
+
+export type ApplyMode = "preview" | "apply";
+export type ApplyChange = "added" | "changed" | "removed" | "unchanged";
+
+export interface ApplyPreviewItem {
+  groupLabel: string;
+  description: string;
+  qty: number;
+  unit: string;
+  unitRate: number;
+  boqItemId: string | null;
+  takeoffSessionId: string | null;
+  change: ApplyChange;
+  previous?: { qty: number; unit: string; description: string };
+}
+
+export interface ApplyPreview {
+  added: number;
+  changed: number;
+  removed: number;
+  unchanged: number;
+  items: ApplyPreviewItem[];
+  written?: number;
+}
+
+export const preconApplyApi = {
+  applyToEstimate: (sessionId: string, estimateId: string, mode: ApplyMode) =>
+    api
+      .post<ApplyPreview>(`/precon/sessions/${sessionId}/apply-to-estimate`, { estimateId, mode })
       .then((r) => r.data),
 };

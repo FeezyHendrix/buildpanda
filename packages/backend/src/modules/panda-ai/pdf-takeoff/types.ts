@@ -343,6 +343,38 @@ export interface CreateBlankSessionBody {
   proposalId?: string;
 }
 
+// Take-off → estimate. Preview is a diff; apply writes the same list.
+export const APPLY_MODES = ["preview", "apply"] as const;
+export type ApplyMode = (typeof APPLY_MODES)[number];
+
+export interface ApplyToEstimateBody {
+  estimateId: string;
+  mode: ApplyMode;
+}
+
+export type ApplyChange = "added" | "changed" | "removed" | "unchanged";
+
+export interface ApplyPreviewItem {
+  groupLabel: string;
+  description: string;
+  descriptionHtml?: string | null;
+  qty: number;
+  unit: string;
+  unitRate: number;
+  boqItemId: string | null;
+  takeoffSessionId: string | null;
+  change: ApplyChange;
+  previous?: { qty: number; unit: string; description: string };
+}
+
+export interface ApplyPreview {
+  added: number;
+  changed: number;
+  removed: number;
+  unchanged: number;
+  items: ApplyPreviewItem[];
+}
+
 export interface CreateSessionFromPlanBody {
   proposalId: string;
   planId: string;
