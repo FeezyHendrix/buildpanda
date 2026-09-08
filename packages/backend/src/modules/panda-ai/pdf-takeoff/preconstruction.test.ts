@@ -478,14 +478,23 @@ test("updateStructure: a reviewer's reading becomes high confidence and keeps th
 });
 
 test("createDwgSession lands DWG lines as a reviewable session with reasons and provenance", async () => {
-  const inserted: { rows?: unknown[]; session?: unknown; bill?: unknown } = {};
+  const inserted: { rows?: unknown[]; session?: unknown; bill?: unknown; sheets?: unknown[]; layerMap?: unknown } = {};
   const svc = preconService(
     fakeRepo({
       insertSession: async (row: Record<string, unknown>) => {
         inserted.session = row;
         return { ...sessionRow({ status: "reviewing" }), ...row };
       },
-      insertSheets: async () => undefined,
+      insertSheets: async (sheets: unknown[]) => {
+        inserted.sheets = sheets;
+      },
+      sheetsBySession: async () => [{ storage_path: "uploads/site.dwg", file_name: "Site.dwg" }],
+      deleteSheetsBySession: async () => 0,
+      deleteRows: async () => 0,
+      billsBySession: async () => [],
+      updateSessionLayerMap: async (_id: string, map: unknown) => {
+        inserted.layerMap = map;
+      },
       insertBill: async (bill: Record<string, unknown>) => {
         inserted.bill = bill;
         return bill;
@@ -508,22 +517,46 @@ test("createDwgSession lands DWG lines as a reviewable session with reasons and 
     "prp_1",
     "pln_1",
     { fileName: "Site.dwg", storagePath: "uploads/site.dwg" },
-    [
-      { trade: "Walls", description: "225mm blockwork", quantity: 120, unit: "m2", confidence: "high", basis: "double lines" },
-      { trade: "Walls", description: "150mm blockwork", quantity: 30, unit: "m2", confidence: "medium", basis: "single lines" },
-    ],
+    {
+      units: { unit: "mm", scaleToMm: 1, errorPct: 0.02, note: "Median of 100 dimensions is 1200, read as mm." },
+      layerMap: { WALL: "walls", DIM: "dimensions" },
+      sheets: [
+        { id: 7, code: "DWG-01", title: "Ground Floor Plan", kind: "floor-plan", bounds: { minX: 0, minY: 0, maxX: 24000, maxY: 24000 }, levelMm: 450, multiplier: 4 },
+        { id: 3, code: "DWG-02", title: "North View", kind: "elevation", bounds: { minX: 30000, minY: 0, maxX: 54000, maxY: 15000 }, levelMm: null, multiplier: 1 },
+      ],
+      items: [
+        { trade: "Walls", description: "225mm blockwork", quantity: 120, unit: "m2", confidence: "high", basis: "double lines", sheetId: 7, evidence: [101, 102], reason: "methods agree" },
+        { trade: "Walls", description: "150mm blockwork", quantity: 30, unit: "m2", confidence: "medium", basis: "single lines", sheetId: 7, reason: "single method" },
+      ],
+      notes: ["Layers with no recognised element (left on auto): 0."],
+    },
   );
   assert.equal(session.takeoffKind, "dwg");
   assert.equal(session.planId, "pln_1");
   assert.equal(session.status, "reviewing");
   assert.equal(session.progressLog[0]?.message, "Queued the automated take-off for Site.dwg");
-  const rows = inserted.rows as { row_type: string; status: string | null; confidence_reason: string | null; provenance: string | null; origin: string }[];
-  assert.equal(rows.length, 3);
+  // one sheet per drawing of the register, framed by its bounds, in drawing units
+  const sheets = inserted.sheets as { code: string; kind: string; status: string; bounds: unknown; scale_mm_per_pt: number; dim_unit: string }[];
+  assert.equal(sheets.length, 2);
+  assert.equal(sheets[0]?.code, "DWG-01");
+  assert.equal(sheets[0]?.status, "measured");
+  assert.equal(sheets[1]?.status, "unmeasurable");
+  assert.deepEqual(sheets[0]?.bounds, { minX: 0, minY: 0, maxX: 24000, maxY: 24000 });
+  assert.equal(sheets[0]?.scale_mm_per_pt, 1);
+  assert.equal(sheets[0]?.dim_unit, "mm");
+  assert.deepEqual(inserted.layerMap, { WALL: "walls", DIM: "dimensions" });
+  const rows = inserted.rows as { row_type: string; code: string | null; status: string | null; confidence_reason: string | null; provenance: string | null; evidence: number[] | null; origin: string }[];
+  // heading, two lines, the notes heading and one note
+  assert.equal(rows.length, 5);
   assert.equal(rows[0]?.row_type, "heading");
   assert.equal(rows[1]?.status, "ai_generated");
+  assert.equal(rows[1]?.code, "DWG-01");
+  assert.deepEqual(rows[1]?.evidence, [101, 102]);
+  assert.equal(rows[1]?.confidence_reason, "high · methods agree");
   assert.equal(rows[2]?.status, "needs_review");
-  assert.equal(rows[2]?.confidence_reason, "medium confidence");
-  assert.ok(rows[1]?.provenance?.startsWith("Read from Site.dwg"));
+  assert.equal(rows[2]?.confidence_reason, "medium · single method");
+  assert.ok(rows[1]?.provenance?.startsWith("Read from Site.dwg (DWG-01)"));
+  assert.equal(rows[4]?.row_type, "spec_note");
   assert.ok(rows.every((r) => r.origin === "ai"));
 });
 

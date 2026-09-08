@@ -6,6 +6,7 @@ import {
   preconApplyApi,
   type ApplyMode,
   type CreateRowInput,
+  type LayerMap,
   type PreconGeometryKind,
   type PreconProgramme,
   type PreconSummarySettings,
@@ -85,6 +86,19 @@ export function useUpdatePreconStructure(sessionId: string) {
     mutationFn: (input: UpdateStructureInput) => preconApi.updateStructure(sessionId, input),
     onSuccess: (session) => {
       qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, session } : prev));
+    },
+  });
+}
+
+// The corrected layer map re-runs the DWG measure on the queue; the session
+// goes back to generating and the snapshot polls the new register in.
+export function useUpdatePreconLayerMap(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (layerMap: LayerMap) => preconApi.updateLayerMap(sessionId, layerMap),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, session } : prev));
+      void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
     },
   });
 }
