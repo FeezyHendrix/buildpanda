@@ -15,6 +15,8 @@ interface Props {
   /** A take-off exists on a revision this plan supersedes: it needs re-measuring. */
   staleSessions: PreconSession[];
   onMeasure: (plan: ProposalPlan) => void;
+  /** Open the sheets with no engine measurement; the person draws every line. */
+  onMeasureByHand: (plan: ProposalPlan) => void;
   onDetails: (plan: ProposalPlan) => void;
   onNewRevision: (plan: ProposalPlan) => void;
   onRemove: (plan: ProposalPlan) => void;
@@ -40,12 +42,13 @@ function PlanIcon({ fileName }: { fileName: string }) {
 PlanIcon.displayName = "PlanIcon";
 
 // Every revision is kept for the audit trail, but the drawing shows one badge
-// per scope: the current revision, linked.
+// per scope and kind: the current revision, linked. A hand-drawn take-off has
+// its own lineage beside the Panda AI one on the same drawing.
 function currentPerScope(sessions: PreconSession[]): PreconSession[] {
   const byScope = new Map<string, PreconSession>();
   for (const s of sessions) {
     if (s.supersededBy !== null) continue;
-    const key = describeScope(s.scope);
+    const key = `${s.takeoffKind === "manual" ? "manual" : "ai"}:${describeScope(s.scope)}`;
     const held = byScope.get(key);
     if (!held || s.revision > held.revision) byScope.set(key, s);
   }
@@ -59,7 +62,7 @@ function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]
       {currentPerScope(sessions).map((s) => (
         <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-100" title="Open the current take-off">
           <Badge tone={s.status === "failed" ? "danger" : "success"}>
-            Measured · {describeScope(s.scope)}
+            {s.takeoffKind === "manual" ? "Measured by hand" : "Measured"} · {describeScope(s.scope)}
             {s.revision > 1 ? ` · Rev ${s.revision}` : ""}
           </Badge>
         </Link>
@@ -74,7 +77,7 @@ function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]
 }
 MeasuredBadges.displayName = "MeasuredBadges";
 
-export function PlanRow({ plan, sessions, staleSessions, onMeasure, onDetails, onNewRevision, onRemove }: Props) {
+export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByHand, onDetails, onNewRevision, onRemove }: Props) {
   const measurable = MEASURABLE_PLAN.test(plan.fileName);
   const meta = [
     plan.sheetCode,
@@ -106,10 +109,16 @@ export function PlanRow({ plan, sessions, staleSessions, onMeasure, onDetails, o
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {measurable ? (
-          <Button size="sm" variant="secondary" className="text-primary-700" onClick={() => onMeasure(plan)}>
-            <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
-            Measure with Panda AI
-          </Button>
+          <>
+            <Button size="sm" variant="secondary" className="text-primary-700" onClick={() => onMeasure(plan)}>
+              <Sparkles className="mr-1.5 size-3.5" aria-hidden="true" />
+              Measure with Panda AI
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => onMeasureByHand(plan)}>
+              <PencilRuler className="mr-1.5 size-3.5" aria-hidden="true" />
+              Measure by hand
+            </Button>
+          </>
         ) : null}
         <Button size="sm" variant="ghost" onClick={() => onNewRevision(plan)} aria-label="Upload a new revision">
           <Upload className="mr-1.5 size-3.5" aria-hidden="true" />

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { RadioCard } from "@/components/atoms/radio-card";
-import type { TakeoffScope, TakeoffScopeKind } from "@/api/precon";
+import type { TakeoffKind, TakeoffMode, TakeoffScope, TakeoffScopeKind } from "@/api/precon";
 import {
   DEFAULT_MEASURE_SCOPES,
   FINISHES_ELEMENTS,
@@ -18,6 +18,13 @@ export interface MeasurablePlan {
   fileName: string;
 }
 
+export interface ExistingTakeoff {
+  title: string;
+  revision: number;
+  scope: TakeoffScope;
+  takeoffKind?: TakeoffKind;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -28,8 +35,31 @@ interface Props {
   // decides which scopes are offered; a labour-only job adds the materials schedule
   jobProfile?: string | null;
   /** Current take-offs already on the chosen drawings, so re-measuring is explained. */
-  existing?: { title: string; revision: number; scope: TakeoffScope }[];
+  existing?: ExistingTakeoff[];
+  /** Who measures: Panda AI (default) or the person, drawing on the sheets. */
+  mode?: TakeoffMode;
 }
+
+// The same scope picker serves both; only the words change with who measures.
+const DIALOG_COPY: Record<
+  TakeoffMode,
+  { title: string; submitLabel: string; description: (files: string) => string; dwgNote: string }
+> = {
+  ai: {
+    title: "Measure with Panda AI",
+    submitLabel: "Start measuring",
+    description: (files) =>
+      `What should Panda AI produce from ${files}? Nothing is final — every line goes to review before it touches the proposal.`,
+    dwgNote: "read by the automated take-off into a take-off you review like any other. Scope applies to PDF drawings.",
+  },
+  manual: {
+    title: "Measure by hand",
+    submitLabel: "Open the sheets",
+    description: (files) =>
+      `You draw, BuildPanda keeps the bill. Panda AI can still help by prompt. What is this take-off of ${files} for?`,
+    dwgNote: "opened with its sheet register and bounds; nothing is measured until you draw.",
+  },
+};
 
 function SectionChip({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
   return (
@@ -78,7 +108,15 @@ function SectionPicker({ selected, onChange }: { selected: string[]; onChange: (
 }
 SectionPicker.displayName = "SectionPicker";
 
-export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [] }: Props) {
+// Manual and AI take-offs keep separate revision lineages on the same drawing,
+// so only a take-off of the same kind is replaced by measuring again.
+function replacedBy(existing: ExistingTakeoff[], kind: TakeoffScopeKind, mode: TakeoffMode): ExistingTakeoff[] {
+  return existing.filter((e) => e.scope.kind === kind && ((e.takeoffKind ?? "pdf") === "manual") === (mode === "manual"));
+}
+
+export function MeasurePlanDialog({
+  open, onOpenChange, plans, submitting, error, onConfirm, jobProfile, existing = [], mode = "ai",
+}: Props) {
   const scopes = (jobProfile && SCOPES_FOR_PROFILE[jobProfile]) || DEFAULT_MEASURE_SCOPES;
   const [kind, setKind] = useState<TakeoffScopeKind>(scopes[0] ?? "full");
   const [elements, setElements] = useState<string[]>(FINISHES_ELEMENTS);
@@ -87,15 +125,16 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
   const dwgCount = plans.length - pdfCount;
   const fileLabel = plans.length === 1 ? plans[0]!.fileName : `${plans.length} drawings`;
   const submitDisabled = kind === "sections" && elements.length === 0;
-  const replaced = existing.filter((e) => e.scope.kind === kind);
+  const replaced = replacedBy(existing, kind, mode);
+  const copy = DIALOG_COPY[mode];
 
   return (
     <FormDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Measure with Panda AI"
-      description={`What should Panda AI produce from ${fileLabel}? Nothing is final — every line goes to review before it touches the proposal.`}
-      submitLabel="Start measuring"
+      title={copy.title}
+      description={copy.description(fileLabel)}
+      submitLabel={copy.submitLabel}
       submitting={submitting}
       submitDisabled={submitDisabled}
       error={error}
@@ -126,8 +165,7 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
       ) : null}
       {dwgCount > 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} read by the automated take-off into a
-          take-off you review like any other. Scope applies to PDF drawings.
+          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} {copy.dwgNote}
         </p>
       ) : null}
     </FormDialog>
