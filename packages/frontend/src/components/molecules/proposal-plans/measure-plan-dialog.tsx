@@ -114,8 +114,8 @@ export function MeasurePlanDialog({ open, onOpenChange, plans, submitting, error
       {kind === "sections" ? <SectionPicker selected={elements} onChange={setElements} /> : null}
       {dwgCount > 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} measured by the automated take-off,
-          which adds its lines straight to the BoQ tab. Scope applies to PDF drawings.
+          {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} read by the automated take-off into a
+          take-off you review like any other. Scope applies to PDF drawings.
         </p>
       ) : null}
     </FormDialog>

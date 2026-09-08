@@ -68,7 +68,7 @@ function PhaseRow({
 PhaseRow.displayName = "PhaseRow";
 
 export function PreconGenerateFeed({ session, justCompleted, itemsCount, billsCount, onRetry, retrying }: Props) {
-  const phases = phasesForScope(session.scope);
+  const phases = phasesForScope(session.scope, session.takeoffKind);
   const areas = session.scope.kind === "areas";
 
   if (justCompleted) {

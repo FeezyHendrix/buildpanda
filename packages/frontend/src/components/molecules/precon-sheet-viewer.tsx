@@ -115,6 +115,14 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
     setDraft([]);
     setScalePrompt(null);
     setActiveRasterScale(BASE_RASTER);
+    // A DWG has no vector overlay yet: its lines were read by the automated
+    // take-off, so there is nothing for pdf.js to draw and nothing to fail on.
+    if (/\.dwg$/i.test(activeSheet.fileName)) {
+      pdfPageRef.current = null;
+      setRendering(false);
+      setNote("DWG drawings have no on-sheet overlay yet. The lines were read by the automated take-off; review them in the bill.");
+      return;
+    }
     setRendering(true);
     (async () => {
       const pdfjs = await import("pdfjs-dist");

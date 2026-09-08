@@ -66,7 +66,13 @@ export const PRECON_PHASE_META: readonly PhaseMeta[] = [
 // and stays honest about what the engine is doing.
 const AREAS_PHASES: ReadonlySet<PreconPhase> = new Set(["reading", "structure", "draft"]);
 
-export function phasesForScope(scope: TakeoffScope): readonly PhaseMeta[] {
+const DWG_PHASES: readonly PhaseMeta[] = [
+  { id: "reading", label: "Reading the DWG", hint: "The automated take-off reads walls, columns and openings from the model" },
+  { id: "draft", label: "Lines ready", hint: "Every line goes to human review next" },
+];
+
+export function phasesForScope(scope: TakeoffScope, takeoffKind?: TakeoffKind): readonly PhaseMeta[] {
+  if (takeoffKind === "dwg") return DWG_PHASES;
   if (scope.kind === "areas") {
     return PRECON_PHASE_META.filter((p) => AREAS_PHASES.has(p.id)).map((p) =>
       p.id === "draft" ? { ...p, label: "Areas ready", hint: "One line per identified space, in m²" } : p,
