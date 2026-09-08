@@ -4,7 +4,7 @@ import { RadioCard } from "@/components/atoms/radio-card";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import type { ProposalPlan } from "@/api/proposals";
 import { formatShortDate } from "@/lib/formatters";
-import { MEASURABLE_PLAN, PLAN_DISCIPLINE_LABEL } from "@/lib/precon-meta";
+import { HAND_MEASURABLE_PLAN, PLAN_DISCIPLINE_LABEL } from "@/lib/precon-meta";
 
 interface Props {
   open: boolean;
@@ -16,7 +16,7 @@ interface Props {
 
 /** Current PDF and DWG drawings: the only ones a person can draw on. */
 function measurableDrawings(plans: ProposalPlan[]): ProposalPlan[] {
-  return plans.filter((p) => p.revisionStatus === "current" && MEASURABLE_PLAN.test(p.fileName));
+  return plans.filter((p) => p.revisionStatus === "current" && HAND_MEASURABLE_PLAN.test(p.fileName));
 }
 
 function drawingMeta(plan: ProposalPlan): string {

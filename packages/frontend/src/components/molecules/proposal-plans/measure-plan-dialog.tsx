@@ -7,6 +7,7 @@ import {
   DEFAULT_MEASURE_SCOPES,
   FINISHES_ELEMENTS,
   PDF_PLAN,
+  PICTURE_PLAN,
   SCOPES_FOR_PROFILE,
   TAKEOFF_SCOPE_META,
   TAKEOFF_SECTIONS,
@@ -122,7 +123,8 @@ export function MeasurePlanDialog({
   const [elements, setElements] = useState<string[]>(FINISHES_ELEMENTS);
 
   const pdfCount = plans.filter((p) => PDF_PLAN.test(p.fileName)).length;
-  const dwgCount = plans.length - pdfCount;
+  const pictureCount = plans.filter((p) => PICTURE_PLAN.test(p.fileName)).length;
+  const dwgCount = plans.length - pdfCount - pictureCount;
   const fileLabel = plans.length === 1 ? plans[0]!.fileName : `${plans.length} drawings`;
   const submitDisabled = kind === "sections" && elements.length === 0;
   const replaced = replacedBy(existing, kind, mode);
@@ -166,6 +168,12 @@ export function MeasurePlanDialog({
       {dwgCount > 0 ? (
         <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
           {dwgCount === 1 ? "The DWG drawing is" : `${dwgCount} DWG drawings are`} {copy.dwgNote}
+        </p>
+      ) : null}
+      {pictureCount > 0 ? (
+        <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          {pictureCount === 1 ? "The picture opens" : `${pictureCount} pictures open`} as a sheet with no scale. Use Set scale (S) on two points
+          a known distance apart, then measure. Panda AI does not read pictures.
         </p>
       ) : null}
     </FormDialog>
