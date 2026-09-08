@@ -71,8 +71,19 @@ function entity(p: Primitive, ctx: Ctx): string {
       return ent("ARC", L) + pair(100, "AcDbCircle") + pair(10, X(p.cx)) + pair(20, Y(p.cy)) + pair(30, 0) + pair(40, S(p.r)) + pair(100, "AcDbArc") + pair(50, p.startDeg) + pair(51, p.endDeg);
     case "text":
       return ent("TEXT", L) + pair(100, "AcDbText") + pair(10, X(p.x)) + pair(20, Y(p.y)) + pair(30, 0) + pair(40, S(p.height)) + pair(1, p.text) + pair(100, "AcDbText");
-    case "insert":
-      return ent("INSERT", L) + pair(100, "AcDbBlockReference") + pair(2, p.block) + pair(10, X(p.x)) + pair(20, Y(p.y)) + pair(30, 0) + pair(41, ctx.scale) + pair(42, ctx.scale) + pair(43, ctx.scale) + pair(50, p.rotationDeg);
+    case "insert": {
+      const attribs = Object.entries(p.attributes ?? {});
+      const head = ent("INSERT", L) + pair(100, "AcDbBlockReference") + (attribs.length ? pair(66, 1) : "") + pair(2, p.block) + pair(10, X(p.x)) + pair(20, Y(p.y)) + pair(30, 0) + pair(41, (p.scaleX ?? 1) * ctx.scale) + pair(42, ctx.scale) + pair(43, ctx.scale) + pair(50, p.rotationDeg);
+      if (!attribs.length) return head;
+      const tail = attribs
+        .map(([tag, value], i) => ent("ATTRIB", ctx.layer("text")) + pair(100, "AcDbText") + pair(10, X(p.x + 150)) + pair(20, Y(p.y + 150 + i * 300)) + pair(30, 0) + pair(40, S(200)) + pair(1, value) + pair(100, "AcDbAttribute") + pair(2, tag) + pair(70, 0))
+        .join("");
+      return head + tail + ent("SEQEND", L);
+    }
+    case "hatch": {
+      const pts = p.points.map(([x, y]) => pair(10, X(x!)) + pair(20, Y(y!))).join("");
+      return ent("HATCH", L) + pair(100, "AcDbHatch") + pair(10, 0) + pair(20, 0) + pair(30, 0) + pair(210, 0) + pair(220, 0) + pair(230, 1) + pair(2, "SOLID") + pair(70, 1) + pair(71, 0) + pair(91, 1) + pair(92, 7) + pair(72, 0) + pair(73, 1) + pair(93, p.points.length) + pts + pair(97, 0) + pair(75, 1) + pair(76, 1) + pair(98, 0);
+    }
     case "dimension": {
       const horizontal = p.y1 === p.y2;
       const dx = horizontal ? p.x1 : p.x1 + p.offset;
@@ -90,7 +101,7 @@ function entity(p: Primitive, ctx: Ctx): string {
         pair(21, Y(my)) +
         pair(31, 0) +
         pair(70, 33) +
-        pair(1, "") +
+        pair(1, p.text ?? "") +
         pair(42, S(p.value)) +
         pair(100, "AcDbAlignedDimension") +
         pair(13, X(p.x1)) +
@@ -130,5 +141,6 @@ export function writeDxf(drawing: Drawing): string {
     .map((s) => s.primitives.map((p) => entity(p, { layer, scale, ox: s.originX, oy: s.originY })).join(""))
     .join("");
 
-  return header(drawing.unitsPerMm === 1 ? 4 : 6) + tables(names, drawing.blocks.map((b) => b.name)) + section("BLOCKS", blocks) + section("ENTITIES", entities) + pair(0, "EOF");
+  const insunits = drawing.convention.units === "in" ? 1 : drawing.unitsPerMm === 1 ? 4 : 6;
+  return header(insunits) + tables(names, drawing.blocks.map((b) => b.name)) + section("BLOCKS", blocks) + section("ENTITIES", entities) + pair(0, "EOF");
 }

@@ -26,7 +26,10 @@ export function clusterRegions(sheet: ExtractedSheet, mmPerPt?: number): Drawing
   if (segments.length === 0) return [];
 
   let cellPt = CELL_PT_COARSE;
-  let indexed = segments.map((s, idx) => ({ s, idx }));
+  // a sheet border runs most of the way across the page; it encloses every
+  // drawing and would join them all into one region
+  const frame = frameSegments(segments);
+  let indexed = segments.map((s, idx) => ({ s, idx })).filter(({ idx }) => !frame.has(idx));
   if (mmPerPt) {
     const minLenPt = (MIN_WALL_SEG_M * 1000) / mmPerPt;
     const kept = indexed.filter(({ s }) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= minLenPt);
@@ -91,6 +94,50 @@ export function clusterRegions(sheet: ExtractedSheet, mmPerPt?: number): Drawing
     regions.push({ id: regionId++, minX, minY, maxX, maxY, kind: "unknown", segmentIdx });
   }
   return mergeNested(regions.sort((a, b) => b.segmentIdx.length - a.segmentIdx.length));
+}
+
+const FRAME_SHARE = 0.6;
+const CORNER_TOL_PT = 2;
+
+// A border is a rectangle of four lines that each run at least 60 % of the
+// sheet's drawn extent and meet at their corners. A wall face never spans
+// the sheet like that; a dimension line may, but it meets nothing.
+export function frameSegments(segments: Segment[]): Set<number> {
+  const out = new Set<number>();
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of segments) {
+    minX = Math.min(minX, s.x1, s.x2);
+    maxX = Math.max(maxX, s.x1, s.x2);
+    minY = Math.min(minY, s.y1, s.y2);
+    maxY = Math.max(maxY, s.y1, s.y2);
+  }
+  const wide = (maxX - minX) * FRAME_SHARE;
+  const tall = (maxY - minY) * FRAME_SHARE;
+  const horizontals: number[] = [];
+  const verticals: number[] = [];
+  segments.forEach((s, i) => {
+    if (Math.abs(s.y1 - s.y2) < CORNER_TOL_PT && s.len >= wide) horizontals.push(i);
+    else if (Math.abs(s.x1 - s.x2) < CORNER_TOL_PT && s.len >= tall) verticals.push(i);
+  });
+  if (horizontals.length > 40 || verticals.length > 40) return out;
+  const meets = (a: Segment, b: Segment) =>
+    [[a.x1, a.y1], [a.x2, a.y2]].some(([x, y]) => [[b.x1, b.y1], [b.x2, b.y2]].some(([bx, by]) => Math.abs(x! - bx!) <= CORNER_TOL_PT && Math.abs(y! - by!) <= CORNER_TOL_PT));
+  for (const h1 of horizontals) {
+    for (const h2 of horizontals) {
+      if (h2 <= h1) continue;
+      for (const v1 of verticals) {
+        for (const v2 of verticals) {
+          if (v2 <= v1) continue;
+          const [a, b, c, d] = [segments[h1]!, segments[h2]!, segments[v1]!, segments[v2]!];
+          if (meets(a, c) && meets(a, d) && meets(b, c) && meets(b, d)) for (const i of [h1, h2, v1, v2]) out.add(i);
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // A cluster whose extent lies inside another's is part of that drawing — an

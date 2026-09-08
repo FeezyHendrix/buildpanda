@@ -540,6 +540,8 @@ export interface ExtractedSheet {
   segments: Segment[];
   curves: Curve[];
   texts: TextRun[];
+  // embedded images: a scanned plan placed on a sheet is pixels the vector engine cannot measure
+  images?: { count: number; areaPt2: number; pageShare: number | null };
   // the raw pdf.js operator list, kept so the extraction report can recover
   // fills, scaled line widths and optional-content layers without a re-parse
   ops?: { fnArray: number[]; argsArray: unknown[] };

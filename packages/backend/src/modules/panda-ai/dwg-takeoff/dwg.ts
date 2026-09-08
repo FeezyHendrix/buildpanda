@@ -42,6 +42,10 @@ export interface DwgEntity {
   user_text?: string;
   blkisxref?: number | boolean;
   xref?: number[] | null;
+  // set on a model-space INSERT by the expansion pass: its ATTRIB values by tag
+  attributes?: Record<string, string>;
+  // set on an entity the expansion pass placed from a block: the INSERT it came from
+  insertHandle?: number;
 }
 
 // The subset of the DWG header the geometry document reads: declared units

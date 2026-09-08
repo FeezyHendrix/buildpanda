@@ -40,6 +40,16 @@ test("door leaf widths cross-check the unit and tighten the error when they agre
   assert.match(agreeing.note, /Door leaf widths agree/);
 });
 
+test("an inch header with feet-and-inches text overrides reads the overrides in inches, so no false scale error", () => {
+  const s = synth();
+  s.header({ INSUNITS: 1 });
+  for (let i = 0; i < 10; i++) s.dim("DIM", 177.165 + i * 12, `14'-9 1/8"`.replace("14", String(14 + i)));
+  const u = inferUnits(s.doc());
+  assert.equal(u.unit, "in");
+  assert.equal(u.scaleToMm, 25.4);
+  assert.ok(u.errorPct <= 0.03, `error ${u.errorPct}`);
+});
+
 test("with no header, no dimensions and no doors the unit is assumed and the error says so", () => {
   const s = synth();
   s.line("WALL", [0, 0], [5000, 0]);

@@ -15,6 +15,34 @@ test("paired faces give thickness and centreline length; a lone line is reported
   assert.equal(m.unpairedM, 4);
 });
 
+test("a face broken into pieces with millimetre overlaps and gaps at the joints still pairs in full", () => {
+  // a 10 m wall: one face whole, the other in four chunks with 3 mm overlaps and 4 mm gaps
+  const chunks: Array<[number, number]> = [
+    [0, 2600],
+    [2597, 5100],
+    [5104, 7700],
+    [7697, 10000],
+  ];
+  const m = measureWallRuns([seg(0, 0, 10000, 0), ...chunks.map(([a, b]) => seg(b, 225, a, 225))], 1);
+  const total = [...m.byThickness.values()].reduce((s, v) => s + v.lengthM, 0);
+  assert.ok(Math.abs(total - 10) < 0.05, `paired ${total} m`);
+});
+
+test("the strokes of an exploded hatch between the faces are not faces; a short pier on a face's line still is", () => {
+  const faces = [seg(0, 0, 10000, 0), seg(0, 225, 10000, 225)];
+  const hatch: ReturnType<typeof seg>[] = [];
+  for (let x = 0; x + 225 <= 10000; x += 150) hatch.push(seg(x, 0, x + 225, 225));
+  const m = measureWallRuns([...faces, ...hatch], 1);
+  assert.deepEqual([...m.byThickness.keys()], [225], "no phantom thickness from the diagonal strokes");
+  assert.ok(Math.abs(m.byThickness.get(225)!.lengthM - 10) < 0.01);
+  // a 300 mm pier between two windows, on the line of a long face
+  const pier = measureWallRuns([seg(0, 0, 4000, 0), seg(0, 225, 4000, 225), seg(5200, 0, 5500, 0), seg(5200, 225, 5500, 225)], 1);
+  assert.ok(Math.abs(pier.byThickness.get(225)!.lengthM - 4.3) < 0.01, `${pier.byThickness.get(225)!.lengthM}`);
+  // the same 300 mm pair standing alone, off every line, is not a wall
+  const lone = measureWallRuns([seg(5200, 3000, 5500, 3000), seg(5200, 3225, 5500, 3225)], 1);
+  assert.equal(lone.byThickness.size, 0);
+});
+
 test("two thicknesses are two modes; a sliver of a third folds into its neighbour", () => {
   const m = measureWallRuns(
     [
@@ -22,8 +50,8 @@ test("two thicknesses are two modes; a sliver of a third folds into its neighbou
       seg(0, 230, 10000, 230),
       seg(0, 3000, 8000, 3000),
       seg(0, 3150, 8000, 3150),
-      seg(20000, 0, 20300, 0),
-      seg(20000, 300, 20300, 300),
+      seg(20000, 0, 20600, 0),
+      seg(20000, 300, 20600, 300),
     ],
     1,
   );
@@ -32,7 +60,7 @@ test("two thicknesses are two modes; a sliver of a third folds into its neighbou
     "Sandcrete block wall in cement mortar (1:6); 225mm thick",
     "Sandcrete block wall in cement mortar (1:6); 150mm thick",
   ]);
-  assert.equal(items[0]?.quantity, 30.9, "10 m × 3 m plus the 0.3 m sliver at 300 folded in");
+  assert.equal(items[0]?.quantity, 31.8, "10 m × 3 m plus the 0.6 m sliver at 300 folded in");
   assert.equal(items[1]?.quantity, 24);
   assert.equal(items[0]?.confidence, "medium");
 });

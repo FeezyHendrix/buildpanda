@@ -1,3 +1,4 @@
+import { parseLengthText } from "../geometry/length-text.ts";
 import { isModelSpace, type DwgDoc, type DwgEntity } from "./dwg.ts";
 import type { DrawingUnit, UnitsDecision } from "./types.ts";
 
@@ -36,7 +37,7 @@ export function inferUnits(doc: DwgDoc, doorWidthsUnits: number[] = []): UnitsDe
       unit: headerUnit,
       scaleToMm: TO_MM[headerUnit],
       basis: "header",
-      errorPct: overrideError(dims),
+      errorPct: overrideError(dims, TO_MM[headerUnit]),
       samples: values.length,
       note: `Drawing header declares ${headerUnit} ($INSUNITS ${code}).`,
     };
@@ -69,23 +70,26 @@ export function inferUnits(doc: DwgDoc, doorWidthsUnits: number[] = []): UnitsDe
       if (fit !== unit) {
         return { unit: fit, scaleToMm: TO_MM[fit], basis: "cross-check", errorPct: 0.1, samples: values.length, note: `${note} Door leaf widths disagree and fit ${fit}; door widths win, review the scale.` };
       }
-      return { unit, scaleToMm: TO_MM[unit], basis: "dimensions", errorPct: Math.max(0.02, overrideError(dims)), samples: values.length, note: `${note} Door leaf widths agree.` };
+      return { unit, scaleToMm: TO_MM[unit], basis: "dimensions", errorPct: Math.max(0.02, overrideError(dims, TO_MM[unit])), samples: values.length, note: `${note} Door leaf widths agree.` };
     }
   }
 
   if (unit !== "unknown") {
-    return { unit, scaleToMm: TO_MM[unit], basis: "dimensions", errorPct: Math.max(0.05, overrideError(dims)), samples: values.length, note: `${note} No independent cross-check.` };
+    return { unit, scaleToMm: TO_MM[unit], basis: "dimensions", errorPct: Math.max(0.05, overrideError(dims, TO_MM[unit])), samples: values.length, note: `${note} No independent cross-check.` };
   }
   return { unit: "mm", scaleToMm: 1, basis: "assumed", errorPct: 0.3, samples: 0, note: "No header, dimensions or door widths to read units from; millimetres assumed. Set the scale on the sheet." };
 }
 
 // Where the author typed a value over a dimension (a text override), the gap
-// between the typed number and the measured span is real drawing error.
-function overrideError(dims: DwgEntity[]): number {
+// between the typed number and the measured span is real drawing error. A
+// bare number is in drawing units; feet and inches carry their own unit.
+function overrideError(dims: DwgEntity[], scaleToMm: number): number {
   const diffs: number[] = [];
   for (const d of dims) {
-    const typed = Number(String(d.text ?? d.text_value ?? "").replace(/[^0-9.]/g, ""));
-    if (!Number.isFinite(typed) || typed <= 0 || !d.act_measurement) continue;
+    const parsed = parseLengthText(String(d.user_text ?? d.text ?? d.text_value ?? ""));
+    if (!parsed || !d.act_measurement) continue;
+    const typed = parsed.mm !== null ? parsed.mm / scaleToMm : parsed.value;
+    if (typed === null || typed <= 0) continue;
     diffs.push(Math.abs(typed - d.act_measurement) / d.act_measurement);
   }
   if (diffs.length < 3) return 0.02;

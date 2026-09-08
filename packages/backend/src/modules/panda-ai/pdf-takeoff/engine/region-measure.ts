@@ -1,4 +1,5 @@
-import type { DimUnit, DrawingRegion, ExtractedSheet, Segment, TextRun } from "../types.ts";
+import { parseLengthText } from "../../geometry/length-text.ts";
+import type { DimUnit, DrawingRegion, ExtractedSheet, TextRun } from "../types.ts";
 import { segmentsWithin } from "./cluster.ts";
 import {
   countDoorArcs,
@@ -76,11 +77,14 @@ function extentsFromPairs(walls: WallMeasurement, mmPerPt: number): { widthMm: n
   };
 }
 
+// Bare numbers are in the sheet's dimension unit; feet and inches carry their own.
 function dimensionValuesMm(texts: TextRun[], dimUnit: DimUnit): number[] {
   const out: number[] = [];
   for (const t of texts) {
-    if (!/^[0-9][0-9,]*(?:\.\d+)?$/.test(t.str)) continue;
-    const v = Number(t.str.replace(/,/g, "")) * UNIT_TO_MM[dimUnit];
+    if (!/^[0-9][0-9,]*(?:\.\d+)?$/.test(t.str) && !/['"]/.test(t.str)) continue;
+    const parsed = parseLengthText(t.str);
+    if (!parsed) continue;
+    const v = parsed.mm ?? (parsed.value ?? 0) * UNIT_TO_MM[dimUnit];
     if (v >= 100 && v <= 200000) out.push(v);
   }
   return out;
@@ -108,21 +112,28 @@ function checkDimensions(texts: TextRun[], dimUnit: DimUnit, widthMm: number, de
   return { ok, note: `${ok ? "matches" : "disagrees with"} the written dimensions: ${parts.join(", ")}` };
 }
 
-// The footprint is the extent of the wall pen alone; dimension lines that
-// cluster with the plan must not inflate it.
-function checkArea(segments: Segment[], penPt: number, walls: WallMeasurement, rooms: RoomMeasurement, mmPerPt: number): Check {
+// The footprint is the extent of the paired walls alone; dimension lines
+// that cluster with the plan, or share its pen, must not inflate it.
+function checkArea(walls: WallMeasurement, rooms: RoomMeasurement, mmPerPt: number): Check {
   const sum = rooms.rooms.reduce((s, r) => s + r.areaM2, 0);
   if (sum <= 0) return { ok: false, note: "no rooms filled" };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const s of segments) {
-    if (s.width < penPt - 1e-6) continue;
-    minX = Math.min(minX, s.x1, s.x2);
-    maxX = Math.max(maxX, s.x1, s.x2);
-    minY = Math.min(minY, s.y1, s.y2);
-    maxY = Math.max(maxY, s.y1, s.y2);
+  for (const p of walls.pairs) {
+    const [a, b] = p.faces;
+    if (p.horizontal) {
+      minX = Math.min(minX, p.lo);
+      maxX = Math.max(maxX, p.hi);
+      minY = Math.min(minY, a, b);
+      maxY = Math.max(maxY, a, b);
+    } else {
+      minY = Math.min(minY, p.lo);
+      maxY = Math.max(maxY, p.hi);
+      minX = Math.min(minX, a, b);
+      maxX = Math.max(maxX, a, b);
+    }
   }
   if (maxX <= minX || maxY <= minY) return { ok: false, note: "no wall extent to check the rooms against" };
   const footprintM2 = ((maxX - minX) * mmPerPt * (maxY - minY) * mmPerPt) / 1e6;
@@ -150,7 +161,7 @@ export function measureRegion(extracted: ExtractedSheet, region: DrawingRegion, 
   const rooms = measureRooms(segments, extracted.texts, region, mmPerPt, { penPt, bridges: openingBridges(walls.pairs, openings) });
   const { widthMm, depthMm } = extentsFromPairs(walls, mmPerPt);
   const dimensionCheck = checkDimensions(textsInRegion(extracted.texts, region, (DIM_SEARCH_M * 1000) / mmPerPt), dimUnit, widthMm, depthMm);
-  const areaCheck = checkArea(segments, penPt, walls, rooms, mmPerPt);
+  const areaCheck = checkArea(walls, rooms, mmPerPt);
   return { region, walls, doors, leaves, tags, windows, openings, columns, rooms, widthMm, depthMm, dimensionCheck, areaCheck };
 }
 
