@@ -111,7 +111,31 @@ export function plansRepository(db: Knex) {
       .delete();
   }
 
-  return { listPlans, insertPlan, findCurrentPlanBySheetCode, supersedePlan, updatePlan, deletePlan };
+  // For each plan id, the newest plan at the end of its supersession chain
+  // (B supersedes A, C supersedes B → A and B both map to C). One recursive
+  // query for the whole batch; plans that are still current are absent.
+  async function newestSupersedingPlans(planIds: string[]): Promise<Map<string, { newerPlanId: string; newerRevision: string | null }>> {
+    const out = new Map<string, { newerPlanId: string; newerRevision: string | null }>();
+    if (!planIds.length) return out;
+    const { rows } = await db.raw<{ rows: { root_id: string; id: string; revision: string | null }[] }>(
+      `WITH RECURSIVE chain AS (
+         SELECT id AS root_id, id, revision, 0 AS depth
+         FROM proposal_plans WHERE id = ANY(?)
+         UNION ALL
+         SELECT chain.root_id, p.id, p.revision, chain.depth + 1
+         FROM proposal_plans p JOIN chain ON p.supersedes_plan_id = chain.id
+         WHERE chain.depth < 100
+       )
+       SELECT DISTINCT ON (root_id) root_id, id, revision
+       FROM chain WHERE depth > 0
+       ORDER BY root_id, depth DESC`,
+      [planIds],
+    );
+    for (const r of rows) out.set(r.root_id, { newerPlanId: r.id, newerRevision: r.revision ?? null });
+    return out;
+  }
+
+  return { listPlans, insertPlan, findCurrentPlanBySheetCode, supersedePlan, updatePlan, deletePlan, newestSupersedingPlans };
 }
 
 export type PlansRepository = ReturnType<typeof plansRepository>;
