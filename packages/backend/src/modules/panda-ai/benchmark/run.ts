@@ -46,7 +46,7 @@ export async function runFixture(fixture: Fixture, truth: Truth): Promise<Fixtur
     await fs.access(fixture.dwg);
     return runDwgTakeoff(fixture.dwg);
   });
-  const dwgScored = dwgRun.value ? scoreDwg(truth, dwgRun.value.items) : scoreDwg(truth, []);
+  const dwgScored = dwgRun.value ? scoreDwg(truth, dwgRun.value) : scoreDwg(truth, []);
   const pdfRun = await timed(async () => {
     await fs.access(fixture.pdf);
     return measurePdfFile(fixture.pdf);

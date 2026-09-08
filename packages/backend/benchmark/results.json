@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-08T11:53:16.120Z",
+  "generatedAt": "2026-09-08T11:55:21.973Z",
   "fixtures": [
     {
       "id": "bungalow__named-mm-blocks-dims",
@@ -8,18 +8,18 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 56,
+        "ms": 65,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -59,21 +59,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 6.82,
+            "errorPct": -93.7,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"BATH\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
           "within": 3,
-          "flagged": 1,
+          "flagged": 2,
           "silent": 0,
-          "missing": 1,
+          "missing": 0,
           "withinShare": 60,
-          "failuresFlaggedShare": 50
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -290,7 +290,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 831,
+        "ms": 1028,
         "scored": [
           {
             "sheet": "gf",
@@ -409,18 +409,18 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 36,
+        "ms": 37,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -460,21 +460,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.13,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 | Flood fill inside the wall faces from the \"BATH\" label on DWG-01 | Flood fill inside the wall faces from the \"WC\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
-          "within": 3,
+          "within": 4,
           "flagged": 1,
           "silent": 0,
-          "missing": 1,
-          "withinShare": 60,
-          "failuresFlaggedShare": 50
+          "missing": 0,
+          "withinShare": 80,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -787,7 +787,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 38,
+        "ms": 34,
         "scored": [
           {
             "sheet": "gf",
@@ -906,18 +906,18 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 32,
+        "ms": 29,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -957,21 +957,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.13,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 | Flood fill inside the wall faces from the \"BATH\" label on DWG-01 | Flood fill inside the wall faces from the \"WC\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
-          "within": 2,
+          "within": 3,
           "flagged": 1,
           "silent": 0,
-          "missing": 2,
-          "withinShare": 40,
-          "failuresFlaggedShare": 33.3
+          "missing": 1,
+          "withinShare": 60,
+          "failuresFlaggedShare": 50
         },
         "raw": {
           "scaleToMm": 1,
@@ -1285,7 +1285,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 33,
+        "ms": 30,
         "scored": [
           {
             "sheet": "gf",
@@ -1404,7 +1404,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 54,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -1509,7 +1509,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 31,
+        "ms": 30,
         "scored": [
           {
             "sheet": "gf",
@@ -1635,11 +1635,11 @@
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -1679,21 +1679,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.13,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 | Flood fill inside the wall faces from the \"BATH\" label on DWG-01 | Flood fill inside the wall faces from the \"WC\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
-          "within": 3,
+          "within": 4,
           "flagged": 1,
           "silent": 0,
-          "missing": 1,
-          "withinShare": 60,
-          "failuresFlaggedShare": 50
+          "missing": 0,
+          "withinShare": 80,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1000,
@@ -2006,7 +2006,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 32,
+        "ms": 30,
         "scored": [
           {
             "sheet": "gf",
@@ -2132,11 +2132,11 @@
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -2176,21 +2176,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.13,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 | Flood fill inside the wall faces from the \"BATH\" label on DWG-01 | Flood fill inside the wall faces from the \"WC\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
-          "within": 3,
+          "within": 4,
           "flagged": 1,
           "silent": 0,
-          "missing": 1,
-          "withinShare": 60,
-          "failuresFlaggedShare": 50
+          "missing": 0,
+          "withinShare": 80,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -2622,18 +2622,18 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 27,
+        "ms": 28,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 57.78,
-            "errorPct": -74.5,
+            "measured": 137.16,
+            "errorPct": -39.5,
             "outcome": "flagged",
             "confidence": "low",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found); less 36.18 m² for 10 doors and 12 windows ±2% scale error | 29.4 m of paired 225mm wall on DWG-01 × 2.7 m (2.7 m assumed; no floor level marks found) ±2% scale error"
           },
           {
             "sheet": "gf",
@@ -2673,21 +2673,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.13,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 | Flood fill inside the wall faces from the \"BATH\" label on DWG-01 | Flood fill inside the wall faces from the \"WC\" label on DWG-01"
           }
         ],
         "summary": {
           "lines": 5,
-          "within": 3,
+          "within": 4,
           "flagged": 1,
           "silent": 0,
-          "missing": 1,
-          "withinShare": 60,
-          "failuresFlaggedShare": 50
+          "missing": 0,
+          "withinShare": 80,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -3000,7 +3000,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 29,
+        "ms": 28,
         "scored": [
           {
             "sheet": "gf",
@@ -3119,27 +3119,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 41,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3148,9 +3148,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 door blocks on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3159,9 +3159,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window blocks on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3170,9 +3170,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree; blocks: WC-STD ×1; 0 drawn outlines clear of a block × 2 identical floors (+450, +3450)"
           },
@@ -3181,21 +3181,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 6.82,
+            "errorPct": -93.7,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -3454,7 +3454,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 56,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -3671,27 +3671,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 35,
+        "ms": 32,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3700,9 +3700,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3711,9 +3711,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -3722,9 +3722,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -3733,21 +3733,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.18,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 5,
+          "flagged": 1,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 83.3,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -4110,7 +4110,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 55,
+        "ms": 51,
         "scored": [
           {
             "sheet": "gf",
@@ -4327,27 +4327,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 33,
+        "ms": 34,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -4356,9 +4356,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -4367,9 +4367,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -4389,21 +4389,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.18,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
+          "within": 4,
+          "flagged": 1,
           "silent": 0,
-          "missing": 2,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "missing": 1,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 50
         },
         "raw": {
           "scaleToMm": 1,
@@ -4752,7 +4752,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 54,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -4969,7 +4969,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 53,
+        "ms": 56,
         "scored": [
           {
             "sheet": "gf",
@@ -4987,8 +4987,8 @@
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 34,
-            "errorPct": 112.5,
+            "measured": 17,
+            "errorPct": 6.3,
             "outcome": "flagged",
             "confidence": "medium",
             "basis": "17 compact closed squares on unmapped layers on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
@@ -5108,7 +5108,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 53,
+        "ms": 55,
         "scored": [
           {
             "sheet": "gf",
@@ -5332,20 +5332,20 @@
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -5354,9 +5354,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -5365,9 +5365,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -5376,9 +5376,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -5387,21 +5387,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.18,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 5,
+          "flagged": 1,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 83.3,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1000,
@@ -5764,7 +5764,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 53,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -5981,27 +5981,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 31,
+        "ms": 37,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6010,9 +6010,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6021,9 +6021,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6032,9 +6032,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -6043,21 +6043,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.18,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 5,
+          "flagged": 1,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 83.3,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -6420,7 +6420,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 59,
+        "ms": 60,
         "scored": [
           {
             "sheet": "gf",
@@ -6644,20 +6644,20 @@
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 226.62,
-            "measured": 136.44,
-            "errorPct": -39.8,
+            "measured": 156.42,
+            "errorPct": -31,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "34.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450) | 29.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 16,
-            "measured": 32,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6666,9 +6666,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 10,
-            "measured": 20,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "10 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6677,9 +6677,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 12,
-            "measured": 24,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -6688,9 +6688,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -6699,21 +6699,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 108.47,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 107.18,
+            "errorPct": -1.2,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 5,
+          "flagged": 1,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 83.3,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -7293,27 +7293,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 132,
+        "ms": 130,
         "scored": [
           {
             "sheet": "l0",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 112,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 28,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -7322,9 +7322,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 door blocks on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -7333,9 +7333,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window blocks on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -7344,9 +7344,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 2,
-            "measured": 8,
-            "errorPct": 300,
-            "outcome": "silent",
+            "measured": 2,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "2 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 2 agree; blocks: WC-STD ×2; 0 drawn outlines clear of a block × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -7355,21 +7355,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 59.28,
+            "errorPct": -89,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -7765,7 +7765,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 155,
+        "ms": 151,
         "scored": [
           {
             "sheet": "l0",
@@ -8128,27 +8128,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 84,
+        "ms": 85,
         "scored": [
           {
             "sheet": "l0",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 112,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 28,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -8157,9 +8157,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 swing arcs on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -8168,9 +8168,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -8179,9 +8179,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 2,
-            "measured": 8,
-            "errorPct": 300,
-            "outcome": "silent",
+            "measured": 2,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "2 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 2 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -8190,21 +8190,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 474.1,
+            "errorPct": -12.3,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -8782,7 +8782,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 155,
+        "ms": 153,
         "scored": [
           {
             "sheet": "l0",
@@ -9145,26 +9145,26 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 84,
+        "ms": 87,
         "scored": [
           {
             "sheet": "l0",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 120,
-            "errorPct": 328.6,
+            "measured": 30,
+            "errorPct": 7.1,
             "outcome": "flagged",
             "confidence": "medium",
             "basis": "30 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
@@ -9174,9 +9174,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 swing arcs on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -9185,9 +9185,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -9207,21 +9207,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 474.1,
+            "errorPct": -12.3,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
+          "within": 2,
+          "flagged": 3,
           "silent": 0,
-          "missing": 2,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "missing": 1,
+          "withinShare": 33.3,
+          "failuresFlaggedShare": 75
         },
         "raw": {
           "scaleToMm": 1,
@@ -9785,7 +9785,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 155,
+        "ms": 152,
         "scored": [
           {
             "sheet": "l0",
@@ -10148,7 +10148,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 267,
+        "ms": 273,
         "scored": [
           {
             "sheet": "l0",
@@ -10166,8 +10166,8 @@
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 120,
-            "errorPct": 328.6,
+            "measured": 30,
+            "errorPct": 7.1,
             "outcome": "flagged",
             "confidence": "medium",
             "basis": "30 compact closed squares on unmapped layers on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
@@ -10314,7 +10314,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 157,
+        "ms": 183,
         "scored": [
           {
             "sheet": "l0",
@@ -10677,27 +10677,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 92,
+        "ms": 97,
         "scored": [
           {
             "sheet": "l0",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 112,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 28,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -10706,9 +10706,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 swing arcs on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -10717,9 +10717,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -10728,9 +10728,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 2,
-            "measured": 8,
-            "errorPct": 300,
-            "outcome": "silent",
+            "measured": 2,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "2 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 2 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -10739,21 +10739,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 474.1,
+            "errorPct": -12.3,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1000,
@@ -11331,7 +11331,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 158,
+        "ms": 153,
         "scored": [
           {
             "sheet": "l0",
@@ -11694,27 +11694,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 92,
+        "ms": 84,
         "scored": [
           {
             "sheet": "l0",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 112,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 28,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -11723,9 +11723,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 swing arcs on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -11734,9 +11734,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -11745,9 +11745,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 2,
-            "measured": 8,
-            "errorPct": 300,
-            "outcome": "silent",
+            "measured": 2,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "2 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 2 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -11756,21 +11756,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 474.1,
+            "errorPct": -12.3,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -12718,20 +12718,20 @@
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 724.5,
-            "measured": 1508.4,
-            "errorPct": 108.2,
+            "measured": 600.3,
+            "errorPct": -17.1,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "148.2 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 67.5 m² for 22 doors and 18 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450) | 74.4 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
             "element": "columns",
             "measure": "count",
             "truth": 28,
-            "measured": 112,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 28,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -12740,9 +12740,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 22,
-            "measured": 88,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 22,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "22 swing arcs on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -12751,9 +12751,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 18,
-            "measured": 72,
-            "errorPct": 300,
-            "outcome": "flagged",
+            "measured": 18,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "18 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -12762,9 +12762,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 2,
-            "measured": 8,
-            "errorPct": 300,
-            "outcome": "silent",
+            "measured": 2,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "2 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 2 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
@@ -12773,21 +12773,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 540.54,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 474.1,
+            "errorPct": -12.3,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 × 4 identical floors (+450, +3450, +6450, +9450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -13365,7 +13365,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 186,
+        "ms": 170,
         "scored": [
           {
             "sheet": "l0",
@@ -13728,27 +13728,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 117,
+        "ms": 124,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -13757,9 +13757,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 door blocks on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -13768,9 +13768,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window blocks on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -13779,9 +13779,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree; blocks: WC-STD ×1; 0 drawn outlines clear of a block × 2 identical floors (+450, +3450)"
           },
@@ -13790,21 +13790,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 67.28,
+            "errorPct": -92.1,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -14267,7 +14267,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 16,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -14440,27 +14440,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 100,
+        "ms": 99,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -14469,9 +14469,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -14480,9 +14480,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -14491,9 +14491,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -14502,21 +14502,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 101.31,
+            "errorPct": -88,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"ENTRANCE LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -14992,7 +14992,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 16,
+        "ms": 14,
         "scored": [
           {
             "sheet": "gf",
@@ -15165,27 +15165,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 99,
+        "ms": 174,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -15194,9 +15194,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -15205,9 +15205,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -15227,20 +15227,20 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 101.31,
+            "errorPct": -88,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"ENTRANCE LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
+          "within": 3,
+          "flagged": 2,
           "silent": 0,
-          "missing": 2,
-          "withinShare": 0,
+          "missing": 1,
+          "withinShare": 50,
           "failuresFlaggedShare": 66.7
         },
         "raw": {
@@ -15703,7 +15703,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 19,
         "scored": [
           {
             "sheet": "gf",
@@ -15876,7 +15876,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 135,
+        "ms": 140,
         "scored": [
           {
             "sheet": "gf",
@@ -15894,8 +15894,8 @@
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 74,
-            "errorPct": 105.6,
+            "measured": 37,
+            "errorPct": 2.8,
             "outcome": "flagged",
             "confidence": "medium",
             "basis": "37 compact closed squares on unmapped layers on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
@@ -16035,7 +16035,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -16208,27 +16208,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 104,
+        "ms": 103,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16237,9 +16237,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16248,9 +16248,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16259,9 +16259,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -16270,21 +16270,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 101.54,
+            "errorPct": -88,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"ENTRANCE LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1000,
@@ -16760,7 +16760,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -16933,27 +16933,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 97,
+        "ms": 102,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16962,9 +16962,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16973,9 +16973,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -16984,9 +16984,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -16995,21 +16995,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 101.31,
+            "errorPct": -88,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"ENTRANCE LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -17658,27 +17658,27 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 98,
+        "ms": 103,
         "scored": [
           {
             "sheet": "gf",
             "element": "walls-external",
             "measure": "areaM2",
             "truth": 985.05,
-            "measured": 1061.1,
-            "errorPct": 7.7,
+            "measured": 818.55,
+            "errorPct": -16.9,
             "outcome": "flagged",
             "confidence": "medium",
-            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450)"
+            "basis": "208.5 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 94.95 m² for 35 doors and 20 windows ±2% scale error × 2 identical floors (+450, +3450) | 96 m of paired 300mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
             "element": "columns",
             "measure": "count",
             "truth": 36,
-            "measured": 72,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 36,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "36 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -17687,9 +17687,9 @@
             "element": "doors",
             "measure": "count",
             "truth": 35,
-            "measured": 70,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 35,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "35 swing arcs on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -17698,9 +17698,9 @@
             "element": "windows",
             "measure": "count",
             "truth": 20,
-            "measured": 40,
-            "errorPct": 100,
-            "outcome": "flagged",
+            "measured": 20,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "medium",
             "basis": "20 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
           },
@@ -17709,9 +17709,9 @@
             "element": "sanitary",
             "measure": "count",
             "truth": 1,
-            "measured": 2,
-            "errorPct": 100,
-            "outcome": "silent",
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
             "confidence": "high",
             "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
           },
@@ -17720,21 +17720,21 @@
             "element": "floor-area",
             "measure": "areaM2",
             "truth": 846.74,
-            "measured": null,
-            "errorPct": null,
-            "outcome": "missing",
-            "confidence": null,
-            "basis": null
+            "measured": 101.31,
+            "errorPct": -88,
+            "outcome": "flagged",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"ENTRANCE LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STAIR HALL\" label on DWG-01 × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LIFT LOBBY\" label on DWG-01 × 2 identical floors (+450, +3450)"
           }
         ],
         "summary": {
           "lines": 6,
-          "within": 0,
-          "flagged": 4,
-          "silent": 1,
-          "missing": 1,
-          "withinShare": 0,
-          "failuresFlaggedShare": 66.7
+          "within": 4,
+          "flagged": 2,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 66.7,
+          "failuresFlaggedShare": 100
         },
         "raw": {
           "scaleToMm": 1,
@@ -18210,7 +18210,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 18,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -18380,12 +18380,12 @@
   "totals": {
     "dwg": {
       "lines": 161,
-      "within": 17,
-      "flagged": 81,
-      "silent": 15,
-      "missing": 48,
-      "withinShare": 10.6,
-      "failuresFlaggedShare": 56.3
+      "within": 95,
+      "flagged": 42,
+      "silent": 0,
+      "missing": 24,
+      "withinShare": 59,
+      "failuresFlaggedShare": 63.6
     },
     "pdf": {
       "lines": 308,
@@ -18401,12 +18401,12 @@
     "bungalow": {
       "dwg": {
         "lines": 35,
-        "within": 17,
-        "flagged": 6,
+        "within": 22,
+        "flagged": 7,
         "silent": 0,
-        "missing": 12,
-        "withinShare": 48.6,
-        "failuresFlaggedShare": 33.3
+        "missing": 6,
+        "withinShare": 62.9,
+        "failuresFlaggedShare": 53.8
       },
       "pdf": {
         "lines": 28,
@@ -18421,12 +18421,12 @@
     "duplex": {
       "dwg": {
         "lines": 42,
-        "within": 0,
-        "flagged": 25,
-        "silent": 5,
-        "missing": 12,
-        "withinShare": 0,
-        "failuresFlaggedShare": 59.5
+        "within": 28,
+        "flagged": 8,
+        "silent": 0,
+        "missing": 6,
+        "withinShare": 66.7,
+        "failuresFlaggedShare": 57.1
       },
       "pdf": {
         "lines": 70,
@@ -18441,12 +18441,12 @@
     "block4": {
       "dwg": {
         "lines": 42,
-        "within": 0,
-        "flagged": 25,
-        "silent": 5,
-        "missing": 12,
-        "withinShare": 0,
-        "failuresFlaggedShare": 59.5
+        "within": 22,
+        "flagged": 14,
+        "silent": 0,
+        "missing": 6,
+        "withinShare": 52.4,
+        "failuresFlaggedShare": 70
       },
       "pdf": {
         "lines": 140,
@@ -18461,12 +18461,12 @@
     "tower20": {
       "dwg": {
         "lines": 42,
-        "within": 0,
-        "flagged": 25,
-        "silent": 5,
-        "missing": 12,
-        "withinShare": 0,
-        "failuresFlaggedShare": 59.5
+        "within": 23,
+        "flagged": 13,
+        "silent": 0,
+        "missing": 6,
+        "withinShare": 54.8,
+        "failuresFlaggedShare": 68.4
       },
       "pdf": {
         "lines": 70,
@@ -18483,12 +18483,12 @@
     "named-mm-blocks-dims": {
       "dwg": {
         "lines": 23,
-        "within": 3,
-        "flagged": 13,
-        "silent": 3,
-        "missing": 4,
-        "withinShare": 13,
-        "failuresFlaggedShare": 65
+        "within": 15,
+        "flagged": 8,
+        "silent": 0,
+        "missing": 0,
+        "withinShare": 65.2,
+        "failuresFlaggedShare": 100
       },
       "pdf": {
         "lines": 44,
@@ -18503,12 +18503,12 @@
     "named-mm-outlines-dims": {
       "dwg": {
         "lines": 23,
-        "within": 3,
-        "flagged": 13,
-        "silent": 3,
-        "missing": 4,
-        "withinShare": 13,
-        "failuresFlaggedShare": 65
+        "within": 17,
+        "flagged": 6,
+        "silent": 0,
+        "missing": 0,
+        "withinShare": 73.9,
+        "failuresFlaggedShare": 100
       },
       "pdf": {
         "lines": 44,
@@ -18523,12 +18523,12 @@
     "badnames-mm-outlines-dims": {
       "dwg": {
         "lines": 23,
-        "within": 2,
-        "flagged": 13,
+        "within": 12,
+        "flagged": 7,
         "silent": 0,
-        "missing": 8,
-        "withinShare": 8.7,
-        "failuresFlaggedShare": 61.9
+        "missing": 4,
+        "withinShare": 52.2,
+        "failuresFlaggedShare": 63.6
       },
       "pdf": {
         "lines": 44,
@@ -18563,12 +18563,12 @@
     "named-m-outlines-dims": {
       "dwg": {
         "lines": 23,
-        "within": 3,
-        "flagged": 13,
-        "silent": 3,
-        "missing": 4,
-        "withinShare": 13,
-        "failuresFlaggedShare": 65
+        "within": 17,
+        "flagged": 6,
+        "silent": 0,
+        "missing": 0,
+        "withinShare": 73.9,
+        "failuresFlaggedShare": 100
       },
       "pdf": {
         "lines": 44,
@@ -18583,12 +18583,12 @@
     "named-mm-outlines-exploded": {
       "dwg": {
         "lines": 23,
-        "within": 3,
-        "flagged": 13,
-        "silent": 3,
-        "missing": 4,
-        "withinShare": 13,
-        "failuresFlaggedShare": 65
+        "within": 17,
+        "flagged": 6,
+        "silent": 0,
+        "missing": 0,
+        "withinShare": 73.9,
+        "failuresFlaggedShare": 100
       },
       "pdf": {
         "lines": 44,
@@ -18603,12 +18603,12 @@
     "named-mm-outlines-scale": {
       "dwg": {
         "lines": 23,
-        "within": 3,
-        "flagged": 13,
-        "silent": 3,
-        "missing": 4,
-        "withinShare": 13,
-        "failuresFlaggedShare": 65
+        "within": 17,
+        "flagged": 6,
+        "silent": 0,
+        "missing": 0,
+        "withinShare": 73.9,
+        "failuresFlaggedShare": 100
       },
       "pdf": {
         "lines": 44,
@@ -18645,12 +18645,12 @@
     "doors": {
       "dwg": {
         "lines": 28,
-        "within": 6,
-        "flagged": 18,
+        "within": 24,
+        "flagged": 0,
         "silent": 0,
         "missing": 4,
-        "withinShare": 21.4,
-        "failuresFlaggedShare": 81.8
+        "withinShare": 85.7,
+        "failuresFlaggedShare": 0
       },
       "pdf": {
         "lines": 63,
@@ -18665,12 +18665,12 @@
     "windows": {
       "dwg": {
         "lines": 28,
-        "within": 6,
-        "flagged": 18,
+        "within": 24,
+        "flagged": 0,
         "silent": 0,
         "missing": 4,
-        "withinShare": 21.4,
-        "failuresFlaggedShare": 81.8
+        "withinShare": 85.7,
+        "failuresFlaggedShare": 0
       },
       "pdf": {
         "lines": 63,
@@ -18685,11 +18685,11 @@
     "sanitary": {
       "dwg": {
         "lines": 28,
-        "within": 5,
+        "within": 20,
         "flagged": 0,
-        "silent": 15,
+        "silent": 0,
         "missing": 8,
-        "withinShare": 17.9,
+        "withinShare": 71.4,
         "failuresFlaggedShare": 0
       },
       "pdf": {
@@ -18705,12 +18705,12 @@
     "floor-area": {
       "dwg": {
         "lines": 28,
-        "within": 0,
-        "flagged": 0,
+        "within": 10,
+        "flagged": 14,
         "silent": 0,
-        "missing": 28,
-        "withinShare": 0,
-        "failuresFlaggedShare": 0
+        "missing": 4,
+        "withinShare": 35.7,
+        "failuresFlaggedShare": 77.8
       },
       "pdf": {
         "lines": 63,
@@ -18725,11 +18725,11 @@
     "columns": {
       "dwg": {
         "lines": 21,
-        "within": 0,
-        "flagged": 21,
+        "within": 17,
+        "flagged": 4,
         "silent": 0,
         "missing": 0,
-        "withinShare": 0,
+        "withinShare": 81,
         "failuresFlaggedShare": 100
       },
       "pdf": {
@@ -18744,7 +18744,7 @@
     }
   },
   "ogudu": {
-    "ms": 621,
+    "ms": 623,
     "scaleToMm": 1,
     "scaleConfidence": 0.98,
     "drawings": [
