@@ -223,10 +223,13 @@ export const proposalsApi = {
   postComment: (proposalId: string, body: string) =>
     api.post<ProposalComment>(`/proposals/${proposalId}/comments`, { body }).then((r) => r.data),
 
-  convert: (proposalId: string) =>
+  convert: (proposalId: string, include?: ConvertInclude) =>
     api
-      .post<{ projectId: string; clientInvited?: boolean }>(`/proposals/${proposalId}/convert`)
+      .post<{ projectId: string; clientInvited?: boolean }>(`/proposals/${proposalId}/convert`, include ? { include } : {})
       .then((r) => r.data),
+
+  convertPreview: (proposalId: string) =>
+    api.post<ConvertPreview>(`/proposals/${proposalId}/convert/preview`).then((r) => r.data),
 
   listPlans: (proposalId: string) =>
     api.get<ProposalPlan[]>(`/proposals/${proposalId}/plans`).then((r) => r.data),
@@ -261,6 +264,39 @@ export const proposalsApi = {
       .post<{ ok: boolean; action: string }>(`/proposals/public/${token}/respond`, { action, name })
       .then((r) => r.data),
 };
+
+export const CONVERT_SECTIONS = [
+  "programme",
+  "milestones",
+  "budget",
+  "materials",
+  "drawings",
+  "documents",
+  "permits",
+  "selections",
+  "client",
+] as const;
+export type ConvertSection = (typeof CONVERT_SECTIONS)[number];
+export type ConvertInclude = Partial<Record<ConvertSection, boolean>>;
+
+export interface ConvertPreviewSection {
+  key: ConvertSection;
+  label: string;
+  count: number;
+  detail: string;
+  available: boolean;
+}
+
+export interface ConvertPreview {
+  proposalId: string;
+  alreadyConverted: boolean;
+  projectId: string | null;
+  sections: ConvertPreviewSection[];
+  setup: { projectType: string; buildingType: string; timeline: string; source: string };
+  contractSum: number;
+  currency: string;
+  warnings: string[];
+}
 
 export interface ProposalPlan {
   id: string;
