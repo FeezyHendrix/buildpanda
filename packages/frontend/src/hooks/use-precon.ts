@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   preconApi,
   type CreateProgrammeTaskInput,
+  type CreateMeasurementBody,
   preconApplyApi,
   preconManualApi,
   type ApplyMode,
@@ -494,5 +495,31 @@ export function useCreatePreconSessionFromPlanWithMode(proposalId: string) {
     mutationFn: ({ planId, scope, mode }: { planId: string; scope: TakeoffScope; mode: TakeoffMode }) =>
       preconManualApi.createSessionFromPlan(proposalId, planId, scope, mode),
     onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
+  });
+}
+
+// ---- manual measurements (WS-M1B) ----
+
+/**
+ * A hand-drawn line lands in the bill at once: the new row and its geometry are
+ * written into the snapshot before the refetch so the viewer can select and
+ * highlight it without a flash of "nothing measured".
+ */
+export function useCreateMeasurement(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateMeasurementBody) => preconApi.createMeasurement(sessionId, body),
+    onSuccess: ({ row, geometry }) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev
+          ? {
+              ...prev,
+              rows: prev.rows.some((r) => r.id === row.id) ? prev.rows.map((r) => (r.id === row.id ? row : r)) : [...prev.rows, row],
+              geometries: [...prev.geometries.filter((g) => g.id !== geometry.id), geometry],
+            }
+          : prev,
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });
 }

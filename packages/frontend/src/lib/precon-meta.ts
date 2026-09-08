@@ -281,3 +281,88 @@ export const FOUNDATION_TYPE_OPTIONS: { value: FoundationType; label: string }[]
 export const MM_PER_PT_AT_1_TO_1 = 0.3528;
 export const scaleRatioOf = (mmPerPt: number): number => Math.round(mmPerPt / MM_PER_PT_AT_1_TO_1);
 export const mmPerPtForRatio = (ratio: number): number => ratio * MM_PER_PT_AT_1_TO_1;
+
+// ---- sheet viewer tools (WS-M1B) ----
+// One palette for every take-off: what each tool draws, its key and its unit.
+// Icons live beside the viewer (precon-sheet-viewer/tool-icons.ts) so this file
+// stays free of React and the shortcut map can be unit-tested in node.
+
+import type { MeasureTool } from "@/api/precon";
+
+export const PRECON_TOOLS = [
+  "select",
+  "magnifier",
+  "length",
+  "linear",
+  "area",
+  "room_fill",
+  "count",
+  "volume",
+  "wall_area",
+  "deduct",
+  "typical",
+  "scale",
+  "find_symbol",
+  "overlay",
+  "legend",
+] as const;
+export type PreconTool = (typeof PRECON_TOOLS)[number];
+
+export const PRECON_TOOL_GROUPS = ["navigate", "measure", "modify", "check"] as const;
+export type PreconToolGroup = (typeof PRECON_TOOL_GROUPS)[number];
+
+export interface PreconToolMeta {
+  key: PreconTool;
+  label: string;
+  /** Single letter; pressed on its own while the viewer is focused. */
+  shortcut: string;
+  /** Shown in the tooltip and the status bar while drawing; null for navigation tools. */
+  unit: string | null;
+  group: PreconToolGroup;
+  hint: string;
+  /** The backend measurement this tool creates when no bill line is selected. */
+  measure?: MeasureTool;
+  /** Needs a selected bill line (Deduct, Typical). */
+  needsLine?: boolean;
+  /** Not built yet: stays visible in the palette, disabled, with the milestone. */
+  deferred?: string;
+}
+
+export const PRECON_TOOL_META: readonly PreconToolMeta[] = [
+  { key: "select", label: "Select", shortcut: "V", unit: null, group: "navigate", hint: "Pan, zoom and pick measurements" },
+  { key: "magnifier", label: "Magnifier", shortcut: "Z", unit: null, group: "navigate", hint: "Hold to magnify under the cursor", deferred: "M2" },
+  { key: "length", label: "Length", shortcut: "L", unit: "m", group: "measure", hint: "Two clicks; snaps to line ends", measure: "length" },
+  { key: "linear", label: "Polyline", shortcut: "P", unit: "m", group: "measure", hint: "Click a path, Enter to finish", measure: "polyline" },
+  { key: "area", label: "Area", shortcut: "A", unit: "m²", group: "measure", hint: "Polygon by clicks, Enter to close", measure: "area" },
+  { key: "room_fill", label: "Room fill", shortcut: "R", unit: "m²", group: "measure", hint: "Click inside an enclosed space", deferred: "M3" },
+  { key: "count", label: "Count", shortcut: "C", unit: "nr", group: "measure", hint: "A pin per item, Enter to finish", measure: "count" },
+  { key: "volume", label: "Volume", shortcut: "B", unit: "m³", group: "measure", hint: "Area plus a depth", measure: "volume" },
+  { key: "wall_area", label: "Wall area", shortcut: "W", unit: "m²", group: "measure", hint: "Polyline plus a height", measure: "wall_area" },
+  { key: "deduct", label: "Deduct", shortcut: "D", unit: "same as parent", group: "modify", hint: "Draw an opening on the selected line", needsLine: true },
+  { key: "typical", label: "Typical ×N", shortcut: "T", unit: "×", group: "modify", hint: "Repeat the selected line on identical floors", needsLine: true, deferred: "M2" },
+  { key: "scale", label: "Set scale", shortcut: "S", unit: "1:n", group: "modify", hint: "Two points a known distance apart" },
+  { key: "find_symbol", label: "Find symbol", shortcut: "F", unit: "nr", group: "check", hint: "Find every match of a symbol on the sheet", deferred: "M3" },
+  { key: "overlay", label: "Overlay", shortcut: "O", unit: null, group: "check", hint: "Previous drawing revision under this one", deferred: "M4" },
+  { key: "legend", label: "Legend", shortcut: "G", unit: null, group: "check", hint: "Element groups and totals on this sheet" },
+];
+
+export const PRECON_TOOL_BY_KEY: Record<PreconTool, PreconToolMeta> = Object.fromEntries(
+  PRECON_TOOL_META.map((meta) => [meta.key, meta]),
+) as Record<PreconTool, PreconToolMeta>;
+
+/** Tools that draw a new bill line when nothing is selected, in palette order. */
+export const MEASURING_TOOLS: readonly PreconToolMeta[] = PRECON_TOOL_META.filter((meta) => meta.measure && !meta.deferred);
+
+/** A bare letter (no modifier) → the tool it selects, or null. */
+export function toolForShortcut(key: string, modifiers: { ctrl?: boolean; meta?: boolean; alt?: boolean } = {}): PreconTool | null {
+  if (modifiers.ctrl || modifiers.meta || modifiers.alt || key.length !== 1) return null;
+  const upper = key.toUpperCase();
+  return PRECON_TOOL_META.find((meta) => meta.shortcut === upper)?.key ?? null;
+}
+
+/** Keys must never fire while the user is typing. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  if (!target || typeof target !== "object" || !("tagName" in target)) return false;
+  const el = target as { tagName: string; isContentEditable?: boolean };
+  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable === true;
+}
