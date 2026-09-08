@@ -1,11 +1,13 @@
-import { randomBytes } from "crypto";
 import * as XLSX from "xlsx";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
+import { proposalTermsRepository } from "./terms-repository.ts";
+import { proposalTermsService } from "./terms-service.ts";
+import { proposalSendService } from "./send-service.ts";
 import { convertProposalToProject } from "./convert-to-project.ts";
-import { PROPOSAL_STATUSES } from "./types.ts";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { CLIENT_VISIBLE_DETAIL, PROPOSAL_STATUSES, RETENTION_MODES, SCHEDULE_KINDS, WHT_RATES } from "./types.ts";
+import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalSentEmail } from "../../lib/email-templates.ts";
@@ -15,6 +17,7 @@ import type {
   CreateProposalInput,
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
+  UpdateEstimateTermsInput,
 } from "./types.ts";
 
 const proposalEstimateParams = {
@@ -104,6 +107,24 @@ const scheduleItemSchema = {
     description: { type: "string", maxLength: 500 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     sort: { type: "integer", minimum: 0 },
+    kind: { type: "string", enum: SCHEDULE_KINDS },
+    programmeTaskId: { type: ["string", "null"], maxLength: 100 },
+  },
+} as const;
+
+const termsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    retentionPct: { type: ["number", "null"], minimum: 0, maximum: 100 },
+    retentionMode: { type: ["string", "null"], enum: [...RETENTION_MODES, null] },
+    advancePct: { type: ["number", "null"], minimum: 0, maximum: 100 },
+    whtPct: { type: ["number", "null"], enum: [...WHT_RATES, null] },
+    paymentTermsDays: { type: ["integer", "null"], minimum: 0, maximum: 365 },
+    defectsLiabilityDays: { type: ["integer", "null"], minimum: 0, maximum: 3650 },
+    clientVisibleDetail: { type: "string", enum: CLIENT_VISIBLE_DETAIL },
+    validUntil: { type: ["string", "null"], maxLength: 30 },
   },
 } as const;
 
@@ -121,6 +142,9 @@ const patchEstimateBody = {
 const proposalRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = proposalsRepository(fastify.db);
   const service = proposalsService(repo);
+  const termsRepo = proposalTermsRepository(fastify.db);
+  const termsService = proposalTermsService(repo, termsRepo);
+  const sendService = proposalSendService(fastify.db, repo, termsRepo, termsService);
 
   // --- Proposals ---
 
@@ -442,13 +466,30 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      return service.savePaymentSchedule(
+      const orgId = request.requireOrgPermission("estimates", "terms");
+      return termsService.savePaymentSchedule(
         request.params.estimateId,
         request.params.id,
         orgId,
         request.body,
       );
+    },
+  );
+
+  // Money terms live on the revision the client signs.
+  fastify.patch<{ Params: { id: string; estimateId: string }; Body: UpdateEstimateTermsInput }>(
+    "/proposals/:id/estimates/:estimateId/terms",
+    { schema: { params: proposalEstimateParams, body: termsBody } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("estimates", "terms");
+      const estimate = await termsService.updateTerms(
+        request.params.estimateId,
+        request.params.id,
+        orgId,
+        request.body,
+      );
+      const [items, schedule] = await Promise.all([repo.getItems(estimate.id), repo.getSchedule(estimate.id)]);
+      return { ...estimate, items, schedule };
     },
   );
 
@@ -488,29 +529,8 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       const proposal = await repo.getById(request.params.id, orgId);
       if (!proposal) throw new NotFoundError("Proposal");
 
-      const estimate = await repo.getEstimate(request.params.estimateId);
-      if (!estimate || estimate.proposalId !== request.params.id) throw new NotFoundError("Estimate");
-      if (estimate.status !== "Draft") {
-        throw new ForbiddenError("Only Draft estimates can be sent.");
-      }
-
-      // Generate share token — valid until proposal.valid_until or 30 days
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = proposal.valid_until
-        ? new Date(proposal.valid_until).toISOString()
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-      await repo.setShareToken(request.params.estimateId, token, expiresAt);
-      await repo.updateEstimateMeta(request.params.estimateId, {
-        status: "Sent",
-        sentAt: new Date().toISOString(),
-      });
-      await repo.updateProposal(request.params.id, orgId, { status: "Sent" });
-      await repo.logEvent(request.params.id, "estimate_sent", user.id, {
-        estimateId: estimate.id,
-        revisionNo: estimate.revisionNo,
-      });
-
+      const sent = await sendService.send(request.params.id, request.params.estimateId, orgId, user.id);
+      const token = sent.token;
       const shareUrl = `${config.mail.appUrl}/p/${token}`;
 
       // Send email to client if we have their address
@@ -535,7 +555,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }
 
-      return reply.status(200).send({ shareUrl, token });
+      return reply.status(200).send({ shareUrl, token, snapshotFileId: sent.snapshotFileId, pdfHash: sent.pdfHash });
     },
   );
 

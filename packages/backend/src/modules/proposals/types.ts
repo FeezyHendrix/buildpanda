@@ -23,6 +23,35 @@ export const ESTIMATE_STATUSES = [
 
 export type EstimateStatus = (typeof ESTIMATE_STATUSES)[number];
 
+export const RETENTION_MODES = ["none", "cash", "bond"] as const;
+export type RetentionMode = (typeof RETENTION_MODES)[number];
+
+export const CLIENT_VISIBLE_DETAIL = ["groups", "lines"] as const;
+export type ClientVisibleDetail = (typeof CLIENT_VISIBLE_DETAIL)[number];
+
+export const SCHEDULE_KINDS = ["advance", "stage"] as const;
+export type ScheduleKind = (typeof SCHEDULE_KINDS)[number];
+
+// Nigerian withholding tax on construction: none (individual client), 2 % resident, 5 % non-resident.
+export const WHT_RATES = [0, 2, 5] as const;
+
+export const PACK_SECTION_KINDS = [
+  "scope",
+  "exclusions",
+  "assumptions",
+  "provisional_sums",
+  "warranties",
+  "terms",
+  "site_survey",
+] as const;
+export type PackSectionKind = (typeof PACK_SECTION_KINDS)[number];
+
+export const PACK_ORIGINS = ["ai", "manual", "prompt", "template"] as const;
+export type PackOrigin = (typeof PACK_ORIGINS)[number];
+
+export const CLIENT_RESPONSES = ["accept", "decline", "change_requested"] as const;
+export type ClientResponse = (typeof CLIENT_RESPONSES)[number];
+
 export interface ProposalRow {
   id: string;
   org_id: string;
@@ -81,11 +110,41 @@ export interface EstimateRow {
   sent_at: string | null;
   accepted_at: string | null;
   accepted_by_name: string | null;
+  retention_pct: number | string | null;
+  retention_mode: RetentionMode | null;
+  advance_pct: number | string | null;
+  wht_pct: number | string | null;
+  payment_terms_days: number | null;
+  defects_liability_days: number | null;
+  client_visible_detail: ClientVisibleDetail;
+  accepted_ip: string | null;
+  accepted_user_agent: string | null;
+  accepted_pdf_hash: string | null;
+  snapshot_file_id: string | null;
+  response_message: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface Estimate {
+export interface EstimateTerms {
+  retentionPct: number | null;
+  retentionMode: RetentionMode | null;
+  advancePct: number | null;
+  whtPct: number | null;
+  paymentTermsDays: number | null;
+  defectsLiabilityDays: number | null;
+  clientVisibleDetail: ClientVisibleDetail;
+}
+
+export interface AcceptanceEvidence {
+  acceptedIp: string | null;
+  acceptedUserAgent: string | null;
+  acceptedPdfHash: string | null;
+  snapshotFileId: string | null;
+  responseMessage: string | null;
+}
+
+export interface Estimate extends EstimateTerms, AcceptanceEvidence {
   id: string;
   proposalId: string;
   revisionNo: number;
@@ -142,6 +201,8 @@ export interface PaymentScheduleRow {
   description: string | null;
   description_html: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programme_task_id: string | null;
 }
 
 export interface PaymentScheduleItem {
@@ -152,6 +213,8 @@ export interface PaymentScheduleItem {
   description: string | null;
   descriptionHtml: string | null;
   sort: number;
+  kind: ScheduleKind;
+  programmeTaskId: string | null;
 }
 
 export interface ProposalEventRow {
@@ -201,6 +264,62 @@ export interface CreatePaymentScheduleInput {
   description?: string;
   descriptionHtml?: string | null;
   sort?: number;
+  kind?: ScheduleKind;
+  programmeTaskId?: string | null;
+}
+
+export interface UpdateEstimateTermsInput {
+  retentionPct?: number | null;
+  retentionMode?: RetentionMode | null;
+  advancePct?: number | null;
+  whtPct?: number | null;
+  paymentTermsDays?: number | null;
+  defectsLiabilityDays?: number | null;
+  clientVisibleDetail?: ClientVisibleDetail;
+  validUntil?: string | null;
+}
+
+export interface PackSectionRow {
+  id: string;
+  proposal_id: string;
+  estimate_id: string | null;
+  kind: PackSectionKind;
+  body_html: string;
+  sort: number;
+  origin: PackOrigin;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface PackSection {
+  id: string;
+  proposalId: string;
+  estimateId: string | null;
+  kind: PackSectionKind;
+  bodyHtml: string;
+  sort: number;
+  origin: PackOrigin;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface UpsertPackSectionInput {
+  kind: PackSectionKind;
+  bodyHtml: string;
+  origin?: PackOrigin;
+}
+
+export interface PublicRespondInput {
+  action: ClientResponse;
+  name?: string;
+  message?: string;
+}
+
+export interface ResponseEvidence {
+  ip: string | null;
+  userAgent: string | null;
+  at: string;
 }
 
 export interface ProposalPlanRow {
