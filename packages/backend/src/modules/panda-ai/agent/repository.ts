@@ -249,6 +249,68 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    // The accepted offer this project was converted from: the estimate the
+    // project row points at, else the accepted estimate of the linked proposal.
+    async acceptedEstimate(projectId: string) {
+      const project = await db("projects")
+        .where({ id: projectId })
+        .select<{ estimate_id: string | null }>("estimate_id")
+        .first();
+      const estimate = await db("estimates as e")
+        .join("proposals as p", "p.id", "e.proposal_id")
+        .where("p.project_id", projectId)
+        .modify((q) => {
+          if (project?.estimate_id) q.where("e.id", project.estimate_id);
+          else q.whereIn("e.status", ["Accepted", "Superseded", "Sent"]).orderBy("e.revision_no", "desc");
+        })
+        .select(
+          "e.id",
+          "e.revision_no",
+          "e.status",
+          "e.contingency_pct",
+          "e.tax_label",
+          "e.tax_pct",
+          "e.subtotal",
+          "e.tax_amount",
+          "e.total",
+          "e.accepted_at",
+          "e.accepted_by_name",
+          "p.id as proposal_id",
+          "p.title as proposal_title",
+          "p.currency",
+        )
+        .first();
+      if (!estimate) return null;
+      const [items, schedule] = await Promise.all([
+        db("estimate_items").where({ estimate_id: estimate.id }).orderBy("sort", "asc").select("group_label", "description", "qty", "unit", "unit_rate", "total"),
+        db("estimate_payment_schedule").where({ estimate_id: estimate.id }).orderBy("sort", "asc").select("label", "percent", "description"),
+      ]);
+      return { estimate, items, schedule };
+    },
+
+    programmeBaseline(projectId: string) {
+      return db("activities as a")
+        .leftJoin("project_phases as ph", "ph.id", "a.phase_id")
+        .where("a.project_id", projectId)
+        .whereNotNull("a.baseline_start_at")
+        .orderBy("a.planned_start_at", "asc")
+        .select(
+          "a.id",
+          "a.name",
+          "ph.name as stage",
+          "a.is_milestone",
+          "a.status",
+          "a.percent_complete",
+          "a.baseline_start_at",
+          "a.baseline_end_at",
+          "a.planned_start_at",
+          "a.planned_end_at",
+          "a.actual_start_at",
+          "a.actual_end_at",
+          "a.programme_task_id",
+        );
+    },
+
     materialStock(projectId: string) {
       return db("materials_stock as s")
         .join("materials_catalog as c", "c.id", "s.material_id")

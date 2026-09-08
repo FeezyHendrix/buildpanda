@@ -645,6 +645,56 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
+    tool(fn("get_estimate", "Get the accepted estimate this project was converted from: revision, status, contract total, contingency and tax, every priced line (group, description, quantity, unit, rate, total) and the agreed payment stages (label and percent of contract). Use for 'what did we agree with the client', 'what was priced for X', 'what are the payment stages', or contract sum questions. Rates here are the client-facing agreed rates, not live spend."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const result = await repo.acceptedEstimate(ctx.projectId);
+      if (!result) return { output: { estimate: null, note: "No estimate is linked to this project." } };
+      const { estimate, items, schedule } = result;
+      return {
+        output: {
+          proposalTitle: estimate.proposal_title,
+          revision: `Rev ${estimate.revision_no}`,
+          status: estimate.status,
+          currency: estimate.currency,
+          subtotal: Number(estimate.subtotal),
+          contingencyPct: Number(estimate.contingency_pct),
+          taxLabel: estimate.tax_label,
+          taxPct: Number(estimate.tax_pct),
+          taxAmount: Number(estimate.tax_amount),
+          total: Number(estimate.total),
+          acceptedAt: estimate.accepted_at,
+          acceptedBy: estimate.accepted_by_name,
+          items: items.map((i) => ({ group: i.group_label, description: i.description, quantity: Number(i.qty), unit: i.unit, rate: Number(i.unit_rate), total: Number(i.total) })),
+          paymentStages: schedule.map((s) => ({ label: s.label, percent: Number(s.percent), amount: Math.round((Number(estimate.total) * Number(s.percent)) / 100), description: s.description })),
+        },
+      };
+    }),
+
+    tool(fn("get_programme_baseline", "Compare the programme baseline (the dates agreed at handoff from the accepted proposal) with the current planned and actual dates for every activity and milestone. Use for 'are we behind the baseline', 'which activities slipped', 'when was X supposed to finish versus now', or schedule variance questions. slipDays is positive when the current planned finish is later than the baseline finish."), async (ctx) => {
+      const repo = agentRepository(ctx.db);
+      const rows = await repo.programmeBaseline(ctx.projectId);
+      const dayMs = 86_400_000;
+      const slip = (baseline: string | Date | null, planned: string | Date | null) =>
+        baseline && planned ? Math.round((new Date(planned).getTime() - new Date(baseline).getTime()) / dayMs) : null;
+      return {
+        output: rows.map((r) => ({
+          activity: r.name,
+          stage: r.stage,
+          milestone: Boolean(r.is_milestone),
+          status: r.status,
+          percentComplete: Number(r.percent_complete),
+          baselineStart: r.baseline_start_at,
+          baselineFinish: r.baseline_end_at,
+          plannedStart: r.planned_start_at,
+          plannedFinish: r.planned_end_at,
+          actualStart: r.actual_start_at,
+          actualFinish: r.actual_end_at,
+          slipDays: slip(r.baseline_end_at, r.planned_end_at),
+          fromProposalProgramme: Boolean(r.programme_task_id),
+        })),
+      };
+    }),
+
     tool(fn("get_material_stock", "Get the live on-hand stock for each material from the materials ledger (received IN minus used). Use this for any question about how much of a material is currently available, in stock, remaining, received, or running low."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const stock = await repo.materialStock(ctx.projectId);
