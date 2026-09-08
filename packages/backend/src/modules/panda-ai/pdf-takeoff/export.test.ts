@@ -55,6 +55,7 @@ function makeSnapshot(): PreconSnapshot {
     },
   ].map((r) => ({
     qtyGross: null,
+    typical: 1,
     deductions: [],
     qty: null,
     rate: null,

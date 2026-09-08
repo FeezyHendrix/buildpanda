@@ -139,6 +139,8 @@ export interface PreconSheetRow {
   snap_index: number[][] | null;
   geo_summary: GeoSummary | null;
   bounds?: SheetBounds | null;
+  // a details sheet can carry several scales; null/absent means the sheet scale everywhere
+  viewports?: SheetViewport[] | null;
   error: string | null;
   created_at: Date;
   updated_at: Date;
@@ -169,6 +171,9 @@ export interface PreconBoqRowRow {
   unit: string | null;
   qty_gross: string | number | null;
   deductions: Deduction[];
+  // × identical floors/areas: net = (qty_gross − Σdeductions) × typical. Optional
+  // on the row so engine inserts take the column default of 1.
+  typical?: number;
   qty: string | number | null;
   rate: string | number | null;
   amount: string | number | null;
@@ -291,6 +296,7 @@ export interface PreconSheet {
   dimUnit: DimUnit | null;
   geoSummary: GeoSummary | null;
   bounds: SheetBounds | null;
+  viewports: SheetViewport[];
   error: string | null;
 }
 
@@ -311,6 +317,7 @@ export interface PreconBoqRowDto {
   unit: string | null;
   qtyGross: number | null;
   deductions: Deduction[];
+  typical: number;
   qty: number | null;
   rate: number | null;
   amount: number | null;
@@ -381,6 +388,8 @@ export interface UpdateRowBody {
     qty?: number;
     rate?: number;
     unit?: string;
+    // integer ≥ 1; qty is recomputed from qty_gross, deductions and this
+    typical?: number;
   };
 }
 
@@ -452,6 +461,8 @@ export interface UpdateSheetBody {
   title?: string | null;
   scaleMmPerPt?: number | null;
   dimUnit?: DimUnit | null;
+  // replaces the sheet's viewports; an id is kept when given, minted when not
+  viewports?: SheetViewportInput[];
 }
 
 export type UpdateStructureBody = Partial<Omit<StructureContext, "signals" | "confidence">>;
@@ -783,4 +794,89 @@ export interface ManualQuantity {
   gross: number;
   unit: string;
   geometryKind: GeometryKind;
+}
+
+// ---------- WS-M2A: typical, viewports, on-demand sheet geometry ----------
+
+// A region of a details sheet drawn at its own scale. `rect` is in sheet
+// points; a measurement whose first vertex falls inside uses this scale.
+export interface SheetViewport {
+  id: string;
+  label: string;
+  rect: [number, number, number, number];
+  scaleMmPerPt: number;
+}
+
+export type SheetViewportInput = Omit<SheetViewport, "id"> & { id?: string };
+
+// Which scale a drawing at a point resolves to, and where it came from.
+export interface ScalePick {
+  mmPerPt: number;
+  viewport: SheetViewport | null;
+}
+
+export interface RoomAtBody {
+  x: number;
+  y: number;
+}
+
+export interface RoomAtResult {
+  // the enclosed region's outline in sheet points
+  vertices: number[][];
+  // the room label found inside it, if any
+  label: string | null;
+  areaM2: number;
+}
+
+export interface SymbolMatchesBody {
+  rect: [number, number, number, number];
+  // leave out the symbol(s) inside the seed rect from the result
+  excludeSeed?: boolean;
+}
+
+export interface SymbolMatchesResult {
+  // centroids of every match, in sheet points
+  points: number[][];
+  // the DWG block name, or null for a PDF outline signature
+  name: string | null;
+  count: number;
+}
+
+// The vector primitives behind a sheet, in sheet points, cached on disk per
+// sheet and loaded on demand for room fill and symbol search.
+export interface GeoSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  // pen width in sheet points (0 on a DWG, where the pen says nothing)
+  width: number;
+}
+
+export interface GeoText {
+  str: string;
+  // anchor (left baseline) and an estimated width
+  x: number;
+  y: number;
+  w: number;
+}
+
+export interface GeoInsert {
+  handle: number;
+  name: string;
+  x: number;
+  y: number;
+}
+
+export interface GeoOutline {
+  vertices: number[][];
+}
+
+export interface SheetGeometry {
+  kind: "dwg" | "pdf";
+  segments: GeoSegment[];
+  texts: GeoText[];
+  inserts: GeoInsert[];
+  outlines: GeoOutline[];
+  bounds: SheetBounds | null;
 }

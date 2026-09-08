@@ -115,6 +115,7 @@ function row(overrides: Partial<PreconBoqRowDto>): PreconBoqRowDto {
     description: "Concrete in strip foundation",
     unit: "m3",
     qtyGross: 12,
+    typical: 1,
     deductions: [],
     qty: 12,
     rate: null,

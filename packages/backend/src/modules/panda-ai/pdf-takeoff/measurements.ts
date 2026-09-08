@@ -154,3 +154,31 @@ export function manualBasis(
   const total = applyTypical(q.gross, typical);
   return parts.length > 1 || total !== q.base ? `${parts.join(" ")} = ${total} ${unit}` : parts[0]!;
 }
+
+// ---------- typical on an existing row ----------
+
+/** net = (gross − Σdeductions) × typical, never below zero, 2 dp. */
+export function netQuantity(gross: number, deductions: { qty: number }[], typical: number): number {
+  const deducted = deductions.reduce((s, d) => s + d.qty, 0);
+  return round2(Math.max(0, gross - deducted) * typical);
+}
+
+const TYPICAL_CLAUSE = /\s×\s\d+\stypical\s(?:floors|areas)/;
+const TOTAL_TAIL = /\s=\s[\d.]+\s\S+$/;
+
+/**
+ * Rewrites the typical clause of a basis sentence when the multiplier changes:
+ * "12.4 m polyline on DWG-01 × 4 typical floors = 49.6 m" keeps its drawn
+ * figure and factors; only the "× N typical floors" and the total move.
+ */
+export function basisWithTypical(basis: string | null, gross: number | null, net: number, typical: number, unit: string | null): string | null {
+  const core = basis === null ? null : basis.replace(TOTAL_TAIL, "").replace(TYPICAL_CLAUSE, "");
+  const tail = ` = ${net} ${unit ?? ""}`.trimEnd();
+  if (typical > 1) {
+    const head = core && core.trim() ? core : `${gross ?? net} ${unit ?? ""}`.trimEnd();
+    return `${head} × ${typical} typical floors${tail}`;
+  }
+  if (core === null) return null;
+  // a total is only worth stating when a factor (height, depth) still applies
+  return /\s×\s/.test(core) ? `${core}${tail}` : core;
+}

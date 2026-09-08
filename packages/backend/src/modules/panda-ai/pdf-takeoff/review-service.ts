@@ -20,6 +20,7 @@ import type {
   UpdateStructureBody,
 } from "./types.ts";
 import { DIM_UNITS, FULL_TAKEOFF_SCOPE, SHEET_KINDS } from "./types.ts";
+import { normaliseViewports } from "./viewports.ts";
 
 type Audit = (
   sessionId: string,
@@ -294,8 +295,17 @@ export function reviewService({ repo, audit, toSession, toSheet }: Deps) {
         if (body.scaleMmPerPt !== null && sheet.status === "unmeasurable") patch.status = "measured";
       }
       if (body.dimUnit !== undefined) patch.dim_unit = body.dimUnit;
+      // a details sheet's viewports are replaced whole: what the reviewer drew is the set
+      if (body.viewports !== undefined) patch.viewports = normaliseViewports(body.viewports);
       await repo.updateSheet(sheetId, patch);
-      await audit(sheet.session_id, null, actor, "sheet_updated", { kind: sheet.kind, scale: sheet.scale_mm_per_pt }, { ...body });
+      await audit(
+        sheet.session_id,
+        null,
+        actor,
+        "sheet_updated",
+        { kind: sheet.kind, scale: sheet.scale_mm_per_pt, viewports: sheet.viewports ?? [] },
+        { ...body, ...(patch.viewports ? { viewports: patch.viewports } : {}) },
+      );
       const updated = await repo.sheetById(sheetId);
       return toSheet(updated ?? { ...sheet, ...patch });
     },

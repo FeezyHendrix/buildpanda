@@ -191,6 +191,7 @@ export function preconRepository(db: Knex) {
           | "scale_confidence"
           | "dim_unit"
           | "snap_index"
+          | "viewports"
           | "error"
         >
       >,
@@ -200,6 +201,7 @@ export function preconRepository(db: Knex) {
         .update({
           ...patch,
           snap_index: patch.snap_index === undefined ? undefined : (JSON.stringify(patch.snap_index) as never),
+          viewports: patch.viewports === undefined ? undefined : (JSON.stringify(patch.viewports) as never),
           updated_at: db.fn.now(),
         }),
     updateSheetStatus: (id: string, status: SheetStatus, error?: string | null) =>
@@ -296,6 +298,7 @@ export function preconRepository(db: Knex) {
           | "unit"
           | "qty_gross"
           | "deductions"
+          | "typical"
           | "qty"
           | "rate"
           | "amount"
