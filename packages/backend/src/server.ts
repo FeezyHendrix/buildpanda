@@ -69,6 +69,7 @@ import voiceReportRoutes from "./modules/panda-ai/voice-report/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import dwgTakeoffRoutes from "./modules/panda-ai/dwg-takeoff/routes.ts";
 import pdfTakeoffRoutes from "./modules/panda-ai/pdf-takeoff/routes.ts";
+import preconAssistRoutes from "./modules/panda-ai/precon-assist/routes.ts";
 import importSessionRoutes from "./modules/import-sessions/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import dataCommitmentRoutes from "./modules/data-commitment/routes.ts";
@@ -206,6 +207,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(programmeImportRoutes);
   await app.register(dwgTakeoffRoutes);
   await app.register(pdfTakeoffRoutes);
+  await app.register(preconAssistRoutes);
   await app.register(importSessionRoutes);
   await app.register(orgProfileRoutes);
   await app.register(dataCommitmentRoutes);
