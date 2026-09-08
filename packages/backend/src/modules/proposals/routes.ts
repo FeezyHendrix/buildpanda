@@ -7,7 +7,7 @@ import { proposalTermsService } from "./terms-service.ts";
 import { proposalSendService } from "./send-service.ts";
 import { convertProposalToProject, previewConversion } from "./convert-to-project.ts";
 import { CLIENT_VISIBLE_DETAIL, CONVERT_SECTIONS, PROPOSAL_STATUSES, RETENTION_MODES, SCHEDULE_KINDS, WHT_RATES } from "./types.ts";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalSentEmail } from "../../lib/email-templates.ts";
