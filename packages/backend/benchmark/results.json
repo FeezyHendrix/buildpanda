@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-08T13:25:18.865Z",
+  "generatedAt": "2026-09-08T13:28:09.840Z",
   "fixtures": [
     {
       "id": "bungalow__named-mm-blocks-dims",
@@ -8,7 +8,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 72,
+        "ms": 77,
         "scored": [
           {
             "sheet": "gf",
@@ -113,50 +113,50 @@
               "evidence": [
                 87,
                 89,
-                93,
-                95,
                 99,
                 101,
-                88,
-                90,
-                94,
-                96,
-                100,
-                102,
-                105,
-                107,
                 111,
                 113,
-                117,
-                119,
-                106,
-                108,
+                88,
+                90,
+                100,
+                102,
                 112,
                 114,
+                93,
+                95,
+                105,
+                107,
+                117,
+                119,
+                94,
+                96,
+                106,
+                108,
                 118,
                 120,
                 123,
                 125,
-                129,
-                131,
                 135,
                 137,
-                124,
-                126,
-                130,
-                132,
-                136,
-                138,
-                141,
-                143,
                 147,
                 149,
-                153,
-                155,
-                142,
-                144,
+                124,
+                126,
+                136,
+                138,
                 148,
                 150,
+                129,
+                131,
+                141,
+                143,
+                153,
+                155,
+                130,
+                132,
+                142,
+                144,
                 154,
                 156
               ],
@@ -417,7 +417,8 @@
                 254
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -464,7 +465,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 983,
+        "ms": 1007,
         "scored": [
           {
             "sheet": "gf",
@@ -597,7 +598,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 58,
+        "ms": 59,
         "scored": [
           {
             "sheet": "gf",
@@ -702,50 +703,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -1006,7 +1007,8 @@
                 251
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -1185,7 +1187,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -1290,50 +1292,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -1594,7 +1596,8 @@
                 251
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -1640,7 +1643,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 18,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -1773,7 +1776,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 36,
+        "ms": 43,
         "scored": [
           {
             "sheet": "gf",
@@ -1878,50 +1881,50 @@
               "evidence": [
                 80,
                 82,
-                86,
-                88,
                 92,
                 94,
-                81,
-                83,
-                87,
-                89,
-                93,
-                95,
-                98,
-                100,
                 104,
                 106,
-                110,
-                112,
-                99,
-                101,
+                81,
+                83,
+                93,
+                95,
                 105,
                 107,
+                86,
+                88,
+                98,
+                100,
+                110,
+                112,
+                87,
+                89,
+                99,
+                101,
                 111,
                 113,
                 116,
                 118,
-                122,
-                124,
                 128,
                 130,
-                117,
-                119,
-                123,
-                125,
-                129,
-                131,
-                134,
-                136,
                 140,
                 142,
-                146,
-                148,
-                135,
-                137,
+                117,
+                119,
+                129,
+                131,
                 141,
                 143,
+                122,
+                124,
+                134,
+                136,
+                146,
+                148,
+                123,
+                125,
+                135,
+                137,
                 147,
                 149
               ],
@@ -2214,7 +2217,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -2347,7 +2350,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 36,
+        "ms": 43,
         "scored": [
           {
             "sheet": "gf",
@@ -2452,50 +2455,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -2756,7 +2759,8 @@
                 251
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -2935,7 +2939,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 41,
         "scored": [
           {
             "sheet": "gf",
@@ -3040,50 +3044,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -3344,7 +3348,8 @@
                 259
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -3390,7 +3395,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 14,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -3523,7 +3528,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 34,
+        "ms": 39,
         "scored": [
           {
             "sheet": "gf",
@@ -3628,50 +3633,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -3932,7 +3937,8 @@
                 243
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -3978,7 +3984,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 13,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -4111,7 +4117,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 33,
+        "ms": 37,
         "scored": [
           {
             "sheet": "gf",
@@ -4520,7 +4526,8 @@
                 207
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -4566,7 +4573,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 13,
+        "ms": 15,
         "scored": [
           {
             "sheet": "gf",
@@ -5110,7 +5117,8 @@
                 253
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -5156,7 +5164,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 13,
+        "ms": 14,
         "scored": [
           {
             "sheet": "gf",
@@ -5289,7 +5297,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 36,
         "scored": [
           {
             "sheet": "gf",
@@ -5587,7 +5595,8 @@
                 255
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -6177,7 +6186,8 @@
                 298
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -6223,7 +6233,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 13,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -6356,7 +6366,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 57,
+        "ms": 58,
         "scored": [
           {
             "sheet": "gf",
@@ -6765,7 +6775,8 @@
                 655
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -6811,7 +6822,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 14,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -6944,7 +6955,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 34,
+        "ms": 36,
         "scored": [
           {
             "sheet": "gf",
@@ -7353,7 +7364,8 @@
                 252
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -7399,7 +7411,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 12,
+        "ms": 15,
         "scored": [
           {
             "sheet": "gf",
@@ -7532,7 +7544,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 36,
+        "ms": 40,
         "scored": [
           {
             "sheet": "gf",
@@ -7962,7 +7974,8 @@
                 306
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -8010,7 +8023,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 18,
         "scored": [
           {
             "sheet": "gf",
@@ -8143,7 +8156,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 38,
+        "ms": 39,
         "scored": [
           {
             "sheet": "gf",
@@ -8552,7 +8565,8 @@
                 251
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -8598,7 +8612,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 13,
+        "ms": 17,
         "scored": [
           {
             "sheet": "gf",
@@ -8731,7 +8745,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 38,
+        "ms": 34,
         "scored": [
           {
             "sheet": "gf",
@@ -9118,7 +9132,8 @@
                 234
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -9164,7 +9179,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 12,
+        "ms": 13,
         "scored": [
           {
             "sheet": "gf",
@@ -9297,7 +9312,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 43,
         "scored": [
           {
             "sheet": "gf",
@@ -9713,7 +9728,8 @@
                 320
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -9761,7 +9777,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 15,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -9904,7 +9920,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 37,
+        "ms": 41,
         "scored": [
           {
             "sheet": "gf",
@@ -10334,7 +10350,8 @@
                 306
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -10382,7 +10399,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 93,
+        "ms": 113,
         "scored": [
           {
             "sheet": "gf",
@@ -10479,7 +10496,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 59,
+        "ms": 71,
         "scored": [
           {
             "sheet": "gf",
@@ -10602,50 +10619,50 @@
               "evidence": [
                 87,
                 89,
-                93,
-                95,
                 99,
                 101,
-                88,
-                90,
-                94,
-                96,
-                100,
-                102,
-                105,
-                107,
                 111,
                 113,
-                117,
-                119,
-                106,
-                108,
+                88,
+                90,
+                100,
+                102,
                 112,
                 114,
+                93,
+                95,
+                105,
+                107,
+                117,
+                119,
+                94,
+                96,
+                106,
+                108,
                 118,
                 120,
                 123,
                 125,
-                129,
-                131,
                 135,
                 137,
-                124,
-                126,
-                130,
-                132,
-                136,
-                138,
-                141,
-                143,
                 147,
                 149,
-                153,
-                155,
-                142,
-                144,
+                124,
+                126,
+                136,
+                138,
                 148,
                 150,
+                129,
+                131,
+                141,
+                143,
+                153,
+                155,
+                130,
+                132,
+                142,
+                144,
                 154,
                 156
               ],
@@ -10931,50 +10948,50 @@
               "evidence": [
                 284,
                 286,
-                290,
-                292,
                 296,
                 298,
-                285,
-                287,
-                291,
-                293,
-                297,
-                299,
-                302,
-                304,
                 308,
                 310,
-                314,
-                316,
-                303,
-                305,
+                285,
+                287,
+                297,
+                299,
                 309,
                 311,
+                290,
+                292,
+                302,
+                304,
+                314,
+                316,
+                291,
+                293,
+                303,
+                305,
                 315,
                 317,
                 320,
                 322,
-                326,
-                328,
                 332,
                 334,
-                321,
-                323,
-                327,
-                329,
-                333,
-                335,
-                338,
-                340,
                 344,
                 346,
-                350,
-                352,
-                339,
-                341,
+                321,
+                323,
+                333,
+                335,
                 345,
                 347,
+                326,
+                328,
+                338,
+                340,
+                350,
+                352,
+                327,
+                329,
+                339,
+                341,
                 351,
                 353
               ],
@@ -11267,7 +11284,8 @@
                 470
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -11347,7 +11365,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 27,
+        "ms": 32,
         "scored": [
           {
             "sheet": "gf",
@@ -11606,7 +11624,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 42,
+        "ms": 50,
         "scored": [
           {
             "sheet": "gf",
@@ -11729,50 +11747,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -12080,7 +12098,8 @@
                 477
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -12126,7 +12145,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 21,
+        "ms": 24,
         "scored": [
           {
             "sheet": "gf",
@@ -12385,7 +12404,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 42,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -12508,50 +12527,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -12859,7 +12878,8 @@
                 477
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -12905,7 +12925,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 24,
         "scored": [
           {
             "sheet": "gf",
@@ -13164,7 +13184,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 41,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -13287,50 +13307,50 @@
               "evidence": [
                 80,
                 82,
-                86,
-                88,
                 92,
                 94,
-                81,
-                83,
-                87,
-                89,
-                93,
-                95,
-                98,
-                100,
                 104,
                 106,
-                110,
-                112,
-                99,
-                101,
+                81,
+                83,
+                93,
+                95,
                 105,
                 107,
+                86,
+                88,
+                98,
+                100,
+                110,
+                112,
+                87,
+                89,
+                99,
+                101,
                 111,
                 113,
                 116,
                 118,
-                122,
-                124,
                 128,
                 130,
-                117,
-                119,
-                123,
-                125,
-                129,
-                131,
-                134,
-                136,
                 140,
                 142,
-                146,
-                148,
-                135,
-                137,
+                117,
+                119,
+                129,
+                131,
                 141,
                 143,
+                122,
+                124,
+                134,
+                136,
+                146,
+                148,
+                123,
+                125,
+                135,
+                137,
                 147,
                 149
               ],
@@ -13667,7 +13687,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 25,
         "scored": [
           {
             "sheet": "gf",
@@ -13926,7 +13946,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 40,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -14049,50 +14069,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -14400,7 +14420,8 @@
                 477
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -14446,7 +14467,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 22,
         "scored": [
           {
             "sheet": "gf",
@@ -14705,7 +14726,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 41,
+        "ms": 48,
         "scored": [
           {
             "sheet": "gf",
@@ -14828,50 +14849,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -15179,7 +15200,8 @@
                 493
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -15225,7 +15247,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 23,
         "scored": [
           {
             "sheet": "gf",
@@ -15484,7 +15506,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 41,
+        "ms": 44,
         "scored": [
           {
             "sheet": "gf",
@@ -15607,50 +15629,50 @@
               "evidence": [
                 83,
                 85,
-                89,
-                91,
                 95,
                 97,
-                84,
-                86,
-                90,
-                92,
-                96,
-                98,
-                101,
-                103,
                 107,
                 109,
-                113,
-                115,
-                102,
-                104,
+                84,
+                86,
+                96,
+                98,
                 108,
                 110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
                 114,
                 116,
                 119,
                 121,
-                125,
-                127,
                 131,
                 133,
-                120,
-                122,
-                126,
-                128,
-                132,
-                134,
-                137,
-                139,
                 143,
                 145,
-                149,
-                151,
-                138,
-                140,
+                120,
+                122,
+                132,
+                134,
                 144,
                 146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152
               ],
@@ -15958,7 +15980,8 @@
                 462
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -16004,7 +16027,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -16263,7 +16286,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 37,
+        "ms": 51,
         "scored": [
           {
             "sheet": "gf",
@@ -16737,7 +16760,8 @@
                 389
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -16783,7 +16807,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 19,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -17042,7 +17066,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 40,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -17518,7 +17542,8 @@
                 481
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -17564,7 +17589,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 21,
+        "ms": 22,
         "scored": [
           {
             "sheet": "gf",
@@ -17823,7 +17848,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 42,
+        "ms": 47,
         "scored": [
           {
             "sheet": "gf",
@@ -18172,7 +18197,8 @@
                 485
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -18220,7 +18246,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 21,
+        "ms": 22,
         "scored": [
           {
             "sheet": "gf",
@@ -18479,7 +18505,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 43,
+        "ms": 53,
         "scored": [
           {
             "sheet": "gf",
@@ -18953,7 +18979,8 @@
                 570
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -18999,7 +19026,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 21,
+        "ms": 28,
         "scored": [
           {
             "sheet": "gf",
@@ -19258,7 +19285,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 81,
+        "ms": 97,
         "scored": [
           {
             "sheet": "gf",
@@ -19732,7 +19759,8 @@
                 1285
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -19778,7 +19806,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 26,
+        "ms": 61,
         "scored": [
           {
             "sheet": "gf",
@@ -20037,7 +20065,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 41,
+        "ms": 55,
         "scored": [
           {
             "sheet": "gf",
@@ -20511,7 +20539,8 @@
                 479
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -20557,7 +20586,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 22,
+        "ms": 33,
         "scored": [
           {
             "sheet": "gf",
@@ -20816,7 +20845,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 44,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -21318,7 +21347,8 @@
                 570
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -21366,7 +21396,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 24,
+        "ms": 35,
         "scored": [
           {
             "sheet": "gf",
@@ -21625,7 +21655,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 38,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -22099,7 +22129,8 @@
                 477
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -22145,7 +22176,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 21,
+        "ms": 25,
         "scored": [
           {
             "sheet": "gf",
@@ -22404,7 +22435,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -22854,7 +22885,8 @@
                 441
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -22900,7 +22932,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 18,
+        "ms": 25,
         "scored": [
           {
             "sheet": "gf",
@@ -23159,7 +23191,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 59,
+        "ms": 68,
         "scored": [
           {
             "sheet": "gf",
@@ -23954,7 +23986,8 @@
                 602
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -24035,7 +24068,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 39,
+        "ms": 34,
         "scored": [
           {
             "sheet": "gf",
@@ -24806,7 +24839,8 @@
                 570
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -24854,7 +24888,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 161,
+        "ms": 167,
         "scored": [
           {
             "sheet": "gf",
@@ -25027,7 +25061,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 122,
+        "ms": 134,
         "scored": [
           {
             "sheet": "l0",
@@ -25276,74 +25310,74 @@
               "evidence": [
                 105,
                 107,
-                111,
-                113,
                 117,
                 119,
-                106,
-                108,
-                112,
-                114,
-                118,
-                120,
-                123,
-                125,
                 129,
                 131,
-                135,
-                137,
-                124,
-                126,
-                130,
-                132,
-                136,
-                138,
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                171,
-                173,
+                106,
+                108,
+                118,
+                120,
+                130,
+                132,
                 142,
                 144,
-                148,
-                150,
                 154,
                 156,
-                160,
-                162,
                 166,
                 168,
+                111,
+                113,
+                123,
+                125,
+                135,
+                137,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                112,
+                114,
+                124,
+                126,
+                136,
+                138,
+                148,
+                150,
+                160,
+                162,
                 172,
                 174,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
                 201,
                 203,
-                207,
-                209,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
-                196,
-                198,
                 202,
                 204,
+                183,
+                185,
+                195,
+                197,
+                207,
+                209,
+                184,
+                186,
+                196,
+                198,
                 208,
                 210
               ],
@@ -25747,7 +25781,8 @@
                 1499
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -25795,7 +25830,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 136,
+        "ms": 153,
         "scored": [
           {
             "sheet": "l0",
@@ -26270,7 +26305,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 123,
+        "ms": 127,
         "scored": [
           {
             "sheet": "l0",
@@ -26519,74 +26554,74 @@
               "evidence": [
                 113,
                 115,
-                119,
-                121,
                 125,
                 127,
-                114,
-                116,
-                120,
-                122,
-                126,
-                128,
-                131,
-                133,
                 137,
                 139,
-                143,
-                145,
-                132,
-                134,
-                138,
-                140,
-                144,
-                146,
                 149,
                 151,
-                155,
-                157,
                 161,
                 163,
-                167,
-                169,
                 173,
                 175,
-                179,
-                181,
+                114,
+                116,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                168,
-                170,
                 174,
                 176,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                155,
+                157,
+                167,
+                169,
+                179,
+                181,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
                 180,
                 182,
                 185,
                 187,
-                191,
-                193,
                 197,
                 199,
-                203,
-                205,
                 209,
                 211,
-                215,
-                217,
                 186,
                 188,
-                192,
-                194,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
+                191,
+                193,
+                203,
+                205,
+                215,
+                217,
+                192,
+                194,
+                204,
+                206,
                 216,
                 218
               ],
@@ -26990,7 +27025,8 @@
                 1574
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -27037,7 +27073,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 142,
+        "ms": 146,
         "scored": [
           {
             "sheet": "l0",
@@ -27512,7 +27548,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 124,
+        "ms": 134,
         "scored": [
           {
             "sheet": "l0",
@@ -27761,74 +27797,74 @@
               "evidence": [
                 113,
                 115,
-                119,
-                121,
                 125,
                 127,
-                114,
-                116,
-                120,
-                122,
-                126,
-                128,
-                131,
-                133,
                 137,
                 139,
-                143,
-                145,
-                132,
-                134,
-                138,
-                140,
-                144,
-                146,
                 149,
                 151,
-                155,
-                157,
                 161,
                 163,
-                167,
-                169,
                 173,
                 175,
-                179,
-                181,
+                114,
+                116,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                168,
-                170,
                 174,
                 176,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                155,
+                157,
+                167,
+                169,
+                179,
+                181,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
                 180,
                 182,
                 185,
                 187,
-                191,
-                193,
                 197,
                 199,
-                203,
-                205,
                 209,
                 211,
-                215,
-                217,
                 186,
                 188,
-                192,
-                194,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
+                191,
+                193,
+                203,
+                205,
+                215,
+                217,
+                192,
+                194,
+                204,
+                206,
                 216,
                 218
               ],
@@ -28232,7 +28268,8 @@
                 1574
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -28279,7 +28316,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 121,
+        "ms": 130,
         "scored": [
           {
             "sheet": "l0",
@@ -28754,7 +28791,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 114,
+        "ms": 121,
         "scored": [
           {
             "sheet": "l0",
@@ -29003,74 +29040,74 @@
               "evidence": [
                 110,
                 112,
-                116,
-                118,
                 122,
                 124,
-                111,
-                113,
-                117,
-                119,
-                123,
-                125,
-                128,
-                130,
                 134,
                 136,
-                140,
-                142,
-                129,
-                131,
-                135,
-                137,
-                141,
-                143,
                 146,
                 148,
-                152,
-                154,
                 158,
                 160,
-                164,
-                166,
                 170,
                 172,
-                176,
-                178,
+                111,
+                113,
+                123,
+                125,
+                135,
+                137,
                 147,
                 149,
-                153,
-                155,
                 159,
                 161,
-                165,
-                167,
                 171,
                 173,
+                116,
+                118,
+                128,
+                130,
+                140,
+                142,
+                152,
+                154,
+                164,
+                166,
+                176,
+                178,
+                117,
+                119,
+                129,
+                131,
+                141,
+                143,
+                153,
+                155,
+                165,
+                167,
                 177,
                 179,
                 182,
                 184,
-                188,
-                190,
                 194,
                 196,
-                200,
-                202,
                 206,
                 208,
-                212,
-                214,
                 183,
                 185,
-                189,
-                191,
                 195,
                 197,
-                201,
-                203,
                 207,
                 209,
+                188,
+                190,
+                200,
+                202,
+                212,
+                214,
+                189,
+                191,
+                201,
+                203,
                 213,
                 215
               ],
@@ -29498,7 +29535,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 136,
+        "ms": 131,
         "scored": [
           {
             "sheet": "l0",
@@ -29973,7 +30010,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 120,
+        "ms": 117,
         "scored": [
           {
             "sheet": "l0",
@@ -30222,74 +30259,74 @@
               "evidence": [
                 113,
                 115,
-                119,
-                121,
                 125,
                 127,
-                114,
-                116,
-                120,
-                122,
-                126,
-                128,
-                131,
-                133,
                 137,
                 139,
-                143,
-                145,
-                132,
-                134,
-                138,
-                140,
-                144,
-                146,
                 149,
                 151,
-                155,
-                157,
                 161,
                 163,
-                167,
-                169,
                 173,
                 175,
-                179,
-                181,
+                114,
+                116,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                168,
-                170,
                 174,
                 176,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                155,
+                157,
+                167,
+                169,
+                179,
+                181,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
                 180,
                 182,
                 185,
                 187,
-                191,
-                193,
                 197,
                 199,
-                203,
-                205,
                 209,
                 211,
-                215,
-                217,
                 186,
                 188,
-                192,
-                194,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
+                191,
+                193,
+                203,
+                205,
+                215,
+                217,
+                192,
+                194,
+                204,
+                206,
                 216,
                 218
               ],
@@ -30693,7 +30730,8 @@
                 1574
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -30740,7 +30778,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 123,
+        "ms": 153,
         "scored": [
           {
             "sheet": "l0",
@@ -31215,7 +31253,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 118,
+        "ms": 127,
         "scored": [
           {
             "sheet": "l0",
@@ -31464,74 +31502,74 @@
               "evidence": [
                 113,
                 115,
-                119,
-                121,
                 125,
                 127,
-                114,
-                116,
-                120,
-                122,
-                126,
-                128,
-                131,
-                133,
                 137,
                 139,
-                143,
-                145,
-                132,
-                134,
-                138,
-                140,
-                144,
-                146,
                 149,
                 151,
-                155,
-                157,
                 161,
                 163,
-                167,
-                169,
                 173,
                 175,
-                179,
-                181,
+                114,
+                116,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                168,
-                170,
                 174,
                 176,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                155,
+                157,
+                167,
+                169,
+                179,
+                181,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
                 180,
                 182,
                 185,
                 187,
-                191,
-                193,
                 197,
                 199,
-                203,
-                205,
                 209,
                 211,
-                215,
-                217,
                 186,
                 188,
-                192,
-                194,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
+                191,
+                193,
+                203,
+                205,
+                215,
+                217,
+                192,
+                194,
+                204,
+                206,
                 216,
                 218
               ],
@@ -31935,7 +31973,8 @@
                 1618
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -31982,7 +32021,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 137,
+        "ms": 132,
         "scored": [
           {
             "sheet": "l0",
@@ -32457,7 +32496,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 117,
+        "ms": 119,
         "scored": [
           {
             "sheet": "l0",
@@ -32706,74 +32745,74 @@
               "evidence": [
                 113,
                 115,
-                119,
-                121,
                 125,
                 127,
-                114,
-                116,
-                120,
-                122,
-                126,
-                128,
-                131,
-                133,
                 137,
                 139,
-                143,
-                145,
-                132,
-                134,
-                138,
-                140,
-                144,
-                146,
                 149,
                 151,
-                155,
-                157,
                 161,
                 163,
-                167,
-                169,
                 173,
                 175,
-                179,
-                181,
+                114,
+                116,
+                126,
+                128,
+                138,
+                140,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                168,
-                170,
                 174,
                 176,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                155,
+                157,
+                167,
+                169,
+                179,
+                181,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
                 180,
                 182,
                 185,
                 187,
-                191,
-                193,
                 197,
                 199,
-                203,
-                205,
                 209,
                 211,
-                215,
-                217,
                 186,
                 188,
-                192,
-                194,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
+                191,
+                193,
+                203,
+                205,
+                215,
+                217,
+                192,
+                194,
+                204,
+                206,
                 216,
                 218
               ],
@@ -33177,7 +33216,8 @@
                 1533
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -33224,7 +33264,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 125,
+        "ms": 153,
         "scored": [
           {
             "sheet": "l0",
@@ -33699,7 +33739,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 106,
+        "ms": 121,
         "scored": [
           {
             "sheet": "l0",
@@ -34419,7 +34459,8 @@
                 1254
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -34466,7 +34507,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 184,
+        "ms": 150,
         "scored": [
           {
             "sheet": "l0",
@@ -34941,7 +34982,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 134,
+        "ms": 140,
         "scored": [
           {
             "sheet": "l0",
@@ -35751,7 +35792,8 @@
                 1934
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -35798,7 +35840,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 145,
+        "ms": 133,
         "scored": [
           {
             "sheet": "l0",
@@ -36769,7 +36811,8 @@
                 402
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -36818,7 +36861,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 124,
+        "ms": 151,
         "scored": [
           {
             "sheet": "l0",
@@ -37293,7 +37336,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 122,
+        "ms": 138,
         "scored": [
           {
             "sheet": "l0",
@@ -38013,7 +38056,8 @@
                 1915
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -38060,7 +38104,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 139,
+        "ms": 176,
         "scored": [
           {
             "sheet": "l0",
@@ -38535,7 +38579,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 348,
+        "ms": 378,
         "scored": [
           {
             "sheet": "l0",
@@ -39255,7 +39299,8 @@
                 7250
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -39302,7 +39347,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 205,
+        "ms": 197,
         "scored": [
           {
             "sheet": "l0",
@@ -39777,7 +39822,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 127,
+        "ms": 196,
         "scored": [
           {
             "sheet": "l0",
@@ -40497,7 +40542,8 @@
                 1578
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -40544,7 +40590,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 138,
+        "ms": 165,
         "scored": [
           {
             "sheet": "l0",
@@ -41019,7 +41065,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 129,
+        "ms": 133,
         "scored": [
           {
             "sheet": "l0",
@@ -41781,7 +41827,8 @@
                 1743
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -41830,7 +41877,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 132,
+        "ms": 168,
         "scored": [
           {
             "sheet": "l0",
@@ -42305,7 +42352,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 111,
+        "ms": 131,
         "scored": [
           {
             "sheet": "l0",
@@ -43025,7 +43072,8 @@
                 1574
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -43072,7 +43120,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 141,
+        "ms": 161,
         "scored": [
           {
             "sheet": "l0",
@@ -43547,7 +43595,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 114,
+        "ms": 110,
         "scored": [
           {
             "sheet": "l0",
@@ -44219,7 +44267,8 @@
                 1430
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -44266,7 +44315,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 127,
+        "ms": 118,
         "scored": [
           {
             "sheet": "l0",
@@ -44741,7 +44790,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 135,
+        "ms": 128,
         "scored": [
           {
             "sheet": "l0",
@@ -45468,7 +45517,8 @@
                 1979
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -45517,7 +45567,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 129,
+        "ms": 163,
         "scored": [
           {
             "sheet": "l0",
@@ -46002,7 +46052,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 122,
+        "ms": 140,
         "scored": [
           {
             "sheet": "l0",
@@ -46764,7 +46814,8 @@
                 1743
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -46813,7 +46864,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 625,
+        "ms": 708,
         "scored": [
           {
             "sheet": "l0",
@@ -47116,7 +47167,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 173,
+        "ms": 171,
         "scored": [
           {
             "sheet": "gf",
@@ -47403,82 +47454,82 @@
               "evidence": [
                 120,
                 122,
-                126,
-                128,
                 132,
                 134,
-                138,
-                140,
                 144,
                 146,
-                121,
-                123,
-                127,
-                129,
-                133,
-                135,
-                139,
-                141,
-                145,
-                147,
-                150,
-                152,
                 156,
                 158,
-                162,
-                164,
                 168,
                 170,
-                174,
-                176,
-                151,
-                153,
+                121,
+                123,
+                133,
+                135,
+                145,
+                147,
                 157,
                 159,
-                163,
-                165,
                 169,
                 171,
+                126,
+                128,
+                138,
+                140,
+                150,
+                152,
+                162,
+                164,
+                174,
+                176,
+                127,
+                129,
+                139,
+                141,
+                151,
+                153,
+                163,
+                165,
                 175,
                 177,
                 180,
                 182,
-                186,
-                188,
                 192,
                 194,
-                198,
-                200,
                 204,
                 206,
-                181,
-                183,
-                187,
-                189,
-                193,
-                195,
-                199,
-                201,
-                205,
-                207,
-                210,
-                212,
                 216,
                 218,
-                222,
-                224,
                 228,
                 230,
-                234,
-                236,
-                211,
-                213,
+                181,
+                183,
+                193,
+                195,
+                205,
+                207,
                 217,
                 219,
-                223,
-                225,
                 229,
                 231,
+                186,
+                188,
+                198,
+                200,
+                210,
+                212,
+                222,
+                224,
+                234,
+                236,
+                187,
+                189,
+                199,
+                201,
+                211,
+                213,
+                223,
+                225,
                 235,
                 237
               ],
@@ -48083,7 +48134,8 @@
                 1153
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -48130,7 +48182,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 114,
+        "ms": 131,
         "scored": [
           {
             "sheet": "gf",
@@ -48389,7 +48441,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 159,
+        "ms": 178,
         "scored": [
           {
             "sheet": "gf",
@@ -48676,82 +48728,82 @@
               "evidence": [
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                142,
-                144,
-                148,
-                150,
-                154,
-                156,
-                160,
-                162,
-                166,
-                168,
-                171,
-                173,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
-                172,
-                174,
+                142,
+                144,
+                154,
+                156,
+                166,
+                168,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                183,
+                185,
+                195,
+                197,
+                148,
+                150,
+                160,
+                162,
+                172,
+                174,
+                184,
+                186,
                 196,
                 198,
                 201,
                 203,
-                207,
-                209,
                 213,
                 215,
-                219,
-                221,
                 225,
                 227,
-                202,
-                204,
-                208,
-                210,
-                214,
-                216,
-                220,
-                222,
-                226,
-                228,
-                231,
-                233,
                 237,
                 239,
-                243,
-                245,
                 249,
                 251,
-                255,
-                257,
-                232,
-                234,
+                202,
+                204,
+                214,
+                216,
+                226,
+                228,
                 238,
                 240,
-                244,
-                246,
                 250,
                 252,
+                207,
+                209,
+                219,
+                221,
+                231,
+                233,
+                243,
+                245,
+                255,
+                257,
+                208,
+                210,
+                220,
+                222,
+                232,
+                234,
+                244,
+                246,
                 256,
                 258
               ],
@@ -49356,7 +49408,8 @@
                 1210
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -49402,7 +49455,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 117,
+        "ms": 126,
         "scored": [
           {
             "sheet": "gf",
@@ -49661,7 +49714,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 150,
+        "ms": 171,
         "scored": [
           {
             "sheet": "gf",
@@ -49948,82 +50001,82 @@
               "evidence": [
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                142,
-                144,
-                148,
-                150,
-                154,
-                156,
-                160,
-                162,
-                166,
-                168,
-                171,
-                173,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
-                172,
-                174,
+                142,
+                144,
+                154,
+                156,
+                166,
+                168,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                183,
+                185,
+                195,
+                197,
+                148,
+                150,
+                160,
+                162,
+                172,
+                174,
+                184,
+                186,
                 196,
                 198,
                 201,
                 203,
-                207,
-                209,
                 213,
                 215,
-                219,
-                221,
                 225,
                 227,
-                202,
-                204,
-                208,
-                210,
-                214,
-                216,
-                220,
-                222,
-                226,
-                228,
-                231,
-                233,
                 237,
                 239,
-                243,
-                245,
                 249,
                 251,
-                255,
-                257,
-                232,
-                234,
+                202,
+                204,
+                214,
+                216,
+                226,
+                228,
                 238,
                 240,
-                244,
-                246,
                 250,
                 252,
+                207,
+                209,
+                219,
+                221,
+                231,
+                233,
+                243,
+                245,
+                255,
+                257,
+                208,
+                210,
+                220,
+                222,
+                232,
+                234,
+                244,
+                246,
                 256,
                 258
               ],
@@ -50628,7 +50681,8 @@
                 1210
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -50674,7 +50728,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 113,
+        "ms": 123,
         "scored": [
           {
             "sheet": "gf",
@@ -50933,7 +50987,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 167,
+        "ms": 160,
         "scored": [
           {
             "sheet": "gf",
@@ -51220,82 +51274,82 @@
               "evidence": [
                 138,
                 140,
-                144,
-                146,
                 150,
                 152,
-                156,
-                158,
                 162,
                 164,
-                139,
-                141,
-                145,
-                147,
-                151,
-                153,
-                157,
-                159,
-                163,
-                165,
-                168,
-                170,
                 174,
                 176,
-                180,
-                182,
                 186,
                 188,
-                192,
-                194,
-                169,
-                171,
+                139,
+                141,
+                151,
+                153,
+                163,
+                165,
                 175,
                 177,
-                181,
-                183,
                 187,
                 189,
+                144,
+                146,
+                156,
+                158,
+                168,
+                170,
+                180,
+                182,
+                192,
+                194,
+                145,
+                147,
+                157,
+                159,
+                169,
+                171,
+                181,
+                183,
                 193,
                 195,
                 198,
                 200,
-                204,
-                206,
                 210,
                 212,
-                216,
-                218,
                 222,
                 224,
-                199,
-                201,
-                205,
-                207,
-                211,
-                213,
-                217,
-                219,
-                223,
-                225,
-                228,
-                230,
                 234,
                 236,
-                240,
-                242,
                 246,
                 248,
-                252,
-                254,
-                229,
-                231,
+                199,
+                201,
+                211,
+                213,
+                223,
+                225,
                 235,
                 237,
-                241,
-                243,
                 247,
                 249,
+                204,
+                206,
+                216,
+                218,
+                228,
+                230,
+                240,
+                242,
+                252,
+                254,
+                205,
+                207,
+                217,
+                219,
+                229,
+                231,
+                241,
+                243,
                 253,
                 255
               ],
@@ -51835,7 +51889,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 135,
+        "ms": 128,
         "scored": [
           {
             "sheet": "gf",
@@ -52094,7 +52148,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 177,
+        "ms": 168,
         "scored": [
           {
             "sheet": "gf",
@@ -52381,82 +52435,82 @@
               "evidence": [
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                142,
-                144,
-                148,
-                150,
-                154,
-                156,
-                160,
-                162,
-                166,
-                168,
-                171,
-                173,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
-                172,
-                174,
+                142,
+                144,
+                154,
+                156,
+                166,
+                168,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                183,
+                185,
+                195,
+                197,
+                148,
+                150,
+                160,
+                162,
+                172,
+                174,
+                184,
+                186,
                 196,
                 198,
                 201,
                 203,
-                207,
-                209,
                 213,
                 215,
-                219,
-                221,
                 225,
                 227,
-                202,
-                204,
-                208,
-                210,
-                214,
-                216,
-                220,
-                222,
-                226,
-                228,
-                231,
-                233,
                 237,
                 239,
-                243,
-                245,
                 249,
                 251,
-                255,
-                257,
-                232,
-                234,
+                202,
+                204,
+                214,
+                216,
+                226,
+                228,
                 238,
                 240,
-                244,
-                246,
                 250,
                 252,
+                207,
+                209,
+                219,
+                221,
+                231,
+                233,
+                243,
+                245,
+                255,
+                257,
+                208,
+                210,
+                220,
+                222,
+                232,
+                234,
+                244,
+                246,
                 256,
                 258
               ],
@@ -53061,7 +53115,8 @@
                 1210
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -53107,7 +53162,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 117,
+        "ms": 125,
         "scored": [
           {
             "sheet": "gf",
@@ -53366,7 +53421,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 152,
+        "ms": 167,
         "scored": [
           {
             "sheet": "gf",
@@ -53653,82 +53708,82 @@
               "evidence": [
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                142,
-                144,
-                148,
-                150,
-                154,
-                156,
-                160,
-                162,
-                166,
-                168,
-                171,
-                173,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
-                172,
-                174,
+                142,
+                144,
+                154,
+                156,
+                166,
+                168,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                183,
+                185,
+                195,
+                197,
+                148,
+                150,
+                160,
+                162,
+                172,
+                174,
+                184,
+                186,
                 196,
                 198,
                 201,
                 203,
-                207,
-                209,
                 213,
                 215,
-                219,
-                221,
                 225,
                 227,
-                202,
-                204,
-                208,
-                210,
-                214,
-                216,
-                220,
-                222,
-                226,
-                228,
-                231,
-                233,
                 237,
                 239,
-                243,
-                245,
                 249,
                 251,
-                255,
-                257,
-                232,
-                234,
+                202,
+                204,
+                214,
+                216,
+                226,
+                228,
                 238,
                 240,
-                244,
-                246,
                 250,
                 252,
+                207,
+                209,
+                219,
+                221,
+                231,
+                233,
+                243,
+                245,
+                255,
+                257,
+                208,
+                210,
+                220,
+                222,
+                232,
+                234,
+                244,
+                246,
                 256,
                 258
               ],
@@ -54333,7 +54388,8 @@
                 1234
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -54379,7 +54435,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 291,
+        "ms": 120,
         "scored": [
           {
             "sheet": "gf",
@@ -54638,7 +54694,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 220,
+        "ms": 163,
         "scored": [
           {
             "sheet": "gf",
@@ -54925,82 +54981,82 @@
               "evidence": [
                 141,
                 143,
-                147,
-                149,
                 153,
                 155,
-                159,
-                161,
                 165,
                 167,
-                142,
-                144,
-                148,
-                150,
-                154,
-                156,
-                160,
-                162,
-                166,
-                168,
-                171,
-                173,
                 177,
                 179,
-                183,
-                185,
                 189,
                 191,
-                195,
-                197,
-                172,
-                174,
+                142,
+                144,
+                154,
+                156,
+                166,
+                168,
                 178,
                 180,
-                184,
-                186,
                 190,
                 192,
+                147,
+                149,
+                159,
+                161,
+                171,
+                173,
+                183,
+                185,
+                195,
+                197,
+                148,
+                150,
+                160,
+                162,
+                172,
+                174,
+                184,
+                186,
                 196,
                 198,
                 201,
                 203,
-                207,
-                209,
                 213,
                 215,
-                219,
-                221,
                 225,
                 227,
-                202,
-                204,
-                208,
-                210,
-                214,
-                216,
-                220,
-                222,
-                226,
-                228,
-                231,
-                233,
                 237,
                 239,
-                243,
-                245,
                 249,
                 251,
-                255,
-                257,
-                232,
-                234,
+                202,
+                204,
+                214,
+                216,
+                226,
+                228,
                 238,
                 240,
-                244,
-                246,
                 250,
                 252,
+                207,
+                209,
+                219,
+                221,
+                231,
+                233,
+                243,
+                245,
+                255,
+                257,
+                208,
+                210,
+                220,
+                222,
+                232,
+                234,
+                244,
+                246,
                 256,
                 258
               ],
@@ -55605,7 +55661,8 @@
                 1187
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -55651,7 +55708,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 127,
+        "ms": 119,
         "scored": [
           {
             "sheet": "gf",
@@ -55910,7 +55967,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 228,
+        "ms": 151,
         "scored": [
           {
             "sheet": "gf",
@@ -56877,7 +56934,8 @@
                 990
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -56923,7 +56981,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 136,
+        "ms": 125,
         "scored": [
           {
             "sheet": "gf",
@@ -57182,7 +57240,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 1181,
+        "ms": 155,
         "scored": [
           {
             "sheet": "gf",
@@ -58169,7 +58227,8 @@
                 1250
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -58215,7 +58274,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 270,
+        "ms": 127,
         "scored": [
           {
             "sheet": "gf",
@@ -59125,7 +59184,8 @@
                 1218
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -59173,7 +59233,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 124,
+        "ms": 125,
         "scored": [
           {
             "sheet": "gf",
@@ -59432,7 +59492,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 267,
+        "ms": 165,
         "scored": [
           {
             "sheet": "gf",
@@ -60399,7 +60459,8 @@
                 1441
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -60445,7 +60506,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 130,
+        "ms": 129,
         "scored": [
           {
             "sheet": "gf",
@@ -60704,7 +60765,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 372,
+        "ms": 334,
         "scored": [
           {
             "sheet": "gf",
@@ -61671,7 +61732,8 @@
                 5190
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -61717,7 +61779,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 168,
+        "ms": 158,
         "scored": [
           {
             "sheet": "gf",
@@ -61976,7 +62038,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 191,
+        "ms": 161,
         "scored": [
           {
             "sheet": "gf",
@@ -62943,7 +63005,8 @@
                 1212
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -62989,7 +63052,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 133,
+        "ms": 145,
         "scored": [
           {
             "sheet": "gf",
@@ -63248,7 +63311,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 181,
+        "ms": 161,
         "scored": [
           {
             "sheet": "gf",
@@ -64243,7 +64306,8 @@
                 1303
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -64291,7 +64355,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 143,
+        "ms": 127,
         "scored": [
           {
             "sheet": "gf",
@@ -64550,7 +64614,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 182,
+        "ms": 164,
         "scored": [
           {
             "sheet": "gf",
@@ -65517,7 +65581,8 @@
                 1210
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -65563,7 +65628,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 129,
+        "ms": 162,
         "scored": [
           {
             "sheet": "gf",
@@ -65822,7 +65887,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 154,
+        "ms": 200,
         "scored": [
           {
             "sheet": "gf",
@@ -66720,7 +66785,8 @@
                 1114
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -66766,7 +66832,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 147,
+        "ms": 304,
         "scored": [
           {
             "sheet": "gf",
@@ -67025,7 +67091,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 195,
+        "ms": 170,
         "scored": [
           {
             "sheet": "gf",
@@ -67999,7 +68065,8 @@
                 1483
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -68047,7 +68114,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 157,
+        "ms": 135,
         "scored": [
           {
             "sheet": "gf",
@@ -68316,7 +68383,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 218,
+        "ms": 223,
         "scored": [
           {
             "sheet": "gf",
@@ -69311,7 +69378,8 @@
                 1303
               ],
               "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count"
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
             }
           ],
           "notes": [
@@ -69359,7 +69427,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 518,
+        "ms": 413,
         "scored": [
           {
             "sheet": "gf",
@@ -70113,7 +70181,7 @@
     }
   },
   "ogudu": {
-    "ms": 2540,
+    "ms": 2526,
     "scaleToMm": 1,
     "scaleConfidence": 0.98,
     "walls": [
@@ -71178,7 +71246,8 @@
           51497
         ],
         "reason": "from an elevation; faces overlap between views",
-        "crossCheck": "reconcile with the window schedule and the plan count"
+        "crossCheck": "reconcile with the window schedule and the plan count",
+        "noteOnly": true
       },
       {
         "trade": "windows",
@@ -71294,7 +71363,8 @@
           58393
         ],
         "reason": "from an elevation; faces overlap between views",
-        "crossCheck": "reconcile with the window schedule and the plan count"
+        "crossCheck": "reconcile with the window schedule and the plan count",
+        "noteOnly": true
       },
       {
         "trade": "windows",
@@ -71433,7 +71503,8 @@
           54087
         ],
         "reason": "from an elevation; faces overlap between views",
-        "crossCheck": "reconcile with the window schedule and the plan count"
+        "crossCheck": "reconcile with the window schedule and the plan count",
+        "noteOnly": true
       },
       {
         "trade": "windows",
@@ -71572,7 +71643,8 @@
           57536
         ],
         "reason": "from an elevation; faces overlap between views",
-        "crossCheck": "reconcile with the window schedule and the plan count"
+        "crossCheck": "reconcile with the window schedule and the plan count",
+        "noteOnly": true
       }
     ]
   }
