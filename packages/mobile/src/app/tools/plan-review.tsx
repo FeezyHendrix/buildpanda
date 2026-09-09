@@ -1,8 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
-import { uploadProjectFile } from "@/api/files";
 import { participantsApi, toAssignees, type CommentAssignee } from "@/api/participants";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
@@ -11,9 +10,7 @@ import { MarkupPanel } from "@/components/plan-review/markup-panel";
 import {
   ALL_LAYERS_VISIBLE,
   MARKUP_KIND,
-  MEDIA_KIND,
   SHEET_TOOL,
-  type CommentDraft,
   type MarkupGeometry,
   type MarkupPoint,
   type SheetMarkup,
@@ -21,19 +18,20 @@ import {
   type SheetLayer,
   type SheetTool,
 } from "@/components/plan-review/markup-types";
-import { SheetControls, SheetPager, ToolHint } from "@/components/plan-review/sheet-controls";
+import { PendingSyncPill, SheetControls, SheetPager, ToolHint } from "@/components/plan-review/sheet-controls";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
 import { SheetStrip } from "@/components/plan-review/sheet-strip";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
 import { DOCUMENT_GROUP } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
+import { drawingMarkupsRepository, toMarkup } from "@/db/drawing-markups-repository";
+import { flushOutbox } from "@/db/outbox";
 import { useLocalDocuments } from "@/hooks/use-local-documents";
 import { useFieldSession } from "@/lib/field-session";
 import { useSheetSource } from "@/hooks/use-sheet-source";
+import { useMarkupActions } from "@/hooks/use-markup-actions";
 
-const VOICE_NOTE_FILE = { name: "voice-note.m4a", mime: "audio/m4a" } as const;
-const VIDEO_NOTE_FILE = { name: "site-video.mov", mime: "video/quicktime" } as const;
 
 export default function PlanReview() {
   const { projectId } = useFieldSession();
@@ -77,7 +75,6 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   const [markups, setMarkups] = useState<DrawingMarkup[]>([]);
   const [assignees, setAssignees] = useState<CommentAssignee[]>([]);
   const [renderInfo, setRenderInfo] = useState<SheetRenderInfo | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const sheetId = activeSheet?.id;
@@ -86,23 +83,55 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
 
   const { source } = useSheetSource(db, projectId, sheetId, fileName, setError);
 
-  useEffect(() => {
+  const actions = useMarkupActions({
+    db,
+    projectId,
+    sheetId,
+    versionId,
+    pageNo,
+    onChanged: () => readLocal(),
+    onError: setError,
+  });
+
+  const readLocal = useCallback(async () => {
     if (!versionId) return;
+    const rows = await drawingMarkupsRepository.pageQuery(db, versionId, pageNo);
+    setMarkups(rows.map(toMarkup).filter((m): m is NonNullable<typeof m> => m !== null));
+  }, [db, versionId, pageNo]);
+
+  // Local first, so a sheet marked up in a basement still shows its markups.
+  // The server's copy refreshes what is not still queued; losing signal here is
+  // not an error, it is the normal case this app is built for.
+  useEffect(() => {
+    if (!versionId || !sheetId) return;
     let cancelled = false;
+    void readLocal();
     drawingMarkupApi
       .listForVersion(projectId, versionId, pageNo)
-      .then((rows) => {
-        if (!cancelled) setMarkups(rows);
-      })
-      .catch((err: unknown) => {
+      .then(async (rows) => {
         if (cancelled) return;
-        console.error("markup list failed", err);
-        setError("Couldn't load markups. Review needs a connection.");
-      });
+        await drawingMarkupsRepository.replacePage(
+          db,
+          versionId,
+          pageNo,
+          rows.map((r) => ({
+            id: r.id,
+            projectId,
+            documentId: r.documentId,
+            documentVersionId: r.documentVersionId,
+            pageNo: r.pageNo,
+            kind: r.kind,
+            geometry: r.geometry,
+            color: r.color,
+          })),
+        );
+        if (!cancelled) await readLocal();
+      })
+      .catch((err: unknown) => console.warn("markup refresh deferred, working from the local copy", err));
     return () => {
       cancelled = true;
     };
-  }, [projectId, versionId, pageNo]);
+  }, [db, projectId, versionId, sheetId, pageNo, readLocal]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +145,11 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
       cancelled = true;
     };
   }, [projectId]);
+
+  const pendingCount = useMemo(
+    () => markups.filter((m) => (m as { isPendingSync?: boolean }).isPendingSync).length,
+    [markups],
+  );
 
   const layerCounts = useMemo(
     () => ({
@@ -157,107 +191,23 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
 
   async function persistMarkup(geometry: MarkupGeometry) {
     if (!sheetId || !versionId) return;
-    setBusy(true);
     setError(null);
     try {
-      const created = await drawingMarkupApi.create(projectId, {
+      const id = await drawingMarkupsRepository.createLocal(db, {
+        projectId,
         documentId: sheetId,
         documentVersionId: versionId,
         pageNo,
         kind: geometry.kind,
         geometry: { ...geometry, space: "percent" },
       });
-      setMarkups((prev) => [...prev, created]);
-      setSelectedId(created.id);
+      await readLocal();
+      setSelectedId(id);
+      // push now when there is signal; the outbox keeps it when there is not
+      void flushOutbox(db).then(readLocal);
     } catch (err) {
       console.error("markup create failed", err);
       setError(err instanceof Error && err.message ? err.message : "Couldn't save that markup.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitComment(draft: CommentDraft) {
-    if (!sheetId || !versionId || !pendingAnchor) return;
-    setBusy(true);
-    setError(null);
-    try {
-      let fileId: string | null = null;
-      if (draft.mediaUri && draft.mediaKind) {
-        const media = draft.mediaKind === MEDIA_KIND.AUDIO ? VOICE_NOTE_FILE : VIDEO_NOTE_FILE;
-        const uploaded = await uploadProjectFile(projectId, draft.mediaUri, media.name, media.mime);
-        fileId = uploaded.id;
-      }
-      const created = await drawingMarkupApi.create(projectId, {
-        documentId: sheetId,
-        documentVersionId: versionId,
-        pageNo,
-        kind: MARKUP_KIND.PIN,
-        geometry: { kind: MARKUP_KIND.PIN, at: pendingAnchor },
-      });
-      const comment = await drawingMarkupApi.addComment(projectId, created.id, {
-        body: draft.text,
-        mediaKind: draft.mediaKind,
-        fileId,
-        mediaDurationSeconds: draft.mediaDurationSeconds,
-        assigneeId: draft.assigneeId,
-      });
-      setMarkups((prev) => [...prev, { ...created, comments: [comment] }]);
-      setPendingAnchor(null);
-      setSelectedId(created.id);
-    } catch (err) {
-      console.error("comment create failed", err);
-      setError(err instanceof Error && err.message ? err.message : "Couldn't save that comment.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleAddComment(body: string) {
-    if (!selected) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const comment = await drawingMarkupApi.addComment(projectId, selected.id, { body });
-      setMarkups((prev) =>
-        prev.map((m) => (m.id === selected.id ? { ...m, comments: [...m.comments, comment] } : m)),
-      );
-    } catch (err) {
-      console.error("markup comment failed", err);
-      setError(err instanceof Error && err.message ? err.message : "Couldn't post that comment.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleResolve(resolved: boolean) {
-    if (!selected) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await drawingMarkupApi.setResolved(projectId, selected.id, resolved);
-      setMarkups((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-    } catch (err) {
-      console.error("markup resolve failed", err);
-      setError(err instanceof Error && err.message ? err.message : "Couldn't update that markup.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!selected) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await drawingMarkupApi.remove(projectId, selected.id);
-      setMarkups((prev) => prev.filter((m) => m.id !== selected.id));
-      setSelectedId(null);
-    } catch (err) {
-      console.error("markup delete failed", err);
-      setError(err instanceof Error && err.message ? err.message : "Couldn't delete that markup.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -265,12 +215,18 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     return (
       <Page title="Plan review" onBack={() => router.back()} scroll={false}>
         <View className="items-center py-12">
-          <Text weight="semibold" className="text-base">
-            No plans to review
-          </Text>
-          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            {plans.isPending ? "Loading plans…" : "Drawings uploaded to this project will appear here."}
-          </Text>
+          {plans.isPending ? (
+            <Spinner size="md" />
+          ) : (
+            <>
+              <Text weight="semibold" className="text-center text-base">
+                No plans to review
+              </Text>
+              <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+                Drawings uploaded to this project will appear here.
+              </Text>
+            </>
+          )}
         </View>
       </Page>
     );
@@ -279,17 +235,17 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   const sidebar = pendingAnchor ? (
     <CommentComposer
       assignees={assignees}
-      busy={busy}
+      busy={actions.busy}
       onCancel={() => setPendingAnchor(null)}
-      onSubmit={(draft) => void submitComment(draft)}
+      onSubmit={(draft) => { if (pendingAnchor) void actions.submitComment(draft, pendingAnchor, (id) => { setPendingAnchor(null); setSelectedId(id); }); }}
     />
   ) : selected ? (
     <MarkupPanel
       markup={selected}
-      busy={busy}
-      onAddComment={(body) => void handleAddComment(body)}
-      onResolve={(resolved) => void handleResolve(resolved)}
-      onDelete={() => void handleDelete()}
+      busy={actions.busy}
+      onAddComment={(body) => void actions.addComment(selected, body)}
+      onResolve={(resolved) => void actions.setResolved(selected, resolved)}
+      onDelete={() => void actions.remove(selected, () => setSelectedId(null))}
       onClose={() => setSelectedId(null)}
       onError={setError}
     />
@@ -311,7 +267,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
         ) : null}
 
         <View className={sidePanel ? "flex-1 flex-row" : "flex-1"}>
-          <View className="flex-1 bg-[#EDEDED]">
+          <View className="flex-1 bg-grey-50">
             {source && versionId ? (
               <SheetCanvas
                 dom={{ style: { flex: 1 } }}
@@ -339,6 +295,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
                 </Text>
               </View>
             )}
+            <PendingSyncPill count={pendingCount} />
             <SheetControls
               tool={tool}
               onSelectTool={setTool}

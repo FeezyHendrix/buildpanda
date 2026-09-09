@@ -214,6 +214,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
       </View>
 
       <WorkspaceSheet
+        title="Choose a building"
         visible={buildingPickerOpen}
         workspaces={buildings.map((building) => ({
           id: building.id,

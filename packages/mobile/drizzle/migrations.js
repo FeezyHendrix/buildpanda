@@ -16,6 +16,7 @@ import m0011 from './0011_daily_log_building.sql';
 import m0012 from './0012_rfi_question_html.sql';
 import m0013 from './0013_material_order_phase.sql';
 import m0014 from './0014_material_approvals.sql';
+import m0015 from './0015_black_luke_cage.sql';
 
   export default {
     journal,
@@ -34,7 +35,8 @@ m0010,
 m0011,
 m0012,
 m0013,
-m0014
+m0014,
+m0015
     }
   }
   

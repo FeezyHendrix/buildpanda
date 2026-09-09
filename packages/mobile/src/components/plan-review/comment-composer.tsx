@@ -124,7 +124,7 @@ export function CommentComposer({
         placeholder={mode === COMMENT_MODE.TEXT ? "What needs attention here?" : "Add a caption (optional)"}
         placeholderTextColor="#ADADAD"
         multiline
-        className="mt-2 max-h-24 min-h-11 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-ink"
+        className="mt-2 max-h-24 min-h-11 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-black-500"
         style={{ fontFamily: "PlusJakartaSans_400Regular" }}
       />
 
@@ -193,7 +193,7 @@ export function CommentComposer({
                     accessibilityRole="button"
                     className={`h-9 items-center justify-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
                   >
-                    <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-ink-secondary"}`}>
+                    <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-grey-400"}`}>
                       {person.name}
                     </Text>
                   </Pressable>
@@ -221,7 +221,7 @@ export function CommentComposer({
           className={`h-11 flex-row items-center gap-2 rounded-full px-5 ${canSubmit ? "bg-primary-500" : "bg-surface-alt"}`}
         >
           {busy ? <Spinner size="xs" tone="current" /> : null}
-          <Text weight="semibold" className={`text-[13px] ${canSubmit ? "text-white" : "text-ink-secondary"}`}>
+          <Text weight="semibold" className={`text-[13px] ${canSubmit ? "text-white" : "text-grey-400"}`}>
             Save comment
           </Text>
         </Pressable>

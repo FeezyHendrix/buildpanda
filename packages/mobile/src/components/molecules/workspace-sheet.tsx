@@ -11,6 +11,8 @@ export interface WorkspaceOption {
 
 interface WorkspaceSheetProps {
   visible: boolean;
+  /** What this sheet is choosing. It is reused to pick a building, not only a workspace. */
+  title?: string;
   workspaces: readonly WorkspaceOption[];
   activeId: string | undefined;
   busyId?: string;
@@ -25,6 +27,7 @@ interface WorkspaceSheetProps {
  */
 export function WorkspaceSheet({
   visible,
+  title = "Switch workspace",
   workspaces,
   activeId,
   busyId,
@@ -52,14 +55,14 @@ export function WorkspaceSheet({
 
           <View className="flex-row items-center px-5 pb-2 pt-4">
             <Text weight="bold" className="flex-1 text-lg">
-              Switch workspace
+              {title}
             </Text>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close"
               hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-full active:bg-surface-alt"
+              className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
             >
               <Ionicons name="close" size={20} color="#717171" />
             </Pressable>
