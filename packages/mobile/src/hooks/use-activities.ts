@@ -12,3 +12,13 @@ export function useActivities(projectId: string | undefined, enabled = true) {
     enabled: enabled && Boolean(projectId),
   });
 }
+
+/** The delay reasons a crew member can pick when work did not go to plan. */
+export function useDelayReasons() {
+  const { storageOwnerId } = useFieldSession();
+  return usePersistentQuery({
+    queryKey: ["delay-reasons"],
+    ownerId: storageOwnerId,
+    queryFn: activitiesApi.delayReasons,
+  });
+}
