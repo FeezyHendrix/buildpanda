@@ -2,7 +2,7 @@ import { and, asc, eq, lte } from "drizzle-orm";
 import type { Db } from "./client";
 import { pushChangeRequestOutboxItem } from "./outbox-change-requests";
 import { pushDailyLogOutboxItem } from "./outbox-daily-logs";
-import { pushDrawingMarkupOutboxItem } from "./outbox-drawing-markups";
+import { pushDrawingMarkupCommentOutboxItem, pushDrawingMarkupOutboxItem } from "./outbox-drawing-markups";
 import { pushLookAheadOutboxItem } from "./outbox-look-aheads";
 import { pushMaterialApprovalOutboxItem } from "./outbox-material-approvals";
 import { pushMaterialOrderOutboxItem } from "./outbox-material-orders";
@@ -45,6 +45,7 @@ async function pushOutboxItem(db: Db, item: OutboxRow): Promise<boolean> {
   for (const handler of [
     pushChangeRequestOutboxItem,
     pushDrawingMarkupOutboxItem,
+    pushDrawingMarkupCommentOutboxItem,
     pushLookAheadOutboxItem,
     pushMaterialOrderOutboxItem,
     pushMaterialApprovalOutboxItem,

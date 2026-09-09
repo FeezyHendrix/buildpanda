@@ -1,18 +1,17 @@
 import { useState } from "react";
+import { randomUUID } from "expo-crypto";
 import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
-import { uploadProjectFile } from "@/api/files";
-import { MEDIA_KIND, type CommentDraft, type MarkupPoint } from "@/components/plan-review/markup-types";
+import { MEDIA_KIND, MARKUP_KIND, type CommentDraft, type MarkupPoint } from "@/components/plan-review/markup-types";
 import { drawingMarkupsRepository } from "@/db/drawing-markups-repository";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
+import { stageMedia } from "@/lib/stage-media";
 
-// What a reviewer does to a markup once it exists: comment on it, resolve it,
-// remove it. A comment still needs signal, because its voice or video note is
-// uploaded before the comment is written and this app has no local staging for
-// media yet; the geometry itself is queued and never lost.
-
-const VOICE_NOTE_FILE = { name: "voice-note.m4a", mime: "audio/m4a" } as const;
-const VIDEO_NOTE_FILE = { name: "site-video.mov", mime: "video/quicktime" } as const;
+// What a reviewer does to a markup: comment on it, resolve it, remove it.
+// Everything a crew member creates is written locally and queued, including a
+// voice or video note, which is staged on disk and uploaded when signal
+// returns. Resolving and deleting a markup the server already knows about
+// still need a connection, because they act on the server's own record.
 
 export interface MarkupActionsContext {
   db: Db;
@@ -46,38 +45,41 @@ export function useMarkupActions(ctx: MarkupActionsContext) {
   return {
     busy,
 
-    /** A pinned comment: the pin, its media, and the first comment. */
+    /** A pinned comment: the pin, its note, and any recording, all queued. */
     async submitComment(draft: CommentDraft, at: MarkupPoint, onPlaced: (markupId: string) => void) {
       if (!ctx.sheetId || !ctx.versionId) return;
       await run(async () => {
-        let fileId: string | null = null;
-        if (draft.mediaUri && draft.mediaKind) {
-          const media = draft.mediaKind === MEDIA_KIND.AUDIO ? VOICE_NOTE_FILE : VIDEO_NOTE_FILE;
-          fileId = (await uploadProjectFile(ctx.projectId, draft.mediaUri, media.name, media.mime)).id;
-        }
-        const created = await drawingMarkupApi.create(ctx.projectId, {
+        const markupId = await drawingMarkupsRepository.createLocal(ctx.db, {
+          projectId: ctx.projectId,
           documentId: ctx.sheetId!,
           documentVersionId: ctx.versionId!,
           pageNo: ctx.pageNo,
-          kind: "pin",
+          kind: MARKUP_KIND.PIN,
           geometry: { kind: "pin", at, space: "percent" },
         });
-        await drawingMarkupApi.addComment(ctx.projectId, created.id, {
+        // the recording is copied somewhere durable now; it uploads when there is signal
+        const staged =
+          draft.mediaUri && draft.mediaKind
+            ? stageMedia(draft.mediaUri, randomUUID(), draft.mediaKind === MEDIA_KIND.AUDIO ? "voice-note.m4a" : "site-video.mov")
+            : null;
+        await drawingMarkupsRepository.addCommentLocal(ctx.db, markupId, ctx.projectId, {
           body: draft.text,
           mediaKind: draft.mediaKind,
-          fileId,
+          stagedMediaUri: staged,
           mediaDurationSeconds: draft.mediaDurationSeconds,
           assigneeId: draft.assigneeId,
         });
         await ctx.onChanged();
-        onPlaced(created.id);
+        onPlaced(markupId);
+        void flushOutbox(ctx.db).then(() => ctx.onChanged());
       }, "Couldn't save that comment.");
     },
 
     async addComment(markup: DrawingMarkup, body: string) {
       await run(async () => {
-        await drawingMarkupApi.addComment(ctx.projectId, markup.id, { body });
+        await drawingMarkupsRepository.addCommentLocal(ctx.db, markup.id, ctx.projectId, { body });
         await ctx.onChanged();
+        void flushOutbox(ctx.db).then(() => ctx.onChanged());
       }, "Couldn't post that comment.");
     },
 

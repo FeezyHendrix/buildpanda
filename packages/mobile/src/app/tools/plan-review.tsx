@@ -25,7 +25,7 @@ import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
 import { DOCUMENT_GROUP } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
-import { drawingMarkupsRepository, toMarkup } from "@/db/drawing-markups-repository";
+import { drawingMarkupsRepository } from "@/db/drawing-markups-repository";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDocuments } from "@/hooks/use-local-documents";
 import { useFieldSession } from "@/lib/field-session";
@@ -95,8 +95,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
 
   const readLocal = useCallback(async () => {
     if (!versionId) return;
-    const rows = await drawingMarkupsRepository.pageQuery(db, versionId, pageNo);
-    setMarkups(rows.map(toMarkup).filter((m): m is NonNullable<typeof m> => m !== null));
+    setMarkups(await drawingMarkupsRepository.pageWithComments(db, versionId, pageNo));
   }, [db, versionId, pageNo]);
 
   // Local first, so a sheet marked up in a basement still shows its markups.
@@ -123,6 +122,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
             kind: r.kind,
             geometry: r.geometry,
             color: r.color,
+            comments: r.comments,
           })),
         );
         if (!cancelled) await readLocal();
@@ -147,7 +147,9 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   }, [projectId]);
 
   const pendingCount = useMemo(
-    () => markups.filter((m) => (m as { isPendingSync?: boolean }).isPendingSync).length,
+    () =>
+      markups.filter((m) => (m as { isPendingSync?: boolean }).isPendingSync).length +
+      markups.reduce((n, m) => n + m.comments.filter((c) => (c as { isPendingSync?: boolean }).isPendingSync).length, 0),
     [markups],
   );
 

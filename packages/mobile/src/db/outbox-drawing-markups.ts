@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drawingMarkupApi } from "@/api/drawing-markup";
+import { uploadProjectFile } from "@/api/files";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import type { Db } from "./client";
 import { drawingMarkupsRepository } from "./drawing-markups-repository";
@@ -30,6 +31,45 @@ export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Prom
     color: row.color,
   });
   await drawingMarkupsRepository.reconcileCreate(db, row.id, server.id);
+  // comments queued against the local id now belong to the server's
+  await drawingMarkupsRepository.repointComments(db, row.id, server.id);
+  await db.delete(outbox).where(eq(outbox.id, item.id));
+  return done(true);
+}
+
+/**
+ * A comment, and the voice or video note that came with it.
+ *
+ * The media was staged on disk when the crew member recorded it, so the upload
+ * happens here, when there is signal, rather than being required at the moment
+ * they spoke. A comment whose markup has not been pushed yet waits: its parent
+ * carries the newer id.
+ */
+export async function pushDrawingMarkupCommentOutboxItem(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
+  if (item.resource !== "drawing-markup-comments") return skipped;
+
+  const comment = await drawingMarkupsRepository.commentById(db, item.entityId);
+  if (!comment) {
+    await db.delete(outbox).where(eq(outbox.id, item.id));
+    return done(false);
+  }
+  if (comment.markupId.startsWith("local_")) return done(false);
+
+  let fileId: string | null = null;
+  if (comment.stagedMediaUri && comment.mediaKind) {
+    const name = comment.mediaKind === "audio" ? "voice-note.m4a" : "site-video.mov";
+    const mime = comment.mediaKind === "audio" ? "audio/m4a" : "video/quicktime";
+    fileId = (await uploadProjectFile(item.projectId, comment.stagedMediaUri, name, mime)).id;
+  }
+
+  await drawingMarkupApi.addComment(item.projectId, comment.markupId, {
+    body: comment.body,
+    mediaKind: comment.mediaKind as never,
+    fileId,
+    mediaDurationSeconds: comment.mediaDurationSeconds,
+    assigneeId: comment.assigneeId,
+  });
+  await drawingMarkupsRepository.markCommentSynced(db, comment.id, comment.stagedMediaUri);
   await db.delete(outbox).where(eq(outbox.id, item.id));
   return done(true);
 }
