@@ -1,6 +1,6 @@
 # Take-off benchmark
 
-Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
+Generated 2026-09-09T15:41:52.536Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
 
 ## Totals
 
@@ -131,7 +131,7 @@ Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengt
 
 ```json
 {
- "ms": 3595,
+ "ms": 1892,
  "scaleToMm": 1,
  "scaleConfidence": 0.98,
  "walls": [
@@ -197,6 +197,13 @@ Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengt
    "widthM": 24.6,
    "heightM": 24.6,
    "entityCount": 1863
+  },
+  {
+   "id": 8,
+   "kind": "roof-plan",
+   "widthM": 37.4,
+   "heightM": 29.8,
+   "entityCount": 73
   },
   {
    "id": 2,
@@ -276,13 +283,6 @@ Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengt
    "entityCount": 16191
   },
   {
-   "id": 8,
-   "kind": "unknown",
-   "widthM": 37.4,
-   "heightM": 29.8,
-   "entityCount": 73
-  },
-  {
    "id": 18,
    "kind": "unknown",
    "widthM": 61.1,
@@ -297,7 +297,7 @@ Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengt
    "quantity": 1341.36,
    "unit": "m2",
    "confidence": "high",
-   "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 90.72 m² for 62 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-15). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
+   "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 90.72 m² for 62 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-16). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
    "sheetId": 0,
    "evidence": [
     37151,
@@ -378,5 +378,5 @@ Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengt
     40158,
     40425,
     40426,
-    40338
+    403
 ```

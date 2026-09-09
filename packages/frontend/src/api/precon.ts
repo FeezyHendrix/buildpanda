@@ -49,7 +49,7 @@ export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
 
 export const ROW_ORIGINS = ["ai", "manual", "prompt", "migrated"] as const;
 export type RowOrigin = (typeof ROW_ORIGINS)[number];
-export type PreconSheetKind = "floor-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
+export type PreconSheetKind = "floor-plan" | "roof-plan" | "elevation" | "section" | "detail" | "schedule" | "unknown";
 
 export const PRECON_ROW_TYPES = ["heading", "work_section", "spec_note", "item", "provisional_sum"] as const;
 export type PreconRowType = (typeof PRECON_ROW_TYPES)[number];

@@ -250,6 +250,7 @@ export const ROW_ORIGIN_LABEL: Record<RowOrigin, string> = {
 
 export const SHEET_KIND_OPTIONS: { value: PreconSheetKind; label: string }[] = [
   { value: "floor-plan", label: "Floor plan" },
+  { value: "roof-plan", label: "Roof plan" },
   { value: "elevation", label: "Elevation" },
   { value: "section", label: "Section" },
   { value: "detail", label: "Detail" },

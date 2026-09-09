@@ -49,7 +49,7 @@ export interface RegisterSheet {
   id: number;
   code: string;
   title: string;
-  kind: "floor-plan" | "elevation" | "section" | "schedule" | "detail" | "unknown";
+  kind: "floor-plan" | "roof-plan" | "elevation" | "section" | "schedule" | "detail" | "unknown";
   // level mark on the drawing (e.g. +3450 → 3450 mm) and the floor name it carries
   levelMm: number | null;
   levelName: string | null;
