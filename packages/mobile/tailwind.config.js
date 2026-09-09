@@ -60,6 +60,22 @@ module.exports = {
           500: "#C8FF00",
           600: "#B6E800",
         },
+        // The lime warning scale has no shade that reads as text on a light
+        // surface, so four different ambers were hand-picked across the app.
+        // This is that amber, named once.
+        amber: {
+          50: "#FFF3DE",
+          600: "#C26A00",
+          700: "#8E6B00",
+        },
+        // Category tints, mirroring the web's category cards.
+        tint: {
+          teal: "#E0FFFC",
+          amber: "#FFF3DE",
+          violet: "#EDE2FF",
+          pink: "#FFE6F0",
+          blue: "#DEEAFF",
+        },
         grey: {
           50: "#EDEDED",
           100: "#C8C8C8",

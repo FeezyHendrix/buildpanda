@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import type { Rfi, RfiPriority } from "@/api/rfis";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
@@ -99,14 +100,7 @@ export default function Rfis() {
       title="RFIs"
       onBack={() => router.back()}
       rightButtons={
-        <Pressable
-          onPress={() => router.push("/tools/rfis/new")}
-          accessibilityRole="button"
-          accessibilityLabel="New RFI"
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </Pressable>
+        <HeaderIconButton icon="add" label="New RFI" onPress={() => router.push("/tools/rfis/new")} />
       }
     >
       {ready && db && projectId ? (

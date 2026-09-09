@@ -43,7 +43,7 @@ function CategoryPicker({
             key={cat.id}
             onPress={() => onSelect(cat.id, cat.name)}
             className={cn(
-              "min-h-10 justify-center rounded-xl px-4",
+              "min-h-11 justify-center rounded-xl px-4",
               active ? "bg-primary-500" : "bg-surface-alt",
             )}
           >

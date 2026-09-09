@@ -36,7 +36,7 @@ export function UpdateCard({
         {update.isDraft ? (
           <View className="flex-row items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1">
             {isPandaDraft ? <Ionicons name="sparkles-outline" size={11} color="#8E6B00" /> : null}
-            <Text weight="semibold" className="text-[10px] uppercase text-[#8E6B00]">
+            <Text weight="semibold" className="text-[10px] uppercase text-amber-700">
               {isPandaDraft ? "Panda AI draft" : "Draft"}
             </Text>
           </View>

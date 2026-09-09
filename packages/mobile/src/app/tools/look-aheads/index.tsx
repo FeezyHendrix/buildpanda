@@ -9,12 +9,6 @@ import { useLocalDb } from "@/db/provider";
 import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
 import { useFieldSession } from "@/lib/field-session";
 
-function plusDays(iso: string, days: number): string {
-  const date = new Date(`${iso}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
 function List({ db, projectId }: { db: Db; projectId: string }) {
   const { data, isPending } = useLocalLookAheads(db, projectId);
 

@@ -5,6 +5,7 @@ import { Alert, Pressable, TextInput, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { changeRequestsApi, type ChangeRequestComment, type ChangeStatus } from "@/api/change-requests";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-repository";
@@ -135,15 +136,28 @@ export default function ChangeRequestDetail() {
 
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
+  // Comments here are not queued the way RFI comments are, so a send with no
+  // signal fails. It must say so and keep what was typed: swallowing the error
+  // dropped the comment and told the crew member nothing.
   async function handleSend() {
     if (!body.trim() || !id || !projectId || sending) return;
     setSending(true);
+    setSendError(null);
     try {
       await changeRequestsApi.addComment(projectId, id, body.trim());
       setBody("");
-    } catch { /* offline: will fail silently */ }
-    finally { setSending(false); }
+    } catch (err) {
+      console.error("change request comment failed", err);
+      setSendError(
+        err instanceof Error && err.message
+          ? `Couldn't send: ${err.message}`
+          : "Couldn't send that comment. It is still here — try again when you have signal.",
+      );
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -153,29 +167,21 @@ export default function ChangeRequestDetail() {
       rightButtons={
         id ? (
           <View className="flex-row items-center">
-            <Pressable
-              onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)}
-              accessibilityRole="button"
-              accessibilityLabel="Edit change request"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-            </Pressable>
-            <Pressable
-              onPress={confirmDelete}
-              accessibilityRole="button"
-              accessibilityLabel="Delete change request"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-            </Pressable>
+            <HeaderIconButton icon="create-outline" label="Edit change request" onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)} />
+            <HeaderIconButton icon="trash-outline" label="Delete change request" onPress={confirmDelete} />
           </View>
         ) : null
       }
       scroll
       footer={
         id && !id.startsWith("local_") ? (
-          <View className="flex-row items-end gap-2">
+          <View className="gap-2">
+            {sendError ? (
+              <Text tone="danger" className="px-1 text-xs">
+                {sendError}
+              </Text>
+            ) : null}
+            <View className="flex-row items-end gap-2">
             <TextInput
               value={body}
               onChangeText={setBody}
@@ -189,10 +195,11 @@ export default function ChangeRequestDetail() {
               disabled={!body.trim() || sending}
               accessibilityRole="button"
               accessibilityLabel="Send comment"
-              className={cn("h-12 w-12 items-center justify-center rounded-xl bg-primary-500", (!body.trim() || sending) && "opacity-50")}
+              className={cn("h-14 w-14 items-center justify-center rounded-xl bg-primary-500", (!body.trim() || sending) && "opacity-50")}
             >
               {sending ? <Spinner size="xs" tone="current" /> : <Ionicons name="arrow-up" size={20} color="#FFFFFF" />}
             </Pressable>
+            </View>
           </View>
         ) : undefined
       }

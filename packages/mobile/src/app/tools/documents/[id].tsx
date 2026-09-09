@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { documentsApi, type DocumentVersion } from "@/api/documents";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import { useLocalDb } from "@/db/provider";
 import { cacheDocument, cacheVersionFile } from "@/lib/download-file";
@@ -117,15 +118,7 @@ export default function DocumentDetail() {
       title="Document"
       onBack={() => router.back()}
       rightButtons={
-        <Pressable
-          onPress={handleCacheForOffline}
-          disabled={caching}
-          accessibilityRole="button"
-          accessibilityLabel="Save for offline"
-          className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-        >
-          {caching ? <Spinner size="xs" tone="current" /> : <Ionicons name="cloud-download-outline" size={22} color="#FFFFFF" />}
-        </Pressable>
+        <HeaderIconButton icon="cloud-download-outline" label="Save for offline" onPress={handleCacheForOffline} busy={caching} />
       }
     >
       {error ? (
@@ -138,7 +131,12 @@ export default function DocumentDetail() {
         <View className="items-center py-12"><Spinner size="md" /></View>
       ) : versions.length === 0 ? (
         <View className="items-center py-12">
-          <Text tone="secondary" className="text-[13px]">No versions found.</Text>
+          <Text weight="semibold" className="text-center text-base">
+            No versions yet
+          </Text>
+          <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+            Versions appear here each time this document is re-uploaded.
+          </Text>
         </View>
       ) : (
         <View className="gap-3">

@@ -136,7 +136,7 @@ export default function Capture() {
             They&apos;ll sync when you&apos;re online. You can edit them any time from Field Tools.
           </Text>
           {awaitingCount > 0 ? (
-            <Text className="pt-2 text-center text-[13px] text-[#C26A00]">
+            <Text className="pt-2 text-center text-[13px] text-amber-600">
               {awaitingCount} awaiting a manager&apos;s approval before it counts toward stock.
             </Text>
           ) : null}
@@ -187,7 +187,7 @@ export default function Capture() {
 
         {report.actions.length === 0 ? (
           <View className="items-center py-12">
-            <Text weight="semibold" className="text-base">
+            <Text weight="semibold" className="text-center text-base">
               Nothing to create
             </Text>
             <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">

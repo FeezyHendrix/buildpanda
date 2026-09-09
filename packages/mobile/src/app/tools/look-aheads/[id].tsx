@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { lookAheadsRepository, toLookAhead } from "@/db/look-aheads-repository";
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 const STATUS_TONE: Record<string, { bg: string; text: string }> = {
   Draft: { bg: "bg-grey-50", text: "text-grey-500" },
-  UnderReview: { bg: "bg-[#FFF3DE]", text: "text-[#8E6B00]" },
+  UnderReview: { bg: "bg-amber-50", text: "text-amber-700" },
   Approved: { bg: "bg-success-50", text: "text-success-700" },
 };
 
@@ -110,22 +111,8 @@ export default function LookAheadDetailPage() {
       rightButtons={
         id ? (
           <View className="flex-row items-center">
-            <Pressable
-              onPress={() => router.push(`/tools/look-aheads/edit/${id}` as never)}
-              accessibilityRole="button"
-              accessibilityLabel="Edit look-ahead"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-            </Pressable>
-            <Pressable
-              onPress={confirmDelete}
-              accessibilityRole="button"
-              accessibilityLabel="Delete look-ahead"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-            </Pressable>
+            <HeaderIconButton icon="create-outline" label="Edit look-ahead" onPress={() => router.push(`/tools/look-aheads/edit/${id}` as never)} />
+            <HeaderIconButton icon="trash-outline" label="Delete look-ahead" onPress={confirmDelete} />
           </View>
         ) : null
       }

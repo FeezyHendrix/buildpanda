@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import type { RfiPriority, RfiStatus } from "@/api/rfis";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
@@ -18,7 +19,7 @@ import { cn } from "@/lib/utils";
 const STATUS_TONE: Record<RfiStatus, { bg: string; text: string }> = {
   Draft: { bg: "bg-grey-50", text: "text-grey-500" },
   Open: { bg: "bg-primary-50", text: "text-primary-700" },
-  InReview: { bg: "bg-[#FFF3DE]", text: "text-[#8E6B00]" },
+  InReview: { bg: "bg-amber-50", text: "text-amber-700" },
   Answered: { bg: "bg-success-50", text: "text-success-700" },
   Closed: { bg: "bg-grey-50", text: "text-grey-500" },
   Void: { bg: "bg-error-50", text: "text-error-600" },
@@ -253,14 +254,7 @@ export default function RfiDetail() {
       onBack={() => router.back()}
       rightButtons={
         id ? (
-          <Pressable
-            onPress={() => router.push(`/tools/rfis/edit/${id}` as never)}
-            accessibilityRole="button"
-            accessibilityLabel="Edit RFI"
-            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-          >
-            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-          </Pressable>
+          <HeaderIconButton icon="create-outline" label="Edit RFI" onPress={() => router.push(`/tools/rfis/edit/${id}` as never)} />
         ) : null
       }
       scroll
@@ -285,7 +279,7 @@ export default function RfiDetail() {
               accessibilityLabel="Send comment"
               accessibilityState={{ disabled: !canSend, busy: sending }}
               className={cn(
-                "min-h-12 items-center justify-center rounded-xl bg-primary-500",
+                "min-h-14 items-center justify-center rounded-xl bg-primary-500",
                 !canSend && "opacity-50",
               )}
             >

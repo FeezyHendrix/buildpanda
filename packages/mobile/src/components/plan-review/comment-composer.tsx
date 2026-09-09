@@ -191,7 +191,7 @@ export function CommentComposer({
                     key={person.id || "nobody"}
                     onPress={() => setAssigneeId(person.id)}
                     accessibilityRole="button"
-                    className={`h-9 items-center justify-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
+                    className={`h-11 items-center justify-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
                   >
                     <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-grey-400"}`}>
                       {person.name}

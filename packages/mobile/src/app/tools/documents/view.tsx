@@ -21,7 +21,7 @@ export default function DocumentViewer() {
       ) : (
         <View className="items-center py-12">
           <Text tone="secondary" className="text-[13px]">
-            This file isn't available offline yet.
+            This file isn&apos;t available offline yet.
           </Text>
         </View>
       )}
