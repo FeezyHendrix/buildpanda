@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-// ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
-// constructor — static hosts that serve .mjs as octet-stream (staging nginx)
-// break both workerSrc and the fake-worker fallback, so never fetch .mjs.
-import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+import { loadPdfjs, pageText } from "@/lib/pdfjs";
 import { Spinner } from "@/components/atoms/spinner";
 import { cn } from "@/lib/utils";
 import { parseSheetScale, type DetectedScale } from "./plan-review-data";
-
-let sharedWorker: Worker | null = null;
 
 type PdfDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
 
@@ -49,9 +44,7 @@ export function PdfSheetCanvas({
     setError(null);
 
     (async () => {
-      const pdfjs = await import("pdfjs-dist");
-      if (!sharedWorker) sharedWorker = new PdfWorker();
-      pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
+      const pdfjs = await loadPdfjs();
 
       const cached = docRef.current;
       const doc =
@@ -75,13 +68,8 @@ export function PdfSheetCanvas({
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (cancelled) return;
 
-      const textContent = await page.getTextContent().catch(() => null);
+      const sheetText = await pageText(page);
       if (cancelled) return;
-      const sheetText = textContent
-        ? textContent.items
-            .map((item) => ("str" in item ? item.str : ""))
-            .join(" ")
-        : "";
       const unscaledWidthPt = viewport.width / BASE_SCALE;
 
       setLoading(false);

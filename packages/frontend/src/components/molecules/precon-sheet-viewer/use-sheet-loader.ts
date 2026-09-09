@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-// ?worker makes Vite emit the worker as a .js chunk and hand back a Worker
-// constructor — static hosts that serve .mjs as octet-stream (staging nginx)
-// break both workerSrc and the fake-worker fallback, so never fetch .mjs.
-import PdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?worker";
+import { loadPdfjs } from "@/lib/pdfjs";
 import { PICTURE_PLAN } from "@/lib/precon-meta";
 import { preconApi, type PreconSheet } from "@/api/precon";
-
-let sharedWorker: Worker | null = null;
 
 export const BASE_RASTER = 1.5;
 const MAX_RASTER = 4.5;
@@ -87,14 +82,6 @@ async function loadPicture(sheetId: string): Promise<HTMLImageElement> {
   const res = await fetch(preconApi.sheetFileUrl(sheetId), { credentials: "include" });
   if (!res.ok) throw new Error(`Picture ${res.status}`);
   return loadImageFromUrl(URL.createObjectURL(await res.blob()), true);
-}
-
-/** pdf.js with the shared worker attached; imported on demand so the chunk stays out of the initial route. */
-async function loadPdfjs() {
-  const pdfjs = await import("pdfjs-dist");
-  if (!sharedWorker) sharedWorker = new PdfWorker();
-  pdfjs.GlobalWorkerOptions.workerPort = sharedWorker;
-  return pdfjs;
 }
 
 async function loadDwgSvg(sheetId: string): Promise<{ img: HTMLImageElement; frame: DrawingFrame | null }> {
