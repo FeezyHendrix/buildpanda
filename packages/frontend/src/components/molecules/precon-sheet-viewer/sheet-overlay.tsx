@@ -46,7 +46,11 @@ function GeometryShape({
   const stroke = getElementStyle(row.elementGroup).color;
   const pts = geometry.vertices.map(toPx);
   const badge = pts.length > 0 ? <StatusBadge at={pts[0]!} status={row.status} /> : null;
-  const opacity = dimmed ? 0.15 : 1;
+  // dimmed shapes stay legible enough to click, but never compete
+  const opacity = dimmed ? 0.22 : 1;
+  // A selected line is the one being read: its own colour, laid on solidly
+  // enough to see the shape at a glance while the drawing still shows through.
+  const SELECTED_FILL = 0.42;
 
   if (geometry.kind === "count") {
     return (
@@ -79,13 +83,13 @@ function GeometryShape({
   }
   return (
     <g onClick={onPick} className="cursor-pointer" opacity={opacity}>
-      {selected ? <polygon points={path} fill="none" stroke="#004DE7" strokeWidth={4} strokeOpacity={0.3} /> : null}
+      {selected ? <polygon points={path} fill="none" stroke="#fff" strokeWidth={6} strokeOpacity={0.9} /> : null}
       <polygon
         points={path}
         fill={stroke}
-        fillOpacity={geometry.kind === "deduction" ? 0.08 : 0.15}
+        fillOpacity={geometry.kind === "deduction" ? 0.08 : selected ? SELECTED_FILL : 0.15}
         stroke={stroke}
-        strokeWidth={selected ? 2.5 : 2}
+        strokeWidth={selected ? 3.5 : 2}
         strokeDasharray={geometry.kind === "deduction" ? "6 4" : undefined}
       />
       {badge}

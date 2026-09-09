@@ -110,11 +110,14 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const sheetGeometries = useMemo(() => geometries.filter((g) => g.sheetId === activeSheet?.id), [geometries, activeSheet?.id]);
   const legendEntries = useMemo(() => buildLegendEntries(sheetGeometries, rowById), [sheetGeometries, rowById]);
   const elementGroups = useMemo(() => [...new Set(rows.flatMap((r) => (r.elementGroup ? [r.elementGroup] : [])))], [rows]);
+  // What reads at full strength: a line just created, a legend group, or the
+  // line being reviewed. Everything else fades so the selection carries.
   const emphasisRowIds = useMemo(() => {
     if (flashRowId) return new Set([flashRowId]);
-    if (!legendGroup) return null;
-    return new Set(legendEntries.find((entry) => entry.group === legendGroup)?.rowIds ?? []);
-  }, [flashRowId, legendGroup, legendEntries]);
+    if (legendGroup) return new Set(legendEntries.find((entry) => entry.group === legendGroup)?.rowIds ?? []);
+    if (selectedRowId) return new Set([selectedRowId]);
+    return null;
+  }, [flashRowId, legendGroup, legendEntries, selectedRowId]);
 
   const selectedRow = selectedRowId ? (rowById.get(selectedRowId) ?? null) : null;
   const meta = PRECON_TOOL_BY_KEY[tool];
