@@ -6,6 +6,7 @@ import * as pdfjs from "pdfjs-dist";
 import {
   BASE_SCALE,
   clamp,
+  clampTransform as clampToViewport,
   DEFAULT_ASPECT,
   GESTURE_MODE,
   IDLE_GESTURE,
@@ -20,6 +21,7 @@ import {
   type Transform,
 } from "./canvas-support";
 import { hitTestMarkup, MarkupLayer } from "./markup-svg";
+import { SheetLoupe } from "./sheet-loupe";
 import { MARKUP_KIND, SHEET_TOOL } from "./markup-types";
 import type {
   MarkupGeometry,
@@ -71,6 +73,9 @@ export default function SheetCanvas({
   const [transform, setTransform] = useState<Transform>({ s: 1, tx: 0, ty: 0 });
   const [draftPen, setDraftPen] = useState<MarkupPoint[] | null>(null);
   const [draftRect, setDraftRect] = useState<MarkupRect | null>(null);
+  // where the finger is while it places a point, so the loupe can show what it covers
+  const [touch, setTouch] = useState<{ x: number; y: number } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -161,17 +166,7 @@ export default function SheetCanvas({
     return { x: round2(x), y: round2(y) };
   }
 
-  function clampTransform(t: Transform): Transform {
-    const vw = vpSize.w;
-    const vh = vpSize.h;
-    const w = box.w * t.s;
-    const h = box.h * t.s;
-    return {
-      s: t.s,
-      tx: clamp(t.tx, Math.min(0, vw - w), Math.max(0, vw - w)),
-      ty: clamp(t.ty, Math.min(0, vh - h), Math.max(0, vh - h)),
-    };
-  }
+  const clampTransform = (t: Transform): Transform => clampToViewport(t, box, vpSize);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -199,6 +194,8 @@ export default function SheetCanvas({
     g.moved = false;
     g.startPct = pctFromClient(e.clientX, e.clientY);
 
+    if (tool === SHEET_TOOL.PEN || tool === SHEET_TOOL.COMMENT) setTouch({ x: e.clientX, y: e.clientY });
+
     if (tool === SHEET_TOOL.PEN) {
       g.mode = GESTURE_MODE.PEN;
       setDraftPen(g.startPct ? [g.startPct] : []);
@@ -215,6 +212,10 @@ export default function SheetCanvas({
     const g = gesture.current;
 
     if (Math.abs(e.clientX - g.startX) + Math.abs(e.clientY - g.startY) > TAP_SLOP_PX) g.moved = true;
+
+    // the loupe rides the finger while it draws or places a comment
+    if (g.mode === GESTURE_MODE.PEN || g.mode === GESTURE_MODE.TAP) setTouch({ x: e.clientX, y: e.clientY });
+    else if (g.mode === GESTURE_MODE.PINCH) setTouch(null);
 
     if (g.mode === GESTURE_MODE.PINCH && pointers.current.size >= 2) {
       const [p1, p2] = [...pointers.current.values()];
@@ -260,6 +261,7 @@ export default function SheetCanvas({
 
   function finishSinglePointer(e: React.PointerEvent<HTMLDivElement>) {
     const g = gesture.current;
+    setTouch(null);
 
     if (g.mode === GESTURE_MODE.PEN) {
       setDraftPen((points) => {
@@ -336,6 +338,7 @@ export default function SheetCanvas({
       >
         {imageDataUri ? (
           <img
+            ref={imgRef}
             src={imageDataUri}
             alt="Plan sheet"
             draggable={false}
@@ -363,6 +366,13 @@ export default function SheetCanvas({
           selectedId={selectedId}
         />
       </div>
+
+      <SheetLoupe
+        source={{ el: imageDataUri ? imgRef.current : canvasRef.current, boxW: box.w, boxH: box.h }}
+        at={touch}
+        transform={transform}
+        viewportW={viewportRef.current?.clientWidth ?? 0}
+      />
 
       {loading ? (
         <div style={overlayStyle}>

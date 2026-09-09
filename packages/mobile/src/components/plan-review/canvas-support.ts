@@ -74,3 +74,14 @@ export const overlayStyle: CSSProperties = {
   justifyContent: "center",
   background: "rgba(255,255,255,0.85)",
 };
+
+/** Keep the sheet from being dragged off the viewport at any zoom. */
+export function clampTransform(t: Transform, box: { w: number; h: number }, viewport: { w: number; h: number }): Transform {
+  const w = box.w * t.s;
+  const h = box.h * t.s;
+  return {
+    s: t.s,
+    tx: clamp(t.tx, Math.min(0, viewport.w - w), Math.max(0, viewport.w - w)),
+    ty: clamp(t.ty, Math.min(0, viewport.h - h), Math.max(0, viewport.h - h)),
+  };
+}
