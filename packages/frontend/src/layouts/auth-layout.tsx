@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import authIllustration from "@/assets/images/auth-illustration.gif";
+import authIllustration from "@/assets/images/auth-illustration.mp4";
+import authIllustrationPoster from "@/assets/images/auth-illustration-poster.jpg";
 import logo from "@/assets/images/logo.svg";
 import logoWhite from "@/assets/images/logo-white.svg";
 
@@ -19,7 +20,18 @@ export default function AuthLayout() {
     <div className="flex h-dvh p-2 sm:p-4">
       {/* The v2 welcome panel: illustration, white logo, product line and the pitch. */}
       <div className="relative hidden w-1/2 shrink-0 overflow-hidden rounded-2xl bg-[#0B1A3A] lg:flex">
-        <img src={authIllustration} alt="" className="absolute inset-0 size-full object-cover" />
+        {/* the same animation as a video: a 20 MB GIF made every visitor wait */}
+        <video
+          className="absolute inset-0 size-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          poster={authIllustrationPoster}
+        >
+          <source src={authIllustration} type="video/mp4" />
+        </video>
         <div className="relative z-10 flex size-full flex-col justify-between p-12">
           <div className="flex items-center justify-between">
             <Link to="/">
