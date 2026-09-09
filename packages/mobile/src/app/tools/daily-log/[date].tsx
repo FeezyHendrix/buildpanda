@@ -3,21 +3,17 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, Card, Field, Spinner, Text } from "@/components/atoms";
-import { ActivityLogSheet } from "@/components/molecules/activity-log-sheet";
 import { Page } from "@/components/molecules/page";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
-import { activitiesApi, type Activity, type DelayReason } from "@/api/activities";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { useAddDailyLogEntry, useDailyLogDay, useSaveDailyLog } from "@/hooks/use-daily-logs";
 import { useProjectBuilding } from "@/hooks/use-project-building";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
-import { useActivities } from "@/hooks/use-activities";
 import { useSession } from "@/lib/auth-client";
 import { useFieldSession } from "@/lib/field-session";
 import { htmlToText } from "@/lib/html";
-import { usePersistentQuery } from "@/lib/persistent-query";
 import { cn } from "@/lib/utils";
 
 function numberOrZero(value: string): number {
@@ -40,15 +36,6 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
   const { data: session } = useSession();
 
   const [hours, setHours] = useState("0");
-  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
-  const activitiesResult = useActivities(projectId, true);
-  const { storageOwnerId } = useFieldSession();
-  const delayReasonsResult = usePersistentQuery({
-    queryKey: ["delay-reasons"],
-    ownerId: storageOwnerId,
-    queryFn: activitiesApi.delayReasons,
-  });
-
   const [entryHtml, setEntryHtml] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +121,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
           </Text>
           {!isVoided ? (
             <Pressable
-              onPress={() => setActivitySheetOpen(true)}
+              onPress={() => router.push(`/tools/daily-log/log-activity?date=${logDate}` as never)}
               accessibilityRole="button"
               className="flex-row items-center gap-1 rounded-full bg-primary-50 px-3 py-1.5 active:bg-primary-100"
             >
@@ -178,19 +165,6 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
             ))}
           </Card>
         )}
-
-        <ActivityLogSheet
-          visible={activitySheetOpen}
-          activities={(activitiesResult.data ?? []) as Activity[]}
-          delayReasons={(delayReasonsResult.data ?? []) as DelayReason[]}
-          loading={activitiesResult.isPending}
-          onLog={async (input) => {
-            await dailyLogsRepository.logActivityLocal(db, projectId, logDate, input);
-            const { flushOutbox } = await import("@/db/outbox");
-            void flushOutbox(db).catch(() => undefined);
-          }}
-          onClose={() => setActivitySheetOpen(false)}
-        />
 
         {!isVoided ? (
           <View className="gap-2 pt-1">
