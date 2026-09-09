@@ -6,8 +6,6 @@ import type {
   AddDeductionBody,
   CreateRowBody,
   Deduction,
-  PreconRateCardRow,
-  PreconRateRow,
   PreconAuditEventRow,
   PreconBill,
   PreconBillRow,
@@ -26,12 +24,26 @@ import type {
   PreconSummary,
   PreconSummarySettings,
   ProgrammeDependency,
+  TakeoffKind,
+  TakeoffScope,
   UpdateGeometryBody,
   UpdateRowBody,
 } from "./types.ts";
+import { FULL_TAKEOFF_SCOPE } from "./types.ts";
+import type { CreateProgrammeTaskBody, ProgrammeTaskOrigin, UpdateProgrammeTaskBody } from "./types.ts";
 import { scheduleProgramme } from "./programme-schedule.ts";
+import { programmeEditor } from "./programme-editor.ts";
+import { reviewService } from "./review-service.ts";
+import { manualService } from "./manual-service.ts";
+import { lineageKindOf, nextRevision } from "./revisions.ts";
+import { basisWithTypical, netQuantity, normaliseTypical } from "./measurements.ts";
+import { scaleAt, scaleClause } from "./viewports.ts";
+import { noStaleLookup, withStale, type StaleLookup } from "./stale.ts";
 
 const num = (v: string | number | null): number | null => (v === null ? null : Number(v));
+// pg serialises a plain object into jsonb; typed as the row field so the
+// repository insert stays honest about what it stores.
+const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
 
 function toSession(r: PreconSessionRow): PreconSession {
   return {
@@ -42,11 +54,21 @@ function toSession(r: PreconSessionRow): PreconSession {
     status: r.status,
     title: r.title,
     error: r.error,
+    phase: r.phase ?? null,
+    progressLog: r.progress_log ?? [],
+    scope: r.scope ?? FULL_TAKEOFF_SCOPE,
+    planId: r.plan_id ?? null,
+    takeoffKind: r.takeoff_kind ?? "pdf",
+    extraction: r.extraction ?? null,
     structureContext: r.structure_context ?? null,
+    layerMap: r.layer_map ?? null,
+    revision: r.revision ?? 1,
+    supersededBy: r.superseded_by ?? null,
     createdBy: r.created_by,
     createdAt: new Date(r.created_at).toISOString(),
   };
 }
+
 
 function toSheet(r: PreconSheetRow): PreconSheet {
   return {
@@ -61,6 +83,9 @@ function toSheet(r: PreconSheetRow): PreconSheet {
     scaleMmPerPt: r.scale_mm_per_pt,
     scaleConfidence: r.scale_confidence,
     dimUnit: r.dim_unit,
+    geoSummary: r.geo_summary ?? null,
+    bounds: r.bounds ?? null,
+    viewports: r.viewports ?? [],
     error: r.error,
   };
 }
@@ -85,6 +110,9 @@ function toProgrammeTask(r: PreconProgrammeTaskRow): PreconProgrammeTaskBase {
         ? (JSON.parse(r.predecessors) as ProgrammeDependency[])
         : r.predecessors,
     isMilestone: r.is_milestone,
+    totalFloatDays: r.total_float_days ?? null,
+    isCritical: Boolean(r.is_critical),
+    origin: r.origin ?? "ai",
     basis: r.basis,
     confidence: r.confidence,
     status: r.status,
@@ -106,6 +134,7 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     unit: r.unit,
     qtyGross: num(r.qty_gross),
     deductions: r.deductions ?? [],
+    typical: r.typical ?? 1,
     qty: num(r.qty),
     rate: num(r.rate),
     amount: num(r.amount),
@@ -114,6 +143,12 @@ function toRow(r: PreconBoqRowRow): PreconBoqRowDto {
     status: r.status,
     version: r.version,
     measurementBasis: r.measurement_basis,
+    confidenceReason: r.confidence_reason ?? null,
+    provenance: r.provenance ?? null,
+    evidence: r.evidence ?? [],
+    origin: r.origin ?? "ai",
+    editedAt: r.edited_at ? new Date(r.edited_at).toISOString() : null,
+    editedBy: r.edited_by ?? null,
     verifiedBy: r.verified_by,
     verifiedAt: r.verified_at ? new Date(r.verified_at).toISOString() : null,
   };
@@ -196,7 +231,7 @@ export interface RowChangeEvent {
 
 export type PublishFn = (sessionId: string, event: RowChangeEvent) => void;
 
-export function preconService(repo: PreconRepository, publish: PublishFn = () => {}) {
+export function preconService(repo: PreconRepository, publish: PublishFn = () => {}, staleLookup: StaleLookup = noStaleLookup) {
   async function audit(
     sessionId: string,
     rowId: string | null,
@@ -216,20 +251,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     } as Omit<PreconAuditEventRow, "created_at">);
   }
 
-  function toRateCard(r: PreconRateCardRow) {
-    return { id: r.id, name: r.name, region: r.region, currency: r.currency };
-  }
-
-  function toRate(r: PreconRateRow) {
-    return {
-      id: r.id,
-      rateCardId: r.rate_card_id,
-      codePrefix: r.code_prefix,
-      descriptionPattern: r.description_pattern,
-      unit: r.unit,
-      rate: Number(r.rate),
-    };
-  }
+  const editor = programmeEditor(repo, audit);
 
   function isAnchorRow(row: PreconBoqRowRow): boolean {
     if (row.code === "F10/125" || row.code === "M10") return true;
@@ -271,13 +293,13 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     rowId: string,
     sessionId: string,
     sheetId?: string,
-  ): Promise<PreconSheetRow & { scale_mm_per_pt: number }> {
+  ): Promise<PreconSheetRow> {
     const target = sheetId ?? (await repo.geometriesByRow(rowId))[0]?.sheet_id;
     if (!target) throw new BadRequestError("Open the sheet you want to measure on first");
     const sheet = await repo.sheetById(target);
     if (!sheet || sheet.session_id !== sessionId) throw new NotFoundError("Sheet");
-    if (!sheet.scale_mm_per_pt) throw new BadRequestError("Sheet has no calibrated scale");
-    return sheet as PreconSheetRow & { scale_mm_per_pt: number };
+    // the scale is picked per drawing (a viewport or the sheet) by scaleAt
+    return sheet;
   }
 
   async function requireRow(rowId: string): Promise<{ row: PreconBoqRowRow; sessionId: string }> {
@@ -286,14 +308,23 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     return { row, sessionId };
   }
 
-  return {
+  // the manual path exports from the same snapshot review reads
+  const snapshot = (sessionId: string): Promise<PreconSnapshot> => api.getSnapshot(sessionId);
+
+  const api = {
     async createSession(
       orgId: string,
       title: string,
       userId: string,
       files: { fileName: string; storagePath: string }[],
       proposalId: string | null = null,
+      scope: TakeoffScope = FULL_TAKEOFF_SCOPE,
+      origin: { planId?: string | null; takeoffKind?: TakeoffKind } = {},
     ) {
+      if (scope.kind === "sections" && scope.elements.length === 0) {
+        throw new BadRequestError("Pick at least one section to measure");
+      }
+      const lineage = await nextRevision(repo, origin.planId ?? null, scope, lineageKindOf(origin.takeoffKind));
       const session = await repo.insertSession({
         id: generateId("pcs"),
         org_id: orgId,
@@ -302,8 +333,16 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: "uploading",
         title,
         error: null,
+        phase: null,
+        progress_log: null,
+        scope: db_json(scope),
+        plan_id: origin.planId ?? null,
+        takeoff_kind: origin.takeoffKind ?? "pdf",
+        revision: lineage.revision,
+        superseded_by: null,
         created_by: userId,
       });
+      await repo.supersedeSessions(lineage.supersedes, session.id);
       // One placeholder sheet per file; the generate job expands PDFs into per-page sheets.
       await repo.insertSheets(
         files.map((f, i) => ({
@@ -320,11 +359,12 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
           scale_confidence: null,
           dim_unit: null,
           snap_index: null,
+          geo_summary: null,
           error: null,
         })),
       );
       await repo.upsertSettings({ session_id: session.id, prelims_pct: 5, contingency_pct: 5, vat_pct: 7.5 });
-      await audit(session.id, null, userId, "session_created", null, { title });
+      await audit(session.id, null, userId, "session_created", null, { title, scope });
       return toSession(session);
     },
 
@@ -339,6 +379,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: "reviewing",
         title,
         error: null,
+        phase: null,
+        progress_log: null,
+        scope: db_json(FULL_TAKEOFF_SCOPE),
+        plan_id: null,
+        takeoff_kind: "manual",
         created_by: userId,
       });
       await repo.insertBill({
@@ -353,12 +398,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     },
 
     async listSessions(orgId: string, proposalId?: string) {
-      return (await repo.sessionsByOrg(orgId, proposalId)).map(toSession);
+      const rows = await repo.sessionsByOrg(orgId, proposalId);
+      const counts = await repo.lineCountsForSessions(rows.map((r: PreconSessionRow) => r.id));
+      const sessions = rows.map((r: PreconSessionRow): PreconSession => ({ ...toSession(r), lines: counts.get(r.id) ?? { total: 0, verified: 0, attention: 0 } }));
+      return withStale(sessions, staleLookup);
     },
 
-    async linkToProposal(sessionId: string, proposalId: string) {
-      await repo.linkSessionToProposal(sessionId, proposalId);
-    },
+    ...reviewService({ repo, audit, toSession, toSheet }),
+    ...manualService({ repo, audit, publish, toSession, toRow, toGeometry, snapshot }),
 
     // Every sales-suite access path must prove the session belongs to the
     // caller's active organization before touching its data.
@@ -374,6 +421,14 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const session = await repo.sessionById(sessionId);
       if (!session || session.org_id !== orgId) throw new NotFoundError("BOQ row");
       return sessionId;
+    },
+
+    async assertSheetOrg(sheetId: string, orgId: string) {
+      const sheet = await repo.sheetById(sheetId);
+      if (!sheet) throw new NotFoundError("Sheet");
+      const session = await repo.sessionById(sheet.session_id);
+      if (!session || session.org_id !== orgId) throw new NotFoundError("Sheet");
+      return sheet.session_id;
     },
 
     async assertBillOrg(billId: string, orgId: string) {
@@ -412,7 +467,7 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const total = statusCounts.reduce((s, c) => s + c.count, 0);
       const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
       return {
-        session: toSession(session),
+        session: (await withStale([toSession(session)], staleLookup))[0]!,
         sheets: sheets.map(toSheet),
         bills: bills.map(toBill),
         rows,
@@ -484,6 +539,11 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         status: priced ? "verified" : null,
         version: 1,
         measurement_basis: priced ? "Entered manually" : null,
+        confidence_reason: null,
+        provenance: priced ? "Entered by hand in review" : null,
+        origin: "manual",
+        edited_at: null,
+        edited_by: null,
         verified_by: priced ? actor : null,
         verified_at: priced ? new Date() : null,
       });
@@ -528,14 +588,26 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const patch: Parameters<PreconRepository["updateRowVersioned"]>[2] = {};
       if (body.changes.description !== undefined) patch.description = body.changes.description;
       if (body.changes.unit !== undefined) patch.unit = body.changes.unit;
+      // typical re-derives qty from the drawn figure; an explicit qty still wins
+      if (body.changes.typical !== undefined) {
+        if (row.row_type !== "item" && row.row_type !== "provisional_sum") throw new BadRequestError("Only priced rows repeat on typical floors");
+        const typical = normaliseTypical(body.changes.typical);
+        const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
+        const net = netQuantity(gross, row.deductions ?? [], typical);
+        patch.typical = typical;
+        patch.qty = net;
+        patch.measurement_basis = basisWithTypical(row.measurement_basis, gross, net, typical, body.changes.unit ?? row.unit);
+      }
       if (body.changes.qty !== undefined) patch.qty = body.changes.qty;
       if (body.changes.rate !== undefined) {
         patch.rate = body.changes.rate;
         patch.rate_source = "manual";
       }
-      const qty = body.changes.qty ?? num(row.qty);
+      const qty = patch.qty !== undefined ? num(patch.qty) : num(row.qty);
       const rate = body.changes.rate ?? num(row.rate);
       if (qty !== null && rate !== null) patch.amount = Math.round(qty * rate * 100) / 100;
+      patch.edited_at = new Date();
+      patch.edited_by = actor;
       // An edited AI measurement needs re-checking; a hand-entered row's author
       // is already its verifier, so it stays verified.
       if (row.status === "verified") {
@@ -614,15 +686,16 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const { row, sessionId } = await requireRow(rowId);
       const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
       const sheetId = sheet.id;
-      const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, sheet.scale_mm_per_pt);
-      const deductionTotal = (row.deductions ?? []).reduce((s, d) => s + d.qty, 0);
-      const net = Math.max(0, Math.round((quantity - deductionTotal) * 100) / 100);
+      const pick = scaleAt(sheet, body.vertices);
+      const { quantity, unit } = quantityFromVertices(body.kind, body.vertices, pick.mmPerPt);
+      const typical = row.typical ?? 1;
+      const net = netQuantity(quantity, row.deductions ?? [], typical);
       const updated = await repo.updateRowVersioned(rowId, body.version, {
         qty_gross: quantity,
         qty: net,
         unit,
         status: "needs_review",
-        measurement_basis: `Manually re-measured (${body.kind}); gross ${quantity} ${unit}`,
+        measurement_basis: basisWithTypical(`Manually re-measured (${body.kind}); gross ${quantity} ${unit}${scaleClause(sheet, pick)}`, quantity, net, typical, unit),
         verified_by: null,
         verified_at: null,
         amount: row.rate !== null ? Math.round(net * Number(row.rate) * 100) / 100 : null,
@@ -655,11 +728,13 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       const { row, sessionId } = await requireRow(rowId);
       const sheet = await resolveMeasurementSheet(rowId, sessionId, body.sheetId);
       const sheetId = sheet.id;
-      const { quantity } = quantityFromVertices("deduction", body.vertices, sheet.scale_mm_per_pt);
+      const pick = scaleAt(sheet, body.vertices);
+      const { quantity } = quantityFromVertices("deduction", body.vertices, pick.mmPerPt);
       const geometryId = generateId("pgeo");
-      const deductions: Deduction[] = [...(row.deductions ?? []), { label: body.label, qty: quantity, geometryId }];
+      const label = `${body.label}${scaleClause(sheet, pick)}`;
+      const deductions: Deduction[] = [...(row.deductions ?? []), { label, qty: quantity, geometryId }];
       const gross = num(row.qty_gross) ?? num(row.qty) ?? 0;
-      const net = Math.max(0, Math.round((gross - deductions.reduce((s, d) => s + d.qty, 0)) * 100) / 100);
+      const net = netQuantity(gross, deductions, row.typical ?? 1);
       const updated = await repo.updateRowVersioned(rowId, body.version, {
         deductions,
         qty: net,
@@ -732,10 +807,26 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
         const window = dates.get(task.id);
         return {
           ...task,
+          totalFloatDays: window?.totalFloatDays ?? null,
+          isCritical: window?.isCritical ?? false,
           startAt: (window?.start ?? startDate).toISOString(),
           finishAt: (window?.finish ?? startDate).toISOString(),
         };
       });
+
+      // Persist the analysis so the handoff and the assistant can read float
+      // and critical flags straight off the rows without re-running the pass.
+      await Promise.all(
+        rows.flatMap((row) => {
+          const window = dates.get(row.id);
+          if (!window) return [];
+          const unchanged =
+            (row.total_float_days ?? null) === window.totalFloatDays && Boolean(row.is_critical) === window.isCritical;
+          return unchanged
+            ? []
+            : [repo.updateProgrammeTaskDerived(row.id, { total_float_days: window.totalFloatDays, is_critical: window.isCritical })];
+        }),
+      );
 
       const total = statusCounts.reduce((sum, c) => sum + c.count, 0);
       const verified = statusCounts.find((c) => c.status === "verified")?.count ?? 0;
@@ -761,24 +852,24 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
     async updateProgrammeTask(
       taskId: string,
       version: number,
-      patch: { name?: string; durationDays?: number; isMilestone?: boolean; basis?: string },
+      patch: Omit<UpdateProgrammeTaskBody, "version">,
       actor: string,
+      origin: ProgrammeTaskOrigin = "manual",
     ): Promise<PreconProgrammeTaskBase> {
-      const existing = await repo.programmeTaskById(taskId);
-      if (!existing) throw new NotFoundError("Programme task");
-      const updated = await repo.updateProgrammeTaskVersioned(taskId, version, {
-        ...(patch.name === undefined ? {} : { name: patch.name }),
-        ...(patch.durationDays === undefined ? {} : { duration_days: patch.durationDays }),
-        ...(patch.isMilestone === undefined ? {} : { is_milestone: patch.isMilestone }),
-        ...(patch.basis === undefined ? {} : { basis: patch.basis }),
-        // An edited task is the planner's call now, not the model's.
-        status: "needs_review",
-      });
-      if (!updated) {
-        throw new ConflictError("Task changed since you loaded it; refresh and retry");
-      }
-      await audit(existing.session_id, taskId, actor, "programme.updated", { ...patch }, null);
-      return toProgrammeTask(updated);
+      return toProgrammeTask(await editor.updateTask(taskId, version, patch, actor, origin));
+    },
+
+    async createProgrammeTask(
+      sessionId: string,
+      body: CreateProgrammeTaskBody,
+      actor: string,
+      origin: ProgrammeTaskOrigin = "manual",
+    ): Promise<PreconProgrammeTaskBase> {
+      return toProgrammeTask(await editor.createTask(sessionId, body, actor, origin));
+    },
+
+    async deleteProgrammeTask(taskId: string, actor: string): Promise<{ ok: true }> {
+      return editor.deleteTask(taskId, actor);
     },
 
     async setProgrammeTaskStatus(
@@ -850,48 +941,6 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return { fileName: `Programme-${safeTitle}.xml`, xml };
     },
 
-    async listRateCards(orgId: string) {
-      const cards = await repo.rateCardsByOrg(orgId);
-      const allRates = await Promise.all(cards.map((c) => repo.ratesByCard(c.id)));
-      return cards.map((c, i) => ({ ...toRateCard(c), rates: allRates[i]!.map(toRate) }));
-    },
-
-    async createRateCard(orgId: string, name: string, region: string | null) {
-      const card = await repo.insertRateCard({
-        id: generateId("prc"),
-        org_id: orgId,
-        name,
-        region,
-        currency: "NGN",
-      });
-      return { ...toRateCard(card), rates: [] };
-    },
-
-    async addRate(
-      orgId: string,
-      rateCardId: string,
-      input: { codePrefix: string | null; descriptionPattern: string | null; unit: string; rate: number },
-    ) {
-      const card = await repo.rateCardById(rateCardId);
-      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
-      const rate = await repo.insertRate({
-        id: generateId("prt"),
-        rate_card_id: rateCardId,
-        code_prefix: input.codePrefix,
-        description_pattern: input.descriptionPattern,
-        unit: input.unit,
-        rate: input.rate,
-      });
-      return toRate(rate);
-    },
-
-    async removeRate(orgId: string, rateCardId: string, rateId: string) {
-      const card = await repo.rateCardById(rateCardId);
-      if (!card || card.org_id !== orgId) throw new NotFoundError("Rate card");
-      await repo.deleteRate(rateId, rateCardId);
-      return { ok: true };
-    },
-
     async updateSettings(sessionId: string, patch: Partial<PreconSummarySettings>, actor: string) {
       const session = await repo.sessionById(sessionId);
       if (!session) throw new NotFoundError("Preconstruction session");
@@ -907,4 +956,5 @@ export function preconService(repo: PreconRepository, publish: PublishFn = () =>
       return { prelimsPct: next.prelims_pct, contingencyPct: next.contingency_pct, vatPct: next.vat_pct };
     },
   };
+  return api;
 }

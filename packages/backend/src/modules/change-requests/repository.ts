@@ -35,6 +35,7 @@ export interface ChangeRequestUpdatePatch {
   decided_by_id?: string | null;
   decided_at?: string | null;
   assignee_id?: string | null;
+  estimate_id?: string | null;
   updated_at?: string;
 }
 
@@ -55,12 +56,17 @@ const SELECT = [
   "u.name as decided_by_name",
   "c.decided_at",
   "c.assignee_id",
+  "c.estimate_id",
   "asg.name as assignee_name",
   "c.created_at",
   "c.updated_at",
 ] as const;
 
 export function changeRequestsRepository(db: Knex) {
+  // projects.estimate_id arrives with the handoff workstream; until then a
+  // variation is recorded without an estimate reference.
+  const hasProjectEstimate = db.schema.hasColumn("projects", "estimate_id").catch(() => false);
+
   function base() {
     return db("change_requests as c")
       .leftJoin("user as u", "u.id", "c.decided_by_id")
@@ -68,6 +74,11 @@ export function changeRequestsRepository(db: Knex) {
   }
 
   return {
+    async projectEstimateId(projectId: string): Promise<string | null> {
+      if (!(await hasProjectEstimate)) return null;
+      const row = await db("projects").where({ id: projectId }).select("estimate_id").first();
+      return (row?.estimate_id as string | null | undefined) ?? null;
+    },
     listByProject(projectId: string, status?: ChangeStatus): Promise<ChangeRequestRow[]> {
       const q = base().where("c.project_id", projectId);
       if (status) q.andWhere("c.status", status);

@@ -20,8 +20,11 @@ export default function ProjectDocuments() {
   const { data: documents = [] } = useProjectDocuments(project.id);
   const uploader = useDocumentUpload(project.id, "Document uploaded");
 
-  const visibleCategories = categories.filter((c) => c.group === "document");
-  const visibleDocuments = documents.filter((d) => d.group === "document");
+  // Everything that is not a drawing or a media file belongs here: a contract
+  // or a proposal snapshot has its own group and must not vanish from the app.
+  const filed = (group: string) => group !== "plan" && group !== "media";
+  const visibleCategories = categories.filter((c) => filed(c.group));
+  const visibleDocuments = documents.filter((d) => filed(d.group));
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">

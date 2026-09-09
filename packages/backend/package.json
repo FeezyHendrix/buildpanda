@@ -13,6 +13,7 @@
     "db:make-migration": "tsx ./node_modules/knex/bin/cli.js migrate:make --knexfile knexfile.ts -x ts",
     "db:make-seed": "tsx ./node_modules/knex/bin/cli.js seed:make --knexfile knexfile.ts -x ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
+    "benchmark": "tsx src/modules/panda-ai/benchmark/run.ts",
     "lint": "eslint src/"
   },
   "dependencies": {

@@ -80,5 +80,5 @@ export interface CategoryAggregateRow {
   tone: Tone;
   group: CategoryGroup;
   file_count: string;
-  total_size: string | null;
+  total_bytes: string | null;
 }

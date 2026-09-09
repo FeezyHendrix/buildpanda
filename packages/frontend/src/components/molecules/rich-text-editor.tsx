@@ -99,7 +99,9 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
     editable: !disabled,
     // A label's htmlFor cannot name a contenteditable, so without this the
     // editor has no accessible name for screen readers or getByLabel.
-    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : undefined,
+    // never undefined: tiptap reads editorProps.dispatchTransaction without a
+    // guard, so passing undefined here throws before the view is created
+    editorProps: ariaLabel ? { attributes: { "aria-label": ariaLabel } } : {},
     onUpdate: ({ editor: e }) => onChange(e.getHTML(), e.getText()),
   });
 

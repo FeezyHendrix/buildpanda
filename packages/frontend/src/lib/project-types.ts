@@ -39,6 +39,7 @@ export type MediaType = "photo" | "video";
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 export type InspectionStatus = "Action Required" | "Completed" | "Scheduled";
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+export type MilestoneClaimState = "pending" | "claimable" | "claimed" | "certified" | "paid";
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 export type DisputeStatus = "Open" | "Resolved" | "Withdrawn";
@@ -782,6 +783,7 @@ export interface MilestonePayment {
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
   inspectorSignOff: SignOffStatus;
+  claimState: MilestoneClaimState;
 }
 
 export interface PaymentLedgerEntry {

@@ -1,3 +1,4 @@
+import type { GeoSummary, SessionExtraction } from "../geometry/types.ts";
 import type { Knex } from "knex";
 import type {
   PreconAuditEventRow,
@@ -11,8 +12,11 @@ import type {
   PreconSheetRow,
   PreconSummarySettingsRow,
   RowStatus,
+  SessionLineCounts,
+  SessionLayerMap,
   SessionStatus,
   SheetStatus,
+  PreconProgressEntry,
   StructureContext,
 } from "./types.ts";
 
@@ -21,11 +25,49 @@ export type PreconRepository = ReturnType<typeof preconRepository>;
 export function preconRepository(db: Knex) {
   return {
     // sessions
-    insertSession: async (row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date">) => {
-      const [inserted] = await db<PreconSessionRow>("precon_sessions").insert(row).returning("*");
+    insertSession: async (
+      row: Omit<PreconSessionRow, "created_at" | "updated_at" | "structure_context" | "programme_start_date" | "extraction" | "revision" | "superseded_by"> &
+        Partial<Pick<PreconSessionRow, "revision" | "superseded_by">>,
+    ) => {
+      // pg turns a JS array into a Postgres array literal, which jsonb rejects;
+      // the JSON columns go in as text so an array-valued log inserts cleanly.
+      const [inserted] = await db<PreconSessionRow>("precon_sessions")
+        .insert({
+          ...row,
+          progress_log: (row.progress_log === null ? null : JSON.stringify(row.progress_log)) as never,
+          scope: (row.scope === null ? null : JSON.stringify(row.scope)) as never,
+        })
+        .returning("*");
       return inserted!;
     },
     sessionById: (id: string) => db<PreconSessionRow>("precon_sessions").where({ id }).first(),
+    // every take-off ever run on this drawing, newest first; the caller matches the scope
+    sessionsByPlan: (planId: string) => db<PreconSessionRow>("precon_sessions").where({ plan_id: planId }).orderBy("created_at", "desc"),
+    supersedeSessions: (ids: string[], byId: string) =>
+      ids.length === 0
+        ? Promise.resolve(0)
+        : db<PreconSessionRow>("precon_sessions").whereIn("id", ids).update({ superseded_by: byId, updated_at: db.fn.now() }),
+    // one grouped query for a whole list, never one per session
+    lineCountsForSessions: async (sessionIds: string[]): Promise<Map<string, SessionLineCounts>> => {
+      const out = new Map<string, SessionLineCounts>();
+      if (sessionIds.length === 0) return out;
+      const rows = (await db("precon_boq_rows")
+        .join("precon_bills", "precon_bills.id", "precon_boq_rows.bill_id")
+        .whereIn("precon_bills.session_id", sessionIds)
+        .whereIn("precon_boq_rows.row_type", ["item", "provisional_sum"])
+        .groupBy("precon_bills.session_id", "precon_boq_rows.status")
+        .select("precon_bills.session_id as session_id", "precon_boq_rows.status as status")
+        .count("* as count")) as unknown as { session_id: string; status: RowStatus | null; count: string }[];
+      for (const r of rows) {
+        const c = out.get(r.session_id) ?? { total: 0, verified: 0, attention: 0 };
+        const n = Number(r.count);
+        c.total += n;
+        if (r.status === "verified") c.verified += n;
+        if (r.status === "needs_review") c.attention += n;
+        out.set(r.session_id, c);
+      }
+      return out;
+    },
     sessionsByOrg: (orgId: string, proposalId?: string) =>
       db<PreconSessionRow>("precon_sessions")
         .where({ org_id: orgId })
@@ -42,14 +84,96 @@ export function preconRepository(db: Knex) {
         .where({ id })
         .update({ status, error: error ?? null, updated_at: db.fn.now() }),
 
+    // Append one progress entry and move the phase pointer. The log is capped
+    // at 100 entries in SQL (drop index 0 when full) so a chatty run cannot
+    // bloat the row; the client only ever renders the latest message per phase.
+    appendSessionProgress: (id: string, entry: PreconProgressEntry) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({
+          phase: entry.phase,
+          progress_log: db.raw(
+            `(CASE WHEN jsonb_array_length(COALESCE(progress_log, '[]'::jsonb)) >= 100
+                THEN (progress_log - 0) ELSE COALESCE(progress_log, '[]'::jsonb) END) || ?::jsonb`,
+            [JSON.stringify([entry])],
+          ) as never,
+          updated_at: db.fn.now(),
+        }),
+
+    // Put a failed session back to the state it was in before generate ran:
+    // one pending placeholder sheet per uploaded file, no bills/rows/geometry,
+    // no structure context, empty log. Everything else (settings, audit trail,
+    // proposal link) is kept so the retry is a continuation, not a new session.
+    resetSessionForRetry: (id: string) =>
+      db.transaction(async (trx) => {
+        const sheets = await trx<PreconSheetRow>("precon_sheets")
+          .where({ session_id: id })
+          .orderBy("page_number", "asc");
+        const keepByFile = new Map<string, PreconSheetRow>();
+        for (const sheet of sheets) {
+          if (!keepByFile.has(sheet.storage_path)) keepByFile.set(sheet.storage_path, sheet);
+        }
+        const keepIds = [...keepByFile.values()].map((s) => s.id);
+        await trx("precon_bills").where({ session_id: id }).delete();
+        await trx("precon_sheets").where({ session_id: id }).whereNotIn("id", keepIds).delete();
+        let pageNumber = 1;
+        for (const sheet of keepByFile.values()) {
+          await trx<PreconSheetRow>("precon_sheets")
+            .where({ id: sheet.id })
+            .update({
+              page_number: pageNumber++,
+              code: null,
+              title: null,
+              kind: "unknown",
+              status: "pending",
+              scale_mm_per_pt: null,
+              scale_confidence: null,
+              dim_unit: null,
+              snap_index: null,
+              error: null,
+              updated_at: trx.fn.now(),
+            });
+        }
+        await trx<PreconSessionRow>("precon_sessions")
+          .where({ id })
+          .update({
+            status: "generating",
+            error: null,
+            phase: null,
+            progress_log: null,
+            structure_context: null,
+            updated_at: trx.fn.now(),
+          });
+      }),
+
+    // Extraction reports are written once per run, replacing the previous set;
+    // the sheet summary is the compact cut the viewer reads without the session.
+    updateSessionExtraction: (id: string, extraction: SessionExtraction) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({ extraction: db.raw("?::jsonb", [JSON.stringify(extraction)]) as never, updated_at: db.fn.now() }),
+    updateSheetGeoSummary: (id: string, summary: GeoSummary) =>
+      db<PreconSheetRow>("precon_sheets")
+        .where({ id })
+        .update({ geo_summary: db.raw("?::jsonb", [JSON.stringify(summary)]) as never, updated_at: db.fn.now() }),
+
     updateSessionStructure: (id: string, structure: StructureContext) =>
       db<PreconSessionRow>("precon_sessions")
         .where({ id })
         .update({ structure_context: db.raw("?::jsonb", [JSON.stringify(structure)]), updated_at: db.fn.now() }),
+    updateSessionLayerMap: (id: string, layerMap: SessionLayerMap | null) =>
+      db<PreconSessionRow>("precon_sessions")
+        .where({ id })
+        .update({ layer_map: (layerMap === null ? null : db.raw("?::jsonb", [JSON.stringify(layerMap)])) as never, updated_at: db.fn.now() }),
 
     // sheets
     insertSheets: (rows: Omit<PreconSheetRow, "created_at" | "updated_at">[]) =>
-      rows.length ? db<PreconSheetRow>("precon_sheets").insert(rows) : Promise.resolve(),
+      rows.length
+        ? db<PreconSheetRow>("precon_sheets").insert(
+            rows.map((r) => ({ ...r, bounds: (r.bounds ? JSON.stringify(r.bounds) : null) as never })),
+          )
+        : Promise.resolve(),
+    deleteSheetsBySession: (sessionId: string) => db("precon_sheets").where({ session_id: sessionId }).delete(),
     sheetsBySession: (sessionId: string) =>
       db<PreconSheetRow>("precon_sheets").where({ session_id: sessionId }).orderBy("page_number", "asc"),
     sheetById: (id: string) => db<PreconSheetRow>("precon_sheets").where({ id }).first(),
@@ -67,6 +191,7 @@ export function preconRepository(db: Knex) {
           | "scale_confidence"
           | "dim_unit"
           | "snap_index"
+          | "viewports"
           | "error"
         >
       >,
@@ -76,6 +201,7 @@ export function preconRepository(db: Knex) {
         .update({
           ...patch,
           snap_index: patch.snap_index === undefined ? undefined : (JSON.stringify(patch.snap_index) as never),
+          viewports: patch.viewports === undefined ? undefined : (JSON.stringify(patch.viewports) as never),
           updated_at: db.fn.now(),
         }),
     updateSheetStatus: (id: string, status: SheetStatus, error?: string | null) =>
@@ -114,7 +240,11 @@ export function preconRepository(db: Knex) {
       // chunked: a generated BOQ can be several hundred rows
       for (let i = 0; i < rows.length; i += 200) {
         await db<PreconBoqRowRow>("precon_boq_rows").insert(
-          rows.slice(i, i + 200).map((r) => ({ ...r, deductions: JSON.stringify(r.deductions) as never })),
+          rows.slice(i, i + 200).map((r) => ({
+            ...r,
+            deductions: JSON.stringify(r.deductions) as never,
+            evidence: (r.evidence ? JSON.stringify(r.evidence) : null) as never,
+          })),
         );
       }
     },
@@ -125,6 +255,25 @@ export function preconRepository(db: Knex) {
       return inserted!;
     },
     deleteRow: (id: string) => db("precon_boq_rows").where({ id }).delete(),
+    deleteRows: (ids: string[]) => (ids.length ? db("precon_boq_rows").whereIn("id", ids).delete() : Promise.resolve(0)),
+    // The engine's unverified lines whose only evidence is this sheet — what a
+    // re-measure replaces. A line also drawn on another sheet is left alone.
+    aiRowIdsOnSheet: async (sheetId: string): Promise<string[]> => {
+      const onSheet = await db("precon_boq_rows as r")
+        .join("precon_geometries as g", "g.row_id", "r.id")
+        .where("g.sheet_id", sheetId)
+        .andWhere("r.origin", "ai")
+        .andWhereNot("r.status", "verified")
+        .distinct<{ id: string }[]>("r.id");
+      const ids = onSheet.map((r) => r.id);
+      if (ids.length === 0) return [];
+      const elsewhere = await db("precon_geometries")
+        .whereIn("row_id", ids)
+        .andWhereNot("sheet_id", sheetId)
+        .distinct<{ row_id: string }[]>("row_id");
+      const keep = new Set(elsewhere.map((e) => e.row_id));
+      return ids.filter((id) => !keep.has(id));
+    },
     rowsBySession: (sessionId: string) =>
       db<PreconBoqRowRow>("precon_boq_rows")
         .whereIn("bill_id", db("precon_bills").select("id").where({ session_id: sessionId }))
@@ -149,6 +298,7 @@ export function preconRepository(db: Knex) {
           | "unit"
           | "qty_gross"
           | "deductions"
+          | "typical"
           | "qty"
           | "rate"
           | "amount"
@@ -157,6 +307,8 @@ export function preconRepository(db: Knex) {
           | "measurement_basis"
           | "verified_by"
           | "verified_at"
+          | "edited_at"
+          | "edited_by"
         >
       >,
       trx?: Knex.Transaction,
@@ -212,6 +364,12 @@ export function preconRepository(db: Knex) {
         .whereIn("sheet_id", db("precon_sheets").select("id").where({ session_id: sessionId }))
         .orderBy("created_at", "asc"),
     geometriesByRow: (rowId: string) => db<PreconGeometryRow>("precon_geometries").where({ row_id: rowId }),
+    // an engine re-run redraws its own annotations; a person's stay
+    deleteAiGeometriesBySession: (sessionId: string) =>
+      db("precon_geometries")
+        .where({ source: "ai" })
+        .whereIn("sheet_id", db("precon_sheets").select("id").where({ session_id: sessionId }))
+        .delete(),
     replaceRowGeometry: async (rowId: string, geometry: Omit<PreconGeometryRow, "created_at">) => {
       await db("precon_geometries").where({ row_id: rowId, kind: geometry.kind, source: "manual" }).delete();
       await db<PreconGeometryRow>("precon_geometries").insert({
@@ -305,13 +463,46 @@ export function preconRepository(db: Knex) {
         .orderBy("sort", "asc"),
     programmeTaskById: (id: string) =>
       db<PreconProgrammeTaskRow>("precon_programme_tasks").where({ id }).first(),
+    insertProgrammeTask: async (row: Omit<PreconProgrammeTaskRow, "created_at" | "updated_at">) => {
+      const [inserted] = await db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .insert({ ...row, predecessors: JSON.stringify(row.predecessors) as never })
+        .returning("*");
+      return inserted!;
+    },
+    deleteProgrammeTask: (id: string) => db("precon_programme_tasks").where({ id }).delete(),
+    // Derived fields (parent, sort, float, critical) change as a consequence of
+    // another task's edit, so they bypass the optimistic version check.
+    updateProgrammeTaskDerived: (
+      id: string,
+      patch: Partial<
+        Pick<
+          PreconProgrammeTaskRow,
+          "parent_task_id" | "sort" | "total_float_days" | "is_critical" | "predecessors" | "outline_level"
+        >
+      >,
+    ) =>
+      db<PreconProgrammeTaskRow>("precon_programme_tasks")
+        .where({ id })
+        .update({
+          ...patch,
+          predecessors: patch.predecessors === undefined ? undefined : (JSON.stringify(patch.predecessors) as never),
+        }),
     updateProgrammeTaskVersioned: async (
       id: string,
       version: number,
       patch: Partial<
         Pick<
           PreconProgrammeTaskRow,
-          "name" | "duration_days" | "predecessors" | "is_milestone" | "basis" | "status" | "verified_by" | "verified_at"
+          | "name"
+          | "duration_days"
+          | "predecessors"
+          | "is_milestone"
+          | "basis"
+          | "status"
+          | "verified_by"
+          | "verified_at"
+          | "outline_level"
+          | "origin"
         >
       >,
     ): Promise<PreconProgrammeTaskRow | null> => {

@@ -20,6 +20,7 @@ export interface ChangeRequest {
   decidedAt: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
+  estimateId: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -62,6 +63,7 @@ export interface ChangeRequestRow {
   decided_at: string | null;
   assignee_id: string | null;
   assignee_name: string | null;
+  estimate_id: string | null;
   created_at: string;
   updated_at: string;
 }
