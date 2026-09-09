@@ -5,6 +5,7 @@ import { Pressable, View, useWindowDimensions } from "react-native";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { CategoryCard } from "@/components/molecules/category-card";
 import { Page } from "@/components/molecules/page";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { TabletMinWidth } from "@/constants/theme";
@@ -245,7 +246,14 @@ export default function Plans() {
 
   return (
     <Page
-      title="Plans"
+      title={group === DOCUMENT_GROUP.PLAN ? "Plans" : "Documents"}
+      rightButtons={
+        <HeaderIconButton
+          icon="cloud-upload-outline"
+          label="Upload a document"
+          onPress={() => router.push("/tools/documents/upload" as never)}
+        />
+      }
       workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
       projectName={project?.name ?? "Loading project…"}
       onPressWorkspace={() => setSheetOpen(true)}

@@ -39,6 +39,7 @@ const TOOLS: readonly FieldTool[] = [
     icon: "checkmark-done-outline",
     href: "/tools/material-approvals",
   },
+  { key: "panda-ai", label: "Panda AI", helper: "Ask about this project", icon: "sparkles-outline", href: "/tools/panda-ai" },
 ] as const;
 
 function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
