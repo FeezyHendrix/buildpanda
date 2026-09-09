@@ -45,15 +45,23 @@ type MarkupShape =
 
 export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
 
-export const SHEET_TOOLS = ["pan", "comment", "pen", "cloud"] as const;
+// Cloud is no longer offered: a revision cloud is a drafting convention for
+// "this changed", and the revision compare says that better. Existing clouds
+// still render, they just cannot be drawn any more.
+export const SHEET_TOOLS = ["pan", "comment", "pen"] as const;
 export type SheetTool = (typeof SHEET_TOOLS)[number];
 
 export const SHEET_TOOL = {
   PAN: "pan",
   COMMENT: "comment",
   PEN: "pen",
-  CLOUD: "cloud",
 } as const satisfies Record<string, SheetTool>;
+
+// A sheet carries pen and comments; a reader wants one without the other.
+export const SHEET_LAYERS = ["ink", "comments"] as const;
+export type SheetLayer = (typeof SHEET_LAYERS)[number];
+export type LayerVisibility = Record<SheetLayer, boolean>;
+export const ALL_LAYERS_VISIBLE: LayerVisibility = { ink: true, comments: true };
 
 export interface CommentDraft {
   text: string;

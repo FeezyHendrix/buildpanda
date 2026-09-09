@@ -1,5 +1,4 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
 import { useEffect, useMemo, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
@@ -10,6 +9,7 @@ import { Page } from "@/components/molecules/page";
 import { CommentComposer } from "@/components/plan-review/comment-composer";
 import { MarkupPanel } from "@/components/plan-review/markup-panel";
 import {
+  ALL_LAYERS_VISIBLE,
   MARKUP_KIND,
   MEDIA_KIND,
   SHEET_TOOL,
@@ -18,9 +18,10 @@ import {
   type MarkupPoint,
   type SheetMarkup,
   type SheetRenderInfo,
+  type SheetLayer,
   type SheetTool,
 } from "@/components/plan-review/markup-types";
-import { ReviewToolbar, ToolHint } from "@/components/plan-review/review-toolbar";
+import { SheetControls, SheetPager, ToolHint } from "@/components/plan-review/sheet-controls";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
 import { SheetStrip } from "@/components/plan-review/sheet-strip";
 import { TabletMinWidth } from "@/constants/theme";
@@ -28,29 +29,11 @@ import type { Db } from "@/db/client";
 import { DOCUMENT_GROUP } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useLocalDocuments } from "@/hooks/use-local-documents";
-import { cacheDocument } from "@/lib/download-file";
 import { useFieldSession } from "@/lib/field-session";
-
-const IMAGE_MIME: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  gif: "image/gif",
-  webp: "image/webp",
-  bmp: "image/bmp",
-};
+import { useSheetSource } from "@/hooks/use-sheet-source";
 
 const VOICE_NOTE_FILE = { name: "voice-note.m4a", mime: "audio/m4a" } as const;
 const VIDEO_NOTE_FILE = { name: "site-video.mov", mime: "video/quicktime" } as const;
-
-function extensionOf(fileName: string): string {
-  return fileName.split(".").pop()?.toLowerCase() ?? "";
-}
-
-interface SheetSource {
-  pdfBase64: string | null;
-  imageDataUri: string | null;
-}
 
 export default function PlanReview() {
   const { projectId } = useFieldSession();
@@ -87,11 +70,12 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
 
   const [pageNo, setPageNo] = useState(1);
   const [tool, setTool] = useState<SheetTool>(SHEET_TOOL.PAN);
+  const [layers, setLayers] = useState(ALL_LAYERS_VISIBLE);
+  const [controlsOpen, setControlsOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingAnchor, setPendingAnchor] = useState<MarkupPoint | null>(null);
   const [markups, setMarkups] = useState<DrawingMarkup[]>([]);
   const [assignees, setAssignees] = useState<CommentAssignee[]>([]);
-  const [source, setSource] = useState<SheetSource | null>(null);
   const [renderInfo, setRenderInfo] = useState<SheetRenderInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,35 +84,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   const versionId = activeSheet?.currentVersionId ?? null;
   const fileName = activeSheet?.fileName ?? "";
 
-  useEffect(() => {
-    if (!sheetId || !fileName) return;
-    let cancelled = false;
-    setSource(null);
-    setRenderInfo(null);
-    (async () => {
-      const uri = await cacheDocument(db, projectId, sheetId);
-      if (!uri || cancelled) return;
-      const base64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
-      if (cancelled) return;
-      const mime = IMAGE_MIME[extensionOf(fileName)];
-      setSource(
-        mime
-          ? { pdfBase64: null, imageDataUri: `data:${mime};base64,${base64}` }
-          : { pdfBase64: base64, imageDataUri: null },
-      );
-    })().catch((err: unknown) => {
-      if (cancelled) return;
-      console.error("plan review sheet load failed", err);
-      setError(
-        err instanceof Error && err.message
-          ? `Couldn't load this sheet: ${err.message}`
-          : "Couldn't load this sheet. Try again when you have signal.",
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [db, projectId, sheetId, fileName]);
+  const { source } = useSheetSource(db, projectId, sheetId, fileName, setError);
 
   useEffect(() => {
     if (!versionId) return;
@@ -161,16 +117,26 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     };
   }, [projectId]);
 
+  const layerCounts = useMemo(
+    () => ({
+      ink: markups.filter((m) => m.kind === MARKUP_KIND.PEN).length,
+      comments: markups.filter((m) => m.kind === MARKUP_KIND.PIN).length,
+    }),
+    [markups],
+  );
+
   const canvasMarkups = useMemo<SheetMarkup[]>(
     () =>
-      markups.map((m) => ({
+      markups
+        .filter((m) => (m.kind === MARKUP_KIND.PEN ? layers.ink : m.kind === MARKUP_KIND.PIN ? layers.comments : true))
+        .map((m) => ({
         id: m.id,
         kind: m.kind,
         geometry: m.geometry,
         color: m.color,
         resolved: Boolean(m.resolvedAt),
       })),
-    [markups],
+    [markups, layers],
   );
 
   const selected = useMemo(
@@ -185,6 +151,8 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     setPendingAnchor(null);
     setMarkups([]);
     setError(null);
+    // the page count belongs to the sheet that is going away
+    setRenderInfo(null);
   }
 
   async function persistMarkup(geometry: MarkupGeometry) {
@@ -197,7 +165,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
         documentVersionId: versionId,
         pageNo,
         kind: geometry.kind,
-        geometry,
+        geometry: { ...geometry, space: "percent" },
       });
       setMarkups((prev) => [...prev, created]);
       setSelectedId(created.id);
@@ -332,18 +300,6 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   return (
     <Page title={fileName || "Plan review"} onBack={() => router.back()} scroll={false} className="px-0 pb-0 pt-0">
       <View className="flex-1">
-        <ReviewToolbar
-          tool={tool}
-          onSelectTool={setTool}
-          pageNo={pageNo}
-          pageCount={renderInfo?.pageCount ?? 1}
-          onChangePage={(next) => {
-            setPageNo(next);
-            setSelectedId(null);
-            setPendingAnchor(null);
-          }}
-        />
-
         <SheetStrip sheets={sheets} activeId={activeSheet?.id} onSelect={switchSheet} />
 
         {error ? (
@@ -383,6 +339,24 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
                 </Text>
               </View>
             )}
+            <SheetControls
+              tool={tool}
+              onSelectTool={setTool}
+              layers={layers}
+              counts={layerCounts}
+              onToggleLayer={(layer: SheetLayer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
+              open={controlsOpen}
+              onToggleOpen={() => setControlsOpen((v) => !v)}
+            />
+            <SheetPager
+              pageNo={pageNo}
+              pageCount={renderInfo?.pageCount ?? 1}
+              onChangePage={(next) => {
+                setPageNo(next);
+                setSelectedId(null);
+                setPendingAnchor(null);
+              }}
+            />
           </View>
           {sidePanel ? <View className="w-96 border-l border-hairline bg-surface">{sidebar}</View> : null}
         </View>
