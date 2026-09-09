@@ -36,7 +36,7 @@ function SegmentedTabsInner<T extends string>({ tabs, active, onChange }: Segmen
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             className={cn(
-              "min-h-9 justify-center rounded-full px-4",
+              "min-h-11 justify-center rounded-full px-4",
               isActive ? "bg-primary-500" : "bg-surface border border-hairline",
             )}
           >

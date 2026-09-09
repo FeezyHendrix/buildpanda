@@ -259,7 +259,7 @@ export function MarkupPanel({
           placeholder="Reply…"
           placeholderTextColor="#ADADAD"
           multiline
-          className="max-h-24 min-h-11 flex-1 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-ink"
+          className="max-h-24 min-h-11 flex-1 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-black-500"
           style={{ fontFamily: "PlusJakartaSans_400Regular" }}
         />
         <Pressable

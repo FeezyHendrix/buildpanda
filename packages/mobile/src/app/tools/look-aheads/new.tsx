@@ -95,6 +95,7 @@ export default function NewLookAhead() {
       </View>
 
       <WorkspaceSheet
+        title="Choose a building"
         visible={buildingPickerOpen}
         workspaces={buildings.map((building) => ({
           id: building.id,

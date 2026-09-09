@@ -1,8 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Pressable, View } from "react-native";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
@@ -43,9 +42,11 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
   return (
     <Card>
       {data.map((row) => (
-        <View
+        <Pressable
           key={row.id}
-          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3"
+          onPress={() => router.push(`/tools/look-aheads/${row.id}`)}
+          accessibilityRole="button"
+          className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
         >
           <View className="min-w-0 flex-1">
             <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
@@ -56,10 +57,9 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
               {row.totalWorkers ? ` · ${row.totalWorkers} crew` : ""}
             </Text>
           </View>
-          {row.isPendingSync ? (
-            <Ionicons name="cloud-upload-outline" size={16} color="#717171" />
-          ) : null}
-        </View>
+          {row.isPendingSync ? <PendingBadge /> : null}
+          <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+        </Pressable>
       ))}
     </Card>
   );

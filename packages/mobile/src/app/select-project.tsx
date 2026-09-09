@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "@/components/atoms";
 import { PickerScreen, type PickerItem } from "@/components/molecules/picker-screen";
 import { useProjects } from "@/hooks/use-projects";
 import { useFieldSession } from "@/lib/field-session";
@@ -32,8 +33,12 @@ export default function SelectProject() {
       emptyDescription="Pick a different workspace, or ask your project manager to add you to a project."
       onSelect={handleSelect}
       footer={
-        <Pressable onPress={() => router.push("/select-workspace")} accessibilityRole="button">
-          <Text className="py-3 text-center text-sm font-semibold text-primary-500">
+        <Pressable
+          onPress={() => router.push("/select-workspace")}
+          accessibilityRole="button"
+          className="min-h-11 justify-center"
+        >
+          <Text weight="semibold" tone="brand" className="text-center text-sm">
             Switch workspace
           </Text>
         </Pressable>

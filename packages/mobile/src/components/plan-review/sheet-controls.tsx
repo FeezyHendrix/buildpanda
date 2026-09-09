@@ -153,3 +153,17 @@ export function SheetPager({
   );
 }
 SheetPager.displayName = "SheetPager";
+
+/** How many markups on this sheet are still waiting for signal. */
+export function PendingSyncPill({ count }: { count: number }) {
+  if (count < 1) return null;
+  return (
+    <View className="absolute left-3 top-3 flex-row items-center gap-1.5 rounded-full border border-hairline bg-surface/95 px-3 py-1.5 shadow-sm">
+      <Ionicons name="cloud-upload-outline" size={13} color="#5C5C5C" />
+      <Text tone="secondary" className="text-[11px]">
+        {count} waiting to sync
+      </Text>
+    </View>
+  );
+}
+PendingSyncPill.displayName = "PendingSyncPill";

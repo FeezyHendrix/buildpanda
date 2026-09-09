@@ -2,7 +2,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import type { ChatMessage } from "@/api/panda-ai";
@@ -44,7 +43,49 @@ export default function PandaAiChat() {
   }
 
   return (
-    <Page title="Panda AI" onBack={() => router.back()} showSync={false} scroll={false}>
+    <Page
+      title="Panda AI"
+      onBack={() => router.back()}
+      showSync={false}
+      scroll={false}
+      footer={
+        <View className="gap-2">
+          {error ? (
+            <Text tone="danger" className="px-1 text-xs">
+              {error}
+            </Text>
+          ) : null}
+          <View className="flex-row items-end gap-2">
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask Panda AI…"
+              placeholderTextColor="#ADADAD"
+              multiline
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+            />
+            <Pressable
+              onPress={streaming ? stop : handleSend}
+              disabled={!streaming && !input.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={streaming ? "Stop" : "Send"}
+              className={cn(
+                "h-14 w-14 items-center justify-center rounded-xl bg-primary-500",
+                !streaming && !input.trim() && "opacity-50",
+              )}
+            >
+              {streaming ? (
+                <Ionicons name="stop" size={18} color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+              )}
+            </Pressable>
+          </View>
+        </View>
+      }
+    >
       {!isOnline ? (
         <View className="items-center py-4">
           <Text tone="secondary" className="text-[13px]">Panda AI needs a connection to work.</Text>
@@ -88,40 +129,6 @@ export default function PandaAiChat() {
         </View>
       ) : null}
 
-      {error ? (
-        <View className="px-4 pb-2">
-          <Text tone="danger" className="text-xs">{error}</Text>
-        </View>
-      ) : null}
-
-      <View className="flex-row items-end gap-2 border-t border-hairline bg-surface px-4 py-3">
-        <TextInput
-          value={input}
-          onChangeText={setInput}
-          placeholder="Ask Panda AI…"
-          placeholderTextColor="#ADADAD"
-          multiline
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
-          className="max-h-28 min-h-12 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
-        />
-        <Pressable
-          onPress={streaming ? stop : handleSend}
-          disabled={!streaming && !input.trim()}
-          accessibilityRole="button"
-          accessibilityLabel={streaming ? "Stop" : "Send"}
-          className={cn(
-            "h-12 w-12 items-center justify-center rounded-xl bg-primary-500",
-            !streaming && !input.trim() && "opacity-50",
-          )}
-        >
-          {streaming ? (
-            <Ionicons name="stop" size={18} color="#FFFFFF" />
-          ) : (
-            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
-          )}
-        </Pressable>
-      </View>
     </Page>
   );
 }

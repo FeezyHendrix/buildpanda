@@ -342,3 +342,26 @@ export type LookAheadRow = typeof lookAheads.$inferSelect;
 export type MaterialOrderRow = typeof materialOrders.$inferSelect;
 export type MaterialApprovalRow = typeof materialApprovals.$inferSelect;
 export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferSelect;
+
+// A markup drawn on site must survive no signal like every other record here:
+// it is written locally and queued, never posted straight to the network.
+// Geometry is the same jsonb shape the server stores, kept as text.
+export const drawingMarkups = sqliteTable(
+  "drawing_markups",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id").notNull(),
+    documentId: text("document_id").notNull(),
+    documentVersionId: text("document_version_id").notNull(),
+    pageNo: integer("page_no").notNull().default(1),
+    kind: text("kind").notNull(),
+    /** JSON: the MarkupGeometry the canvas produced, including its space. */
+    geometry: text("geometry").notNull(),
+    color: text("color").notNull().default("#004DE7"),
+    resolvedAt: text("resolved_at"),
+    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
+    updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
+  },
+  (table) => [index("drawing_markups_sheet_idx").on(table.documentVersionId, table.pageNo)],
+);
+export type DrawingMarkupRow = typeof drawingMarkups.$inferSelect;

@@ -21,9 +21,9 @@ export function SheetStrip({
               key={sheet.id}
               onPress={() => onSelect(sheet.id)}
               accessibilityRole="button"
-              className={`h-9 flex-row items-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
+              className={`h-11 flex-row items-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
             >
-              <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-ink-secondary"}`}>
+              <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-grey-400"}`}>
                 P-{String(index + 1).padStart(2, "0")}
               </Text>
             </Pressable>
