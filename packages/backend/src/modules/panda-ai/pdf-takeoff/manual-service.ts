@@ -46,7 +46,7 @@ export const MANUAL_BILL_TITLE = "Bill No. 1 — Measured by hand";
 
 const db_json = (scope: TakeoffScope): TakeoffScope => ({ kind: scope.kind, elements: [...scope.elements] });
 
-interface ManualLine {
+export interface ManualLine {
   description: string;
   elementGroup: string;
   code?: string;
