@@ -1,21 +1,38 @@
-import { randomBytes } from "crypto";
 import * as XLSX from "xlsx";
 import type { FastifyPluginAsync } from "fastify";
 import { proposalsRepository } from "./repository.ts";
 import { proposalsService } from "./service.ts";
-import { convertProposalToProject } from "./convert-to-project.ts";
-import { PROPOSAL_STATUSES } from "./types.ts";
-import { ForbiddenError, NotFoundError } from "../../lib/errors.ts";
+import { proposalTermsRepository } from "./terms-repository.ts";
+import { proposalTermsService } from "./terms-service.ts";
+import { proposalSendService } from "./send-service.ts";
+import { convertProposalToProject, previewConversion } from "./convert-to-project.ts";
+import planRoutes from "./plan-routes.ts";
+import { CLIENT_VISIBLE_DETAIL, CONVERT_SECTIONS, JOB_PROFILES, PROPOSAL_STATUSES, RETENTION_MODES, SCHEDULE_KINDS, WHT_RATES } from "./types.ts";
+import { NotFoundError } from "../../lib/errors.ts";
 import { idParams, paginationProperties } from "../../lib/schemas.ts";
 import { sendEmail } from "../../lib/mail.ts";
 import { proposalSentEmail } from "../../lib/email-templates.ts";
 import { generateId } from "../../lib/ids.ts";
 import { config } from "../../config/index.ts";
 import type {
+  ConvertBody,
   CreateProposalInput,
   CreateEstimateItemInput,
   CreatePaymentScheduleInput,
+  UpdateEstimateTermsInput,
 } from "./types.ts";
+
+const convertBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    include: {
+      type: "object",
+      additionalProperties: false,
+      properties: Object.fromEntries(CONVERT_SECTIONS.map((key) => [key, { type: "boolean" }])),
+    },
+  },
+} as const;
 
 const proposalEstimateParams = {
   type: "object",
@@ -50,6 +67,7 @@ const createProposalBody = {
     currency: { type: "string", maxLength: 10 },
     validUntil: { type: "string", maxLength: 30 },
     leadId: { type: "string", maxLength: 100 },
+    jobProfile: { type: "string", enum: JOB_PROFILES },
   },
 } as const;
 
@@ -67,6 +85,7 @@ const patchProposalBody = {
     status: { type: "string", enum: PROPOSAL_STATUSES },
     currency: { type: "string", maxLength: 10 },
     validUntil: { type: ["string", "null"], maxLength: 30 },
+    jobProfile: { type: "string", enum: JOB_PROFILES },
   },
 } as const;
 
@@ -89,7 +108,8 @@ const estimateItemSchema = {
     qty: { type: "number", minimum: 0 },
     unit: { type: "string", minLength: 1, maxLength: 50 },
     unitRate: { type: "number", minimum: 0 },
-    boqItemId: { type: "string", maxLength: 100 },
+    boqItemId: { type: ["string", "null"], maxLength: 100 },
+    takeoffSessionId: { type: ["string", "null"], maxLength: 100 },
     sort: { type: "integer", minimum: 0 },
   },
 } as const;
@@ -104,6 +124,24 @@ const scheduleItemSchema = {
     description: { type: "string", maxLength: 500 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     sort: { type: "integer", minimum: 0 },
+    kind: { type: "string", enum: SCHEDULE_KINDS },
+    programmeTaskId: { type: ["string", "null"], maxLength: 100 },
+  },
+} as const;
+
+const termsBody = {
+  type: "object",
+  additionalProperties: false,
+  minProperties: 1,
+  properties: {
+    retentionPct: { type: ["number", "null"], minimum: 0, maximum: 100 },
+    retentionMode: { type: ["string", "null"], enum: [...RETENTION_MODES, null] },
+    advancePct: { type: ["number", "null"], minimum: 0, maximum: 100 },
+    whtPct: { type: ["number", "null"], enum: [...WHT_RATES, null] },
+    paymentTermsDays: { type: ["integer", "null"], minimum: 0, maximum: 365 },
+    defectsLiabilityDays: { type: ["integer", "null"], minimum: 0, maximum: 3650 },
+    clientVisibleDetail: { type: "string", enum: CLIENT_VISIBLE_DETAIL },
+    validUntil: { type: ["string", "null"], maxLength: 30 },
   },
 } as const;
 
@@ -121,6 +159,9 @@ const patchEstimateBody = {
 const proposalRoutes: FastifyPluginAsync = async (fastify) => {
   const repo = proposalsRepository(fastify.db);
   const service = proposalsService(repo);
+  const termsRepo = proposalTermsRepository(fastify.db);
+  const termsService = proposalTermsService(repo, termsRepo);
+  const sendService = proposalSendService(fastify.db, repo, termsRepo, termsService);
 
   // --- Proposals ---
 
@@ -175,6 +216,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
         status: request.body.status as import("./types.ts").ProposalStatus | undefined,
         currency: request.body.currency,
         validUntil: (request.body as { validUntil?: string | null }).validUntil,
+        jobProfile: request.body.jobProfile,
       });
       if (!updated) throw new NotFoundError("Proposal");
       return repo.toProposal(updated);
@@ -202,88 +244,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  // --- Plans ---
-
-  fastify.get<{ Params: { id: string } }>(
-    "/proposals/:id/plans",
-    { schema: { params: idParams } },
-    async (request) => {
-      const orgId = request.requireOrgScope();
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-      return repo.listPlans(request.params.id);
-    },
-  );
-
-  fastify.post<{
-    Params: { id: string };
-    Body: { fileId: string; label?: string };
-  }>(
-    "/proposals/:id/plans",
-    {
-      schema: {
-        params: idParams,
-        body: {
-          type: "object",
-          required: ["fileId"],
-          additionalProperties: false,
-          properties: {
-            fileId: { type: "string", minLength: 1, maxLength: 100 },
-            label: { type: "string", maxLength: 200 },
-          },
-        } as const,
-      },
-    },
-    async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      const user = request.requireAuth();
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-
-      const file = await fastify.db("uploaded_files")
-        .where({ id: request.body.fileId, owner_id: user.id })
-        .first();
-      if (!file) throw new NotFoundError("File");
-
-      const existing = await repo.listPlans(request.params.id);
-      await repo.insertPlan({
-        id: generateId("plan"),
-        proposalId: request.params.id,
-        fileId: request.body.fileId,
-        label: request.body.label?.trim() || null,
-        uploadedBy: user.id,
-        sort: existing.length,
-      });
-
-      const plans = await repo.listPlans(request.params.id);
-      return reply.status(201).send(plans);
-    },
-  );
-
-  fastify.delete<{ Params: { id: string; planId: string } }>(
-    "/proposals/:id/plans/:planId",
-    {
-      schema: {
-        params: {
-          type: "object",
-          required: ["id", "planId"],
-          additionalProperties: false,
-          properties: {
-            id: { type: "string", minLength: 1 },
-            planId: { type: "string", minLength: 1 },
-          },
-        } as const,
-      },
-    },
-    async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      const exists = await repo.getById(request.params.id, orgId);
-      if (!exists) throw new NotFoundError("Proposal");
-      const removed = await repo.deletePlan(request.params.planId, request.params.id);
-      if (removed === 0) throw new NotFoundError("Plan");
-      return reply.status(204).send();
-    },
-  );
+  await fastify.register(planRoutes);
 
   // --- BoQ items ---
 
@@ -442,13 +403,30 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
-      return service.savePaymentSchedule(
+      const orgId = request.requireOrgPermission("estimates", "terms");
+      return termsService.savePaymentSchedule(
         request.params.estimateId,
         request.params.id,
         orgId,
         request.body,
       );
+    },
+  );
+
+  // Money terms live on the revision the client signs.
+  fastify.patch<{ Params: { id: string; estimateId: string }; Body: UpdateEstimateTermsInput }>(
+    "/proposals/:id/estimates/:estimateId/terms",
+    { schema: { params: proposalEstimateParams, body: termsBody } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("estimates", "terms");
+      const estimate = await termsService.updateTerms(
+        request.params.estimateId,
+        request.params.id,
+        orgId,
+        request.body,
+      );
+      const [items, schedule] = await Promise.all([repo.getItems(estimate.id), repo.getSchedule(estimate.id)]);
+      return { ...estimate, items, schedule };
     },
   );
 
@@ -488,29 +466,8 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
       const proposal = await repo.getById(request.params.id, orgId);
       if (!proposal) throw new NotFoundError("Proposal");
 
-      const estimate = await repo.getEstimate(request.params.estimateId);
-      if (!estimate || estimate.proposalId !== request.params.id) throw new NotFoundError("Estimate");
-      if (estimate.status !== "Draft") {
-        throw new ForbiddenError("Only Draft estimates can be sent.");
-      }
-
-      // Generate share token — valid until proposal.valid_until or 30 days
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = proposal.valid_until
-        ? new Date(proposal.valid_until).toISOString()
-        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-      await repo.setShareToken(request.params.estimateId, token, expiresAt);
-      await repo.updateEstimateMeta(request.params.estimateId, {
-        status: "Sent",
-        sentAt: new Date().toISOString(),
-      });
-      await repo.updateProposal(request.params.id, orgId, { status: "Sent" });
-      await repo.logEvent(request.params.id, "estimate_sent", user.id, {
-        estimateId: estimate.id,
-        revisionNo: estimate.revisionNo,
-      });
-
+      const sent = await sendService.send(request.params.id, request.params.estimateId, orgId, user.id);
+      const token = sent.token;
       const shareUrl = `${config.mail.appUrl}/p/${token}`;
 
       // Send email to client if we have their address
@@ -535,7 +492,7 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }
 
-      return reply.status(200).send({ shareUrl, token });
+      return reply.status(200).send({ shareUrl, token, snapshotFileId: sent.snapshotFileId, pdfHash: sent.pdfHash });
     },
   );
 
@@ -584,16 +541,28 @@ const proposalRoutes: FastifyPluginAsync = async (fastify) => {
 
   // --- Convert proposal → construction project ---
 
+  // What conversion would create, section by section, so the user confirms
+  // with counts in front of them rather than a generic "are you sure".
   fastify.post<{ Params: { id: string } }>(
-    "/proposals/:id/convert",
+    "/proposals/:id/convert/preview",
     { schema: { params: idParams } },
+    async (request) => {
+      const orgId = request.requireOrgPermission("proposals", "convert");
+      const user = request.requireAuth();
+      return previewConversion({ db: fastify.db, repo }, { proposalId: request.params.id, orgId, userId: user.id });
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Body: ConvertBody }>(
+    "/proposals/:id/convert",
+    { schema: { params: idParams, body: convertBody } },
     async (request, reply) => {
       const orgId = request.requireOrgPermission("proposals", "convert");
       const user = request.requireAuth();
 
       const result = await convertProposalToProject(
         { db: fastify.db, repo, log: request.log },
-        { proposalId: request.params.id, orgId, user },
+        { proposalId: request.params.id, orgId, user, include: request.body?.include },
       );
       return reply
         .status(result.created ? 201 : 200)

@@ -2,29 +2,134 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   preconApi,
+  type CreateProgrammeTaskInput,
+  type CreateMeasurementBody,
+  preconApplyApi,
+  preconManualApi,
+  preconViewerApi,
+  type SheetViewport,
+  type ApplyMode,
+  type TakeoffMode,
   type CreateRowInput,
+  type LayerMap,
   type PreconGeometryKind,
   type PreconProgramme,
   type PreconSummarySettings,
+  type TakeoffScope,
   type UpdateProgrammeTaskInput,
   type UpdateRowInput,
+  type UpdateSheetInput,
+  type UpdateStructureInput,
   type PreconSnapshot,
 } from "@/api/precon";
 import { preconKeys, proposalKeys } from "@/hooks/query-keys";
 import { useRealtime } from "@/lib/realtime";
 
+const RUNNING_STATUSES = new Set(["uploading", "generating"]);
+
 export function usePreconSessions(proposalId?: string) {
   return useQuery({
     queryKey: [...preconKeys.sessions(), proposalId ?? "all"],
     queryFn: () => preconApi.listSessions(proposalId),
+    // the list has no realtime channel of its own, so a running take-off is
+    // polled until it settles; idle lists never poll
+    refetchInterval: (query) =>
+      query.state.data?.some((s) => RUNNING_STATUSES.has(s.status)) ? 4000 : false,
+    refetchIntervalInBackground: true,
   });
 }
 
 export function useCreatePreconSessionFromPlan(proposalId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (planId: string) => preconApi.createSessionFromPlan(proposalId, planId),
+    mutationFn: ({ planId, scope }: { planId: string; scope: TakeoffScope }) =>
+      preconApi.createSessionFromPlan(proposalId, planId, scope),
     onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
+  });
+}
+
+export function useRetryPreconSession(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => preconApi.retrySession(sessionId),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev ? { ...prev, session, bills: [], rows: [], geometries: [] } : prev,
+      );
+      void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+      void qc.invalidateQueries({ queryKey: preconKeys.sessions() });
+    },
+  });
+}
+
+export function useUpdatePreconSheet(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sheetId, input }: { sheetId: string; input: UpdateSheetInput }) =>
+      preconApi.updateSheet(sheetId, input),
+    onSuccess: (sheet) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev ? { ...prev, sheets: prev.sheets.map((s) => (s.id === sheet.id ? sheet : s)) } : prev,
+      );
+      void qc.invalidateQueries({ queryKey: preconKeys.snap(sheet.id) });
+    },
+  });
+}
+
+// Re-measure runs on the queue; the snapshot polls/streams the result in.
+export function useRemeasurePreconSheet(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sheetId: string) => preconApi.remeasureSheet(sheetId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+export function useUpdatePreconStructure(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateStructureInput) => preconApi.updateStructure(sessionId, input),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, session } : prev));
+    },
+  });
+}
+
+// The corrected layer map re-runs the DWG measure on the queue; the session
+// goes back to generating and the snapshot polls the new register in.
+export function useUpdatePreconLayerMap(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (layerMap: LayerMap) => preconApi.updateLayerMap(sessionId, layerMap),
+    onSuccess: (session) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, session } : prev));
+      void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) });
+    },
+  });
+}
+
+export function useRedraftPreconBill(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => preconApi.redraftBill(sessionId),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+// Batch verify: one request per row, sequential so version conflicts surface
+// per row instead of a partial failure hiding inside Promise.all.
+export function useVerifyPreconRows(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: { rowId: string; version: number }[]) => {
+      let done = 0;
+      for (const row of rows) {
+        await preconApi.verifyRow(row.rowId, row.version);
+        done++;
+      }
+      return done;
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
   });
 }
 
@@ -33,8 +138,11 @@ export function usePreconSnapshot(sessionId: string) {
     queryKey: preconKeys.snapshot(sessionId),
     queryFn: () => preconApi.snapshot(sessionId),
     enabled: Boolean(sessionId),
-    // while the engine runs, poll as a fallback to the websocket feed
+    // while the engine runs, poll as a fallback to the websocket feed; keep
+    // polling when the tab is in the background so a run that finishes while
+    // the user is elsewhere is already in review when they come back
     refetchInterval: (query) => (query.state.data?.session.status === "generating" ? 4000 : false),
+    refetchIntervalInBackground: true,
   });
 }
 
@@ -250,7 +358,13 @@ export function useApplyPreconToProposal(sessionId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => preconApi.applyToProposal(sessionId),
-    onSuccess: (result) => qc.invalidateQueries({ queryKey: proposalKeys.boq(result.proposalId) }),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: proposalKeys.boq(result.proposalId) });
+      // applying can create + link a proposal, so the workspace header and
+      // the take-off list both need a refresh
+      void qc.invalidateQueries({ queryKey: proposalKeys.detail(result.proposalId) });
+      void qc.invalidateQueries({ queryKey: preconKeys.sessions() });
+    },
   });
 }
 
@@ -326,6 +440,22 @@ function useProgrammeStatusMutation(
   });
 }
 
+export function useCreatePreconProgrammeTask(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateProgrammeTaskInput) => preconApi.createProgrammeTask(sessionId, input),
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.programme(sessionId) }),
+  });
+}
+
+export function useDeletePreconProgrammeTask(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: string) => preconApi.deleteProgrammeTask(taskId),
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.programme(sessionId) }),
+  });
+}
+
 export function useVerifyPreconProgrammeTask(sessionId: string) {
   return useProgrammeStatusMutation(sessionId, "verified", ({ taskId, version }) =>
     preconApi.verifyProgrammeTask(taskId, version),
@@ -343,4 +473,195 @@ export function isVersionConflict(error: unknown): boolean {
   return Boolean(
     error && typeof error === "object" && "response" in error && (error as { response?: { status?: number } }).response?.status === 409,
   );
+}
+
+/** Preview or apply a take-off's lines onto an estimate revision (WS-3). */
+export function useApplyTakeoffToEstimate(sessionId: string, proposalId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ estimateId, mode }: { estimateId: string; mode: ApplyMode }) =>
+      preconApplyApi.applyToEstimate(sessionId, estimateId, mode),
+    onSuccess: (_result, variables) => {
+      if (variables.mode === "apply" && proposalId) {
+        void qc.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) });
+      }
+    },
+  });
+}
+
+// ---- WS-M1C · from-plan with a mode ----
+/** Start a take-off on a drawing, by Panda AI or by hand; both land on the sessions list. */
+export function useCreatePreconSessionFromPlanWithMode(proposalId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planId, scope, mode }: { planId: string; scope: TakeoffScope; mode: TakeoffMode }) =>
+      preconManualApi.createSessionFromPlan(proposalId, planId, scope, mode),
+    onSuccess: () => qc.invalidateQueries({ queryKey: preconKeys.sessions() }),
+  });
+}
+
+// ---- manual measurements (WS-M1B) ----
+
+/**
+ * A hand-drawn line lands in the bill at once: the new row and its geometry are
+ * written into the snapshot before the refetch so the viewer can select and
+ * highlight it without a flash of "nothing measured".
+ */
+export function useCreateMeasurement(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateMeasurementBody) => preconApi.createMeasurement(sessionId, body),
+    onSuccess: ({ row, geometry }) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) =>
+        prev
+          ? {
+              ...prev,
+              rows: prev.rows.some((r) => r.id === row.id) ? prev.rows.map((r) => (r.id === row.id ? row : r)) : [...prev.rows, row],
+              geometries: [...prev.geometries.filter((g) => g.id !== geometry.id), geometry],
+            }
+          : prev,
+      );
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+// ---- WS-M2B · viewer tools ----
+
+/** The proposal's take-offs, fetched only when a proposal is named (the overlay resolves the previous revision through it). */
+export function usePreconSessionsFor(proposalId: string | null) {
+  return useQuery({
+    queryKey: [...preconKeys.sessions(), proposalId ?? "all"],
+    queryFn: () => preconApi.listSessions(proposalId ?? undefined),
+    enabled: Boolean(proposalId),
+  });
+}
+
+/** Room fill: the enclosed space around a click, as a polygon the composer can name. */
+export function useRoomAt(sheetId: string | null) {
+  return useMutation({ mutationFn: (pt: { x: number; y: number }) => preconViewerApi.roomAt(sheetId!, pt) });
+}
+
+/** Find symbol: every match on the sheet of the symbol inside a dragged box. */
+export function useSymbolMatches(sheetId: string | null) {
+  return useMutation({ mutationFn: (rect: [number, number, number, number]) => preconViewerApi.symbolMatches(sheetId!, rect) });
+}
+
+/** Typical ×N on a bill line; the returned row (qty and basis recomputed) replaces the cached one. */
+export function useSetTypical(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, version, typical }: { rowId: string; version: number; typical: number }) => preconViewerApi.setTypical(rowId, { version, typical }),
+    onSuccess: (row) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, rows: prev.rows.map((r) => (r.id === row.id ? row : r)) } : prev));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+/** The sheet's viewports, replaced whole; the returned sheet replaces the cached one. */
+export function useUpdateSheetViewports(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sheetId, viewports }: { sheetId: string; viewports: SheetViewport[] }) => preconViewerApi.updateViewports(sheetId, viewports),
+    onSuccess: (sheet) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => (prev ? { ...prev, sheets: prev.sheets.map((s) => (s.id === sheet.id ? sheet : s)) } : prev));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+// ---- WS-M3B · assemblies, presence and focus ----
+import {
+  preconAssembliesApi,
+  preconPresenceApi,
+  type CreateAssemblyMeasurementBody,
+  type PresenceUser,
+  type UpsertAssemblyInput,
+} from "@/api/precon";
+import { preconAssemblyKeys, preconPresenceKeys } from "@/hooks/query-keys";
+
+export function useAssemblies() {
+  return useQuery({ queryKey: preconAssemblyKeys.list(), queryFn: () => preconAssembliesApi.list() });
+}
+
+function useInvalidateAssemblies() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: preconAssemblyKeys.all });
+}
+
+export function useCreateAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({ mutationFn: (body: UpsertAssemblyInput) => preconAssembliesApi.create(body), onSuccess: invalidate });
+}
+
+export function useUpdateAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({
+    mutationFn: ({ assemblyId, body }: { assemblyId: string; body: Partial<UpsertAssemblyInput> }) =>
+      preconAssembliesApi.update(assemblyId, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteAssembly() {
+  const invalidate = useInvalidateAssemblies();
+  return useMutation({ mutationFn: (assemblyId: string) => preconAssembliesApi.remove(assemblyId), onSuccess: invalidate });
+}
+
+/**
+ * One drawn shape, several bill lines. Like `useCreateMeasurement`, the rows
+ * and geometry land in the snapshot before the refetch so the viewer can
+ * select the first of them without a flash.
+ */
+export function useCreateAssemblyMeasurement(sessionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateAssemblyMeasurementBody) => preconAssembliesApi.createMeasurement(sessionId, body),
+    onSuccess: ({ rows, geometry }) => {
+      qc.setQueryData<PreconSnapshot>(preconKeys.snapshot(sessionId), (prev) => {
+        if (!prev) return prev;
+        const incoming = new Set(rows.map((r) => r.id));
+        return {
+          ...prev,
+          rows: [...prev.rows.filter((r) => !incoming.has(r.id)), ...rows],
+          geometries: [...prev.geometries.filter((g) => g.id !== geometry.id), geometry],
+        };
+      });
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: preconKeys.snapshot(sessionId) }),
+  });
+}
+
+/**
+ * Everyone on the session right now. The list is written by the realtime
+ * handler on `precon.presence`; nothing is fetched, so an unsubscribed tab
+ * simply sees nobody.
+ */
+export function usePreconPresence(sessionId: string): PresenceUser[] {
+  const { data = [] } = useQuery<PresenceUser[]>({
+    queryKey: preconPresenceKeys.session(sessionId),
+    queryFn: () => [],
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+  return data;
+}
+
+/**
+ * Tell the others which row this user is on. Posts on every change and clears
+ * on unmount; a failed post is not worth a toast — presence is a courtesy.
+ */
+export function usePreconFocus(sessionId: string | null, rowId: string | null): void {
+  useEffect(() => {
+    if (!sessionId) return;
+    void preconPresenceApi.focus(sessionId, rowId).catch(() => undefined);
+  }, [sessionId, rowId]);
+  useEffect(() => {
+    if (!sessionId) return;
+    return () => {
+      void preconPresenceApi.focus(sessionId, null).catch(() => undefined);
+    };
+  }, [sessionId]);
 }

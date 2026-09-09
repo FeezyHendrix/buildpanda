@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { financesRepository } from "../finances/repository.ts";
+import { financesService } from "../finances/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { changeRequestsRepository } from "./repository.ts";
@@ -99,8 +101,12 @@ const commentBody = {
 } as const;
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
+  const finances = financesService(financesRepository(fastify.db));
   const service = changeRequestsService(changeRequestsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    recordVariation: async (projectId, input, actor) => {
+      await finances.recordVariation(projectId, { amount: input.amount, description: input.description }, actor);
+    },
   });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
@@ -138,7 +144,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       const user = request.requireAuth();
-      return service.update(project.id, request.params.changeId, request.body, user.id);
+      return service.update(project.id, request.params.changeId, request.body, user.id, user.name);
     },
   );
 

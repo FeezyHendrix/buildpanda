@@ -51,6 +51,7 @@ export interface NewMilestoneRecord {
   proof_file_name: string | null;
   proof_verified: boolean;
   inspector_sign_off: MilestonePaymentRow["inspector_sign_off"];
+  claim_state?: MilestonePaymentRow["claim_state"];
   sort_order: number;
 }
 
@@ -61,6 +62,39 @@ export interface MilestoneUpdatePatch {
   percent_complete?: number;
   amount?: string;
   inspector_sign_off?: MilestonePaymentRow["inspector_sign_off"];
+  claim_state?: MilestonePaymentRow["claim_state"];
+}
+
+export interface ClaimPaymentOperation {
+  projectId: string;
+  amount: number;
+  entryId: string;
+  description: string;
+  entryDate: string;
+  actor: { id: string; name: string } | null;
+}
+
+// Handoff links (schedule item → programme task → project phase) are added by
+// another workstream; resolve through them only when every column exists.
+async function linkedMilestoneIds(db: Knex, projectId: string, stageId: string): Promise<string[]> {
+  try {
+    const [hasScheduleItem, hasPhaseTask] = await Promise.all([
+      db.schema.hasColumn("milestone_payments", "schedule_item_id"),
+      db.schema.hasColumn("project_phases", "programme_task_id"),
+    ]);
+    if (!hasScheduleItem || !hasPhaseTask) return [];
+    const hasScheduleTask = await db.schema.hasColumn("estimate_payment_schedule", "programme_task_id");
+    if (!hasScheduleTask) return [];
+    const rows = await db("milestone_payments as m")
+      .join("estimate_payment_schedule as s", "s.id", "m.schedule_item_id")
+      .join("project_phases as p", "p.programme_task_id", "s.programme_task_id")
+      .where("m.project_id", projectId)
+      .andWhere("p.id", stageId)
+      .select<{ id: string }[]>("m.id");
+    return rows.map((r) => r.id);
+  } catch {
+    return [];
+  }
 }
 
 export function financesRepository(db: Knex) {
@@ -129,6 +163,53 @@ export function financesRepository(db: Knex) {
         .update(patch)
         .returning("*");
       return row;
+    },
+
+    // Milestones a stage unlocks. Prefer the handoff's schedule_item →
+    // programme milestone → phase link when those columns exist; always include
+    // the name match so milestones created by hand still bind to their stage.
+    async listMilestonesForStage(projectId: string, stage: { id: string; name: string }): Promise<MilestonePaymentRow[]> {
+      const rows = await db<MilestonePaymentRow>("milestone_payments").where({ project_id: projectId });
+      const byName = rows.filter((row) => row.phase.trim().toLowerCase() === stage.name.trim().toLowerCase());
+      const linked = await linkedMilestoneIds(db, projectId, stage.id);
+      const ids = new Set([...byName.map((r) => r.id), ...linked]);
+      return rows.filter((row) => ids.has(row.id));
+    },
+
+    async recordCertification(
+      projectId: string,
+      input: { certified: number; retention: number; advanceRecovery: number },
+    ): Promise<void> {
+      await db("project_finances")
+        .where({ project_id: projectId })
+        .update({
+          certified_gross_to_date: db.raw("certified_gross_to_date + ?", [input.certified]),
+          retention_held: db.raw("retention_held + ?", [input.retention]),
+          advance_recovered: db.raw("advance_recovered + ?", [input.advanceRecovery]),
+        });
+    },
+
+    async recordClaimPayment(operation: ClaimPaymentOperation): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("project_finances")
+          .where({ project_id: operation.projectId })
+          .update({ amount_paid_to_date: trx.raw("amount_paid_to_date + ?", [operation.amount]) });
+        const count = await trx("cash_flow_entries")
+          .where({ project_id: operation.projectId })
+          .count<{ count: string }[]>("id as count");
+        await trx("cash_flow_entries").insert({
+          id: operation.entryId,
+          project_id: operation.projectId,
+          category: "claims_payment",
+          amount: operation.amount,
+          is_credit: true,
+          description: operation.description,
+          entry_date: operation.entryDate,
+          created_by_id: operation.actor?.id ?? null,
+          created_by_name: operation.actor?.name ?? null,
+          sort_order: Number(count[0]?.count ?? 0),
+        });
+      });
     },
 
     async deleteMilestone(projectId: string, milestoneId: string): Promise<number> {

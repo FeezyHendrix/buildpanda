@@ -56,6 +56,8 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   invoice_overdue: { eyebrow: "Invoice overdue", accent: "danger", ctaLabel: "View Invoice" },
   permit_expiring: { eyebrow: "Permit expiring soon", accent: "warning", ctaLabel: "View Permit" },
   permit_expired: { eyebrow: "Permit expired", accent: "danger", ctaLabel: "View Permit" },
+  compliance_doc_expiring: { eyebrow: "Compliance document expiring", accent: "warning", ctaLabel: "View Documents" },
+  compliance_doc_expired: { eyebrow: "Compliance document expired", accent: "danger", ctaLabel: "View Documents" },
   key_date_approaching: { eyebrow: "Key date approaching", accent: "warning", ctaLabel: "View Key Date" },
   key_date_missed: { eyebrow: "Key date missed", accent: "danger", ctaLabel: "View Key Date" },
   risk_high_added: { eyebrow: "High-severity risk", accent: "danger", ctaLabel: "View Risk" },

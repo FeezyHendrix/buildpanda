@@ -6,6 +6,10 @@ import { proposalsApi } from "@/api/proposals";
 import type { Estimate } from "@/api/proposals";
 import { cn } from "@/lib/utils";
 import { UnitInput } from "@/components/atoms/unit-input";
+import { TakeoffLinkChip, useTakeoffLineStatuses } from "./takeoff-link-chip";
+import { useMatchRates } from "@/hooks/use-rate-library";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 
 interface ItemDraft {
   groupLabel: string;
@@ -13,9 +17,14 @@ interface ItemDraft {
   qty: string;
   unit: string;
   unitRate: string;
+  boqItemId: string | null;
+  takeoffSessionId: string | null;
   sort: number;
 }
 
+// Links to take-off lines survive a save: quantity flows through the link,
+// the rate is the estimator's. Editing the description or quantity by hand
+// keeps the link so the chip still shows where the number came from.
 function itemsToApi(items: ItemDraft[]) {
   return items.map((item, i) => ({
     groupLabel: item.groupLabel,
@@ -23,7 +32,8 @@ function itemsToApi(items: ItemDraft[]) {
     qty: parseFloat(item.qty) || 0,
     unit: item.unit,
     unitRate: parseFloat(item.unitRate) || 0,
-    boqItemId: null,
+    boqItemId: item.boqItemId,
+    takeoffSessionId: item.takeoffSessionId,
     sort: i,
   }));
 }
@@ -44,11 +54,45 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
       qty: String(item.qty),
       unit: item.unit,
       unitRate: String(item.unitRate),
+      boqItemId: item.boqItemId,
+      takeoffSessionId: item.takeoffSessionId,
       sort: item.sort,
     })),
   );
+  const statuses = useTakeoffLineStatuses(
+    (estimate.items ?? []).flatMap((item) => (item.takeoffSessionId ? [item.takeoffSessionId] : [])),
+  );
   const [savingItems, setSavingItems] = useState(false);
   const [saveItemsError, setSaveItemsError] = useState<string | null>(null);
+  const matchRates = useMatchRates();
+
+  // Fills only the lines whose rate is still zero, so hand-entered figures survive.
+  function fillRatesFromLibrary() {
+    matchRates.mutate(
+      items.map((item) => ({ description: item.description, unit: item.unit })),
+      {
+        onSuccess: (matches) => {
+          const byIndex = new Map(matches.map((m) => [m.index, m]));
+          let filled = 0;
+          setItems((prev) =>
+            prev.map((item, i) => {
+              const hit = byIndex.get(i);
+              if (!hit || (parseFloat(item.unitRate) || 0) > 0) return item;
+              filled++;
+              return { ...item, unitRate: String(hit.rate) };
+            }),
+          );
+          toast(
+            filled > 0
+              ? `${filled} line${filled === 1 ? "" : "s"} priced from ${matches[0]?.cardName ?? "the rate library"}. Save items to keep them.`
+              : "No library rates matched the unpriced lines. Check units and descriptions against the rate card.",
+            filled > 0 ? "success" : "info",
+          );
+        },
+        onError: (e) => toast(getApiErrorMessage(e, "Could not look up rates."), "error"),
+      },
+    );
+  }
 
   useEffect(() => {
     setItems(
@@ -58,6 +102,8 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
         qty: String(item.qty),
         unit: item.unit,
         unitRate: String(item.unitRate),
+        boqItemId: item.boqItemId,
+        takeoffSessionId: item.takeoffSessionId,
         sort: item.sort,
       })),
     );
@@ -66,7 +112,7 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { groupLabel: "", description: "", qty: "1", unit: "item", unitRate: "0", sort: prev.length },
+      { groupLabel: "", description: "", qty: "1", unit: "item", unitRate: "0", boqItemId: null, takeoffSessionId: null, sort: prev.length },
     ]);
   }
 
@@ -91,7 +137,7 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
   }
 
   const rowClass = cn(
-    "grid grid-cols-[2fr_3fr_1fr_1.5fr_1.5fr_auto] gap-2 items-start",
+    "grid grid-cols-[2fr_3fr_1fr_1.5fr_1.5fr_auto_auto] gap-2 items-start",
   );
 
   return (
@@ -104,7 +150,7 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
       <div className="p-4">
         {items.length > 0 && (
           <div className={cn(rowClass, "mb-2")}>
-            {["Group", "Description", "Qty", "Unit", "Rate"].map((h) => (
+            {["Group", "Description", "Qty", "Unit", "Rate", "Source"].map((h) => (
               <span key={h} className="text-xs font-semibold text-gray-400">
                 {h}
               </span>
@@ -152,6 +198,9 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 disabled={!isDraft}
                 currencySymbol={symbol}
               />
+              <span className="flex h-9 items-center">
+                <TakeoffLinkChip boqItemId={item.boqItemId} takeoffSessionId={item.takeoffSessionId} statuses={statuses} />
+              </span>
               {isDraft ? (
                 <button
                   type="button"
@@ -172,6 +221,9 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
           <div className="mt-3 flex items-center gap-3">
             <Button variant="secondary" size="sm" onClick={addItem}>
               + Add line
+            </Button>
+            <Button variant="secondary" size="sm" onClick={fillRatesFromLibrary} loading={matchRates.isPending} disabled={items.length === 0}>
+              Fill rates from library
             </Button>
             <Button
               variant="primary"

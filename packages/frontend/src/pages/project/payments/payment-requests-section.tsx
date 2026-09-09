@@ -12,10 +12,12 @@ import {
   useCreatePaymentClaim,
   useDeletePaymentClaim,
   usePaymentClaims,
+  useRecordInvoice,
   useUpdatePaymentClaim,
   type PaymentClaim,
   type PaymentClaimStatus,
 } from "@/hooks/use-payment-claims";
+import { RecordInvoiceDialog } from "@/components/molecules/record-invoice-dialog";
 import { formatCurrency } from "@/lib/formatters";
 import type { MilestonePayment } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
@@ -60,6 +62,38 @@ function Metric({ label, value, accent = false }: { label: string; value: string
   );
 }
 
+// The certified sum and what came off it, as approved. Shown once a claim is
+// approved so the invoice figure is never a surprise at recording time.
+function InvoiceLines({ claim, currency }: { claim: PaymentClaim; currency: string }) {
+  const rows: { label: string; value: number; sign?: string; strong?: boolean }[] = [
+    { label: "Certified", value: claim.amount },
+    { label: "Retention", value: claim.retentionAmount ?? 0, sign: "−" },
+    { label: "Advance recovery", value: claim.advanceRecoveryAmount ?? 0, sign: "−" },
+    { label: "VAT", value: claim.vatAmount ?? 0, sign: "+" },
+    { label: claim.invoiceNumber ? `Invoice ${claim.invoiceNumber}` : "Invoice amount", value: claim.invoiceAmount ?? claim.amount, strong: true },
+    { label: "WHT deducted by client", value: claim.whtAmount ?? 0, sign: "−" },
+  ];
+  return (
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-1 rounded-lg bg-gray-50 px-4 py-3 text-xs sm:grid-cols-3">
+      {rows.map((row) => (
+        <div key={row.label} className="flex items-center justify-between gap-2">
+          <dt className={cn(row.strong ? "font-semibold text-gray-900" : "text-gray-500")}>{row.label}</dt>
+          <dd className={cn("tabular-nums", row.strong ? "font-bold text-gray-900" : "text-gray-700")}>
+            {row.sign ? `${row.sign} ` : ""}
+            {formatCurrency(row.value, currency)}
+          </dd>
+        </div>
+      ))}
+      {claim.invoiceRecordedAt ? (
+        <p className="col-span-full text-[11px] text-gray-400">
+          Invoice recorded {new Date(claim.invoiceRecordedAt).toLocaleDateString()}. Logged, not charged.
+        </p>
+      ) : null}
+    </dl>
+  );
+}
+InvoiceLines.displayName = "InvoiceLines";
+
 function RequestCard({
   projectId,
   claim,
@@ -75,9 +109,12 @@ function RequestCard({
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
   const updateClaim = useUpdatePaymentClaim();
   const deleteClaim = useDeletePaymentClaim();
+  const recordInvoice = useRecordInvoice();
   const milestoneName = milestones.find((milestone) => milestone.id === claim.milestonePaymentId)?.name;
+  const canRecordInvoice = canManage && claim.status === "Approved" && !claim.invoiceRecordedAt;
 
   function handleEdit(values: RequestValues): void {
     updateClaim.mutate(
@@ -101,11 +138,16 @@ function RequestCard({
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
+            {canRecordInvoice ? (
+              <Button variant="primary" size="sm" onClick={() => setInvoiceOpen(true)}>Record invoice</Button>
+            ) : null}
             <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>Edit</Button>
             <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>Delete</Button>
           </div>
         )}
       </div>
+
+      {claim.invoiceAmount !== null ? <InvoiceLines claim={claim} currency={currency} /> : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric label="Amount" value={formatCurrency(claim.amount, currency)} accent />
@@ -126,6 +168,21 @@ function RequestCard({
         error={(updateClaim.error as Error | undefined)?.message ?? null}
         currency={currency}
         milestones={milestones}
+      />
+      <RecordInvoiceDialog
+        open={invoiceOpen}
+        onOpenChange={setInvoiceOpen}
+        claim={claim}
+        currency={currency}
+        milestoneName={milestoneName}
+        submitting={recordInvoice.isPending}
+        error={(recordInvoice.error as Error | undefined)?.message ?? null}
+        onSubmit={(invoiceNumber) =>
+          recordInvoice.mutate(
+            { projectId, claimId: claim.id, invoiceNumber },
+            { onSuccess: () => setInvoiceOpen(false) },
+          )
+        }
       />
       <ConfirmDialog
         open={deleteOpen}

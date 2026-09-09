@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
@@ -12,27 +11,39 @@ import {
 } from "@/lib/project-meta";
 import { cn } from "@/lib/utils";
 import { ActivityTab } from "./proposal-tabs/activity-tab";
-import { BoqTab } from "./proposal-tabs/boq-tab";
+import { DrawingsTab } from "./proposal-tabs/drawings-tab";
 import { EstimateTab } from "./proposal-tabs/estimate-tab";
 import { MessagesTab } from "./proposal-tabs/messages-tab";
 import { OverviewTab } from "./proposal-tabs/overview-tab";
-import { PlansTab } from "./proposal-tabs/plans-tab";
+import { PackTab } from "./proposal-tabs/pack-tab";
+import { TakeoffsTab } from "./proposal-tabs/takeoffs-tab";
+import { SafetyTab } from "./proposal-tabs/safety-tab";
+import { JOB_PROFILE_META } from "@/lib/precon-meta";
 
-type Tab = "overview" | "plans" | "boq" | "estimate" | "messages" | "activity";
-
-const TABS: Array<{ id: Tab; label: string }> = [
+// The take-off is the bill of quantities, so there is no separate BoQ grid.
+// Messages fold into Activity as internal notes.
+const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "plans", label: "Plans" },
-  { id: "boq", label: "BoQ" },
+  { id: "drawings", label: "Drawings" },
+  { id: "takeoffs", label: "Take-offs" },
   { id: "estimate", label: "Estimate" },
-  { id: "messages", label: "Messages" },
+  { id: "pack", label: "Pack" },
+  { id: "safety", label: "Safety" },
   { id: "activity", label: "Activity" },
-];
+] as const;
+type Tab = (typeof TABS)[number]["id"];
+
+const isTab = (value: string | null): value is Tab => TABS.some((t) => t.id === value);
 
 export default function ProposalWorkspace() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("overview");
+  // The tab lives in the URL so a take-off's "Back to proposal" link, a reload
+  // or a shared link all land on the same tab the user left.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const tab: Tab = isTab(rawTab) ? rawTab : "overview";
+  const setTab = (next: Tab) => setSearchParams(next === "overview" ? {} : { tab: next }, { replace: true });
 
   const { data, isLoading, isError } = useProposalWorkspace(id);
 
@@ -60,14 +71,6 @@ export default function ProposalWorkspace() {
 
   const { proposal, estimate } = data;
 
-  const tabClass = (t: Tab) =>
-    cn(
-      "px-4 py-2 text-sm font-medium transition-colors",
-      tab === t
-        ? "border-b-2 border-[#004DE7] text-[#004DE7]"
-        : "text-gray-500 hover:text-gray-700",
-    );
-
   return (
     <div className="flex flex-col">
       <div className="border-b border-gray-100 px-6 py-5">
@@ -85,42 +88,62 @@ export default function ProposalWorkspace() {
               {LABEL_MAP[proposal.status] ?? proposal.status}
             </Badge>
           </div>
-          {estimate && (
-            <span className="text-sm font-semibold text-gray-700">
-              {fmt(estimate.total, proposal.currency)}
-            </span>
-          )}
+          {estimate ? (
+            <span className="text-sm font-semibold text-gray-700">{fmt(estimate.total, proposal.currency)}</span>
+          ) : null}
         </div>
-        <p className="mt-1 text-sm text-gray-500">{proposal.clientName}</p>
+        <p className="mt-1 text-sm text-gray-500">
+          {proposal.clientName} · {JOB_PROFILE_META[proposal.jobProfile].label}
+        </p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-100 px-6">
+      <div role="tablist" className="flex gap-1 border-b border-gray-100 px-6">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
-            className={tabClass(t.id)}
+            role="tab"
+            aria-selected={tab === t.id}
+            className={cn(
+              "px-4 py-2 text-sm font-medium transition-colors",
+              tab === t.id ? "border-b-2 border-primary-500 text-primary-600" : "text-gray-500 hover:text-gray-700",
+            )}
             onClick={() => setTab(t.id)}
           >
             {t.label}
-            {t.id === "estimate" && estimate && (
+            {t.id === "estimate" && estimate ? (
               <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
                 {estimate.revisionLabel}
               </span>
-            )}
+            ) : null}
           </button>
         ))}
       </div>
 
       <div className="p-6">
-        {tab === "overview" && <OverviewTab proposalId={id} />}
-        {tab === "plans" && <PlansTab proposalId={id} />}
-        {tab === "boq" && <BoqTab proposalId={id} estimateId={estimate?.id ?? null} />}
-        {tab === "estimate" && (
-          <EstimateTab proposalId={id} estimate={estimate} currency={proposal.currency} projectId={proposal.projectId} />
-        )}
-        {tab === "messages" && <MessagesTab proposalId={id} />}
-        {tab === "activity" && <ActivityTab proposalId={id} />}
+        {tab === "overview" ? <OverviewTab proposalId={id} /> : null}
+        {tab === "drawings" ? <DrawingsTab proposalId={id} /> : null}
+        {tab === "takeoffs" ? <TakeoffsTab proposalId={id} /> : null}
+        {tab === "estimate" ? (
+          <EstimateTab
+            proposalId={id}
+            estimate={estimate}
+            currency={proposal.currency}
+            projectId={proposal.projectId}
+            validUntil={proposal.validUntil}
+          />
+        ) : null}
+        {tab === "pack" ? <PackTab proposalId={id} /> : null}
+        {tab === "activity" ? (
+          <div className="flex flex-col gap-8">
+            <ActivityTab proposalId={id} />
+            <section className="flex flex-col gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Internal notes</h2>
+              <MessagesTab proposalId={id} />
+            </section>
+          </div>
+        ) : null}
+        {tab === "safety" ? <SafetyTab proposalId={id} /> : null}
       </div>
     </div>
   );

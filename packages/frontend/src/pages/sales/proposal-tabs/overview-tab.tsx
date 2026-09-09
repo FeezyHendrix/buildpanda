@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { ConvertPreviewDialog } from "@/components/molecules/convert-preview-dialog";
 import { useConvertProposal, useProposalWorkspace } from "@/hooks/use-proposals";
 import { useAbility } from "@/contexts/ability-context";
+import type { ConvertInclude } from "@/api/proposals";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { SaveTemplateDialog } from "@/components/molecules/save-template-dialog";
 import { formatDayMonth, formatShortDate } from "@/lib/formatters";
 
 interface Props {
@@ -16,17 +19,17 @@ export function OverviewTab({ proposalId }: Props) {
   const navigate = useNavigate();
   const ability = useAbility();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   if (!data) return null;
-  const { proposal, events } = data;
+  const { proposal, events, estimate } = data;
 
-  function handleConvert() {
-    convert.mutate(undefined, {
+  function handleConvert(include: ConvertInclude) {
+    convert.mutate(include, {
       onSuccess: ({ projectId }) => {
         setConfirmOpen(false);
         localStorage.setItem("buildpanda:last-suite", "construction");
         navigate(`/project/${projectId}/overview`);
       },
-      onError: () => setConfirmOpen(false),
     });
   }
 
@@ -99,6 +102,26 @@ export function OverviewTab({ proposalId }: Props) {
         </div>
       )}
 
+      {estimate && ability.can("update", "proposals") ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-5">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Reuse this proposal</h3>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Save its payment stages, terms, tax settings and pack text as a template for the next job.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => setTemplateOpen(true)}>
+            Save as template
+          </Button>
+          <SaveTemplateDialog
+            open={templateOpen}
+            onOpenChange={setTemplateOpen}
+            proposalId={proposalId}
+            suggestedName={proposal.title}
+          />
+        </div>
+      ) : null}
+
       {events.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -127,11 +150,6 @@ export function OverviewTab({ proposalId }: Props) {
           </p>
           {ability.can("convert", "proposals") ? (
             <>
-              {convert.error && (
-                <p className="mb-3 text-xs text-red-600">
-                  Conversion failed. Please try again.
-                </p>
-              )}
               <Button
                 variant="primary"
                 onClick={() => setConfirmOpen(true)}
@@ -139,18 +157,13 @@ export function OverviewTab({ proposalId }: Props) {
               >
                 Convert to project
               </Button>
-              <ConfirmDialog
+              <ConvertPreviewDialog
+                proposalId={proposalId}
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
+                submitting={convert.isPending}
+                error={convert.error ? getApiErrorMessage(convert.error, "Conversion failed. Please try again.") : null}
                 onConfirm={handleConvert}
-                loading={convert.isPending}
-                title="Convert to project?"
-                confirmLabel="Convert to project"
-                description={
-                  proposal.clientEmail
-                    ? `This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate, and invites ${proposal.clientName} (${proposal.clientEmail}) as the client.`
-                    : "This creates a construction project seeded with stages, budget categories and payment milestones from the accepted estimate."
-                }
               />
             </>
           ) : (

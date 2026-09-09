@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
 import { Label } from "@/components/atoms/label";
@@ -14,6 +15,34 @@ const selectClass = cn(
 );
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const LIBRARY_LINKS = [
+  { to: "/sales/settings/rate-library", title: "Rate library", hint: "Rate cards, build-ups and supplier quotes your estimates price against." },
+  { to: "/sales/settings/templates", title: "Proposal templates", hint: "Payment stages, terms and pack text saved from a proposal for the next one." },
+  { to: "/sales/settings/compliance-docs", title: "Compliance documents", hint: "Insurance, bonds and guarantees with expiry reminders." },
+] as const;
+
+function LibraryLinks() {
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-6">
+      <h2 className="text-sm font-semibold text-gray-900">Library</h2>
+      <p className="text-xs text-gray-500">What every proposal reuses. Kept once for the company.</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {LIBRARY_LINKS.map((link) => (
+          <Link
+            key={link.to}
+            to={link.to}
+            className="rounded-lg border border-gray-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50"
+          >
+            <p className="text-sm font-semibold text-gray-900">{link.title}</p>
+            <p className="mt-1 text-xs text-gray-500">{link.hint}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+LibraryLinks.displayName = "LibraryLinks";
 
 function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -84,6 +113,8 @@ export default function SalesSettings() {
           Company profile and estimate defaults.
         </p>
       </div>
+
+      <LibraryLinks />
 
       <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">Company Profile</h2>

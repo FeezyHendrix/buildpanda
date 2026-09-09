@@ -1,13 +1,24 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { claimChain } from "../finances/claim-chain.ts";
+import { financesRepository } from "../finances/repository.ts";
 import { paymentClaimsRepository } from "./repository.ts";
 import {
   paymentClaimsService,
   type CreatePaymentClaimInput,
   type EditPaymentClaimInput,
 } from "./service.ts";
-import { PAYMENT_CLAIM_STATUSES } from "./types.ts";
+import { PAYMENT_CLAIM_STATUSES, type RecordInvoiceInput } from "./types.ts";
+
+const recordInvoiceBody = {
+  type: "object",
+  required: ["invoiceNumber"],
+  additionalProperties: false,
+  properties: {
+    invoiceNumber: { type: "string", minLength: 1, maxLength: 100 },
+  },
+} as const;
 
 const claimParams = {
   type: "object",
@@ -53,7 +64,8 @@ function requiresFinanceApproval(status: string | undefined): boolean {
 }
 
 const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = paymentClaimsService(paymentClaimsRepository(fastify.db));
+  const chain = claimChain(financesRepository(fastify.db));
+  const service = paymentClaimsService(paymentClaimsRepository(fastify.db), chain);
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/payment-claims",
@@ -108,6 +120,24 @@ const paymentClaimRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }
       return service.edit(project.id, request.params.claimId, request.body);
+    },
+  );
+
+  // Certification: the invoice for an approved claim is recorded, never issued
+  // or charged. Same gate as approving the claim.
+  fastify.post<{ Params: { id: string; claimId: string }; Body: RecordInvoiceInput }>(
+    "/projects/:id/payment-claims/:claimId/record-invoice",
+    { schema: { params: claimParams, body: recordInvoiceBody } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      const user = request.requireAuth();
+      assertProjectPermission(
+        { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+        { userId: user.id, orgRoles: request.orgRoles, projectRoles: request.projectRoles, orgPermissions: request.orgPermissions },
+        "finances",
+        "approve",
+      );
+      return service.recordInvoice(project.id, request.params.claimId, request.body, { id: user.id, name: user.name });
     },
   );
 

@@ -101,15 +101,12 @@ function toCategory(row: CategoryAggregateRow): DocumentCategory {
     tone: row.tone,
     group: row.group,
     fileCount: count,
-    totalSize: count > 0 ? deriveDisplaySize(row.total_size) : "0 MB",
+    totalSize: formatBytes(Number(row.total_bytes ?? 0)),
   };
 }
 
-function deriveDisplaySize(aggregate: string | null): string {
-  if (!aggregate) return "0 MB";
-  const first = aggregate.split(",")[0]?.trim();
-  return first ?? "0 MB";
-}
+
+
 
 export function documentsService(
   repository: DocumentsRepository,
