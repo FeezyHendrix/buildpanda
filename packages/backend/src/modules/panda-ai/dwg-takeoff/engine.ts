@@ -7,6 +7,7 @@ import { buildRegister } from "./register.ts";
 import { countColumns, countDoors, countSanitary, countWindowsOnPlan, doorWidthMm, outlines, stairs, windowGroupsOnElevation, handles, type SheetContext } from "./elements.ts";
 import { autoWallSegments, measureWallRuns, storeyHeight, wallItems, wallSegments } from "./walls.ts";
 import { measureRooms, statedAreaNote } from "./rooms.ts";
+import { measureRoof } from "./roof.ts";
 import { annotateWalls, dimensionCheck, perimeterCheck, wallSummary } from "./wall-checks.ts";
 import { checkItem } from "./plausibility.ts";
 import type { DrawingSummary, LayerMap, MeasuredItem, RegisterSheet, TakeoffResult, WallSummary } from "./types.ts";
@@ -79,6 +80,10 @@ export function measureDoc(raw: DwgDoc, opts: TakeoffEngineOptions = {}): Takeof
   const items: MeasuredItem[] = [];
   const wallSummaries: WallSummary[] = [];
   for (const sheet of sheets) {
+    if (sheet.kind === "roof-plan" && sheet.representative) {
+      for (const item of measureRoof(doc, sheet, layerMap, units)) items.push(multiply(item, sheet, sheets));
+      continue;
+    }
     if (sheet.kind !== "floor-plan" || !sheet.representative) continue;
     const ctx: SheetContext = { doc, sheet, map: layerMap, units };
     const columns = countColumns(ctx);

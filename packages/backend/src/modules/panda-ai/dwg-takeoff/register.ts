@@ -19,6 +19,7 @@ const SCHEDULE = /\bSCHEDULE\b/i;
 // block, a scale bar or a legend, whatever its labels say
 const PLAN_MIN_LONG_LINES = 12;
 const PLAN_MIN_SIDE_M = 3;
+const ROOF_MIN_M2 = 10;
 const VIEW_MIN_LONG_LINES = 8;
 // a level mark is signed ("+3450", "-150", "+11'-3 7/8""); a bare number is a door or window tag
 const LEVEL_MARK = /^[+-]\s?(\d|\d+')/;
@@ -141,7 +142,10 @@ function decideKind(doc: DwgDoc, c: Cluster, map: LayerMap, titles: string[], le
   if (ELEVATION.test(joined) && stacked) return "elevation";
   if (SECTION.test(joined) && stacked) return "section";
   if (SCHEDULE.test(joined) && roomLabels < 2) return "schedule";
-  if (ROOF_PLAN.test(joined) || SITE_PLAN.test(joined)) return "unknown";
+  // a roof plan is measured (covering and eaves), a site plan is not. A roof
+  // has few wall lines, so it is recognised by the outline it encloses.
+  if (ROOF_PLAN.test(joined)) return hasRoofGeometry(doc, c, units) || hasPlanGeometry(doc, c, map, units) ? "roof-plan" : "unknown";
+  if (SITE_PLAN.test(joined)) return "unknown";
   if (FLOOR_PLAN.test(joined)) return hasPlanGeometry(doc, c, map, units) ? "floor-plan" : "unknown";
   // a title block naming an elevation is not one: a view has drawn lines
   if (ELEVATION.test(joined)) return longLines(doc, c, map, units) >= VIEW_MIN_LONG_LINES ? "elevation" : "unknown";
@@ -154,6 +158,24 @@ function decideKind(doc: DwgDoc, c: Cluster, map: LayerMap, titles: string[], le
 
 // Whatever the labels say, a floor plan has walls: a dozen lines a metre or
 // longer on wall or unmapped layers, spread over a few metres each way.
+/** A roof plan encloses a roof-sized outline, whatever layer it sits on. */
+function hasRoofGeometry(doc: DwgDoc, c: Cluster, units: UnitsDecision): boolean {
+  if (c.widthM < PLAN_MIN_SIDE_M || c.heightM < PLAN_MIN_SIDE_M) return false;
+  const toM = units.scaleToMm / 1000;
+  for (const i of c.members) {
+    const e = doc.entities[i]!;
+    if (e.entity !== "LWPOLYLINE" && e.entity !== "POLYLINE_2D") continue;
+    const pts = e.points;
+    if (!pts || pts.length < 3) continue;
+    const xs = pts.map((p) => p[0]!);
+    const ys = pts.map((p) => p[1]!);
+    const w = (Math.max(...xs) - Math.min(...xs)) * toM;
+    const h = (Math.max(...ys) - Math.min(...ys)) * toM;
+    if (w * h >= ROOF_MIN_M2) return true;
+  }
+  return false;
+}
+
 function hasPlanGeometry(doc: DwgDoc, c: Cluster, map: LayerMap, units: UnitsDecision): boolean {
   if (c.widthM < PLAN_MIN_SIDE_M || c.heightM < PLAN_MIN_SIDE_M) return false;
   return longLines(doc, c, map, units, PLAN_MIN_LONG_LINES) >= PLAN_MIN_LONG_LINES;
@@ -277,7 +299,7 @@ function assignGroups(drafts: Draft[]): void {
 }
 
 function finish(drafts: Draft[], units: UnitsDecision): RegisterSheet[] {
-  const order: Record<RegisterSheet["kind"], number> = { "floor-plan": 0, elevation: 1, section: 2, schedule: 3, detail: 4, unknown: 5 };
+  const order: Record<RegisterSheet["kind"], number> = { "floor-plan": 0, "roof-plan": 1, elevation: 2, section: 3, schedule: 4, detail: 5, unknown: 6 };
   const sorted = [...drafts].sort((a, b) => order[a.kind] - order[b.kind] || (a.levelMm ?? 0) - (b.levelMm ?? 0) || b.count - a.count);
   const toM = units.scaleToMm / 1000;
   return sorted.map((d, i) => {
@@ -286,7 +308,7 @@ function finish(drafts: Draft[], units: UnitsDecision): RegisterSheet[] {
     const annotationOnly = d.kind === "unknown" && d.labels.some((l) => TITLE_PREFIX.test(l) || /^(DRG|DWG)\s*NO|SCALE BAR|GENERAL NOTES/i.test(l));
     const title =
       (annotationOnly ? "Title block and notes" : d.title) ??
-      (d.kind === "floor-plan" && d.levelName ? `${d.levelName} plan` : d.kind === "elevation" ? `Elevation ${i + 1}` : d.kind === "section" ? `Section ${i + 1}` : d.kind === "schedule" ? `Schedule ${i + 1}` : `Drawing ${i + 1}`);
+      (d.kind === "floor-plan" && d.levelName ? `${d.levelName} plan` : d.kind === "roof-plan" ? "Roof plan" : d.kind === "elevation" ? `Elevation ${i + 1}` : d.kind === "section" ? `Section ${i + 1}` : d.kind === "schedule" ? `Schedule ${i + 1}` : `Drawing ${i + 1}`);
     return {
       id: d.id,
       code: `DWG-${String(i + 1).padStart(2, "0")}`,

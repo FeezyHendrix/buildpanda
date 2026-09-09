@@ -16,6 +16,9 @@ interface Line {
   y2: number;
 }
 
+// how much drawing has to sit inside a rectangle before it is a border
+const INSIDE_A_BORDER = 20;
+
 /** Handles of the entities that make up sheet borders. */
 export function frameHandles(doc: DwgDoc, scaleToMm: number): Set<number> {
   const out = new Set<number>();
@@ -25,17 +28,28 @@ export function frameHandles(doc: DwgDoc, scaleToMm: number): Set<number> {
   const horizontals: Line[] = [];
   const verticals: Line[] = [];
   const centres: Array<[number, number]> = [];
+  // a closed rectangle is only a border once something is drawn inside it: a
+  // roof outline, a slab or a tank is a rectangle with nothing in it
+  const rects: Array<{ handle: number; minX: number; maxX: number; minY: number; maxY: number }> = [];
   for (const e of doc.entities) {
     if (!isModelSpace(doc, e)) continue;
     const h = handleOf(e);
     if (h === null) continue;
-    if (e.entity === "LWPOLYLINE" && ((e.flag ?? 0) & 512) !== 0 && e.points?.length === 4 && isRectangle(e, minArea)) out.add(h);
+    if (e.entity === "LWPOLYLINE" && ((e.flag ?? 0) & 512) !== 0 && e.points?.length === 4 && isRectangle(e, minArea)) {
+      const xs = e.points.map((p) => p[0]!);
+      const ys = e.points.map((p) => p[1]!);
+      rects.push({ handle: h, minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) });
+    }
     if (e.entity === "LINE" && e.start && e.end) {
       const l: Line = { handle: h, x1: e.start[0]!, y1: e.start[1]!, x2: e.end[0]!, y2: e.end[1]! };
       if (Math.abs(l.y1 - l.y2) <= snap) horizontals.push(l);
       else if (Math.abs(l.x1 - l.x2) <= snap) verticals.push(l);
       centres.push([(l.x1 + l.x2) / 2, (l.y1 + l.y2) / 2]);
     } else if (e.center) centres.push([e.center[0]!, e.center[1]!]);
+  }
+  for (const r of rects) {
+    const inside = centres.filter(([x, y]) => x > r.minX + snap && x < r.maxX - snap && y > r.minY + snap && y < r.maxY - snap).length;
+    if (inside >= INSIDE_A_BORDER) out.add(r.handle);
   }
   // four lines meeting at their ends: match a horizontal's two ends to verticals' ends
   const byEnd = new Map<string, Line[]>();
@@ -58,7 +72,7 @@ export function frameHandles(doc: DwgDoc, scaleToMm: number): Set<number> {
         const minX = Math.min(bottom.x1, bottom.x2);
         const maxX = Math.max(bottom.x1, bottom.x2);
         const inside = centres.filter(([x, y]) => x > minX + snap && x < maxX - snap && y > bottom.y1 + snap && y < top - snap).length;
-        if (inside < 20) continue;
+        if (inside < INSIDE_A_BORDER) continue;
         for (const h of [bottom.handle, topLine.handle, l.handle, r.handle]) out.add(h);
       }
     }

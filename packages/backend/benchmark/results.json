@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-09T12:49:18.075Z",
+  "generatedAt": "2026-09-09T15:41:52.536Z",
   "fixtures": [
     {
       "id": "bungalow__named-mm-blocks-dims",
@@ -8,7 +8,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 132,
+        "ms": 86,
         "scored": [
           {
             "sheet": "gf",
@@ -30,7 +30,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
           },
           {
             "sheet": "gf",
@@ -242,7 +242,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -479,7 +479,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 2545,
+        "ms": 831,
         "scored": [
           {
             "sheet": "gf",
@@ -612,7 +612,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 223,
+        "ms": 76,
         "scored": [
           {
             "sheet": "gf",
@@ -634,7 +634,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -856,7 +856,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -1092,7 +1092,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 45,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -1225,7 +1225,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 79,
+        "ms": 56,
         "scored": [
           {
             "sheet": "gf",
@@ -1247,7 +1247,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -1469,7 +1469,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -1705,7 +1705,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 19,
+        "ms": 18,
         "scored": [
           {
             "sheet": "gf",
@@ -1838,7 +1838,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 53,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -2293,7 +2293,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 16,
+        "ms": 20,
         "scored": [
           {
             "sheet": "gf",
@@ -2426,7 +2426,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 54,
+        "ms": 53,
         "scored": [
           {
             "sheet": "gf",
@@ -2448,7 +2448,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -2670,7 +2670,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -2906,7 +2906,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 18,
+        "ms": 15,
         "scored": [
           {
             "sheet": "gf",
@@ -3039,7 +3039,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 68,
+        "ms": 49,
         "scored": [
           {
             "sheet": "gf",
@@ -3061,7 +3061,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -3283,7 +3283,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -3519,7 +3519,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 17,
+        "ms": 14,
         "scored": [
           {
             "sheet": "gf",
@@ -3652,7 +3652,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 64,
+        "ms": 50,
         "scored": [
           {
             "sheet": "gf",
@@ -3674,7 +3674,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -3896,7 +3896,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -4132,7 +4132,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 20,
+        "ms": 12,
         "scored": [
           {
             "sheet": "gf",
@@ -4265,7 +4265,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 51,
+        "ms": 48,
         "scored": [
           {
             "sheet": "gf",
@@ -4287,7 +4287,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -4509,7 +4509,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -4745,7 +4745,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 16,
+        "ms": 13,
         "scored": [
           {
             "sheet": "gf",
@@ -4878,7 +4878,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 63,
+        "ms": 48,
         "scored": [
           {
             "sheet": "gf",
@@ -4900,7 +4900,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -5124,7 +5124,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -5360,7 +5360,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 12,
+        "ms": 14,
         "scored": [
           {
             "sheet": "gf",
@@ -5493,7 +5493,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 63,
+        "ms": 51,
         "scored": [
           {
             "sheet": "gf",
@@ -5515,7 +5515,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -5628,7 +5628,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -5854,7 +5854,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 25,
+        "ms": 14,
         "scored": [
           {
             "sheet": "gf",
@@ -5987,7 +5987,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 61,
+        "ms": 49,
         "scored": [
           {
             "sheet": "gf",
@@ -6009,7 +6009,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -6231,7 +6231,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -6467,7 +6467,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 17,
+        "ms": 15,
         "scored": [
           {
             "sheet": "gf",
@@ -6600,7 +6600,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 79,
+        "ms": 71,
         "scored": [
           {
             "sheet": "gf",
@@ -6622,7 +6622,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -6844,7 +6844,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -7080,7 +7080,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 17,
+        "ms": 16,
         "scored": [
           {
             "sheet": "gf",
@@ -7213,7 +7213,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 52,
+        "ms": 50,
         "scored": [
           {
             "sheet": "gf",
@@ -7235,7 +7235,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -7457,7 +7457,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -7826,7 +7826,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 53,
+        "ms": 50,
         "scored": [
           {
             "sheet": "gf",
@@ -7848,7 +7848,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -8091,7 +8091,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -8462,7 +8462,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 52,
+        "ms": 48,
         "scored": [
           {
             "sheet": "gf",
@@ -8484,7 +8484,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -8706,7 +8706,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -8942,7 +8942,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 14,
+        "ms": 13,
         "scored": [
           {
             "sheet": "gf",
@@ -9075,7 +9075,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 49,
+        "ms": 45,
         "scored": [
           {
             "sheet": "gf",
@@ -9097,7 +9097,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "8 door groups (8 swings, 8 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 8 agree"
+            "basis": "8 door groups (8 with a swing) on DWG-01 (Ground Floor Plan); door swings 8 agree"
           },
           {
             "sheet": "gf",
@@ -9307,7 +9307,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "8 door groups (8 swings, 8 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 8 agree",
+              "basis": "8 door groups (8 with a swing) on DWG-01 (Ground Floor Plan); door swings 8 agree",
               "crossCheck": "door swings 8 · agree",
               "shapeCount": 1
             },
@@ -9530,7 +9530,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 11,
+        "ms": 12,
         "scored": [
           {
             "sheet": "gf",
@@ -9663,7 +9663,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 60,
+        "ms": 53,
         "scored": [
           {
             "sheet": "gf",
@@ -9685,7 +9685,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
           },
           {
             "sheet": "gf",
@@ -9904,7 +9904,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -10142,7 +10142,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 16,
+        "ms": 15,
         "scored": [
           {
             "sheet": "gf",
@@ -10285,7 +10285,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 117,
+        "ms": 47,
         "scored": [
           {
             "sheet": "gf",
@@ -10307,7 +10307,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree"
           },
           {
             "sheet": "gf",
@@ -10550,7 +10550,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree",
               "crossCheck": "door swings 10 · agree",
               "shapeCount": 1
             },
@@ -10788,7 +10788,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 161,
+        "ms": 93,
         "scored": [
           {
             "sheet": "gf",
@@ -10885,7 +10885,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 127,
+        "ms": 86,
         "scored": [
           {
             "sheet": "gf",
@@ -10918,7 +10918,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
           },
           {
             "sheet": "gf",
@@ -11167,7 +11167,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -11511,7 +11511,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-02 (First Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-02 (First Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -11784,7 +11784,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 81,
+        "ms": 31,
         "scored": [
           {
             "sheet": "gf",
@@ -12043,7 +12043,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 165,
+        "ms": 56,
         "scored": [
           {
             "sheet": "gf",
@@ -12076,7 +12076,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -12338,7 +12338,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -12589,7 +12589,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 46,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -12848,7 +12848,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 98,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -12881,7 +12881,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -13143,7 +13143,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -13394,7 +13394,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 42,
+        "ms": 20,
         "scored": [
           {
             "sheet": "gf",
@@ -13653,7 +13653,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 75,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -14171,7 +14171,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 23,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -14430,7 +14430,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 62,
+        "ms": 52,
         "scored": [
           {
             "sheet": "gf",
@@ -14463,7 +14463,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -14725,7 +14725,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -14967,6 +14967,811 @@
               "units": "m",
               "checks": {
                 "dimensions": "dimensions along 4 external walls cover 43.8 m vs 43.8 m paired (agree)",
+                "roomPerimeters": "room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree"
+              }
+            }
+          ]
+        }
+      },
+      "pdf": {
+        "ran": true,
+        "error": null,
+        "ms": 22,
+        "scored": [
+          {
+            "sheet": "gf",
+            "element": "walls-external",
+            "measure": "areaM2",
+            "truth": 226.62,
+            "measured": 226.62,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "43.8m centreline from 4 parallel wall pairs at 225mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 1) / 43.8m centreline from 4 parallel wall pairs at 150mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 1)"
+          },
+          {
+            "sheet": "gf",
+            "element": "doors",
+            "measure": "count",
+            "truth": 10,
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "10 door-swing arcs (r 600-1200mm) on page 1; 10 leaf lines match the swings"
+          },
+          {
+            "sheet": "gf",
+            "element": "windows",
+            "measure": "count",
+            "truth": 12,
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "12 window frames drawn in external walls on page 1; 12 wall openings without a door swing as cross-check"
+          },
+          {
+            "sheet": "gf",
+            "element": "columns",
+            "measure": "count",
+            "truth": 16,
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "16 closed square outlines (150-800mm) on page 1; 100% aligned on a grid"
+          },
+          {
+            "sheet": "gf",
+            "element": "floor-area",
+            "measure": "areaM2",
+            "truth": 108.47,
+            "measured": 108.47,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "Flood-fill room areas from 9 room labels on page 1; rooms sum 108.47m2 vs footprint 124.69 less walls 16.43 = 108.27m2 (0.2%)"
+          },
+          {
+            "sheet": "ff",
+            "element": "walls-external",
+            "measure": "areaM2",
+            "truth": 226.62,
+            "measured": 226.62,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "43.8m centreline from 4 parallel wall pairs at 225mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 2) / 43.8m centreline from 4 parallel wall pairs at 150mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 2)"
+          },
+          {
+            "sheet": "ff",
+            "element": "doors",
+            "measure": "count",
+            "truth": 10,
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "10 door-swing arcs (r 600-1200mm) on page 2; 10 leaf lines match the swings"
+          },
+          {
+            "sheet": "ff",
+            "element": "windows",
+            "measure": "count",
+            "truth": 12,
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "12 window frames drawn in external walls on page 2; 12 wall openings without a door swing as cross-check"
+          },
+          {
+            "sheet": "ff",
+            "element": "columns",
+            "measure": "count",
+            "truth": 16,
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "16 closed square outlines (150-800mm) on page 2; 100% aligned on a grid"
+          },
+          {
+            "sheet": "ff",
+            "element": "floor-area",
+            "measure": "areaM2",
+            "truth": 108.47,
+            "measured": 108.47,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "Flood-fill room areas from 9 room labels on page 2; rooms sum 108.47m2 vs footprint 124.69 less walls 16.43 = 108.27m2 (0.2%)"
+          }
+        ],
+        "summary": {
+          "lines": 10,
+          "within": 10,
+          "flagged": 0,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 100,
+          "failuresFlaggedShare": 0
+        },
+        "pages": [
+          {
+            "page": 1,
+            "kind": "floor-plan",
+            "title": "GROUND FLOOR PLAN",
+            "segments": 270,
+            "scale": 100,
+            "confidence": 1,
+            "items": [
+              {
+                "group": "Internal and external walls",
+                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; laid in stretcher bond",
+                "qty": 114.12,
+                "unit": "m2",
+                "confidence": "high"
+              },
+              {
+                "group": "Internal and external walls",
+                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 150mm thick; laid in stretcher bond",
+                "qty": 112.5,
+                "unit": "m2",
+                "confidence": "high"
+              },
+              {
+                "group": "Doors",
+                "description": "Doors; 900mm leaf; type not tagged on plan — confirm against door schedule",
+                "qty": 10,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Windows",
+                "description": "Windows; 1200mm wide; type not tagged on plan — confirm against window schedule",
+                "qty": 12,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Frame",
+                "description": "Reinforced concrete columns; as shown on plan — confirm size and reinforcement against structural drawings",
+                "qty": 16,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Floor finishings",
+                "description": "Cement/sand screeded beds to floors (9 rooms: GUEST BEDROOM, KITCHEN, LAUNDRY, LOUNGE, DINING, GARAGE…)",
+                "qty": 108.47,
+                "unit": "m2",
+                "confidence": "high"
+              }
+            ],
+            "note": null
+          },
+          {
+            "page": 2,
+            "kind": "floor-plan",
+            "title": "FIRST FLOOR PLAN",
+            "segments": 274,
+            "scale": 100,
+            "confidence": 1,
+            "items": [
+              {
+                "group": "Internal and external walls",
+                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; laid in stretcher bond",
+                "qty": 114.12,
+                "unit": "m2",
+                "confidence": "high"
+              },
+              {
+                "group": "Internal and external walls",
+                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 150mm thick; laid in stretcher bond",
+                "qty": 112.5,
+                "unit": "m2",
+                "confidence": "high"
+              },
+              {
+                "group": "Doors",
+                "description": "Doors; 900mm leaf; type not tagged on plan — confirm against door schedule",
+                "qty": 10,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Windows",
+                "description": "Windows; 1200mm wide; type not tagged on plan — confirm against window schedule",
+                "qty": 12,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Frame",
+                "description": "Reinforced concrete columns; as shown on plan — confirm size and reinforcement against structural drawings",
+                "qty": 16,
+                "unit": "nr",
+                "confidence": "high"
+              },
+              {
+                "group": "Floor finishings",
+                "description": "Cement/sand screeded beds to floors (9 rooms: MASTER BEDROOM, FAMILY LOUNGE, STAIR HALL, DRESSING, BEDROOM, BEDROOM…)",
+                "qty": 108.47,
+                "unit": "m2",
+                "confidence": "high"
+              }
+            ],
+            "note": null
+          },
+          {
+            "page": 3,
+            "kind": "unknown",
+            "title": null,
+            "segments": 31,
+            "scale": null,
+            "confidence": null,
+            "items": [],
+            "note": "fewer than 100 segments: the session path would try vision here"
+          },
+          {
+            "page": 4,
+            "kind": "unknown",
+            "title": null,
+            "segments": 10,
+            "scale": null,
+            "confidence": null,
+            "items": [],
+            "note": "fewer than 100 segments: the session path would try vision here"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplex__named-mm-outlines-exploded",
+      "family": "duplex",
+      "convention": "named-mm-outlines-exploded",
+      "dwg": {
+        "ran": true,
+        "error": null,
+        "ms": 55,
+        "scored": [
+          {
+            "sheet": "gf",
+            "element": "walls-external",
+            "measure": "areaM2",
+            "truth": 226.62,
+            "measured": 226.62,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "43.8 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²) | 43.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)"
+          },
+          {
+            "sheet": "gf",
+            "element": "columns",
+            "measure": "count",
+            "truth": 16,
+            "measured": 16,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
+          },
+          {
+            "sheet": "gf",
+            "element": "doors",
+            "measure": "count",
+            "truth": 10,
+            "measured": 10,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+          },
+          {
+            "sheet": "gf",
+            "element": "windows",
+            "measure": "count",
+            "truth": 12,
+            "measured": 12,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
+          },
+          {
+            "sheet": "gf",
+            "element": "sanitary",
+            "measure": "count",
+            "truth": 1,
+            "measured": 1,
+            "errorPct": 0,
+            "outcome": "within",
+            "confidence": "high",
+            "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
+          },
+          {
+            "sheet": "gf",
+            "element": "floor-area",
+            "measure": "areaM2",
+            "truth": 108.47,
+            "measured": 108.99,
+            "errorPct": 0.5,
+            "outcome": "within",
+            "confidence": "medium",
+            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)"
+          }
+        ],
+        "summary": {
+          "lines": 6,
+          "within": 6,
+          "flagged": 0,
+          "silent": 0,
+          "missing": 0,
+          "withinShare": 100,
+          "failuresFlaggedShare": 0
+        },
+        "raw": {
+          "scaleToMm": 1,
+          "scaleConfidence": 0.98,
+          "drawings": [
+            {
+              "id": 0,
+              "kind": "floor-plan",
+              "widthM": 11.6,
+              "heightM": 10.7,
+              "entityCount": 185
+            },
+            {
+              "id": 1,
+              "kind": "floor-plan",
+              "widthM": 11.6,
+              "heightM": 10.7,
+              "entityCount": 186
+            },
+            {
+              "id": 2,
+              "kind": "elevation",
+              "widthM": 11.4,
+              "heightM": 7.2,
+              "entityCount": 13
+            },
+            {
+              "id": 3,
+              "kind": "section",
+              "widthM": 10.5,
+              "heightM": 7.2,
+              "entityCount": 10
+            }
+          ],
+          "items": [
+            {
+              "trade": "walls",
+              "description": "Sandcrete block wall in cement mortar (1:6); 225mm thick",
+              "quantity": 190.44,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "43.8 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)",
+              "sheetId": 0,
+              "evidence": [
+                83,
+                85,
+                95,
+                97,
+                107,
+                109,
+                84,
+                86,
+                96,
+                98,
+                108,
+                110,
+                89,
+                91,
+                101,
+                103,
+                113,
+                115,
+                90,
+                92,
+                102,
+                104,
+                114,
+                116,
+                119,
+                121,
+                131,
+                133,
+                143,
+                145,
+                120,
+                122,
+                132,
+                134,
+                144,
+                146,
+                125,
+                127,
+                137,
+                139,
+                149,
+                151,
+                126,
+                128,
+                138,
+                140,
+                150,
+                152
+              ],
+              "reason": "thickness measured from paired faces",
+              "crossCheck": "23.4 m of centreline runs through openings; every wall line found its partner face; no dimension strings run along the external walls; room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree",
+              "multiplier": 2,
+              "shapeCount": 4
+            },
+            {
+              "trade": "walls",
+              "description": "Sandcrete block wall in cement mortar (1:6); 150mm thick",
+              "quantity": 262.8,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "43.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)",
+              "sheetId": 0,
+              "evidence": [
+                155,
+                157,
+                161,
+                163,
+                165,
+                156,
+                158,
+                162,
+                164,
+                166,
+                169,
+                171,
+                175,
+                177,
+                181,
+                183,
+                170,
+                172,
+                176,
+                178,
+                182,
+                184,
+                187,
+                189,
+                193,
+                195,
+                199,
+                201,
+                188,
+                190,
+                194,
+                196,
+                200,
+                202,
+                205,
+                207,
+                209,
+                213,
+                215,
+                206,
+                208,
+                210,
+                214,
+                216
+              ],
+              "reason": "thickness measured from paired faces",
+              "crossCheck": "23.4 m of centreline runs through openings; every wall line found its partner face; no dimension strings run along the external walls; room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree",
+              "multiplier": 2,
+              "shapeCount": 4
+            },
+            {
+              "trade": "columns",
+              "description": "Reinforced concrete columns",
+              "unit": "nr",
+              "quantity": 32,
+              "sheetId": 0,
+              "evidence": [
+                220,
+                221,
+                222,
+                223,
+                224,
+                225,
+                226,
+                227,
+                228,
+                229,
+                230,
+                231,
+                232,
+                233,
+                234,
+                235
+              ],
+              "confidence": "medium",
+              "reason": "single method",
+              "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)",
+              "crossCheck": "no second method available",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "doors",
+              "description": "Doors, as drawn (see door schedule for sizes)",
+              "unit": "nr",
+              "quantity": 20,
+              "sheetId": 0,
+              "evidence": [
+                62,
+                63,
+                64,
+                65,
+                66,
+                67,
+                68,
+                69,
+                70,
+                71,
+                72,
+                73,
+                74,
+                75,
+                76,
+                77,
+                78,
+                79,
+                80,
+                81
+              ],
+              "confidence": "high",
+              "reason": "methods agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "crossCheck": "door swings 10 · agree",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "windows",
+              "description": "Windows, as drawn on plan (see window schedule for sizes)",
+              "unit": "nr",
+              "quantity": 24,
+              "sheetId": 0,
+              "evidence": [
+                49,
+                50,
+                51,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60
+              ],
+              "confidence": "medium",
+              "reason": "single method",
+              "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)",
+              "crossCheck": "no second method available",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "sanitary",
+              "description": "Sanitary fittings (WC, basin, sink, shower, bath)",
+              "unit": "nr",
+              "quantity": 2,
+              "sheetId": 0,
+              "evidence": [
+                243
+              ],
+              "confidence": "high",
+              "reason": "methods agree",
+              "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)",
+              "crossCheck": "fitting footprints on the sanitary layer 1 · agree",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "stairs",
+              "description": "Staircase: 19 risers of 158 mm (rise 3 m)",
+              "quantity": 2,
+              "unit": "nr",
+              "confidence": "medium",
+              "basis": "Architect's note \"19 NOS RISERS OF 158MM\" (from another drawing); 0 step lines on DWG-01 × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "crossCheck": "no step lines on the plan",
+              "reason": "note only",
+              "multiplier": 2
+            },
+            {
+              "trade": "floor areas",
+              "description": "GUEST BEDROOM — net floor area",
+              "quantity": 32.14,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "KITCHEN — net floor area",
+              "quantity": 27.5,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "LAUNDRY — net floor area",
+              "quantity": 23.5,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "LOUNGE — net floor area",
+              "quantity": 34.74,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "DINING — net floor area",
+              "quantity": 25.4,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"DINING\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "GARAGE — net floor area",
+              "quantity": 25.44,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "STUDY — net floor area",
+              "quantity": 19.52,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "STORE — net floor area",
+              "quantity": 15.46,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "floor areas",
+              "description": "WC — net floor area",
+              "quantity": 14.28,
+              "unit": "m2",
+              "confidence": "medium",
+              "basis": "Flood fill inside the wall faces from the \"WC\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
+              "sheetId": 0,
+              "evidence": [],
+              "reason": "room polygon from wall network",
+              "crossCheck": "no stated area on the sheet",
+              "multiplier": 2,
+              "shapeCount": 1
+            },
+            {
+              "trade": "windows",
+              "description": "Windows on North Elevation",
+              "quantity": 6,
+              "unit": "nr",
+              "confidence": "low",
+              "basis": "6 window frame groups on DWG-03; median 1.44 m² each",
+              "sheetId": 2,
+              "evidence": [
+                486,
+                487,
+                488,
+                491,
+                492,
+                493
+              ],
+              "reason": "from an elevation; faces overlap between views",
+              "crossCheck": "reconcile with the window schedule and the plan count",
+              "noteOnly": true
+            }
+          ],
+          "notes": [
+            "Drawing header declares mm ($INSUNITS 4)."
+          ],
+          "walls": [
+            {
+              "sheetId": 0,
+              "code": "DWG-01",
+              "byThickness": [
+                {
+                  "thicknessMm": 225,
+                  "lengthM": 43.8
+                },
+                {
+                  "thicknessMm": 150,
+                  "lengthM": 43.8
+                }
+              ],
+              "totalLengthM": 87.6,
+              "runs": 16,
+              "openings": {
+                "doors": 10,
+                "windows": 12,
+                "areaM2": 36.18
+              },
+              "height": {
+                "mm": 3000,
+                "basis": "floor-to-floor from level marks +450, +3450",
+                "assumed": false
+              },
+              "bridgedM": 23.4,
+              "unpairedM": 0,
+              "units": "mm",
+              "checks": {
+                "dimensions": "no dimension strings run along the external walls",
                 "roomPerimeters": "room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree"
               }
             }
@@ -15229,818 +16034,13 @@
       }
     },
     {
-      "id": "duplex__named-mm-outlines-exploded",
-      "family": "duplex",
-      "convention": "named-mm-outlines-exploded",
-      "dwg": {
-        "ran": true,
-        "error": null,
-        "ms": 56,
-        "scored": [
-          {
-            "sheet": "gf",
-            "element": "walls-external",
-            "measure": "areaM2",
-            "truth": 226.62,
-            "measured": 226.62,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "medium",
-            "basis": "43.8 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²) | 43.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)"
-          },
-          {
-            "sheet": "gf",
-            "element": "columns",
-            "measure": "count",
-            "truth": 16,
-            "measured": 16,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "medium",
-            "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
-          },
-          {
-            "sheet": "gf",
-            "element": "doors",
-            "measure": "count",
-            "truth": 10,
-            "measured": 10,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
-          },
-          {
-            "sheet": "gf",
-            "element": "windows",
-            "measure": "count",
-            "truth": 12,
-            "measured": 12,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "medium",
-            "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)"
-          },
-          {
-            "sheet": "gf",
-            "element": "sanitary",
-            "measure": "count",
-            "truth": 1,
-            "measured": 1,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)"
-          },
-          {
-            "sheet": "gf",
-            "element": "floor-area",
-            "measure": "areaM2",
-            "truth": 108.47,
-            "measured": 108.99,
-            "errorPct": 0.5,
-            "outcome": "within",
-            "confidence": "medium",
-            "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"DINING\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450) | Flood fill inside the wall faces from the \"WC\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)"
-          }
-        ],
-        "summary": {
-          "lines": 6,
-          "within": 6,
-          "flagged": 0,
-          "silent": 0,
-          "missing": 0,
-          "withinShare": 100,
-          "failuresFlaggedShare": 0
-        },
-        "raw": {
-          "scaleToMm": 1,
-          "scaleConfidence": 0.98,
-          "drawings": [
-            {
-              "id": 0,
-              "kind": "floor-plan",
-              "widthM": 11.6,
-              "heightM": 10.7,
-              "entityCount": 185
-            },
-            {
-              "id": 1,
-              "kind": "floor-plan",
-              "widthM": 11.6,
-              "heightM": 10.7,
-              "entityCount": 186
-            },
-            {
-              "id": 2,
-              "kind": "elevation",
-              "widthM": 11.4,
-              "heightM": 7.2,
-              "entityCount": 13
-            },
-            {
-              "id": 3,
-              "kind": "section",
-              "widthM": 10.5,
-              "heightM": 7.2,
-              "entityCount": 10
-            }
-          ],
-          "items": [
-            {
-              "trade": "walls",
-              "description": "Sandcrete block wall in cement mortar (1:6); 225mm thick",
-              "quantity": 190.44,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "43.8 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450); less 36.18 m² for 10 doors and 12 windows ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)",
-              "sheetId": 0,
-              "evidence": [
-                83,
-                85,
-                95,
-                97,
-                107,
-                109,
-                84,
-                86,
-                96,
-                98,
-                108,
-                110,
-                89,
-                91,
-                101,
-                103,
-                113,
-                115,
-                90,
-                92,
-                102,
-                104,
-                114,
-                116,
-                119,
-                121,
-                131,
-                133,
-                143,
-                145,
-                120,
-                122,
-                132,
-                134,
-                144,
-                146,
-                125,
-                127,
-                137,
-                139,
-                149,
-                151,
-                126,
-                128,
-                138,
-                140,
-                150,
-                152
-              ],
-              "reason": "thickness measured from paired faces",
-              "crossCheck": "23.4 m of centreline runs through openings; every wall line found its partner face; no dimension strings run along the external walls; room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree",
-              "multiplier": 2,
-              "shapeCount": 4
-            },
-            {
-              "trade": "walls",
-              "description": "Sandcrete block wall in cement mortar (1:6); 150mm thick",
-              "quantity": 262.8,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "43.8 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450) ±2% scale error × 2 identical floors (+450, +3450). Sheet walls: 225 mm 43.8 m, 150 mm 43.8 m (87.6 m in 16 runs); 22 openings deducted (36.18 m²)",
-              "sheetId": 0,
-              "evidence": [
-                155,
-                157,
-                161,
-                163,
-                165,
-                156,
-                158,
-                162,
-                164,
-                166,
-                169,
-                171,
-                175,
-                177,
-                181,
-                183,
-                170,
-                172,
-                176,
-                178,
-                182,
-                184,
-                187,
-                189,
-                193,
-                195,
-                199,
-                201,
-                188,
-                190,
-                194,
-                196,
-                200,
-                202,
-                205,
-                207,
-                209,
-                213,
-                215,
-                206,
-                208,
-                210,
-                214,
-                216
-              ],
-              "reason": "thickness measured from paired faces",
-              "crossCheck": "23.4 m of centreline runs through openings; every wall line found its partner face; no dimension strings run along the external walls; room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree",
-              "multiplier": 2,
-              "shapeCount": 4
-            },
-            {
-              "trade": "columns",
-              "description": "Reinforced concrete columns",
-              "unit": "nr",
-              "quantity": 32,
-              "sheetId": 0,
-              "evidence": [
-                220,
-                221,
-                222,
-                223,
-                224,
-                225,
-                226,
-                227,
-                228,
-                229,
-                230,
-                231,
-                232,
-                233,
-                234,
-                235
-              ],
-              "confidence": "medium",
-              "reason": "single method",
-              "basis": "16 column outlines on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)",
-              "crossCheck": "no second method available",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "doors",
-              "description": "Doors, as drawn (see door schedule for sizes)",
-              "unit": "nr",
-              "quantity": 20,
-              "sheetId": 0,
-              "evidence": [
-                62,
-                63,
-                64,
-                65,
-                66,
-                67,
-                68,
-                69,
-                70,
-                71,
-                72,
-                73,
-                74,
-                75,
-                76,
-                77,
-                78,
-                79,
-                80,
-                81
-              ],
-              "confidence": "high",
-              "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
-              "crossCheck": "door swings 10 · agree",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "windows",
-              "description": "Windows, as drawn on plan (see window schedule for sizes)",
-              "unit": "nr",
-              "quantity": 24,
-              "sheetId": 0,
-              "evidence": [
-                49,
-                50,
-                51,
-                52,
-                53,
-                54,
-                55,
-                56,
-                57,
-                58,
-                59,
-                60
-              ],
-              "confidence": "medium",
-              "reason": "single method",
-              "basis": "12 window frame groups on DWG-01 (Ground Floor Plan) × 2 identical floors (+450, +3450)",
-              "crossCheck": "no second method available",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "sanitary",
-              "description": "Sanitary fittings (WC, basin, sink, shower, bath)",
-              "unit": "nr",
-              "quantity": 2,
-              "sheetId": 0,
-              "evidence": [
-                243
-              ],
-              "confidence": "high",
-              "reason": "methods agree",
-              "basis": "1 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 1 agree × 2 identical floors (+450, +3450)",
-              "crossCheck": "fitting footprints on the sanitary layer 1 · agree",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "stairs",
-              "description": "Staircase: 19 risers of 158 mm (rise 3 m)",
-              "quantity": 2,
-              "unit": "nr",
-              "confidence": "medium",
-              "basis": "Architect's note \"19 NOS RISERS OF 158MM\" (from another drawing); 0 step lines on DWG-01 × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "crossCheck": "no step lines on the plan",
-              "reason": "note only",
-              "multiplier": 2
-            },
-            {
-              "trade": "floor areas",
-              "description": "GUEST BEDROOM — net floor area",
-              "quantity": 32.14,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"GUEST BEDROOM\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "KITCHEN — net floor area",
-              "quantity": 27.5,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "LAUNDRY — net floor area",
-              "quantity": 23.5,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "LOUNGE — net floor area",
-              "quantity": 34.74,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "DINING — net floor area",
-              "quantity": 25.4,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"DINING\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "GARAGE — net floor area",
-              "quantity": 25.44,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"GARAGE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "STUDY — net floor area",
-              "quantity": 19.52,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"STUDY\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "STORE — net floor area",
-              "quantity": 15.46,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "floor areas",
-              "description": "WC — net floor area",
-              "quantity": 14.28,
-              "unit": "m2",
-              "confidence": "medium",
-              "basis": "Flood fill inside the wall faces from the \"WC\" label on DWG-01 (20 mm grid) × 2 identical floors (+450, +3450)",
-              "sheetId": 0,
-              "evidence": [],
-              "reason": "room polygon from wall network",
-              "crossCheck": "no stated area on the sheet",
-              "multiplier": 2,
-              "shapeCount": 1
-            },
-            {
-              "trade": "windows",
-              "description": "Windows on North Elevation",
-              "quantity": 6,
-              "unit": "nr",
-              "confidence": "low",
-              "basis": "6 window frame groups on DWG-03; median 1.44 m² each",
-              "sheetId": 2,
-              "evidence": [
-                486,
-                487,
-                488,
-                491,
-                492,
-                493
-              ],
-              "reason": "from an elevation; faces overlap between views",
-              "crossCheck": "reconcile with the window schedule and the plan count",
-              "noteOnly": true
-            }
-          ],
-          "notes": [
-            "Drawing header declares mm ($INSUNITS 4)."
-          ],
-          "walls": [
-            {
-              "sheetId": 0,
-              "code": "DWG-01",
-              "byThickness": [
-                {
-                  "thicknessMm": 225,
-                  "lengthM": 43.8
-                },
-                {
-                  "thicknessMm": 150,
-                  "lengthM": 43.8
-                }
-              ],
-              "totalLengthM": 87.6,
-              "runs": 16,
-              "openings": {
-                "doors": 10,
-                "windows": 12,
-                "areaM2": 36.18
-              },
-              "height": {
-                "mm": 3000,
-                "basis": "floor-to-floor from level marks +450, +3450",
-                "assumed": false
-              },
-              "bridgedM": 23.4,
-              "unpairedM": 0,
-              "units": "mm",
-              "checks": {
-                "dimensions": "no dimension strings run along the external walls",
-                "roomPerimeters": "room perimeters sum to 124.7 m (9 rooms) vs 131.4 m implied by the paired walls (2 × internal + external): agree"
-              }
-            }
-          ]
-        }
-      },
-      "pdf": {
-        "ran": true,
-        "error": null,
-        "ms": 25,
-        "scored": [
-          {
-            "sheet": "gf",
-            "element": "walls-external",
-            "measure": "areaM2",
-            "truth": 226.62,
-            "measured": 226.62,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "43.8m centreline from 4 parallel wall pairs at 225mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 1) / 43.8m centreline from 4 parallel wall pairs at 150mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 1)"
-          },
-          {
-            "sheet": "gf",
-            "element": "doors",
-            "measure": "count",
-            "truth": 10,
-            "measured": 10,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "10 door-swing arcs (r 600-1200mm) on page 1; 10 leaf lines match the swings"
-          },
-          {
-            "sheet": "gf",
-            "element": "windows",
-            "measure": "count",
-            "truth": 12,
-            "measured": 12,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "12 window frames drawn in external walls on page 1; 12 wall openings without a door swing as cross-check"
-          },
-          {
-            "sheet": "gf",
-            "element": "columns",
-            "measure": "count",
-            "truth": 16,
-            "measured": 16,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "16 closed square outlines (150-800mm) on page 1; 100% aligned on a grid"
-          },
-          {
-            "sheet": "gf",
-            "element": "floor-area",
-            "measure": "areaM2",
-            "truth": 108.47,
-            "measured": 108.47,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "Flood-fill room areas from 9 room labels on page 1; rooms sum 108.47m2 vs footprint 124.69 less walls 16.43 = 108.27m2 (0.2%)"
-          },
-          {
-            "sheet": "ff",
-            "element": "walls-external",
-            "measure": "areaM2",
-            "truth": 226.62,
-            "measured": 226.62,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "43.8m centreline from 4 parallel wall pairs at 225mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 2) / 43.8m centreline from 4 parallel wall pairs at 150mm x 3m storey height from level marks; matches the written dimensions: width 11401mm vs dimension 11400 (0.0%), depth 10501mm vs dimension 10500 (0.0%) (page 2)"
-          },
-          {
-            "sheet": "ff",
-            "element": "doors",
-            "measure": "count",
-            "truth": 10,
-            "measured": 10,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "10 door-swing arcs (r 600-1200mm) on page 2; 10 leaf lines match the swings"
-          },
-          {
-            "sheet": "ff",
-            "element": "windows",
-            "measure": "count",
-            "truth": 12,
-            "measured": 12,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "12 window frames drawn in external walls on page 2; 12 wall openings without a door swing as cross-check"
-          },
-          {
-            "sheet": "ff",
-            "element": "columns",
-            "measure": "count",
-            "truth": 16,
-            "measured": 16,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "16 closed square outlines (150-800mm) on page 2; 100% aligned on a grid"
-          },
-          {
-            "sheet": "ff",
-            "element": "floor-area",
-            "measure": "areaM2",
-            "truth": 108.47,
-            "measured": 108.47,
-            "errorPct": 0,
-            "outcome": "within",
-            "confidence": "high",
-            "basis": "Flood-fill room areas from 9 room labels on page 2; rooms sum 108.47m2 vs footprint 124.69 less walls 16.43 = 108.27m2 (0.2%)"
-          }
-        ],
-        "summary": {
-          "lines": 10,
-          "within": 10,
-          "flagged": 0,
-          "silent": 0,
-          "missing": 0,
-          "withinShare": 100,
-          "failuresFlaggedShare": 0
-        },
-        "pages": [
-          {
-            "page": 1,
-            "kind": "floor-plan",
-            "title": "GROUND FLOOR PLAN",
-            "segments": 270,
-            "scale": 100,
-            "confidence": 1,
-            "items": [
-              {
-                "group": "Internal and external walls",
-                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; laid in stretcher bond",
-                "qty": 114.12,
-                "unit": "m2",
-                "confidence": "high"
-              },
-              {
-                "group": "Internal and external walls",
-                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 150mm thick; laid in stretcher bond",
-                "qty": 112.5,
-                "unit": "m2",
-                "confidence": "high"
-              },
-              {
-                "group": "Doors",
-                "description": "Doors; 900mm leaf; type not tagged on plan — confirm against door schedule",
-                "qty": 10,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Windows",
-                "description": "Windows; 1200mm wide; type not tagged on plan — confirm against window schedule",
-                "qty": 12,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Frame",
-                "description": "Reinforced concrete columns; as shown on plan — confirm size and reinforcement against structural drawings",
-                "qty": 16,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Floor finishings",
-                "description": "Cement/sand screeded beds to floors (9 rooms: GUEST BEDROOM, KITCHEN, LAUNDRY, LOUNGE, DINING, GARAGE…)",
-                "qty": 108.47,
-                "unit": "m2",
-                "confidence": "high"
-              }
-            ],
-            "note": null
-          },
-          {
-            "page": 2,
-            "kind": "floor-plan",
-            "title": "FIRST FLOOR PLAN",
-            "segments": 274,
-            "scale": 100,
-            "confidence": 1,
-            "items": [
-              {
-                "group": "Internal and external walls",
-                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 225mm thick; laid in stretcher bond",
-                "qty": 114.12,
-                "unit": "m2",
-                "confidence": "high"
-              },
-              {
-                "group": "Internal and external walls",
-                "description": "Hollow sandcrete blockwall bedded and jointed in cement and sand mortar (1:6); walls; 150mm thick; laid in stretcher bond",
-                "qty": 112.5,
-                "unit": "m2",
-                "confidence": "high"
-              },
-              {
-                "group": "Doors",
-                "description": "Doors; 900mm leaf; type not tagged on plan — confirm against door schedule",
-                "qty": 10,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Windows",
-                "description": "Windows; 1200mm wide; type not tagged on plan — confirm against window schedule",
-                "qty": 12,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Frame",
-                "description": "Reinforced concrete columns; as shown on plan — confirm size and reinforcement against structural drawings",
-                "qty": 16,
-                "unit": "nr",
-                "confidence": "high"
-              },
-              {
-                "group": "Floor finishings",
-                "description": "Cement/sand screeded beds to floors (9 rooms: MASTER BEDROOM, FAMILY LOUNGE, STAIR HALL, DRESSING, BEDROOM, BEDROOM…)",
-                "qty": 108.47,
-                "unit": "m2",
-                "confidence": "high"
-              }
-            ],
-            "note": null
-          },
-          {
-            "page": 3,
-            "kind": "unknown",
-            "title": null,
-            "segments": 31,
-            "scale": null,
-            "confidence": null,
-            "items": [],
-            "note": "fewer than 100 segments: the session path would try vision here"
-          },
-          {
-            "page": 4,
-            "kind": "unknown",
-            "title": null,
-            "segments": 10,
-            "scale": null,
-            "confidence": null,
-            "items": [],
-            "note": "fewer than 100 segments: the session path would try vision here"
-          }
-        ]
-      }
-    },
-    {
       "id": "duplex__named-mm-outlines-scale",
       "family": "duplex",
       "convention": "named-mm-outlines-scale",
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 58,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -16073,7 +16073,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -16335,7 +16335,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -16586,7 +16586,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 25,
+        "ms": 20,
         "scored": [
           {
             "sheet": "gf",
@@ -16845,7 +16845,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 64,
+        "ms": 50,
         "scored": [
           {
             "sheet": "gf",
@@ -16878,7 +16878,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -17140,7 +17140,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -17391,7 +17391,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 24,
+        "ms": 20,
         "scored": [
           {
             "sheet": "gf",
@@ -17650,7 +17650,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 72,
+        "ms": 55,
         "scored": [
           {
             "sheet": "gf",
@@ -17683,7 +17683,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -17947,7 +17947,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -18198,7 +18198,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 27,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -18457,7 +18457,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 124,
+        "ms": 55,
         "scored": [
           {
             "sheet": "gf",
@@ -18490,7 +18490,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -18628,7 +18628,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -18870,7 +18870,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 30,
+        "ms": 21,
         "scored": [
           {
             "sheet": "gf",
@@ -19129,7 +19129,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 76,
+        "ms": 54,
         "scored": [
           {
             "sheet": "gf",
@@ -19162,7 +19162,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -19424,7 +19424,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -19675,7 +19675,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 23,
+        "ms": 22,
         "scored": [
           {
             "sheet": "gf",
@@ -19934,7 +19934,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 103,
+        "ms": 91,
         "scored": [
           {
             "sheet": "gf",
@@ -19967,7 +19967,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -20229,7 +20229,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -20480,7 +20480,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 28,
+        "ms": 25,
         "scored": [
           {
             "sheet": "gf",
@@ -20739,7 +20739,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 62,
+        "ms": 56,
         "scored": [
           {
             "sheet": "gf",
@@ -20772,7 +20772,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+451, +3451)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+451, +3451)"
           },
           {
             "sheet": "gf",
@@ -21034,7 +21034,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+451, +3451)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+451, +3451)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -21285,7 +21285,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 22,
+        "ms": 25,
         "scored": [
           {
             "sheet": "gf",
@@ -21544,7 +21544,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 76,
+        "ms": 57,
         "scored": [
           {
             "sheet": "gf",
@@ -21577,7 +21577,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -21867,7 +21867,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -22120,7 +22120,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 30,
+        "ms": 23,
         "scored": [
           {
             "sheet": "gf",
@@ -22379,7 +22379,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 69,
+        "ms": 51,
         "scored": [
           {
             "sheet": "gf",
@@ -22412,7 +22412,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -22674,7 +22674,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -22925,7 +22925,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 32,
+        "ms": 19,
         "scored": [
           {
             "sheet": "gf",
@@ -23184,7 +23184,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 62,
+        "ms": 48,
         "scored": [
           {
             "sheet": "gf",
@@ -23217,7 +23217,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "8 door groups (8 swings, 8 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 8 agree × 2 identical floors (+450, +3450)"
+            "basis": "8 door groups (8 with a swing) on DWG-01 (Ground Floor Plan); door swings 8 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -23466,7 +23466,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "8 door groups (8 swings, 8 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 8 agree × 2 identical floors (+450, +3450)",
+              "basis": "8 door groups (8 with a swing) on DWG-01 (Ground Floor Plan); door swings 8 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 8 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -23703,7 +23703,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 38,
+        "ms": 18,
         "scored": [
           {
             "sheet": "gf",
@@ -23962,7 +23962,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 109,
+        "ms": 84,
         "scored": [
           {
             "sheet": "gf",
@@ -23995,7 +23995,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree"
           },
           {
             "sheet": "gf",
@@ -24251,7 +24251,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -24595,7 +24595,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 20 leaves, frames and blocks) on DWG-02 (First Floor Plan); door swings 10, door blocks 10 agree",
+              "basis": "10 door groups (10 with a swing) on DWG-02 (First Floor Plan); door swings 10, door blocks 10 agree",
               "crossCheck": "door swings 10, door blocks 10 · agree",
               "shapeCount": 1
             },
@@ -24869,7 +24869,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 32,
+        "ms": 24,
         "scored": [
           {
             "sheet": "gf",
@@ -25138,7 +25138,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 102,
+        "ms": 55,
         "scored": [
           {
             "sheet": "gf",
@@ -25171,7 +25171,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
+            "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -25461,7 +25461,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "10 door groups (10 swings, 10 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
+              "basis": "10 door groups (10 with a swing) on DWG-01 (Ground Floor Plan); door swings 10 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 10 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -25714,7 +25714,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 1154,
+        "ms": 565,
         "scored": [
           {
             "sheet": "gf",
@@ -25887,7 +25887,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 573,
+        "ms": 210,
         "scored": [
           {
             "sheet": "l0",
@@ -25920,7 +25920,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 44 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -26288,7 +26288,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 44 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22, door blocks 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -26680,7 +26680,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 190,
+        "ms": 136,
         "scored": [
           {
             "sheet": "l0",
@@ -27155,7 +27155,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 333,
+        "ms": 186,
         "scored": [
           {
             "sheet": "l0",
@@ -27188,7 +27188,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -27578,7 +27578,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -27969,7 +27969,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 345,
+        "ms": 122,
         "scored": [
           {
             "sheet": "l0",
@@ -28444,7 +28444,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 320,
+        "ms": 174,
         "scored": [
           {
             "sheet": "l0",
@@ -28477,7 +28477,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -28867,7 +28867,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -29258,7 +29258,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 207,
+        "ms": 139,
         "scored": [
           {
             "sheet": "l0",
@@ -29733,7 +29733,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 288,
+        "ms": 186,
         "scored": [
           {
             "sheet": "l0",
@@ -30501,7 +30501,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 193,
+        "ms": 130,
         "scored": [
           {
             "sheet": "l0",
@@ -30976,7 +30976,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 209,
+        "ms": 192,
         "scored": [
           {
             "sheet": "l0",
@@ -31009,7 +31009,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -31399,7 +31399,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -31790,7 +31790,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 166,
+        "ms": 144,
         "scored": [
           {
             "sheet": "l0",
@@ -32265,7 +32265,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 272,
+        "ms": 203,
         "scored": [
           {
             "sheet": "l0",
@@ -32298,7 +32298,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -32688,7 +32688,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -33079,7 +33079,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 169,
+        "ms": 129,
         "scored": [
           {
             "sheet": "l0",
@@ -33554,7 +33554,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 213,
+        "ms": 185,
         "scored": [
           {
             "sheet": "l0",
@@ -33587,7 +33587,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -33977,7 +33977,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -34368,7 +34368,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 160,
+        "ms": 130,
         "scored": [
           {
             "sheet": "l0",
@@ -34843,7 +34843,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 305,
+        "ms": 170,
         "scored": [
           {
             "sheet": "l0",
@@ -34876,7 +34876,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -35266,7 +35266,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -35657,7 +35657,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 164,
+        "ms": 120,
         "scored": [
           {
             "sheet": "l0",
@@ -36132,7 +36132,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 234,
+        "ms": 190,
         "scored": [
           {
             "sheet": "l0",
@@ -36165,7 +36165,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -36645,7 +36645,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -37036,7 +37036,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 170,
+        "ms": 135,
         "scored": [
           {
             "sheet": "l0",
@@ -37511,7 +37511,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 537,
+        "ms": 160,
         "scored": [
           {
             "sheet": "l0",
@@ -37544,7 +37544,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -37704,7 +37704,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -38081,7 +38081,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 222,
+        "ms": 123,
         "scored": [
           {
             "sheet": "l0",
@@ -38556,7 +38556,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 217,
+        "ms": 187,
         "scored": [
           {
             "sheet": "l0",
@@ -38589,7 +38589,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -38979,7 +38979,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -39370,7 +39370,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 168,
+        "ms": 131,
         "scored": [
           {
             "sheet": "l0",
@@ -39845,7 +39845,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 496,
+        "ms": 393,
         "scored": [
           {
             "sheet": "l0",
@@ -39878,7 +39878,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -40268,7 +40268,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -40659,7 +40659,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 185,
+        "ms": 151,
         "scored": [
           {
             "sheet": "l0",
@@ -41134,7 +41134,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 242,
+        "ms": 180,
         "scored": [
           {
             "sheet": "l0",
@@ -41167,7 +41167,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+451, +3451, +6448, +9449)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+451, +3451, +6448, +9449)"
           },
           {
             "sheet": "l0",
@@ -41557,7 +41557,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+451, +3451, +6448, +9449)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+451, +3451, +6448, +9449)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -41948,7 +41948,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 128,
+        "ms": 135,
         "scored": [
           {
             "sheet": "l0",
@@ -42423,7 +42423,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 209,
+        "ms": 184,
         "scored": [
           {
             "sheet": "l0",
@@ -42456,7 +42456,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -42888,7 +42888,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -43281,7 +43281,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 166,
+        "ms": 136,
         "scored": [
           {
             "sheet": "l0",
@@ -43756,7 +43756,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 218,
+        "ms": 175,
         "scored": [
           {
             "sheet": "l0",
@@ -43789,7 +43789,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -44179,7 +44179,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -44570,7 +44570,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 141,
+        "ms": 123,
         "scored": [
           {
             "sheet": "l0",
@@ -45045,7 +45045,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 285,
+        "ms": 166,
         "scored": [
           {
             "sheet": "l0",
@@ -45078,7 +45078,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "18 door groups (18 swings, 18 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 18 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "18 door groups (18 with a swing) on DWG-01 (Ground Floor Plan); door swings 18 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -45442,7 +45442,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "18 door groups (18 swings, 18 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 18 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "18 door groups (18 with a swing) on DWG-01 (Ground Floor Plan); door swings 18 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 18 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -45805,7 +45805,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 401,
+        "ms": 108,
         "scored": [
           {
             "sheet": "l0",
@@ -46280,7 +46280,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 288,
+        "ms": 192,
         "scored": [
           {
             "sheet": "l0",
@@ -46313,7 +46313,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 44 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -46688,7 +46688,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 44 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22, door blocks 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22, door blocks 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -47081,7 +47081,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 158,
+        "ms": 142,
         "scored": [
           {
             "sheet": "l0",
@@ -47566,7 +47566,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 230,
+        "ms": 180,
         "scored": [
           {
             "sheet": "l0",
@@ -47599,7 +47599,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
+            "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)"
           },
           {
             "sheet": "l0",
@@ -48031,7 +48031,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "22 door groups (22 swings, 22 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
+              "basis": "22 door groups (22 with a swing) on DWG-01 (Ground Floor Plan); door swings 22 agree × 4 identical floors (+450, +3450, +6450, +9450)",
               "crossCheck": "door swings 22 · agree",
               "multiplier": 4,
               "shapeCount": 1
@@ -48424,7 +48424,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 1749,
+        "ms": 592,
         "scored": [
           {
             "sheet": "l0",
@@ -48727,7 +48727,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 408,
+        "ms": 261,
         "scored": [
           {
             "sheet": "gf",
@@ -48760,7 +48760,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 70 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -49195,7 +49195,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 70 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35, door blocks 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -49773,7 +49773,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 295,
+        "ms": 115,
         "scored": [
           {
             "sheet": "gf",
@@ -50032,7 +50032,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 308,
+        "ms": 253,
         "scored": [
           {
             "sheet": "gf",
@@ -50065,7 +50065,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -50535,7 +50535,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -51112,7 +51112,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 136,
+        "ms": 102,
         "scored": [
           {
             "sheet": "gf",
@@ -51371,7 +51371,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 500,
+        "ms": 241,
         "scored": [
           {
             "sheet": "gf",
@@ -51404,7 +51404,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -51874,7 +51874,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -52451,7 +52451,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 207,
+        "ms": 98,
         "scored": [
           {
             "sheet": "gf",
@@ -52710,7 +52710,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 363,
+        "ms": 247,
         "scored": [
           {
             "sheet": "gf",
@@ -53643,7 +53643,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 132,
+        "ms": 99,
         "scored": [
           {
             "sheet": "gf",
@@ -53902,7 +53902,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 449,
+        "ms": 253,
         "scored": [
           {
             "sheet": "gf",
@@ -53935,7 +53935,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -54405,7 +54405,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -54982,7 +54982,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 138,
+        "ms": 111,
         "scored": [
           {
             "sheet": "gf",
@@ -55241,7 +55241,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 297,
+        "ms": 238,
         "scored": [
           {
             "sheet": "gf",
@@ -55274,7 +55274,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -55744,7 +55744,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -56321,7 +56321,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 133,
+        "ms": 115,
         "scored": [
           {
             "sheet": "gf",
@@ -56580,7 +56580,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 304,
+        "ms": 255,
         "scored": [
           {
             "sheet": "gf",
@@ -56613,7 +56613,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -57083,7 +57083,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -57660,7 +57660,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 149,
+        "ms": 97,
         "scored": [
           {
             "sheet": "gf",
@@ -57919,7 +57919,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 649,
+        "ms": 237,
         "scored": [
           {
             "sheet": "gf",
@@ -57952,7 +57952,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -58422,7 +58422,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -58999,7 +58999,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 166,
+        "ms": 107,
         "scored": [
           {
             "sheet": "gf",
@@ -59258,7 +59258,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 333,
+        "ms": 247,
         "scored": [
           {
             "sheet": "gf",
@@ -59291,7 +59291,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -59781,7 +59781,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -60358,7 +60358,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 120,
+        "ms": 101,
         "scored": [
           {
             "sheet": "gf",
@@ -60617,7 +60617,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 318,
+        "ms": 245,
         "scored": [
           {
             "sheet": "gf",
@@ -60650,7 +60650,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -60788,7 +60788,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -61348,7 +61348,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 124,
+        "ms": 96,
         "scored": [
           {
             "sheet": "gf",
@@ -61607,7 +61607,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 293,
+        "ms": 248,
         "scored": [
           {
             "sheet": "gf",
@@ -61640,7 +61640,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -62110,7 +62110,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -62687,7 +62687,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 131,
+        "ms": 147,
         "scored": [
           {
             "sheet": "gf",
@@ -62946,7 +62946,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 482,
+        "ms": 413,
         "scored": [
           {
             "sheet": "gf",
@@ -62979,7 +62979,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -63449,7 +63449,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -64026,7 +64026,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 152,
+        "ms": 122,
         "scored": [
           {
             "sheet": "gf",
@@ -64285,7 +64285,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 451,
+        "ms": 239,
         "scored": [
           {
             "sheet": "gf",
@@ -64318,7 +64318,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+451, +3451)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+451, +3451)"
           },
           {
             "sheet": "gf",
@@ -64788,7 +64788,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+451, +3451)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+451, +3451)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -65365,7 +65365,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 171,
+        "ms": 99,
         "scored": [
           {
             "sheet": "gf",
@@ -65624,7 +65624,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 338,
+        "ms": 257,
         "scored": [
           {
             "sheet": "gf",
@@ -65657,7 +65657,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -66155,7 +66155,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -66734,7 +66734,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 141,
+        "ms": 116,
         "scored": [
           {
             "sheet": "gf",
@@ -66993,7 +66993,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 339,
+        "ms": 245,
         "scored": [
           {
             "sheet": "gf",
@@ -67026,7 +67026,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -67496,7 +67496,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -68073,7 +68073,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 140,
+        "ms": 116,
         "scored": [
           {
             "sheet": "gf",
@@ -68332,7 +68332,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 287,
+        "ms": 247,
         "scored": [
           {
             "sheet": "gf",
@@ -68365,7 +68365,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "30 door groups (30 swings, 30 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 30 agree × 2 identical floors (+450, +3450)"
+            "basis": "30 door groups (30 with a swing) on DWG-01 (Ground Floor Plan); door swings 30 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -68800,7 +68800,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "30 door groups (30 swings, 30 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 30 agree × 2 identical floors (+450, +3450)",
+              "basis": "30 door groups (30 with a swing) on DWG-01 (Ground Floor Plan); door swings 30 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 30 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -69335,7 +69335,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 122,
+        "ms": 93,
         "scored": [
           {
             "sheet": "gf",
@@ -69594,7 +69594,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 300,
+        "ms": 246,
         "scored": [
           {
             "sheet": "gf",
@@ -69627,7 +69627,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 70 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -70069,7 +70069,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 70 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35, door blocks 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35, door blocks 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -70648,7 +70648,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 127,
+        "ms": 119,
         "scored": [
           {
             "sheet": "gf",
@@ -70917,7 +70917,7 @@
       "dwg": {
         "ran": true,
         "error": null,
-        "ms": 302,
+        "ms": 277,
         "scored": [
           {
             "sheet": "gf",
@@ -70950,7 +70950,7 @@
             "errorPct": 0,
             "outcome": "within",
             "confidence": "high",
-            "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
+            "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)"
           },
           {
             "sheet": "gf",
@@ -71448,7 +71448,7 @@
               ],
               "confidence": "high",
               "reason": "methods agree",
-              "basis": "35 door groups (35 swings, 35 leaves, frames and blocks) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
+              "basis": "35 door groups (35 with a swing) on DWG-01 (Ground Floor Plan); door swings 35 agree × 2 identical floors (+450, +3450)",
               "crossCheck": "door swings 35 · agree",
               "multiplier": 2,
               "shapeCount": 1
@@ -72027,7 +72027,7 @@
       "pdf": {
         "ran": true,
         "error": null,
-        "ms": 442,
+        "ms": 343,
         "scored": [
           {
             "sheet": "gf",
@@ -72781,7 +72781,7 @@
     }
   },
   "ogudu": {
-    "ms": 3595,
+    "ms": 1892,
     "scaleToMm": 1,
     "scaleConfidence": 0.98,
     "walls": [
@@ -72847,6 +72847,13 @@
         "widthM": 24.6,
         "heightM": 24.6,
         "entityCount": 1863
+      },
+      {
+        "id": 8,
+        "kind": "roof-plan",
+        "widthM": 37.4,
+        "heightM": 29.8,
+        "entityCount": 73
       },
       {
         "id": 2,
@@ -72926,13 +72933,6 @@
         "entityCount": 16191
       },
       {
-        "id": 8,
-        "kind": "unknown",
-        "widthM": 37.4,
-        "heightM": 29.8,
-        "entityCount": 73
-      },
-      {
         "id": 18,
         "kind": "unknown",
         "widthM": 61.1,
@@ -72947,7 +72947,7 @@
         "quantity": 1341.36,
         "unit": "m2",
         "confidence": "high",
-        "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 90.72 m² for 62 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-15). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
+        "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 90.72 m² for 62 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-16). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
         "sheetId": 0,
         "evidence": [
           37151,
@@ -73107,7 +73107,7 @@
         "quantity": 844.8,
         "unit": "m2",
         "confidence": "high",
-        "basis": "70.4 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-15). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
+        "basis": "70.4 m of paired 150mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450) ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-16). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
         "sheetId": 0,
         "evidence": [
           37158,
@@ -73269,7 +73269,7 @@
         ],
         "confidence": "medium",
         "reason": "single method",
-        "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "28 column outlines on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "crossCheck": "no second method available",
         "multiplier": 4,
         "shapeCount": 1
@@ -73450,7 +73450,7 @@
         ],
         "confidence": "medium",
         "reason": "single method",
-        "basis": "62 door groups (34 swings, 132 leaves, frames and blocks) on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "62 door groups (34 with a swing, 6 with a leaf, 22 from a door-width line alone) on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "crossCheck": "no second method available",
         "multiplier": 4,
         "shapeCount": 1
@@ -73487,7 +73487,7 @@
         ],
         "confidence": "low",
         "reason": "window layer holds fewer windows than the elevations show",
-        "basis": "6 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "6 window frame groups on DWG-01 (Ground Floor Plan) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "crossCheck": "elevations show about 65 frame groups per face across all floors; count from the window schedule",
         "multiplier": 4,
         "shapeCount": 1
@@ -73566,7 +73566,7 @@
         ],
         "confidence": "high",
         "reason": "methods agree",
-        "basis": "42 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 40 agree; blocks: WCLOSF3T ×12, SNKBICT ×4; 26 drawn outlines clear of a block × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "42 sanitary blocks and drawn fittings on DWG-01 (Ground Floor Plan); fitting footprints on the sanitary layer 40 agree; blocks: WCLOSF3T ×12, SNKBICT ×4; 26 drawn outlines clear of a block × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "crossCheck": "fitting footprints on the sanitary layer 40 · agree",
         "multiplier": 4,
         "shapeCount": 1
@@ -73577,7 +73577,7 @@
         "quantity": 4,
         "unit": "nr",
         "confidence": "high",
-        "basis": "Architect's note \"20 nos risers of 150mm\"; 63 step lines on DWG-01; also noted: \"19 nos risers of 158mm\" × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Architect's note \"20 nos risers of 150mm\"; 63 step lines on DWG-01; also noted: \"19 nos risers of 158mm\" × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [
           36963,
@@ -73655,7 +73655,7 @@
         "quantity": 85.2,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73669,7 +73669,7 @@
         "quantity": 85.2,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"MASTER BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73683,7 +73683,7 @@
         "quantity": 27.24,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"MAIDS ROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"MAIDS ROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73697,7 +73697,7 @@
         "quantity": 67.32,
         "unit": "m2",
         "confidence": "low",
-        "basis": "Flood fill inside the wall faces from the \"STAIRHALL\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"STAIRHALL\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "open plan: one enclosure with UP",
@@ -73711,7 +73711,7 @@
         "quantity": 29.48,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"DRESSING\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"DRESSING\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73725,7 +73725,7 @@
         "quantity": 29.52,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"DRESSING\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"DRESSING\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73739,7 +73739,7 @@
         "quantity": 41.36,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73753,7 +73753,7 @@
         "quantity": 21.28,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"LAUNDRY\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73767,7 +73767,7 @@
         "quantity": 314.72,
         "unit": "m2",
         "confidence": "low",
-        "basis": "Flood fill inside the wall faces from the \"TERRACE\" label on DWG-01 (20 mm grid, gaps closed morphologically) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"TERRACE\" label on DWG-01 (20 mm grid, gaps closed morphologically) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "open plan: one enclosure with TERRACE, AC, AC",
@@ -73781,7 +73781,7 @@
         "quantity": 49.92,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73795,7 +73795,7 @@
         "quantity": 50,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73809,7 +73809,7 @@
         "quantity": 41.36,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"KITCHEN\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73823,7 +73823,7 @@
         "quantity": 49.92,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73837,7 +73837,7 @@
         "quantity": 50.04,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"BEDROOM\" label on DWG-01 (20 mm grid) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73851,7 +73851,7 @@
         "quantity": 176.92,
         "unit": "m2",
         "confidence": "low",
-        "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "open plan: one enclosure with DINING",
@@ -73865,7 +73865,7 @@
         "quantity": 176.92,
         "unit": "m2",
         "confidence": "low",
-        "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"LOUNGE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "open plan: one enclosure with DINING",
@@ -73879,7 +73879,7 @@
         "quantity": 7.32,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
@@ -73893,13 +73893,65 @@
         "quantity": 7.32,
         "unit": "m2",
         "confidence": "high",
-        "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-15)",
+        "basis": "Flood fill inside the wall faces from the \"STORE\" label on DWG-01 (20 mm grid, door and window geometry added to seal it) × 4 identical floors (+450, +3450, +6450, +9450, DWG-16)",
         "sheetId": 0,
         "evidence": [],
         "reason": "rooms sum to the stated area",
         "crossCheck": "sheet states 163 m² per flat",
         "multiplier": 4,
         "shapeCount": 1
+      },
+      {
+        "trade": "roof",
+        "description": "Hipped roof covering, measured on plan",
+        "quantity": 382.61,
+        "unit": "m2",
+        "confidence": "low",
+        "basis": "382.61 m² inside the roof outline on DWG-05 (Roof Plan); no pitch is stated on the drawing, so this is the plan area, not the area a roofer covers",
+        "sheetId": 8,
+        "reason": "2 hips run out to the corners from 0 ridges",
+        "crossCheck": "hipped read from the edges the slope panels share: 20 slope panels, measured as one roof, 0 ridges, 2 hips, 0 valleys, 6 block joins; the roof layer holds 67 objects",
+        "evidence": [],
+        "shapeCount": 1
+      },
+      {
+        "trade": "roof",
+        "description": "Eaves: fascia, soffit and gutter",
+        "quantity": 119.92,
+        "unit": "m",
+        "confidence": "medium",
+        "basis": "119.92 m round the roof outline on DWG-05",
+        "sheetId": 8,
+        "reason": "measured on the roof plan",
+        "crossCheck": "one run round the outline",
+        "evidence": [],
+        "shapeCount": 1
+      },
+      {
+        "trade": "roof",
+        "description": "Hips",
+        "quantity": 16.16,
+        "unit": "m",
+        "confidence": "medium",
+        "basis": "16.16 m of hip on DWG-05",
+        "sheetId": 8,
+        "reason": "measured on the roof plan",
+        "crossCheck": "2 hips",
+        "evidence": [],
+        "shapeCount": 2
+      },
+      {
+        "trade": "roof",
+        "description": "Roof edges between blocks: ridge or abutment",
+        "quantity": 62.51,
+        "unit": "m",
+        "confidence": "low",
+        "basis": "62.51 m of shared panel edge on DWG-05 running from one eaves point to another",
+        "sheetId": 8,
+        "reason": "measured on the roof plan",
+        "crossCheck": "the plan does not say whether these are ridges or abutments to a neighbouring block; price after checking the sections",
+        "evidence": [],
+        "shapeCount": 6
       },
       {
         "trade": "windows",
@@ -73907,7 +73959,7 @@
         "quantity": 62,
         "unit": "nr",
         "confidence": "low",
-        "basis": "62 window frame groups on DWG-05; median 0.47 m² each",
+        "basis": "62 window frame groups on DWG-06; median 0.47 m² each",
         "sheetId": 2,
         "evidence": [
           35443,
@@ -74024,7 +74076,7 @@
         "quantity": 62,
         "unit": "nr",
         "confidence": "low",
-        "basis": "62 window frame groups on DWG-06; median 0.47 m² each",
+        "basis": "62 window frame groups on DWG-07; median 0.47 m² each",
         "sheetId": 3,
         "evidence": [
           57681,
@@ -74141,7 +74193,7 @@
         "quantity": 65,
         "unit": "nr",
         "confidence": "low",
-        "basis": "65 window frame groups on DWG-07; median 0.39 m² each",
+        "basis": "65 window frame groups on DWG-08; median 0.39 m² each",
         "sheetId": 5,
         "evidence": [
           38089,
@@ -74281,7 +74333,7 @@
         "quantity": 65,
         "unit": "nr",
         "confidence": "low",
-        "basis": "65 window frame groups on DWG-08; median 0.39 m² each",
+        "basis": "65 window frame groups on DWG-09; median 0.39 m² each",
         "sheetId": 4,
         "evidence": [
           57125,
