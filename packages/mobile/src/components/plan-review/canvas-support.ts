@@ -16,14 +16,13 @@ export interface Transform {
   ty: number;
 }
 
-export type GestureMode = "idle" | "pan" | "pinch" | "pen" | "cloud" | "tap";
+export type GestureMode = "idle" | "pan" | "pinch" | "pen" | "tap";
 
 export const GESTURE_MODE = {
   IDLE: "idle",
   PAN: "pan",
   PINCH: "pinch",
   PEN: "pen",
-  CLOUD: "cloud",
   TAP: "tap",
 } as const satisfies Record<string, GestureMode>;
 

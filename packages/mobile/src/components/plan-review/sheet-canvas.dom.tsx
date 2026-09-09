@@ -202,9 +202,6 @@ export default function SheetCanvas({
     if (tool === SHEET_TOOL.PEN) {
       g.mode = GESTURE_MODE.PEN;
       setDraftPen(g.startPct ? [g.startPct] : []);
-    } else if (tool === SHEET_TOOL.CLOUD) {
-      g.mode = GESTURE_MODE.CLOUD;
-      setDraftRect(null);
     } else if (tool === SHEET_TOOL.COMMENT) {
       g.mode = GESTURE_MODE.TAP;
     } else {
@@ -259,16 +256,6 @@ export default function SheetCanvas({
       return;
     }
 
-    if (g.mode === GESTURE_MODE.CLOUD && g.startPct) {
-      const pt = pctFromClient(e.clientX, e.clientY);
-      if (!pt) return;
-      setDraftRect({
-        x: round2(Math.min(g.startPct.x, pt.x)),
-        y: round2(Math.min(g.startPct.y, pt.y)),
-        w: round2(Math.abs(pt.x - g.startPct.x)),
-        h: round2(Math.abs(pt.y - g.startPct.y)),
-      });
-    }
   }
 
   function finishSinglePointer(e: React.PointerEvent<HTMLDivElement>) {
@@ -277,11 +264,6 @@ export default function SheetCanvas({
     if (g.mode === GESTURE_MODE.PEN) {
       setDraftPen((points) => {
         if (points && points.length >= 2) void onCreate({ kind: MARKUP_KIND.PEN, points });
-        return null;
-      });
-    } else if (g.mode === GESTURE_MODE.CLOUD) {
-      setDraftRect((rect) => {
-        if (rect && rect.w >= 1 && rect.h >= 1) void onCreate({ kind: MARKUP_KIND.CLOUD, rect });
         return null;
       });
     } else if (g.mode === GESTURE_MODE.TAP && !g.moved) {
