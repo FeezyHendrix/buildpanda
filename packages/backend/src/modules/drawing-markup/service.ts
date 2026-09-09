@@ -35,9 +35,15 @@ export function anchorOf(
   throw new BadRequestError("A markup must anchor to exactly one of a project drawing revision or a take-off sheet");
 }
 
-/** A markup written before spaces existed is in the old percent space. */
-function withSpace(geometry: MarkupGeometry): MarkupGeometry {
-  return geometry.space ? geometry : { ...geometry, space: GEOMETRY_SPACE.PERCENT };
+/**
+ * A markup written before spaces existed carries none, so its space comes from
+ * where it is anchored: a take-off pin has always been in sheet points, which
+ * is what keeps it with the measurements at any raster scale, while a project
+ * drawing's markup has always been in percent of the rendered sheet.
+ */
+function withSpace(geometry: MarkupGeometry, onProjectDrawing: boolean): MarkupGeometry {
+  if (geometry.space) return geometry;
+  return { ...geometry, space: onProjectDrawing ? GEOMETRY_SPACE.PERCENT : GEOMETRY_SPACE.POINTS };
 }
 
 function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): void {
@@ -97,7 +103,7 @@ function toMarkup(row: DrawingMarkupRow, ctx: MarkupContext): DrawingMarkup {
     preconSheetId: row.precon_sheet_id,
     preconRowId: row.precon_row_id,
     kind: row.kind,
-    geometry: withSpace(row.geometry),
+    geometry: withSpace(row.geometry, onProjectDrawing),
     color: row.color,
     authorId: row.created_by_id,
     authorName: row.created_by_id ? (ctx.names.get(row.created_by_id) ?? null) : null,
