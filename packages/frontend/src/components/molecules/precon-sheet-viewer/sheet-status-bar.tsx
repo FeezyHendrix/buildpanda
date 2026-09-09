@@ -26,6 +26,7 @@ function instruction(tool: PreconTool, selectedRow: PreconBoqRow | null, drawing
   if (!drawingEnabled) return null;
   if (tool === "deduct") return `draw the opening on “${selectedRow?.description ?? "the selected line"}”, Enter to apply`;
   if (tool === "typical") return `set how many floors or areas repeat “${selectedRow?.description ?? "the selected line"}”`;
+  if (tool === "pen") return "drag on the sheet to draw; a note, not a measurement";
   if (tool === "comment") return selectedRow ? `click where the comment belongs; it attaches to “${selectedRow.description}”` : "click where the comment belongs";
   if (tool === "room_fill") return `${meta.label} · ${meta.unit} — click inside an enclosed space`;
   if (tool === "find_symbol") return `${meta.label} · ${meta.unit} — drag a box round one symbol`;
