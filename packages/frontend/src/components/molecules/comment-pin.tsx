@@ -1,8 +1,12 @@
 import { MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { COMMENT_MODE, type CommentMode } from "./plan-review-comment-types";
+import { COMMENT_MODE, type CommentMode } from "@/lib/markup-meta";
 
-/** Teardrop marker carrying a comment glyph, so pins read as comments at a glance. */
+/**
+ * Teardrop marker carrying a comment glyph, so pins read as comments at a
+ * glance. Shared: a comment sits on a project drawing and on a take-off
+ * sheet, and it must look the same on both.
+ */
 export function CommentPin({
   color,
   label,

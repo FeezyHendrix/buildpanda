@@ -21,7 +21,7 @@ import {
   type CommentCapture,
   type CommentMode,
   type FollowUpKind,
-} from "./plan-review-comment-types";
+} from "@/lib/markup-meta";
 
 
 function ModeTab({

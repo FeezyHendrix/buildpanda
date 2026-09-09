@@ -6,7 +6,7 @@ import { useAbility } from "@/contexts/ability-context";
 import { useAddPreconMarkupComment, useCreatePreconMarkup, usePreconMarkups } from "@/hooks/use-precon-markups";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
-import { CommentPin } from "@/pages/plan-review/plan-review-pin";
+import { CommentPin } from "@/components/molecules/comment-pin";
 import { PinComposerPopover } from "./pin-composer-popover";
 import { PinThreadPopover } from "./pin-thread-popover";
 import type { PopoverAnchor } from "./pin-popover";

@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Square } from "lucide-react";
 import { BlendComparisonPanel } from "./plan-review-blend-panel";
 import { CommentComposerPopover } from "./plan-review-comment";
-import type { CommentAssignee, CommentCapture } from "./plan-review-comment-types";
+import type { CommentAssignee, CommentCapture } from "@/lib/markup-meta";
 import { SHEET_KIND, formatClock, type Sheet } from "./plan-review-data";
 import { PlanReviewSplit } from "./plan-review-split";
 import { PlanReviewStage } from "./plan-review-stage";
