@@ -204,13 +204,15 @@ test("service without the precon guard rejects take-off calls loudly", async () 
 
 // ── Geometry space ─────────────────────────────────────────────────────────
 
-test("a markup written before spaces existed reads back as percent", async () => {
+test("a take-off pin with no stated space reads back as points, not percent", async () => {
   const { repo, markups } = fakeRepo();
   const svc = drawingMarkupService(repo, fakeGuard());
   const created = await svc.createForSession(SESSION, ORG, "u_1", pinInput);
   // the caller named no space, so the stored row carries none
   assert.equal([...markups.values()][0]!.geometry.space, undefined);
-  assert.equal(created.geometry.space, "percent");
+  // a take-off pin has always been in sheet points; calling it percent would
+  // put every old pin in the wrong place the moment the raster scale changed
+  assert.equal(created.geometry.space, "points");
 });
 
 test("a markup drawn in sheet points keeps that space, so its length can be scaled", async () => {

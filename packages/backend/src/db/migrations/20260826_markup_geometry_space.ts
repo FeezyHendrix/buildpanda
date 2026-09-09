@@ -9,15 +9,24 @@ import type { Knex } from "knex";
  * viewer apart. Take-off geometry is in sheet points against a calibrated
  * scale.
  *
- * Stamping the existing rows as "percent" makes the record self-describing, so
- * a markup written in sheet points can sit beside them without either being
- * read in the wrong space.
+ * Each existing row is stamped with the space its anchor has always implied:
+ * percent for a project drawing, points for a take-off pin. That makes the
+ * record self-describing, so the two can sit side by side without either
+ * being read in the wrong space.
  */
 export async function up(knex: Knex): Promise<void> {
+  // a project drawing's markup has always been in percent of the rendered sheet
   await knex.raw(`
     UPDATE drawing_markups
     SET geometry = geometry || '{"space":"percent"}'::jsonb
-    WHERE geometry->>'space' IS NULL
+    WHERE geometry->>'space' IS NULL AND document_version_id IS NOT NULL
+  `);
+  // a take-off pin has always been in sheet points, so it stays with the
+  // measurements at any raster scale
+  await knex.raw(`
+    UPDATE drawing_markups
+    SET geometry = geometry || '{"space":"points"}'::jsonb
+    WHERE geometry->>'space' IS NULL AND precon_sheet_id IS NOT NULL
   `);
 }
 
@@ -25,6 +34,6 @@ export async function down(knex: Knex): Promise<void> {
   await knex.raw(`
     UPDATE drawing_markups
     SET geometry = geometry - 'space'
-    WHERE geometry->>'space' = 'percent'
+    WHERE geometry->>'space' IN ('percent', 'points')
   `);
 }
