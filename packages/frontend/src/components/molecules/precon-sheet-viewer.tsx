@@ -7,8 +7,6 @@ import { isVersionConflict, useAddPreconDeduction, usePreconSnapIndex, useUpdate
 import { PRECON_TOOL_BY_KEY, scaleRatioOf, type PreconTool, type PreconToolMeta } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
 import { SheetToolbar } from "./precon-sheet-viewer/sheet-toolbar";
-import { SheetOverlay } from "./precon-sheet-viewer/sheet-overlay";
-import { PinLayer } from "./precon-sheet-viewer/pins";
 import { SheetLegend, buildLegendEntries } from "./precon-sheet-viewer/sheet-legend";
 import { NoScaleBanner, ScalePromptBanner, type ScalePrompt } from "./precon-sheet-viewer/sheet-banners";
 import { SheetSettings } from "./precon-session/sheet-settings";
@@ -25,12 +23,14 @@ import { rectOf, rectangleVertices, scaleForDraft, viewportAt } from "./precon-s
 import { useDraft, useDragRect } from "./precon-sheet-viewer/use-draft";
 import { useViewerTools } from "./precon-sheet-viewer/use-viewer-tools";
 import { blockedReasonFor } from "./precon-sheet-viewer/tool-availability";
-import { ViewportLayer } from "./precon-sheet-viewer/viewport-layer";
 import { ViewportPromptBanner } from "./precon-sheet-viewer/viewport-prompt";
 import { Magnifier, useMagnifierHold } from "./precon-sheet-viewer/magnifier";
-import { OverlayLayer } from "./precon-sheet-viewer/overlay-layer";
 import { TypicalPopover } from "./precon-sheet-viewer/typical-popover";
-import { SymbolMatchesBanner, SymbolMatchesLayer } from "./precon-sheet-viewer/symbol-matches-layer";
+import { SymbolMatchesBanner } from "./precon-sheet-viewer/symbol-matches-layer";
+import { SheetLayers } from "./precon-sheet-viewer/sheet-layers";
+import { MARKUP_KIND } from "@/api/drawing-markup";
+import { usePreconMarkups } from "@/hooks/use-precon-markups";
+import { ALL_LAYERS_VISIBLE, LayerToggles, type SheetLayer } from "./precon-sheet-viewer/layer-toggles";
 
 export type { PreconTool };
 
@@ -38,9 +38,7 @@ const FLASH_MS = 1600;
 /** Tools that take a mousedown-drag-mouseup box. */
 const DRAG_TOOLS = new Set<PreconTool>(["area", "volume", "viewports", "find_symbol"]);
 /** Tools that never add a point on click (toggles, popovers, the pin layer's own click). */
-const NON_DRAWING_TOOLS = new Set<PreconTool>(["select", "legend", "magnifier", "overlay", "typical", "comment", "find_symbol"]);
-const DRAFT_COLOR = "#004DE7";
-const SCALE_COLOR = "#B85C00";
+const NON_DRAWING_TOOLS = new Set<PreconTool>(["select", "legend", "magnifier", "overlay", "typical", "comment", "pen", "find_symbol"]);
 
 export interface PreconSheetViewerProps {
   sessionId: string;
@@ -77,6 +75,8 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const dragRect = useDragRect(screenToPt);
   const [note, setNote] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [layers, setLayers] = useState(ALL_LAYERS_VISIBLE);
+  const { data: markups } = usePreconMarkups(sessionId);
   // two drawn points whose real distance the reviewer is about to type
   const [scalePrompt, setScalePrompt] = useState<ScalePrompt | null>(null);
   // a finished shape waiting for its name
@@ -108,6 +108,16 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
 
   const rowById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const sheetGeometries = useMemo(() => geometries.filter((g) => g.sheetId === activeSheet?.id), [geometries, activeSheet?.id]);
+  const sheetMarkups = useMemo(() => (markups ?? []).filter((m) => m.preconSheetId === activeSheet?.id), [markups, activeSheet?.id]);
+  // what each toggle would hide, so turning a layer off says what went with it
+  const layerCounts = useMemo(
+    () => ({
+      measurements: sheetGeometries.length,
+      ink: sheetMarkups.filter((m) => m.kind === MARKUP_KIND.PEN).length,
+      comments: sheetMarkups.filter((m) => m.kind === MARKUP_KIND.PIN).length,
+    }),
+    [sheetGeometries, sheetMarkups],
+  );
   const legendEntries = useMemo(() => buildLegendEntries(sheetGeometries, rowById), [sheetGeometries, rowById]);
   const elementGroups = useMemo(() => [...new Set(rows.flatMap((r) => (r.elementGroup ? [r.elementGroup] : [])))], [rows]);
   // What reads at full strength: a line just created, a legend group, or the
@@ -325,49 +335,26 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
             </div>
           ) : null}
           <div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ transform: `translate(${view.tx}px, ${view.ty}px) scale(${cssZoom})`, transformOrigin: "0 0" }}>
-            <canvas ref={canvasRef} className="block" />
-            {page && overlaySheet ? <OverlayLayer sheet={overlaySheet} sheets={tools.previous.sheets} widthPx={page.widthPx} heightPx={page.heightPx} onError={setNote} /> : null}
-            {page ? (
-              <SheetOverlay
-                widthPx={page.widthPx}
-                heightPx={page.heightPx}
-                geometries={sheetGeometries}
-                rowById={rowById}
-                selectedRowId={selectedRowId}
-                onSelectRow={onSelectRow}
-                draft={draft}
-                draftMarkers={anchors}
-                arcMid={arcMid}
-                draftColor={tool === "scale" || tool === "viewports" ? SCALE_COLOR : DRAFT_COLOR}
-                draftClosed={tool === "area" || tool === "volume" || tool === "room_fill"}
-                toPx={toPx}
-                emphasisRowIds={emphasisRowIds}
-              />
-            ) : null}
-            {page && (viewports.length > 0 || dragRect.rect) ? (
-              <ViewportLayer widthPx={page.widthPx} heightPx={page.heightPx} viewports={viewports} toPx={toPx} cssZoom={cssZoom} dragRect={dragRect.rect} dragColor={tool === "viewports" ? SCALE_COLOR : DRAFT_COLOR} onRemove={tool === "viewports" ? tools.removeViewport : undefined} />
-            ) : null}
-            {page && tools.matches ? <SymbolMatchesLayer widthPx={page.widthPx} heightPx={page.heightPx} matches={tools.matches} toPx={toPx} onToggle={tools.onToggleMatch} /> : null}
-            {page && activeSheet ? (
-              <PinLayer
-                key={activeSheet.id}
-                sessionId={sessionId}
-                sheetId={activeSheet.id}
-                widthPx={page.widthPx}
-                heightPx={page.heightPx}
-                toPx={toPx}
-                toPt={toPt}
-                cssZoom={cssZoom}
-                placing={tool === "comment"}
-                selectedRowId={selectedRowId}
-                rowById={rowById}
-                onPlaced={() => onToolChange("select")}
-                onSelectRow={onSelectRow}
-              />
-            ) : null}
+            <SheetLayers
+              canvasRef={canvasRef}
+              page={page}
+              sheet={{ sessionId, sheetId: activeSheet?.id ?? "", toPx, toPt, cssZoom }}
+              tool={tool}
+              layers={layers}
+              rows={{ geometries: sheetGeometries, rowById, selectedRowId, emphasisRowIds, onSelectRow }}
+              draft={{ vertices: draft, anchors, arcMid }}
+              viewports={viewports}
+              dragRect={dragRect.rect}
+              overlay={overlaySheet ? { sheet: overlaySheet, sheets: tools.previous.sheets, onError: setNote } : null}
+              matches={tools.matches}
+              onToggleMatch={tools.onToggleMatch}
+              onRemoveViewport={tools.removeViewport}
+              onDone={() => onToolChange("select")}
+            />
           </div>
           {magnifierOn ? <Magnifier containerRef={containerRef} canvasRef={canvasRef} screenToCanvas={screenToCanvas} cssZoom={cssZoom} /> : null}
           <SheetLegend entries={legendEntries} open={legendOpen} onToggle={() => setLegendOpen((v) => !v)} activeGroup={legendGroup} onPickGroup={setLegendGroup} />
+          <LayerToggles layers={layers} counts={layerCounts} onToggle={(layer: SheetLayer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))} />
           <ZoomControls userZoom={view.userZoom} onZoomBy={zoomBy} onFit={zoomFit} />
           {settingsOpen && activeSheet ? (
             <SheetSettings key={activeSheet.id} sessionId={sessionId} sheet={activeSheet} onClose={() => setSettingsOpen(false)} onDrawScale={() => {

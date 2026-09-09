@@ -312,11 +312,12 @@ export const PRECON_TOOLS = [
   "find_symbol",
   "overlay",
   "legend",
+  "pen",
   "comment",
 ] as const;
 export type PreconTool = (typeof PRECON_TOOLS)[number];
 
-export const PRECON_TOOL_GROUPS = ["navigate", "measure", "modify", "check"] as const;
+export const PRECON_TOOL_GROUPS = ["navigate", "measure", "modify", "check", "markup"] as const;
 export type PreconToolGroup = (typeof PRECON_TOOL_GROUPS)[number];
 
 export interface PreconToolMeta {
@@ -353,7 +354,10 @@ export const PRECON_TOOL_META: readonly PreconToolMeta[] = [
   { key: "find_symbol", label: "Find symbol", shortcut: "F", unit: "nr", group: "check", hint: "Drag a box round one symbol to find every match on the sheet" },
   { key: "overlay", label: "Overlay", shortcut: "O", unit: null, group: "check", hint: "Previous drawing revision under this one, in red" },
   { key: "legend", label: "Legend", shortcut: "G", unit: null, group: "check", hint: "Element groups and totals on this sheet" },
-  { key: "comment", label: "Comment", shortcut: "N", unit: null, group: "check", hint: "Pin a comment on the sheet, on the selected line if there is one" },
+  // Markup says something about the drawing; it is never a quantity. P and C
+  // already mean Polyline and Count, so freehand takes I for ink.
+  { key: "pen", label: "Pen", shortcut: "I", unit: null, group: "markup", hint: "Draw freehand on the sheet; a note, not a measurement" },
+  { key: "comment", label: "Comment", shortcut: "N", unit: null, group: "markup", hint: "Pin a comment on the sheet, on the selected line if there is one" },
 ];
 
 export const PRECON_TOOL_BY_KEY: Record<PreconTool, PreconToolMeta> = Object.fromEntries(

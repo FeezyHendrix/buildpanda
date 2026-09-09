@@ -9,6 +9,7 @@ import {
   MessageSquare,
   MousePointer2,
   PaintBucket,
+  Pencil,
   Pentagon,
   Ruler,
   Scaling,
@@ -39,5 +40,6 @@ export const TOOL_ICONS: Record<PreconTool, LucideIcon> = {
   find_symbol: ScanSearch,
   overlay: Layers,
   legend: ListTree,
+  pen: Pencil,
   comment: MessageSquare,
 };
