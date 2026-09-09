@@ -4,6 +4,7 @@ import { preconService } from "../panda-ai/pdf-takeoff/service.ts";
 import { drawingMarkupRepository } from "./repository.ts";
 import { drawingMarkupService } from "./service.ts";
 import {
+  GEOMETRY_SPACES,
   MARKUP_KINDS,
   MEDIA_KINDS,
   type CreateCommentInput,
@@ -61,6 +62,7 @@ const geometry = {
   additionalProperties: false,
   properties: {
     kind: { type: "string", enum: MARKUP_KINDS },
+    space: { type: "string", enum: GEOMETRY_SPACES },
     at: point,
     a: point,
     b: point,

@@ -30,11 +30,22 @@ export interface MarkupRect {
   h: number;
 }
 
-export type MarkupGeometry =
+/**
+ * Which space a markup's numbers are in. "percent" is percentages of the
+ * rendered sheet: it survives any zoom but carries no scale, so a length
+ * drawn that way is not a quantity. "points" is the take-off sheet space,
+ * which a calibrated sheet turns into millimetres.
+ */
+export const GEOMETRY_SPACES = ["percent", "points"] as const;
+export type GeometrySpace = (typeof GEOMETRY_SPACES)[number];
+
+type MarkupShape =
   | { kind: "pin"; at: MarkupPoint }
   | { kind: "pen"; points: MarkupPoint[] }
   | { kind: "cloud"; rect: MarkupRect }
   | { kind: "measure"; a: MarkupPoint; b: MarkupPoint };
+
+export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
 
 export interface DrawingMarkupComment {
   id: string;

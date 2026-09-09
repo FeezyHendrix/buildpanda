@@ -28,12 +28,36 @@ export interface Rect {
   h: number;
 }
 
-/** Percentages of the rendered sheet, so geometry survives any zoom or DPI. */
-export type MarkupGeometry =
+/**
+ * Which space a markup's coordinates are in.
+ *
+ * "percent" is what project drawings have always used: percentages of the
+ * rendered sheet, which survive any zoom or DPI but carry no scale, so a
+ * length drawn in that space can never become a quantity.
+ *
+ * "points" is the take-off space: sheet points for a PDF, drawing units
+ * through the frame for a DWG, pixels over the raster scale for a picture.
+ * A sheet with a calibrated scale turns those into millimetres, which is what
+ * lets one viewer hold both a redline and a measurement.
+ *
+ * Rows written before this existed have no space and are read as "percent".
+ */
+export const GEOMETRY_SPACES = ["percent", "points"] as const;
+export type GeometrySpace = (typeof GEOMETRY_SPACES)[number];
+
+export const GEOMETRY_SPACE = {
+  PERCENT: "percent",
+  POINTS: "points",
+} as const satisfies Record<string, GeometrySpace>;
+
+type MarkupShape =
   | { kind: "pin"; at: Point }
   | { kind: "pen"; points: Point[] }
   | { kind: "cloud"; rect: Rect }
   | { kind: "measure"; a: Point; b: Point };
+
+/** A shape plus the space its numbers are in. */
+export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
 
 /**
  * A markup is anchored to exactly one of: a project drawing revision
