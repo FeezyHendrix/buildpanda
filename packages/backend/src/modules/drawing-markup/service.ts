@@ -2,7 +2,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { toIso, toIsoOrNull } from "../../lib/dates.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { DrawingMarkupRepository } from "./repository.ts";
-import { MARKUP_KIND } from "./types.ts";
+import { GEOMETRY_SPACE, MARKUP_KIND } from "./types.ts";
 import type {
   CreateCommentInput,
   CreateMarkupInput,
@@ -33,6 +33,11 @@ export function anchorOf(
   if (project && !anyPrecon) return "project";
   if (precon && !anyProject) return "precon";
   throw new BadRequestError("A markup must anchor to exactly one of a project drawing revision or a take-off sheet");
+}
+
+/** A markup written before spaces existed is in the old percent space. */
+function withSpace(geometry: MarkupGeometry): MarkupGeometry {
+  return geometry.space ? geometry : { ...geometry, space: GEOMETRY_SPACE.PERCENT };
 }
 
 function assertGeometryMatchesKind(kind: MarkupKind, geometry: MarkupGeometry): void {
@@ -92,7 +97,7 @@ function toMarkup(row: DrawingMarkupRow, ctx: MarkupContext): DrawingMarkup {
     preconSheetId: row.precon_sheet_id,
     preconRowId: row.precon_row_id,
     kind: row.kind,
-    geometry: row.geometry,
+    geometry: withSpace(row.geometry),
     color: row.color,
     authorId: row.created_by_id,
     authorName: row.created_by_id ? (ctx.names.get(row.created_by_id) ?? null) : null,

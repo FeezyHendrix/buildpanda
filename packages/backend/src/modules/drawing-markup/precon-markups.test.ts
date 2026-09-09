@@ -201,3 +201,27 @@ test("service without the precon guard rejects take-off calls loudly", async () 
   const svc = drawingMarkupService(fakeRepo().repo);
   await assert.rejects(svc.createForSession(SESSION, ORG, "u_1", pinInput), /precon service/);
 });
+
+// ── Geometry space ─────────────────────────────────────────────────────────
+
+test("a markup written before spaces existed reads back as percent", async () => {
+  const { repo, markups } = fakeRepo();
+  const svc = drawingMarkupService(repo, fakeGuard());
+  const created = await svc.createForSession(SESSION, ORG, "u_1", pinInput);
+  // the caller named no space, so the stored row carries none
+  assert.equal([...markups.values()][0]!.geometry.space, undefined);
+  assert.equal(created.geometry.space, "percent");
+});
+
+test("a markup drawn in sheet points keeps that space, so its length can be scaled", async () => {
+  const { repo } = fakeRepo();
+  const svc = drawingMarkupService(repo, fakeGuard());
+  const input = {
+    ...pinInput,
+    kind: "measure" as const,
+    geometry: { kind: "measure" as const, space: "points" as const, a: { x: 100, y: 200 }, b: { x: 400, y: 200 } },
+  };
+  const markup = await svc.createForSession(SESSION, ORG, "u_1", input);
+  assert.equal(markup.geometry.space, "points");
+  assert.equal(markup.geometry.kind, "measure");
+});
