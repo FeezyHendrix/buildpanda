@@ -1,7 +1,8 @@
 import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
-import type { CreateLookAheadInput, LookAhead } from "@/api/look-aheads";
+import type { CreateLookAheadInput, LookAhead, UpdateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "./client";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { lookAheads, outbox, type LookAheadRow } from "./schema";
 
 export function toLookAhead(row: LookAheadRow) {
@@ -36,6 +37,7 @@ export const lookAheadsRepository = {
         startDate: input.startDate,
         endDate: input.endDate,
         totalWorkers: input.totalWorkers ?? null,
+        buildingId: input.buildingId ?? null,
         isPendingSync: true,
         updatedAt: Date.now(),
       });
@@ -49,6 +51,43 @@ export const lookAheadsRepository = {
       });
     });
     return id;
+  },
+
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(lookAheads).set({ isPendingSync: false }).where(eq(lookAheads.id, id));
+  },
+
+  /** Removes the row locally and queues the push in one transaction. */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(lookAheads).where(eq(lookAheads.id, id));
+      await enqueueDelete(tx as never, "look-aheads", id, projectId, randomUUID());
+    });
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: UpdateLookAheadInput,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(lookAheads)
+        .set({
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.description !== undefined ? { description: patch.description } : {}),
+          ...(patch.startDate !== undefined ? { startDate: patch.startDate } : {}),
+          ...(patch.endDate !== undefined ? { endDate: patch.endDate } : {}),
+          ...(patch.totalWorkers !== undefined ? { totalWorkers: patch.totalWorkers } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(lookAheads.id, id));
+
+      await enqueueUpdate(tx as never, "look-aheads", id, projectId, randomUUID());
+    });
   },
 
   async reconcileCreate(db: Db, projectId: string, localId: string, server: LookAhead) {

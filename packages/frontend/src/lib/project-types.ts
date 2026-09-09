@@ -25,10 +25,21 @@ export type UpdateStatus =
   | "Resolved"
   | "Escalated";
 
+// What Panda AI drafts for a project. The audience differs per value: `weekly`
+// is the homeowner-facing client update, `daily` is the internal end-of-day
+// digest written for the build team and never addressed to the client.
+export const AI_UPDATE_CADENCES = ["off", "daily", "weekly", "both"] as const;
+export type AiUpdateCadence = (typeof AI_UPDATE_CADENCES)[number];
+
+// The non-null values of `ProjectUpdate.generatedKind`.
+export const AI_DRAFT_KINDS = ["weekly", "daily"] as const;
+export type AiDraftKind = (typeof AI_DRAFT_KINDS)[number];
+
 export type MediaType = "photo" | "video";
 export type DocumentStatus = "Verified" | "Pending" | "Expired";
 export type InspectionStatus = "Action Required" | "Completed" | "Scheduled";
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+export type MilestoneClaimState = "pending" | "claimable" | "claimed" | "certified" | "paid";
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 export type DisputeStatus = "Open" | "Resolved" | "Withdrawn";
@@ -113,8 +124,10 @@ export interface SiteQuery {
   projectId: string;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: QueryStatus;
   answer: string | null;
+  answerHtml: string | null;
   dueDate: string | null;
   askedById: string | null;
   answeredById: string | null;
@@ -149,6 +162,7 @@ export interface Rfi {
   number: number;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: RfiStatus;
   priority: RfiPriority;
   visibility: "internal" | "shared";
@@ -158,6 +172,7 @@ export interface Rfi {
   assigneeRole: string | null;
   dueDate: string | null;
   officialResponse: string | null;
+  officialResponseHtml: string | null;
   officialRespondedById: string | null;
   officialRespondedByName: string | null;
   officialRespondedAt: string | null;
@@ -251,6 +266,7 @@ export interface Approval {
   description: string | null;
   status: ApprovalStatus;
   response: string | null;
+  responseHtml: string | null;
   dueDate: string | null;
   submittedById: string | null;
   requestedReviewerId: string | null;
@@ -318,6 +334,7 @@ export interface ChangeRequest {
   title: string;
   description: string | null;
   reason: string | null;
+  reasonHtml: string | null;
   status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
@@ -766,6 +783,7 @@ export interface MilestonePayment {
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
   inspectorSignOff: SignOffStatus;
+  claimState: MilestoneClaimState;
 }
 
 export interface PaymentLedgerEntry {
@@ -1341,6 +1359,12 @@ export interface LedgerEntry {
   materialName: string;
   unit: string;
   locationKey: string;
+  stageId: string | null;
+  stageName: string | null;
+  approvalStatus: string;
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
   quantity: number;
   stockDelta: number;
   occurredAt: string;

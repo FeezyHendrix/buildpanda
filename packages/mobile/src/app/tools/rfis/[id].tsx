@@ -251,6 +251,18 @@ export default function RfiDetail() {
     <Page
       title="RFI"
       onBack={() => router.back()}
+      rightButtons={
+        id ? (
+          <Pressable
+            onPress={() => router.push(`/tools/rfis/edit/${id}` as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit RFI"
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
+          >
+            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+          </Pressable>
+        ) : null
+      }
       scroll
       footer={
         <View className="gap-2">

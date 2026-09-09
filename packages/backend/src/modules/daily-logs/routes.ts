@@ -109,6 +109,7 @@ const entryBody = {
   properties: {
     bodyHtml: { type: "string", minLength: 1, maxLength: 200000 },
     bodyText: { type: ["string", "null"], maxLength: 20000 },
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
   },
 } as const;
 
@@ -168,11 +169,14 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  fastify.post<{ Params: { id: string; date: string }; Body: { bodyHtml: string; bodyText?: string | null } }>(
+  fastify.post<{
+    Params: { id: string; date: string };
+    Body: { bodyHtml: string; bodyText?: string | null; buildingId?: string | null };
+  }>(
     "/projects/:id/daily-logs/:date/entries",
     { schema: { params: dateParams, body: entryBody } },
     async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const role =
         request.projectRoles.get(project.id) ??
@@ -184,6 +188,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         request.body.bodyHtml,
         request.body.bodyText ?? null,
         { id: user.id, name: user.name, role },
+        request.body.buildingId ?? null,
       );
       return reply.status(201).send(entry);
     },
@@ -193,7 +198,7 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/daily-logs/:date/entries/:entryId/void",
     { schema: { params: entryParams, body: voidBody } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "create");
       const user = request.requireAuth();
       const canManage = canProjectPermission(
         { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },

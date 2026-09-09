@@ -1,3 +1,5 @@
+import { preconService } from "../pdf-takeoff/service.ts";
+import { preconRepository } from "../pdf-takeoff/repository.ts";
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { BadRequestError, NotFoundError } from "../../../lib/errors.ts";
@@ -26,6 +28,7 @@ function toDto(job: TakeoffJobRow): TakeoffJob {
     drawingCount: job.drawing_count,
     elementCount: job.element_count,
     error: job.error,
+    sessionId: job.session_id ?? null,
     createdAt: new Date(job.created_at).toISOString(),
     updatedAt: new Date(job.updated_at).toISOString(),
   };
@@ -115,7 +118,7 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
     "/proposals/:id/plans/:planId/automated-takeoff",
     { schema: { params: proposalPlanParams } },
     async (request, reply) => {
-      const orgId = request.requireOrgPermission("proposals", "update");
+      const orgId = request.requireOrgPermission("takeoffs", "measure");
       const user = request.requireAuth();
       const proposal = await fastify.db("proposals")
         .where({ id: request.params.id, org_id: orgId })
@@ -146,8 +149,20 @@ const automatedTakeoffRoutes: FastifyPluginAsync = async (fastify) => {
         storage_path: plan.storage_path,
         requested_by: user.id,
       });
-      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", { jobId: job.id, orgId } satisfies TakeoffJobData);
-      return reply.status(202).send(toDto(job));
+      const session = await preconService(preconRepository(fastify.db)).createDwgSessionShell(
+        orgId,
+        user.id,
+        request.params.id,
+        request.params.planId,
+        { fileName: plan.file_name, storagePath: plan.storage_path },
+      );
+      await jobs.linkSession(job.id, session.id);
+      await fastify.queue.enqueue(TAKEOFF_QUEUE, "takeoff", {
+        jobId: job.id,
+        orgId,
+        sessionId: session.id,
+      } satisfies TakeoffJobData);
+      return reply.status(202).send(toDto({ ...job, session_id: session.id }));
     },
   );
 

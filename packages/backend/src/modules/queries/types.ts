@@ -5,8 +5,10 @@ export interface Query {
   projectId: string;
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: QueryStatus;
   answer: string | null;
+  answerHtml: string | null;
   dueDate: string | null;
   askedById: string | null;
   answeredById: string | null;
@@ -37,8 +39,10 @@ export interface QueryRow {
   project_id: string;
   subject: string;
   question: string;
+  question_html: string | null;
   status: QueryStatus;
   answer: string | null;
+  answer_html: string | null;
   due_date: string | null;
   asked_by_id: string | null;
   answered_by_id: string | null;

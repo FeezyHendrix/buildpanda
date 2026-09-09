@@ -6,6 +6,7 @@ export interface NewQueryRecord {
   project_id: string;
   subject: string;
   question: string;
+  question_html?: string | null;
   status: QueryStatus;
   due_date: string | null;
   asked_by_id: string | null;
@@ -15,8 +16,10 @@ export interface NewQueryRecord {
 export interface QueryUpdatePatch {
   subject?: string;
   question?: string;
+  question_html?: string | null;
   status?: QueryStatus;
   answer?: string | null;
+  answer_html?: string | null;
   due_date?: string | null;
   answered_by_id?: string | null;
   answered_at?: string | null;
@@ -32,8 +35,10 @@ const SELECT = [
   "q.project_id",
   "q.subject",
   "q.question",
+  "q.question_html",
   "q.status",
   "q.answer",
+  "q.answer_html",
   "q.due_date",
   "q.asked_by_id",
   "q.answered_by_id",

@@ -42,6 +42,12 @@ export const statement = {
   // Pre-construction suite
   proposals: ["view", "create", "update", "delete", "send", "convert"],
   leads: ["view", "create", "update", "delete"],
+  // verify/apply are separate grants so a quantity surveyor's sign-off is a
+  // role, not a side effect of being allowed to edit a proposal.
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
 } as const;
 
 export const ac = createAccessControl(statement);
@@ -138,25 +144,49 @@ const constructionReadOnly = {
   buildings: ["view"],
 } as const satisfies PresetShape;
 
+const preconFull = {
+  proposals: ["view", "create", "update", "delete", "send", "convert"],
+  leads: ["view", "create", "update", "delete"],
+  takeoffs: ["view", "measure", "edit", "verify", "apply"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view", "manage"],
+  complianceDocs: ["view", "manage"],
+} as const satisfies PresetShape;
+
+const preconContributor = {
+  proposals: ["view", "create", "update", "send"],
+  leads: ["view", "create", "update"],
+  takeoffs: ["view", "measure", "edit"],
+  estimates: ["view", "price", "terms"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
+const preconReadOnly = {
+  proposals: ["view"],
+  leads: ["view"],
+  takeoffs: ["view"],
+  estimates: ["view"],
+  rateCards: ["view"],
+  complianceDocs: ["view"],
+} as const satisfies PresetShape;
+
 export const owner = ac.newRole({
   ...ownerAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const admin = ac.newRole({
   ...adminAc.statements,
   ...constructionFull,
-  proposals: ["view", "create", "update", "delete", "send", "convert"],
-  leads: ["view", "create", "update", "delete"],
+  ...preconFull,
 });
 
 export const member = ac.newRole({
   ...memberAc.statements,
   ...constructionContributor,
-  proposals: ["view", "create", "update", "send"],
-  leads: ["view", "create", "update"],
+  ...preconContributor,
 });
 
 export const viewer = ac.newRole({
@@ -166,12 +196,11 @@ export const viewer = ac.newRole({
   team: [],
   ac: [],
   ...constructionReadOnly,
-  proposals: ["view"],
-  leads: ["view"],
+  ...preconReadOnly,
 });
 
 // The `employee` role is the DEFAULT floor for an invited employee (see
-// isEmployeeRole): project-scoped, read-only, no org-management. It grants
+// isEmployeeRole): org-project-visible, read-only, no org-management. It grants
 // almost nothing on purpose — an org admin adds capabilities (project:create,
 // invitation:create, etc.) by unioning a custom role onto the member (RBAC),
 // so this preset must stay minimal, never a rich set.
@@ -180,11 +209,12 @@ const constructionEmployeeBase = {
   tasks: ["view"],
   schedule: ["view"],
   documents: ["view"],
-  updates: ["view"],
+  updates: ["view", "post"],
   messages: ["view"],
   comments: ["view"],
-  dailyLog: ["view"],
-  materials: ["view"],
+  participants: ["view"],
+  dailyLog: ["view", "create"],
+  materials: ["view", "request"],
 } as const satisfies PresetShape;
 
 export const employee = ac.newRole({
@@ -211,11 +241,10 @@ export type PermissionMap = ReadonlyMap<string, ReadonlySet<string>>;
 /** The four built-in org roles. Used to skip the custom-role DB query on the common path. */
 export const BUILTIN_ROLES: ReadonlySet<string> = new Set(Object.keys(roles));
 
-// An "employee" is an org member scoped to their assigned projects (see
-// authorization.ts / listForUser). Their capabilities are pure RBAC — the
-// minimal `employee` role grants almost nothing, and an org admin grants more
-// via custom roles unioned onto the role field (e.g. "employee,foreman"), so
-// match by token, not string equality.
+// An "employee" is an org member with read visibility across the org's projects.
+// Their capabilities are pure RBAC — the minimal `employee` role grants almost
+// nothing, and an org admin grants more via custom roles unioned onto the role
+// field (e.g. "employee,foreman"), so match by token, not string equality.
 export function isEmployeeRole(role: string | null | undefined): boolean {
   return (role ?? "")
     .split(",")

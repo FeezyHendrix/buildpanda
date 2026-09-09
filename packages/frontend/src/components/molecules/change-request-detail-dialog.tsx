@@ -188,7 +188,17 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                 </div>
                 <Dialog.Title className="mt-2 text-lg font-semibold text-gray-900">{cr.title}</Dialog.Title>
                 {cr.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{cr.description}</p>}
-                {cr.reason && <p className="mt-1 text-xs text-gray-500">Reason: {cr.reason}</p>}
+                {cr.reasonHtml ? (
+                  <div className="mt-1 text-xs text-gray-500">
+                    Reason:{" "}
+                    <span
+                      className="prose prose-sm inline max-w-none [&>p]:inline [&_img]:max-h-64 [&_img]:rounded"
+                      dangerouslySetInnerHTML={{ __html: cr.reasonHtml }}
+                    />
+                  </div>
+                ) : cr.reason ? (
+                  <p className="mt-1 text-xs text-gray-500">Reason: {cr.reason}</p>
+                ) : null}
                 {cr.decidedByName && (
                   <p className="mt-1 text-xs text-gray-500">
                     {cr.status} by {cr.decidedByName}

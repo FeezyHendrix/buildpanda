@@ -87,10 +87,15 @@ function toScheduleOfValue(row: StageScheduleOfValueRow): StageScheduleOfValue {
   };
 }
 
+const ACTIVE_STATUSES: ReadonlySet<StageStatus> = new Set(["InProgress", "Done"]);
+
 export function stagesService(
   repository: StagesRepository,
   soleRealBuildingId: (projectId: string) => Promise<string | undefined>,
   contractSumForProject?: (projectId: string) => Promise<number>,
+  // Reaching a stage unlocks its stage payments; wired to the finances claim
+  // chain by the route plugin so this module never touches finance tables.
+  onStageReached?: (projectId: string, stage: { id: string; name: string }) => Promise<void>,
 ) {
   async function resolveBuildingId(projectId: string, explicit?: string | null): Promise<string> {
     if (explicit) return explicit;
@@ -177,6 +182,11 @@ export function stagesService(
 
       const updated = await repository.update(stageId, patch);
       if (!updated) throw new NotFoundError("Stage");
+      const reached =
+        input.status !== undefined && ACTIVE_STATUSES.has(input.status) && !ACTIVE_STATUSES.has(existing.status);
+      if (reached && onStageReached) {
+        await onStageReached(projectId, { id: updated.id, name: updated.name });
+      }
       return toStage(updated);
     },
 

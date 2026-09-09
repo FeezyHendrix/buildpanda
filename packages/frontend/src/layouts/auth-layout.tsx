@@ -1,7 +1,8 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import authBg from "@/assets/images/auth-bg.mp4";
-import authBgPoster from "@/assets/images/auth-bg-poster.jpg";
+import authIllustration from "@/assets/images/auth-illustration.mp4";
+import authIllustrationPoster from "@/assets/images/auth-illustration-poster.jpg";
 import logo from "@/assets/images/logo.svg";
+import logoWhite from "@/assets/images/logo-white.svg";
 
 const headerMap: Record<string, { text: string; linkText: string; to: string }> = {
   "/auth/sign-up": { text: "Already have an account?", linkText: "Sign In", to: "/auth/sign-in" },
@@ -17,18 +18,36 @@ export default function AuthLayout() {
 
   return (
     <div className="flex h-dvh p-2 sm:p-4">
-      <div className="relative hidden w-[40%] shrink-0 overflow-hidden rounded-2xl bg-white lg:block">
+      {/* The v2 welcome panel: illustration, white logo, product line and the pitch. */}
+      <div className="relative hidden w-1/2 shrink-0 overflow-hidden rounded-2xl bg-[#0B1A3A] lg:flex">
+        {/* the same animation as a video: a 20 MB GIF made every visitor wait */}
         <video
           className="absolute inset-0 size-full object-cover"
           autoPlay
           muted
           loop
           playsInline
-          preload="auto"
-          poster={authBgPoster}
+          preload="metadata"
+          poster={authIllustrationPoster}
         >
-          <source src={authBg} type="video/mp4" />
+          <source src={authIllustration} type="video/mp4" />
         </video>
+        <div className="relative z-10 flex size-full flex-col justify-between p-12">
+          <div className="flex items-center justify-between">
+            <Link to="/">
+              <img src={logoWhite} alt="BuildPanda" className="h-10" />
+            </Link>
+            <span className="rounded-lg bg-white/10 px-5 py-3 text-sm font-medium text-white backdrop-blur-sm">The Construction OS</span>
+          </div>
+          <div className="flex max-w-[409px] flex-col gap-4">
+            <h3 className="text-[48px] font-semibold leading-[56px] tracking-[-0.02em] text-white text-balance">
+              Build it <span className="text-[#FFE607]">right</span>, from the ground up!
+            </h3>
+            <p className="text-base leading-6 tracking-[-0.02em] text-white">
+              Set up your workspace in minutes then run projects, milestones, payments and inspections from one place
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col lg:px-20 lg:py-8 px-2 py-2">

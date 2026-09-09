@@ -57,7 +57,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
         db("action_items").where({ project_id: id }).whereNot("status", "Resolved").count<{ count: string }[]>("id as count").first(),
         db("action_items").where({ project_id: id, status: "Blocked" }).count<{ count: string }[]>("id as count").first(),
         db("queries").where({ project_id: id, status: "Open" }).count<{ count: string }[]>("id as count").first(),
-        db("approvals").where({ project_id: id }).whereIn("status", ["Pending", "Resubmit"]).count<{ count: string }[]>("id as count").first(),
+        db("approvals").where({ project_id: id, kind: "client" }).whereIn("status", ["Pending", "Resubmit"]).count<{ count: string }[]>("id as count").first(),
         db("project_finances").where({ project_id: id }).first(),
         db("change_requests").where({ project_id: id, status: "Approved" }).sum<{ sum: string }[]>("cost_impact as sum").first(),
         db("change_requests").where({ project_id: id, status: "Approved" }).sum<{ sum: string }[]>("time_impact_days as sum").first(),
@@ -114,7 +114,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
           db("project_phases").where({ project_id: id, status: "Pending" }).whereNotNull("start_date").where("start_date", "<=", cutoff).select("id", "name", "start_date").orderBy("start_date", "asc"),
           db("action_items").where({ project_id: id }).whereNot("status", "Resolved").whereNotNull("due_date").where("due_date", "<=", cutoff).select("id", "title", "priority", "due_date", "status").orderBy("due_date", "asc"),
           db("queries").where({ project_id: id, status: "Open" }).whereNotNull("due_date").where("due_date", "<=", cutoff).select("id", "subject", "due_date").orderBy("due_date", "asc"),
-          db("approvals").where({ project_id: id }).whereIn("status", ["Pending", "Resubmit"]).whereNotNull("due_date").where("due_date", "<=", cutoff).select("id", "title", "due_date", "status").orderBy("due_date", "asc"),
+          db("approvals").where({ project_id: id, kind: "client" }).whereIn("status", ["Pending", "Resubmit"]).whereNotNull("due_date").where("due_date", "<=", cutoff).select("id", "title", "due_date", "status").orderBy("due_date", "asc"),
           db("key_dates").where({ project_id: id, status: "Upcoming" }).whereNotNull("target_date").where("target_date", "<=", cutoff).select("id", "label", "target_date").orderBy("target_date", "asc"),
           db("permits").where({ project_id: id, status: "Approved" }).whereNotNull("expiry_date").where("expiry_date", "<=", cutoff).select("id", "title", "expiry_date").orderBy("expiry_date", "asc"),
         ]);
@@ -180,6 +180,7 @@ const insightsRoutes: FastifyPluginAsync = async (fastify) => {
             .orderBy("due_date", "asc"),
           db("approvals")
             .whereIn("project_id", projectIds)
+            .where("kind", "client")
             .whereIn("status", ["Pending", "Resubmit"])
             .whereNotNull("due_date")
             .where("due_date", "<=", cutoff)

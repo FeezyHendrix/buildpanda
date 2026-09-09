@@ -2,6 +2,7 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { FinancesRepository } from "./repository.ts";
+import { isAdvanceMilestone } from "./claim-chain.ts";
 import {
   ADVANCE_RECOVERY_MODES,
   CONTRACT_TYPES,
@@ -166,6 +167,7 @@ function toMilestone(row: MilestonePaymentRow): MilestonePayment {
       ? { fileName: row.proof_file_name, verified: row.proof_verified }
       : null,
     inspectorSignOff: row.inspector_sign_off,
+    claimState: row.claim_state ?? "pending",
   };
 }
 
@@ -391,6 +393,8 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
         proof_file_name: null,
         proof_verified: false,
         inspector_sign_off: input.inspectorSignOff ?? "Pending",
+        // the advance is claimable the moment the contract exists
+        claim_state: isAdvanceMilestone(input.name) ? "claimable" : "pending",
       });
       await recordEvent(projectId, "milestone_created", actor ?? null, `Added milestone · ${row.name}`, input.amount, row.id);
       return toMilestone(row);

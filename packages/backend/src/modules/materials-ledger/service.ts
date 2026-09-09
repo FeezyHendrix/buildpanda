@@ -23,6 +23,7 @@ export interface LogEntryInput {
   unit: string;
   quantity: number;
   locationKey?: string | null;
+  stageId?: string | null;
   occurredAt?: string | null;
   materialOrderId?: string | null;
   taskId?: string | null;
@@ -114,8 +115,14 @@ function buildEntry(row: LedgerEntryRow, files: LedgerEntryFileRow[]): LedgerEnt
     materialId: row.material_id,
     materialName: row.material_name_snapshot,
     unit: row.unit_snapshot,
-    locationKey: row.location_key,
-    quantity: Number(row.quantity),
+      locationKey: row.location_key,
+      stageId: row.stage_id,
+      stageName: row.stage_name,
+      approvalStatus: row.approval_status,
+      approvedById: row.approved_by_id,
+      approvedByName: row.approved_by_name,
+      approvedAt: row.approved_at ? toIso(row.approved_at) : null,
+      quantity: Number(row.quantity),
     stockDelta: Number(row.stock_delta),
     occurredAt: toIso(row.occurred_at),
     timestampSuspect: row.timestamp_suspect,
@@ -220,7 +227,9 @@ export function materialsLedgerService(
         materialId: catalog.id,
         materialName: catalog.name,
         unit: catalog.unit,
-        locationKey: (input.locationKey || "default").trim(),
+          locationKey: (input.locationKey || "default").trim(),
+          stageId: input.stageId ?? null,
+          approvalStatus: "Pending",
         quantity: input.quantity,
         stockDelta,
         occurredAt,
@@ -267,7 +276,13 @@ export function materialsLedgerService(
       return { entry, duplicate: result.duplicate, negativeStock: result.negativeStock, onHandQty: result.onHandQty };
     },
 
-    async voidEntry(projectId: string, entryId: string, reason: string | null, actorId: string | null): Promise<LedgerEntry> {
+      async approveEntry(projectId: string, entryId: string, actorId: string): Promise<LedgerEntry> {
+        const row = await repository.approveEntry(projectId, entryId, actorId);
+        if (!row) throw new NotFoundError("Ledger entry");
+        return loadEntry(projectId, entryId);
+      },
+
+      async voidEntry(projectId: string, entryId: string, reason: string | null, actorId: string | null): Promise<LedgerEntry> {
       const original = await repository.findEntryById(entryId);
       if (!original || original.project_id !== projectId) throw new NotFoundError("Ledger entry");
       if (original.entry_type === "VOID") throw new BadRequestError("A void entry cannot itself be voided");
@@ -281,9 +296,18 @@ export function materialsLedgerService(
         materialId: original.material_id,
         materialName: original.material_name_snapshot,
         unit: original.unit_snapshot,
-        locationKey: original.location_key,
+          locationKey: original.location_key,
+          stageId: original.stage_id,
         quantity: Number(original.quantity),
-        stockDelta: -Number(original.stock_delta),
+        // Reverse only what was actually applied. A pending entry never moved
+        // stock, so subtracting its delta would drive the balance negative for
+        // materials that were never counted.
+        stockDelta:
+          original.approval_status === "Approved" ? -Number(original.stock_delta) : 0,
+        // The reversal is itself a deliberate act by someone with permission,
+        // so it applies immediately. Born Pending, a void would never restore
+        // stock until a second person approved the undo.
+        approvalStatus: "Approved",
         occurredAt: new Date().toISOString(),
         timestampSuspect: false,
         loggedById: actorId,

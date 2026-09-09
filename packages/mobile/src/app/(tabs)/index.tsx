@@ -9,7 +9,7 @@ import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segment
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
-import type { DocumentGroup } from "@/db/documents-repository";
+import { DOCUMENT_GROUP, type DocumentGroup } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useDocumentCategories, useLocalDocuments, useRecentDocuments } from "@/hooks/use-local-documents";
 import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
@@ -20,15 +20,15 @@ import { cn } from "@/lib/utils";
 
 /** Two groups, matching the web — no invented Media tab. */
 const GROUPS: readonly SegmentedTab<DocumentGroup>[] = [
-  { key: "plan", label: "Plans" },
-  { key: "document", label: "Documents" },
+  { key: DOCUMENT_GROUP.PLAN, label: "Plans" },
+  { key: DOCUMENT_GROUP.DOCUMENT, label: "Documents" },
 ] as const;
 
 function FileRow({
   doc,
   onOpen,
 }: {
-  doc: { id: string; fileName: string; size: string; category: string | null; status: string | null; versionNo: number; isAvailableOffline: boolean };
+  doc: { id: string; fileName: string; size: string; category: string | null; group: DocumentGroup; status: string | null; versionNo: number; isAvailableOffline: boolean };
   onOpen: (id: string) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -36,7 +36,11 @@ function FileRow({
     <Pressable
       onPress={async () => {
         await onOpen(doc.id);
-        router.push(`/tools/documents/${doc.id}` as never);
+        router.push(
+          (doc.group === DOCUMENT_GROUP.PLAN
+            ? `/tools/plan-review?documentId=${doc.id}`
+            : `/tools/documents/${doc.id}`) as never,
+        );
       }}
       accessibilityRole="button"
       className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
@@ -170,8 +174,13 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
                   setError(null);
                   try {
                     await cacheDocument(db, projectId, id);
-                  } catch {
-                    setError("Couldn't download that file. Try again when you have signal.");
+                  } catch (err) {
+                    console.error("plan download failed", err);
+                    setError(
+                      err instanceof Error && err.message
+                        ? `Couldn't download that file: ${err.message}`
+                        : "Couldn't download that file. Try again when you have signal.",
+                    );
                   }
                 }}
               />
@@ -185,7 +194,11 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
   const openDoc = async (id: string) => {
     const { documentsRepository } = await import("@/db/documents-repository");
     await documentsRepository.trackAccess(db, id);
-    try { await cacheDocument(db, projectId, id); } catch {}
+    try {
+      await cacheDocument(db, projectId, id);
+    } catch (err) {
+      console.error("recent doc download failed", err);
+    }
   };
 
   return (
@@ -198,7 +211,7 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
             Nothing here yet
           </Text>
           <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-            {group === "plan"
+            {group === DOCUMENT_GROUP.PLAN
               ? "Drawings uploaded to this project will appear here."
               : "Project documents will appear here."}
           </Text>
@@ -226,7 +239,7 @@ export default function Plans() {
   const { data: project } = useProject(projectId);
   const setActive = useSetActiveOrganization();
 
-  const [group, setGroup] = useState<DocumentGroup>("plan");
+  const [group, setGroup] = useState<DocumentGroup>(DOCUMENT_GROUP.PLAN);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | undefined>(undefined);
 

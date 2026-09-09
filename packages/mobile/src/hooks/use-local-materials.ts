@@ -34,3 +34,19 @@ export function useCreateMaterialOrder(db: Db | null, projectId: string | undefi
     void flushOutbox(db).catch(() => undefined);
   };
 }
+
+export function useUpdateMaterialOrder(db: Db | null, projectId: string | undefined) {
+  return async (id: string, patch: Partial<CreateMaterialOrderInput>) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.updateLocal(db, projectId, id, patch);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+export function useDeleteMaterialOrder(db: Db | null, projectId: string | undefined) {
+  return async (id: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialsRepository.deleteLocal(db, projectId, id);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}

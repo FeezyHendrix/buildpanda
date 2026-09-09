@@ -28,9 +28,45 @@ interface Props {
   proposalId: string;
 }
 
+function ClientSummary({ events, acceptedByName, acceptedAt, acceptedIp, pdfHash }: {
+  events: { type: string; createdAt: string }[];
+  acceptedByName: string | null;
+  acceptedAt: string | null;
+  acceptedIp: string | null;
+  pdfHash: string | null;
+}) {
+  const views = events.filter((e) => e.type === "client_viewed");
+  const lastViewed = views[0]?.createdAt ?? null;
+  if (views.length === 0 && !acceptedAt) return null;
+  return (
+    <div className="mb-6 grid gap-3 sm:grid-cols-2">
+      <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Client engagement</p>
+        <p className="mt-1 text-sm text-gray-900">
+          {views.length === 0 ? "Not opened yet" : `Opened ${views.length} time${views.length === 1 ? "" : "s"}`}
+        </p>
+        {lastViewed ? <p className="text-xs text-gray-500">Last opened {formatActivityTimestamp(lastViewed)}</p> : null}
+      </div>
+      {acceptedAt ? (
+        <div className="rounded-xl border border-success-200 bg-success-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-success-700">Acceptance record</p>
+          <p className="mt-1 text-sm text-gray-900">Signed by {acceptedByName ?? "the client"}</p>
+          <p className="text-xs text-gray-600">
+            {formatActivityTimestamp(acceptedAt)}
+            {acceptedIp ? ` · from ${acceptedIp}` : ""}
+          </p>
+          {pdfHash ? <p className="mt-1 font-mono text-[11px] text-gray-500">document {pdfHash.slice(0, 16)}…</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+ClientSummary.displayName = "ClientSummary";
+
 export function ActivityTab({ proposalId }: Props) {
   const { data } = useProposalWorkspace(proposalId);
   const events = data?.events ?? [];
+  const estimate = data?.estimate ?? null;
 
   if (events.length === 0) {
     return (
@@ -42,6 +78,14 @@ export function ActivityTab({ proposalId }: Props) {
   }
 
   return (
+    <div>
+    <ClientSummary
+      events={events}
+      acceptedByName={estimate?.acceptedByName ?? null}
+      acceptedAt={estimate?.acceptedAt ?? null}
+      acceptedIp={estimate?.acceptedIp ?? null}
+      pdfHash={estimate?.acceptedPdfHash ?? null}
+    />
     <ol className="relative ml-3 border-l-2 border-gray-100 pl-6">
       {events.map((event) => {
         const meta = EVENT_LABELS[event.type] ?? { label: event.type, tone: "neutral" as const };
@@ -65,12 +109,15 @@ export function ActivityTab({ proposalId }: Props) {
         );
       })}
     </ol>
+    </div>
   );
 }
 
+const HIDDEN_META = new Set(["ip", "userAgent", "estimateId", "pdfHash", "snapshotFileId"]);
+
 function EventMetadata({ metadata }: { metadata: unknown }) {
   if (!metadata || typeof metadata !== "object") return null;
-  const entries = Object.entries(metadata as Record<string, unknown>).filter(([, v]) => v != null);
+  const entries = Object.entries(metadata as Record<string, unknown>).filter(([k, v]) => v != null && !HIDDEN_META.has(k));
   if (entries.length === 0) return null;
   return (
     <dl className="mt-1 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-xs text-gray-500">

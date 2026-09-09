@@ -259,6 +259,7 @@ export default function ProjectChangeRequests() {
       <UpsertChangeRequestDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        projectId={project.id}
         mode="create"
         assigneeOptions={assigneeOptions}
         onSubmit={handleCreate}
@@ -268,6 +269,7 @@ export default function ProjectChangeRequests() {
       <UpsertChangeRequestDialog
         open={editItem !== null}
         onOpenChange={(o) => !o && setEditItem(null)}
+        projectId={project.id}
         mode="edit"
         assigneeOptions={assigneeOptions}
         initial={
@@ -276,6 +278,7 @@ export default function ProjectChangeRequests() {
                 title: editItem.title,
                 description: editItem.description,
                 reason: editItem.reason,
+                reasonHtml: editItem.reasonHtml,
                 status: editItem.status,
                 costImpact: editItem.costImpact,
                 timeImpactDays: editItem.timeImpactDays,

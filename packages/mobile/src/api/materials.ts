@@ -8,6 +8,8 @@ export interface MaterialOrder {
   unit: string;
   supplier: string | null;
   status: string;
+  phaseId: string | null;
+  phaseName: string | null;
 }
 
 export interface CreateMaterialOrderInput {
@@ -16,6 +18,7 @@ export interface CreateMaterialOrderInput {
   quantity: number;
   unit: string;
   supplier?: string | null;
+  phaseId?: string | null;
 }
 
 export const materialsApi = {

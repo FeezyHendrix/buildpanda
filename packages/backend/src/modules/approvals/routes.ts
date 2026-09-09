@@ -63,6 +63,7 @@ const updateBody = {
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     response: { type: ["string", "null"], maxLength: 4000 },
+    responseHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
   },

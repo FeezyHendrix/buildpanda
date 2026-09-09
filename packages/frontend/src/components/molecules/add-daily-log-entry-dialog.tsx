@@ -56,6 +56,7 @@ export function AddDailyLogEntryDialog({
       submitting={submitting}
       error={error}
       onSubmit={() => onSubmit(html, text)}
+      className="w-[min(720px,calc(100vw-2rem))]"
     >
       <RichTextField
         label="What did you do today?"

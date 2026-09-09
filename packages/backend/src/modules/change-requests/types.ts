@@ -9,6 +9,7 @@ export interface ChangeRequest {
   description: string | null;
   descriptionHtml: string | null;
   reason: string | null;
+  reasonHtml: string | null;
   status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
@@ -19,6 +20,7 @@ export interface ChangeRequest {
   decidedAt: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
+  estimateId: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +52,7 @@ export interface ChangeRequestRow {
   description: string | null;
   description_html: string | null;
   reason: string | null;
+  reason_html: string | null;
   status: ChangeStatus;
   cost_impact: string;
   time_impact_days: number;
@@ -60,6 +63,7 @@ export interface ChangeRequestRow {
   decided_at: string | null;
   assignee_id: string | null;
   assignee_name: string | null;
+  estimate_id: string | null;
   created_at: string;
   updated_at: string;
 }

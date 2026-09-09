@@ -1,6 +1,7 @@
 import IORedis, { type Redis } from "ioredis";
 import type { FastifyBaseLogger } from "fastify";
 import type { WebSocket } from "ws";
+import { PresenceTracker, type PresentUser } from "./presence.ts";
 
 export type RealtimeEvent =
   | "message.created"
@@ -20,6 +21,7 @@ export type RealtimeEvent =
   | "row.deleted"
   | "geometry.updated"
   | "precon.progress"
+  | "precon.presence"
   | "access.updated";
 
 export interface RealtimePayload {
@@ -44,6 +46,8 @@ export class RealtimeHub {
   private readonly subscriber: Redis | null;
 
   readonly distributed: boolean;
+  // who is on each precon:<sessionId> channel; per process, like the sockets
+  readonly presence = new PresenceTracker();
 
   constructor(redisUrl: string | null, private readonly logger: FastifyBaseLogger) {
     if (redisUrl) {
@@ -101,6 +105,10 @@ export class RealtimeHub {
 
   isOnline(userId: string): boolean {
     return this.byUser.has(userId);
+  }
+
+  publishPresence(channelId: string, users: PresentUser[]): void {
+    this.publish({ event: "precon.presence", channelId, data: { type: "precon.presence", users } });
   }
 
   publish(payload: RealtimePayload): void {

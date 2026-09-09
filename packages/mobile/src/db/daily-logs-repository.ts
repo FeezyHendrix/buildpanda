@@ -173,6 +173,7 @@ export const dailyLogsRepository = {
           logDate,
           totalHours: input.totalHours ?? 0,
           summary: input.summary ?? null,
+          buildingId: input.buildingId ?? null,
           isPendingSync: true,
           updatedAt: now,
         })
@@ -212,6 +213,7 @@ export const dailyLogsRepository = {
     bodyText: string,
     authorName: string,
     bodyHtml?: string | null,
+    buildingId?: string | null,
   ): Promise<void> {
     const id = `local_${randomUUID()}`;
     await db.transaction(async (tx) => {
@@ -222,6 +224,7 @@ export const dailyLogsRepository = {
         authorName,
         bodyText,
         bodyHtml: bodyHtml ?? null,
+        buildingId: buildingId ?? null,
         createdAt: Date.now(),
         isPendingSync: true,
       });

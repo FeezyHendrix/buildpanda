@@ -59,6 +59,14 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.materialsEquipment",
   },
   {
+    label: "Material Approvals",
+    slug: "material-approvals",
+    resource: "materials",
+    Icon: InspectionsIcon,
+    helper: "Spec sign-off requests",
+    flag: "commercial.materialsEquipment",
+  },
+  {
     label: "Material Log",
     slug: "material-log",
     resource: "materials",
@@ -179,6 +187,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: DocumentsIcon,
     helper: "Site expenses & receipts",
     flag: "commercial.transactions",
+  },
+  {
+    label: "Final Account",
+    slug: "finances/final-account",
+    resource: "finances",
+    Icon: FinancesIcon,
+    helper: "Final settlement statement",
+    flag: "commercial.finances",
   },
   {
     label: "Change Orders",

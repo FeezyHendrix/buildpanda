@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
+import { financesRepository } from "../finances/repository.ts";
+import { financesService } from "../finances/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { changeRequestsRepository } from "./repository.ts";
@@ -44,6 +46,7 @@ const createBody = {
     description: { type: ["string", "null"], maxLength: 4000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     reason: { type: ["string", "null"], maxLength: 1000 },
+    reasonHtml: { type: ["string", "null"], maxLength: 200000 },
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
     currency: { type: "string", enum: CURRENCY },
@@ -81,6 +84,7 @@ const updateBody = {
     description: { type: ["string", "null"], maxLength: 4000 },
     descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     reason: { type: ["string", "null"], maxLength: 1000 },
+    reasonHtml: { type: ["string", "null"], maxLength: 200000 },
     status: { type: "string", enum: STATUS },
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
@@ -97,8 +101,12 @@ const commentBody = {
 } as const;
 
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
+  const finances = financesService(financesRepository(fastify.db));
   const service = changeRequestsService(changeRequestsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    recordVariation: async (projectId, input, actor) => {
+      await finances.recordVariation(projectId, { amount: input.amount, description: input.description }, actor);
+    },
   });
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
@@ -136,7 +144,7 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "change-requests", "manage");
       const user = request.requireAuth();
-      return service.update(project.id, request.params.changeId, request.body, user.id);
+      return service.update(project.id, request.params.changeId, request.body, user.id, user.name);
     },
   );
 

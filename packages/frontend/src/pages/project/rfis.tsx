@@ -197,9 +197,10 @@ export default function ProjectRfis() {
       </div>
 
       <UpsertRfiDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSubmit={handleCreate}
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          projectId={project.id}
+          onSubmit={handleCreate}
         isSubmitting={createRfi.isPending}
         error={
           createRfi.error instanceof Error ? createRfi.error.message : null

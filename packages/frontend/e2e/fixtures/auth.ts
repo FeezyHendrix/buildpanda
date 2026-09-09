@@ -44,6 +44,12 @@ export async function provisionUser(role: string): Promise<ProvisionedUser> {
   const cookie = api.getCookie();
   if (!cookie) throw new Error("no session cookie after sign-in");
 
+  // A workspace owner who has not accepted sees DataCommitmentGate, a
+  // fixed inset-0 z-[100] overlay that swallows every click on the page
+  // beneath it. Accepting here keeps it off the specs. The body must be a
+  // real object: an empty one with a JSON content-type is rejected.
+  await api.post("/data-commitment/accept", {});
+
   // The session hook provisions the org lazily on first authenticated session;
   // sign-in above triggered it. Read the owning membership back.
   const member = await db()("member")

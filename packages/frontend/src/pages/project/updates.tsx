@@ -12,6 +12,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateUpdate,
   useGenerateAiDraft,
+  useGenerateDailyDigest,
   useProjectUpdates,
 } from "@/hooks/use-updates";
 import { canResourceAction, type Person, type ProjectUpdate } from "@/lib/project-types";
@@ -35,6 +36,8 @@ export default function ProjectUpdates() {
   const draftsRef = useRef<HTMLElement | null>(null);
   const createUpdate = useCreateUpdate();
   const generateDraft = useGenerateAiDraft();
+  const generateDigest = useGenerateDailyDigest();
+  const generateError = generateDraft.error ?? generateDigest.error;
 
   const contractors = useMemo(() => uniqueContractors(updates), [updates]);
   const visible = useMemo(
@@ -76,6 +79,18 @@ export default function ProjectUpdates() {
     );
   }
 
+  function handleGenerateDigest(): void {
+    generateDigest.mutate(
+      { projectId: project.id },
+      {
+        onSuccess: (digest) => {
+          setFocusDraftId(digest.id);
+          setAutoEditDraftId(digest.id);
+        },
+      },
+    );
+  }
+
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
@@ -92,6 +107,15 @@ export default function ProjectUpdates() {
                 <ReactSVG src={icons.aiVerify} />
                 Draft with Panda AI
               </Button>
+              <Button
+                variant="secondary"
+                loading={generateDigest.isPending}
+                onClick={handleGenerateDigest}
+                title="End-of-day site record for your team — never sent to the homeowner"
+              >
+                <ReactSVG src={icons.report} />
+                Today's team digest
+              </Button>
               <Button variant="primary" onClick={() => setCreateOpen(true)}>
                 New update
               </Button>
@@ -100,10 +124,8 @@ export default function ProjectUpdates() {
         }
       />
 
-      {generateDraft.isError ? (
-        <p className="mt-3 text-sm text-red-600">
-          {(generateDraft.error as Error).message}
-        </p>
+      {generateError ? (
+        <p className="mt-3 text-sm text-red-600">{generateError.message}</p>
       ) : null}
 
       <UpsertUpdateDialog

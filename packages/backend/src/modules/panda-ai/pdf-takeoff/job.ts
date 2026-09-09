@@ -2,13 +2,26 @@ import type { Knex } from "knex";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import type { RealtimePayload } from "../../../lib/realtime/index.ts";
 import { preconRepository } from "./repository.ts";
-import { generateForSession } from "./engine/run.ts";
+import { generateForSession, type ProgressFn } from "./engine/run.ts";
+import { remeasureSheet } from "./engine/remeasure.ts";
+import { redraftBill } from "./engine/redraft.ts";
+import type { PreconPhase } from "./types.ts";
 
 export const PRECON_GENERATE_QUEUE = "precon-generate";
+
+export const PRECON_JOB_MODES = ["generate", "remeasure", "redraft"] as const;
+export type PreconJobMode = (typeof PRECON_JOB_MODES)[number];
 
 export interface PreconGenerateJobData {
   sessionId: string;
   orgId?: string;
+  // remeasure re-reads one sheet; redraft re-runs the build-up. Both leave
+  // session.status alone — the session is already in review.
+  mode?: PreconJobMode;
+  sheetId?: string;
+  // a take-off measured by hand: render the pages with their snap index and
+  // scale, draft nothing
+  sheetsOnly?: boolean;
 }
 
 export type RealtimePublish = (payload: RealtimePayload) => void;
@@ -18,24 +31,53 @@ export async function runGenerate(db: Knex, data: PreconGenerateJobData, publish
   const session = await repo.sessionById(data.sessionId);
   if (!session) return;
 
-  const progress = (message: string, extra?: Record<string, unknown>) => {
+  // Every progress tick is written to the session before it is broadcast, so a
+  // client that connects late (or reloads) reads the same checklist from the
+  // snapshot that a live client built from the socket.
+  const progress: ProgressFn = async (phase: PreconPhase, message: string, extra?: Record<string, unknown>) => {
+    const at = new Date().toISOString();
+    await repo.appendSessionProgress(session.id, { at, phase, message });
     publish({
       event: "precon.progress",
       channelId: `precon:${session.id}`,
-      data: { sessionId: session.id, message, ...extra },
+      data: { sessionId: session.id, phase, message, at, ...extra },
     });
   };
 
+  const mode: PreconJobMode = data.mode ?? "generate";
+  if (mode !== "generate") {
+    try {
+      if (mode === "remeasure" && data.sheetId) await remeasureSheet(db, data.sheetId, progress);
+      else if (mode === "redraft") await redraftBill(db, session.id, progress);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${mode} failed`;
+      await progress("draft", `${mode === "remeasure" ? "Re-measure" : "Redraft"} failed: ${message}`);
+      throw error;
+    }
+    return;
+  }
+
   await repo.updateSessionStatus(session.id, "generating");
-  progress("Generation started");
+  await progress("reading", data.sheetsOnly ? "Preparing sheets for measuring by hand" : "Generation started");
   try {
+    if (data.sheetsOnly) {
+      const { renderSheetsOnly } = await import("./engine/sheets-only.ts");
+      const { sheets } = await renderSheetsOnly(db, session.id, progress);
+      await repo.updateSessionStatus(session.id, "reviewing");
+      await progress("draft", `${sheets} sheet${sheets === 1 ? "" : "s"} ready — pick a tool and draw to measure`);
+      return;
+    }
     await generateForSession(db, session.id, progress);
     await repo.updateSessionStatus(session.id, "reviewing");
-    progress("Generation complete — ready for review");
+    await progress("draft", "Generation complete — ready for review");
   } catch (error) {
     const message = error instanceof Error ? error.message : "Generate failed";
     await repo.updateSessionStatus(session.id, "failed", message);
-    progress(`Generation failed: ${message}`);
+    publish({
+      event: "precon.progress",
+      channelId: `precon:${session.id}`,
+      data: { sessionId: session.id, message: `Generation failed: ${message}`, at: new Date().toISOString() },
+    });
     throw error;
   }
 }

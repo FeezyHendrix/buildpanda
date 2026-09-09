@@ -1,5 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { env } from "./config/env";
+
+// storageState is resolved against the working directory, but global-setup
+// writes these files next to this config. Anchoring here keeps the suite
+// runnable from packages/frontend (where pnpm e2e starts) and from e2e/.
+const HERE = dirname(fileURLToPath(import.meta.url));
+const authState = (role: string): string => resolve(HERE, ".auth", `${role}.json`);
 
 // ASSUMPTION (A3): both backend (:3000) and frontend (:5173) must be running
 // against a migrated Postgres. Locally Playwright boots `pnpm dev` and reuses an
@@ -41,15 +49,15 @@ export default defineConfig({
   projects: [
     {
       name: "owner",
-      use: { ...devices["Desktop Chrome"], storageState: "./.auth/owner.json" },
+      use: { ...devices["Desktop Chrome"], storageState: authState("owner") },
     },
     {
       name: "member",
-      use: { ...devices["Desktop Chrome"], storageState: "./.auth/member.json" },
+      use: { ...devices["Desktop Chrome"], storageState: authState("member") },
     },
     {
       name: "viewer",
-      use: { ...devices["Desktop Chrome"], storageState: "./.auth/viewer.json" },
+      use: { ...devices["Desktop Chrome"], storageState: authState("viewer") },
     },
   ],
   webServer: env.noWebServer

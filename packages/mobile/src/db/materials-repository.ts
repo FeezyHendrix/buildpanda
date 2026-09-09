@@ -2,6 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { desc, eq } from "drizzle-orm";
 import type { CreateMaterialOrderInput, MaterialOrder } from "@/api/materials";
 import type { Db } from "./client";
+import { enqueueDelete, enqueueUpdate } from "./enqueue-update";
 import { materialOrders, outbox, type MaterialOrderRow } from "./schema";
 
 export function toMaterialOrder(row: MaterialOrderRow) {
@@ -12,6 +13,8 @@ export function toMaterialOrder(row: MaterialOrderRow) {
     quantity: row.quantity,
     unit: row.unit,
     supplier: row.supplier,
+    phaseId: row.phaseId,
+    phaseName: row.phaseName,
     status: row.status,
     isPendingSync: row.isPendingSync,
   };
@@ -36,6 +39,7 @@ export const materialsRepository = {
         quantity: input.quantity,
         unit: input.unit,
         supplier: input.supplier ?? null,
+        phaseId: input.phaseId ?? null,
         isPendingSync: true,
         updatedAt: Date.now(),
       });
@@ -51,6 +55,44 @@ export const materialsRepository = {
     return id;
   },
 
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(materialOrders).set({ isPendingSync: false }).where(eq(materialOrders.id, id));
+  },
+
+  /** Removes the row locally and queues the push in one transaction. */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(materialOrders).where(eq(materialOrders.id, id));
+      await enqueueDelete(tx as never, "material-orders", id, projectId, randomUUID());
+    });
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: Partial<CreateMaterialOrderInput>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(materialOrders)
+        .set({
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.materialName !== undefined ? { materialName: patch.materialName } : {}),
+          ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
+          ...(patch.unit !== undefined ? { unit: patch.unit } : {}),
+          ...(patch.supplier !== undefined ? { supplier: patch.supplier } : {}),
+          ...(patch.phaseId !== undefined ? { phaseId: patch.phaseId } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(materialOrders.id, id));
+
+      await enqueueUpdate(tx as never, "material-orders", id, projectId, randomUUID());
+    });
+  },
+
   async reconcileCreate(db: Db, projectId: string, localId: string, server: MaterialOrder) {
     await db.transaction(async (tx) => {
       await tx.delete(materialOrders).where(eq(materialOrders.id, localId));
@@ -61,7 +103,9 @@ export const materialsRepository = {
         materialName: server.materialName,
         quantity: server.quantity,
         unit: server.unit,
-        supplier: server.supplier,
+          supplier: server.supplier,
+          phaseId: server.phaseId,
+          phaseName: server.phaseName,
         status: server.status,
         isPendingSync: false,
         updatedAt: Date.now(),
@@ -84,6 +128,8 @@ export const materialsRepository = {
             quantity: row.quantity,
             unit: row.unit,
             supplier: row.supplier,
+            phaseId: row.phaseId,
+            phaseName: row.phaseName,
             status: row.status,
             isPendingSync: false,
             updatedAt: now,

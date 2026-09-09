@@ -78,6 +78,7 @@ const logBody = {
     unit: { type: "string", maxLength: 40 },
     quantity: { type: "number", exclusiveMinimum: 0 },
     locationKey: { type: ["string", "null"], maxLength: 100 },
+    stageId: { type: ["string", "null"], maxLength: 100 },
     occurredAt: { type: ["string", "null"], maxLength: 40 },
     materialOrderId: { type: ["string", "null"], maxLength: 100 },
     taskId: { type: ["string", "null"], maxLength: 100 },
@@ -270,6 +271,17 @@ const materialsLedgerRoutes: FastifyPluginAsync = async (fastify) => {
       const user = request.requireAuth();
       const entry = await service.voidEntry(project.id, request.params.entryId, request.body.reason, user.id);
       return reply.status(201).send(entry);
+    },
+  );
+
+  fastify.post<{ Params: { id: string; entryId: string } }>(
+    "/projects/:id/materials/ledger/:entryId/approve",
+    { schema: { params: entryParams } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "materials", "manage");
+      const user = request.requireAuth();
+      const entry = await service.approveEntry(project.id, request.params.entryId, user.id);
+      return reply.send(entry);
     },
   );
 

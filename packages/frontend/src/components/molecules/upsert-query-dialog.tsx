@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
+import { RichTextField } from "@/components/molecules/rich-text-field";
+import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
 import type { QueryStatus } from "@/lib/project-types";
 
 export interface UpsertQueryValues {
   subject: string;
   question: string;
+  questionHtml: string | null;
   status: QueryStatus;
   dueDate: string | null;
   assigneeId: string | null;
@@ -19,6 +22,7 @@ export interface AssigneeOption {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  projectId: string;
   mode: "create" | "edit";
   initial?: Partial<UpsertQueryValues>;
   assigneeOptions?: AssigneeOption[];
@@ -39,6 +43,7 @@ const field =
 function UpsertQueryDialog({
   open,
   onOpenChange,
+  projectId,
   mode,
   initial,
   assigneeOptions = [],
@@ -48,6 +53,7 @@ function UpsertQueryDialog({
 }: Props) {
   const [subject, setSubject] = useState("");
   const [question, setQuestion] = useState("");
+  const [questionHtml, setQuestionHtml] = useState("");
   const [status, setStatus] = useState<QueryStatus>("Open");
   const [dueDate, setDueDate] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
@@ -56,6 +62,7 @@ function UpsertQueryDialog({
     if (open) {
       setSubject(initial?.subject ?? "");
       setQuestion(initial?.question ?? "");
+      setQuestionHtml(initial?.questionHtml ?? htmlFromPlainText(initial?.question ?? ""));
       setStatus(initial?.status ?? "Open");
       setDueDate(initial?.dueDate ?? "");
       setAssigneeId(initial?.assigneeId ?? "");
@@ -67,6 +74,7 @@ function UpsertQueryDialog({
     onSubmit({
       subject: subject.trim(),
       question: question.trim(),
+      questionHtml: questionHtml || null,
       status,
       dueDate: dueDate || null,
       assigneeId: assigneeId || null,
@@ -96,17 +104,14 @@ function UpsertQueryDialog({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="q-question">Question</Label>
-        <textarea
-          id="q-question"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          rows={3}
-          placeholder="Describe what you need clarified"
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        />
-      </div>
+      <RichTextField
+        label="Question"
+        value={questionHtml}
+        onChange={setQuestionHtml}
+        onChangeText={setQuestion}
+        projectId={projectId}
+        placeholder="Describe what you need clarified"
+      />
 
       <div className="grid grid-cols-2 gap-3">
         {mode === "edit" && (

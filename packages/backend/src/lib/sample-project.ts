@@ -1,5 +1,6 @@
 import type { Knex } from "knex";
 import { generateId } from "./ids.ts";
+import { addSampleProjectDemoData } from "./sample-project-demo-data.ts";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -26,6 +27,7 @@ function monthRange(start: Date, end: Date): string {
 export async function provisionSampleProject(db: Knex, organizationId: string): Promise<void> {
   const projectId = generateId("prj");
   const buildingId = generateId("bld");
+  const sharedBuildingId = generateId("bld");
   const now = new Date();
 
   const phaseStarts = [-10, -6, 2, 10, 18].map(weeksFromNow);
@@ -64,7 +66,7 @@ export async function provisionSampleProject(db: Knex, organizationId: string): 
         progress_percent: 34,
       },
       {
-        id: generateId("bld"),
+        id: sharedBuildingId,
         project_id: projectId,
         name: "Shared",
         kind: "shared",
@@ -207,5 +209,7 @@ export async function provisionSampleProject(db: Knex, organizationId: string): 
         summary: "First bay of the slab poured and vibrated. No incidents.",
       },
     ]);
+
+    await addSampleProjectDemoData(trx, { projectId, buildingId, phaseIds, weeksFromNow, isoDate });
   });
 }

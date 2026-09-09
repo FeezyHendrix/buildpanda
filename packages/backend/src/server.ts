@@ -20,6 +20,9 @@ import assetRoutes from "./modules/assets/routes.ts";
 import healthRoutes from "./modules/health/routes.ts";
 import permissionsRoutes from "./modules/permissions/routes.ts";
 import leadRoutes from "./modules/leads/routes.ts";
+import rateLibraryRoutes from "./modules/rate-library/routes.ts";
+import complianceDocsRoutes from "./modules/compliance-docs/routes.ts";
+import proposalTemplateRoutes from "./modules/proposals/templates-routes.ts";
 import userRoutes from "./modules/users/routes.ts";
 import projectRoutes from "./modules/projects/routes.ts";
 import updateRoutes from "./modules/updates/routes.ts";
@@ -28,6 +31,7 @@ import drawingMarkupRoutes from "./modules/drawing-markup/routes.ts";
 import inspectionRoutes from "./modules/inspections/routes.ts";
 import financeRoutes from "./modules/finances/routes.ts";
 import riskRoutes from "./modules/risks/routes.ts";
+import methodStatementRoutes from "./modules/method-statements/routes.ts";
 import notificationRoutes from "./modules/notifications/routes.ts";
 import searchRoutes from "./modules/search/routes.ts";
 import fileRoutes from "./modules/files/routes.ts";
@@ -49,6 +53,7 @@ import rfiRoutes from "./modules/rfis/routes.ts";
 import publicRfiRoutes from "./modules/rfis/public-routes.ts";
 import bimRoutes from "./modules/bim/routes.ts";
 import approvalRoutes from "./modules/approvals/routes.ts";
+import materialApprovalRoutes from "./modules/approvals/material-routes.ts";
 import selectionRoutes from "./modules/selections/routes.ts";
 import changeRequestRoutes from "./modules/change-requests/routes.ts";
 import permitRoutes from "./modules/permits/index.ts";
@@ -68,11 +73,13 @@ import voiceReportRoutes from "./modules/panda-ai/voice-report/routes.ts";
 import programmeImportRoutes from "./modules/panda-ai/programme/routes.ts";
 import dwgTakeoffRoutes from "./modules/panda-ai/dwg-takeoff/routes.ts";
 import pdfTakeoffRoutes from "./modules/panda-ai/pdf-takeoff/routes.ts";
+import preconAssistRoutes from "./modules/panda-ai/precon-assist/routes.ts";
 import importSessionRoutes from "./modules/import-sessions/routes.ts";
 import orgProfileRoutes from "./modules/org-profile/routes.ts";
 import dataCommitmentRoutes from "./modules/data-commitment/routes.ts";
 import proposalRoutes from "./modules/proposals/routes.ts";
 import publicProposalRoutes from "./modules/proposals/public-routes.ts";
+import proposalPackRoutes from "./modules/proposals/pack-routes.ts";
 import fileSharesRoutes from "./modules/file-shares/routes.ts";
 import publicFileShareRoutes from "./modules/file-shares/public-routes.ts";
 import taskRoutes from "./modules/tasks/routes.ts";
@@ -80,6 +87,8 @@ import materialsLedgerRoutes from "./modules/materials-ledger/routes.ts";
 import suppliersRoutes from "./modules/suppliers/routes.ts";
 import lookAheadRoutes from "./modules/look-aheads/routes.ts";
 import transactionRoutes from "./modules/transactions/routes.ts";
+import otaRoutes from "./modules/ota/routes.ts";
+import invitationRoutes from "./modules/invitations/routes.ts";
 import { besmmRag } from "./lib/besmm-rag.ts";
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -154,6 +163,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(permissionsRoutes);
   await app.register(leadRoutes);
+  await app.register(rateLibraryRoutes);
+  await app.register(complianceDocsRoutes);
+  await app.register(proposalTemplateRoutes);
   await app.register(userRoutes);
   await app.register(projectRoutes);
   await app.register(updateRoutes);
@@ -162,6 +174,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(inspectionRoutes);
   await app.register(financeRoutes);
   await app.register(riskRoutes);
+  await app.register(methodStatementRoutes);
   await app.register(notificationRoutes);
   await app.register(searchRoutes);
   await app.register(fileRoutes);
@@ -183,6 +196,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(publicRfiRoutes);
   await app.register(bimRoutes);
   await app.register(approvalRoutes);
+  await app.register(materialApprovalRoutes);
   await app.register(selectionRoutes);
   await app.register(changeRequestRoutes);
   await app.register(permitRoutes);
@@ -202,11 +216,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(programmeImportRoutes);
   await app.register(dwgTakeoffRoutes);
   await app.register(pdfTakeoffRoutes);
+  await app.register(preconAssistRoutes);
   await app.register(importSessionRoutes);
   await app.register(orgProfileRoutes);
   await app.register(dataCommitmentRoutes);
   await app.register(proposalRoutes);
   await app.register(publicProposalRoutes);
+  await app.register(proposalPackRoutes);
   await app.register(fileSharesRoutes);
   await app.register(publicFileShareRoutes);
   await app.register(taskRoutes);
@@ -214,6 +230,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(suppliersRoutes);
   await app.register(lookAheadRoutes);
   await app.register(transactionRoutes);
+  await app.register(otaRoutes);
+  await app.register(invitationRoutes);
 
   return app;
 }

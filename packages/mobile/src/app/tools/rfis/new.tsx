@@ -4,6 +4,8 @@ import { View } from "react-native";
 import { RFI_PRIORITIES, type RfiPriority } from "@/api/rfis";
 import { Button, Field, OptionRow, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
+import { htmlToText } from "@/lib/html";
 import { useCreateLocalRfi } from "@/hooks/use-local-rfis";
 import { useSyncState } from "@/lib/sync-provider";
 
@@ -12,12 +14,13 @@ export default function NewRfi() {
   const { isOnline } = useSyncState();
 
   const [subject, setSubject] = useState("");
-  const [question, setQuestion] = useState("");
+  const [questionHtml, setQuestionHtml] = useState("");
   const [priority, setPriority] = useState<RfiPriority>("Normal");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = subject.trim().length > 0 && question.trim().length > 0 && !saving;
+  const questionText = htmlToText(questionHtml).trim();
+  const canSubmit = subject.trim().length > 0 && questionText.length > 0 && !saving;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -28,7 +31,8 @@ export default function NewRfi() {
       // so this succeeds with no signal.
       await createRfi({
         subject: subject.trim(),
-        question: question.trim(),
+        question: questionText,
+        questionHtml: questionHtml || null,
         priority,
       });
       router.back();
@@ -72,14 +76,12 @@ export default function NewRfi() {
           placeholder="What do you need answered?"
           autoFocus
         />
-        <Field
-          label="Question"
-          value={question}
-          onChangeText={setQuestion}
-          placeholder="Describe the query"
-          multiline
-          className="min-h-32"
-        />
+          <Text className="text-[13px] text-slate-600">Question</Text>
+          <RichTextEditor
+            value={questionHtml}
+            onChange={setQuestionHtml}
+            placeholder="Describe the query"
+          />
         <OptionRow
           label="Priority"
           options={RFI_PRIORITIES}

@@ -6,7 +6,12 @@ import { sendFirstProjectEmail } from "../lifecycle/index.ts";
 import { projectsRepository } from "./repository.ts";
 import { projectsService } from "./service.ts";
 import { PROJECT_TEMPLATES, PROJECT_TEMPLATE_IDS, toTemplateSummary } from "./templates.ts";
-import type { CreateProjectInput, UpdateProjectBudgetInput } from "./types.ts";
+import {
+  AI_UPDATE_CADENCES,
+  type CreateProjectInput,
+  type ProjectSettings,
+  type UpdateProjectBudgetInput,
+} from "./types.ts";
 
 const listTemplatesResponse = {
   200: {
@@ -45,12 +50,19 @@ const updateCurrencyBody = {
   },
 } as const;
 
+const settingsResponse = {
+  type: "object",
+  properties: {
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
+  },
+} as const;
+
 const updateSettingsBody = {
   type: "object",
-  required: ["aiUpdatesEnabled"],
+  required: ["aiUpdateCadence"],
   additionalProperties: false,
   properties: {
-    aiUpdatesEnabled: { type: "boolean" },
+    aiUpdateCadence: { type: "string", enum: [...AI_UPDATE_CADENCES] },
   },
 } as const;
 
@@ -229,20 +241,26 @@ const projectRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/settings",
-    { schema: { params: projectIdParams } },
+    { schema: { params: projectIdParams, response: { 200: settingsResponse } } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "view");
-      return { aiUpdatesEnabled: project.ai_updates_enabled };
+      return { aiUpdateCadence: project.ai_update_cadence };
     },
   );
 
-  fastify.put<{ Params: { id: string }; Body: { aiUpdatesEnabled: boolean } }>(
+  fastify.put<{ Params: { id: string }; Body: ProjectSettings }>(
     "/projects/:id/settings",
-    { schema: { params: projectIdParams, body: updateSettingsBody } },
+    {
+      schema: {
+        params: projectIdParams,
+        body: updateSettingsBody,
+        response: { 200: settingsResponse },
+      },
+    },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "project", "manage");
-      await service.updateSettings(project.id, { aiUpdatesEnabled: request.body.aiUpdatesEnabled });
-      return { aiUpdatesEnabled: request.body.aiUpdatesEnabled };
+      await service.updateSettings(project.id, request.body);
+      return { aiUpdateCadence: request.body.aiUpdateCadence };
     },
   );
 

@@ -3,7 +3,7 @@ import { projectKeys, projectTemplateKeys } from "./query-keys";
 import { projectsApi } from "@/api/projects";
 import type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput } from "@/api/projects";
 
-export type { ProjectTemplateSummary, CreateProjectInput, UpdateProjectBudgetInput };
+export type { ProjectTemplateSummary, CreateProjectInput, ProjectSettings, UpdateProjectBudgetInput };
 
 export function useProjects() {
   return useQuery({

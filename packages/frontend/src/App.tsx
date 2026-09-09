@@ -67,6 +67,9 @@ const SalesProposals = lazy(() => import("@/pages/sales/proposals"));
 const SalesPreconSession = lazy(() => import("@/pages/sales/precon-session"));
 const SalesProposalWorkspace = lazy(() => import("@/pages/sales/proposal-workspace"));
 const SalesSettings = lazy(() => import("@/pages/sales/settings"));
+const SalesRateLibrary = lazy(() => import("@/pages/sales/settings/rate-library"));
+const SalesComplianceDocs = lazy(() => import("@/pages/sales/settings/compliance-docs"));
+const SalesProposalTemplates = lazy(() => import("@/pages/sales/settings/templates"));
 const ProjectLayout = lazy(() => import("@/layouts/project-layout"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const SettingsPage = lazy(() => import("@/pages/dashboard/settings"));
@@ -103,6 +106,7 @@ const ProjectContractStages = lazy(
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
+const ProjectMaterialApprovals = lazy(() => import("@/pages/project/material-approvals"));
 const ProjectEquipmentRequests = lazy(() => import("@/pages/project/equipment-requests"));
 const ProjectSuppliers = lazy(() => import("@/pages/project/suppliers"));
 const ProjectLookAheads = lazy(() => import("@/pages/project/look-aheads"));
@@ -216,6 +220,9 @@ export const router = createBrowserRouter([
         ),
       },
       { path: "settings", element: <SalesSettings /> },
+      { path: "settings/rate-library", element: <SalesRateLibrary /> },
+      { path: "settings/compliance-docs", element: <SalesComplianceDocs /> },
+      { path: "settings/templates", element: sf("sales.proposals", <SalesProposalTemplates />) },
     ],
   },
   {
@@ -347,6 +354,7 @@ export const router = createBrowserRouter([
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
+      { path: "material-approvals", element: pfr("commercial.materialsEquipment", "materials", <ProjectMaterialApprovals />) },
       { path: "materials/orders", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "materials/requests", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "equipment-requests", element: pf("commercial.materialsEquipment", <ProjectEquipmentRequests />) },

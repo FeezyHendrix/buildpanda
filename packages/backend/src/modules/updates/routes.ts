@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertCanModifyProject } from "../../lib/authorization.ts";
 import { aiDraftService } from "./ai-draft.ts";
+import { dailyDigestService, isoDate } from "./daily-digest.ts";
 import { updatesRepository } from "./repository.ts";
 import {
   updatesService,
@@ -95,9 +96,18 @@ const editUpdateBody = {
   },
 } as const;
 
+const dailyDigestQuery = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+  },
+} as const;
+
 const updateRoutes: FastifyPluginAsync = async (fastify) => {
   const service = updatesService(updatesRepository(fastify.db));
   const aiDraft = aiDraftService(fastify.db);
+  const dailyDigest = dailyDigestService(fastify.db);
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/updates",
@@ -132,6 +142,21 @@ const updateRoutes: FastifyPluginAsync = async (fastify) => {
         requestedBy: { id: user.id, name: user.name },
       });
       return reply.status(result.created ? 201 : 200).send(result.update);
+    },
+  );
+
+  fastify.post<{ Params: { id: string }; Querystring: { date?: string } }>(
+    "/projects/:id/updates/daily-digest",
+    { schema: { params: projectIdParams, querystring: dailyDigestQuery } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(request.params.id, "updates", "post");
+      const user = request.requireAuth();
+      const outcome = await dailyDigest.generateDailyDigest({
+        projectId: project.id,
+        digestDate: request.query.date ?? isoDate(new Date()),
+        requestedBy: { id: user.id, name: user.name },
+      });
+      return reply.status(outcome.status === "created" ? 201 : 200).send(outcome.update);
     },
   );
 

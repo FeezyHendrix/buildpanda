@@ -22,6 +22,7 @@ import type {
   ProjectPhase,
   ProjectPhaseRow,
   ProjectRow,
+  ProjectSettings,
   UpdateProjectBudgetInput,
 } from "./types.ts";
 
@@ -337,8 +338,8 @@ export function projectsService(repository: ProjectsRepository) {
       return this.getById(id);
     },
 
-    async updateSettings(id: string, settings: { aiUpdatesEnabled: boolean }): Promise<void> {
-      await repository.update(id, { ai_updates_enabled: settings.aiUpdatesEnabled });
+    async updateSettings(id: string, settings: ProjectSettings): Promise<void> {
+      await repository.update(id, { ai_update_cadence: settings.aiUpdateCadence });
     },
 
     async updateCurrencyForUser(

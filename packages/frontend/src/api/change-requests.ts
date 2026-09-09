@@ -10,6 +10,7 @@ export interface ChangeRequestInput {
   title: string;
   description?: string | null;
   reason?: string | null;
+  reasonHtml?: string | null;
   status?: ChangeStatus;
   costImpact?: number;
   timeImpactDays?: number;

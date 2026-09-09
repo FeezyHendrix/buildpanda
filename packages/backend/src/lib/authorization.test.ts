@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  assertCanAccessProject,
   assertCanGrant,
+  assertCanModifyProject,
   assertProjectPermission,
   canProjectPermission,
   grantableCatalog,
@@ -133,6 +135,46 @@ test("project owner bypasses all resource checks", () => {
   const ctx = ctxWithSectionMatrix("owner_1", {});
   assert.equal(allows(ctx, "finances", "manage"), true);
   assert.equal(allows(ctx, "teamMembers", "manage"), true);
+});
+
+test("employee org member can read every org project without write access", () => {
+  const ctx: EnrichedAccessContext = {
+    userId: "employee_1",
+    orgRoles: new Map([["org_1", "employee"]]),
+    orgPermissions: new Map([[
+      "org_1",
+      resolvePermissionMap("employee", []),
+    ]]),
+    projectRoles: new Map(),
+    projectSectionPermissions: new Map(),
+  };
+
+  assert.doesNotThrow(() => assertCanAccessProject(PROJECT, ctx));
+  assert.throws(() => assertCanModifyProject(PROJECT, ctx), ForbiddenError);
+  assert.equal(allows(ctx, "project", "view"), true);
+  assert.equal(allows(ctx, "project", "update"), false);
+  assert.equal(allows(ctx, "participants", "view"), true);
+  assert.equal(allows(ctx, "participants", "manage"), false);
+  assert.equal(allows(ctx, "materials", "request"), true);
+});
+
+test("client participant can view daily logs but cannot create entries", () => {
+  const ctx = ctxWithParticipantRole("client");
+  assert.equal(allows(ctx, "dailyLog", "view"), true);
+  assert.equal(allows(ctx, "dailyLog", "report"), true);
+  assert.equal(allows(ctx, "dailyLog", "create"), false);
+});
+
+test("non-member still cannot read an organization project", () => {
+  const ctx: EnrichedAccessContext = {
+    userId: "outsider_1",
+    orgRoles: new Map(),
+    orgPermissions: new Map(),
+    projectRoles: new Map(),
+    projectSectionPermissions: new Map(),
+  };
+
+  assert.throws(() => assertCanAccessProject(PROJECT, ctx), ForbiddenError);
 });
 
 test("participant role default grants its actions with no matrix", () => {

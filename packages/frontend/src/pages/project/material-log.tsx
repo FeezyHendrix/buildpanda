@@ -4,11 +4,13 @@ import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
 import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialog";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
+  useApproveMaterialEntry,
   useMaterialStock,
   useMaterialLedger,
   useMaterialCatalog,
@@ -18,14 +20,17 @@ import {
   useEmailMaterialReport,
   useUpdateReorderPolicy,
 } from "@/hooks/use-materials-ledger";
+import { useStages } from "@/hooks/use-stages";
 import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { LedgerRow } from "./material-log/ledger-row";
+import { MetricCard } from "./materials/metric-card";
+import { StackIcon } from "./material-log/icons";
+import { LedgerList } from "./material-log/ledger-list";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
 import { StockCard } from "./material-log/stock-card";
-
+import { sortStockByUrgency } from "./material-log/shared";
 
 export default function ProjectMaterialLog() {
   const { project, access } = useProjectContext();
@@ -33,6 +38,8 @@ export default function ProjectMaterialLog() {
   const { data: stock = [], isLoading: stockLoading } = useMaterialStock(project.id);
   const { data: entries = [], isLoading: ledgerLoading } = useMaterialLedger(project.id);
   const { data: catalog = [] } = useMaterialCatalog(project.id);
+  const { data: stages = [] } = useStages(project.id);
+  const approveEntry = useApproveMaterialEntry(project.id);
   const { data: orders = [] } = useMaterialOrders(project.id);
   const logEntry = useLogMaterialEntry(project.id);
   const voidEntry = useVoidMaterialEntry(project.id);
@@ -56,6 +63,14 @@ export default function ProjectMaterialLog() {
     return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [catalog, orders]);
 
+  const sortedStock = useMemo(() => sortStockByUrgency(stock), [stock]);
+  const negativeCount = stock.filter((s) => s.onHandQty < 0).length;
+  const lowCount = stock.filter((s) => s.lowStock && s.onHandQty >= 0).length;
+  const voidedCount = entries.filter((e) => e.status === "Voided").length;
+  const pendingCount = entries.filter(
+    (e) => e.approvalStatus === "Pending" && e.status !== "Voided",
+  ).length;
+
   if (stockLoading || ledgerLoading) {
     return (
       <div className="flex flex-1 items-center justify-center py-32">
@@ -65,24 +80,23 @@ export default function ProjectMaterialLog() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-8 lg:max-w-none">
+    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <Breadcrumbs
         items={[
           { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Material Log" },
+          { label: "Material log" },
         ]}
         className="mb-4"
       />
       <PageHeader
-        title="Material Log"
-        description="An audit trail of materials received and used on site, with live stock."
+        title="Material log"
+        description="An append-only record of everything received and used on site, with live stock levels behind it."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
+              variant="secondary"
+              size="md"
               loading={downloadReport.isPending}
               onClick={() =>
                 downloadReport.mutate(undefined, {
@@ -94,9 +108,8 @@ export default function ProjectMaterialLog() {
             </Button>
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 px-3 text-xs text-gray-600 hover:text-gray-900"
+              variant="secondary"
+              size="md"
               loading={emailReport.isPending}
               onClick={() =>
                 emailReport.mutate(undefined, {
@@ -117,63 +130,103 @@ export default function ProjectMaterialLog() {
         }
       />
 
-
-      <section className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Stock by material</h2>
-        {stock.length === 0 ? (
-          <Card padding="md" className="text-sm text-gray-500">No materials logged yet.</Card>
-        ) : (
-          <div className="-mx-4 overflow-x-auto pb-2 sm:-mx-10">
-            <div className="flex gap-3 px-4 sm:px-10">
-              {stock.map((s) => (
-                <div
-                  key={`${s.materialId}-${s.locationKey}`}
-                  className="w-[280px] shrink-0"
-                >
-                  <StockCard
-                    stock={s}
-                    canManage={canManage}
-                    onEditPolicy={() => setPolicyMaterialId(s.materialId)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Materials tracked"
+          value={stock.length.toString()}
+          helper="Carrying a stock balance"
+        />
+        <MetricCard
+          label="Needs attention"
+            value={(negativeCount + lowCount + pendingCount).toString()}
+            helper={
+              pendingCount > 0
+                ? `${pendingCount} awaiting approval`
+                : negativeCount > 0
+                  ? `${negativeCount} at negative stock`
+                  : lowCount > 0
+                    ? `${lowCount} below reorder level`
+                    : "All levels healthy"
+            }
+        />
+        <MetricCard
+          label="Ledger entries"
+          value={entries.length.toString()}
+          helper={voidedCount > 0 ? `${voidedCount} voided` : "None voided"}
+        />
       </section>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Activity</h2>
-        {entries.length === 0 ? (
-          <Card padding="md" className="text-sm text-gray-500">No entries yet.</Card>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-black-500">
+            Stock by material
+          </h2>
+          <p className="mt-0.5 text-[13px] text-gray-500">
+            Received minus used. Anything negative or below its reorder level is
+            flagged and listed first.
+          </p>
+        </div>
+        {sortedStock.length === 0 ? (
+          <Card padding="none">
+            <EmptyState
+              icon={<StackIcon className="size-8 text-gray-300" />}
+              title="No stock yet"
+              description="Log the first delivery and this project's running stock levels will build up here."
+              action={
+                canManage ? (
+                  <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
+                    <PlusIcon className="size-4" />
+                    Log material
+                  </Button>
+                ) : undefined
+              }
+              className="px-6 py-12"
+            />
+          </Card>
         ) : (
-          <div className="flex flex-col gap-2">
-            {entries.map((e) => (
-              <LedgerRow
-                key={e.id}
-                entry={e}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {sortedStock.map((s) => (
+              <StockCard
+                key={`${s.materialId}-${s.locationKey}`}
+                stock={s}
                 canManage={canManage}
-                onVoid={() => setVoiding(e)}
+                onEditPolicy={() => setPolicyMaterialId(s.materialId)}
               />
             ))}
           </div>
         )}
       </section>
 
+      <section className="mt-8">
+        <LedgerList
+          entries={entries}
+          canManage={canManage}
+          onVoid={setVoiding}
+          onApprove={(entry) =>
+            approveEntry.mutate(entry.id, {
+              onSuccess: () => toast("Approved — it now counts toward stock", "success"),
+              onError: () => toast("Could not approve that entry"),
+            })
+          }
+          approvingId={approveEntry.isPending ? approveEntry.variables : null}
+        />
+      </section>
+
       <LogMaterialDrawer
         open={logOpen}
         onOpenChange={setLogOpen}
-        materials={materialOptions}
-        submitting={logEntry.isPending}
+          materials={materialOptions}
+          stages={stages}
+          submitting={logEntry.isPending}
         onSubmit={(input) =>
           logEntry.mutate(input, {
-            onSuccess: (res) => {
+            onSuccess: () => {
               setLogOpen(false);
-              if (res.negativeStock) {
-                toast(`Logged. Heads up: ${input.materialName} is now at ${res.onHandQty}.`, "error");
-              } else {
-                toast("Material logged", "success");
-              }
+              // Every fresh log is born pending under the gate, so it does not
+              // move stock yet — and the negative-stock heads-up cannot fire on
+              // a movement that was not applied. That warning now belongs to
+              // approval, where the delta is actually applied.
+              toast("Logged — awaiting approval before it counts toward stock", "success");
             },
             onError: () => toast("Could not log material"),
           })

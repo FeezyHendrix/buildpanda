@@ -2,6 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Rfi, UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "./client";
+import { enqueueUpdate } from "./enqueue-update";
 import { outbox, rfis, type RfiRow } from "./schema";
 
 // Hermes has no global crypto.randomUUID; expo-crypto is the RN-safe source.
@@ -15,6 +16,7 @@ export function toRfi(row: RfiRow): Rfi & { isPendingSync: boolean } {
     number: row.number,
     subject: row.subject,
     question: row.question,
+    questionHtml: row.questionHtml,
     status: row.status as Rfi["status"],
     priority: row.priority as Rfi["priority"],
     ballInCourtName: row.ballInCourtName,
@@ -48,6 +50,7 @@ export const rfisRepository = {
         projectId,
         subject: input.subject,
         question: input.question,
+        questionHtml: input.questionHtml ?? null,
         priority: input.priority ?? "Normal",
         status: "Draft",
         dueDate: input.dueDate ?? null,
@@ -73,6 +76,37 @@ export const rfisRepository = {
   },
 
   /** Replaces the local placeholder with the row the server assigned. */
+  async markSynced(db: Db, id: string): Promise<void> {
+    await db.update(rfis).set({ isPendingSync: false }).where(eq(rfis.id, id));
+  },
+
+  /** Applies an edit locally and queues the push in one transaction. */
+  async updateLocal(
+    db: Db,
+    projectId: string,
+    id: string,
+    patch: Partial<UpsertRfiInput>,
+  ): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(rfis)
+        .set({
+          ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
+          ...(patch.question !== undefined ? { question: patch.question } : {}),
+          ...(patch.questionHtml !== undefined ? { questionHtml: patch.questionHtml } : {}),
+          ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+          ...(patch.dueDate !== undefined ? { dueDate: patch.dueDate } : {}),
+          ...(patch.costImpact !== undefined ? { costImpact: patch.costImpact } : {}),
+          ...(patch.scheduleImpact !== undefined ? { scheduleImpact: patch.scheduleImpact } : {}),
+          isPendingSync: true,
+          updatedAt: Date.now(),
+        })
+        .where(eq(rfis.id, id));
+
+      await enqueueUpdate(tx as never, "rfis", id, projectId, randomUUID());
+    });
+  },
+
   async reconcileCreate(
     db: Db,
     projectId: string,
@@ -87,6 +121,7 @@ export const rfisRepository = {
         number: server.number,
         subject: server.subject,
         question: server.question,
+        questionHtml: server.questionHtml ?? null,
         status: server.status,
         priority: server.priority,
         ballInCourtName: server.ballInCourtName,
@@ -115,6 +150,7 @@ export const rfisRepository = {
             number: row.number,
             subject: row.subject,
             question: row.question,
+            questionHtml: row.questionHtml,
             status: row.status,
             priority: row.priority,
             ballInCourtName: row.ballInCourtName,
@@ -132,6 +168,7 @@ export const rfisRepository = {
               number: row.number,
               subject: row.subject,
               question: row.question,
+              questionHtml: row.questionHtml,
               status: row.status,
               priority: row.priority,
               ballInCourtName: row.ballInCourtName,

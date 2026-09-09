@@ -6,6 +6,7 @@ const OWNER = resolvePermissionMap("owner", []);
 const ADMIN = resolvePermissionMap("admin", []);
 const MEMBER = resolvePermissionMap("member", []);
 const VIEWER = resolvePermissionMap("viewer", []);
+const EMPLOYEE = resolvePermissionMap("employee", []);
 
 const MANAGE_RESOURCES = [
   "finances",
@@ -45,6 +46,17 @@ test("member keeps the specific finances/schedule/dailyLog write actions the rou
   assert.equal(mapAllows(MEMBER, "materials", "request"), true);
   assert.equal(mapAllows(MEMBER, "documents", "upload"), true);
   assert.equal(mapAllows(MEMBER, "updates", "post"), true);
+});
+
+test("employee can post field updates and daily-log entries but cannot manage project data", () => {
+  assert.equal(mapAllows(EMPLOYEE, "project", "view"), true);
+  assert.equal(mapAllows(EMPLOYEE, "updates", "post"), true);
+  assert.equal(mapAllows(EMPLOYEE, "dailyLog", "create"), true);
+  assert.equal(mapAllows(EMPLOYEE, "participants", "view"), true);
+  assert.equal(mapAllows(EMPLOYEE, "materials", "request"), true);
+  assert.equal(mapAllows(EMPLOYEE, "documents", "upload"), false);
+  assert.equal(mapAllows(EMPLOYEE, "project", "update"), false);
+  assert.equal(mapAllows(EMPLOYEE, "participants", "manage"), false);
 });
 
 test("viewer can never manage any resource", () => {

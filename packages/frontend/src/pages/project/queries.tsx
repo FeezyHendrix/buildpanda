@@ -89,6 +89,7 @@ export default function ProjectQueries() {
         projectId: project.id,
         subject: values.subject,
         question: values.question,
+        questionHtml: values.questionHtml,
         dueDate: values.dueDate,
         assigneeId: values.assigneeId,
       },
@@ -260,6 +261,7 @@ export default function ProjectQueries() {
       <UpsertQueryDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        projectId={project.id}
         mode="create"
         assigneeOptions={canAssignQueries ? assigneeOptions : []}
         onSubmit={handleCreate}
@@ -270,6 +272,7 @@ export default function ProjectQueries() {
       <UpsertQueryDialog
         open={editQuery !== null}
         onOpenChange={(o) => !o && setEditQuery(null)}
+        projectId={project.id}
         mode="edit"
         assigneeOptions={canAssignQueries ? assigneeOptions : []}
         initial={
@@ -277,6 +280,7 @@ export default function ProjectQueries() {
             ? {
                 subject: editQuery.subject,
                 question: editQuery.question,
+                questionHtml: editQuery.questionHtml,
                 status: editQuery.status,
                 dueDate: editQuery.dueDate,
                 assigneeId: editQuery.assigneeId,

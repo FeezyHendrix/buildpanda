@@ -1,6 +1,12 @@
 import type { Currency, Tone } from "../projects/types.ts";
 
 export type MilestoneStatus = "Completed" | "InProgress" | "Pending";
+
+// Where a stage payment sits in the claim chain: pending until its stage is
+// reached, claimable, claimed by a payment request, certified once the invoice
+// is recorded, paid once the payment is recorded.
+export const MILESTONE_CLAIM_STATES = ["pending", "claimable", "claimed", "certified", "paid"] as const;
+export type MilestoneClaimState = (typeof MILESTONE_CLAIM_STATES)[number];
 export type SignOffStatus = "Verified" | "Scheduled" | "Pending";
 export type LedgerType = "Release" | "Deposit" | "Hold";
 
@@ -61,6 +67,7 @@ export interface MilestonePayment {
   amount: number;
   proof: { fileName: string; verified: boolean } | null;
   inspectorSignOff: SignOffStatus;
+  claimState: MilestoneClaimState;
 }
 
 export interface PaymentLedgerEntry {
@@ -141,6 +148,7 @@ export interface MilestonePaymentRow {
   proof_file_name: string | null;
   proof_verified: boolean;
   inspector_sign_off: SignOffStatus;
+  claim_state: MilestoneClaimState;
   sort_order: number;
 }
 

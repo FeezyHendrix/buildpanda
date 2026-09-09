@@ -23,7 +23,7 @@ type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, 
  */
 export async function request<T>(path: string, init?: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(init?.body ? { "Content-Type": "application/json" } : {}),
     ...init?.headers,
   };
   if (Platform.OS !== "web") headers.cookie = authClient.getCookie();

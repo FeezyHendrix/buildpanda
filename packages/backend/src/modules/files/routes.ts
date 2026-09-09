@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import multipart from "@fastify/multipart";
 import { config } from "../../config/index.ts";
+import { canProjectPermission } from "../../lib/authorization.ts";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../../lib/errors.ts";
 import { filesRepository } from "./repository.ts";
 import { filesService } from "./service.ts";
@@ -11,6 +12,13 @@ const fileIdParams = {
   additionalProperties: false,
   properties: { id: { type: "string", minLength: 1 } },
 } as const;
+
+const STAGING_PERMISSIONS = [
+  ["documents", "upload"],
+  ["updates", "post"],
+  ["dailyLog", "create"],
+  ["materials", "request"],
+] as const;
 
 const fileRoutes: FastifyPluginAsync = async (fastify) => {
   await fastify.register(multipart, {
@@ -32,9 +40,24 @@ const fileRoutes: FastifyPluginAsync = async (fastify) => {
       projectField && !Array.isArray(projectField) && projectField.type === "field"
         ? String(projectField.value) || null
         : null;
-    // Associating a file with a project both records ownership for later
-    // access checks and asserts the uploader may write to that project.
-    if (projectId) await request.requireProjectWrite(projectId);
+    if (projectId) {
+      const project = await request.requireProjectAccess(projectId);
+      const canStage = STAGING_PERMISSIONS.some(([resource, action]) =>
+        canProjectPermission(
+          { id: project.id, ownerId: project.owner_id, organizationId: project.organization_id },
+          {
+            userId: user.id,
+            orgRoles: request.orgRoles,
+            projectRoles: request.projectRoles,
+            orgPermissions: request.orgPermissions,
+            projectSectionPermissions: request.projectSectionPermissions,
+          },
+          resource,
+          action,
+        ),
+      );
+      if (!canStage) throw new ForbiddenError("Your role does not allow you to upload files to this project");
+    }
 
     const uploaded = await service.upload(user.id, {
       fileName: part.filename,

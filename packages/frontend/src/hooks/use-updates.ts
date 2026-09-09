@@ -126,6 +126,23 @@ export function useGenerateAiDraft() {
   });
 }
 
+interface GenerateDailyDigestVariables {
+  projectId: string;
+  date?: string;
+}
+
+export function useGenerateDailyDigest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ projectId, date }: GenerateDailyDigestVariables) =>
+      updatesApi.generateDailyDigest(projectId, date),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: updateKeys.list(projectId) });
+    },
+  });
+}
+
 interface PublishUpdateVariables {
   projectId: string;
   updateId: string;
