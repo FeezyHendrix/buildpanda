@@ -1,6 +1,6 @@
 import { blockNameOf, centroid, extentOf, handleOf, type DwgDoc, type DwgEntity } from "./dwg.ts";
 import { elementOf, polySize } from "./taxonomy.ts";
-import { isBulgedSwing, isClosedOutline, isDoorSwing, isFitting, isSquareColumn, isWindowFrame, shapeSides } from "./shapes.ts";
+import { isClosedOutline, isDoorMark, isDoorSwing, isFitting, isSquareColumn, isWindowFrame, shapeSides } from "./shapes.ts";
 import type { LayerElement, LayerMap, MeasuredItem, MeasuredShape, RegisterSheet, UnitsDecision } from "./types.ts";
 
 // Every count is made by at least two methods where the drawing allows it.
@@ -138,53 +138,54 @@ export function doorWidthMm(ctx: SheetContext): number | null {
 }
 
 export function countDoors(ctx: SheetContext): MeasuredItem | null {
-  // a leaf is 600–1500 mm; a double or sliding door outline runs to 2400 mm
-  const leaves = outlines(ctx, "doors", [600, 2400], 300);
-  const arcs = entitiesOf(ctx, "doors").filter((e) => {
-    if (e.entity === "ARC" && typeof e.radius === "number") {
-      const r = e.radius * ctx.units.scaleToMm;
-      return r >= 500 && r <= 1500;
-    }
-    // an architect often draws the swing as a polyline with bulged vertices
-    return isBulgedSwing(e, ctx.units.scaleToMm);
-  });
+  // One door is drawn as several things: a swing, a leaf, a frame, sometimes a
+  // block, and different architects use different ones. Everything door-sized
+  // on a door layer is grouped within a door's width, and each group is a door.
+  const marks = entitiesOf(ctx, "doors").filter((e) => isDoorMark(e, ctx.units.scaleToMm));
   const blocks = insertsNamed(ctx, /door|dr-|^d\d/i);
-  // A door is drawn as a swing, a leaf, or both. Every swing is a doorway;
-  // a leaf with no swing beside it (a sliding or cupboard door) is one too.
-  const unpaired = leavesWithoutSwing(leaves, arcs, ctx.units.scaleToMm);
-  const doorways = [...arcs, ...unpaired];
-  const label =
-    arcs.length && unpaired.length
-      ? `doors (${arcs.length} swings and ${unpaired.length} leaves with no swing beside them)`
-      : arcs.length
-        ? "door swings"
-        : "door leaf outlines";
-  const methods: Method[] = [
-    { label, count: doorways.length, evidence: handles(doorways), points: centroids(doorways) },
-    // the leaves corroborate the swings only when every leaf is paired: an
-    // unpaired leaf is a door of its own, not a disagreement
-    ...(leaves.length && !unpaired.length && arcs.length
-      ? [{ label: "door leaf outlines", count: leaves.length, evidence: handles(leaves), points: centroids(leaves) }]
-      : []),
-    { label: "door blocks", count: blocks.length, evidence: handles(blocks), points: centroids(blocks) },
-  ];
-  // no door layer: the swings on unmapped layers are the doors
-  if (methods.every((m) => m.count === 0)) {
+  const pool = marks.length ? marks : blocks;
+  if (!pool.length) {
+    // no door layer: the swings on unmapped layers are the doors
     const swings = entitiesOf(ctx, "auto").filter((e) => isDoorSwing(e, ctx.units.scaleToMm));
-    methods.push({ label: "swing arcs on unmapped layers", count: swings.length, evidence: handles(swings), points: centroids(swings) });
+    return combine(
+      "doors",
+      "Doors, as drawn (see door schedule for sizes)",
+      "nr",
+      [{ label: "swing arcs on unmapped layers", count: swings.length, evidence: handles(swings), points: centroids(swings) }],
+      ctx.sheet,
+    );
   }
+  const width = doorWidthMm(ctx) ?? 900;
+  const groups = groupByProximity(pool, width / ctx.units.scaleToMm);
+  // How well each door is evidenced: a swing is unmistakable, a leaf outline
+  // nearly so, a bare door-width line is the weakest of the three.
+  const bySwing = groups.filter((g) => g.some((e) => isDoorSwing(e, ctx.units.scaleToMm)));
+  const byLeaf = groups.filter((g) => !bySwing.includes(g) && g.some((e) => e.entity !== "LINE"));
+  const byLine = groups.length - bySwing.length - byLeaf.length;
+  const swings = bySwing.length;
+  const parts = [`${swings} with a swing`, `${byLeaf.length} with a leaf`, `${byLine} from a door-width line alone`].filter(
+    (p) => !p.startsWith("0 "),
+  );
+  const methods: Method[] = [
+    {
+      label: `door groups (${parts.join(", ")})`,
+      count: groups.length,
+      evidence: handles(pool),
+      points: groups.map(groupCentre).filter((c): c is number[] => c !== null),
+    },
+    // one swing per group is independent corroboration; a drawing that mixes
+    // swings with leaf-only doors has nothing to corroborate the total with
+    ...(swings > 0 && swings === groups.length ? [{ label: "door swings", count: swings, evidence: [], points: [] }] : []),
+    { label: "door blocks", count: marks.length ? blocks.length : 0, evidence: handles(blocks), points: centroids(blocks) },
+  ];
   return combine("doors", "Doors, as drawn (see door schedule for sizes)", "nr", methods, ctx.sheet);
 }
 
-/** Leaves that no swing sits within a door's width of: a door in their own right. */
-function leavesWithoutSwing(leaves: DwgEntity[], swings: DwgEntity[], scaleToMm: number): DwgEntity[] {
-  const reach = 1200 / scaleToMm;
-  const swingPoints = swings.map(centroid).filter((c): c is [number, number] => c !== null);
-  return leaves.filter((leaf) => {
-    const c = centroid(leaf);
-    if (!c) return true;
-    return !swingPoints.some((s) => Math.hypot(s[0] - c[0], s[1] - c[1]) <= reach);
-  });
+/** The middle of a group of entities, in drawing units. */
+function groupCentre(group: DwgEntity[]): number[] | null {
+  const pts = group.map(centroid).filter((c): c is [number, number] => c !== null);
+  if (!pts.length) return null;
+  return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length];
 }
 
 export function countWindowsOnPlan(ctx: SheetContext): MeasuredItem | null {

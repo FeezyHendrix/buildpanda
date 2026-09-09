@@ -71,6 +71,29 @@ export function isBulgedSwing(e: DwgEntity, scaleToMm: number): boolean {
   return s.long >= 500 && s.long <= 1600 && s.short >= 200;
 }
 
+/**
+ * Anything on a door layer that is the size of a door: a swing, a leaf drawn
+ * closed (a rectangle or a single line), a frame, or a door block. One door is
+ * usually several of these, so they are grouped before they are counted.
+ */
+export function isDoorMark(e: DwgEntity, scaleToMm: number): boolean {
+  if (e.entity === "INSERT") return true;
+  if (isBulgedSwing(e, scaleToMm)) return true;
+  if (e.entity === "ARC" && typeof e.radius === "number") {
+    const r = e.radius * scaleToMm;
+    return r >= 500 && r <= 1500;
+  }
+  if (e.entity === "LINE" && e.start && e.end) {
+    const len = Math.hypot(e.end[0]! - e.start[0]!, e.end[1]! - e.start[1]!) * scaleToMm;
+    return len >= 600 && len <= 2400;
+  }
+  if (e.entity === "LWPOLYLINE" || e.entity === "POLYLINE_2D") {
+    const s = shapeSides(e, scaleToMm);
+    return s.long >= 600 && s.long <= 2400 && s.short <= 900;
+  }
+  return false;
+}
+
 export function isDoorSwing(e: DwgEntity, scaleToMm: number): boolean {
   if (isBulgedSwing(e, scaleToMm)) return true;
   if (e.entity !== "ARC" || typeof e.radius !== "number") return false;

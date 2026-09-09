@@ -117,7 +117,9 @@ test("a count marks every entity it counted, one vertex each, where they stand",
   const xs = columns!.shapes![0]!.vertices.map((v) => v[0]!).sort((a, b) => a - b);
   assert.ok(xs[0]! < 500 && xs[3]! > 11000, `columns at ${xs.join(", ")}`);
   const doors = countDoors(ctx);
-  assert.equal(doors?.shapes?.[0]?.vertices.length, doors?.evidence?.length);
+  // a door is drawn as a swing and a leaf: one mark per door, evidence citing both
+  assert.equal(doors?.shapes?.[0]?.vertices.length, doors?.quantity, "one mark per door");
+  assert.ok((doors?.evidence?.length ?? 0) >= (doors?.quantity ?? 0), "every entity the count read from is cited");
 });
 
 test("an elevation's window note is evidence for another line and marks nothing of its own", () => {

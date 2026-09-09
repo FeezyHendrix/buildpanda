@@ -1,6 +1,6 @@
 # Take-off benchmark
 
-Generated 2026-09-08T22:50:04.360Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
+Generated 2026-09-09T12:49:18.075Z. Tolerances: counts exact, areas ±2 %, lengths ±3 %.
 
 ## Totals
 
@@ -131,7 +131,7 @@ Generated 2026-09-08T22:50:04.360Z. Tolerances: counts exact, areas ±2 %, lengt
 
 ```json
 {
- "ms": 1984,
+ "ms": 3595,
  "scaleToMm": 1,
  "scaleConfidence": 0.98,
  "walls": [
@@ -151,9 +151,9 @@ Generated 2026-09-08T22:50:04.360Z. Tolerances: counts exact, areas ±2 %, lengt
    "totalLengthM": 212.42,
    "runs": 111,
    "openings": {
-    "doors": 52,
+    "doors": 62,
     "windows": 6,
-    "areaM2": 76.55
+    "areaM2": 90.72
    },
    "height": {
     "mm": 3000,
@@ -294,10 +294,10 @@ Generated 2026-09-08T22:50:04.360Z. Tolerances: counts exact, areas ±2 %, lengt
   {
    "trade": "walls",
    "description": "Sandcrete block wall in cement mortar (1:6); 225mm thick",
-   "quantity": 1398.04,
+   "quantity": 1341.36,
    "unit": "m2",
    "confidence": "high",
-   "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 76.55 m² for 52 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-15). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 58 openings deducted (76.55 m²)",
+   "basis": "142 m of paired 225mm wall on DWG-01 × 3 m (floor-to-floor from level marks +450, +3450, +6450, +9450); less 90.72 m² for 62 doors and 6 windows ±2% scale error × 4 identical floors (+450, +3450, +6450, +9450, DWG-15). Sheet walls: 225 mm 142.02 m, 150 mm 70.4 m (212.42 m in 111 runs); 68 openings deducted (90.72 m²)",
    "sheetId": 0,
    "evidence": [
     37151,
