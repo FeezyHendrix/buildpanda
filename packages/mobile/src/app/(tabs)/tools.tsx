@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useState } from "react";
 import { router } from "expo-router";
 import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
-import { Card, Text } from "@/components/atoms";
+import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
@@ -70,7 +70,7 @@ export default function ToolsTab() {
 
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
-  const { data: updates } = useProjectUpdates(projectId);
+  const { data: updates, isPending: updatesPending } = useProjectUpdates(projectId);
   const setActive = useSetActiveOrganization();
 
   return (
@@ -118,9 +118,15 @@ export default function ToolsTab() {
             />
           )}
           ListEmptyComponent={
-            <Text tone="secondary" className="py-8 text-center text-[13px]">
-              No updates have been posted for this project yet.
-            </Text>
+            updatesPending ? (
+              <View className="py-8">
+                <Spinner size="md" />
+              </View>
+            ) : (
+              <Text tone="secondary" className="py-8 text-center text-[13px]">
+                No updates have been posted for this project yet.
+              </Text>
+            )
           }
         />
       </View>

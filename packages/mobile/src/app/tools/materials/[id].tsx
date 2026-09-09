@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Alert, Pressable, View } from "react-native";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Card, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { materialsRepository, toMaterialOrder } from "@/db/materials-repository";
@@ -90,22 +91,8 @@ export default function MaterialOrderDetail() {
       rightButtons={
         id ? (
           <View className="flex-row items-center">
-            <Pressable
-              onPress={() => router.push(`/tools/materials/edit/${id}` as never)}
-              accessibilityRole="button"
-              accessibilityLabel="Edit order"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
-            </Pressable>
-            <Pressable
-              onPress={confirmDelete}
-              accessibilityRole="button"
-              accessibilityLabel="Delete order"
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
-            >
-              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-            </Pressable>
+            <HeaderIconButton icon="create-outline" label="Edit order" onPress={() => router.push(`/tools/materials/edit/${id}` as never)} />
+            <HeaderIconButton icon="trash-outline" label="Delete order" onPress={confirmDelete} />
           </View>
         ) : null
       }

@@ -26,7 +26,7 @@ export default function ProjectUpdates() {
         </View>
       ) : updates.length === 0 ? (
         <View className="items-center py-12">
-          <Text weight="semibold" className="text-base">
+          <Text weight="semibold" className="text-center text-base">
             No updates yet
           </Text>
           <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">

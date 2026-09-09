@@ -151,9 +151,14 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
         </Text>
 
         {entries.length === 0 ? (
-          <Text tone="secondary" className="text-[13px]">
-            Nothing recorded for this day yet.
-          </Text>
+          <View className="items-center py-8">
+            <Text weight="semibold" className="text-center text-base">
+              Nothing recorded yet
+            </Text>
+            <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+              Log an activity above to start this day&apos;s report.
+            </Text>
+          </View>
         ) : (
           <Card>
             {entries.map((entry) => (
@@ -201,7 +206,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
               accessibilityRole="button"
               accessibilityLabel="Add entry"
               className={cn(
-                "min-h-12 items-center justify-center rounded-xl bg-primary-500",
+                "min-h-14 items-center justify-center rounded-xl bg-primary-500",
                 htmlToText(entryHtml).length === 0 && "opacity-50",
               )}
             >

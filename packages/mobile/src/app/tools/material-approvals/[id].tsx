@@ -178,7 +178,7 @@ function CommentComposer({
           accessibilityLabel="Send comment"
           accessibilityState={{ disabled: !canSend, busy: sending }}
           className={cn(
-            "h-12 w-12 items-center justify-center rounded-xl bg-primary-500",
+            "h-14 w-14 items-center justify-center rounded-xl bg-primary-500",
             !canSend && "opacity-50",
           )}
         >

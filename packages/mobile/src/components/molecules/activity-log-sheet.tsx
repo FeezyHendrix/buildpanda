@@ -77,7 +77,7 @@ export const ActivityLogSheet = memo(function ActivityLogSheet({
           <Text weight="bold" className="flex-1 text-lg">
             {selected ? "Log hours" : "Pick an activity"}
           </Text>
-          <Pressable onPress={() => { reset(); onClose(); }} hitSlop={8} className="h-9 w-9 items-center justify-center rounded-full active:bg-surface-alt">
+          <Pressable onPress={() => { reset(); onClose(); }} className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt">
             <Ionicons name="close" size={20} color="#717171" />
           </Pressable>
         </View>
@@ -178,7 +178,7 @@ export const ActivityLogSheet = memo(function ActivityLogSheet({
                         key={reason.code}
                         onPress={() => setReasonCode(reason.code)}
                         className={cn(
-                          "min-h-10 justify-center rounded-xl px-3",
+                          "min-h-11 justify-center rounded-xl px-3",
                           active ? "bg-primary-500" : "bg-surface-alt",
                         )}
                       >
@@ -208,7 +208,7 @@ export const ActivityLogSheet = memo(function ActivityLogSheet({
               Log activity
             </Button>
 
-            <Pressable onPress={reset} className="self-center py-2">
+            <Pressable onPress={reset} className="min-h-11 justify-center self-center px-3">
               <Text tone="brand" weight="semibold" className="text-sm">
                 Pick a different activity
               </Text>
