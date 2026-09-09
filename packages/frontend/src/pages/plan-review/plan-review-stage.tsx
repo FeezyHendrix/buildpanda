@@ -3,7 +3,7 @@ import { MARKUP_KIND } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
 import { clamp, type Sheet } from "./plan-review-data";
 import { MarkupLayer } from "./plan-review-markup";
-import { CommentPin } from "./plan-review-pin";
+import { CommentPin } from "@/components/molecules/comment-pin";
 import { SheetImage } from "./plan-review-sheet-image";
 import { BLEND_MODE, REC_STATUS, SELECTION_KIND, TOOL, TOOL_CURSORS } from "./plan-review-types";
 import { IconBtn, Kbd } from "./plan-review-ui";
