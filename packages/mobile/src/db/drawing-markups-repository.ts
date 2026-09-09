@@ -142,12 +142,20 @@ export const drawingMarkupsRepository = {
     return id;
   },
 
-  /** Replaces the local id with the server's once the push lands. */
+  /**
+   * Replaces the local id with the server's once the push lands, and moves the
+   * comments queued against it in the same transaction. Split in two, a crash
+   * between them would leave comments pointing at a markup row that no longer
+   * exists, and they would wait for a parent that never arrives.
+   */
   async reconcileCreate(db: Db, localId: string, serverId: string): Promise<void> {
-    await db
-      .update(drawingMarkups)
-      .set({ id: serverId, isPendingSync: false, updatedAt: Date.now() })
-      .where(eq(drawingMarkups.id, localId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(drawingMarkups)
+        .set({ id: serverId, isPendingSync: false, updatedAt: Date.now() })
+        .where(eq(drawingMarkups.id, localId));
+      await tx.update(drawingMarkupComments).set({ markupId: serverId }).where(eq(drawingMarkupComments.markupId, localId));
+    });
   },
 
   /** Server rows replace what is held for a page, except anything still queued. */
@@ -275,10 +283,6 @@ export const drawingMarkupsRepository = {
     discardStagedMedia(stagedMediaUri);
   },
 
-  /** A comment whose markup is still queued waits for the markup's own id. */
-  async repointComments(db: Db, localMarkupId: string, serverMarkupId: string): Promise<void> {
-    await db.update(drawingMarkupComments).set({ markupId: serverMarkupId }).where(eq(drawingMarkupComments.markupId, localMarkupId));
-  },
 };
 
 export type { DrawingMarkupCommentRow };
