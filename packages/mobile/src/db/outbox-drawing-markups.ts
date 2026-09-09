@@ -30,9 +30,8 @@ export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Prom
     geometry: JSON.parse(row.geometry) as MarkupGeometry,
     color: row.color,
   });
+  // this also moves any comment queued against the local id, in one transaction
   await drawingMarkupsRepository.reconcileCreate(db, row.id, server.id);
-  // comments queued against the local id now belong to the server's
-  await drawingMarkupsRepository.repointComments(db, row.id, server.id);
   await db.delete(outbox).where(eq(outbox.id, item.id));
   return done(true);
 }
