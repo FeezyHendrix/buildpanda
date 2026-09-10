@@ -7,6 +7,11 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
+  // Field Tools is a light-only app: there is not one dark: class in it. The
+  // web runtime assumes 'media' when nothing is declared, then throws the
+  // moment anything sets the scheme. Declaring it stops that; with no dark:
+  // classes and nothing adding the class, nothing on screen changes.
+  darkMode: "class",
   theme: {
     extend: {
       // React Native picks a face by family name, not by numeric weight, so each
