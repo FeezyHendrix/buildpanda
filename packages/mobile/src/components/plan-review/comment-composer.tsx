@@ -6,6 +6,7 @@ import type { CommentAssignee } from "@/api/participants";
 import { Spinner, Text } from "@/components/atoms";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { VoiceNote } from "./voice-note";
 import { MEDIA_KIND, type CommentDraft, type MediaKind } from "./markup-types";
 
 type CommentMode = "text" | "audio" | "video";
@@ -55,14 +56,17 @@ export function CommentComposer({
   const recorder = useVoiceRecorder();
 
   function switchMode(next: CommentMode) {
+    if (next === mode) return;
+    // leaving a mode mid-recording must not leave the mic running
+    void recorder.discard();
     setMode(next);
     setCaptured(null);
     setMediaError(null);
   }
 
-  async function stopAudio() {
-    const uri = await recorder.stop();
-    if (uri) setCaptured({ kind: MEDIA_KIND.AUDIO, uri, durationSeconds: recorder.seconds });
+  function cancel() {
+    void recorder.discard();
+    onCancel();
   }
 
   async function recordVideo() {
@@ -106,7 +110,7 @@ export function CommentComposer({
         </Text>
         <View className="flex-1" />
         <Pressable
-          onPress={onCancel}
+          onPress={cancel}
           accessibilityRole="button"
           accessibilityLabel="Cancel comment"
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
@@ -120,7 +124,7 @@ export function CommentComposer({
       <TextInput
         value={text}
         onChangeText={setText}
-        autoFocus
+        autoFocus={mode === COMMENT_MODE.TEXT}
         placeholder={mode === COMMENT_MODE.TEXT ? "What needs attention here?" : "Add a caption (optional)"}
         placeholderTextColor="#ADADAD"
         multiline
@@ -128,30 +132,28 @@ export function CommentComposer({
         style={{ fontFamily: "PlusJakartaSans_400Regular" }}
       />
 
-      {mode !== COMMENT_MODE.TEXT ? (
+      {mode === COMMENT_MODE.AUDIO ? (
+        <View className="mt-2">
+          <VoiceNote
+            recorder={recorder}
+            captured={captured?.kind === MEDIA_KIND.AUDIO ? { uri: captured.uri, durationSeconds: captured.durationSeconds } : null}
+            onCaptured={(audio) => setCaptured({ kind: MEDIA_KIND.AUDIO, ...audio })}
+            onDiscard={() => setCaptured(null)}
+          />
+        </View>
+      ) : mode === COMMENT_MODE.VIDEO ? (
         <View className="mt-2 flex-row items-center gap-2 rounded-xl border border-hairline px-3 py-2">
-          {recorder.isRecording ? (
-            <Pressable
-              onPress={() => void stopAudio()}
-              accessibilityRole="button"
-              className="h-11 flex-row items-center gap-2 rounded-full bg-error-500 px-4"
-            >
-              <Ionicons name="stop" size={16} color="#FFFFFF" />
-              <Text weight="semibold" className="text-[13px] text-white">
-                Stop · {formatClock(recorder.seconds)}
-              </Text>
-            </Pressable>
-          ) : captured ? (
+          {captured ? (
             <>
               <Ionicons name="checkmark-circle" size={18} color="#00753B" />
               <Text weight="semibold" className="text-[13px]">
-                {captured.kind === MEDIA_KIND.VIDEO ? "Video" : "Audio"} captured · {formatClock(captured.durationSeconds)}
+                Video captured · {formatClock(captured.durationSeconds)}
               </Text>
               <View className="flex-1" />
               <Pressable
                 onPress={() => setCaptured(null)}
                 accessibilityRole="button"
-                accessibilityLabel="Discard recording"
+                accessibilityLabel="Discard the video"
                 className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
               >
                 <Ionicons name="trash-outline" size={18} color="#B3261E" />
@@ -159,13 +161,13 @@ export function CommentComposer({
             </>
           ) : (
             <Pressable
-              onPress={() => void (mode === COMMENT_MODE.VIDEO ? recordVideo() : recorder.start())}
+              onPress={() => void recordVideo()}
               accessibilityRole="button"
               className="h-11 flex-row items-center gap-2 rounded-full bg-primary-500 px-4"
             >
-              <Ionicons name={mode === COMMENT_MODE.VIDEO ? "videocam-outline" : "mic-outline"} size={16} color="#FFFFFF" />
+              <Ionicons name="videocam-outline" size={16} color="#FFFFFF" />
               <Text weight="semibold" className="text-[13px] text-white">
-                Record {mode === COMMENT_MODE.VIDEO ? "video" : "audio"}
+                Record video
               </Text>
             </Pressable>
           )}

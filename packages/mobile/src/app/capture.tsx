@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { router } from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { requestVoiceReport } from "@/api/voice-report";
 import type { VoiceReport } from "@/api/voice-report-types";
@@ -33,12 +33,15 @@ function formatClock(totalSeconds: number): string {
  * offline outbox, so a confirm on-site with no signal still lands.
  */
 export default function Capture() {
+  // the recording already happened, in a sheet over whatever the crew member
+  // was looking at; this page exists for the part that is genuinely a task
+  const { uri, seconds } = useLocalSearchParams<{ uri?: string; seconds?: string }>();
   const { projectId } = useFieldSession();
   const { isOnline } = useSyncState();
   const recorder = useVoiceRecorder();
   const applyAction = useApplyProposedAction();
 
-  const [phase, setPhase] = useState<Phase>("record");
+  const [phase, setPhase] = useState<Phase>(uri ? "processing" : "record");
   const [report, setReport] = useState<VoiceReport | null>(null);
   const [included, setIncluded] = useState<Set<number>>(new Set());
   const [fieldValues, setFieldValues] = useState<MissingFieldValues>({});
@@ -48,26 +51,40 @@ export default function Capture() {
 
   const close = useCallback(() => router.back(), []);
 
-  const handleStop = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const uri = await recorder.stop();
-      if (!uri) {
-        setError("Nothing was recorded. Try again.");
-        return;
-      }
+  const transcribe = useCallback(
+    async (audioUri: string) => {
+      if (!projectId) return;
       setPhase("processing");
       setError(null);
-      const result = await requestVoiceReport(projectId, uri);
-      setReport(result);
-      setIncluded(new Set(result.actions.map((_, index) => index)));
-      setFieldValues({});
-      setPhase("review");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not process the recording.");
-      setPhase("record");
+      try {
+        const result = await requestVoiceReport(projectId, audioUri);
+        setReport(result);
+        setIncluded(new Set(result.actions.map((_, index) => index)));
+        setFieldValues({});
+        setPhase("review");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not process the recording.");
+        setPhase("record");
+      }
+    },
+    [projectId],
+  );
+
+  const started = useRef(false);
+  useEffect(() => {
+    if (!uri || started.current || !projectId) return;
+    started.current = true;
+    void transcribe(uri);
+  }, [uri, projectId, transcribe]);
+
+  const handleStop = useCallback(async () => {
+    const recording = await recorder.stop();
+    if (!recording) {
+      setError("Nothing was recorded. Try again.");
+      return;
     }
-  }, [projectId, recorder]);
+    await transcribe(recording.uri);
+  }, [recorder, transcribe]);
 
   const toggle = useCallback((index: number) => {
     setIncluded((prev) => {
