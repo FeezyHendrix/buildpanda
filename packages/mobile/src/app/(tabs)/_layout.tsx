@@ -1,8 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Redirect, Tabs, router } from "expo-router";
+import { useState } from "react";
 import { View } from "react-native";
 import { ConnectionBanner } from "@/components/molecules/connection-banner";
 import { MicTabButton } from "@/components/molecules/mic-tab-button";
+import { VoiceCaptureSheet } from "@/components/molecules/voice-capture-sheet";
 import { NavColors } from "@/constants/theme";
 import { useSyncState } from "@/lib/sync-provider";
 import { useFieldSession } from "@/lib/field-session";
@@ -22,6 +24,7 @@ const RIGHT_TABS = [
 
 export default function TabsLayout() {
   const { user, isResolving } = useAuthGate();
+  const [recording, setRecording] = useState(false);
   const { state: syncState, pendingCount } = useSyncState();
   const { projectId, isReady } = useFieldSession();
 
@@ -60,7 +63,7 @@ export default function TabsLayout() {
         name="record"
         options={{
           title: "Capture",
-          tabBarButton: () => <MicTabButton onPress={() => router.push("/capture")} />,
+          tabBarButton: () => <MicTabButton onPress={() => setRecording(true)} />,
         }}
       />
 
@@ -86,6 +89,15 @@ export default function TabsLayout() {
       />
     </Tabs>
     <ConnectionBanner />
+    <VoiceCaptureSheet
+      visible={recording}
+      onClose={() => setRecording(false)}
+      onRecorded={(result) => {
+        setRecording(false);
+        // the page opens once there is something to transcribe and review
+        router.push(`/capture?uri=${encodeURIComponent(result.uri)}&seconds=${result.durationSeconds}` as never);
+      }}
+    />
     </View>
   );
 }
