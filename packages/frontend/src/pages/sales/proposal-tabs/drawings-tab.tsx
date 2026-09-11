@@ -179,8 +179,9 @@ export function DrawingsTab({ proposalId }: Props) {
         </div>
       ) : plans.length === 0 ? (
         <EmptyState
-          title="No drawings uploaded"
-          description="Drop the first drawing above. Files are private to your team and the client receiving this proposal."
+          variant="inline"
+          title="No drawings yet"
+          description="Drop the first drawing above; files are private to your team and the client receiving this proposal."
         />
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white">

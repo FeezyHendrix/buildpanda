@@ -82,17 +82,10 @@ export default function ProjectActivities() {
           </div>
         ) : activities.length === 0 ? (
           <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
+            icon={<CalendarIcon />}
             title="No activities yet"
             description="Track field work to capture planned vs actual progress and delay causes."
-            action={
-              canManage ? (
-                <Button variant="primary" size="md" onClick={startNewActivity}>
-                  <PlusIcon className="size-4" />
-                  Add the first one
-                </Button>
-              ) : undefined
-            }
+            action={canManage ? { label: "Add the first one", onClick: startNewActivity, icon: <PlusIcon /> } : undefined}
           />
         ) : (
           activities.map((activity) => (

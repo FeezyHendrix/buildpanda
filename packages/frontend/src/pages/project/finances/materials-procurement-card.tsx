@@ -43,10 +43,9 @@ export function MaterialsProcurementCard({
       <div className="bg-white rounded-[12px] h-full m-1 px-6">
         {preview.length === 0 ? (
           <EmptyState
+            variant="inline"
             title="No materials purchased yet"
-            // icon={(<ReactSVG src={icons.riskShield} />)}
             description="No materials have been purchased for this project yet."
-            className="py-6"
           />
         ) : (
           <ul className="flex flex-col">

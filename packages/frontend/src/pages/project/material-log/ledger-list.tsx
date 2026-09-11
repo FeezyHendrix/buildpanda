@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { formatLongDate } from "@/lib/formatters";
@@ -110,22 +109,20 @@ export function LedgerList({
 
       {entries.length === 0 ? (
         <EmptyState
-          icon={<StackIcon className="size-8 text-gray-300" />}
-          title="Nothing logged yet"
+          variant="inline"
+          icon={<StackIcon />}
+          title="No ledger entries yet"
           description="Every delivery received and every bag used gets recorded here, with who logged it and when."
-          className="px-6 py-12"
+          className="px-6"
         />
       ) : visible.length === 0 ? (
         <EmptyState
-          icon={<StackIcon className="size-8 text-gray-300" />}
+          variant="inline"
+          icon={<StackIcon />}
           title="No entries match this filter"
           description="Nothing in the ledger falls under this view yet."
-          action={
-            <Button variant="secondary" size="md" onClick={() => setFilter("all")}>
-              Show all entries
-            </Button>
-          }
-          className="px-6 py-12"
+          action={{ label: "Show all entries", onClick: () => setFilter("all") }}
+          className="px-6"
         />
       ) : (
         groups.map((group) => (

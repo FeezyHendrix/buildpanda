@@ -1,6 +1,5 @@
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { useProposalWorkspace } from "@/hooks/use-proposals";
@@ -61,10 +60,8 @@ export default function ProposalWorkspace() {
         <EmptyState
           title="Proposal not found"
           description="This proposal may have been deleted or you don't have access."
+          action={{ label: "Back to proposals", onClick: () => navigate("/sales/proposals") }}
         />
-        <Button variant="secondary" onClick={() => navigate("/sales/proposals")} className="mt-4">
-          Back to proposals
-        </Button>
       </div>
     );
   }

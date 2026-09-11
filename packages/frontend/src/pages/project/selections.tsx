@@ -151,21 +151,13 @@ export default function ProjectSelections() {
           </div>
         ) : selections.length === 0 ? (
           <EmptyState
-            className="py-16"
             title="No selections yet"
             description={
               canManage
                 ? "Create a selection to ask the homeowner to choose a finish or fixture within an allowance."
                 : "Selections your builder asks you to make will appear here."
             }
-            action={
-              canManage ? (
-                <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                  <PlusIcon className="size-4" />
-                  New selection
-                </Button>
-              ) : undefined
-            }
+            action={canManage ? { label: "New selection", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined}
           />
         ) : (
           selections.map((selection) => (

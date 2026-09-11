@@ -56,7 +56,7 @@ const DEFAULT_EMPTY_STATE = (
   <EmptyState
     title="Nothing to show yet"
     description="Records will appear here once they have been added."
-    className="py-2"
+    variant="inline"
   />
 );
 
@@ -276,17 +276,8 @@ function DataGrid<T>({
                     <EmptyState
                       title="No matching records"
                       description="Adjust your search or clear the column filters to see everything."
-                      className="py-2"
-                      action={
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleReset}
-                        >
-                          Reset filters
-                        </Button>
-                      }
+                      variant="inline"
+                      action={{ label: "Reset filters", onClick: handleReset }}
                     />
                   ) : (
                     (emptyState ?? DEFAULT_EMPTY_STATE)

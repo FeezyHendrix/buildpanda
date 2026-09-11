@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
@@ -90,24 +89,16 @@ export default function ProjectBudgetAllocation() {
 
       <div className="mt-8 flex flex-col gap-5">
         {finances.budgetAllocation.length === 0 ? (
-          <Card className="rounded-[16px] border-none bg-[#F8F8F8]">
-            <EmptyState
-              icon={<FinancesIcon className="h-6 w-6" />}
-              title="No budget allocation yet"
-              description="Add your first budget category to start allocation and variance tracking."
-              action={
-                canManage ? (
-                  <Button
-                    variant="primary"
-                    size="md"
-                    onClick={() => setCreateOpen(true)}
-                  >
-                    <PlusIcon className="size-4" /> Add budget allocation
-                  </Button>
-                ) : undefined
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<FinancesIcon />}
+            title="No budget allocation yet"
+            description="Add your first budget category to start allocation and variance tracking."
+            action={
+              canManage
+                ? { label: "Add budget allocation", onClick: () => setCreateOpen(true), icon: <PlusIcon /> }
+                : undefined
+            }
+          />
         ) : (
           <>
             <AllocationBreakdown

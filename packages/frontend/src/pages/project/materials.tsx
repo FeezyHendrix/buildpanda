@@ -177,17 +177,10 @@ export default function ProjectMaterials() {
             </div>
           ) : orders.length === 0 ? (
             <EmptyState
-              icon={<MaterialsIcon className="size-8 text-gray-300" />}
+              icon={<MaterialsIcon />}
               title="No material orders yet"
               description="Create the first request and tie it to the phase and site activity it unlocks."
-              action={
-                canRequest ? (
-                  <Button onClick={() => setCreateOpen(true)}>
-                    Create order
-                  </Button>
-                ) : undefined
-              }
-              className="py-10"
+              action={canRequest ? { label: "Create order", onClick: () => setCreateOpen(true) } : undefined}
             />
           ) : (
             <div className="flex flex-col divide-y divide-[#F0F0F0]">

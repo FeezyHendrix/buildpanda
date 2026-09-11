@@ -195,10 +195,9 @@ export default function ProjectChangeRequests() {
             </div>
           ) : items.length === 0 ? (
             <EmptyState
-              icon={<ClipboardIcon className="size-8 text-gray-300" />}
+              icon={<ClipboardIcon />}
               title="No change requests yet"
               description="Raise one when scope, cost or schedule changes."
-              className="py-10"
             />
           ) : (
             items.map((cr) => (

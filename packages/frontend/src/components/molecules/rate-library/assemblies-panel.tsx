@@ -83,9 +83,9 @@ export function AssembliesPanel({ cards, canManage }: Props) {
           <Spinner size="sm" />
         </div>
       ) : isError ? (
-        <EmptyState title="Could not load the assemblies" description="Refresh the page to try again." />
+        <EmptyState variant="inline" title="Could not load the assemblies" description="Refresh the page to try again." />
       ) : assemblies.length === 0 ? (
-        <EmptyState title="No assemblies yet" description="Create one above. In the sheet viewer, pick it from the composer and one drawn shape makes all of its lines." />
+        <EmptyState variant="inline" title="No assemblies yet" description="Create one above, then pick it from the composer in the sheet viewer so one drawn shape makes all of its lines." />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-left">

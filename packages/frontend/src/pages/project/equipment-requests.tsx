@@ -239,17 +239,10 @@ export default function ProjectEquipmentRequests() {
           </div>
         ) : requests.length === 0 ? (
           <EmptyState
-            icon={<MaterialsIcon className="size-8 text-gray-300" />}
-            title="No equipment requests here"
+            icon={<MaterialsIcon />}
+            title="No equipment requests yet"
             description="Create a rental request or move existing equipment through the lifecycle."
-            action={
-              canRequest ? (
-                <Button onClick={() => setCreateOpen(true)}>
-                  Create request
-                </Button>
-              ) : undefined
-            }
-            className="py-10"
+            action={canRequest ? { label: "Create request", onClick: () => setCreateOpen(true) } : undefined}
           />
         ) : (
           <div className="flex flex-col divide-y divide-[#F0F0F0]">

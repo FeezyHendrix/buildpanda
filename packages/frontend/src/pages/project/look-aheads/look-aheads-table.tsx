@@ -94,14 +94,13 @@ export function LookAheadsTable({
       </div>
 
       {rows.length === 0 ? (
-        <div className="p-8">
-          <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No look aheads match"
-            description="Adjust the filters or create a new look-ahead period."
-            action={canManage ? <Button size="sm" onClick={onCreate}>Create look ahead</Button> : undefined}
-          />
-        </div>
+        <EmptyState
+          variant="inline"
+          icon={<CalendarIcon />}
+          title="No look-aheads match these filters"
+          description="Adjust the filters or create a new look-ahead period."
+          action={canManage ? { label: "Create look ahead", onClick: onCreate } : undefined}
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-[980px] w-full text-left text-sm">

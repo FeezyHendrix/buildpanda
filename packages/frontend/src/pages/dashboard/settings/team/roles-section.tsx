@@ -70,8 +70,9 @@ export function RolesSection({
   if (roles.length === 0) {
     return (
       <Section title="Custom roles" action={action}>
-        <div className="px-5 py-8">
+        <div className="px-5">
           <EmptyState
+            variant="inline"
             title="No custom roles yet"
             description="Create a role to grant a specific set of actions, like a site supervisor who can manage the schedule but not finances."
           />

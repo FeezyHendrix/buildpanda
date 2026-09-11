@@ -82,9 +82,9 @@ export function DocumentsTable({
             <tr>
               <td colSpan={5} className="px-6">
                 <EmptyState
-                  icon={<DocumentsIcon className="size-8 text-gray-300" />}
+                  variant="inline"
+                  icon={<DocumentsIcon />}
                   title={emptyMessage.replace(/\.$/, "")}
-                  className="py-10"
                 />
               </td>
             </tr>

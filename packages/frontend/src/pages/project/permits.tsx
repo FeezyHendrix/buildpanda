@@ -251,17 +251,10 @@ export default function ProjectPermits() {
         </div>
       ) : permits.length === 0 ? (
         <EmptyState
-          icon={<ShieldIcon className="size-8 text-gray-300" />}
+          icon={<ShieldIcon />}
           title="No permits yet"
           description="Add building permits and government approvals to track them."
-          action={
-            canManage ? (
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                Add permit
-              </Button>
-            ) : undefined
-          }
-          className="py-10"
+          action={canManage ? { label: "Add permit", onClick: () => setCreateOpen(true) } : undefined}
         />
       ) : (
         <div className="flex flex-col gap-8">

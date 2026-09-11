@@ -271,19 +271,12 @@ export function PaymentRequestsSection() {
         {isPending ? (
           <div className="flex flex-1 items-center justify-center py-20"><Spinner size="lg" /></div>
         ) : claims.length === 0 ? (
-          <Card padding="lg">
-            <EmptyState
-              icon={<FinancesIcon className="size-6" />}
-              title="No payment requests yet"
-              description="Record contractor payment requests to track approvals and paid amounts."
-              action={canManage ? (
-                <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-                  <PlusIcon className="size-4" />
-                  New request
-                </Button>
-              ) : undefined}
-            />
-          </Card>
+          <EmptyState
+            icon={<FinancesIcon />}
+            title="No payment requests yet"
+            description="Record contractor payment requests to track approvals and paid amounts."
+            action={canManage ? { label: "New request", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {claims.map((claim) => (

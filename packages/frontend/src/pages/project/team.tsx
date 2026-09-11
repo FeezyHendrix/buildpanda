@@ -163,23 +163,12 @@ export default function ProjectTeam() {
         />
 
         {members.length === 0 ? (
-          <Card padding="lg">
-            <EmptyState
-              icon={<ContractorsIcon className="size-6" />}
-              title="No contacts yet"
-              description="Add the engineers, contractors and managers working on this project."
-              action={
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setCreateOpen(true)}
-                >
-                  <PlusIcon className="size-4" />
-                  Add Contact
-                </Button>
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<ContractorsIcon />}
+            title="No contacts yet"
+            description="Add the engineers, contractors and managers working on this project."
+            action={{ label: "Add contact", onClick: () => setCreateOpen(true), icon: <PlusIcon /> }}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {members.map((member) => (

@@ -256,10 +256,10 @@ export default function ProjectStages() {
                 <tr>
                   <td colSpan={8} className="px-4">
                     <EmptyState
-                      icon={<BlocksIcon className="size-8 text-gray-300" />}
+                      variant="inline"
+                      icon={<BlocksIcon />}
                       title={stages.length === 0 ? "No stages yet" : "No stages match your search"}
                       description={stages.length === 0 ? "Add your first stage to start tracking the build." : "Try a different search term."}
-                      className="py-10"
                     />
                   </td>
                 </tr>

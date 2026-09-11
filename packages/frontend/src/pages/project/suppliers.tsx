@@ -96,23 +96,20 @@ export default function ProjectSuppliers() {
           </div>
         ) : suppliers.length === 0 ? (
           <EmptyState
-            icon={<MaterialsIcon className="size-8 text-gray-300" />}
+            icon={<MaterialsIcon />}
             title="No suppliers yet"
             description="Add the suppliers you work with to keep contact details and reorder policies in one place."
             action={
-              canManage && (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => {
-                    setEditTarget(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <PlusIcon className="size-4" />
-                  Add supplier
-                </Button>
-              )
+              canManage
+                ? {
+                    label: "Add supplier",
+                    icon: <PlusIcon />,
+                    onClick: () => {
+                      setEditTarget(null);
+                      setFormOpen(true);
+                    },
+                  }
+                : undefined
             }
           />
         ) : (

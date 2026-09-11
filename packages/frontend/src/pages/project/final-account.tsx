@@ -114,10 +114,9 @@ export default function ProjectFinalAccount() {
           description="Contract settlement — closing statement showing what has been certified, paid, held and what remains."
         />
         <EmptyState
-          icon={<FinancesIcon className="size-8 text-gray-300" />}
+          icon={<FinancesIcon />}
           title="No finance data yet"
           description="The closing statement is built from certified, paid and held amounts once the project's finances are set up."
-          className="py-10"
         />
       </div>
     );
@@ -365,9 +364,9 @@ export default function ProjectFinalAccount() {
 
         {ledgerSorted.length === 0 ? (
           <EmptyState
+            variant="inline"
             title="No payment activity yet"
             description="Deposits, releases and retention holds will appear here as they are recorded."
-            className="py-6"
           />
         ) : (
           <div className="overflow-x-auto">

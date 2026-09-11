@@ -177,9 +177,9 @@ export function TakeoffTable({ sessions, isLoading, onMeasureByHand }: Props) {
         onRowClick={(s) => navigate(`/sales/takeoff/${s.id}`)}
         emptyState={
           <EmptyState
-            title="Nothing measured yet"
+            title="No measurements yet"
             description="Measure a drawing by hand here, or choose Measure with Panda AI on the Drawings tab."
-            className="py-2"
+            variant="inline"
           />
         }
       />

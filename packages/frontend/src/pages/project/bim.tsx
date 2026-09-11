@@ -359,17 +359,10 @@ export default function ProjectBim() {
           </div>
         ) : models.length === 0 ? (
           <EmptyState
-            icon={<Boxes className="size-8 text-gray-300" />}
+            icon={<Boxes />}
             title="No BIM models yet"
             description="Import from Revit, ArchiCAD, Navisworks and more to explore the model here."
-            action={
-              canUpload ? (
-                <Button variant="secondary" size="sm" onClick={() => setUploadOpen(true)}>
-                  Import your first model
-                </Button>
-              ) : undefined
-            }
-            className="py-10"
+            action={canUpload ? { label: "Import your first model", onClick: () => setUploadOpen(true) } : undefined}
           />
         ) : (
           models.map((model) => (

@@ -67,10 +67,9 @@ export default function ProjectPeople() {
           </div>
         ) : participants.length === 0 ? (
           <EmptyState
-            icon={<ContractorsIcon className="size-8 text-gray-300" />}
+            icon={<ContractorsIcon />}
             title="No one invited yet"
             description="Invite the homeowner so they can follow progress."
-            className="py-10"
           />
         ) : (
           participants.map((p) => (
