@@ -354,12 +354,14 @@ function RowMenu({
           style={{ top: menuPos.top, right: menuPos.right }}
           className="fixed z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5"
         >
-          {onOpen && (
-            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onOpen(); }}>Review</button>
-          )}
-          {doc.currentVersionId && (
+          {/* A plan opens in the review workspace, a document in the viewer:
+              one "View" either way, never a choice between two ways to look
+              at the same file. */}
+          {onOpen ? (
+            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onOpen(); }}>View</button>
+          ) : doc.currentVersionId ? (
             <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onView(); }}>View</button>
-          )}
+          ) : null}
           {doc.currentVersionId && (
             <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onShare(); }}>
               {shareCopied ? "Copied!" : "Share"}
