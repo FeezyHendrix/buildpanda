@@ -31,4 +31,12 @@ export const LLM_PRICES: readonly LlmPrice[] = [
     outputPer1k: 0.0025,
     effectiveFrom: "2025-09-05",
   },
+  // DeepSeek V4.1 Flash (vision). Peak-hour list price; off-peak (outside
+  // 01:00-04:00 and 06:00-10:00 UTC, Mon-Fri) is half, so this is an upper bound.
+  {
+    modelVersion: "deepseek-flash",
+    inputPer1k: 0.0003,
+    outputPer1k: 0.0012,
+    effectiveFrom: "2026-09-11",
+  },
 ] as const;
