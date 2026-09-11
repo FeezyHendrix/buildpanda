@@ -4,6 +4,7 @@ import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actua
 
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
@@ -63,7 +64,7 @@ export default function ProjectBudget() {
   if (isPending) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#004DE7] border-t-transparent" />
+        <Spinner size="md" />
       </div>
     );
   }

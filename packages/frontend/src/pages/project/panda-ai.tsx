@@ -7,6 +7,7 @@ import {
 } from "@/hooks/use-panda-ai";
 import { PageHeader } from "@/components/molecules/page-header";
 import { Button } from "@/components/atoms/button";
+import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -200,7 +201,7 @@ export default function ProjectPandaAi() {
 
       {isAnalyzing ? (
         <div className="flex h-64 flex-col items-center justify-center space-y-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#004DE7] border-t-transparent" />
+          <Spinner size="md" />
           <p className="text-sm text-gray-500">
             Panda AI is analyzing project data...
           </p>

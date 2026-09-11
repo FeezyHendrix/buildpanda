@@ -4,6 +4,8 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { EmptyState } from "@/components/molecules/empty-state";
+import { PageHeader } from "@/components/molecules/page-header";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { UpsertMilestoneDialog } from "@/components/molecules/upsert-milestone-dialog";
@@ -32,7 +34,7 @@ import { icons } from "@/assets/icons/icons";
  * Wording is "record payment", never "release funds" — BuildPanda logs money
  * movements made off-platform, it does not move money.
  */
-export function StagePaymentsSection() {
+export function StagePaymentsSection({ heading = "section" }: { heading?: "page" | "section" }) {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const canDispute = canManage || canResourceAction(access, "finances", "dispute");
@@ -50,41 +52,36 @@ export function StagePaymentsSection() {
 
   if (!finances) return null;
 
+  const newButton = canManage ? (
+    <Button
+      variant="primary"
+      size="md"
+      onClick={() => {
+        setEditingTarget(null);
+        setUpsertOpen(true);
+      }}
+    >
+      <PlusIcon className="size-4" />
+      New stage payment
+    </Button>
+  ) : undefined;
+
   return (
     <section aria-label="Stage payments">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      {heading === "page" ? (
+        <PageHeader title="Stage payments" actions={newButton} />
+      ) : (
+        <div className="flex items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-gray-900">Stage payments</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Milestone gates and the payments recorded against them.
-          </p>
+          {newButton}
         </div>
-        {canManage && (
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setEditingTarget(null);
-              setUpsertOpen(true);
-            }}
-          >
-            <PlusIcon className="size-4" />
-            New stage payment
-          </Button>
-        )}
-      </div>
+      )}
 
       <ContractSummary finances={finances} />
 
-      <Card className="mt-6 rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0">
-        <div className="flex items-center justify-between py-3 px-5">
-          <div className="flex gap-2 items-center">
-            <ReactSVG src={icons.money} />
-            <h4 className="text-[13px] font-semibold text-black-300">Stage payments</h4>
-          </div>
-        </div>
-        <div className="bg-white rounded-[12px] h-full m-1 p-6">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <section className="mt-10">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Stages</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {finances.milestones.map((milestone, idx) => (
               <MilestoneCard
                 key={`${milestone.id}-${idx}`}
@@ -100,21 +97,15 @@ export function StagePaymentsSection() {
                 onRaiseDispute={canDispute ? () => setDisputeTarget(milestone) : undefined}
               />
             ))}
-          </div>
         </div>
-      </Card>
+      </section>
 
-      <Card className="mt-6 rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0">
-        <div className="flex items-center justify-between py-3 px-5">
-          <div className="flex gap-2 items-center">
-            <ReactSVG src={icons.bill} />
-            <h4 className="text-[13px] font-semibold text-black-300">Payment record</h4>
-          </div>
-        </div>
-        <div className="bg-white rounded-[12px] h-full m-1 lg:p-6 p-2">
+      <section className="mt-10">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Payment record</h2>
+        <Card padding="none" className="overflow-hidden">
           <PaymentRecord entries={finances.ledger} currency={finances.currency} />
-        </div>
-      </Card>
+        </Card>
+      </section>
 
       <ConfirmDialog
         open={deleteTarget !== null}
@@ -201,7 +192,7 @@ StagePaymentsSection.displayName = "StagePaymentsSection";
 
 function ContractSummary({ finances }: { finances: ProjectFinances }) {
   return (
-    <Card padding="lg" className="mt-6 border-primary border-[4px]">
+    <Card padding="lg" className="mt-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-semibold text-black-300">Contract summary</p>
@@ -237,6 +228,15 @@ function PaymentRecord({
   entries: PaymentLedgerEntry[];
   currency: ProjectFinances["currency"];
 }) {
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        variant="inline"
+        title="No payments recorded yet"
+        description="Deposits and releases logged against a stage will appear here."
+      />
+    );
+  }
   return (
     <section>
       <div className="overflow-x-auto">
