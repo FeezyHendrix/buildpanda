@@ -79,7 +79,21 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
 
   const isVoided = day?.isVoided ?? false;
 
+  // A write with no building is refused by the API on a multi-building
+  // project, and the queued row would fail for good. Ask now, or explain
+  // that the building list has not loaded yet, instead of queuing it.
+  function requireBuilding(): boolean {
+    if (buildingId) return true;
+    if (buildings.length > 1) {
+      setPickerDismissed(false);
+      return false;
+    }
+    setError("This project's buildings haven't loaded yet. Connect once so they can, then try again.");
+    return false;
+  }
+
   async function handleSave() {
+    if (!requireBuilding()) return;
     setSaving(true);
     setError(null);
     try {
@@ -103,6 +117,7 @@ function DayEditor({ db, projectId, logDate }: { db: Db; projectId: string; logD
     const text = htmlToText(entryHtml);
     if (!text) return;
     setError(null);
+    if (!requireBuilding()) return;
     try {
       await addEntry(logDate, text, session?.user.name ?? "You", entryHtml.trim() || null, buildingId);
       setEntryHtml("");

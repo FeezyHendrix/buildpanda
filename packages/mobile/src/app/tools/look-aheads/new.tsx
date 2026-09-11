@@ -51,6 +51,14 @@ export default function NewLookAhead() {
 
   async function submit() {
     if (!canSubmit) return;
+    if (!buildingId && buildings.length > 1) {
+      setPickerDismissed(false);
+      return;
+    }
+    if (!buildingId && buildings.length === 0) {
+      setError("This project's buildings haven't loaded yet. Connect once so they can, then try again.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
