@@ -100,7 +100,6 @@ export default function ProjectBudget() {
 
       <PageHeader
         title="Budget"
-        description="Track and manage the project's financial budget, cost categories, and cash flow."
         actions={
           canManage ? (
             <Button

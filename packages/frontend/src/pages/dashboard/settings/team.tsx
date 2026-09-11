@@ -119,7 +119,6 @@ export default function TeamSettings() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
         title="Team settings"
-        description="Manage members, invitations, and custom roles."
         actions={
           canManage && (
             <Button onClick={() => setInviteOpen(true)}>Invite member</Button>

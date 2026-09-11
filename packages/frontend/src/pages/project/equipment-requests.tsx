@@ -154,7 +154,6 @@ export default function ProjectEquipmentRequests() {
       />
       <PageHeader
         title="Rental / equipment requests"
-        description="Manage equipment from field request through approval, booking, site use, and return so machinery never sits outside the build plan."
         badges={<Badge tone="info">{activeMeta.label}</Badge>}
         actions={
           <div className="flex flex-wrap gap-2">

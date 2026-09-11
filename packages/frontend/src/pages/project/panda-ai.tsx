@@ -188,7 +188,6 @@ export default function ProjectPandaAi() {
       <Breadcrumbs items={[{ label: "Panda AI" }]} className="mb-4" />
       <PageHeader
         title="Panda AI"
-        description="AI monitoring of project health with prioritized suggestions."
         actions={
           <Button
             variant="primary"

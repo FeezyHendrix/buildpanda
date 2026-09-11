@@ -58,7 +58,6 @@ export default function ProjectOverview() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title={`Welcome back, ${firstName}`}
-        description="Stay in control with real-time updates on progress, payments, and site activity."
         badges={
           <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
             <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>

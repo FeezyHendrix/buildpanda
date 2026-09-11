@@ -87,7 +87,6 @@ export default function ProjectBuildings() {
     <div className="w-full px-4 py-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Buildings"
-        description="Manage the buildings in your project and their overall progress."
         actions={
           canManage && (
             <Button onClick={() => setCreateOpen(true)}>

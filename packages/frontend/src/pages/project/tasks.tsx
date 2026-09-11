@@ -21,6 +21,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import {
@@ -36,13 +37,17 @@ import {
   useReorderColumns,
 } from "@/hooks/use-tasks";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 import { canResourceAction, type Task, type TaskPriority } from "@/lib/project-types";
 import { type AssigneeOption, FIELD } from "./tasks/task-ui";
 import { BoardColumn } from "./tasks/task-board-column";
 import { UpsertTaskDialog } from "./tasks/upsert-task-dialog";
 
 type TaskBoardScope = "assigned" | "all";
+
+const BOARD_SCOPES = [
+  { value: "assigned", label: "My tasks" },
+  { value: "all", label: "All tasks" },
+] as const;
 
 export default function ProjectTasks() {
   const { project, access } = useProjectContext();
@@ -281,11 +286,6 @@ export default function ProjectTasks() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Tasks"
-        description={
-          board.scope === "assigned"
-            ? "Your personal task board shows only tasks assigned to you. Moving a card updates the shared team board."
-            : "Plan and track work across the team. Drag cards between columns."
-        }
         actions={
           canAddTasks && board.columns[0] ? (
             <Button
@@ -301,28 +301,13 @@ export default function ProjectTasks() {
       />
 
       {canSeeAllTasks ? (
-        <div className="mt-4 inline-flex rounded-xl bg-[#F6F6F6] p-1">
-          <button
-            type="button"
-            onClick={() => setBoardScope("assigned")}
-            className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "assigned" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-            )}
-          >
-            My tasks
-          </button>
-          <button
-            type="button"
-            onClick={() => setBoardScope("all")}
-            className={cn(
-              "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-              requestedScope === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900",
-            )}
-          >
-            All tasks
-          </button>
-        </div>
+        <FilterTabs
+          items={BOARD_SCOPES}
+          value={requestedScope}
+          onChange={setBoardScope}
+          ariaLabel="Task board scope"
+          className="mt-6"
+        />
       ) : null}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

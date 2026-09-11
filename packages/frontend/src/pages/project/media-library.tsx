@@ -79,7 +79,6 @@ export default function ProjectMediaLibrary() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Media Library"
-        description="Site photos and videos captured in the field."
         actions={
           canManage ? (
             <Button

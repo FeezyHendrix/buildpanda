@@ -84,7 +84,6 @@ export default function ProjectTeam() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Project Team"
-        description="Manage who has access to this project and the people delivering this build."
       />
 
       {/* Project access */}

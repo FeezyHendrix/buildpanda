@@ -2,13 +2,13 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { Tabs } from "@/components/molecules/tabs";
 import { useProposalWorkspace } from "@/hooks/use-proposals";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
 import {
   PROPOSAL_STATUS_LABEL as LABEL_MAP,
   PROPOSAL_STATUS_TONE as STATUS_TONE,
 } from "@/lib/project-meta";
-import { cn } from "@/lib/utils";
 import { ActivityTab } from "./proposal-tabs/activity-tab";
 import { DrawingsTab } from "./proposal-tabs/drawings-tab";
 import { EstimateTab } from "./proposal-tabs/estimate-tab";
@@ -94,28 +94,16 @@ export default function ProposalWorkspace() {
         </p>
       </div>
 
-      <div role="tablist" className="flex gap-1 border-b border-gray-100 px-6">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors",
-              tab === t.id ? "border-b-2 border-primary-500 text-primary-600" : "text-gray-500 hover:text-gray-700",
-            )}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-            {t.id === "estimate" && estimate ? (
-              <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
-                {estimate.revisionLabel}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        items={TABS.map((t) => ({
+          ...t,
+          badge: t.id === "estimate" && estimate ? estimate.revisionLabel : undefined,
+        }))}
+        value={tab}
+        onChange={setTab}
+        className="px-6"
+        ariaLabel="Proposal sections"
+      />
 
       <div className="p-6">
         {tab === "overview" ? <OverviewTab proposalId={id} /> : null}

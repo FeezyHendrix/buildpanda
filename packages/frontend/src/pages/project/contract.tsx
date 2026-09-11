@@ -303,7 +303,6 @@ export default function ProjectContract() {
         />
         <PageHeader
           title="Contract"
-          description="Set the agreed amount, changes, retention and payment terms for this project."
         />
         <Card padding="lg" className="mt-8 text-center text-sm text-red-600">
           {getApiErrorMessage(error, "Failed to load contract terms.")}
@@ -325,7 +324,6 @@ export default function ProjectContract() {
       />
       <PageHeader
         title="Contract"
-        description="Set the agreed amount, changes, retention, advance and payment terms for this project."
       />
 
       <Section

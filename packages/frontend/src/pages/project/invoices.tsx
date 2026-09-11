@@ -84,7 +84,6 @@ export default function ProjectInvoices() {
       />
       <PageHeader
         title="Invoices"
-        description="Send invoices and record the bills you pay on this project."
         actions={actions}
       />
 

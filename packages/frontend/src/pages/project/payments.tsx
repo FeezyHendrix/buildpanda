@@ -38,7 +38,6 @@ export default function ProjectPayments() {
       />
       <PageHeader
         title="Payments"
-        description="Stage payments and the requests contractors raise against them."
       />
 
       <div className="mt-8 flex flex-col gap-12">

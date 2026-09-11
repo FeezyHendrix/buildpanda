@@ -95,7 +95,6 @@ export default function ProjectUpdates() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Updates"
-        description="Track construction progress with real-time reports from the site."
         actions={
           canPost ? (
             <>

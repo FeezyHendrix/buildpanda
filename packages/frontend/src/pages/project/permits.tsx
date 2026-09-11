@@ -6,6 +6,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { ShieldIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs, type FilterTabItem } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertPermitDialog,
@@ -121,6 +122,18 @@ function PermitCard({
   );
 }
 
+type UrgencyFilter = PermitUrgency | "all";
+type UrgencyCounts = { expired: number; expiringSoon: number; active: number };
+
+/** Only urgencies that actually occur get a tab, each carrying its count. */
+function urgencyFilterItems(counts: UrgencyCounts): FilterTabItem<UrgencyFilter>[] {
+  const items: FilterTabItem<UrgencyFilter>[] = [{ value: "all", label: "All" }];
+  if (counts.expired > 0) items.push({ value: "expired", label: "Expired", count: counts.expired });
+  if (counts.expiringSoon > 0) items.push({ value: "expiringSoon", label: "Expiring soon", count: counts.expiringSoon });
+  if (counts.active > 0) items.push({ value: "active", label: "Active", count: counts.active });
+  return items;
+}
+
 export default function ProjectPermits() {
   const { project, access } = useProjectContext();
   const canManage = Boolean(access && canResourceAction(access, "permits", "manage"));
@@ -132,7 +145,7 @@ export default function ProjectPermits() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editPermit, setEditPermit] = useState<Permit | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [filterUrgency, setFilterUrgency] = useState<PermitUrgency | "all">("all");
+  const [filterUrgency, setFilterUrgency] = useState<UrgencyFilter>("all");
 
   function handleCreate(values: UpsertPermitValues): void {
     createPermit.mutate(
@@ -172,7 +185,6 @@ export default function ProjectPermits() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Permits & Compliance"
-        description="Regulatory permits and government approvals — track applications, references, and expiry."
         actions={
           canManage ? (
             <Button
@@ -186,62 +198,16 @@ export default function ProjectPermits() {
       />
 
       {!isLoading && permits.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          <button
-            onClick={() => setFilterUrgency("all")}
-            className={cn(
-              "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-              filterUrgency === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            )}
-          >
-            All
-          </button>
-          
-          {counts.expired > 0 && (
-            <button
-              onClick={() => setFilterUrgency(filterUrgency === "expired" ? "all" : "expired")}
-              className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                filterUrgency === "expired" ? "bg-red-600 text-white" : "bg-red-50 text-red-700 hover:bg-red-100"
-              )}
-            >
-              <span className="mr-1.5 inline-block w-2 h-2 rounded-full bg-current opacity-75"></span>
-              {counts.expired} expired
-            </button>
-          )}
-
-          {counts.expiringSoon > 0 && (
-            <button
-              onClick={() => setFilterUrgency(filterUrgency === "expiringSoon" ? "all" : "expiringSoon")}
-              className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                filterUrgency === "expiringSoon" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700 hover:bg-amber-100"
-              )}
-            >
-              <span className="mr-1.5 inline-block w-2 h-2 rounded-full bg-current opacity-75"></span>
-              {counts.expiringSoon} expiring soon
-            </button>
-          )}
-
-          {counts.active > 0 && (
-            <button
-              onClick={() => setFilterUrgency(filterUrgency === "active" ? "all" : "active")}
-              className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                filterUrgency === "active" ? "bg-green-600 text-white" : "bg-green-50 text-green-700 hover:bg-green-100"
-              )}
-            >
-              <span className="mr-1.5 inline-block w-2 h-2 rounded-full bg-current opacity-75"></span>
-              {counts.active} active
-            </button>
-          )}
-
-          {counts.expired === 0 && counts.expiringSoon === 0 && counts.active > 0 && filterUrgency === "all" && (
-            <span className="text-sm font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full flex items-center">
-              <span className="mr-1.5 inline-block w-2 h-2 rounded-full bg-current opacity-75"></span>
-              All permits are current
-            </span>
-          )}
+        <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <FilterTabs
+            items={urgencyFilterItems(counts)}
+            value={filterUrgency}
+            onChange={setFilterUrgency}
+            ariaLabel="Filter permits by urgency"
+          />
+          {counts.expired === 0 && counts.expiringSoon === 0 && counts.active > 0 ? (
+            <span className="text-sm text-gray-500">All permits are current</span>
+          ) : null}
         </div>
       )}
 

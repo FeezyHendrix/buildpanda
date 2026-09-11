@@ -6,6 +6,7 @@ import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components";
 import {
@@ -275,8 +276,8 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 type StatusFilter = "all" | "met" | "in-progress" | "missed";
 type DateView = "target" | "actual";
 
-const STATUS_OPTIONS: DropdownOption<StatusFilter>[] = [
-  { value: "all", label: "All key dates" },
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "met", label: "Met" },
   { value: "in-progress", label: "In progress" },
   { value: "missed", label: "Missed" },
@@ -375,7 +376,6 @@ export default function ProjectKeyDates() {
       />
       <PageHeader
         title="Key Dates"
-        description="The milestone dates that matter: target vs actual, so slippage is visible."
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
@@ -442,11 +442,7 @@ export default function ProjectKeyDates() {
 
         {/* Right-side filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <SimpleDropdown
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
+          <FilterTabs items={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} ariaLabel="Filter key dates" />
           <SimpleDropdown
             options={DATE_VIEW_OPTIONS}
             value={dateView}

@@ -29,7 +29,6 @@ export default function ProjectSettings() {
     <div className="flex w-full flex-col gap-5 lg:gap-4 px-6 py-8 sm:px-10">
       <PageHeader
         title="Settings"
-        description="Configure project preferences, notification rules, and team access."
       />
 
       <section className="rounded-2xl border border-[#F0F0F0] bg-white p-6">

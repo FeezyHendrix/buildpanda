@@ -6,6 +6,7 @@ import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertApprovalDialog,
@@ -24,7 +25,6 @@ import {
   useDeleteApproval,
   useUpdateApproval,
 } from "@/hooks/use-approvals";
-import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { canResourceAction } from "@/lib/project-types";
@@ -111,7 +111,6 @@ export default function ProjectApprovals() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Approvals"
-        description="Selections and specs awaiting the client's sign-off."
         actions={
           canManage ? (
             <Button variant="primary" onClick={() => setCreateOpen(true)}>
@@ -121,19 +120,11 @@ export default function ProjectApprovals() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2 mb-8">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
-            className={cn(
-              "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-              filter === f.value ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter approvals" />
+        {awaitingDecision.length > 0 ? (
+          <span className="text-sm text-gray-500">{awaitingDecision.length} awaiting decision</span>
+        ) : null}
       </div>
 
       {isLoading ? (
