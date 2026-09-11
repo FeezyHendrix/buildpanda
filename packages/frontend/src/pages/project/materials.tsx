@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import {
   ChevronRightIcon,
@@ -171,9 +172,9 @@ export default function ProjectMaterials() {
           </div>
 
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">
-              Loading material orders…
-            </p>
+            <div className="flex justify-center py-10">
+              <Spinner size="md" />
+            </div>
           ) : orders.length === 0 ? (
             <EmptyState
               icon={<MaterialsIcon className="size-8 text-gray-300" />}

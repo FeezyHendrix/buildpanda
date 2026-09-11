@@ -14,6 +14,7 @@ import {
 } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -233,9 +234,9 @@ export default function ProjectEquipmentRequests() {
         </div>
 
         {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">
-            Loading equipment requests…
-          </p>
+          <div className="flex justify-center py-10">
+            <Spinner size="md" />
+          </div>
         ) : requests.length === 0 ? (
           <EmptyState
             icon={<MaterialsIcon className="size-8 text-gray-300" />}

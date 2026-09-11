@@ -1,6 +1,7 @@
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
 import { PageHeader } from "@/components/molecules/page-header";
+import { Spinner } from "@/components/atoms/spinner";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useWhatsNext } from "@/hooks/use-insights";
 import { formatDayMonth as fmt } from "@/lib/formatters";
@@ -49,7 +50,9 @@ export default function ProjectWhatsNext() {
           title="What's Next"
           description="The next two weeks at a glance."
         />
-        <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+        <div className="flex justify-center py-10">
+          <Spinner size="md" />
+        </div>
       </div>
     );
   }

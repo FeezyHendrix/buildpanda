@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ActivityCard } from "./activities/activity-card";
 
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import {
   CreateActivityDialog,
@@ -77,9 +77,9 @@ export default function ProjectActivities() {
 
       <section className="mt-8 flex flex-col gap-1 bg-[#F8F8F8] rounded-[16px] p-1">
         {isPending ? (
-          <Card padding="lg" className="text-center text-sm text-gray-500">
-            Loading activities…
-          </Card>
+          <div className="flex justify-center py-10">
+            <Spinner size="md" />
+          </div>
         ) : activities.length === 0 ? (
           <EmptyState
             icon={<CalendarIcon className="size-8 text-gray-300" />}

@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { FileCheck } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertApprovalDialog,
   type UpsertApprovalValues,
@@ -134,17 +137,23 @@ export default function ProjectApprovals() {
       </div>
 
       {isLoading ? (
-        <div>Loading approvals...</div>
+        <div className="flex justify-center py-10">
+          <Spinner size="md" />
+        </div>
       ) : approvals.length === 0 && filter === "all" ? (
-        <Card className="p-8 text-center mt-8">
-          <h3 className="text-lg font-medium text-gray-900">No approvals</h3>
-          <p className="mt-2 text-gray-500">Submit a selection or spec to get sign-off.</p>
-          {canManage && (
-            <Button variant="primary" className="mt-4" onClick={() => setCreateOpen(true)}>
-              Submit for approval
-            </Button>
-          )}
-        </Card>
+        <EmptyState
+          icon={<FileCheck className="size-8 text-gray-300" />}
+          title="No approvals yet"
+          description="Submit a selection or spec to get sign-off."
+          action={
+            canManage ? (
+              <Button variant="primary" onClick={() => setCreateOpen(true)}>
+                Submit for approval
+              </Button>
+            ) : undefined
+          }
+          className="py-10"
+        />
       ) : (
         <div className="flex flex-col gap-8">
           {awaitingDecision.length > 0 && (

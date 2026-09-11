@@ -113,9 +113,12 @@ export default function ProjectFinalAccount() {
           title="Final Account"
           description="Contract settlement — closing statement showing what has been certified, paid, held and what remains."
         />
-        <Card padding="lg" className="mt-8 text-center text-sm text-gray-500">
-          No finance data yet for this project.
-        </Card>
+        <EmptyState
+          icon={<FinancesIcon className="size-8 text-gray-300" />}
+          title="No finance data yet"
+          description="The closing statement is built from certified, paid and held amounts once the project's finances are set up."
+          className="py-10"
+        />
       </div>
     );
   }

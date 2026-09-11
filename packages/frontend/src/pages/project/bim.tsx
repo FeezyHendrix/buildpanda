@@ -1,9 +1,12 @@
 import { lazy, Suspense, useState } from "react";
+import { Boxes } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { UploadBimDialog } from "@/components/molecules/upload-bim-dialog";
 import type { SelectedElement } from "@/components/molecules/bim-viewer";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -185,8 +188,8 @@ export default function ProjectBim() {
             {xktModelUrl ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
-                    Loading viewer…
+                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-white/70">
+                    <Spinner size="md" tone="current" />
                   </div>
                 }
               >
@@ -197,8 +200,8 @@ export default function ProjectBim() {
             ) : modelUrl ? (
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-sm text-white/70">
-                    Loading viewer…
+                  <div className="flex h-full items-center justify-center bg-[#1a1a1a] text-white/70">
+                    <Spinner size="md" tone="current" />
                   </div>
                 }
               >
@@ -216,8 +219,8 @@ export default function ProjectBim() {
           {dashboardPreview ? (
             <Suspense
               fallback={
-                <aside className="flex w-[360px] shrink-0 items-center justify-center border-l border-[#F0F0F0] bg-[#FAFAFA] text-sm text-gray-400">
-                  Loading panel…
+                <aside className="flex w-[360px] shrink-0 items-center justify-center border-l border-[#F0F0F0] bg-[#FAFAFA]">
+                  <Spinner size="md" />
                 </aside>
               }
             >
@@ -351,24 +354,23 @@ export default function ProjectBim() {
 
       <div className="mt-6 flex flex-col gap-3">
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-gray-400">Loading…</p>
+          <div className="flex justify-center py-10">
+            <Spinner size="md" />
+          </div>
         ) : models.length === 0 ? (
-          <Card className="p-10 text-center">
-            <p className="text-sm text-gray-500">No BIM models yet.</p>
-            <p className="mt-1 text-xs text-gray-400">
-              Import from Revit, ArchiCAD, Navisworks and more.
-            </p>
-            {canUpload && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-3"
-                onClick={() => setUploadOpen(true)}
-              >
-                Import your first model
-              </Button>
-            )}
-          </Card>
+          <EmptyState
+            icon={<Boxes className="size-8 text-gray-300" />}
+            title="No BIM models yet"
+            description="Import from Revit, ArchiCAD, Navisworks and more to explore the model here."
+            action={
+              canUpload ? (
+                <Button variant="secondary" size="sm" onClick={() => setUploadOpen(true)}>
+                  Import your first model
+                </Button>
+              ) : undefined
+            }
+            className="py-10"
+          />
         ) : (
           models.map((model) => (
             <ModelCard

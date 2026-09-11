@@ -3,7 +3,7 @@ import { Gantt, Willow } from "@svar-ui/react-gantt";
 import "@svar-ui/react-gantt/all.css";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -142,26 +142,23 @@ export default function ProjectSchedule() {
 
       {isSchedulePending ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <Card padding="lg" className="text-center text-sm text-gray-500">
-            Loading schedule…
-          </Card>
+          <Spinner size="md" />
         </div>
       ) : !hasSchedule ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <Card padding="lg">
-            <EmptyState
-              icon={<CalendarIcon className="size-8 text-gray-300" />}
-              title="No scheduled activities"
-              description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
-              action={
-                canEdit && isProgrammeImportEnabled ? (
-                  <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
-                    Import programme of works
-                  </Button>
-                ) : undefined
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<CalendarIcon className="size-8 text-gray-300" />}
+            title="No scheduled activities"
+            description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
+            action={
+              canEdit && isProgrammeImportEnabled ? (
+                <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
+                  Import programme of works
+                </Button>
+              ) : undefined
+            }
+            className="py-10"
+          />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col bg-white">

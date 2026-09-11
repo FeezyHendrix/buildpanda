@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Spinner } from "@/components/atoms/spinner";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components";
 import {
   UpsertKeyDateDialog,
@@ -491,16 +493,21 @@ export default function ProjectKeyDates() {
             <tbody className="divide-y divide-[#F0F0F0]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
-                    Loading…
+                  <td colSpan={6} className="px-4">
+                    <div className="flex justify-center py-10">
+                      <Spinner size="md" />
+                    </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">
-                    {keyDates.length === 0
-                      ? "No key dates yet. Add the milestones you want to track."
-                      : "No key dates match your filters."}
+                  <td colSpan={6} className="px-4">
+                    <EmptyState
+                      icon={<CalendarIcon className="size-8 text-gray-300" />}
+                      title={keyDates.length === 0 ? "No key dates yet" : "No key dates match your filters"}
+                      description={keyDates.length === 0 ? "Add the milestones you want to track." : "Try clearing the search or status filter."}
+                      className="py-10"
+                    />
                   </td>
                 </tr>
               ) : (

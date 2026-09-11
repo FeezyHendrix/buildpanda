@@ -2,8 +2,11 @@ import { useState, useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { ShieldIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertPermitDialog,
   type UpsertPermitValues,
@@ -243,17 +246,23 @@ export default function ProjectPermits() {
       )}
 
       {isLoading ? (
-        <div className="mt-8">Loading permits...</div>
+        <div className="flex justify-center py-10">
+          <Spinner size="md" />
+        </div>
       ) : permits.length === 0 ? (
-        <Card className="p-8 text-center mt-8">
-          <h3 className="text-lg font-medium text-gray-900">No permits yet</h3>
-          <p className="mt-2 text-gray-500">Add building permits and government approvals to track them.</p>
-          {canManage && (
-            <Button variant="primary" className="mt-4" onClick={() => setCreateOpen(true)}>
-              Add permit
-            </Button>
-          )}
-        </Card>
+        <EmptyState
+          icon={<ShieldIcon className="size-8 text-gray-300" />}
+          title="No permits yet"
+          description="Add building permits and government approvals to track them."
+          action={
+            canManage ? (
+              <Button variant="primary" onClick={() => setCreateOpen(true)}>
+                Add permit
+              </Button>
+            ) : undefined
+          }
+          className="py-10"
+        />
       ) : (
         <div className="flex flex-col gap-8">
           {needsAttention.length > 0 && (

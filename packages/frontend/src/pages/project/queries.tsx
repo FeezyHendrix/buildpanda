@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { MessageCircleQuestion } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertQueryDialog,
   type UpsertQueryValues,
@@ -167,7 +170,9 @@ export default function ProjectQueries() {
       {view === "board" ? (
         <div className="mt-5">
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+            <div className="flex justify-center py-10">
+              <Spinner size="md" />
+            </div>
           ) : (
             <KanbanBoard
               items={queries}
@@ -189,14 +194,16 @@ export default function ProjectQueries() {
       ) : (
         <div className="mt-5 flex flex-col gap-3">
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+            <div className="flex justify-center py-10">
+              <Spinner size="md" />
+            </div>
           ) : queries.length === 0 ? (
-            <Card padding="lg" className="text-center">
-              <p className="text-sm font-medium text-gray-900">No queries</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Raise a query when you need a clarification.
-              </p>
-            </Card>
+            <EmptyState
+              icon={<MessageCircleQuestion className="size-8 text-gray-300" />}
+              title="No queries yet"
+              description="Raise a query when you need a clarification."
+              className="py-10"
+            />
           ) : (
             queries.map((q) => (
               <Card
