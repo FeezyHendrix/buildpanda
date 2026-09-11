@@ -73,7 +73,7 @@ export function useApplyProposedAction() {
             action.payload.bodyText,
             user?.name ?? "Field team",
             null,
-            buildingId,
+            (action.payload as { buildingId?: string | null }).buildingId ?? buildingId,
           );
           return;
         case "change_request":
