@@ -1,15 +1,22 @@
 import { useState } from "react";
-import { ActivityCard } from "./activities/activity-card";
+import { ActivitiesTable } from "./activities/activities-table";
+import {
+  ACTIVITY_STATUS_FILTERS,
+  matchesActivitySearch,
+  type ActivityStatusFilter,
+} from "./activities/activity-helpers";
 
 import { Button } from "@/components/atoms/button";
-import { Spinner } from "@/components/atoms/spinner";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import {
   CreateActivityDialog,
   type ActivityPrefill,
 } from "@/components/molecules/create-activity-dialog";
 import { ActivityTemplateDialog } from "@/components/molecules/activity-template-dialog";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RaiseDelayDialog } from "@/components/molecules/raise-delay-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -17,11 +24,13 @@ import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useCreateActivity,
+  useDeleteActivity,
   useProjectActivities,
   useRaiseDelay,
   useUpdateActivity,
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
+import { icons } from "@/assets/icons/icons";
 import { canResourceAction, type Activity } from "@/lib/project-types";
 
 export default function ProjectActivities() {
@@ -36,15 +45,28 @@ export default function ProjectActivities() {
   const [prefill, setPrefill] = useState<ActivityPrefill | null>(null);
   const [editingTarget, setEditingTarget] = useState<Activity | null>(null);
   const [delayTarget, setDelayTarget] = useState<Activity | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Activity | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ActivityStatusFilter>("all");
 
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
+  const deleteActivity = useDeleteActivity();
   const raiseDelay = useRaiseDelay();
 
   const { data: participants = [] } = useParticipants(project.id, canManage);
   const assigneeOptions = participants
     .filter((p) => p.userId)
     .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
+  const inProgressCount = activities.filter((a) => a.status === "InProgress").length;
+  const delayedCount = activities.filter((a) => a.isDelayed).length;
+  const completedCount = activities.filter((a) => a.status === "Completed").length;
+
+  const filtered = activities
+    .filter((a) => statusFilter === "all" || a.status === statusFilter)
+    .filter((a) => matchesActivitySearch(a, search));
 
   function startNewActivity(): void {
     setEditingTarget(null);
@@ -53,7 +75,7 @@ export default function ProjectActivities() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
+    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Site activity"
         actions={
@@ -66,33 +88,61 @@ export default function ProjectActivities() {
         }
       />
 
-      <section className="mt-6 flex flex-col gap-1 rounded-2xl bg-[#F8F8F8] p-1">
-        {isPending ? (
-          <div className="flex justify-center py-10">
-            <Spinner size="md" />
-          </div>
-        ) : activities.length === 0 ? (
-          <EmptyState
-            icon={<CalendarIcon />}
-            title="No activities yet"
-            description="Track field work to capture planned vs actual progress and delay causes."
-            action={canManage ? { label: "Add activity", onClick: startNewActivity, icon: <PlusIcon /> } : undefined}
+      {activities.length > 0 ? (
+        <section aria-label="Activity summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="Total activities" icon={icons.calendarSearch} value={activities.length} />
+          <KpiCard label="In progress" icon={icons.penSquare} value={inProgressCount} />
+          <KpiCard label="Delayed" icon={icons.hourglass} value={delayedCount} />
+          <KpiCard label="Completed" icon={icons.verifiedCheck} value={completedCount} />
+        </section>
+      ) : null}
+
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search activities"
+            aria-label="Search activities"
           />
-        ) : (
-          activities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              projectId={project.id}
-              activity={activity}
-              onEdit={() => {
-                setEditingTarget(activity);
-                setCreateOpen(true);
-              }}
-              onRaiseDelay={() => setDelayTarget(activity)}
-            />
-          ))
-        )}
-      </section>
+        </div>
+        <FilterTabs
+          items={ACTIVITY_STATUS_FILTERS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          ariaLabel="Filter activities"
+        />
+      </div>
+
+      <ActivitiesTable
+        activities={filtered}
+        totalCount={activities.length}
+        isPending={isPending}
+        canManage={canManage}
+        onEdit={(activity) => {
+          setEditingTarget(activity);
+          setCreateOpen(true);
+        }}
+        onRaiseDelay={setDelayTarget}
+        onDelete={setDeleteTarget}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        loading={deleteActivity.isPending}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteActivity.mutate(
+            { projectId: project.id, activityId: deleteTarget.id },
+            { onSettled: () => setDeleteTarget(null) },
+          );
+        }}
+        title="Delete activity"
+        description="This permanently removes the activity and its logged delays. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
 
       <ActivityTemplateDialog
         open={templateOpen}
