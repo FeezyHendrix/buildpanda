@@ -108,44 +108,17 @@ function MilestoneCard({
               : "mt-1 border-[#F6F6F6]",
           )}
         >
-          <div className="flex gap-3 text-[11px]">
-            {/* <button
-              type="button"
-              onClick={onEdit}
-              className="text-gray-500 hover:text-gray-900"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="text-red-500 hover:text-red-600"
-            >
-              Delete
-            </button> */}
-            <button
-              type="button"
-              onClick={onViewDocs}
-              className="inline-flex items-center gap-1 text-black-300 text-[13px] font-semibold cursor-pointer"
-            >
-              View Docs
-            </button>
-            <button
-              type="button"
-              onClick={onRaiseDispute}
-              className="text-error-500 text-[13px] font-semibold cursor-pointer"
-            >
-              Raise Dispute
-            </button>
+          <div className="flex items-center gap-1">
+            <Button type="button" size="sm" variant="ghost" onClick={onViewDocs}>
+              View docs
+            </Button>
+            {onRaiseDispute ? (
+              <Button type="button" size="sm" variant="ghost" className="text-error-500" onClick={onRaiseDispute}>
+                Raise dispute
+              </Button>
+            ) : null}
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            disabled={!releaseEnabled}
-            onClick={onReleaseFunds}
-            className="h-8 px-3 text-xs"
-          >
+          <Button type="button" size="sm" variant="primary" disabled={!releaseEnabled} onClick={onReleaseFunds}>
             Release funds
           </Button>
         </footer>

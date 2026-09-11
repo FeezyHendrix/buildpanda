@@ -8,7 +8,7 @@ import { StagePaymentsSection } from "./payments/stage-payments-section";
 export default function ProjectMilestonePayments() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <StagePaymentsSection />
+      <StagePaymentsSection heading="page" />
     </div>
   );
 }
