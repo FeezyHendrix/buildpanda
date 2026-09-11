@@ -15,6 +15,7 @@ export interface NewMaterialApprovalRecord {
   requested_reviewer_id: string | null;
   document_id: string | null;
   document_version_id: string | null;
+  source_markup_id: string | null;
 }
 
 export interface NewMaterialApprovalDetailRecord {

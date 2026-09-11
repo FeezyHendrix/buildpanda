@@ -52,6 +52,7 @@ export interface CreateMaterialApprovalInput {
   requestedReviewerId?: string | null;
   documentId?: string | null;
   documentVersionId?: string | null;
+  sourceMarkupId?: string | null;
 }
 
 export interface UpdateMaterialApprovalInput {
