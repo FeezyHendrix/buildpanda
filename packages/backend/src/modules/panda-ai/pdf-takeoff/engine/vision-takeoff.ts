@@ -42,7 +42,7 @@ const VisionItem = z.object({
 
 const VisionResponse = z.object({
   scaleReadable: z.boolean(),
-  items: z.array(VisionItem).max(80),
+  items: z.array(VisionItem).max(200),
   notes: z.string().max(400).optional(),
 });
 
@@ -57,7 +57,7 @@ Rules:
 - If no scale bar or dimension strings are legible, set scaleReadable=false and items=[].
 - Prefer counting (nr) over measuring when only symbols are visible (doors, WCs, columns).
 - qty is an ESTIMATE — err on the low side; never invent items you cannot see. Empty items is valid.
-- Max 80 items. description one line, <=240 chars.`;
+- Max 200 items. description one line, <=240 chars.`;
 
 function stripFences(raw: string): string {
   return raw

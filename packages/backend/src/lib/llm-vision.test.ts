@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 // dynamic import below (each test file runs in its own process).
 process.env.DEEPSEEK_API_KEY = "sk-test";
 process.env.OPENAI_API_KEY = "sk-openai";
-const { chatVision, activeVisionModelName, isVisionConfigured } = await import("./llm-vision.ts");
+const { chatVision, chatVisionJsonValidated, activeVisionModelName, isVisionConfigured } = await import("./llm-vision.ts");
+const { z } = await import("zod");
 
 test("images go to DeepSeek even when a text provider is also configured", async () => {
   assert.equal(isVisionConfigured(), true);
@@ -44,6 +45,32 @@ test("a non-2xx vision response surfaces as an error, not a silent null", async 
   globalThis.fetch = (async () => new Response("rate limited", { status: 429 })) as typeof fetch;
   try {
     await assert.rejects(chatVision("x", ["data:image/png;base64,AAAA"]), /Vision API 429/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("JSON-validated image calls (invoice scan) also go to DeepSeek with an explicit output cap", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    bodies.push({ url: String(url), ...JSON.parse(String(init?.body)) });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ total: 120 }) } }] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  try {
+    const result = await chatVisionJsonValidated(
+      [{ role: "user", content: [{ type: "text", text: "json please" }, { type: "image_url", image_url: { url: "data:image/png;base64,AAAA" } }] }],
+      z.object({ total: z.number() }),
+    );
+    assert.equal(result?.data.total, 120);
+    assert.equal(bodies.length, 1);
+    assert.equal(bodies[0]?.url, "https://api.deepseek.com/chat/completions");
+    assert.equal(bodies[0]?.model, "deepseek-flash");
+    assert.deepEqual(bodies[0]?.response_format, { type: "json_object" });
+    assert.equal(bodies[0]?.max_tokens, 32_000);
   } finally {
     globalThis.fetch = realFetch;
   }

@@ -1,10 +1,10 @@
 import type { Knex } from "knex";
 import {
   chatTools,
-  chatStream,
   isLlmConfigured,
   type LlmMessage,
 } from "../../../lib/llm.ts";
+import { chatStream } from "../../../lib/llm-stream.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { agentRepository } from "./repository.ts";
 import { buildSnapshot, snapshotToPrompt } from "./context.ts";

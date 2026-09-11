@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../../../../db/connection.ts";
 import { generateId } from "../../../../lib/ids.ts";
-import { embedTexts } from "../../../../lib/llm.ts";
+import { embedTexts } from "../../../../lib/llm-embeddings.ts";
 import { besmmRag, BESMM_CORPUS_VERSION, type BesmmChunkInput } from "../../../../lib/besmm-rag.ts";
 import { sectionForPage } from "../../../../lib/besmm-sections.ts";
 

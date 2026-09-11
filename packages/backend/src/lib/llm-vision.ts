@@ -1,11 +1,16 @@
+import type { ZodType } from "zod";
 import { config } from "../config/index.ts";
 import {
   activeProvider,
+  chatJsonValidated,
   emitCallRecord,
+  maxTokensField,
   type ChatResponse,
   type LlmImageContent,
+  type LlmMessage,
   type LlmTextContent,
   type Provider,
+  type ValidatedJsonResult,
 } from "./llm.ts";
 
 // Images go to DeepSeek (V4.1 Flash, vision-native) when a key is set; text and
@@ -25,6 +30,15 @@ export function activeVisionModelName(): string | null {
 }
 
 export type VisionDetail = "low" | "high" | "auto";
+
+// Schema-validated JSON from images (invoice scan): same repair-retry envelope
+// as text, answered by the vision provider.
+export function chatVisionJsonValidated<T>(
+  messages: LlmMessage[],
+  schema: ZodType<T>,
+): Promise<ValidatedJsonResult<T> | null> {
+  return chatJsonValidated(messages, schema, { provider: visionProvider() });
+}
 
 export async function chatVision(
   textPrompt: string,
@@ -58,6 +72,7 @@ export async function chatVision(
       body: JSON.stringify({
         model: provider.model,
         temperature: 0.2,
+        ...maxTokensField(provider),
         messages: [{ role: "user", content }],
       }),
     });

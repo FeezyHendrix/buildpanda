@@ -23,7 +23,8 @@ import { classifyStructure } from "./classify.ts";
 import { readBbs, bbsToItems, provisionalRebarItem, readPileSchedule, pileScheduleToItems } from "./structural-schedule.ts";
 import { measureCivil, civilToItems } from "./civil-measure.ts";
 import { applyOpeningDeductions, applySchedules, looksLikeScheduleSheet, measureDiagramSizes, mergeDiagramSizes, readSchedules, readingOrderLines } from "./schedule.ts";
-import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
+import { isLlmConfigured } from "../../../../lib/llm.ts";
+import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
 import { priceRow } from "./price.ts";
 
 // PDF take-off. The sibling dwg-takeoff module reads DWG vectors natively and
@@ -284,7 +285,7 @@ export async function generateForSession(
     await progress("schedules", `Reading ${scheduleSheets.length} schedule sheet(s)`);
     try {
       let schedules = await readSchedules(scheduleSheets, async (messages, schema) =>
-        chatJsonValidated(messages, schema),
+        chatLongJsonValidated(messages, schema),
       );
       if (schedules) {
         // deterministic diagram dimensions beat transcribed table cells
@@ -341,7 +342,7 @@ export async function generateForSession(
     const outcome = await buildUpBill(
       billItems,
       sheetContext,
-      async (messages, schema) => chatJsonValidated(messages, schema),
+      async (messages, schema) => chatLongJsonValidated(messages, schema),
       (message) => void progress("building", message),
       briefs,
       resolveBesmm,

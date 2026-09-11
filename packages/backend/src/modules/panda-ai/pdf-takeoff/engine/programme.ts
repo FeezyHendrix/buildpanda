@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { Knex } from "knex";
 import { generateId } from "../../../../lib/ids.ts";
-import { chatJsonValidated, isLlmConfigured, type LlmMessage } from "../../../../lib/llm.ts";
+import { isLlmConfigured, type LlmMessage } from "../../../../lib/llm.ts";
+import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
 import { preconRepository } from "../repository.ts";
 import type {
   PreconBoqRowRow,
@@ -102,7 +103,7 @@ export async function generateProgrammeForSession(
   }
 
   onProgress("Sequencing work packages from the bill of quantities");
-  const response = await chatJsonValidated(messages(summary, projectTitle), programmeSchema);
+  const response = await chatLongJsonValidated(messages(summary, projectTitle), programmeSchema);
   if (!response) throw new Error("The planner returned no programme.");
 
   const draft = response.data.tasks;
