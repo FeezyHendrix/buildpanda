@@ -3,18 +3,17 @@ import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import type { ApprovalStatus } from "@/api/material-approvals";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT, ICON_MUTED } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
-import {
-  MaterialApprovalStatusBadge,
-  shortDate,
-} from "@/components/molecules/material-approval-status";
+import { MaterialApprovalStatusBadge } from "@/components/molecules/material-approval-status";
 import { Page } from "@/components/molecules/page";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import type { Db } from "@/db/client";
 import type { LocalMaterialApproval } from "@/db/material-approvals-repository";
 import { useLocalDb } from "@/db/provider";
 import { useLocalMaterialApprovals } from "@/hooks/use-material-approvals";
+import { formatShortDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
 type Filter = "all" | ApprovalStatus;
@@ -27,8 +26,32 @@ const FILTERS: readonly SegmentedTab<Filter>[] = [
   { key: "Rejected", label: "Rejected" },
 ] as const;
 
+/** Each tab says what it would hold, so an empty one is a fact rather than a puzzle. */
+const EMPTY_COPY: Record<Filter, { title: string; body: string }> = {
+  all: {
+    title: "No material approval requests yet",
+    body: "Raise one to get a material and its specification signed off before it is ordered.",
+  },
+  Pending: {
+    title: "Nothing is waiting for a decision",
+    body: "Every request on this project has been decided. New requests appear here until a reviewer acts on them.",
+  },
+  Resubmit: {
+    title: "Nothing has been sent back",
+    body: "Requests a reviewer asked to be changed and resubmitted appear here.",
+  },
+  Approved: {
+    title: "Nothing has been approved yet",
+    body: "Requests appear here once a reviewer signs them off.",
+  },
+  Rejected: {
+    title: "Nothing has been rejected",
+    body: "Requests a reviewer turned down appear here.",
+  },
+};
+
 function facts(approval: LocalMaterialApproval): string {
-  const neededBy = shortDate(approval.neededBy);
+  const neededBy = formatShortDate(approval.neededBy);
   return [
     `${approval.quantity} ${approval.unit}`,
     approval.supplier,
@@ -50,17 +73,8 @@ function ApprovalRow({ approval }: { approval: LocalMaterialApproval }) {
         <Text weight="semibold" className="min-w-0 flex-1 text-[15px]" numberOfLines={1}>
           {approval.title}
         </Text>
-        {approval.isPendingSync ? (
-          <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1">
-            <Ionicons name="cloud-upload-outline" size={12} color="#717171" />
-            <Text weight="semibold" tone="secondary" className="text-[10px] uppercase">
-              Pending
-            </Text>
-          </View>
-        ) : (
-          <MaterialApprovalStatusBadge status={approval.status} />
-        )}
-        <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+        {approval.isPendingSync ? <PendingBadge /> : <MaterialApprovalStatusBadge status={approval.status} />}
+        <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
       </View>
       <Text weight="medium" tone="secondary" className="text-[13px]" numberOfLines={1}>
         {approval.materialName}
@@ -71,7 +85,7 @@ function ApprovalRow({ approval }: { approval: LocalMaterialApproval }) {
         </Text>
         {approval.commentCount > 0 ? (
           <View className="flex-row items-center gap-1">
-            <Ionicons name="chatbubble-outline" size={11} color="#888888" />
+            <Ionicons name="chatbubble-outline" size={11} color={ICON_MUTED} />
             <Text tone="muted" className="text-xs">
               {approval.commentCount}
             </Text>
@@ -101,12 +115,10 @@ function ApprovalList({ db, projectId, filter }: { db: Db; projectId: string; fi
     return (
       <View className="items-center py-12">
         <Text weight="semibold" className="text-center text-base">
-          {filter === "all" ? "No material approval requests" : `Nothing ${filter.toLowerCase()}`}
+          {EMPTY_COPY[filter].title}
         </Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          {filter === "all"
-            ? "Raise one to get a material and its specification signed off before it is ordered."
-            : "Switch tabs to see the rest of this project's requests."}
+          {EMPTY_COPY[filter].body}
         </Text>
       </View>
     );
@@ -128,12 +140,12 @@ export default function MaterialApprovals() {
 
   return (
     <Page
-      title="Material Approvals"
+      title="Material approvals"
       onBack={() => router.back()}
       rightButtons={
         <HeaderIconButton
           icon="add"
-          label="New material approval request"
+          label="New approval request"
           onPress={() => router.push("./new")}
         />
       }

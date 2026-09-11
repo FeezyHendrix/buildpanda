@@ -1,3 +1,4 @@
+import { palette } from "@/constants/colors";
 import { MARKUP_KIND, type MarkupPoint, type SheetMarkup } from "./markup-types";
 
 function toPx(p: MarkupPoint, w: number, h: number): { x: number; y: number } {
@@ -51,8 +52,8 @@ function PinShape({ at, color, selected, resolved, w, h }: { at: MarkupPoint; co
   return (
     <g opacity={resolved ? 0.45 : 1}>
       {selected ? <circle cx={p.x} cy={p.y} r={19} fill="none" stroke={color} strokeWidth={2} /> : null}
-      <circle cx={p.x} cy={p.y} r={13} fill={color} stroke="#FFFFFF" strokeWidth={2.5} />
-      <circle cx={p.x} cy={p.y} r={4} fill="#FFFFFF" />
+      <circle cx={p.x} cy={p.y} r={13} fill={color} stroke={palette.surface} strokeWidth={2.5} />
+      <circle cx={p.x} cy={p.y} r={4} fill={palette.surface} />
     </g>
   );
 }
@@ -135,13 +136,13 @@ export function MarkupLayer({
       })}
 
       {draftPin ? (
-        <PinShape at={draftPin} color="#004DE7" selected resolved={false} w={width} h={height} />
+        <PinShape at={draftPin} color={palette.primary500} selected resolved={false} w={width} h={height} />
       ) : null}
       {draftPen && draftPen.length > 1 ? (
         <polyline
           points={points(draftPen, width, height)}
           fill="none"
-          stroke="#004DE7"
+          stroke={palette.primary500}
           strokeWidth={3}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -154,9 +155,9 @@ export function MarkupLayer({
           width={(draftRect.w / 100) * width}
           height={(draftRect.h / 100) * height}
           rx={6}
-          fill="#004DE7"
+          fill={palette.primary500}
           fillOpacity={0.06}
-          stroke="#004DE7"
+          stroke={palette.primary500}
           strokeWidth={3}
           strokeDasharray="10 6"
         />

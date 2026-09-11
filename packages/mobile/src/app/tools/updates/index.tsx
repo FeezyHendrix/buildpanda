@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { View } from "react-native";
-import type { ProjectUpdate } from "@/api/updates";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { StaleBanner } from "@/components/molecules/stale-banner";
 import { UpdateCard } from "@/components/molecules/update-card";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
@@ -14,11 +14,7 @@ export default function ProjectUpdates() {
 
   return (
     <Page title="Updates" onBack={() => router.back()}>
-      {isStale ? (
-        <Text tone="muted" className="pb-2 text-xs">
-          Showing your last synced updates — you&apos;re offline.
-        </Text>
-      ) : null}
+      {isStale ? <StaleBanner what="updates" /> : null}
 
       {isPending ? (
         <View className="items-center py-12">

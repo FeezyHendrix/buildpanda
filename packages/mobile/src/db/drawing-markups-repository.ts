@@ -3,7 +3,9 @@ import { discardStagedMedia } from "@/lib/stage-media";
 import { and, eq, inArray } from "drizzle-orm";
 import type { DrawingMarkup, DrawingMarkupComment, MarkupKind } from "@/api/drawing-markup";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
+import { palette } from "@/constants/colors";
 import type { Db } from "./client";
+import { enqueueDelete, reviveOrQueue } from "./enqueue-update";
 import { drawingMarkupComments, drawingMarkups, outbox, type DrawingMarkupCommentRow, type DrawingMarkupRow } from "./schema";
 
 // Markups drawn on site are written here first and pushed by the outbox, so a
@@ -126,7 +128,7 @@ export const drawingMarkupsRepository = {
         pageNo: input.pageNo,
         kind: input.kind,
         geometry: JSON.stringify(input.geometry),
-        color: input.color ?? "#004DE7",
+        color: input.color ?? palette.primary500,
         isPendingSync: true,
         updatedAt: Date.now(),
       });
@@ -163,7 +165,7 @@ export const drawingMarkupsRepository = {
     db: Db,
     documentVersionId: string,
     pageNo: number,
-    rows: (LocalMarkupInput & { id: string; comments?: DrawingMarkupComment[] })[],
+    rows: (LocalMarkupInput & { id: string; resolvedAt?: string | null; comments?: DrawingMarkupComment[] })[],
   ): Promise<void> {
     await db.transaction(async (tx) => {
       const existing = await tx
@@ -189,7 +191,8 @@ export const drawingMarkupsRepository = {
           pageNo: row.pageNo,
           kind: row.kind,
           geometry: JSON.stringify(row.geometry),
-          color: row.color ?? "#004DE7",
+          color: row.color ?? palette.primary500,
+          resolvedAt: row.resolvedAt ?? null,
           isPendingSync: false,
           updatedAt: Date.now(),
         });
@@ -212,6 +215,51 @@ export const drawingMarkupsRepository = {
     });
   },
 
+  /**
+   * Resolves or reopens a markup on the device and queues the change. A
+   * markup whose create is still queued is refused: the server has no record
+   * to resolve yet, and the reviewer sees why rather than a silent no-op.
+   */
+  async setResolvedLocal(db: Db, projectId: string, id: string, resolved: boolean): Promise<void> {
+    if (id.startsWith("local_")) {
+      throw new Error("This markup hasn't reached the server yet. It can be resolved once it has synced.");
+    }
+    await db.transaction(async (tx) => {
+      await tx
+        .update(drawingMarkups)
+        .set({ resolvedAt: resolved ? new Date().toISOString() : null, isPendingSync: true, updatedAt: Date.now() })
+        .where(eq(drawingMarkups.id, id));
+      await reviveOrQueue(tx as never, {
+        resource: RESOURCE,
+        entityId: id,
+        projectId,
+        operation: "resolve",
+        newId: randomUUID(),
+      });
+    });
+  },
+
+  /**
+   * Deletes a markup on the device. One the server knows about has its delete
+   * queued; one that never left the device is simply dropped with its queued
+   * push, because the server has nothing to delete.
+   */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    if (id.startsWith("local_")) return this.removeLocal(db, id);
+    const comments = await db.select().from(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(drawingMarkups).where(eq(drawingMarkups.id, id));
+      await tx.delete(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
+      for (const comment of comments) {
+        await tx.delete(outbox).where(and(eq(outbox.resource, COMMENT_RESOURCE), eq(outbox.entityId, comment.id)));
+      }
+      // drops any queued resolve for this markup too, then queues the delete
+      await enqueueDelete(tx as never, RESOURCE, id, projectId, randomUUID());
+    });
+    for (const comment of comments) discardStagedMedia(comment.stagedMediaUri);
+  },
+
+  /** Drops a markup that never reached the server, with its comments and queued pushes. */
   async removeLocal(db: Db, id: string): Promise<void> {
     const comments = await db.select().from(drawingMarkupComments).where(eq(drawingMarkupComments.markupId, id));
     await db.transaction(async (tx) => {

@@ -1,12 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { useState } from "react";
+import { Alert, View } from "react-native";
 import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
-import { flushOutbox, outboxQuery } from "@/db/outbox";
+import { ICON_BRAND } from "@/constants/colors";
+import type { Db } from "@/db/client";
+import { discardOutboxItem, flushOutbox, retryOutboxItem } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
+import { useOutboxRows } from "@/hooks/use-outbox";
 import { useSyncState } from "@/lib/sync-provider";
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -16,20 +18,56 @@ const RESOURCE_LABELS: Record<string, string> = {
   "daily-log-entries": "Daily log entries",
   "daily-log-activities": "Activity logs",
   "change-requests": "Change requests",
+  "change-request-comments": "Change request comments",
+  documents: "Document uploads",
   "material-orders": "Material orders",
   "look-aheads": "Look aheads",
+  "material-approvals": "Material approvals",
+  "material-approval-comments": "Approval comments",
+  "drawing-markups": "Drawing markups",
+  "drawing-markup-comments": "Markup comments",
 };
 
 function labelFor(resource: string): string {
   return RESOURCE_LABELS[resource] ?? resource;
 }
 
-function QueueList({ db, ready }: { db: NonNullable<ReturnType<typeof useLocalDb>["db"]>; ready: boolean }) {
-  const query = useMemo(() => outboxQuery(db), [db]);
-  const live = useLiveQuery(query);
-  const rows = [...(live.data ?? [])].sort((a, b) => b.createdAt - a.createdAt);
+function QueueList({ db, ready }: { db: Db; ready: boolean }) {
+  const sync = useSyncState();
+  const { data: rows } = useOutboxRows(db);
   const pending = rows.filter((row) => row.status === "pending");
   const failed = rows.filter((row) => row.status === "failed");
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function retry(id: string) {
+    setBusyId(id);
+    try {
+      await retryOutboxItem(db, id);
+      await flushOutbox(db).catch(() => undefined);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Native confirm: discarding drops a record the crew member wrote and the
+  // app has no dialog molecule; the same pattern the delete screens use.
+  function confirmDiscard(id: string, label: string) {
+    Alert.alert(
+      "Discard this change?",
+      `The ${label.toLowerCase()} change on this device will be removed and will not reach the server.`,
+      [
+        { text: "Keep", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            setBusyId(id);
+            discardOutboxItem(db, id).finally(() => setBusyId(null));
+          },
+        },
+      ],
+    );
+  }
 
   if (!ready) {
     return (
@@ -70,6 +108,27 @@ function QueueList({ db, ready }: { db: NonNullable<ReturnType<typeof useLocalDb
               Attempt {item.attempts + 1}
             </Text>
           )}
+          {item.status === "failed" ? (
+            <View className="flex-row gap-2 pt-3">
+              <Button
+                variant="secondary"
+                onPress={() => retry(item.id)}
+                loading={busyId === item.id}
+                disabled={busyId !== null || !sync.isOnline}
+                className="flex-1"
+              >
+                Retry
+              </Button>
+              <Button
+                variant="danger"
+                onPress={() => confirmDiscard(item.id, labelFor(item.resource))}
+                disabled={busyId !== null}
+                className="flex-1"
+              >
+                Discard
+              </Button>
+            </View>
+          ) : null}
         </View>
       ))}
     </Card>
@@ -105,7 +164,7 @@ export default function SyncPage() {
       <Card className="p-4">
         <View className="flex-row items-center gap-3">
           <View className="h-11 w-11 items-center justify-center rounded-full bg-primary-50">
-            <Ionicons name={sync.isOnline ? "cloud-done-outline" : "cloud-offline-outline"} size={22} color="#004DE7" />
+            <Ionicons name={sync.isOnline ? "cloud-done-outline" : "cloud-offline-outline"} size={22} color={ICON_BRAND} />
           </View>
           <View className="min-w-0 flex-1">
             <Text weight="bold" className="text-base">

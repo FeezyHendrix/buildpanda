@@ -10,7 +10,7 @@ export default function ProjectChart() {
 
   return (
     <ScheduleListScreen
-      title="Project Chart"
+      title="Project chart"
       isPending={activities.isPending}
       isStale={activities.isStale}
       isEmpty={data.length === 0}

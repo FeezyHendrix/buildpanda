@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { MATERIAL_UNITS, type MaterialUnit } from "@/api/material-approvals";
 import type { CommentAssignee } from "@/api/participants";
 import { Button, Field, OptionRow, Text } from "@/components/atoms";
@@ -10,51 +10,14 @@ import { useCreateMaterialApproval } from "@/hooks/use-material-approvals";
 import { useProjectAssignees } from "@/hooks/use-participants";
 import { useFieldSession } from "@/lib/field-session";
 import { useSyncState } from "@/lib/sync-provider";
-import { cn } from "@/lib/utils";
 
 const ANYONE = "anyone";
 
-function ReviewerPicker({
-  assignees,
-  value,
-  onChange,
-}: {
-  assignees: readonly CommentAssignee[];
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <View className="gap-2">
-      <Text weight="semibold" className="text-[13px]">
-        Request approval from
-      </Text>
-      <View className="flex-row flex-wrap gap-2">
-        {[{ id: ANYONE, name: "Anyone who can approve" }, ...assignees].map((person) => {
-          const isActive = person.id === value;
-          return (
-            <Pressable
-              key={person.id}
-              onPress={() => onChange(person.id)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isActive }}
-              className={cn(
-                "min-h-11 justify-center rounded-xl px-4",
-                isActive ? "bg-primary-500" : "bg-surface-alt",
-              )}
-            >
-              <Text
-                weight="semibold"
-                tone={isActive ? "inverse" : "secondary"}
-                className="text-[13px]"
-              >
-                {person.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
+function reviewerOptions(assignees: readonly CommentAssignee[]): { value: string; label: string }[] {
+  return [
+    { value: ANYONE, label: "Anyone who can approve" },
+    ...assignees.map((person) => ({ value: person.id, label: person.name })),
+  ];
 }
 
 export default function NewMaterialApproval() {
@@ -111,7 +74,7 @@ export default function NewMaterialApproval() {
 
   return (
     <Page
-      title="New Approval Request"
+      title="New approval request"
       onBack={() => router.back()}
       footer={
         <Button onPress={handleSubmit} disabled={!canSubmit} loading={saving}>
@@ -184,7 +147,12 @@ export default function NewMaterialApproval() {
           onChangeText={setSupplier}
           placeholder="Proposed supplier"
         />
-        <ReviewerPicker assignees={assignees} value={reviewerId} onChange={setReviewerId} />
+        <OptionRow
+          label="Request approval from"
+          options={reviewerOptions(assignees)}
+          value={reviewerId}
+          onChange={setReviewerId}
+        />
         <Field
           label="Notes"
           value={description}

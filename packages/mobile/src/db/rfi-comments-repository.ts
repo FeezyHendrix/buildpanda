@@ -2,7 +2,7 @@ import { randomUUID } from "expo-crypto";
 import { asc, eq } from "drizzle-orm";
 import type { RfiComment } from "@/api/rfis";
 import type { Db } from "./client";
-import { outbox, rfiComments, type RfiCommentRow } from "./schema";
+import { outbox, rfiComments, rfis, type RfiCommentRow } from "./schema";
 
 export function toComment(row: RfiCommentRow) {
   return {
@@ -12,6 +12,8 @@ export function toComment(row: RfiCommentRow) {
     body: row.body,
     contentHtml: row.contentHtml,
     createdAt: row.createdAt,
+    /** True when this reply is (or is queued to become) the RFI's official answer. */
+    official: row.official,
     isPendingSync: row.isPendingSync,
   };
 }
@@ -24,7 +26,13 @@ export const rfiCommentsRepository = {
       .where(eq(rfiComments.rfiId, rfiId))
       .orderBy(asc(rfiComments.createdAt)),
 
-  /** Comment row and its outbox entry are written together so they can't diverge. */
+  /**
+   * Comment row and its outbox entry are written together so they can't diverge.
+   *
+   * An official response also mirrors the server's effect on the RFI row
+   * (Answered, official text) so the header reflects it with no signal; the
+   * RFI row is deliberately left un-flagged, since the comment carries the push.
+   */
   async createLocal(
     db: Db,
     projectId: string,
@@ -32,8 +40,10 @@ export const rfiCommentsRepository = {
     body: string,
     authorName: string,
     contentHtml?: string | null,
+    official = false,
   ): Promise<string> {
     const id = `local_${randomUUID()}`;
+    const now = Date.now();
 
     await db.transaction(async (tx) => {
       await tx.insert(rfiComments).values({
@@ -43,9 +53,17 @@ export const rfiCommentsRepository = {
         authorName,
         body,
         contentHtml: contentHtml ?? null,
-        createdAt: Date.now(),
+        createdAt: now,
+        official,
         isPendingSync: true,
       });
+
+      if (official) {
+        await tx
+          .update(rfis)
+          .set({ status: "Answered", officialResponse: body, updatedAt: now })
+          .where(eq(rfis.id, rfiId));
+      }
 
       await tx.insert(outbox).values({
         id: randomUUID(),
@@ -60,20 +78,38 @@ export const rfiCommentsRepository = {
     return id;
   },
 
-  async reconcileCreate(db: Db, localRowId: string, server: RfiComment): Promise<void> {
+  async reconcileCreate(
+    db: Db,
+    localRowId: string,
+    server: RfiComment,
+    official = false,
+  ): Promise<void> {
     await db.transaction(async (tx) => {
+      const [local] = await tx
+        .select({ projectId: rfiComments.projectId })
+        .from(rfiComments)
+        .where(eq(rfiComments.id, localRowId))
+        .limit(1);
       await tx.delete(rfiComments).where(eq(rfiComments.id, localRowId));
-      await tx.insert(rfiComments).values({
-        id: server.id,
-        rfiId: server.rfiId,
-        projectId: "",
-        authorName: server.authorName,
-        body: server.body,
-        contentHtml: server.contentHtml,
-        createdAt: Date.parse(server.createdAt) || Date.now(),
-        isPendingSync: false,
-        serverLastSyncedAt: Date.now(),
-      });
+      await tx
+        .insert(rfiComments)
+        .values({
+          id: server.id,
+          rfiId: server.rfiId,
+          projectId: local?.projectId ?? "",
+          authorName: server.authorName,
+          body: server.body,
+          contentHtml: server.contentHtml,
+          createdAt: Date.parse(server.createdAt) || Date.now(),
+          official,
+          isPendingSync: false,
+          serverLastSyncedAt: Date.now(),
+        })
+        // A detail pull may already have landed the server row; take it over.
+        .onConflictDoUpdate({
+          target: rfiComments.id,
+          set: { official, isPendingSync: false, serverLastSyncedAt: Date.now() },
+        });
     });
   },
 
@@ -100,6 +136,8 @@ export const rfiCommentsRepository = {
             isPendingSync: false,
             serverLastSyncedAt: now,
           })
+          // `official` is not in the set: the server does not flag it, so a
+          // pull must not erase what the reconcile recorded.
           .onConflictDoUpdate({
             target: rfiComments.id,
             set: { body: row.body, contentHtml: row.contentHtml, authorName: row.authorName, serverLastSyncedAt: now },

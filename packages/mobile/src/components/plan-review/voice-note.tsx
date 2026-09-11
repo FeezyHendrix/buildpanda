@@ -3,6 +3,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { Text } from "@/components/atoms";
+import { ICON_DANGER, ICON_DEFAULT, ICON_INVERSE } from "@/constants/colors";
 import type { VoiceRecorder } from "@/hooks/use-voice-recorder";
 
 // A voice note recorded on site is often the only record of what someone saw.
@@ -72,7 +73,7 @@ function Playback({ audio, onDiscard }: { audio: CapturedAudio; onDiscard: () =>
         accessibilityLabel={playing ? "Pause playback" : "Play the note back"}
         className="h-11 w-11 items-center justify-center rounded-full bg-primary-500"
       >
-        <Ionicons name={playing ? "pause" : "play"} size={18} color="#FFFFFF" />
+        <Ionicons name={playing ? "pause" : "play"} size={18} color={ICON_INVERSE} />
       </Pressable>
       <View className="flex-1">
         <Text weight="semibold" className="text-[13px]">
@@ -88,7 +89,7 @@ function Playback({ audio, onDiscard }: { audio: CapturedAudio; onDiscard: () =>
         accessibilityLabel="Record it again"
         className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
       >
-        <Ionicons name="refresh-outline" size={18} color="#B3261E" />
+        <Ionicons name="refresh-outline" size={18} color={ICON_DANGER} />
       </Pressable>
     </View>
   );
@@ -127,7 +128,7 @@ export function VoiceNote({
           accessibilityLabel={live ? "Stop recording" : "Record a voice note"}
           className={`h-11 w-11 items-center justify-center rounded-full ${live ? "bg-error-500" : "bg-primary-500"}`}
         >
-          <Ionicons name={live ? "stop" : "mic"} size={18} color="#FFFFFF" />
+          <Ionicons name={live ? "stop" : "mic"} size={18} color={ICON_INVERSE} />
         </Pressable>
 
         {live ? <LevelMeter level={recorder.level} active={recorder.isRecording} /> : (
@@ -143,7 +144,7 @@ export function VoiceNote({
             accessibilityLabel={recorder.isPaused ? "Resume recording" : "Pause recording"}
             className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
           >
-            <Ionicons name={recorder.isPaused ? "play" : "pause"} size={18} color="#1A1A1A" />
+            <Ionicons name={recorder.isPaused ? "play" : "pause"} size={18} color={ICON_DEFAULT} />
           </Pressable>
         ) : null}
       </View>

@@ -27,6 +27,15 @@ export function useLocalChangeRequests(db: Db, projectId: string) {
   return { data, isPending: live.data === undefined };
 }
 
+/** One change request from SQLite; `null` once the query has run and found nothing. */
+export function useLocalChangeRequest(db: Db, id: string) {
+  const query = useMemo(() => changeRequestsRepository.byIdQuery(db, id), [db, id]);
+  const live = useLiveQuery(query);
+  const row = live.data?.[0];
+  const data = useMemo(() => (row ? toChangeRequest(row) : null), [row]);
+  return { data, isPending: live.data === undefined };
+}
+
 export function useCreateChangeRequest(db: Db | null, projectId: string | undefined) {
   return async (input: UpsertChangeRequestInput) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");

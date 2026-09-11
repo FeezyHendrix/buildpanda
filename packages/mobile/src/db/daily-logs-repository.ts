@@ -1,7 +1,8 @@
 import { randomUUID } from "expo-crypto";
 import { and, asc, desc, eq } from "drizzle-orm";
-import type { DailyLogDay, UpsertDailyLogInput } from "@/api/daily-logs";
+import { isWeatherCondition, type DailyLogDay, type UpsertDailyLogInput } from "@/api/daily-logs";
 import type { Db } from "./client";
+import { reviveOrQueue } from "./enqueue-update";
 import {
   dailyLogActivities,
   dailyLogEntries,
@@ -25,6 +26,10 @@ export function toDay(row: DailyLogRow) {
   return {
     id: row.id,
     logDate: row.logDate,
+    weatherCondition: isWeatherCondition(row.weatherCondition) ? row.weatherCondition : null,
+    temperatureC: row.temperatureC,
+    workersExpected: row.workersExpected,
+    workersPresent: row.workersPresent,
     totalHours: row.totalHours,
     summary: row.summary,
     isVoided: Boolean(row.voidedAt),
@@ -110,21 +115,13 @@ export const dailyLogsRepository = {
 
       // One queued push per activity per day, so editing hours repeatedly
       // offline still results in a single POST.
-      const [queued] = await tx
-        .select({ id: outbox.id })
-        .from(outbox)
-        .where(and(eq(outbox.resource, "daily-log-activities"), eq(outbox.entityId, id)))
-        .limit(1);
-      if (!queued) {
-        await tx.insert(outbox).values({
-          id: randomUUID(),
-          resource: "daily-log-activities",
-          entityId: id,
-          projectId,
-          operation: "create",
-          nextAttemptAt: 0,
-        });
-      }
+      await reviveOrQueue(tx as never, {
+        resource: "daily-log-activities",
+        entityId: id,
+        projectId,
+        operation: "create",
+        newId: randomUUID(),
+      });
     });
   },
 
@@ -163,6 +160,16 @@ export const dailyLogsRepository = {
   ): Promise<void> {
     const id = dayKey(projectId, logDate);
     const now = Date.now();
+    // The day form saves every field at once, so the row is replaced rather
+    // than merged: a cleared temperature means "not recorded", not "keep".
+    const fields = {
+      weatherCondition: input.weatherCondition ?? null,
+      temperatureC: input.temperatureC ?? null,
+      workersExpected: input.workersExpected ?? 0,
+      workersPresent: input.workersPresent ?? 0,
+      totalHours: input.totalHours ?? 0,
+      summary: input.summary ?? null,
+    };
 
     await db.transaction(async (tx) => {
       await tx
@@ -171,8 +178,7 @@ export const dailyLogsRepository = {
           id,
           projectId,
           logDate,
-          totalHours: input.totalHours ?? 0,
-          summary: input.summary ?? null,
+          ...fields,
           buildingId: input.buildingId ?? null,
           isPendingSync: true,
           updatedAt: now,
@@ -180,29 +186,19 @@ export const dailyLogsRepository = {
         .onConflictDoUpdate({
           target: dailyLogs.id,
           set: {
-            totalHours: input.totalHours ?? 0,
-            summary: input.summary ?? null,
+            ...fields,
             isPendingSync: true,
             updatedAt: now,
           },
         });
 
-      const [queued] = await tx
-        .select({ id: outbox.id })
-        .from(outbox)
-        .where(and(eq(outbox.resource, "daily-logs"), eq(outbox.entityId, id)))
-        .limit(1);
-
-      if (!queued) {
-        await tx.insert(outbox).values({
-          id: randomUUID(),
-          resource: "daily-logs",
-          entityId: id,
-          projectId,
-          operation: "upsert",
-          nextAttemptAt: 0,
-        });
-      }
+      await reviveOrQueue(tx as never, {
+        resource: "daily-logs",
+        entityId: id,
+        projectId,
+        operation: "upsert",
+        newId: randomUUID(),
+      });
     });
   },
 
@@ -239,7 +235,10 @@ export const dailyLogsRepository = {
     });
   },
 
-  /** Server days never clobber a day still holding local edits. */
+  /**
+   * Server days never clobber a day still holding local edits. The day DTO
+   * carries no summary, so that column is left as the device last wrote it.
+   */
   async upsertFromServer(db: Db, projectId: string, days: readonly DailyLogDay[]): Promise<void> {
     if (days.length === 0) return;
     const now = Date.now();
@@ -251,6 +250,10 @@ export const dailyLogsRepository = {
             id: dayKey(projectId, day.logDate),
             projectId,
             logDate: day.logDate,
+            weatherCondition: day.weatherCondition ?? null,
+            temperatureC: day.temperatureC ?? null,
+            workersExpected: day.workersExpected ?? 0,
+            workersPresent: day.workersPresent ?? 0,
             totalHours: day.totalHours,
             voidedAt: day.voidedAt ?? null,
             isPendingSync: false,
@@ -260,6 +263,10 @@ export const dailyLogsRepository = {
           .onConflictDoUpdate({
             target: dailyLogs.id,
             set: {
+              weatherCondition: day.weatherCondition ?? null,
+              temperatureC: day.temperatureC ?? null,
+              workersExpected: day.workersExpected ?? 0,
+              workersPresent: day.workersPresent ?? 0,
               totalHours: day.totalHours,
               voidedAt: day.voidedAt ?? null,
               serverLastSyncedAt: now,

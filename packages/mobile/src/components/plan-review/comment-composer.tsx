@@ -1,9 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import type { CommentAssignee } from "@/api/participants";
-import { Spinner, Text } from "@/components/atoms";
+import { Button, OptionRow, Text } from "@/components/atoms";
+import { ICON_DANGER, ICON_INVERSE, ICON_STRONG, ICON_SUBTLE, ICON_SUCCESS } from "@/constants/colors";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { VoiceNote } from "./voice-note";
@@ -115,7 +116,7 @@ export function CommentComposer({
           accessibilityLabel="Cancel comment"
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
-          <Ionicons name="close" size={22} color="#5C5C5C" />
+          <Ionicons name="close" size={22} color={ICON_STRONG} />
         </Pressable>
       </View>
 
@@ -126,7 +127,7 @@ export function CommentComposer({
         onChangeText={setText}
         autoFocus={mode === COMMENT_MODE.TEXT}
         placeholder={mode === COMMENT_MODE.TEXT ? "What needs attention here?" : "Add a caption (optional)"}
-        placeholderTextColor="#ADADAD"
+        placeholderTextColor={ICON_SUBTLE}
         multiline
         className="mt-2 max-h-24 min-h-11 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-black-500"
         style={{ fontFamily: "PlusJakartaSans_400Regular" }}
@@ -145,7 +146,7 @@ export function CommentComposer({
         <View className="mt-2 flex-row items-center gap-2 rounded-xl border border-hairline px-3 py-2">
           {captured ? (
             <>
-              <Ionicons name="checkmark-circle" size={18} color="#00753B" />
+              <Ionicons name="checkmark-circle" size={18} color={ICON_SUCCESS} />
               <Text weight="semibold" className="text-[13px]">
                 Video captured · {formatClock(captured.durationSeconds)}
               </Text>
@@ -156,16 +157,16 @@ export function CommentComposer({
                 accessibilityLabel="Discard the video"
                 className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
               >
-                <Ionicons name="trash-outline" size={18} color="#B3261E" />
+                <Ionicons name="trash-outline" size={18} color={ICON_DANGER} />
               </Pressable>
             </>
           ) : (
             <Pressable
               onPress={() => void recordVideo()}
               accessibilityRole="button"
-              className="h-11 flex-row items-center gap-2 rounded-full bg-primary-500 px-4"
+              className="min-h-14 flex-row items-center gap-2 rounded-full bg-primary-500 px-5"
             >
-              <Ionicons name="videocam-outline" size={16} color="#FFFFFF" />
+              <Ionicons name="videocam-outline" size={16} color={ICON_INVERSE} />
               <Text weight="semibold" className="text-[13px] text-white">
                 Record video
               </Text>
@@ -180,53 +181,26 @@ export function CommentComposer({
       ) : null}
 
       {assignees.length > 0 ? (
-        <View className="pt-2">
-          <Text tone="secondary" className="pb-1 text-[11px] uppercase">
-            Assign to
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-2">
-              {[{ id: NOBODY, name: "Nobody" }, ...assignees].map((person) => {
-                const active = assigneeId === person.id;
-                return (
-                  <Pressable
-                    key={person.id || "nobody"}
-                    onPress={() => setAssigneeId(person.id)}
-                    accessibilityRole="button"
-                    className={`h-11 items-center justify-center rounded-full px-3 ${active ? "bg-primary-50" : "bg-surface-alt"}`}
-                  >
-                    <Text weight="semibold" className={`text-xs ${active ? "text-primary-600" : "text-grey-400"}`}>
-                      {person.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
+        <View className="pt-3">
+          <OptionRow
+            label="Assign to"
+            options={[
+              { value: NOBODY, label: "Nobody" },
+              ...assignees.map((person) => ({ value: person.id, label: person.name })),
+            ]}
+            value={assigneeId}
+            onChange={setAssigneeId}
+          />
         </View>
       ) : null}
 
-      <View className="flex-row items-center justify-end gap-2 pt-3">
-        <Pressable
-          onPress={onCancel}
-          accessibilityRole="button"
-          className="h-11 items-center justify-center rounded-full px-4 active:bg-surface-alt"
-        >
-          <Text weight="semibold" tone="secondary" className="text-[13px]">
-            Cancel
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={submit}
-          disabled={!canSubmit}
-          accessibilityRole="button"
-          className={`h-11 flex-row items-center gap-2 rounded-full px-5 ${canSubmit ? "bg-primary-500" : "bg-surface-alt"}`}
-        >
-          {busy ? <Spinner size="xs" tone="current" /> : null}
-          <Text weight="semibold" className={`text-[13px] ${canSubmit ? "text-white" : "text-grey-400"}`}>
-            Save comment
-          </Text>
-        </Pressable>
+      <View className="flex-row items-center gap-2 pt-3">
+        <Button variant="ghost" onPress={cancel} className="flex-1">
+          Cancel
+        </Button>
+        <Button onPress={submit} disabled={!canSubmit} loading={busy} className="flex-1">
+          Save comment
+        </Button>
       </View>
     </View>
   );

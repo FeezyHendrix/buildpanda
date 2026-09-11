@@ -6,32 +6,23 @@ export interface DetailField {
   value: string | null | undefined;
 }
 
+/** What a label/value pair shows when nothing is recorded — the web's dash. */
+export const ABSENT_VALUE = "—";
+
 /**
- * Label/value pairs for a schedule record. Fields with nothing in them are
- * dropped rather than rendered as a dash, so the card shows what is actually
- * known instead of padding it out with blanks.
+ * Label/value pairs for a record. Every field stays in place and an empty one
+ * shows a dash, as the web's key-date and stage cards do, so the crew can see
+ * what is *not* recorded as well as what is.
  */
 export function DetailFields({ fields }: { fields: readonly DetailField[] }) {
-  const present = fields.filter((field) => field.value !== null && field.value !== undefined && field.value !== "");
-
-  if (present.length === 0) {
-    return (
-      <Card className="p-4">
-        <Text tone="secondary" className="text-[13px]">
-          Nothing has been recorded against this yet.
-        </Text>
-      </Card>
-    );
-  }
-
   return (
     <Card className="gap-3 p-4">
-      {present.map((field) => (
+      {fields.map((field) => (
         <View key={field.label} className="gap-0.5">
           <Text tone="muted" weight="semibold" className="text-[11px] uppercase">
             {field.label}
           </Text>
-          <Text className="text-[15px]">{field.value}</Text>
+          <Text className="text-[15px]">{field.value || ABSENT_VALUE}</Text>
         </View>
       ))}
     </Card>

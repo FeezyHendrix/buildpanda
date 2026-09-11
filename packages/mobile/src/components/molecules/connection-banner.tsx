@@ -4,6 +4,7 @@ import { View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/atoms";
+import { ICON_INVERSE } from "@/constants/colors";
 import { useSyncState } from "@/lib/sync-provider";
 
 const BACK_ONLINE_MS = 5_000;
@@ -59,7 +60,7 @@ export const ConnectionBanner = memo(function ConnectionBanner() {
         <Ionicons
           name={offline ? "cloud-offline-outline" : "cloud-done-outline"}
           size={14}
-          color="#FFFFFF"
+          color={ICON_INVERSE}
         />
         <Text weight="semibold" tone="inverse" className="text-xs">
           {offline ? "Offline — saved on this device" : "Back online"}

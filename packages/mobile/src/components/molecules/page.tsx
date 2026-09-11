@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
+import { ICON_INVERSE } from "@/constants/colors";
 import { useSyncState } from "@/lib/sync-provider";
 import { cn } from "@/lib/utils";
 import { ScopeSelector } from "./scope-selector";
@@ -19,6 +20,8 @@ interface PageProps {
   onPressSync?: () => void;
   workspaceName?: string;
   projectName?: string;
+  /** Keeps the scope slot in place with a spinner while the project name loads. */
+  projectPending?: boolean;
   onPressWorkspace?: () => void;
   onPressProject?: () => void;
   /** Set false when the child owns scrolling (FlatList screens). */
@@ -45,6 +48,7 @@ export function Page({
   onPressSync,
   workspaceName,
   projectName,
+  projectPending = false,
   onPressWorkspace,
   onPressProject,
   scroll = true,
@@ -56,7 +60,7 @@ export function Page({
   const sync = useSyncState();
   const isCentred = variant === "default";
   const hasBar = Boolean(onBack || title || rightButtons || showSync);
-  const hasScope = Boolean(projectName || workspaceName);
+  const hasScope = Boolean(projectName || workspaceName || projectPending);
   const handleSyncPress = onPressSync ?? (() => router.push("/sync"));
 
   return (
@@ -72,7 +76,7 @@ export function Page({
                   accessibilityLabel="Go back"
                   className="-ml-2 h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
                 >
-                  <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
+                  <Ionicons name="chevron-back" size={24} color={ICON_INVERSE} />
                 </Pressable>
               ) : null}
               {hasScope ? (
@@ -80,6 +84,7 @@ export function Page({
                   <ScopeSelector
                     workspaceName={workspaceName}
                     projectName={projectName}
+                    projectPending={projectPending}
                     onPressWorkspace={onPressWorkspace}
                     onPressProject={onPressProject}
                     compact

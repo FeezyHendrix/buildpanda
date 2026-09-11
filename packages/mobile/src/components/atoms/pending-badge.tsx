@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { View } from "react-native";
+import { ICON_MUTED } from "@/constants/colors";
 import { Text } from "./text";
 
 /**
@@ -11,8 +12,11 @@ import { Text } from "./text";
  */
 export function PendingBadge() {
   return (
-    <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1">
-      <Ionicons name="cloud-upload-outline" size={12} color="#717171" />
+    <View
+      accessibilityLabel="Waiting to upload"
+      className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1"
+    >
+      <Ionicons name="cloud-upload-outline" size={12} color={ICON_MUTED} />
       <Text weight="semibold" tone="secondary" className="text-[10px] uppercase">
         Pending
       </Text>

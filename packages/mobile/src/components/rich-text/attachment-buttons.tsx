@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { uploadProjectFile } from "@/api/files";
 import { Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND } from "@/constants/colors";
 
 interface PickedAttachment {
   readonly uri: string;
@@ -79,7 +80,7 @@ function AttachmentButton({ icon, label, busy, onPress }: { readonly icon: keyof
       accessibilityLabel={`Attach from ${label}`}
       className="min-h-11 flex-row items-center gap-1.5 rounded-full bg-primary-50 px-3 active:bg-primary-100"
     >
-      {busy ? <Spinner size="xs" /> : <Ionicons name={icon} size={15} color="#004DE7" />}
+      {busy ? <Spinner size="xs" /> : <Ionicons name={icon} size={15} color={ICON_BRAND} />}
       <Text weight="semibold" tone="brand" className="text-xs">
         {label}
       </Text>

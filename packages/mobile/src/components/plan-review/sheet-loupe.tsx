@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { palette } from "@/constants/colors";
 
 // A finger covers the point it is placing. Every field app that gets precise
 // placement right shows the sheet under the fingertip somewhere the finger is
@@ -54,14 +55,14 @@ export function SheetLoupe({ source, at, transform, viewportW }: LoupeProps) {
     const half = (SIZE / 2 / MAGNIFY) * (toSource / transform.s);
 
     ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#FFFFFF";
+    ctx.fillStyle = palette.surface;
     ctx.fillRect(0, 0, SIZE, SIZE);
     try {
       ctx.drawImage(el, cx - half, cy - half, half * 2, half * 2, 0, 0, SIZE, SIZE);
     } catch {
       // a source that is not yet decodable draws nothing; the crosshair still helps
     }
-    ctx.strokeStyle = "#004DE7";
+    ctx.strokeStyle = palette.primary500;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(SIZE / 2, SIZE / 2 - 10);
@@ -86,7 +87,7 @@ export function SheetLoupe({ source, at, transform, viewportW }: LoupeProps) {
         height: SIZE,
         borderRadius: "50%",
         overflow: "hidden",
-        border: "2px solid #FFFFFF",
+        border: `2px solid ${palette.surface}`,
         boxShadow: "0 2px 10px rgba(0,0,0,0.25)",
         pointerEvents: "none",
         zIndex: 5,

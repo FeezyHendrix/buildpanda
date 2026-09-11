@@ -5,6 +5,7 @@ import { Spinner, Text } from "@/components/atoms";
 import { DetailFields } from "@/components/molecules/schedule/detail-fields";
 import { Page } from "@/components/molecules/page";
 import { useKeyDates } from "@/hooks/use-key-dates";
+import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
 export default function KeyDateDetail() {
@@ -18,7 +19,7 @@ export default function KeyDateDetail() {
   );
 
   return (
-    <Page title="Key Date" onBack={() => router.back()}>
+    <Page title="Key date" onBack={() => router.back()}>
       {query.isPending && !record ? (
         <View className="items-center py-12">
           <Spinner size="md" />
@@ -30,8 +31,8 @@ export default function KeyDateDetail() {
           </Text>
           <DetailFields fields={[
               { label: "Status", value: record.status },
-              { label: "Target date", value: record.targetDate },
-              { label: "Actual date", value: record.actualDate },
+              { label: "Target date", value: formatDate(record.targetDate) },
+              { label: "Actual date", value: formatDate(record.actualDate) },
               { label: "Notes", value: record.notes },
             ]} />
         </View>

@@ -23,7 +23,6 @@ export interface MissingField {
 export interface StageTransitionPayload {
   stageId: string | null;
   status: "Pending" | "InProgress" | "Done" | null;
-  buildingId?: string | null;
 }
 
 export type DraftAction =

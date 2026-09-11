@@ -1,17 +1,20 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, TextInput, View } from "react-native";
 import type { ApprovalStatus } from "@/api/material-approvals";
 import { Button, Field, Spinner, Text } from "@/components/atoms";
+import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { MaterialApprovalDetailBody } from "@/components/molecules/material-approval-detail-body";
 import { Page } from "@/components/molecules/page";
+import { ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
 import type { Db } from "@/db/client";
 import type { LocalMaterialApproval } from "@/db/material-approvals-repository";
 import { useLocalDb } from "@/db/provider";
 import {
   useAddMaterialApprovalComment,
   useDecideMaterialApproval,
+  useDeleteMaterialApproval,
   useLocalMaterialApproval,
   useLocalMaterialApprovalComments,
 } from "@/hooks/use-material-approvals";
@@ -167,7 +170,7 @@ function CommentComposer({
           value={body}
           onChangeText={setBody}
           placeholder="Add a comment"
-          placeholderTextColor="#ADADAD"
+          placeholderTextColor={ICON_SUBTLE}
           multiline
           className="max-h-28 min-h-12 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
         />
@@ -185,7 +188,7 @@ function CommentComposer({
           {sending ? (
             <Spinner size="xs" tone="current" />
           ) : (
-            <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+            <Ionicons name="arrow-up" size={20} color={ICON_INVERSE} />
           )}
         </Pressable>
       </View>
@@ -193,7 +196,10 @@ function CommentComposer({
   );
 }
 
-function DetailContent({
+const TITLE = "Material approval";
+
+/** Owns the page once the database is open, so the header can read the request's status. */
+function ReadyScreen({
   db,
   projectId,
   approvalId,
@@ -204,34 +210,56 @@ function DetailContent({
 }) {
   const { approval, isPending } = useLocalMaterialApproval(db, projectId, approvalId);
   const comments = useLocalMaterialApprovalComments(db, projectId, approvalId);
+  const removeRecord = useDeleteMaterialApproval(db, projectId);
 
-  if (isPending) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  if (!approval) {
-    return (
-      <View className="items-center py-12">
-        <Text tone="secondary" className="text-[13px]">
-          This request may not have synced yet.
-        </Text>
-      </View>
-    );
+  // Native confirm: deleting a site record is destructive and the app has no
+  // undo, so it must not happen on a single stray tap. The server only removes
+  // a request still awaiting its first decision, so the button follows that rule.
+  function confirmDelete() {
+    Alert.alert("Delete this request?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void removeRecord(approvalId).then(() => router.back()).catch(() => undefined);
+        },
+      },
+    ]);
   }
 
   return (
-    <View className="gap-6">
-      <MaterialApprovalDetailBody
-        approval={approval}
-        comments={comments.data}
-        commentsPending={comments.isPending}
-      />
-      <DecisionPanel db={db} approval={approval} projectId={projectId} />
-    </View>
+    <Page
+      title={TITLE}
+      onBack={() => router.back()}
+      rightButtons={
+        approval?.status === "Pending" ? (
+          <HeaderIconButton icon="trash-outline" label="Delete request" onPress={confirmDelete} />
+        ) : null
+      }
+      footer={<CommentComposer db={db} projectId={projectId} approvalId={approvalId} />}
+    >
+      {isPending ? (
+        <View className="items-center py-12">
+          <Spinner size="md" />
+        </View>
+      ) : !approval ? (
+        <View className="items-center py-12">
+          <Text tone="secondary" className="text-[13px]">
+            This request may not have synced yet.
+          </Text>
+        </View>
+      ) : (
+        <View className="gap-6">
+          <MaterialApprovalDetailBody
+            approval={approval}
+            comments={comments.data}
+            commentsPending={comments.isPending}
+          />
+          <DecisionPanel db={db} approval={approval} projectId={projectId} />
+        </View>
+      )}
+    </Page>
   );
 }
 
@@ -239,23 +267,15 @@ export default function MaterialApprovalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
-  const isReady = ready && db && projectId && id;
 
-  return (
-    <Page
-      title="Material Approval"
-      onBack={() => router.back()}
-      footer={
-        isReady ? <CommentComposer db={db} projectId={projectId} approvalId={id} /> : undefined
-      }
-    >
-      {isReady ? (
-        <DetailContent db={db} projectId={projectId} approvalId={id} />
-      ) : (
+  if (!(ready && db && projectId && id)) {
+    return (
+      <Page title={TITLE} onBack={() => router.back()}>
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
-      )}
-    </Page>
-  );
+      </Page>
+    );
+  }
+  return <ReadyScreen db={db} projectId={projectId} approvalId={id} />;
 }

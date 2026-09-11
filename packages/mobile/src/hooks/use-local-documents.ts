@@ -13,7 +13,8 @@ import {
  * Category folders for a group, from SQLite with a background refresh.
  *
  * One live query for all groups so switching the segment filters in memory
- * rather than tearing down and re-subscribing.
+ * rather than tearing down and re-subscribing. Media folders exist in the
+ * table but no tab asks for them, the same as the web's Documents page.
  */
 export function useDocumentCategories(db: Db, projectId: string, group: DocumentGroup) {
   const query = useMemo(() => documentsRepository.categoriesQuery(db, projectId), [db, projectId]);
@@ -37,12 +38,12 @@ export function useDocumentCategories(db: Db, projectId: string, group: Document
   return { data, isPending: live.data === undefined };
 }
 
-/** Files, optionally narrowed to one category folder. */
+/** Files in a group, optionally narrowed to one category folder by its id. Queued uploads are included. */
 export function useLocalDocuments(
   db: Db,
   projectId: string,
   group: DocumentGroup,
-  categoryName?: string,
+  categoryId?: string,
 ) {
   const query = useMemo(() => documentsRepository.listQuery(db, projectId), [db, projectId]);
   const live = useLiveQuery(query);
@@ -64,9 +65,9 @@ export function useLocalDocuments(
   const data = useMemo(
     () =>
       all.filter(
-        (doc) => doc.group === group && (!categoryName || doc.category === categoryName),
+        (doc) => doc.group === group && (!categoryId || doc.categoryId === categoryId),
       ),
-    [all, group, categoryName],
+    [all, group, categoryId],
   );
 
   return { data, isPending: live.data === undefined };

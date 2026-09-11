@@ -4,7 +4,9 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import type { DrawingMarkup, DrawingMarkupComment } from "@/api/drawing-markup";
-import { Spinner, Text } from "@/components/atoms";
+import { PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_DANGER, ICON_INVERSE, ICON_MUTED, ICON_STRONG, ICON_SUBTLE, ICON_SUCCESS } from "@/constants/colors";
+import { formatDateTime } from "@/lib/dates";
 import { cacheFileById } from "@/lib/download-file";
 import { MEDIA_KIND, type MarkupKind } from "./markup-types";
 
@@ -14,13 +16,6 @@ const KIND_LABELS: Record<MarkupKind, string> = {
   cloud: "Cloud",
   measure: "Measurement",
 };
-
-function commentTime(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
 
 function mediaClock(seconds: number | null): string {
   if (!seconds) return "";
@@ -75,7 +70,7 @@ function AudioCommentControl({
       {loading ? (
         <Spinner size="xs" />
       ) : (
-        <Ionicons name={status.playing ? "pause" : "play"} size={16} color="#004DE7" />
+        <Ionicons name={status.playing ? "pause" : "play"} size={16} color={ICON_BRAND} />
       )}
       <Text weight="semibold" tone="brand" className="text-[13px]">
         Voice note{mediaClock(comment.mediaDurationSeconds)}
@@ -116,7 +111,7 @@ function VideoCommentControl({
       accessibilityLabel="Play video note"
       className="mt-1 h-11 flex-row items-center gap-2 self-start rounded-full bg-primary-50 px-4"
     >
-      {loading ? <Spinner size="xs" /> : <Ionicons name="videocam" size={16} color="#004DE7" />}
+      {loading ? <Spinner size="xs" /> : <Ionicons name="videocam" size={16} color={ICON_BRAND} />}
       <Text weight="semibold" tone="brand" className="text-[13px]">
         Video note{mediaClock(comment.mediaDurationSeconds)}
       </Text>
@@ -124,25 +119,32 @@ function VideoCommentControl({
   );
 }
 
+/** Rows read from SQLite carry a pending flag the API type does not know about. */
+type LocalComment = DrawingMarkupComment & { isPendingSync?: boolean };
+
 function CommentRow({
   comment,
   onError,
 }: {
-  comment: DrawingMarkupComment;
+  comment: LocalComment;
   onError: (message: string) => void;
 }) {
   return (
     <View className="pb-3">
       <View className="flex-row flex-wrap items-center gap-2">
         <Text weight="semibold" className="text-[13px]">
-          {comment.authorName ?? "Unknown"}
+          {comment.authorName ?? "You"}
         </Text>
-        <Text tone="secondary" className="text-[11px]">
-          {commentTime(comment.createdAt)}
-        </Text>
+        {comment.isPendingSync ? (
+          <PendingBadge />
+        ) : (
+          <Text tone="secondary" className="text-[11px]">
+            {formatDateTime(comment.createdAt)}
+          </Text>
+        )}
         {comment.assigneeName ? (
           <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-0.5">
-            <Ionicons name="person-outline" size={10} color="#5C5C5C" />
+            <Ionicons name="person-outline" size={10} color={ICON_MUTED} />
             <Text tone="secondary" className="text-[10px]">
               {comment.assigneeName}
             </Text>
@@ -215,7 +217,7 @@ export function MarkupPanel({
           accessibilityLabel={resolved ? "Reopen markup" : "Resolve markup"}
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
-          <Ionicons name={resolved ? "refresh-outline" : "checkmark-circle-outline"} size={22} color="#00753B" />
+          <Ionicons name={resolved ? "refresh-outline" : "checkmark-circle-outline"} size={22} color={ICON_SUCCESS} />
         </Pressable>
         <Pressable
           onPress={onDelete}
@@ -224,7 +226,7 @@ export function MarkupPanel({
           accessibilityLabel="Delete markup"
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
-          <Ionicons name="trash-outline" size={20} color="#B3261E" />
+          <Ionicons name="trash-outline" size={20} color={ICON_DANGER} />
         </Pressable>
         <Pressable
           onPress={onClose}
@@ -232,24 +234,32 @@ export function MarkupPanel({
           accessibilityLabel="Close markup panel"
           className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
         >
-          <Ionicons name="close" size={22} color="#5C5C5C" />
+          <Ionicons name="close" size={22} color={ICON_STRONG} />
         </Pressable>
       </View>
 
       <Text tone="secondary" className="px-4 pt-1 text-xs">
-        {markup.authorName ?? "Unknown"} · {commentTime(markup.createdAt)}
+        {markup.authorName ?? "You"} · {formatDateTime(markup.createdAt)}
       </Text>
 
       <ScrollView className="max-h-44 px-4 pt-2" keyboardShouldPersistTaps="handled">
-        {markup.comments.length === 0 ? (
+        {markup.comments.length === 0 && !busy ? (
           <Text tone="secondary" className="pb-2 text-[13px]">
-            No comments yet.
+            No replies yet. Reply below to start the thread on this markup.
           </Text>
         ) : (
           markup.comments.map((comment) => (
             <CommentRow key={comment.id} comment={comment} onError={onError} />
           ))
         )}
+        {busy ? (
+          <View className="flex-row items-center gap-2 pb-2">
+            <Spinner size="xs" />
+            <Text tone="secondary" className="text-[11px]">
+              Saving…
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View className="flex-row items-center gap-2 px-4 pb-3 pt-1">
@@ -257,7 +267,7 @@ export function MarkupPanel({
           value={draft}
           onChangeText={setDraft}
           placeholder="Reply…"
-          placeholderTextColor="#ADADAD"
+          placeholderTextColor={ICON_SUBTLE}
           multiline
           className="max-h-24 min-h-11 flex-1 rounded-xl bg-surface-alt px-3 py-2.5 text-[15px] text-black-500"
           style={{ fontFamily: "PlusJakartaSans_400Regular" }}
@@ -269,7 +279,7 @@ export function MarkupPanel({
           accessibilityLabel="Send reply"
           className={`h-11 w-11 items-center justify-center rounded-full ${draft.trim() && !busy ? "bg-primary-500" : "bg-surface-alt"}`}
         >
-          <Ionicons name="send" size={18} color={draft.trim() && !busy ? "#FFFFFF" : "#ADADAD"} />
+          <Ionicons name="send" size={18} color={draft.trim() && !busy ? ICON_INVERSE : ICON_SUBTLE} />
         </Pressable>
       </View>
     </View>

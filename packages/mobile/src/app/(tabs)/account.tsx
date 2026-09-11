@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { ICON_MUTED } from "@/constants/colors";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { useSession } from "@/lib/auth-client";
@@ -38,7 +39,7 @@ function ScopeRow({
           </Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={18} color="#888888" />
+      <Ionicons name="chevron-forward" size={18} color={ICON_MUTED} />
     </Pressable>
   );
 }

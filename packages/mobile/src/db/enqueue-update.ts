@@ -2,24 +2,61 @@ import { and, eq } from "drizzle-orm";
 import { outbox } from "./schema";
 
 type Tx = {
-  select: (fields: { id: typeof outbox.id }) => {
+  select: (fields: { id: typeof outbox.id; status: typeof outbox.status }) => {
     from: (table: typeof outbox) => {
-      where: (condition: unknown) => { limit: (n: number) => Promise<{ id: string }[]> };
+      where: (condition: unknown) => { limit: (n: number) => Promise<{ id: string; status: string }[]> };
     };
   };
   insert: (table: typeof outbox) => { values: (row: Record<string, unknown>) => Promise<unknown> };
+  update: (table: typeof outbox) => {
+    set: (values: Record<string, unknown>) => { where: (condition: unknown) => Promise<unknown> };
+  };
   delete: (table: typeof outbox) => { where: (condition: unknown) => Promise<unknown> };
 };
 
-async function hasQueued(tx: Tx, resource: string, entityId: string, operation: string) {
+async function findQueued(tx: Tx, resource: string, entityId: string, operation: string) {
   const [row] = await tx
-    .select({ id: outbox.id })
+    .select({ id: outbox.id, status: outbox.status })
     .from(outbox)
     .where(
       and(eq(outbox.resource, resource), eq(outbox.entityId, entityId), eq(outbox.operation, operation)),
     )
     .limit(1);
-  return Boolean(row);
+  return row ?? null;
+}
+
+async function revive(tx: Tx, id: string): Promise<void> {
+  await tx
+    .update(outbox)
+    .set({ status: "pending", attempts: 0, nextAttemptAt: 0, lastError: null })
+    .where(eq(outbox.id, id));
+}
+
+/**
+ * Queues one push per record and operation, in the caller's transaction.
+ *
+ * A row that already failed is revived rather than left dead beside a fresh
+ * one: the local record carries the crew member's newest edit, so sending it
+ * again is exactly what they asked for. A row still pending is left alone —
+ * it will read the same local state when it runs.
+ */
+export async function reviveOrQueue(
+  tx: Tx,
+  row: { resource: string; entityId: string; projectId: string; operation: string; newId: string },
+): Promise<void> {
+  const existing = await findQueued(tx, row.resource, row.entityId, row.operation);
+  if (existing) {
+    if (existing.status === "failed") await revive(tx, existing.id);
+    return;
+  }
+  await tx.insert(outbox).values({
+    id: row.newId,
+    resource: row.resource,
+    entityId: row.entityId,
+    projectId: row.projectId,
+    operation: row.operation,
+    nextAttemptAt: 0,
+  });
 }
 
 /**
@@ -41,17 +78,12 @@ export async function enqueueUpdate(
   projectId: string,
   newId: string,
 ): Promise<void> {
-  if (await hasQueued(tx, resource, entityId, "create")) return;
-  if (await hasQueued(tx, resource, entityId, "update")) return;
-
-  await tx.insert(outbox).values({
-    id: newId,
-    resource,
-    entityId,
-    projectId,
-    operation: "update",
-    nextAttemptAt: 0,
-  });
+  const create = await findQueued(tx, resource, entityId, "create");
+  if (create) {
+    if (create.status === "failed") await revive(tx, create.id);
+    return;
+  }
+  await reviveOrQueue(tx, { resource, entityId, projectId, operation: "update", newId });
 }
 
 /**
@@ -69,7 +101,7 @@ export async function enqueueDelete(
   projectId: string,
   newId: string,
 ): Promise<void> {
-  const neverReachedServer = await hasQueued(tx, resource, entityId, "create");
+  const neverReachedServer = (await findQueued(tx, resource, entityId, "create")) !== null;
 
   await tx
     .delete(outbox)

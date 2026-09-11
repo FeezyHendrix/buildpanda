@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { randomUUID } from "expo-crypto";
-import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
+import type { DrawingMarkup } from "@/api/drawing-markup";
 import { MEDIA_KIND, MARKUP_KIND, type CommentDraft, type MarkupPoint } from "@/components/plan-review/markup-types";
 import { drawingMarkupsRepository } from "@/db/drawing-markups-repository";
 import type { Db } from "@/db/client";
@@ -8,10 +8,11 @@ import { flushOutbox } from "@/db/outbox";
 import { stageMedia } from "@/lib/stage-media";
 
 // What a reviewer does to a markup: comment on it, resolve it, remove it.
-// Everything a crew member creates is written locally and queued, including a
-// voice or video note, which is staged on disk and uploaded when signal
-// returns. Resolving and deleting a markup the server already knows about
-// still need a connection, because they act on the server's own record.
+// Every one of them is written locally and queued, including a voice or video
+// note, which is staged on disk and uploaded when signal returns. Resolving
+// and deleting a markup the server already knows about queue against its
+// server id; the one thing refused offline is resolving a markup whose own
+// create has not landed yet, because there is nothing on the server to resolve.
 
 export interface MarkupActionsContext {
   db: Db;
@@ -83,20 +84,22 @@ export function useMarkupActions(ctx: MarkupActionsContext) {
       }, "Couldn't post that comment.");
     },
 
+    /** Resolved or reopened on the device first; the server hears when there is signal. */
     async setResolved(markup: DrawingMarkup, resolved: boolean) {
       await run(async () => {
-        await drawingMarkupApi.setResolved(ctx.projectId, markup.id, resolved);
+        await drawingMarkupsRepository.setResolvedLocal(ctx.db, ctx.projectId, markup.id, resolved);
         await ctx.onChanged();
+        void flushOutbox(ctx.db).then(() => ctx.onChanged());
       }, "Couldn't update that markup.");
     },
 
-    /** A markup that never reached the server is dropped locally with its queued push. */
+    /** Gone from the sheet at once; a server-known markup has its delete queued. */
     async remove(markup: DrawingMarkup, onRemoved: () => void) {
       await run(async () => {
-        if (markup.id.startsWith("local_")) await drawingMarkupsRepository.removeLocal(ctx.db, markup.id);
-        else await drawingMarkupApi.remove(ctx.projectId, markup.id);
+        await drawingMarkupsRepository.deleteLocal(ctx.db, ctx.projectId, markup.id);
         await ctx.onChanged();
         onRemoved();
+        void flushOutbox(ctx.db).then(() => ctx.onChanged());
       }, "Couldn't delete that markup.");
     },
 

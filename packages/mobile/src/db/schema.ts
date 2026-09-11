@@ -22,9 +22,15 @@ export const rfis = sqliteTable(
     questionHtml: text("question_html"),
     status: text("status").notNull().default("Draft"),
     priority: text("priority").notNull().default("Normal"),
+    ballInCourtId: text("ball_in_court_id"),
     ballInCourtName: text("ball_in_court_name"),
     dueDate: text("due_date"),
     officialResponse: text("official_response"),
+    // Set when the RFI was raised from a plan markup, so the server can link
+    // it back to the sheet and pin it came from.
+    documentId: text("document_id"),
+    documentVersionId: text("document_version_id"),
+    sourceMarkupId: text("source_markup_id"),
     costImpact: integer("cost_impact", { mode: "boolean" }).notNull().default(false),
     scheduleImpact: integer("schedule_impact", { mode: "boolean" }).notNull().default(false),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
@@ -55,6 +61,8 @@ export const rfiComments = sqliteTable(
     createdAt: integer("created_at")
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
+    /** True when the reply is the official answer, posted via the respond endpoint. */
+    official: integer("official", { mode: "boolean" }).notNull().default(false),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     serverLastSyncedAt: integer("server_last_synced_at"),
   },
@@ -78,6 +86,11 @@ export const documents = sqliteTable(
     uploadedAt: text("uploaded_at"),
     /** Local file URI once the blob has been downloaded for offline use. */
     localUri: text("local_uri"),
+    categoryId: text("category_id"),
+    mimeType: text("mime_type"),
+    /** Durable local copy of a file picked for upload, until the push lands. */
+    stagedUri: text("staged_uri"),
+    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     lastAccessedAt: integer("last_accessed_at"),
     updatedAt: integer("updated_at")
       .notNull()
@@ -126,6 +139,10 @@ export const dailyLogs = sqliteTable(
     logDate: text("log_date").notNull(),
     totalHours: integer("total_hours").notNull().default(0),
     summary: text("summary"),
+    weatherCondition: text("weather_condition"),
+    temperatureC: real("temperature_c"),
+    workersExpected: integer("workers_expected").notNull().default(0),
+    workersPresent: integer("workers_present").notNull().default(0),
     voidedAt: text("voided_at"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     serverLastSyncedAt: integer("server_last_synced_at"),
@@ -215,6 +232,27 @@ export const changeRequests = sqliteTable(
   (table) => [index("change_requests_project_idx").on(table.projectId, table.updatedAt)],
 );
 
+/**
+ * Change request comments, local-first, mirroring rfi_comments: written on
+ * site with no signal and pushed by the outbox once the request has an id.
+ */
+export const changeRequestComments = sqliteTable(
+  "change_request_comments",
+  {
+    id: text("id").primaryKey(),
+    changeRequestId: text("change_request_id").notNull(),
+    projectId: text("project_id").notNull(),
+    authorName: text("author_name").notNull().default(""),
+    body: text("body").notNull(),
+    createdAt: integer("created_at").notNull().default(sql`(unixepoch() * 1000)`),
+    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
+    serverLastSyncedAt: integer("server_last_synced_at"),
+  },
+  (table) => [index("change_request_comments_cr_idx").on(table.changeRequestId, table.createdAt)],
+);
+
+export type ChangeRequestCommentRow = typeof changeRequestComments.$inferSelect;
+
 export const lookAheads = sqliteTable(
   "look_aheads",
   {
@@ -230,6 +268,8 @@ export const lookAheads = sqliteTable(
     startDate: text("start_date").notNull().default(""),
     endDate: text("end_date").notNull().default(""),
     totalWorkers: integer("total_workers"),
+    /** JSON array of activity ids assigned into the window. */
+    activityIds: text("activity_ids").notNull().default("[]"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },
@@ -249,6 +289,10 @@ export const materialOrders = sqliteTable(
     status: text("status").notNull().default("Draft"),
     phaseId: text("phase_id"),
     phaseName: text("phase_name"),
+    // The API requires a needed-by date on every order. Nullable only so rows
+    // queued before the column existed still load; the push refuses to send
+    // an order without one.
+    neededBy: text("needed_by"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
   },
@@ -287,6 +331,9 @@ export const materialApprovals = sqliteTable(
     reviewedByName: text("reviewed_by_name"),
     reviewedAt: text("reviewed_at"),
     commentCount: integer("comment_count").notNull().default(0),
+    documentId: text("document_id"),
+    documentVersionId: text("document_version_id"),
+    sourceMarkupId: text("source_markup_id"),
     isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
     serverLastSyncedAt: integer("server_last_synced_at"),
     updatedAt: integer("updated_at")
@@ -343,48 +390,4 @@ export type MaterialOrderRow = typeof materialOrders.$inferSelect;
 export type MaterialApprovalRow = typeof materialApprovals.$inferSelect;
 export type MaterialApprovalCommentRow = typeof materialApprovalComments.$inferSelect;
 
-// A markup drawn on site must survive no signal like every other record here:
-// it is written locally and queued, never posted straight to the network.
-// Geometry is the same jsonb shape the server stores, kept as text.
-export const drawingMarkups = sqliteTable(
-  "drawing_markups",
-  {
-    id: text("id").primaryKey(),
-    projectId: text("project_id").notNull(),
-    documentId: text("document_id").notNull(),
-    documentVersionId: text("document_version_id").notNull(),
-    pageNo: integer("page_no").notNull().default(1),
-    kind: text("kind").notNull(),
-    /** JSON: the MarkupGeometry the canvas produced, including its space. */
-    geometry: text("geometry").notNull(),
-    color: text("color").notNull().default("#004DE7"),
-    resolvedAt: text("resolved_at"),
-    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
-    updatedAt: integer("updated_at").notNull().default(sql`(unixepoch() * 1000)`),
-  },
-  (table) => [index("drawing_markups_sheet_idx").on(table.documentVersionId, table.pageNo)],
-);
-// The first comment on a pin, and any reply, written on site. Media is staged
-// on disk and its path kept here, so the upload can happen when signal returns
-// rather than being required at the moment the crew member speaks.
-export const drawingMarkupComments = sqliteTable(
-  "drawing_markup_comments",
-  {
-    id: text("id").primaryKey(),
-    markupId: text("markup_id").notNull(),
-    projectId: text("project_id").notNull(),
-    body: text("body").notNull().default(""),
-    mediaKind: text("media_kind"),
-    /** A durable local path to media that has not been uploaded yet. */
-    stagedMediaUri: text("staged_media_uri"),
-    mediaDurationSeconds: integer("media_duration_seconds"),
-    assigneeId: text("assignee_id"),
-    authorName: text("author_name").notNull().default(""),
-    isPendingSync: integer("is_pending_sync", { mode: "boolean" }).notNull().default(false),
-    createdAt: integer("created_at").notNull().default(sql`(unixepoch() * 1000)`),
-  },
-  (table) => [index("drawing_markup_comments_markup_idx").on(table.markupId, table.createdAt)],
-);
-
-export type DrawingMarkupRow = typeof drawingMarkups.$inferSelect;
-export type DrawingMarkupCommentRow = typeof drawingMarkupComments.$inferSelect;
+export * from "./schema-drawing-markups";

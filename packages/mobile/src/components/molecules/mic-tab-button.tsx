@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, View } from "react-native";
+import { ICON_BRAND, ICON_INVERSE } from "@/constants/colors";
 
 /**
  * The raised centre action on the tab bar — BuildPanda's take on Ernest's "+".
@@ -16,14 +17,14 @@ export function MicTabButton({ onPress }: { onPress: () => void }) {
         accessibilityLabel="Record a field update"
         className="h-16 w-16 items-center justify-center rounded-full bg-primary-500 active:bg-primary-600"
         style={{
-          shadowColor: "#004DE7",
+          shadowColor: ICON_BRAND,
           shadowOpacity: 0.35,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 4 },
           elevation: 8,
         }}
       >
-        <Ionicons name="mic" size={26} color="#FFFFFF" />
+        <Ionicons name="mic" size={26} color={ICON_INVERSE} />
       </Pressable>
     </View>
   );

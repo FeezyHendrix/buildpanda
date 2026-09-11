@@ -1,12 +1,9 @@
 import { useCallback } from "react";
-import { changeRequestsApi } from "@/api/change-requests";
 import { dailyLogsApi } from "@/api/daily-logs";
-import { lookAheadsApi } from "@/api/look-aheads";
-import { materialsApi } from "@/api/materials";
 import { materialsLedgerApi } from "@/api/materials-ledger";
-import { rfisApi } from "@/api/rfis";
 import { stagesApi } from "@/api/stages";
 import type { ProposedAction } from "@/api/voice-report-types";
+import { changeRequestCommentsRepository } from "@/db/change-request-comments-repository";
 import { changeRequestsRepository } from "@/db/change-requests-repository";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { lookAheadsRepository } from "@/db/look-aheads-repository";
@@ -90,6 +87,9 @@ export function useApplyProposedAction() {
           return { awaitingApproval: logged.entry.approvalStatus === "Pending" };
         }
         case "material_order":
+          // The orders API requires the date; the review screen collects it as
+          // a missing field, so reaching here without one is a contract slip.
+          if (!action.payload.neededBy) throw new Error("Say when this material is needed by before applying it.");
           await createMaterialOrder(action.payload);
           return;
         case "look_ahead":
@@ -101,7 +101,9 @@ export function useApplyProposedAction() {
           );
           return;
         case "transition_rfi":
-          await rfisApi.transition(requireProject(), action.payload.rfiId, action.payload.status);
+          await queueEdit((database) =>
+            rfisRepository.transitionLocal(database, requireProject(), action.payload.rfiId, action.payload.status),
+          );
           return;
         case "update_change_request":
           await queueEdit((database) =>
@@ -114,7 +116,9 @@ export function useApplyProposedAction() {
           );
           return;
         case "delete_change_request":
-          await changeRequestsApi.remove(requireProject(), action.payload.changeRequestId);
+          await queueEdit((database) =>
+            changeRequestsRepository.deleteLocal(database, requireProject(), action.payload.changeRequestId),
+          );
           return;
         case "update_material_order":
           await queueEdit((database) =>
@@ -122,7 +126,9 @@ export function useApplyProposedAction() {
           );
           return;
         case "delete_material_order":
-          await materialsApi.remove(requireProject(), action.payload.orderId);
+          await queueEdit((database) =>
+            materialsRepository.deleteLocal(database, requireProject(), action.payload.orderId),
+          );
           return;
         case "update_look_ahead":
           await queueEdit((database) =>
@@ -135,7 +141,9 @@ export function useApplyProposedAction() {
           );
           return;
         case "delete_look_ahead":
-          await lookAheadsApi.remove(requireProject(), action.payload.lookAheadId);
+          await queueEdit((database) =>
+            lookAheadsRepository.deleteLocal(database, requireProject(), action.payload.lookAheadId),
+          );
           return;
         case "update_daily_log":
           await saveDailyLog(localDateIso(), { totalHours: action.payload.totalHours });
@@ -159,14 +167,19 @@ export function useApplyProposedAction() {
           if (!action.payload.stageId || !action.payload.status) {
             throw new Error("Pick a stage and a status before applying this.");
           }
-          await stagesApi.update(requireProject(), action.payload.stageId, {
-            status: action.payload.status,
-            ...(action.payload.buildingId ? { buildingId: action.payload.buildingId } : {}),
-          });
+          await stagesApi.update(requireProject(), action.payload.stageId, { status: action.payload.status });
           return;
         }
         case "comment_change_request":
-          await changeRequestsApi.addComment(requireProject(), action.payload.changeRequestId, action.payload.body);
+          await queueEdit(async (database) => {
+            await changeRequestCommentsRepository.addLocal(
+              database,
+              action.payload.changeRequestId,
+              requireProject(),
+              action.payload.body,
+              user?.name ?? "You",
+            );
+          });
           return;
         case "void_ledger_entry":
           await materialsLedgerApi.voidEntry(requireProject(), action.payload.entryId, action.payload.reason);

@@ -1,60 +1,60 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { Button, Field, Spinner, Text } from "@/components/atoms";
+import { CHANGE_STATUSES, type ChangeStatus } from "@/api/change-requests";
+import { Button, Field, FieldLabel, OptionRow, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import { htmlToText, textToParagraphHtml } from "@/lib/html";
 import type { Db } from "@/db/client";
-import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-repository";
 import { useLocalDb } from "@/db/provider";
-import { useUpdateChangeRequest } from "@/hooks/use-local-change-requests";
+import { useLocalChangeRequest, useUpdateChangeRequest } from "@/hooks/use-local-change-requests";
 import { useFieldSession } from "@/lib/field-session";
+import { useSyncState } from "@/lib/sync-provider";
 
-function Editor({ db, projectId, changeId }: { db: Db; projectId: string; changeId: string }) {
-  const query = useMemo(() => changeRequestsRepository.listQuery(db, projectId), [db, projectId]);
-  const live = useLiveQuery(query);
-  const existing = useMemo(
-    () => (live.data ?? []).map(toChangeRequest).find((row) => row.id === changeId),
-    [live.data, changeId],
-  );
+interface Draft {
+  title: string;
+  descriptionHtml: string;
+  status: ChangeStatus;
+  cost: string;
+  days: string;
+}
 
+function EditorForm({
+  db,
+  projectId,
+  changeId,
+  initial,
+}: {
+  db: Db;
+  projectId: string;
+  changeId: string;
+  initial: Draft;
+}) {
   const update = useUpdateChangeRequest(db, projectId);
-  const [title, setTitle] = useState<string | null>(null);
-  const [descriptionHtml, setDescriptionHtml] = useState<string | null>(null);
-  const [cost, setCost] = useState<string | null>(null);
-  const [days, setDays] = useState<string | null>(null);
+  const { isOnline } = useSyncState();
+  const [title, setTitle] = useState(initial.title);
+  const [descriptionHtml, setDescriptionHtml] = useState(initial.descriptionHtml);
+  const [status, setStatus] = useState<ChangeStatus>(initial.status);
+  const [cost, setCost] = useState(initial.cost);
+  const [days, setDays] = useState(initial.days);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!existing) {
-    return (
-      <View className="items-center py-12">
-        <Spinner size="md" />
-      </View>
-    );
-  }
-
-  // Null means untouched, so only what the crew member actually typed is sent
-  // and a background refresh cannot be clobbered by a stale render.
-  const titleValue = title ?? existing.title;
-  const descriptionHtmlValue =
-    descriptionHtml ?? existing.descriptionHtml ?? textToParagraphHtml(existing.description ?? "");
-  const costValue = cost ?? String(existing.costImpact ?? "");
-  const daysValue = days ?? String(existing.timeImpactDays ?? "");
+  const canSubmit = title.trim().length > 0 && !saving;
 
   async function submit() {
-    if (saving || titleValue.trim().length === 0) return;
+    if (!canSubmit) return;
     setSaving(true);
     setError(null);
     try {
       await update(changeId, {
-        title: titleValue.trim(),
-        description: htmlToText(descriptionHtmlValue).trim() || null,
-        descriptionHtml: descriptionHtmlValue.trim() || null,
-        costImpact: Number.parseFloat(costValue) || 0,
-        timeImpactDays: Number.parseInt(daysValue, 10) || 0,
+        title: title.trim(),
+        description: htmlToText(descriptionHtml).trim() || null,
+        descriptionHtml: descriptionHtml.trim() || null,
+        status,
+        costImpact: Number.parseFloat(cost) || 0,
+        timeImpactDays: Number.parseInt(days, 10) || 0,
       });
       router.back();
     } catch (err) {
@@ -64,19 +64,76 @@ function Editor({ db, projectId, changeId }: { db: Db; projectId: string; change
   }
 
   return (
-    <View className="gap-5">
-      {error ? <Text tone="danger" className="text-[13px]">{error}</Text> : null}
-      <Field label="Title" value={titleValue} onChangeText={setTitle} />
-      <Text className="text-[13px] text-slate-600">Description</Text>
-      <RichTextEditor value={descriptionHtmlValue} onChange={setDescriptionHtml} />
-      <View className="flex-row gap-3">
-        <Field label="Cost impact" value={costValue} onChangeText={setCost} keyboardType="numeric" className="flex-1" />
-        <Field label="Days" value={daysValue} onChangeText={setDays} keyboardType="number-pad" className="flex-1" />
+    <Page
+      title="Edit change request"
+      onBack={() => router.back()}
+      footer={
+        <Button onPress={submit} disabled={!canSubmit} loading={saving}>
+          Save changes
+        </Button>
+      }
+    >
+      {error ? (
+        <View className="mb-4 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">
+            {error}
+          </Text>
+        </View>
+      ) : null}
+
+      {!isOnline ? (
+        <View className="mb-4 rounded-xl bg-surface-alt px-4 py-3">
+          <Text tone="secondary" className="text-[13px]">
+            You&apos;re offline. This is saved on your device and uploads when you get signal.
+          </Text>
+        </View>
+      ) : null}
+
+      <View className="gap-5">
+        <Field label="Title" value={title} onChangeText={setTitle} />
+        <View className="gap-2">
+          <FieldLabel>Description</FieldLabel>
+          <RichTextEditor value={descriptionHtml} onChange={setDescriptionHtml} projectId={projectId} />
+        </View>
+        <OptionRow label="Status" options={CHANGE_STATUSES} value={status} onChange={setStatus} />
+        <View className="flex-row gap-3">
+          <Field label="Cost impact" value={cost} onChangeText={setCost} keyboardType="numeric" className="flex-1" />
+          <Field label="Days" value={days} onChangeText={setDays} keyboardType="number-pad" className="flex-1" />
+        </View>
       </View>
-      <Button onPress={submit} loading={saving} disabled={titleValue.trim().length === 0}>
-        Save changes
-      </Button>
-    </View>
+    </Page>
+  );
+}
+
+function Editor({ db, projectId, changeId }: { db: Db; projectId: string; changeId: string }) {
+  const { data: existing } = useLocalChangeRequest(db, changeId);
+
+  if (!existing) {
+    return (
+      <Page title="Edit change request" onBack={() => router.back()}>
+        <View className="items-center py-12">
+          <Spinner size="md" />
+        </View>
+      </Page>
+    );
+  }
+
+  // The form is seeded once from the local row (keyed on the id) so a
+  // background refresh cannot clobber what the crew member is typing.
+  return (
+    <EditorForm
+      key={existing.id}
+      db={db}
+      projectId={projectId}
+      changeId={changeId}
+      initial={{
+        title: existing.title,
+        descriptionHtml: existing.descriptionHtml ?? textToParagraphHtml(existing.description ?? ""),
+        status: existing.status,
+        cost: existing.costImpact ? String(existing.costImpact) : "",
+        days: existing.timeImpactDays ? String(existing.timeImpactDays) : "",
+      }}
+    />
   );
 }
 
@@ -85,13 +142,15 @@ export default function EditChangeRequest() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
-  return (
-    <Page title="Edit change request" onBack={() => router.back()}>
-      {ready && db && projectId && id ? (
-        <Editor db={db} projectId={projectId} changeId={id} />
-      ) : (
-        <View className="items-center py-12"><Spinner size="md" /></View>
-      )}
-    </Page>
-  );
+  if (!(ready && db && projectId && id)) {
+    return (
+      <Page title="Edit change request" onBack={() => router.back()}>
+        <View className="items-center py-12">
+          <Spinner size="md" />
+        </View>
+      </Page>
+    );
+  }
+
+  return <Editor db={db} projectId={projectId} changeId={id} />;
 }

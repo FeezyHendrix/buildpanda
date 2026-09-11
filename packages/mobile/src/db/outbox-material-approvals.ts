@@ -24,6 +24,13 @@ export async function pushMaterialApprovalOutboxItem(
   if (item.resource === MATERIAL_APPROVALS_RESOURCE) {
     if (item.operation === "decision" && item.entityId.startsWith("local_")) return done(false);
 
+    // The local row is already gone; the server copy is all that is left to remove.
+    if (item.operation === "delete") {
+      await materialApprovalsApi.remove(item.projectId, item.entityId);
+      await db.delete(outbox).where(eq(outbox.id, item.id));
+      return done(true);
+    }
+
     const row = await materialApprovalsRepository.findById(db, item.entityId);
     if (!row) {
       await db.delete(outbox).where(eq(outbox.id, item.id));

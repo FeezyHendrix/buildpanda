@@ -134,6 +134,12 @@ export const materialApprovalsApi = {
       body: JSON.stringify(body),
     }),
 
+  /** Server rule: only a request still `Pending` can be removed. */
+  remove: (projectId: string, approvalId: string) =>
+    request<void>(`/projects/${projectId}/material-approvals/${approvalId}`, {
+      method: "DELETE",
+    }),
+
   addComment: (projectId: string, approvalId: string, body: string) =>
     request<ApprovalComment>(
       `/projects/${projectId}/material-approvals/${approvalId}/comments`,

@@ -1,6 +1,7 @@
 import { ScrollView, View } from "react-native";
 import type { Activity } from "@/api/activities";
 import { Card, Text } from "@/components/atoms";
+import { formatShortDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -11,10 +12,6 @@ const MIN_BAR_WIDTH = 24;
 function parseDay(value: string): number | null {
   const time = Date.parse(`${value.slice(0, 10)}T00:00:00`);
   return Number.isNaN(time) ? null : time;
-}
-
-function dateLabel(time: number): string {
-  return new Date(time).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 function activitySpan(activity: Activity): { readonly start: number; readonly end: number } | null {
@@ -63,7 +60,7 @@ export function GanttChart({ activities }: { activities: readonly Activity[] }) 
               {ticks.map((tick) => (
                 <View key={tick} className="absolute top-0 h-full border-l border-hairline" style={{ left: Math.round((tick - min) / DAY_MS) * DAY_WIDTH }}>
                   <Text tone="muted" className="pl-1 text-[10px]">
-                    {dateLabel(tick)}
+                    {formatShortDate(tick)}
                   </Text>
                 </View>
               ))}

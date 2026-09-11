@@ -2,6 +2,8 @@ import { randomUUID } from "expo-crypto";
 import { and, desc, eq } from "drizzle-orm";
 import type { MaterialApproval, MaterialApprovalCreateInput } from "@/api/material-approvals";
 import type { Db } from "./client";
+import { enqueueDelete } from "./enqueue-update";
+import { MATERIAL_APPROVAL_COMMENTS_RESOURCE } from "./material-approval-comments-repository";
 import {
   materialApprovalComments,
   materialApprovals,
@@ -181,6 +183,33 @@ export const materialApprovalsRepository = {
     });
   },
 
+  /**
+   * Removes the request and its discussion locally and queues the push in one
+   * transaction. Comments still waiting to upload go with it: a reply to a
+   * request the server is about to lose would only ever 404.
+   */
+  async deleteLocal(db: Db, projectId: string, id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      const orphaned = await tx
+        .select({ id: materialApprovalComments.id })
+        .from(materialApprovalComments)
+        .where(eq(materialApprovalComments.approvalId, id));
+      for (const comment of orphaned) {
+        await tx
+          .delete(outbox)
+          .where(
+            and(
+              eq(outbox.resource, MATERIAL_APPROVAL_COMMENTS_RESOURCE),
+              eq(outbox.entityId, comment.id),
+            ),
+          );
+      }
+      await tx.delete(materialApprovalComments).where(eq(materialApprovalComments.approvalId, id));
+      await tx.delete(materialApprovals).where(eq(materialApprovals.id, id));
+      await enqueueDelete(tx as never, MATERIAL_APPROVALS_RESOURCE, id, projectId, randomUUID());
+    });
+  },
+
   async markSynced(db: Db, id: string): Promise<void> {
     await db
       .update(materialApprovals)
@@ -188,6 +217,7 @@ export const materialApprovalsRepository = {
       .where(eq(materialApprovals.id, id));
   },
 
+  /** Server rows never overwrite one still waiting to be pushed, here as in the pull. */
   async replaceFromServer(db: Db, projectId: string, server: MaterialApproval): Promise<void> {
     await db
       .insert(materialApprovals)
@@ -195,6 +225,7 @@ export const materialApprovalsRepository = {
       .onConflictDoUpdate({
         target: materialApprovals.id,
         set: materialApprovalServerValues(projectId, server, Date.now()),
+        where: eq(materialApprovals.isPendingSync, false),
       });
   },
 

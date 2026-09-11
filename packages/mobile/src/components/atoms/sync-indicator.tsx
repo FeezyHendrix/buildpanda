@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing, Pressable, View } from "react-native";
+import { ICON_BRAND, ICON_DANGER, ICON_INVERSE, ICON_MUTED, palette } from "@/constants/colors";
 import { Text } from "./text";
 
 /**
@@ -29,15 +30,17 @@ interface SyncMeta {
 }
 
 const SYNC_META: Record<SyncState, SyncMeta> = {
-  synced: { icon: "cloud-done-outline", color: "#888888", label: "All changes synced" },
-  pending: { icon: "cloud-upload-outline", color: "#717171", label: "Waiting to upload" },
-  syncing: { icon: "sync-outline", color: "#004DE7", label: "Syncing", spins: true },
-  stale: { icon: "cloud-done-outline", color: "#B6E800", label: "Sync conflict needs review" },
-  error: { icon: "cloud-offline-outline", color: "#D42C19", label: "Sync failed" },
+  synced: { icon: "cloud-done-outline", color: palette.grey300, label: "All changes synced" },
+  pending: { icon: "cloud-upload-outline", color: ICON_MUTED, label: "Waiting to upload" },
+  syncing: { icon: "sync-outline", color: ICON_BRAND, label: "Syncing", spins: true },
+  stale: { icon: "cloud-done-outline", color: palette.warning600, label: "Sync conflict needs review" },
+  error: { icon: "cloud-offline-outline", color: ICON_DANGER, label: "Sync failed" },
 };
 
 function SpinningIcon({ icon, color }: { icon: IoniconName; color: string }) {
-  const spin = useRef(new Animated.Value(0)).current;
+  // Held in state, not a ref: the value is read during render for the
+  // interpolation, and a ref must not be read while rendering.
+  const [spin] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -79,7 +82,7 @@ export function SyncIndicator({
   const meta = SYNC_META[state];
   // On the blue header only `error` keeps its colour — everything else reads as
   // white so the bar stays one surface.
-  const color = onDark && state !== "error" ? "#FFFFFF" : meta.color;
+  const color = onDark && state !== "error" ? ICON_INVERSE : meta.color;
   const showBadge = pendingCount > 0 && (state === "pending" || state === "syncing");
 
   return (

@@ -4,93 +4,32 @@ import { useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { CategoryCard } from "@/components/molecules/category-card";
+import { DocumentFileRow } from "@/components/molecules/document-file-row";
 import { Page } from "@/components/molecules/page";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
+import { ICON_BRAND } from "@/constants/colors";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
-import { DOCUMENT_GROUP, type DocumentGroup } from "@/db/documents-repository";
+import { DOCUMENT_GROUP, documentsRepository, type DocumentGroup } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useDocumentCategories, useLocalDocuments, useRecentDocuments } from "@/hooks/use-local-documents";
 import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { cacheDocument } from "@/lib/download-file";
 import { useFieldSession } from "@/lib/field-session";
-import { cn } from "@/lib/utils";
 
-/** Two groups, matching the web — no invented Media tab. */
+// The web's Plans and Documents pages, as two tabs. Media has its own library
+// on the web and is not shown here at all — never folded into Documents.
 const GROUPS: readonly SegmentedTab<DocumentGroup>[] = [
   { key: DOCUMENT_GROUP.PLAN, label: "Plans" },
   { key: DOCUMENT_GROUP.DOCUMENT, label: "Documents" },
 ] as const;
 
-function FileRow({
-  doc,
-  onOpen,
-}: {
-  doc: { id: string; fileName: string; size: string; category: string | null; group: DocumentGroup; status: string | null; versionNo: number; isAvailableOffline: boolean };
-  onOpen: (id: string) => Promise<void>;
-}) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <Pressable
-      onPress={async () => {
-        await onOpen(doc.id);
-        router.push(
-          (doc.group === DOCUMENT_GROUP.PLAN
-            ? `/tools/plan-review?documentId=${doc.id}`
-            : `/tools/documents/${doc.id}`) as never,
-        );
-      }}
-      accessibilityRole="button"
-      className="min-h-16 flex-row items-center gap-3 border-b border-hairline px-4 py-3 active:bg-surface-alt"
-    >
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-50">
-        <Ionicons
-          name={
-            /\.pdf$/i.test(doc.fileName) ? "document-outline"
-            : /\.(xlsx?|csv)$/i.test(doc.fileName) ? "grid-outline"
-            : /\.(png|jpe?g|gif|webp|heic)$/i.test(doc.fileName) ? "image-outline"
-            : "document-text-outline"
-          }
-          size={18}
-          color="#004DE7"
-        />
-      </View>
-      <View className="min-w-0 flex-1">
-        <Text weight="semibold" className="text-[15px]" numberOfLines={1}>
-          {doc.fileName}
-        </Text>
-        <View className="flex-row items-center gap-2 pt-0.5">
-          <Text tone="secondary" className="text-xs">
-            {[doc.category, doc.size, doc.versionNo > 0 ? `v${doc.versionNo}` : null].filter(Boolean).join(" · ")}
-          </Text>
-          {doc.status ? (
-            <View className={cn(
-              "rounded-full px-1.5 py-0.5",
-              doc.status === "Verified" ? "bg-success-50" : doc.status === "Expired" ? "bg-error-50" : "bg-surface-alt",
-            )}>
-              <Text
-                weight="semibold"
-                tone={doc.status === "Verified" ? "brand" : doc.status === "Expired" ? "danger" : "secondary"}
-                className="text-[9px] uppercase"
-              >
-                {doc.status}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-      {busy ? (
-        <Spinner size="xs" />
-      ) : doc.isAvailableOffline ? (
-        <Ionicons name="cloud-done-outline" size={18} color="#1AE592" />
-      ) : (
-        <Ionicons name="cloud-download-outline" size={18} color="#C8C8C8" />
-      )}
-    </Pressable>
-  );
+interface Folder {
+  id: string;
+  name: string;
 }
 
 function RecentDocs({ db, projectId, onOpen }: { db: Db; projectId: string; onOpen: (id: string) => Promise<void> }) {
@@ -104,11 +43,7 @@ function RecentDocs({ db, projectId, onOpen }: { db: Db; projectId: string; onOp
       </Text>
       <Card>
         {data.map((doc) => (
-          <FileRow
-            key={doc.id}
-            doc={doc}
-            onOpen={onOpen}
-          />
+          <DocumentFileRow key={doc.id} doc={doc} onOpen={onOpen} />
         ))}
       </Card>
     </View>
@@ -118,10 +53,11 @@ function RecentDocs({ db, projectId, onOpen }: { db: Db; projectId: string; onOp
 function Browser({ db, projectId, group }: { db: Db; projectId: string; group: DocumentGroup }) {
   const { width } = useWindowDimensions();
   const isWide = width >= TabletMinWidth;
-  const [folder, setFolder] = useState<string | null>(null);
+  const [folder, setFolder] = useState<Folder | null>(null);
 
   const categories = useDocumentCategories(db, projectId, group);
-  const files = useLocalDocuments(db, projectId, group, folder ?? undefined);
+  // filtered by category id: two folders in different groups may share a name
+  const files = useLocalDocuments(db, projectId, group, folder?.id);
   const [error, setError] = useState<string | null>(null);
 
   if (categories.isPending) {
@@ -132,6 +68,21 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
     );
   }
 
+  const openDoc = async (id: string) => {
+    setError(null);
+    await documentsRepository.trackAccess(db, id);
+    try {
+      await cacheDocument(db, projectId, id);
+    } catch (err) {
+      console.error("document download failed", err);
+      setError(
+        err instanceof Error && err.message
+          ? `Couldn't download that file: ${err.message}`
+          : "Couldn't download that file. Try again when you have signal.",
+      );
+    }
+  };
+
   // Drilled into a folder: show its files with a way back out.
   if (folder) {
     return (
@@ -141,14 +92,14 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
           accessibilityRole="button"
           className="mb-3 min-h-11 flex-row items-center gap-1 self-start"
         >
-          <Ionicons name="chevron-back" size={18} color="#004DE7" />
+          <Ionicons name="chevron-back" size={18} color={ICON_BRAND} />
           <Text weight="semibold" tone="brand" className="text-sm">
             All folders
           </Text>
         </Pressable>
 
         <Text weight="bold" className="pb-2 text-base">
-          {folder}
+          {folder.name}
         </Text>
 
         {error ? (
@@ -161,30 +112,19 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
 
         {files.data.length === 0 ? (
           <View className="items-center py-12">
-            <Text tone="secondary" className="text-[13px]">
-              This folder is empty.
+            <Text weight="semibold" className="text-center text-base">
+              This folder is empty
+            </Text>
+            <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
+              {group === DOCUMENT_GROUP.PLAN
+                ? "Upload a drawing with the cloud button above and it is filed here."
+                : "Upload a document with the cloud button above and it is filed here."}
             </Text>
           </View>
         ) : (
           <Card>
             {files.data.map((doc) => (
-              <FileRow
-                key={doc.id}
-                doc={doc}
-                onOpen={async (id) => {
-                  setError(null);
-                  try {
-                    await cacheDocument(db, projectId, id);
-                  } catch (err) {
-                    console.error("plan download failed", err);
-                    setError(
-                      err instanceof Error && err.message
-                        ? `Couldn't download that file: ${err.message}`
-                        : "Couldn't download that file. Try again when you have signal.",
-                    );
-                  }
-                }}
-              />
+              <DocumentFileRow key={doc.id} doc={doc} onOpen={openDoc} />
             ))}
           </Card>
         )}
@@ -192,29 +132,27 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
     );
   }
 
-  const openDoc = async (id: string) => {
-    const { documentsRepository } = await import("@/db/documents-repository");
-    await documentsRepository.trackAccess(db, id);
-    try {
-      await cacheDocument(db, projectId, id);
-    } catch (err) {
-      console.error("recent doc download failed", err);
-    }
-  };
-
   return (
     <>
+      {error ? (
+        <View className="mb-3 rounded-xl bg-error-50 px-4 py-3">
+          <Text tone="danger" className="text-sm">
+            {error}
+          </Text>
+        </View>
+      ) : null}
+
       <RecentDocs db={db} projectId={projectId} onOpen={openDoc} />
 
       {categories.data.length === 0 ? (
         <View className="items-center py-12">
           <Text weight="semibold" className="text-center text-base">
-            Nothing here yet
+            {group === DOCUMENT_GROUP.PLAN ? "No plans yet" : "No documents yet"}
           </Text>
           <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
             {group === DOCUMENT_GROUP.PLAN
-              ? "Drawings uploaded to this project will appear here."
-              : "Project documents will appear here."}
+              ? "Upload a drawing with the cloud button above, or open this project once with signal to fetch its folders."
+              : "Upload a document with the cloud button above, or open this project once with signal to fetch its folders."}
           </Text>
         </View>
       ) : (
@@ -224,7 +162,7 @@ function Browser({ db, projectId, group }: { db: Db; projectId: string; group: D
               key={category.id}
               category={category}
               isWide={isWide}
-              onPress={setFolder}
+              onPress={() => setFolder({ id: category.id, name: category.name })}
             />
           ))}
         </View>
@@ -243,19 +181,21 @@ export default function Plans() {
   const [group, setGroup] = useState<DocumentGroup>(DOCUMENT_GROUP.PLAN);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | undefined>(undefined);
+  const isPlans = group === DOCUMENT_GROUP.PLAN;
 
   return (
     <Page
-      title={group === DOCUMENT_GROUP.PLAN ? "Plans" : "Documents"}
+      title={isPlans ? "Plans" : "Documents"}
       rightButtons={
         <HeaderIconButton
           icon="cloud-upload-outline"
-          label="Upload a document"
-          onPress={() => router.push("/tools/documents/upload" as never)}
+          label={isPlans ? "Upload a plan" : "Upload a document"}
+          onPress={() => router.push(`/tools/documents/upload?group=${group}` as never)}
         />
       }
       workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
-      projectName={project?.name ?? "Loading project…"}
+      projectName={project?.name}
+      projectPending={Boolean(projectId) && !project}
       onPressWorkspace={() => setSheetOpen(true)}
       onPressProject={() => router.push("/select-project")}
     >

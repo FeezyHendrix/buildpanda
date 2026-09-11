@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { Button, Field, Text } from "@/components/atoms";
+import { Button, Field, FieldLabel, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { RichTextEditor } from "@/components/rich-text/rich-text-editor";
 import { useLocalDb } from "@/db/provider";
@@ -32,8 +32,8 @@ export default function NewChangeRequest() {
     try {
       await create({
         title: title.trim(),
-          description: htmlToText(descriptionHtml) || null,
-          descriptionHtml: descriptionHtml || null,
+        description: htmlToText(descriptionHtml) || null,
+        descriptionHtml: descriptionHtml || null,
         costImpact: Number.parseFloat(cost) || 0,
         timeImpactDays: Number.parseInt(days, 10) || 0,
       });
@@ -72,10 +72,8 @@ export default function NewChangeRequest() {
 
       <View className="gap-5">
         <Field label="Title" value={title} onChangeText={setTitle} placeholder="What is changing?" autoFocus />
-        <View>
-          <Text weight="semibold" className="pb-2 text-[13px]">
-            Description
-          </Text>
+        <View className="gap-2">
+          <FieldLabel>Description</FieldLabel>
           <RichTextEditor
             value={descriptionHtml}
             onChange={setDescriptionHtml}

@@ -12,7 +12,7 @@ export default function Activities() {
 
   return (
     <ScheduleListScreen
-      title="Site Activity"
+      title="Site activity"
       isPending={activities.isPending}
       isStale={activities.isStale}
       isEmpty={data.length === 0}
