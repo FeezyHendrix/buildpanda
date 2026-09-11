@@ -6,7 +6,6 @@ import { useSearchParams } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -74,14 +73,7 @@ export default function ProjectInvoices() {
   ) : undefined;
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finance", to: `/project/${project.id}/finances` },
-          { label: "Invoices" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Invoices"
         actions={actions}

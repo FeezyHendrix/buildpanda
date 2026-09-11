@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
@@ -13,7 +12,7 @@ import { PaymentRequestsSection } from "./payments/payment-requests-section";
  * resource the standalone pages used, so this merge changes presentation only.
  */
 export default function ProjectPayments() {
-  const { project, access } = useProjectContext();
+  const { access } = useProjectContext();
   const { data: flagsData } = useFeatureFlags();
 
   const enabled = useMemo(
@@ -28,14 +27,7 @@ export default function ProjectPayments() {
     isOn("commercial.paymentClaims") && canViewSection(access, "commercial.paymentClaims", "finances");
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finance", to: `/project/${project.id}/finances` },
-          { label: "Payments" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Payments"
       />

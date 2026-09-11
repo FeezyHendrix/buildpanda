@@ -97,7 +97,7 @@ export default function ProjectChangeRequests() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Change Requests"
         actions={

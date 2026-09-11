@@ -2,12 +2,11 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
-import { Label } from "@/components/atoms/label";
 import { Spinner } from "@/components/atoms/spinner";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
+import { DailyReportDialog } from "@/components/molecules/daily-report-dialog";
 import { UpsertDailyLogDialog } from "@/components/molecules/upsert-daily-log-dialog";
 import { AddDailyLogEntryDialog } from "@/components/molecules/add-daily-log-entry-dialog";
 import { VoidDailyLogEntryDialog } from "@/components/molecules/void-daily-log-entry-dialog";
@@ -22,14 +21,11 @@ import {
   useVoidDailyLogEntry,
   useDownloadDailyReport,
   useEmailDailyReport,
-  useDownloadPeriodReport,
 } from "@/hooks/use-daily-logs";
 import {
-  REPORT_PERIOD_OPTIONS,
   canResourceAction,
   type DailyLogDay,
   type DailyLogEntry,
-  type ReportPeriod,
   type WeatherCondition,
 } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
@@ -75,11 +71,9 @@ export default function ProjectDailyLog() {
   const [headerOpen, setHeaderOpen] = useState(false);
   const [headerDate, setHeaderDate] = useState<string | null>(null);
   const [entryDate, setEntryDate] = useState<string | null>(null);
-  const [periodType, setPeriodType] = useState<ReportPeriod>("weekly");
-  const [periodDate, setPeriodDate] = useState(todayIso());
+  const [reportOpen, setReportOpen] = useState(false);
 
   const canGenerateReport = Boolean(access && canResourceAction(access, "dailyLog", "report"));
-  const downloadPeriodReport = useDownloadPeriodReport();
 
   const upsert = useUpsertDailyLog();
   const addEntry = useAddDailyLogEntry();
@@ -96,98 +90,31 @@ export default function ProjectDailyLog() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Schedule", to: `/project/${project.id}/schedule` },
-          { label: "Daily Log" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Daily Log"
         actions={
-          canCreateEntry ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setEntryDate(today)}
-            >
-              <PlusIcon className="size-4" />
-              Add my log
-            </Button>
+          canCreateEntry || canGenerateReport ? (
+            <div className="flex items-center gap-2">
+              {canGenerateReport ? (
+                <Button variant="secondary" size="md" onClick={() => setReportOpen(true)}>
+                  Download report
+                </Button>
+              ) : null}
+              {canCreateEntry ? (
+                <Button variant="primary" size="md" onClick={() => setEntryDate(today)}>
+                  <PlusIcon className="size-4" />
+                  Add my log
+                </Button>
+              ) : null}
+            </div>
           ) : undefined
         }
       />
+      {canGenerateReport ? (
+        <DailyReportDialog open={reportOpen} onOpenChange={setReportOpen} projectId={project.id} />
+      ) : null}
 
-      <section
-        aria-label="Project completion"
-        className="mt-8 flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8] p-5"
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-medium text-black-300">
-            Overall project completion
-          </p>
-          <p className="text-[20px] font-semibold tabular-nums text-black-500">
-            {Math.round(project.progressPercent)}%
-          </p>
-        </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-[#E9EDFB]">
-          <div
-            className="h-full rounded-full bg-primary transition-[width]"
-            style={{
-              width: `${Math.max(0, Math.min(100, project.progressPercent))}%`,
-            }}
-          />
-        </div>
-      </section>
-
-      {canGenerateReport && (
-        <section
-          aria-label="Generate report"
-          className="mt-6 flex flex-col gap-3 rounded-[16px] border-none bg-[#F8F8F8] p-5 sm:flex-row sm:items-end sm:justify-between"
-        >
-          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
-            <Label htmlFor="report-period">Report period</Label>
-            <select
-              id="report-period"
-              value={periodType}
-              onChange={(e) => setPeriodType(e.target.value as ReportPeriod)}
-              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            >
-              {REPORT_PERIOD_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-1 flex-col gap-1.5 sm:max-w-[200px]">
-            <Label htmlFor="report-date">Any date in period</Label>
-            <input
-              id="report-date"
-              type="date"
-              value={periodDate}
-              onChange={(e) => setPeriodDate(e.target.value)}
-              className="h-11 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            size="md"
-            loading={downloadPeriodReport.isPending}
-            onClick={() =>
-              downloadPeriodReport.mutate(
-                { projectId: project.id, period: periodType, date: periodDate },
-                { onError: () => toast("Could not download report") },
-              )
-            }
-          >
-            Download report
-          </Button>
-        </section>
-      )}
 
       <section className="mt-8 flex flex-col gap-4">
         {isPending ? (
@@ -322,7 +249,6 @@ function DayCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
               onClick={onEditHeader}
             >
               Conditions
@@ -333,7 +259,6 @@ function DayCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
               loading={downloadReport.isPending}
               onClick={() =>
                 downloadReport.mutate(
@@ -350,7 +275,6 @@ function DayCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-10 px-3 sm:h-8 sm:px-2.5 text-xs text-black-300 hover:text-black-500"
               loading={emailReport.isPending}
               onClick={() =>
                 emailReport.mutate(
@@ -370,7 +294,6 @@ function DayCard({
             <Button
               variant="primary"
               size="sm"
-              className="h-10 sm:h-8 px-3 text-xs"
               onClick={onAddEntry}
             >
               <PlusIcon className="size-3.5" />

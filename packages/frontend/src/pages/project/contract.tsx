@@ -4,7 +4,6 @@ import { Card } from "@/components/atoms/card";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { RecordVariationDialog } from "@/components/molecules/record-variation-dialog";
 import {
@@ -293,14 +292,7 @@ export default function ProjectContract() {
 
   if (isError || !finances || !form) {
     return (
-      <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-        <Breadcrumbs
-          items={[
-            { label: "Finance", to: `/project/${project.id}/finances` },
-            { label: "Contract" },
-          ]}
-          className="mb-4"
-        />
+      <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
         <PageHeader
           title="Contract"
         />
@@ -314,14 +306,7 @@ export default function ProjectContract() {
   const disabled = !canManage || update.isPending;
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
-          { label: "Contract" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Contract"
       />

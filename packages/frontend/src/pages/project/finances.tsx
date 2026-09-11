@@ -176,7 +176,7 @@ export default function ProjectFinances() {
 
   if (!finances) {
     return (
-      <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+      <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
         <PageHeader
           title="Finance"
         />
@@ -190,7 +190,7 @@ export default function ProjectFinances() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Finance"
         actions={

@@ -4,7 +4,6 @@ import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
 import { MaterialsIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { UpsertSupplierDialog } from "@/components/molecules/upsert-supplier-dialog";
@@ -61,14 +60,7 @@ export default function ProjectSuppliers() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Suppliers" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Suppliers"
         actions={
