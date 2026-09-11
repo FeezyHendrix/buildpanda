@@ -81,6 +81,7 @@ export default function ProjectDocuments() {
 
         <DocumentsTable
           documents={visible}
+          emptyMessage={visibleDocuments.length > 0 ? "No documents match these filters." : "No documents uploaded yet."}
           projectId={project.id}
           categories={visibleCategories}
           canManage={canManage}
