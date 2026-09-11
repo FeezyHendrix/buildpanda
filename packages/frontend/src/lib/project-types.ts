@@ -1060,6 +1060,7 @@ export interface DailyLogDay {
   totalHours: number;
   activities: DailyLogActivityLink[];
   entries: DailyLogEntry[];
+  voidedAt: string | null;
 }
 
 export type ReportPeriod = "weekly" | "monthly" | "quarterly" | "semiAnnual" | "annual";

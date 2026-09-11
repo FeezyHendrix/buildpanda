@@ -143,4 +143,5 @@ export interface DailyLogDay {
   totalHours: number;
   activities: DailyLogActivityLink[];
   entries: DailyLogEntry[];
+  voidedAt: string | null;
 }

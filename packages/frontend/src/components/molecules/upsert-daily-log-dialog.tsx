@@ -180,6 +180,7 @@ function UpsertDailyLogDialog({
         <input
           id="log-temp"
           type="number"
+          step="any"
           value={temperatureC}
           onChange={(e) => setTemperatureC(e.target.value)}
           className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
@@ -190,6 +191,7 @@ function UpsertDailyLogDialog({
         <input
           id="log-rain"
           type="number"
+          step="any"
           min={0}
           value={precipitationMm}
           onChange={(e) => setPrecipitationMm(e.target.value)}
@@ -201,6 +203,7 @@ function UpsertDailyLogDialog({
         <input
           id="log-wind"
           type="number"
+          step="any"
           min={0}
           value={windKph}
           onChange={(e) => setWindKph(e.target.value)}
@@ -237,6 +240,7 @@ function UpsertDailyLogDialog({
         <input
           id="log-hours"
           type="number"
+          step="any"
           min={0}
           value={totalHours}
           onChange={(e) => setTotalHours(e.target.value)}
