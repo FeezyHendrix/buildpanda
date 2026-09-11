@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -101,14 +100,7 @@ export default function ProjectFinalAccount() {
 
   if (!finances) {
     return (
-      <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-        <Breadcrumbs
-          items={[
-            { label: "Finances", to: `/project/${project.id}/finances` },
-            { label: "Final Account" },
-          ]}
-          className="mb-4"
-        />
+      <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
         <PageHeader
           title="Final Account"
         />
@@ -148,14 +140,7 @@ export default function ProjectFinalAccount() {
     remainingToCertify === 0;
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
-          { label: "Final Account" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Final Account"
         badges={

@@ -4,7 +4,6 @@ import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -366,14 +365,7 @@ export default function ProjectKeyDates() {
   }
 
   return (
-    <div className="w-full px-4 py-8 sm:px-10 lg:px-6">
-      <Breadcrumbs
-        items={[
-          { label: "Schedule", to: `/project/${project.id}/schedule` },
-          { label: "Key Dates" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Key Dates"
         actions={

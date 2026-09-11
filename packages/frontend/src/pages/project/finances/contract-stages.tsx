@@ -4,7 +4,6 @@ import { Button } from "@/components/atoms/button";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -246,14 +245,7 @@ export default function ContractStages() {
   }, []);
 
   return (
-    <div className="w-full px-4 py-8 sm:px-10 lg:px-6">
-      <Breadcrumbs
-        items={[
-          { label: "Finance", to: `/project/${project.id}/finances` },
-          { label: "Contract & stages" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Contract & stages"
       />

@@ -7,7 +7,6 @@ import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { PageHeader } from "@/components/molecules/page-header";
@@ -529,14 +528,7 @@ export default function ProjectPurchaseOrders() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finances", to: `/project/${project.id}/finances` },
-          { label: "Purchase Orders" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Purchase Orders"
         actions={

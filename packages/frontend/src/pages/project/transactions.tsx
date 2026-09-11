@@ -16,7 +16,6 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -473,14 +472,7 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Finance", to: `/project/${projectId}/finances` },
-          { label: "Expenses" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Expenses"
         actions={

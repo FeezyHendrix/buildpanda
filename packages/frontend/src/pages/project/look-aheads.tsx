@@ -3,7 +3,6 @@ import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertLookAheadDialog,
@@ -109,8 +108,7 @@ export default function ProjectLookAheads() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs items={[{ label: "Site Control" }, { label: "Look Aheads" }]} className="mb-4" />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Look Aheads"
       />

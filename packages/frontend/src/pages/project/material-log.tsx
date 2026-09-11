@@ -6,7 +6,6 @@ import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-en
 import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialog";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -80,14 +79,7 @@ export default function ProjectMaterialLog() {
   }
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Material log" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Material log"
         actions={

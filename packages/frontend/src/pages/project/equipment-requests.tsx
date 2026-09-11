@@ -12,7 +12,6 @@ import {
   MaterialsIcon,
   PlusIcon,
 } from "@/components/atoms/project-nav-icons";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -144,14 +143,7 @@ export default function ProjectEquipmentRequests() {
   );
 
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          { label: "Materials", to: `/project/${project.id}/materials` },
-          { label: "Equipment Requests" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
         title="Rental / equipment requests"
         badges={<Badge tone="info">{activeMeta.label}</Badge>}

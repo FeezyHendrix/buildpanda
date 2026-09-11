@@ -1,6 +1,3 @@
-import { useLocation } from "react-router-dom";
-import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
-import { useProjectContext } from "@/layouts/project-layout";
 import { StagePaymentsSection } from "./payments/stage-payments-section";
 
 /**
@@ -9,21 +6,8 @@ import { StagePaymentsSection } from "./payments/stage-payments-section";
  * workspace. All the logic lives in the shared StagePaymentsSection.
  */
 export default function ProjectMilestonePayments() {
-  const { project } = useProjectContext();
-  const location = useLocation();
-  const isUnderSchedules = location.pathname.includes("/schedules");
-
   return (
-    <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
-      <Breadcrumbs
-        items={[
-          isUnderSchedules
-            ? { label: "Schedules", to: `/project/${project.id}/schedules` }
-            : { label: "Finance", to: `/project/${project.id}/finances` },
-          { label: "Stage payments" },
-        ]}
-        className="mb-4"
-      />
+    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <StagePaymentsSection />
     </div>
   );
