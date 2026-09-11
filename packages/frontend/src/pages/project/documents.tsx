@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
 import { icons } from "@/assets/icons/icons";
@@ -9,7 +10,11 @@ import {
   useProjectDocuments,
 } from "@/hooks/use-documents";
 import { canResourceAction } from "@/lib/project-types";
-import { CategoryMetricsCard } from "./documents/category-metrics-card";
+import {
+  applyDocumentFilters,
+  DocumentFilterBar,
+  EMPTY_DOCUMENT_FILTERS,
+} from "./documents/document-filter-bar";
 import { DocumentsTable } from "./documents/documents-table";
 import { useDocumentUpload } from "./documents/use-document-upload";
 
@@ -19,12 +24,15 @@ export default function ProjectDocuments() {
   const { data: categories = [] } = useProjectDocumentCategories(project.id);
   const { data: documents = [] } = useProjectDocuments(project.id);
   const uploader = useDocumentUpload(project.id, "Document uploaded");
+  const [filters, setFilters] = useState(EMPTY_DOCUMENT_FILTERS);
 
   // Everything that is not a drawing or a media file belongs here: a contract
   // or a proposal snapshot has its own group and must not vanish from the app.
   const filed = (group: string) => group !== "plan" && group !== "media";
   const visibleCategories = categories.filter((c) => filed(c.group));
   const visibleDocuments = documents.filter((d) => filed(d.group));
+
+  const visible = applyDocumentFilters(visibleDocuments, filters);
 
   return (
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
@@ -56,22 +64,23 @@ export default function ProjectDocuments() {
         onSubmit={uploader.upload}
       />
 
-      <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {visibleCategories.map((category) => (
-          <CategoryMetricsCard key={category.id} category={category} />
-        ))}
-      </section>
+      <DocumentFilterBar
+        filters={filters}
+        onChange={setFilters}
+        categories={visibleCategories}
+        searchPlaceholder="Search documents by name or category"
+      />
 
       <section className="mt-10">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Recent Documents</h2>
           <p className="text-xs text-gray-500">
-            {visibleDocuments.length} document{visibleDocuments.length === 1 ? "" : "s"}
+            {visible.length} of {visibleDocuments.length} document{visibleDocuments.length === 1 ? "" : "s"}
           </p>
         </div>
 
         <DocumentsTable
-          documents={visibleDocuments}
+          documents={visible}
           projectId={project.id}
           categories={visibleCategories}
           canManage={canManage}
