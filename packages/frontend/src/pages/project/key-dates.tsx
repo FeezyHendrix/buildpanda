@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { KpiCard } from "@/components";
+import { KpiCard } from "@/components/molecules/kpi-card";
+import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
+import { SimpleDropdown, type DropdownOption } from "@/components/molecules/simple-dropdown";
+import { DateRangeFilter, formatDateRangeLabel } from "@/components/molecules/date-range-filter";
 import {
   UpsertKeyDateDialog,
   type UpsertKeyDateValues,
@@ -29,245 +33,10 @@ function fmt(value: string | null): string {
   return formatShortDate(value) || "—";
 }
 
-function fmtMonthYear(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
 function StatusCell({ status }: { status: KeyDateStatus }) {
   if (status === "Met") return <Badge tone="success" size="sm">Met</Badge>;
   if (status === "Missed") return <Badge tone="danger" size="sm">Missed</Badge>;
   return <Badge tone="info" size="sm">In progress</Badge>;
-}
-
-// ── Generic dropdown used for both status filter and date-view toggle ─────────
-
-type DropdownOption<T extends string> = { value: T; label: string };
-
-function SimpleDropdown<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: DropdownOption<T>[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = options.find((o) => o.value === value) ?? options[0]!;
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#F0F0F0] bg-white px-3 text-[13px] font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-      >
-        {selected.label}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 4.5 3 3 3-3" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={cn(
-                "flex w-full items-center rounded-lg px-3 py-2 text-[13px] hover:bg-[#F6F6F6]",
-                opt.value === value ? "font-semibold text-gray-900" : "text-gray-700",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Date-range filter popover ─────────────────────────────────────────────────
-
-function DateRangeFilter({
-  from,
-  to,
-  label,
-  onApply,
-  onClear,
-}: {
-  from: string;
-  to: string;
-  label: string;
-  onApply: (from: string, to: string) => void;
-  onClear: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [localFrom, setLocalFrom] = useState(from);
-  const [localTo, setLocalTo] = useState(to);
-  const ref = useRef<HTMLDivElement>(null);
-  const hasFilter = Boolean(from || to);
-
-  useEffect(() => {
-    setLocalFrom(from);
-    setLocalTo(to);
-  }, [from, to]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          hasFilter
-            ? "border-primary bg-primary/5 text-primary"
-            : "border-[#F0F0F0] bg-white text-gray-700",
-        )}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-        {label}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 4.5 3 3 3-3" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl bg-white p-4 shadow-lg ring-1 ring-black/5">
-          <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-gray-400">
-            Date range
-          </p>
-          <div className="flex flex-col gap-3">
-            <div>
-              <label className="mb-1 block text-[12px] text-gray-500">From</label>
-              <input
-                type="date"
-                value={localFrom}
-                onChange={(e) => setLocalFrom(e.target.value)}
-                className="h-8 w-full rounded-lg border border-[#F0F0F0] px-2 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-[12px] text-gray-500">To</label>
-              <input
-                type="date"
-                value={localTo}
-                onChange={(e) => setLocalTo(e.target.value)}
-                className="h-8 w-full rounded-lg border border-[#F0F0F0] px-2 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between gap-2">
-            {hasFilter && (
-              <button
-                type="button"
-                onClick={() => { onClear(); setOpen(false); }}
-                className="text-[12px] text-gray-500 hover:text-gray-700 hover:underline"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => { onApply(localFrom, localTo); setOpen(false); }}
-              className="ml-auto rounded-lg bg-primary px-4 py-1.5 text-[12px] font-medium text-white hover:bg-primary/90"
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Row ⋮ menu ────────────────────────────────────────────────────────────────
-
-function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        aria-label="Actions"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <circle cx="8" cy="3" r="1.5" />
-          <circle cx="8" cy="8" r="1.5" />
-          <circle cx="8" cy="13" r="1.5" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-gray-700 hover:bg-[#F6F6F6]"
-            onClick={() => { setOpen(false); onEdit(); }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-red-600 hover:bg-red-50"
-            onClick={() => { setOpen(false); onDelete(); }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ── Filter option constants ───────────────────────────────────────────────────
@@ -286,6 +55,12 @@ const DATE_VIEW_OPTIONS: DropdownOption<DateView>[] = [
   { value: "target", label: "Target dates" },
   { value: "actual", label: "Actual dates" },
 ];
+
+const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
+
+function keyDateFor(kd: KeyDate, view: DateView): string | null {
+  return view === "target" ? kd.targetDate : kd.actualDate;
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -312,21 +87,18 @@ export default function ProjectKeyDates() {
   const inProgressCount = keyDates.filter((k) => k.status === "Upcoming").length;
   const missedCount = keyDates.filter((k) => k.status === "Missed").length;
 
-  // Derive date range label from the data when no filter active
-  const dateRangeLabel = useMemo(() => {
-    if (dateFrom || dateTo) {
-      const parts = [dateFrom && fmtMonthYear(dateFrom), dateTo && fmtMonthYear(dateTo)].filter(Boolean);
-      return parts.join(" – ");
-    }
-    const dates = keyDates
-      .map((k) => dateView === "target" ? k.targetDate : k.actualDate)
-      .filter(Boolean) as string[];
-    if (dates.length === 0) return "Date range";
-    const sorted = [...dates].sort();
-    const first = fmtMonthYear(sorted[0]);
-    const last = fmtMonthYear(sorted[sorted.length - 1]);
-    return first === last ? first : `${first} – ${last}`;
-  }, [keyDates, dateView, dateFrom, dateTo]);
+  const dateRangeLabel = useMemo(
+    () =>
+      formatDateRangeLabel(
+        dateFrom,
+        dateTo,
+        keyDates.flatMap((k) => {
+          const d = keyDateFor(k, dateView);
+          return d ? [d] : [];
+        }),
+      ),
+    [keyDates, dateView, dateFrom, dateTo],
+  );
 
   const filtered = useMemo(() => {
     return keyDates
@@ -341,7 +113,7 @@ export default function ProjectKeyDates() {
       )
       .filter((k) => {
         if (!dateFrom && !dateTo) return true;
-        const dateStr = dateView === "target" ? k.targetDate : k.actualDate;
+        const dateStr = keyDateFor(k, dateView);
         if (!dateStr) return false;
         if (dateFrom && dateStr < dateFrom) return false;
         if (dateTo && dateStr > dateTo) return false;
@@ -367,79 +139,38 @@ export default function ProjectKeyDates() {
   return (
     <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title="Key Dates"
+        title="Key dates"
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
               <PlusIcon className="size-4" />
-              Add Key Date
+              Add key date
             </Button>
           ) : undefined
         }
       />
 
-      {/* Stats row — KpiCards matching build stages pattern */}
-      {keyDates.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <KpiCard
-            title="Total Key Dates"
-            icon={icons.calendarSearch}
-            value={keyDates.length}
-            className="rounded-tl-[16px] rounded-bl-[16px] rounded-tr-[1px] rounded-br-[1px] lg:col-span-3"
-          />
-          <KpiCard
-            title="Met"
-            icon={icons.verifiedCheck}
-            value={metCount}
-            className="rounded-[1px] lg:col-span-3"
-          />
-          <KpiCard
-            title="In Progress"
-            icon={icons.penSquare}
-            value={inProgressCount}
-            className="rounded-[1px] lg:col-span-3"
-          />
-          <KpiCard
-            title="Missed"
-            icon={icons.penSquare}
-            value={missedCount}
-            className="rounded-tr-[16px] rounded-br-[16px] rounded-tl-[1px] rounded-bl-[1px] lg:col-span-3"
-          />
-        </div>
-      )}
+      {keyDates.length > 0 ? (
+        <section aria-label="Key date summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="Total key dates" icon={icons.calendarSearch} value={keyDates.length} />
+          <KpiCard label="Met" icon={icons.verifiedCheck} value={metCount} />
+          <KpiCard label="In progress" icon={icons.penSquare} value={inProgressCount} />
+          <KpiCard label="Missed" icon={icons.penSquare} value={missedCount} />
+        </section>
+      ) : null}
 
-      {/* Search + filters row */}
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        {/* Search */}
-        <div className="relative max-w-xs flex-1">
-          <svg
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+          <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Key Dates"
-            className="h-9 w-full rounded-lg bg-[#F8F8F8] pl-9 pr-3 text-base text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 lg:text-sm"
+            placeholder="Search key dates"
+            aria-label="Search key dates"
           />
         </div>
-
-        {/* Right-side filters */}
         <div className="flex flex-wrap items-center gap-2">
           <FilterTabs items={STATUS_FILTERS} value={statusFilter} onChange={setStatusFilter} ariaLabel="Filter key dates" />
-          <SimpleDropdown
-            options={DATE_VIEW_OPTIONS}
-            value={dateView}
-            onChange={setDateView}
-          />
+          <SimpleDropdown options={DATE_VIEW_OPTIONS} value={dateView} onChange={setDateView} ariaLabel="Date view" />
           <DateRangeFilter
             from={dateFrom}
             to={dateTo}
@@ -450,31 +181,16 @@ export default function ProjectKeyDates() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-left">
             <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
               <tr>
-                <th className="w-10 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400"/>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Milestones
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Status
-                </th>
-                <th className={cn(
-                  "px-4 py-3 text-[11px] font-semibold uppercase tracking-wider",
-                  dateView === "target" ? "text-gray-700" : "text-gray-400",
-                )}>
-                  Target date
-                </th>
-                <th className={cn(
-                  "px-4 py-3 text-[11px] font-semibold uppercase tracking-wider",
-                  dateView === "actual" ? "text-gray-700" : "text-gray-400",
-                )}>
-                  Actual date
-                </th>
+                <th className={cn("w-10", HEAD_CELL)} />
+                <th className={HEAD_CELL}>Milestone</th>
+                <th className={HEAD_CELL}>Status</th>
+                <th className={cn(HEAD_CELL, dateView === "target" && "text-black-500")}>Target date</th>
+                <th className={cn(HEAD_CELL, dateView === "actual" && "text-black-500")}>Actual date</th>
                 <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
@@ -568,10 +284,10 @@ function KeyDateRow({
   return (
     <tr className="hover:bg-[#FAFAFA]">
       <td className="px-4 py-3">
-          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
-            {index + 1}
-          </span>
-        </td>
+        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
+          {index + 1}
+        </span>
+      </td>
       <td className="px-4 py-3 text-[13px] font-medium text-gray-900">{kd.label}</td>
       <td className="px-4 py-3">
         <StatusCell status={kd.status} />
@@ -589,7 +305,7 @@ function KeyDateRow({
         {fmt(kd.actualDate)}
       </td>
       <td className="px-3 py-3">
-        {canManage && <RowMenu onEdit={onEdit} onDelete={onDelete} />}
+        {canManage ? <RowActionsMenu onEdit={onEdit} onDelete={onDelete} /> : null}
       </td>
     </tr>
   );

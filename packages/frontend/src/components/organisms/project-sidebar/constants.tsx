@@ -59,7 +59,7 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.materialsEquipment",
   },
   {
-    label: "Material Approvals",
+    label: "Material approvals",
     slug: "material-approvals",
     resource: "materials",
     Icon: InspectionsIcon,
@@ -67,7 +67,7 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.materialsEquipment",
   },
   {
-    label: "Material Log",
+    label: "Material log",
     slug: "material-log",
     resource: "materials",
     Icon: MaterialsIcon,
@@ -75,7 +75,7 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.materialsLedger",
   },
   {
-    label: "Equipment Requests",
+    label: "Equipment requests",
     slug: "equipment-requests",
     resource: "materials",
     Icon: MaterialsIcon,
@@ -94,7 +94,7 @@ export const MATERIALS_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 
 export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   {
-    label: "Build Stages",
+    label: "Build stages",
     slug: "schedules/stages",
     resource: "schedule",
     Icon: BlocksIcon,
@@ -102,7 +102,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Key Dates",
+    label: "Key dates",
     slug: "schedules/key-dates",
     resource: "schedule",
     Icon: CalendarIcon,
@@ -110,7 +110,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "compliance.keyDates",
   },
   {
-    label: "Site Activity",
+    label: "Site activity",
     slug: "schedules/activities",
     resource: "schedule",
     Icon: TrendingUpIcon,
@@ -118,7 +118,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Project Chart",
+    label: "Project chart",
     slug: "schedules/project-chart",
     resource: "schedule",
     Icon: GanttIcon,
@@ -126,7 +126,7 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "projects.schedule",
   },
   {
-    label: "Look Aheads",
+    label: "Look aheads",
     slug: "look-aheads",
     resource: "schedule",
     Icon: BinocularsIcon,
@@ -138,13 +138,13 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
 export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "RFIs", slug: "rfis", resource: "rfis", Icon: AlertIcon, helper: "Requests for information", flag: "workflow.rfis" },
   { label: "Approvals", slug: "approvals", resource: "approvals", Icon: InspectionsIcon, helper: "Client sign-offs", flag: "workflow.approvals" },
-  { label: "Daily Log", slug: "schedules/daily-log", resource: "dailyLog", Icon: ClipboardIcon, helper: "Field reports", flag: "quality.dailyLogs" },
+  { label: "Daily log", slug: "schedules/daily-log", resource: "dailyLog", Icon: ClipboardIcon, helper: "Field reports", flag: "quality.dailyLogs" },
   { label: "Plans", slug: "plans", resource: "documents", Icon: DocumentsIcon, helper: "Drawings & revisions", flag: "projects.documents" },
-  { label: "Media Library", slug: "media-library", resource: "documents", Icon: CameraIcon, helper: "Site photos & videos", flag: "projects.documents" },
+  { label: "Media library", slug: "media-library", resource: "documents", Icon: CameraIcon, helper: "Site photos & videos", flag: "projects.documents" },
 ] as const;
 
 export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [
-  { label: "BIM Models", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
+  { label: "BIM models", slug: "bim", resource: "bim", Icon: DocumentsIcon, flag: "projects.bim" },
 ] as const;
 
 export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -157,7 +157,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
-    label: "Contract & Stages",
+    label: "Contract & stages",
     slug: "finances/contract-stages",
     resource: "finances",
     Icon: BlocksIcon,
@@ -189,7 +189,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.transactions",
   },
   {
-    label: "Final Account",
+    label: "Final account",
     slug: "finances/final-account",
     resource: "finances",
     Icon: FinancesIcon,
@@ -197,7 +197,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
-    label: "Change Orders",
+    label: "Change orders",
     slug: "change-requests",
     resource: "change-requests",
     Icon: FinancesIcon,

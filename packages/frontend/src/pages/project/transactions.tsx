@@ -493,16 +493,14 @@ export default function TransactionsPage() {
       />
 
       <div className="mt-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           <KpiCard
-            title="Total spend"
+            label="Total spend"
             value={formatCurrency(analytics?.totalAmount || 0, currency)}
-            icon={FinancesIcon.name}
           />
           <KpiCard
-            title="Expenses recorded"
+            label="Expenses recorded"
             value={(analytics?.count || 0).toString()}
-            icon={FinancesIcon.name}
           />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

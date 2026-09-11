@@ -2,13 +2,39 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { SimpleDropdown, type DropdownOption } from "@/components/molecules/simple-dropdown";
+import { DateRangeFilter, formatDateRangeLabel } from "@/components/molecules/date-range-filter";
+import { LOOK_AHEAD_STATUSES, type LookAhead, type LookAheadStatus } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
-import { formatLookAheadDate, LOOK_AHEAD_STATUS_META, STATUS_FILTERS } from "./look-ahead-helpers";
+import { formatLookAheadDate, LOOK_AHEAD_STATUS_META } from "./look-ahead-helpers";
 
+type StatusFilter = LookAheadStatus | "all";
 type SortMode = "start-desc" | "start-asc" | "end-desc" | "status";
+
+const STATUS_TABS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  ...LOOK_AHEAD_STATUSES.map((status) => ({ value: status, label: LOOK_AHEAD_STATUS_META[status].label })),
+];
+
+const SORT_OPTIONS: DropdownOption<SortMode>[] = [
+  { value: "start-desc", label: "Newest start" },
+  { value: "start-asc", label: "Oldest start" },
+  { value: "end-desc", label: "Latest end" },
+  { value: "status", label: "Status" },
+];
+
+const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
+
+function compareRows(sort: SortMode, a: LookAhead, b: LookAhead): number {
+  if (sort === "start-asc") return a.startDate.localeCompare(b.startDate);
+  if (sort === "end-desc") return b.endDate.localeCompare(a.endDate);
+  if (sort === "status") return a.status.localeCompare(b.status) || b.startDate.localeCompare(a.startDate);
+  return b.startDate.localeCompare(a.startDate);
+}
 
 interface LookAheadsTableProps {
   lookAheads: LookAhead[];
@@ -30,10 +56,15 @@ export function LookAheadsTable({
   onDelete,
 }: LookAheadsTableProps) {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<LookAheadStatus | "all">("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [sort, setSort] = useState<SortMode>("start-desc");
+
+  const dateRangeLabel = useMemo(
+    () => formatDateRangeLabel(from, to, lookAheads.map((item) => item.startDate)),
+    [from, to, lookAheads],
+  );
 
   const rows = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -47,99 +78,77 @@ export function LookAheadsTable({
           .join(" ")
           .toLowerCase()
           .includes(term);
-      })
-    return [...filtered].sort((a, b) => {
-        if (sort === "start-asc") return a.startDate.localeCompare(b.startDate);
-        if (sort === "end-desc") return b.endDate.localeCompare(a.endDate);
-        if (sort === "status") return a.status.localeCompare(b.status) || b.startDate.localeCompare(a.startDate);
-        return b.startDate.localeCompare(a.startDate);
       });
+    return [...filtered].sort((a, b) => compareRows(sort, a, b));
   }, [from, lookAheads, query, sort, status, to]);
 
   return (
-    <Card padding="none" className="overflow-hidden rounded-[18px] border border-[#EDEDED] bg-white shadow-sm">
-      <div className="flex flex-col gap-4 border-b border-[#EDEDED] bg-[#FAFAFA] p-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Look aheads</h2>
-          <p className="mt-1 text-xs text-gray-500">Search, filter, and manage short-term execution windows.</p>
+    <>
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+          <SearchInput
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search look aheads"
+            aria-label="Search look aheads"
+          />
         </div>
-        {canManage && (
-          <Button type="button" size="sm" onClick={onCreate}>
-            <PlusIcon className="size-4" />
-            Add Look Ahead
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterTabs items={STATUS_TABS} value={status} onChange={setStatus} ariaLabel="Filter look aheads" />
+          <DateRangeFilter
+            from={from}
+            to={to}
+            label={dateRangeLabel}
+            onApply={(f, t) => { setFrom(f); setTo(t); }}
+            onClear={() => { setFrom(""); setTo(""); }}
+          />
+          <SimpleDropdown options={SORT_OPTIONS} value={sort} onChange={setSort} ariaLabel="Sort look aheads" />
+        </div>
+      </div>
+
+      <Card padding="none" className="mt-4 overflow-hidden">
+        {rows.length === 0 ? (
+          <EmptyState
+            variant="inline"
+            icon={<CalendarIcon />}
+            title={lookAheads.length === 0 ? "No look aheads yet" : "No look aheads match these filters"}
+            description={lookAheads.length === 0 ? "Plan the next few weeks of work as a look ahead." : "Adjust the filters or add a new look ahead."}
+            action={canManage ? { label: "Add look ahead", onClick: onCreate } : undefined}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[980px] w-full text-left text-sm">
+              <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
+                <tr>
+                  <th className={HEAD_CELL}>Name</th>
+                  <th className={HEAD_CELL}>Status</th>
+                  <th className={HEAD_CELL}>Manpower</th>
+                  <th className={HEAD_CELL}>Start date</th>
+                  <th className={HEAD_CELL}>End date</th>
+                  <th className={HEAD_CELL}>Activities</th>
+                  <th className={HEAD_CELL}>Materials</th>
+                  <th className={cn(HEAD_CELL, "text-right")}>Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EDEDED]">
+                {rows.map((lookAhead) => (
+                  <LookAheadRow
+                    key={lookAhead.id}
+                    lookAhead={lookAhead}
+                    canManage={canManage}
+                    activityCoverage={activityCoverage}
+                    onView={onView}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
-
-      <div className="grid gap-3 border-b border-[#EDEDED] p-4 lg:grid-cols-[minmax(240px,1fr)_160px_150px_150px_160px]">
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name, description, activity"
-          className={filterInputClass}
-        />
-        <select value={status} onChange={(event) => setStatus(event.target.value as LookAheadStatus | "all")} className={filterInputClass}>
-          {STATUS_FILTERS.map((option) => (
-            <option key={option} value={option}>{option === "all" ? "All statuses" : LOOK_AHEAD_STATUS_META[option].label}</option>
-          ))}
-        </select>
-        <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className={filterInputClass} aria-label="From date" />
-        <input type="date" value={to} onChange={(event) => setTo(event.target.value)} className={filterInputClass} aria-label="To date" />
-        <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className={filterInputClass}>
-          <option value="start-desc">Newest start</option>
-          <option value="start-asc">Oldest start</option>
-          <option value="end-desc">Latest end</option>
-          <option value="status">Status</option>
-        </select>
-      </div>
-
-      {rows.length === 0 ? (
-        <EmptyState
-          variant="inline"
-          icon={<CalendarIcon />}
-          title="No look-aheads match these filters"
-          description="Adjust the filters or create a new look-ahead period."
-          action={canManage ? { label: "Create look ahead", onClick: onCreate } : undefined}
-        />
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-[980px] w-full text-left text-sm">
-            <thead className="bg-white text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              <tr>
-                <Th>Name</Th>
-                <Th>Status</Th>
-                <Th>Manpower</Th>
-                <Th>Start Date</Th>
-                <Th>End Date</Th>
-                <Th>Activities</Th>
-                <Th>Materials</Th>
-                <Th align="right">Actions</Th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EDEDED]">
-              {rows.map((lookAhead) => (
-                <LookAheadRow
-                  key={lookAhead.id}
-                  lookAhead={lookAhead}
-                  canManage={canManage}
-                  activityCoverage={activityCoverage}
-                  onView={onView}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
+      </Card>
+    </>
   );
-}
-
-const filterInputClass = "h-10 rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-primary-300 focus:ring-2 focus:ring-primary-100";
-
-function Th({ children, align = "left" }: { children: string; align?: "left" | "right" }) {
-  return <th className={cn("px-4 py-3", align === "right" && "text-right")}>{children}</th>;
 }
 
 function LookAheadRow({
@@ -158,7 +167,7 @@ function LookAheadRow({
       <td className="max-w-[260px] px-4 py-4">
         <button type="button" onClick={() => onView(lookAhead)} className="text-left">
           <span className="block truncate font-semibold text-gray-900 hover:text-primary-700">{lookAhead.name}</span>
-          {lookAhead.description && <span className="mt-1 line-clamp-1 text-xs text-gray-500">{lookAhead.description}</span>}
+          {lookAhead.description ? <span className="mt-1 line-clamp-1 text-xs text-gray-500">{lookAhead.description}</span> : null}
         </button>
       </td>
       <td className="px-4 py-4"><Badge tone={status.tone} size="sm">{status.label}</Badge></td>
@@ -170,8 +179,8 @@ function LookAheadRow({
       <td className="px-4 py-4">
         <div className="flex justify-end gap-1.5">
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(lookAhead)}>View</Button>
-          {canManage && <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button>}
-          {canManage && <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(lookAhead)}>Delete</Button>}
+          {canManage ? <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button> : null}
+          {canManage ? <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}
         </div>
       </td>
     </tr>

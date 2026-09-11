@@ -120,41 +120,39 @@ export default function ProjectOverview() {
       <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div data-tour="construction-progress">
           <KpiCard
-            title="Construction Progress"
+            label="Construction progress"
             icon={icons.constructionProgress}
             progress={project.progressPercent}
-            className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px]"
           />
         </div>
         <div data-tour="construction-budget">
           <KpiCard
-            title="Budget Used"
+            label="Budget used"
             value={formatCurrency(project.budgetUsed, project.currency)}
-            subValue={`of ${formatCurrency(project.budgetTotal, project.currency)}`}
+            helper={`of ${formatCurrency(project.budgetTotal, project.currency)}`}
             icon={icons.card}
           />
         </div>
         <div data-tour="construction-approvals">
           <KpiCard
-            title="Pending Approvals"
+            label="Pending approvals"
             value={project.pendingApprovals}
-            subValue={project.pendingApprovals > 0 ? "Awaiting your review" : "Nothing pending"}
+            helper={project.pendingApprovals > 0 ? "Awaiting your review" : "Nothing pending"}
             icon={icons.penSquare}
           />
         </div>
         <KpiCard
-          title="Upcoming Look Aheads"
+          label="Upcoming look aheads"
           value={upcomingCount > 0 ? upcomingCount : "None scheduled"}
-          subValue={
+          helper={
             upcomingCount === 0
               ? undefined
               : uncoveredCount > 0
                 ? `${uncoveredCount} without materials ordered`
                 : "All materials ordered"
           }
-          warn={uncoveredCount > 0}
+          tone={uncoveredCount > 0 ? "danger" : undefined}
           icon={icons.calendarSearch}
-          className="rounded-tl-[1px] rounded-tr-[16px] rounded-br-[16px] rounded-bl-[1px]"
         />
       </section>
 

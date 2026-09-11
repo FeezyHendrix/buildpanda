@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { ProgressBar } from "@/components/atoms/progress-bar";
 import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { KpiCard } from "@/components/molecules/kpi-card";
+import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import {
   UpsertStageDialog,
   type UpsertStageValues,
@@ -20,9 +24,7 @@ import {
   useStages,
   useUpdateStage,
 } from "@/hooks/use-stages";
-import { cn } from "@/lib/utils";
 import { canResourceAction, type Stage, type StageStatus } from "@/lib/project-types";
-import { KpiCard, ProgressBar } from "@/components";
 import { icons } from "@/assets/icons/icons";
 
 function formatDate(iso: string | null | undefined): string {
@@ -55,10 +57,12 @@ function StatusCell({ status }: { status: StageStatus }) {
 type FilterTab = "all" | "in-progress" | "completed";
 
 const TABS: { value: FilterTab; label: string }[] = [
-  { value: "all", label: "All Stages" },
-  { value: "in-progress", label: "In Progress" },
+  { value: "all", label: "All stages" },
+  { value: "in-progress", label: "In progress" },
   { value: "completed", label: "Completed" },
 ];
+
+const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
 
 export default function ProjectStages() {
   const { project, access } = useProjectContext();
@@ -119,7 +123,7 @@ export default function ProjectStages() {
   return (
     <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title="Build Stages"
+        title="Build stages"
         actions={
           canManage ? (
             <Button
@@ -134,88 +138,44 @@ export default function ProjectStages() {
         }
       />
 
-      {/* Stats row */}
-      {stages.length > 0 && (
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
+      {stages.length > 0 ? (
+        <section aria-label="Stage summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Construction Progress"
+            label="Construction progress"
             icon={icons.constructionProgress}
             progress={overall}
-            complete={complete}
-            total={stages.length}
-            stages={true}
-            className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px] rounded-bl-[16px] lg:col-span-6"
+            helper={`${complete} of ${stages.length} stages complete`}
           />
-          <KpiCard
-            title="Total Stages"
-            value={stages.length}
-            icon={icons.penSquare}
-            className="lg:col-span-2"
-          />
-          <KpiCard
-            title="In Progress"
-            value={inProgress}
-            icon={icons.penSquare}
-            className="lg:col-span-2"
-          />
-          <KpiCard
-            title="Completed Stages"
-            value={complete}
-            icon={icons.verified}
-            className="lg:col-span-2 rounded-tr-[16px] rounded-br-[16px]"
-          />
-        </div>
-      )}
+          <KpiCard label="Total stages" value={stages.length} icon={icons.penSquare} />
+          <KpiCard label="In progress" value={inProgress} icon={icons.penSquare} />
+          <KpiCard label="Completed stages" value={complete} icon={icons.verified} />
+        </section>
+      ) : null}
 
-      {/* Search + filter tabs */}
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-xs flex-1">
-          <svg
-            className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
+      <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+          <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Build Stages"
-            className="h-9 w-full rounded-lg bg-[#F8F8F8] pl-9 pr-3 text-base text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 lg:text-sm"
+            placeholder="Search build stages"
+            aria-label="Search build stages"
           />
         </div>
-
         <FilterTabs items={TABS} value={filter} onChange={setFilter} ariaLabel="Filter stages" />
       </div>
 
-      {/* Table */}
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] text-left">
             <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
               <tr>
                 <th className="w-10 px-3 py-3" />
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400"/>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Build Stages
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Start date
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  End date
-                </th>
-                <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                  Progress
-                </th>
+                <th className={HEAD_CELL} />
+                <th className={HEAD_CELL}>Build stage</th>
+                <th className={HEAD_CELL}>Status</th>
+                <th className={HEAD_CELL}>Start date</th>
+                <th className={HEAD_CELL}>End date</th>
+                <th className={HEAD_CELL}>Progress</th>
                 <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
@@ -248,7 +208,6 @@ export default function ProjectStages() {
                       stage={stage}
                       index={originalIndex}
                       total={stages.length}
-                      projectId={project.id}
                       canManage={canManage}
                       onMove={move}
                       onUpdate={(values) =>
@@ -297,7 +256,6 @@ function StageRow({
   stage: Stage;
   index: number;
   total: number;
-  projectId: string;
   canManage: boolean;
   onMove: (index: number, dir: -1 | 1) => void;
   onUpdate: (values: UpsertStageValues) => void;
@@ -309,7 +267,6 @@ function StageRow({
   return (
     <>
       <tr className="group hover:bg-[#FAFAFA]">
-        {/* Reorder */}
         <td className="px-3 py-3">
           <div className="flex flex-col items-center">
             <button
@@ -333,60 +290,44 @@ function StageRow({
           </div>
         </td>
 
-        {/* # */}
         <td className="px-4 py-3">
           <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
             {index + 1}
           </span>
         </td>
 
-        {/* Name */}
         <td className="px-4 py-3 text-[13px] font-medium text-[#000000]">
           {stage.name}
         </td>
 
-        {/* Status */}
         <td className="px-4 py-3">
           <StatusCell status={stage.status} />
         </td>
 
-        {/* Start date */}
         <td className="whitespace-nowrap px-4 py-3 text-[13px] text-[#000000]">
           {formatDate(stage.startDate)}
         </td>
 
-        {/* End date */}
         <td className="whitespace-nowrap px-4 py-3 text-[13px] text-[#000000]">
           {formatDate(stage.endDate)}
         </td>
 
-        {/* Progress */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
-            {/* <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[#F0F0F0]">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-[width]",
-                  stage.status === "Done" ? "bg-[#1B8E45]" : "bg-[#004DE7]",
-                )}
-                style={{ width: `${stage.progressPercent}%` }}
-              />
-            </div> */}
-            <ProgressBar tone='success' value={stage.progressPercent} className={cn("bg-success-100 h-1.5")} />
+            <ProgressBar tone="success" value={stage.progressPercent} size="md" />
             <span className="w-8 text-right text-[12px] tabular-nums text-[#000000]">
               {stage.progressPercent}%
             </span>
           </div>
         </td>
 
-        {/* Actions */}
         <td className="px-3 py-3">
-          {canManage && (
-            <StageRowMenu
+          {canManage ? (
+            <RowActionsMenu
               onEdit={() => setEditOpen(true)}
               onDelete={() => setDeleteOpen(true)}
             />
-          )}
+          ) : null}
         </td>
       </tr>
 
@@ -417,68 +358,5 @@ function StageRow({
         variant="danger"
       />
     </>
-  );
-}
-
-function StageRowMenu({
-  onEdit,
-  onDelete,
-}: {
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        aria-label="Actions"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <circle cx="8" cy="3" r="1.5" />
-          <circle cx="8" cy="8" r="1.5" />
-          <circle cx="8" cy="13" r="1.5" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          <button
-            type="button"
-            className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-[#F6F6F6]"
-            onClick={() => {
-              setOpen(false);
-              onEdit();
-            }}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
   );
 }

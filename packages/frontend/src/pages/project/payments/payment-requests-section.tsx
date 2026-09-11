@@ -5,6 +5,7 @@ import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectFinances } from "@/hooks/use-finances";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -35,15 +36,6 @@ import { UpsertRequestDialog } from "./upsert-request-dialog";
  * Payment requests: contractor progress requests linked to stage payments.
  * Shared section used by the merged Payments workspace and the standalone view.
  */
-function SummaryTile({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <Card padding="md">
-      <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className={cn("mt-1 text-base font-bold tabular-nums", accent ? "text-[#004DE7]" : "text-gray-900")}>{value}</p>
-    </Card>
-  );
-}
-
 function StatusBadge({ status }: { status: PaymentClaimStatus }) {
   return (
     <Badge tone={STATUS_TONE[status]} size="md" className="gap-1.5">
@@ -260,11 +252,11 @@ export function PaymentRequestsSection() {
         milestones={finances?.milestones ?? []}
       />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <SummaryTile label="Total requested" value={formatCurrency(summary.total, currency)} />
-        <SummaryTile label="Submitted" value={formatCurrency(summary.submitted, currency)} />
-        <SummaryTile label="Approved" value={formatCurrency(summary.approved, currency)} />
-        <SummaryTile label="Paid" value={formatCurrency(summary.paid, currency)} accent />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Total requested" value={formatCurrency(summary.total, currency)} />
+        <KpiCard label="Submitted" value={formatCurrency(summary.submitted, currency)} />
+        <KpiCard label="Approved" value={formatCurrency(summary.approved, currency)} />
+        <KpiCard label="Paid" value={formatCurrency(summary.paid, currency)} />
       </div>
 
       <div className="mt-6">

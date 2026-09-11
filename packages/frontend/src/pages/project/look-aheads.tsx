@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import {
   UpsertLookAheadDialog,
@@ -110,11 +113,26 @@ export default function ProjectLookAheads() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="Look Aheads"
+        title="Look aheads"
+        actions={
+          canManage ? (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setEditTarget(null);
+                setFormOpen(true);
+              }}
+            >
+              <PlusIcon className="size-4" />
+              Add look ahead
+            </Button>
+          ) : undefined
+        }
       />
 
       {lowStock.length > 0 && (
-        <section className="mt-8 flex flex-wrap items-center gap-2 rounded-[16px] border border-[#FED7AA] bg-[#FFF7ED] p-4">
+        <section className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[#FED7AA] bg-[#FFF7ED] p-4">
           <p className="mr-2 text-[13px] font-semibold text-[#9A5B13]">
             {lowStock.length} material{lowStock.length === 1 ? "" : "s"} running low
           </p>
@@ -127,8 +145,8 @@ export default function ProjectLookAheads() {
         </section>
       )}
 
-      <section className="mt-8 rounded-[18px] border border-[#EDEDED] bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900">
+      <section className="mt-6">
+        <h2 className="mb-4 text-base font-semibold text-gray-900">
           Coming up{autoWindow ? ` (${formatDate(autoWindow.from)} – ${formatDate(autoWindow.to)})` : ""}
         </h2>
         {autoWindowLoading ? (
@@ -136,26 +154,29 @@ export default function ProjectLookAheads() {
             <Spinner size="md" />
           </div>
         ) : !autoWindow || autoWindow.activities.length === 0 ? (
-          <Card padding="md" className="mt-3 text-sm text-gray-500">
-            Nothing scheduled in the next 4 weeks on the project chart.
-          </Card>
+          <EmptyState
+            variant="inline"
+            icon={<CalendarIcon />}
+            title="Nothing scheduled in the next 4 weeks"
+            description="Activities on the project chart inside the window appear here."
+          />
         ) : (
-          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             {autoWindow.activities.slice(0, 4).map((activity) => (
               <AutoWindowCard key={activity.activityId} activity={activity} />
             ))}
-            {autoWindow.activities.length > 4 && (
-              <Card padding="md" className="flex items-center justify-center rounded-[16px] border-dashed text-sm text-gray-500">
+            {autoWindow.activities.length > 4 ? (
+              <Card padding="md" className="flex items-center justify-center border-dashed text-sm text-gray-500">
                 +{autoWindow.activities.length - 4} more scheduled activities
               </Card>
-            )}
+            ) : null}
           </div>
         )}
       </section>
 
-      <section className="mt-8">
+      <section>
         {isLoading ? (
-          <div className="flex justify-center py-16">
+          <div className="mt-6 flex justify-center py-16">
             <Spinner size="md" />
           </div>
         ) : (
@@ -241,7 +262,7 @@ export default function ProjectLookAheads() {
 
 function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
   return (
-    <Card padding="md" className="rounded-[16px] border-none bg-[#F8F8F8]">
+    <Card padding="md">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">

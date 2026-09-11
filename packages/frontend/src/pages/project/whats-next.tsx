@@ -1,5 +1,7 @@
 import { Card } from "@/components/atoms/card";
 import { Badge } from "@/components/atoms/badge";
+import { CalendarIcon } from "@/components/atoms/project-nav-icons";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { PageHeader } from "@/components/molecules/page-header";
 import { Spinner } from "@/components/atoms/spinner";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -47,7 +49,7 @@ export default function ProjectWhatsNext() {
     return (
       <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
         <PageHeader
-          title="What's Next"
+          title="What's next"
         />
         <div className="flex justify-center py-10">
           <Spinner size="md" />
@@ -68,16 +70,15 @@ export default function ProjectWhatsNext() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="What's Next"
+        title="What's next"
       />
 
       {total === 0 ? (
-        <Card padding="lg" className="mt-6 text-center">
-          <p className="text-sm font-medium text-gray-900">
-            Nothing due in the next two weeks
-          </p>
-          <p className="mt-1 text-sm text-gray-500">You're all caught up.</p>
-        </Card>
+        <EmptyState
+          icon={<CalendarIcon />}
+          title="Nothing due in the next two weeks"
+          description="You're all caught up."
+        />
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Section
