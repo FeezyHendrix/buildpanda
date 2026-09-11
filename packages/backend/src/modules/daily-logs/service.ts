@@ -223,8 +223,14 @@ export function dailyLogsService(
       if (!activity) throw new BadRequestError("activityId does not belong to this project");
       const buildingId = activity.building_id;
 
+      // The day is created on demand, as addEntry does: a crew member logging
+      // hours from the field should not have to save the day header first, and
+      // the activity's own building decides which day the hours belong to.
       const existing = await repository.findOne({ projectId, buildingId, logDate });
-      if (!existing) throw new NotFoundError("Daily log");
+      if (!existing) {
+        if (!actor) throw new NotFoundError("Daily log");
+        await repository.upsert({ projectId, buildingId, logDate }, {}, actor.id);
+      }
 
       const link = await repository.upsertActivityLink(
         { projectId, buildingId, logDate },
