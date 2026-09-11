@@ -25,7 +25,7 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { MetricCard } from "./materials/metric-card";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { MaterialOrderRow } from "./materials/material-order-row";
 import { LifecyclePanel } from "./materials/lifecycle-panel";
 import { MaterialOrderDialog } from "./materials/material-order-dialog";
@@ -131,18 +131,18 @@ export default function ProjectMaterials() {
         </span>
       </div>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <MetricCard
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard
           label="Open material orders"
           value={orders.length.toString()}
           helper="Requests through delivery"
         />
-        <MetricCard
+        <KpiCard
           label="Committed material cost"
           value={formatCurrency(committed, project.currency, { compact: true })}
           helper="Estimated against finance"
         />
-        <MetricCard
+        <KpiCard
           label="Lifecycle health"
           value={`${received} delivered`}
           helper={

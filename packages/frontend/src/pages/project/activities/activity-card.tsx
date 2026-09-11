@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import { useDeleteActivity } from "@/hooks/use-activities";
 import { formatCurrency, formatTimeAgo } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { Activity } from "@/lib/project-types";
+
+const STAT_COLUMNS = ["Planned", "Actual", "Variance", "Delay cost"] as const;
 
 export function ActivityCard({
   projectId,
@@ -45,10 +48,13 @@ export function ActivityCard({
               {activity.location ? ` · ${activity.location}` : ""}
             </p>
           </div>
-          <CardMenu
-            onEdit={onEdit}
-            onDelete={() => setDeleteOpen(true)}
-          />
+          <div className="ml-3">
+            <RowActionsMenu
+              ariaLabel="Card actions"
+              onEdit={onEdit}
+              onDelete={() => setDeleteOpen(true)}
+            />
+          </div>
         </div>
 
         {/* Stats table */}
@@ -56,8 +62,8 @@ export function ActivityCard({
           <table className="w-full text-left">
             <thead>
               <tr className="bg-[#FAFAFA]">
-                {["Planned", "Actual", "Variance", "Delay Cost"].map((col) => (
-                  <th key={col} className="px-4 py-2.5 text-[11px] font-medium text-gray-400">
+                {STAT_COLUMNS.map((col) => (
+                  <th key={col} className="px-4 py-2.5 text-[11px] font-semibold text-black-300 capitalize">
                     {col}
                   </th>
                 ))}
@@ -89,7 +95,7 @@ export function ActivityCard({
         </div>
 
         {/* Delays list (when present) */}
-        {activity.delays.length > 0 && (
+        {activity.delays.length > 0 ? (
           <div className="mx-5 mb-4 flex flex-col gap-2">
             {activity.delays.slice(0, 3).map((delay) => (
               <div
@@ -106,22 +112,23 @@ export function ActivityCard({
                       · {delay.reasonCategory}
                     </span>
                   </p>
-                  {delay.description && (
+                  {delay.description ? (
                     <p className="mt-0.5 text-[12px] text-gray-500 text-pretty">
                       {delay.description}
                     </p>
-                  )}
+                  ) : null}
                   <p className="mt-1 text-[11px] text-gray-400">
                     Started {formatTimeAgo(delay.startedAt)}
-                    {delay.costImpact > 0 &&
-                      ` · cost ${formatCurrency(delay.costImpact, delay.currency)}`}
+                    {delay.costImpact > 0
+                      ? ` · cost ${formatCurrency(delay.costImpact, delay.currency)}`
+                      : ""}
                     {delay.resolvedAt === null ? " · ongoing" : " · resolved"}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        )}
+        ) : null}
 
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-[#F0F0F0] px-5 py-3">
@@ -130,13 +137,7 @@ export function ActivityCard({
               ? `${openDelays.length} open delay${openDelays.length === 1 ? "" : "s"}`
               : "No open delays"}
           </span>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className='border border-primary text-primary bg-transparent rounded-[8px] py-[12px] px-[20px]'
-            onClick={onRaiseDelay}
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={onRaiseDelay}>
             Log a delay
           </Button>
         </div>
@@ -154,68 +155,6 @@ export function ActivityCard({
         variant="danger"
       />
     </>
-  );
-}
-
-// ── ⋮ Card menu ───────────────────────────────────────────────────────────────
-
-function CardMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative ml-3 shrink-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex size-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
-        aria-label="Card actions"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <circle cx="8" cy="3" r="1.5" />
-          <circle cx="8" cy="8" r="1.5" />
-          <circle cx="8" cy="13" r="1.5" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[120px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-gray-700 hover:bg-[#F6F6F6]"
-            onClick={() => { setOpen(false); onEdit(); }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-red-600 hover:bg-red-50"
-            onClick={() => { setOpen(false); onDelete(); }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
   );
 }
 

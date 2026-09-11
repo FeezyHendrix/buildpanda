@@ -13,7 +13,7 @@ import { useProjectInvoices, type InvoiceScanResult } from "@/hooks/use-invoices
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "./invoices/invoice-card";
-import { SummaryTile } from "./invoices/summary-tile";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { InvoiceComposer } from "./invoices/invoice-composer";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
 
@@ -81,25 +81,12 @@ export default function ProjectInvoices() {
 
       <section
         aria-label="Invoice summary"
-        className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+        className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
-        <SummaryTile
-          label="Total invoiced"
-          value={formatCurrency(summary.billed, currency)}
-        />
-        <SummaryTile
-          label="Held back"
-          value={formatCurrency(summary.retainage, currency)}
-        />
-        <SummaryTile
-          label="Paid"
-          value={formatCurrency(summary.paid, currency)}
-        />
-        <SummaryTile
-          label="Outstanding"
-          value={formatCurrency(summary.balance, currency)}
-          accent
-        />
+        <KpiCard label="Total invoiced" value={formatCurrency(summary.billed, currency)} />
+        <KpiCard label="Held back" value={formatCurrency(summary.retainage, currency)} />
+        <KpiCard label="Paid" value={formatCurrency(summary.paid, currency)} />
+        <KpiCard label="Outstanding" value={formatCurrency(summary.balance, currency)} />
       </section>
 
       {snapshot && (

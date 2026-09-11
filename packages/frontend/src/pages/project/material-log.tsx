@@ -24,7 +24,7 @@ import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { toast } from "@/lib/toast";
 import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { MetricCard } from "./materials/metric-card";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { StackIcon } from "./material-log/icons";
 import { LedgerList } from "./material-log/ledger-list";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
@@ -121,13 +121,13 @@ export default function ProjectMaterialLog() {
         }
       />
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <MetricCard
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard
           label="Materials tracked"
           value={stock.length.toString()}
           helper="Carrying a stock balance"
         />
-        <MetricCard
+        <KpiCard
           label="Needs attention"
             value={(negativeCount + lowCount + pendingCount).toString()}
             helper={
@@ -140,7 +140,7 @@ export default function ProjectMaterialLog() {
                     : "All levels healthy"
             }
         />
-        <MetricCard
+        <KpiCard
           label="Ledger entries"
           value={entries.length.toString()}
           helper={voidedCount > 0 ? `${voidedCount} voided` : "None voided"}

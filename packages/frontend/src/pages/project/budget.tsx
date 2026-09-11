@@ -25,12 +25,15 @@ import {
 } from "@/components/molecules/upsert-budget-period-dialog";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
-import { cn } from "@/lib/utils";
 
 import { CategoryCard } from "./budget/category-card";
 import { PeriodCard } from "./budget/period-card";
 import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
 import { FeatureGate } from "@/components/atoms/feature-gate";
+
+function percentOfPlanned(amount: number, planned: number): number {
+  return planned > 0 ? Math.round((amount / planned) * 100) : 0;
+}
 
 export default function ProjectBudget() {
   const { project, access } = useProjectContext();
@@ -116,59 +119,31 @@ export default function ProjectBudget() {
       />
 
       {summary && (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
-          <KpiCard label="Total Planned">
-            <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(effectiveTotalPlanned, currency)}
-            </p>
-          </KpiCard>
-          <KpiCard label="Committed">
-            <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(effectiveTotalCommitted, currency)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0
-                ? Math.round(
-                    (effectiveTotalCommitted / effectiveTotalPlanned) * 100,
-                  )
-                : 0}
-              % of planned
-            </p>
-          </KpiCard>
-          <KpiCard label="Actual Spent">
-            <p className="text-base font-bold tabular-nums text-gray-900">
-              {formatCurrency(effectiveTotalActual, currency)}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">
-              {effectiveTotalPlanned > 0
-                ? Math.round(
-                    (effectiveTotalActual / effectiveTotalPlanned) * 100,
-                  )
-                : 0}
-              % of planned
-            </p>
-          </KpiCard>
-          <KpiCard label="Variance">
-            <p
-              className={cn(
-                "text-base font-bold tabular-nums",
-                summary.totalVariance >= 0
-                  ? "text-[#1B8E45]"
-                  : "text-[#E5484D]",
-              )}
-            >
-              {summary.totalVariance >= 0 ? "+" : ""}
-              {formatCurrency(summary.totalVariance, currency)}
-            </p>
-          </KpiCard>
-          {snapshot?.finance?.budget && (
-            <KpiCard label="Variance Status">
-              <p className="text-base font-bold text-[#E5484D]">
-                {snapshot.finance.budget.overBudgetCount} of{" "}
-                {snapshot.finance.budget.categoryCount} over budget
-              </p>
-            </KpiCard>
-          )}
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          <KpiCard label="Total planned" value={formatCurrency(effectiveTotalPlanned, currency)} />
+          <KpiCard
+            label="Committed"
+            value={formatCurrency(effectiveTotalCommitted, currency)}
+            helper={`${percentOfPlanned(effectiveTotalCommitted, effectiveTotalPlanned)}% of planned`}
+          />
+          <KpiCard
+            label="Actual spent"
+            value={formatCurrency(effectiveTotalActual, currency)}
+            helper={`${percentOfPlanned(effectiveTotalActual, effectiveTotalPlanned)}% of planned`}
+          />
+          <KpiCard
+            label="Variance"
+            value={`${summary.totalVariance >= 0 ? "+" : ""}${formatCurrency(summary.totalVariance, currency)}`}
+            tone={summary.totalVariance >= 0 ? undefined : "danger"}
+          />
+          {snapshot?.finance?.budget ? (
+            <KpiCard
+              label="Variance status"
+              value={`${snapshot.finance.budget.overBudgetCount} of ${snapshot.finance.budget.categoryCount}`}
+              helper="categories over budget"
+              tone={snapshot.finance.budget.overBudgetCount > 0 ? "danger" : undefined}
+            />
+          ) : null}
         </div>
       )}
 

@@ -222,41 +222,36 @@ export default function ProjectFinances() {
 
       <section
         aria-label="Finance summary"
-        className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-3"
+        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <KpiCard
-          title="Total Budget"
+          label="Total budget"
           icon={icons.moneyBag}
           value={formatCurrency(finances.totalBudget, finances.currency)}
-          className="rounded-tl-[16px] rounded-tr-[1px] rounded-br-[1px]"
         />
         <KpiCard
-          title="Approved work value"
+          label="Approved work value"
           icon={icons.verified}
           value={formatCurrency(finances.certifiedGrossToDate, finances.currency)}
         />
         <KpiCard
-          title="Remaining work value"
+          label="Remaining work value"
           icon={icons.wallet}
           value={formatCurrency(
             Math.max(0, finances.adjustedContract - finances.certifiedGrossToDate),
             finances.currency,
           )}
-          className="rounded-tr-[16px] rounded-bl-[16px]"
         />
         {snapshot?.finance?.invoices ? (
           <KpiCard
-            title="Held back"
+            label="Held back"
             icon={icons.safeSquare}
             value={formatCurrency(
               snapshot.finance.invoices.retentionHeld,
               finances.currency,
             )}
-            className="rounded-tl-[1px] rounded-br-[16px] rounded-bl-[1px]"
           />
-        ) : (
-          <div className="rounded-tl-[1px] rounded-br-[16px] rounded-bl-[1px]" />
-        )}
+        ) : null}
       </section>
 
       {snapshot?.finance && (

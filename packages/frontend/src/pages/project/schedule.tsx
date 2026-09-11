@@ -94,15 +94,15 @@ export default function ProjectSchedule() {
     <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
       <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
         <PageHeader
-          title="Project Chart"
+          title="Project chart"
           actions={
             <div className="flex items-center gap-2">
               {canEdit && isProgrammeImportEnabled && (
-                <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
                   Import programme
                 </Button>
               )}
-              <Button variant="secondary" size="sm" onClick={downloadReport}>
+              <Button variant="secondary" size="md" onClick={downloadReport}>
                 Export report
               </Button>
             </div>
@@ -140,7 +140,7 @@ export default function ProjectSchedule() {
           <EmptyState
             icon={<CalendarIcon />}
             title="No scheduled activities yet"
-            description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
+            description="Create milestone work items from Site activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
             action={
               canEdit && isProgrammeImportEnabled
                 ? { label: "Import programme of works", onClick: () => setImportOpen(true) }

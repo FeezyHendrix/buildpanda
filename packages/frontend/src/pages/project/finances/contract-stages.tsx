@@ -5,6 +5,7 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useScheduleOfValues, useStages } from "@/hooks/use-stages";
@@ -42,30 +43,6 @@ const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string }> = {
 
 const HEAD_CELL =
   "px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-black-200";
-
-function StatBlock({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1 px-5 py-4">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
-        {label}
-      </span>
-      <span className="text-lg font-bold tabular-nums text-black-500">
-        {value}
-      </span>
-      <span className="text-[11px] text-black-300">{hint}</span>
-    </div>
-  );
-}
-
-StatBlock.displayName = "StatBlock";
 
 interface StageRowProps {
   stage: Stage;
@@ -252,26 +229,26 @@ export default function ContractStages() {
 
       <section
         aria-label="Contract summary"
-        className="mt-6 grid grid-cols-1 divide-y divide-grey-50 overflow-hidden rounded-2xl border border-grey-50 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
-        <StatBlock
+        <KpiCard
           label="Scheduled contract value"
           value={formatCurrency(totals.value.round().toNumber(), project.currency)}
-          hint="Across every stage on this build"
+          helper="Across every stage on this build"
         />
-        <StatBlock
+        <KpiCard
           label="Stages priced"
           value={`${totals.priced} of ${stages.length}`}
-          hint={
+          helper={
             totals.unpriced > 0
               ? `${totals.unpriced} still carry no value`
               : "Every stage carries a value"
           }
         />
-        <StatBlock
+        <KpiCard
           label="Recorded, not transacted"
           value="Bookkeeping only"
-          hint="BuildPanda logs money that moved off-platform"
+          helper="BuildPanda logs money that moved off-platform"
         />
       </section>
 

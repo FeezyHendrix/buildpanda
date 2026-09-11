@@ -55,18 +55,18 @@ export default function ProjectActivities() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="Site Activities"
+        title="Site activity"
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={startNewActivity}>
               <PlusIcon className="size-4" />
-              Add New Activity
+              Add activity
             </Button>
           ) : undefined
         }
       />
 
-      <section className="mt-8 flex flex-col gap-1 bg-[#F8F8F8] rounded-[16px] p-1">
+      <section className="mt-6 flex flex-col gap-1 rounded-2xl bg-[#F8F8F8] p-1">
         {isPending ? (
           <div className="flex justify-center py-10">
             <Spinner size="md" />
@@ -76,7 +76,7 @@ export default function ProjectActivities() {
             icon={<CalendarIcon />}
             title="No activities yet"
             description="Track field work to capture planned vs actual progress and delay causes."
-            action={canManage ? { label: "Add the first one", onClick: startNewActivity, icon: <PlusIcon /> } : undefined}
+            action={canManage ? { label: "Add activity", onClick: startNewActivity, icon: <PlusIcon /> } : undefined}
           />
         ) : (
           activities.map((activity) => (

@@ -155,26 +155,22 @@ export default function ProjectFinalAccount() {
 
       <section
         aria-label="Final account summary"
-        className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-4"
+        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <KpiCard
-          title="Adjusted contract"
-          icon={FinancesIcon.name}
+          label="Adjusted contract"
           value={formatCurrency(finances.adjustedContract, currency)}
         />
         <KpiCard
-          title="Amount paid"
-          icon={FinancesIcon.name}
+          label="Amount paid"
           value={formatCurrency(finances.amountPaidToDate, currency)}
         />
         <KpiCard
-          title="Retention held"
-          icon={FinancesIcon.name}
+          label="Retention held"
           value={formatCurrency(retentionHeld, currency)}
         />
         <KpiCard
-          title="Outstanding"
-          icon={FinancesIcon.name}
+          label="Outstanding"
           value={formatCurrency(outstanding, currency)}
         />
       </section>

@@ -104,65 +104,28 @@ function MetricsOverview({
   if (!metrics) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-      <KpiCard label="Progress">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.progressPercent}%
-        </div>
-      </KpiCard>
-      <KpiCard label="Budget Variance">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.budgetVariance > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {formatCurrency(metrics.budgetVariance, currency)}
-        </div>
-      </KpiCard>
-      <KpiCard label="Outstanding Invoiced">
-        <div className="text-2xl font-semibold text-gray-900">
-          {formatCurrency(metrics.outstandingInvoiced, currency)}
-        </div>
-      </KpiCard>
-      <KpiCard label="Overdue Invoices">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.overdueInvoiceCount > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {metrics.overdueInvoiceCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="High Risks">
-        <div
-          className={cn(
-            "text-2xl font-semibold",
-            metrics.highRiskCount > 0 ? "text-red-600" : "text-gray-900",
-          )}
-        >
-          {metrics.highRiskCount}{" "}
-          <span className="text-sm font-normal text-gray-500">
-            / {metrics.openRiskCount} open
-          </span>
-        </div>
-      </KpiCard>
-      <KpiCard label="Pending Inspections">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.pendingInspectionCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="Pending Phases">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.pendingPhaseCount}
-        </div>
-      </KpiCard>
-      <KpiCard label="Days Since Update">
-        <div className="text-2xl font-semibold text-gray-900">
-          {metrics.daysSinceLastUpdate ?? "--"}
-        </div>
-      </KpiCard>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <KpiCard label="Progress" progress={metrics.progressPercent} />
+      <KpiCard
+        label="Budget variance"
+        value={formatCurrency(metrics.budgetVariance, currency)}
+        tone={metrics.budgetVariance > 0 ? "danger" : undefined}
+      />
+      <KpiCard label="Outstanding invoiced" value={formatCurrency(metrics.outstandingInvoiced, currency)} />
+      <KpiCard
+        label="Overdue invoices"
+        value={metrics.overdueInvoiceCount}
+        tone={metrics.overdueInvoiceCount > 0 ? "danger" : undefined}
+      />
+      <KpiCard
+        label="High risks"
+        value={metrics.highRiskCount}
+        helper={`of ${metrics.openRiskCount} open`}
+        tone={metrics.highRiskCount > 0 ? "danger" : undefined}
+      />
+      <KpiCard label="Pending inspections" value={metrics.pendingInspectionCount} />
+      <KpiCard label="Pending phases" value={metrics.pendingPhaseCount} />
+      <KpiCard label="Days since update" value={metrics.daysSinceLastUpdate ?? "--"} />
     </div>
   );
 }
