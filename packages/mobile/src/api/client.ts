@@ -21,6 +21,29 @@ type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, 
  * web the browser owns cookies and a manual `cookie` header is ignored — it
  * needs `credentials` instead, or every call comes back 401.
  */
+interface ErrorBody {
+  error?: string;
+  code?: string;
+  details?: unknown;
+}
+
+// A schema rejection arrives as `{ error: "Invalid request", details: [...] }`.
+// Showing only the headline hides the one thing the crew needs — which field —
+// so the validation messages are folded into the text the app displays.
+function describeError(body: ErrorBody | null, status: number): string {
+  const headline = body?.error ?? `Request failed (${status})`;
+  if (!Array.isArray(body?.details)) return headline;
+  const reasons = body.details
+    .map((detail) => {
+      const entry = detail as { instancePath?: string; message?: string } | null;
+      if (!entry?.message) return null;
+      const field = entry.instancePath?.replace(/^\//, "").replace(/\//g, ".");
+      return field ? `${field} ${entry.message}` : entry.message;
+    })
+    .filter((reason): reason is string => reason !== null);
+  return reasons.length > 0 ? `${headline}: ${reasons.join("; ")}` : headline;
+}
+
 export async function request<T>(path: string, init?: RequestOptions): Promise<T> {
   const headers: Record<string, string> = {
     ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -35,8 +58,8 @@ export async function request<T>(path: string, init?: RequestOptions): Promise<T
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(response.status, body?.error ?? `Request failed (${response.status})`);
+    const body = (await response.json().catch(() => null)) as ErrorBody | null;
+    throw new ApiError(response.status, describeError(body, response.status));
   }
 
   return (await response.json()) as T;

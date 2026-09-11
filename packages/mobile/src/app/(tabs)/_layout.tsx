@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { ConnectionBanner } from "@/components/molecules/connection-banner";
 import { MicTabButton } from "@/components/molecules/mic-tab-button";
 import { VoiceCaptureSheet } from "@/components/molecules/voice-capture-sheet";
+import { palette } from "@/constants/colors";
 import { NavColors } from "@/constants/theme";
 import { useSyncState } from "@/lib/sync-provider";
 import { useFieldSession } from "@/lib/field-session";
@@ -40,7 +41,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: NavColors.inactive,
         tabBarStyle: {
           backgroundColor: NavColors.surface,
-          borderTopColor: syncState === "synced" ? NavColors.border : syncState === "error" ? "#D42C19" : syncState === "syncing" ? "#004DE7" : "#B6E800",
+          borderTopColor: syncState === "synced" ? NavColors.border : syncState === "error" ? palette.error600 : syncState === "syncing" ? palette.primary500 : palette.warning600,
           borderTopWidth: syncState === "synced" ? 0.5 : 2,
         },
         sceneStyle: { backgroundColor: NavColors.background },
@@ -79,14 +80,6 @@ export default function TabsLayout() {
           }}
         />
       ))}
-
-      <Tabs.Screen
-        name="__sync_badge__"
-        options={{
-          href: null,
-          tabBarIcon: () => null,
-        }}
-      />
     </Tabs>
     <ConnectionBanner />
     <VoiceCaptureSheet

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { StaleBanner } from "@/components/molecules/stale-banner";
 
 export function ScheduleListScreen({
   title,
@@ -38,11 +39,7 @@ export function ScheduleListScreen({
         </View>
       ) : (
         <>
-          {isStale ? (
-            <Text tone="muted" className="pb-2 text-xs">
-              Showing your last synced data — you&apos;re offline.
-            </Text>
-          ) : null}
+          {isStale ? <StaleBanner what="schedule" /> : null}
           <Card>{children}</Card>
         </>
       )}

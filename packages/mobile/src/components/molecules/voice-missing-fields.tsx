@@ -1,8 +1,7 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { MissingField } from "@/api/voice-report-types";
-import { Field, Text } from "@/components/atoms";
+import { Field, OptionRow } from "@/components/atoms";
 import { isFieldComplete } from "@/lib/voice-missing-fields";
-import { cn } from "@/lib/utils";
 
 /**
  * Keeps a typed date on the `YYYY-MM-DD` shape the API stores without pulling in
@@ -25,34 +24,7 @@ function SelectField({
   value: string;
   onChange: (next: string) => void;
 }) {
-  return (
-    <View className="gap-2">
-      <Text weight="semibold" className="text-[13px]">
-        {field.label}
-      </Text>
-      <View className="flex-row flex-wrap gap-2">
-        {(field.options ?? []).map((option) => {
-          const isActive = option.value === value;
-          return (
-            <Pressable
-              key={option.value}
-              onPress={() => onChange(option.value)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isActive }}
-              className={cn(
-                "min-h-11 justify-center rounded-xl px-4",
-                isActive ? "bg-primary-500" : "bg-surface-alt",
-              )}
-            >
-              <Text weight="semibold" tone={isActive ? "inverse" : "secondary"} className="text-[13px]">
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
+  return <OptionRow label={field.label} options={field.options ?? []} value={value} onChange={onChange} />;
 }
 
 function TypedField({

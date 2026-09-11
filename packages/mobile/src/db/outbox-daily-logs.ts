@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { activitiesApi } from "@/api/activities";
-import { dailyLogsApi } from "@/api/daily-logs";
+import { dailyLogsApi, isWeatherCondition } from "@/api/daily-logs";
 import { textToParagraphHtml } from "@/lib/html";
 import type { Db } from "./client";
 import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
@@ -24,6 +24,10 @@ async function pushDailyLog(db: Db, item: OutboxRow): Promise<OutboxHandlerResul
   }
 
   await dailyLogsApi.upsert(item.projectId, day.logDate, {
+    weatherCondition: isWeatherCondition(day.weatherCondition) ? day.weatherCondition : null,
+    temperatureC: day.temperatureC,
+    workersExpected: day.workersExpected,
+    workersPresent: day.workersPresent,
     totalHours: day.totalHours,
     summary: day.summary,
     buildingId: day.buildingId,

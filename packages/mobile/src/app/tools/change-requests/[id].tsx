@@ -1,16 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { changeRequestsApi, type ChangeRequestComment, type ChangeStatus } from "@/api/change-requests";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { CHANGE_STATUS_LABELS, type ChangeStatus } from "@/api/change-requests";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_INVERSE, ICON_SUBTLE } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
-import { changeRequestsRepository, toChangeRequest } from "@/db/change-requests-repository";
 import { useLocalDb } from "@/db/provider";
-import { useDeleteChangeRequest } from "@/hooks/use-local-change-requests";
+import { useAddChangeRequestComment, useChangeRequestComments } from "@/hooks/use-change-request-comments";
+import { useDeleteChangeRequest, useLocalChangeRequest } from "@/hooks/use-local-change-requests";
+import { formatDateTime } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -22,27 +23,50 @@ const STATUS_TONE: Record<ChangeStatus, { bg: string; text: string }> = {
   Rejected: { bg: "bg-error-50", text: "text-error-600" },
 };
 
-function timeLabel(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+function CommentThread({ db, projectId, changeId }: { db: Db; projectId: string; changeId: string }) {
+  const { data, isPending } = useChangeRequestComments(db, projectId, changeId);
+
+  if (isPending) {
+    return (
+      <View className="items-center py-6">
+        <Spinner size="md" />
+      </View>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <Text tone="secondary" className="px-6 py-4 text-center text-[13px]">
+        No comments yet. Add one below — it is saved on your device and uploads when you have signal.
+      </Text>
+    );
+  }
+
+  return (
+    <Card>
+      {data.map((c) => (
+        <View key={c.id} className="border-b border-hairline px-4 py-3">
+          <View className="flex-row items-center gap-2">
+            <Text weight="semibold" className="flex-1 text-[13px]" numberOfLines={1}>
+              {c.authorName || "You"}
+            </Text>
+            {c.isPendingSync ? (
+              <PendingBadge />
+            ) : (
+              <Text tone="muted" className="text-[11px]">
+                {formatDateTime(c.createdAt)}
+              </Text>
+            )}
+          </View>
+          <Text className="pt-1 text-[15px]">{c.body}</Text>
+        </View>
+      ))}
+    </Card>
+  );
 }
 
 function CRDetailContent({ db, projectId, changeId }: { db: Db; projectId: string; changeId: string }) {
-  const query = useMemo(() => changeRequestsRepository.listQuery(db, projectId), [db, projectId]);
-  const live = useLiveQuery(query);
-  const cr = useMemo(() => (live.data ?? []).map(toChangeRequest).find((r) => r.id === changeId), [live.data, changeId]);
-
-  const [comments, setComments] = useState<ChangeRequestComment[]>([]);
-  const [loadingComments, setLoadingComments] = useState(true);
-
-  useEffect(() => {
-    if (changeId.startsWith("local_")) { setLoadingComments(false); return; }
-    let cancelled = false;
-    changeRequestsApi.detail(projectId, changeId).then((detail) => {
-      if (!cancelled) setComments(detail.comments ?? []);
-    }).catch(() => undefined).finally(() => { if (!cancelled) setLoadingComments(false); });
-    return () => { cancelled = true; };
-  }, [projectId, changeId]);
+  const { data: cr } = useLocalChangeRequest(db, changeId);
 
   if (!cr) {
     return (
@@ -52,20 +76,17 @@ function CRDetailContent({ db, projectId, changeId }: { db: Db; projectId: strin
     );
   }
 
-  const tone = STATUS_TONE[cr.status as ChangeStatus] ?? STATUS_TONE.Draft;
+  const tone = STATUS_TONE[cr.status] ?? STATUS_TONE.Draft;
 
   return (
     <View className="gap-5">
       <View className="flex-row flex-wrap items-center gap-2">
         <View className={cn("rounded-full px-2.5 py-1", tone.bg)}>
-          <Text weight="semibold" className={cn("text-[11px] uppercase", tone.text)}>{cr.status}</Text>
+          <Text weight="semibold" className={cn("text-[11px] uppercase", tone.text)}>
+            {CHANGE_STATUS_LABELS[cr.status]}
+          </Text>
         </View>
-        {cr.isPendingSync ? (
-          <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1">
-            <Ionicons name="cloud-upload-outline" size={12} color="#717171" />
-            <Text weight="semibold" tone="secondary" className="text-[10px] uppercase">Pending</Text>
-          </View>
-        ) : null}
+        {cr.isPendingSync ? <PendingBadge /> : null}
       </View>
 
       <Text weight="bold" className="text-lg">{cr.title}</Text>
@@ -88,23 +109,7 @@ function CRDetailContent({ db, projectId, changeId }: { db: Db; projectId: strin
 
       <View>
         <Text weight="bold" className="pb-2 text-base">Comments</Text>
-        {loadingComments ? (
-          <View className="items-center py-6"><Spinner size="md" /></View>
-        ) : comments.length === 0 ? (
-          <Text tone="secondary" className="py-4 text-center text-[13px]">No comments yet.</Text>
-        ) : (
-          <Card>
-            {comments.map((c) => (
-              <View key={c.id} className="border-b border-hairline px-4 py-3">
-                <View className="flex-row items-center gap-2">
-                  <Text weight="semibold" className="flex-1 text-[13px]" numberOfLines={1}>{c.authorName}</Text>
-                  <Text tone="muted" className="text-[11px]">{timeLabel(c.createdAt)}</Text>
-                </View>
-                <Text className="pt-1 text-[15px]">{c.body}</Text>
-              </View>
-            ))}
-          </Card>
-        )}
+        <CommentThread db={db} projectId={projectId} changeId={changeId} />
       </View>
     </View>
   );
@@ -115,6 +120,8 @@ export default function ChangeRequestDetail() {
   const { projectId } = useFieldSession();
   const { db, ready } = useLocalDb();
   const removeRecord = useDeleteChangeRequest(db, projectId);
+  const addComment = useAddChangeRequestComment(db, projectId);
+  const { data: session } = useSession();
 
   // Native confirm: deleting a site record is destructive and the app has no
   // undo, so it must not happen on a single stray tap.
@@ -132,29 +139,22 @@ export default function ChangeRequestDetail() {
     ]);
   }
 
-  const { data: session } = useSession();
-
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const canSend = body.trim().length > 0 && !sending;
 
-  // Comments here are not queued the way RFI comments are, so a send with no
-  // signal fails. It must say so and keep what was typed: swallowing the error
-  // dropped the comment and told the crew member nothing.
+  // The comment is written to SQLite and queued; no signal needed. A failure
+  // here is a local write failing, so what was typed stays in the box.
   async function handleSend() {
-    if (!body.trim() || !id || !projectId || sending) return;
+    if (!canSend || !id) return;
     setSending(true);
     setSendError(null);
     try {
-      await changeRequestsApi.addComment(projectId, id, body.trim());
+      await addComment(id, body.trim(), session?.user.name ?? "You");
       setBody("");
     } catch (err) {
-      console.error("change request comment failed", err);
-      setSendError(
-        err instanceof Error && err.message
-          ? `Couldn't send: ${err.message}`
-          : "Couldn't send that comment. It is still here — try again when you have signal.",
-      );
+      setSendError(err instanceof Error ? err.message : "Could not save that comment.");
     } finally {
       setSending(false);
     }
@@ -162,19 +162,19 @@ export default function ChangeRequestDetail() {
 
   return (
     <Page
-      title="Change Request"
+      title="Change request"
       onBack={() => router.back()}
       rightButtons={
         id ? (
-          <View className="flex-row items-center">
+          <>
             <HeaderIconButton icon="create-outline" label="Edit change request" onPress={() => router.push(`/tools/change-requests/edit/${id}` as never)} />
             <HeaderIconButton icon="trash-outline" label="Delete change request" onPress={confirmDelete} />
-          </View>
+          </>
         ) : null
       }
       scroll
       footer={
-        id && !id.startsWith("local_") ? (
+        id ? (
           <View className="gap-2">
             {sendError ? (
               <Text tone="danger" className="px-1 text-xs">
@@ -182,23 +182,24 @@ export default function ChangeRequestDetail() {
               </Text>
             ) : null}
             <View className="flex-row items-end gap-2">
-            <TextInput
-              value={body}
-              onChangeText={setBody}
-              placeholder="Add a comment"
-              placeholderTextColor="#ADADAD"
-              multiline
-              className="max-h-28 min-h-12 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
-            />
-            <Pressable
-              onPress={handleSend}
-              disabled={!body.trim() || sending}
-              accessibilityRole="button"
-              accessibilityLabel="Send comment"
-              className={cn("h-14 w-14 items-center justify-center rounded-xl bg-primary-500", (!body.trim() || sending) && "opacity-50")}
-            >
-              {sending ? <Spinner size="xs" tone="current" /> : <Ionicons name="arrow-up" size={20} color="#FFFFFF" />}
-            </Pressable>
+              <TextInput
+                value={body}
+                onChangeText={setBody}
+                placeholder="Add a comment"
+                placeholderTextColor={ICON_SUBTLE}
+                multiline
+                className="max-h-28 min-h-14 flex-1 rounded-xl bg-surface-alt px-4 py-3 font-jakarta text-base text-black-500"
+              />
+              <Pressable
+                onPress={handleSend}
+                disabled={!canSend}
+                accessibilityRole="button"
+                accessibilityLabel="Send comment"
+                accessibilityState={{ disabled: !canSend, busy: sending }}
+                className={cn("h-14 w-14 items-center justify-center rounded-xl bg-primary-500", !canSend && "opacity-50")}
+              >
+                {sending ? <Spinner size="xs" tone="current" /> : <Ionicons name="arrow-up" size={20} color={ICON_INVERSE} />}
+              </Pressable>
             </View>
           </View>
         ) : undefined

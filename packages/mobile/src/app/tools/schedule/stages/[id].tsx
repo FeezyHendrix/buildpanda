@@ -5,6 +5,7 @@ import { Spinner, Text } from "@/components/atoms";
 import { DetailFields } from "@/components/molecules/schedule/detail-fields";
 import { Page } from "@/components/molecules/page";
 import { useStages } from "@/hooks/use-stages";
+import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
 export default function StageDetail() {
@@ -18,7 +19,7 @@ export default function StageDetail() {
   );
 
   return (
-    <Page title="Build Stage" onBack={() => router.back()}>
+    <Page title="Build stage" onBack={() => router.back()}>
       {query.isPending && !record ? (
         <View className="items-center py-12">
           <Spinner size="md" />
@@ -32,8 +33,8 @@ export default function StageDetail() {
               { label: "Status", value: record.status },
               { label: "Progress", value: `${Math.round(record.progressPercent)}%` },
               { label: "Dates", value: record.dateRange },
-              { label: "Start", value: record.startDate },
-              { label: "End", value: record.endDate },
+              { label: "Start", value: formatDate(record.startDate) },
+              { label: "End", value: formatDate(record.endDate) },
             ]} />
         </View>
       ) : (

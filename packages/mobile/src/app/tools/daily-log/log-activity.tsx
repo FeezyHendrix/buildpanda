@@ -3,7 +3,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import type { Activity } from "@/api/activities";
-import { Button, Card, Field, Spinner, Text } from "@/components/atoms";
+import { Button, Card, Field, OptionRow, Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_FAINT, ICON_SUBTLE } from "@/constants/colors";
 import { Page } from "@/components/molecules/page";
 import { dailyLogsRepository } from "@/db/daily-logs-repository";
 import { flushOutbox } from "@/db/outbox";
@@ -103,7 +104,7 @@ export default function LogActivity() {
             accessibilityState={{ checked: delayed }}
             className="min-h-11 flex-row items-center gap-3"
           >
-            <Ionicons name={delayed ? "checkbox" : "square-outline"} size={22} color={delayed ? "#004DE7" : "#ADADAD"} />
+            <Ionicons name={delayed ? "checkbox" : "square-outline"} size={22} color={delayed ? ICON_BRAND : ICON_SUBTLE} />
             <Text weight="semibold" className="text-[15px]">
               Work was delayed
             </Text>
@@ -111,25 +112,12 @@ export default function LogActivity() {
 
           {delayed ? (
             <View className="gap-3 pl-8">
-              <Text weight="semibold" tone="secondary" className="text-xs uppercase tracking-wide">
-                Reason
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2">
-                {(delayReasons.data ?? []).map((reason) => {
-                  const active = reasonCode === reason.code;
-                  return (
-                    <Pressable
-                      key={reason.code}
-                      onPress={() => setReasonCode(reason.code)}
-                      className={cn("min-h-11 justify-center rounded-xl px-3", active ? "bg-primary-500" : "bg-surface-alt")}
-                    >
-                      <Text weight="semibold" tone={active ? "inverse" : "secondary"} className="text-[12px]">
-                        {reason.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+              <OptionRow
+                label="Reason"
+                options={(delayReasons.data ?? []).map((reason) => ({ value: reason.code, label: reason.name }))}
+                value={reasonCode ?? ""}
+                onChange={setReasonCode}
+              />
               <Field label="Note (optional)" value={delayNote} onChangeText={setDelayNote} placeholder="What happened?" multiline className="min-h-20" />
             </View>
           ) : null}
@@ -177,7 +165,7 @@ function ActivityPicker({ list, onPick }: { list: Activity[]; onPick: (activity:
                 {activity.isDelayed ? "Delayed" : activity.status}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+            <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
           </Pressable>
         ))}
       </Card>

@@ -5,6 +5,7 @@ import { Spinner, Text } from "@/components/atoms";
 import { DetailFields } from "@/components/molecules/schedule/detail-fields";
 import { Page } from "@/components/molecules/page";
 import { useActivities } from "@/hooks/use-activities";
+import { formatDate } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
 export default function ActivityDetail() {
@@ -32,8 +33,8 @@ export default function ActivityDetail() {
               { label: "Status", value: record.isDelayed ? `${record.status} · delayed` : record.status },
               { label: "Phase", value: record.phaseName },
               { label: "Location", value: record.location },
-              { label: "Planned start", value: record.plannedStartAt },
-              { label: "Planned end", value: record.plannedEndAt },
+              { label: "Planned start", value: formatDate(record.plannedStartAt) },
+              { label: "Planned end", value: formatDate(record.plannedEndAt) },
             ]} />
         </View>
       ) : (

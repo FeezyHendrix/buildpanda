@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { memo } from "react";
 import { Pressable } from "react-native";
 import { Spinner } from "@/components/atoms";
+import { ICON_INVERSE } from "@/constants/colors";
 
 interface HeaderIconButtonProps {
   icon: React.ComponentProps<typeof Ionicons>["name"];
@@ -31,7 +32,7 @@ export const HeaderIconButton = memo(function HeaderIconButton({
       className="h-11 w-11 items-center justify-center rounded-full active:bg-white/20"
       style={blocked && !busy ? { opacity: 0.5 } : undefined}
     >
-      {busy ? <Spinner size="xs" tone="current" /> : <Ionicons name={icon} size={24} color="#FFFFFF" />}
+      {busy ? <Spinner size="xs" tone="current" /> : <Ionicons name={icon} size={24} color={ICON_INVERSE} />}
     </Pressable>
   );
 });

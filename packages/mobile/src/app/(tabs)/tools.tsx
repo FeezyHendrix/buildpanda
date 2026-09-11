@@ -6,12 +6,12 @@ import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
 import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
+import { ICON_BRAND } from "@/constants/colors";
 import { TabletMinWidth } from "@/constants/theme";
 import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
-import { cn } from "@/lib/utils";
 
 interface FieldTool {
   key: string;
@@ -22,11 +22,11 @@ interface FieldTool {
 }
 
 const TOOLS: readonly FieldTool[] = [
-  { key: "daily-log", label: "Daily Log", helper: "Today's field report", icon: "clipboard-outline", href: "/tools/daily-log" },
+  { key: "daily-log", label: "Daily log", helper: "Today's field report", icon: "clipboard-outline", href: "/tools/daily-log" },
   { key: "rfis", label: "RFIs", helper: "Requests for information", icon: "help-circle-outline", href: "/tools/rfis" },
   {
     key: "change-requests",
-    label: "Change Requests",
+    label: "Change requests",
     helper: "Scope changes",
     icon: "swap-horizontal-outline",
     href: "/tools/change-requests",
@@ -34,7 +34,7 @@ const TOOLS: readonly FieldTool[] = [
   { key: "materials", label: "Materials", helper: "Orders & requests", icon: "cube-outline", href: "/tools/materials" },
   {
     key: "material-approvals",
-    label: "Material Approvals",
+    label: "Material approvals",
     helper: "Sign-off before ordering",
     icon: "checkmark-done-outline",
     href: "/tools/material-approvals",
@@ -47,7 +47,7 @@ function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
     <Pressable onPress={tool.href ? () => router.push(tool.href as never) : undefined} className={isWide ? "w-[31.5%]" : "w-[48.5%]"}>
     <Card className="min-h-32 justify-between p-4">
       <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary-50">
-        <Ionicons name={tool.icon} size={20} color="#004DE7" />
+        <Ionicons name={tool.icon} size={20} color={ICON_BRAND} />
       </View>
       <View className="pt-3">
         <Text weight="semibold" className="text-[15px]">
@@ -79,7 +79,8 @@ export default function ToolsTab() {
       title="Field Tools"
       description={project?.address}
       workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
-      projectName={project?.name ?? "Loading project…"}
+      projectName={project?.name}
+      projectPending={Boolean(projectId) && !project}
       onPressWorkspace={() => setSheetOpen(true)}
       onPressProject={() => router.push("/select-project")}
       scroll={false}

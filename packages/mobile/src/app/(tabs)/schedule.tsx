@@ -7,11 +7,13 @@ import type { KeyDate } from "@/api/key-dates";
 import type { Stage } from "@/api/stages";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { StaleBanner } from "@/components/molecules/stale-banner";
 import {
   ActivityRow,
   KeyDateRow,
   LookAheadRow,
 } from "@/components/molecules/schedule/rows";
+import { ICON_BRAND, ICON_MUTED } from "@/constants/colors";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useActivities } from "@/hooks/use-activities";
@@ -77,7 +79,7 @@ function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => vo
           <Text weight="semibold" tone="brand" className="text-[13px]">
             See all
           </Text>
-          <Ionicons name="chevron-forward" size={14} color="#004DE7" />
+          <Ionicons name="chevron-forward" size={14} color={ICON_BRAND} />
         </Pressable>
       ) : null}
     </View>
@@ -138,7 +140,7 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
 
       {upcoming?.targetDate ? (
         <View className={`flex-row items-center gap-2 ${stage ? "mt-3 border-t border-hairline pt-3" : ""}`}>
-          <Ionicons name="flag-outline" size={16} color="#004DE7" />
+          <Ionicons name="flag-outline" size={16} color={ICON_BRAND} />
           <Text weight="semibold" className="min-w-0 flex-1 text-[13px]" numberOfLines={1}>
             {upcoming.label}
           </Text>
@@ -165,14 +167,14 @@ function HeroCard({ stages, keyDates }: { stages: Stage[]; keyDates: KeyDate[] }
           <Text weight="semibold" tone="secondary" className="text-[13px]">
             All build stages
           </Text>
-          <Ionicons name="chevron-forward" size={14} color="#5C5C5C" />
+          <Ionicons name="chevron-forward" size={14} color={ICON_MUTED} />
         </Pressable>
         <Pressable
           onPress={() => router.push("/tools/schedule/chart" as never)}
           accessibilityRole="button"
           className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-xl bg-primary-50 active:bg-primary-100"
         >
-          <Ionicons name="stats-chart-outline" size={15} color="#004DE7" />
+          <Ionicons name="stats-chart-outline" size={15} color={ICON_BRAND} />
           <Text weight="semibold" tone="brand" className="text-[13px]">
             Project chart
           </Text>
@@ -189,7 +191,9 @@ function LookAheadsSection({ db, projectId }: { db: Db; projectId: string }) {
     <View>
       <SectionHeader title="Look aheads" onSeeAll={() => router.push("/tools/look-aheads" as never)} />
       {isPending ? (
-        <EmptyNote text="Loading look aheads…" />
+        <View className="items-center py-6">
+          <Spinner size="md" />
+        </View>
       ) : data.length === 0 ? (
         <Card>
           <EmptyNote text="Plan the next stretch of work so the crew knows what's coming." />
@@ -208,10 +212,10 @@ function LookAheadsSection({ db, projectId }: { db: Db; projectId: string }) {
       <Pressable
         onPress={() => router.push("/tools/look-aheads/new")}
         accessibilityRole="button"
-        className="mt-2 min-h-11 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-primary-50 px-4 active:bg-primary-100"
+        className="mt-2 min-h-14 flex-row items-center justify-center gap-1.5 self-start rounded-full bg-primary-50 px-5 active:bg-primary-100"
       >
-        <Ionicons name="add" size={16} color="#004DE7" />
-        <Text weight="semibold" tone="brand" className="text-xs">
+        <Ionicons name="add" size={18} color={ICON_BRAND} />
+        <Text weight="semibold" tone="brand" className="text-[13px]">
           New look ahead
         </Text>
       </Pressable>
@@ -255,7 +259,8 @@ export default function Schedule() {
   return (
     <Page
       title="Schedule"
-      projectName={project?.name ?? "Loading project…"}
+      projectName={project?.name}
+      projectPending={Boolean(projectId) && !project}
       onPressProject={() => router.push("/select-project")}
     >
       {isPending ? (
@@ -264,11 +269,7 @@ export default function Schedule() {
         </View>
       ) : (
         <View className="pb-6">
-          {isStale ? (
-            <Text tone="muted" className="pb-2 text-xs">
-              Showing your last synced data — you&apos;re offline.
-            </Text>
-          ) : null}
+          {isStale ? <StaleBanner what="schedule" /> : null}
 
           <HeroCard stages={stages.data ?? []} keyDates={keyDates.data ?? []} />
 

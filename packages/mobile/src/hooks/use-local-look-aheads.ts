@@ -1,9 +1,9 @@
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo } from "react";
-import { lookAheadsApi, type CreateLookAheadInput, type UpdateLookAheadInput } from "@/api/look-aheads";
+import { lookAheadsApi, type CreateLookAheadInput } from "@/api/look-aheads";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
-import { lookAheadsRepository, toLookAhead } from "@/db/look-aheads-repository";
+import { lookAheadsRepository, toLookAhead, type LookAheadPatch } from "@/db/look-aheads-repository";
 
 /** SQLite first, background refresh — opens with no signal. */
 export function useLocalLookAheads(db: Db, projectId: string) {
@@ -27,6 +27,15 @@ export function useLocalLookAheads(db: Db, projectId: string) {
   return { data, isPending: live.data === undefined };
 }
 
+/** One look-ahead from SQLite; `null` once the query has run and found nothing. */
+export function useLocalLookAhead(db: Db, id: string) {
+  const query = useMemo(() => lookAheadsRepository.byIdQuery(db, id), [db, id]);
+  const live = useLiveQuery(query);
+  const row = live.data?.[0];
+  const data = useMemo(() => (row ? toLookAhead(row) : null), [row]);
+  return { data, isPending: live.data === undefined };
+}
+
 export function useCreateLookAhead(db: Db | null, projectId: string | undefined) {
   return async (input: CreateLookAheadInput) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
@@ -36,7 +45,7 @@ export function useCreateLookAhead(db: Db | null, projectId: string | undefined)
 }
 
 export function useUpdateLookAhead(db: Db | null, projectId: string | undefined) {
-  return async (lookAheadId: string, patch: UpdateLookAheadInput) => {
+  return async (lookAheadId: string, patch: LookAheadPatch) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     await lookAheadsRepository.updateLocal(db, projectId, lookAheadId, patch);
     void flushOutbox(db).catch(() => undefined);

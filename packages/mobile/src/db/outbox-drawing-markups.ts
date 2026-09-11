@@ -4,8 +4,8 @@ import { uploadProjectFile } from "@/api/files";
 import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import type { Db } from "./client";
 import { drawingMarkupsRepository } from "./drawing-markups-repository";
-import { done, skipped, type OutboxHandlerResult } from "./outbox-handler";
-import { outbox, type OutboxRow } from "./schema";
+import { done, PermanentOutboxError, skipped, type OutboxHandlerResult } from "./outbox-handler";
+import { drawingMarkups, outbox, type OutboxRow } from "./schema";
 
 export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   if (item.resource !== "drawing-markups") return skipped;
@@ -20,6 +20,21 @@ export async function pushDrawingMarkupOutboxItem(db: Db, item: OutboxRow): Prom
   if (!row) {
     await db.delete(outbox).where(eq(outbox.id, item.id));
     return done(false);
+  }
+
+  if (item.operation === "resolve") {
+    // the row's current state is what is sent, so resolve-then-reopen before a flush sends once
+    await drawingMarkupApi.setResolved(item.projectId, row.id, row.resolvedAt !== null);
+    await db
+      .update(drawingMarkups)
+      .set({ isPendingSync: false, updatedAt: Date.now() })
+      .where(eq(drawingMarkups.id, row.id));
+    await db.delete(outbox).where(eq(outbox.id, item.id));
+    return done(true);
+  }
+
+  if (item.operation !== "create") {
+    throw new PermanentOutboxError(`Markups cannot be "${item.operation}d" from this device.`);
   }
 
   const server = await drawingMarkupApi.create(item.projectId, {

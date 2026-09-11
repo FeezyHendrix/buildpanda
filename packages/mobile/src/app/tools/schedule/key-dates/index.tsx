@@ -12,7 +12,7 @@ export default function KeyDates() {
 
   return (
     <ScheduleListScreen
-      title="Key Dates"
+      title="Key dates"
       isPending={keyDates.isPending}
       isStale={keyDates.isStale}
       isEmpty={data.length === 0}

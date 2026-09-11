@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { buildingsApi, realBuildings, type Building } from "@/api/buildings";
 import { useFieldSession } from "@/lib/field-session";
+import { usePersistentQuery } from "@/lib/persistent-query";
 
 export interface ProjectBuilding {
   /** The building writes should be filed against, once known. */
@@ -22,13 +22,16 @@ export interface ProjectBuilding {
  * ahead against the wrong block is a contractual record in the wrong place.
  */
 export function useProjectBuilding(): ProjectBuilding {
-  const { projectId, buildingId, selectBuilding } = useFieldSession();
+  const { projectId, buildingId, selectBuilding, storageOwnerId } = useFieldSession();
 
-  const { data, isLoading } = useQuery({
+  // Cached across launches: a cold start with no signal on a multi-building
+  // project must still know there is a choice to make, or a daily log is
+  // queued with no building and the API refuses it for good.
+  const { data, isLoading } = usePersistentQuery({
     queryKey: ["projects", projectId, "buildings"],
+    ownerId: storageOwnerId,
     queryFn: () => buildingsApi.list(projectId!),
     enabled: Boolean(projectId),
-    staleTime: 5 * 60_000,
   });
 
   const buildings = data ? realBuildings(data) : [];

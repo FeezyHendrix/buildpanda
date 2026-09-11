@@ -27,7 +27,8 @@ export default function SelectProject() {
       items={items}
       activeId={projectId}
       loading={isPending}
-      errorMessage={isStale ? "Showing your last synced projects — you're offline." : error && !data ? error.message : undefined}
+      isStale={isStale}
+      errorMessage={error && !data ? error.message : undefined}
       searchPlaceholder="Search projects"
       emptyTitle="No projects in this workspace"
       emptyDescription="Pick a different workspace, or ask your project manager to add you to a project."

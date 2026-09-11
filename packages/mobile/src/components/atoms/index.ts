@@ -1,6 +1,6 @@
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from "./button";
 export { Card, type CardProps } from "./card";
-export { Field, type FieldProps } from "./input";
+export { Field, FieldLabel, type FieldProps } from "./input";
 export { OptionRow } from "./option-row";
 export { PendingBadge } from "./pending-badge";
 export { Spinner, type SpinnerProps, type SpinnerSize, type SpinnerTone } from "./spinner";

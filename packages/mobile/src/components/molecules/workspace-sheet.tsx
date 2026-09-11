@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Spinner, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_MUTED } from "@/constants/colors";
 import { cn } from "@/lib/utils";
 
 export interface WorkspaceOption {
@@ -64,7 +65,7 @@ export function WorkspaceSheet({
               hitSlop={8}
               className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
             >
-              <Ionicons name="close" size={20} color="#717171" />
+              <Ionicons name="close" size={20} color={ICON_MUTED} />
             </Pressable>
           </View>
 
@@ -101,7 +102,7 @@ export function WorkspaceSheet({
                     {busyId === workspace.id ? (
                       <Spinner size="sm" />
                     ) : isActive ? (
-                      <Ionicons name="checkmark" size={20} color="#004DE7" />
+                      <Ionicons name="checkmark" size={20} color={ICON_BRAND} />
                     ) : null}
                   </Pressable>
                 );

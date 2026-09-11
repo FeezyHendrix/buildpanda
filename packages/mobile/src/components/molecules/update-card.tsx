@@ -2,13 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, View } from "react-native";
 import type { ProjectUpdate } from "@/api/updates";
 import { Card, Text } from "@/components/atoms";
-
-export function updateDateLabel(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
+import { ICON_AMBER } from "@/constants/colors";
+import { formatDate } from "@/lib/dates";
 
 /**
  * One update in the feed. Shared by the Tools feed, the full list and the
@@ -35,7 +30,7 @@ export function UpdateCard({
         </View>
         {update.isDraft ? (
           <View className="flex-row items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1">
-            {isPandaDraft ? <Ionicons name="sparkles-outline" size={11} color="#8E6B00" /> : null}
+            {isPandaDraft ? <Ionicons name="sparkles-outline" size={11} color={ICON_AMBER} /> : null}
             <Text weight="semibold" className="text-[10px] uppercase text-amber-700">
               {isPandaDraft ? "Panda AI draft" : "Draft"}
             </Text>
@@ -51,7 +46,7 @@ export function UpdateCard({
       </Text>
 
       <Text tone="muted" className="pt-1 text-[11px]">
-        {update.author.name} · {updateDateLabel(update.createdAt)}
+        {update.author.name} · {formatDate(update.createdAt)}
       </Text>
     </Card>
   );

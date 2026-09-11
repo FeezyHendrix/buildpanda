@@ -22,6 +22,7 @@ import {
 } from "./canvas-support";
 import { hitTestMarkup, MarkupLayer } from "./markup-svg";
 import { SheetLoupe } from "./sheet-loupe";
+import { palette } from "@/constants/colors";
 import { MARKUP_KIND, SHEET_TOOL } from "./markup-types";
 import type {
   MarkupGeometry,
@@ -316,7 +317,7 @@ export default function SheetCanvas({
         height: "100vh",
         overflow: "hidden",
         position: "relative",
-        background: "#EDEDED",
+        background: palette.grey50,
         touchAction: "none",
         userSelect: "none",
       }}
@@ -333,7 +334,7 @@ export default function SheetCanvas({
           position: "relative",
           transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.s})`,
           transformOrigin: "0 0",
-          background: "#FFFFFF",
+          background: palette.surface,
         }}
       >
         {imageDataUri ? (
@@ -376,12 +377,12 @@ export default function SheetCanvas({
 
       {loading ? (
         <div style={overlayStyle}>
-          <span style={{ color: "#5C5C5C", fontSize: 14, fontFamily: "system-ui, sans-serif" }}>Rendering sheet…</span>
+          <span style={{ color: palette.grey600, fontSize: 14, fontFamily: "system-ui, sans-serif" }}>Rendering sheet…</span>
         </div>
       ) : null}
       {error ? (
         <div style={overlayStyle}>
-          <span style={{ color: "#B3261E", fontSize: 14, fontFamily: "system-ui, sans-serif", padding: "0 24px", textAlign: "center" }}>
+          <span style={{ color: palette.error600, fontSize: 14, fontFamily: "system-ui, sans-serif", padding: "0 24px", textAlign: "center" }}>
             {error}
           </span>
         </div>

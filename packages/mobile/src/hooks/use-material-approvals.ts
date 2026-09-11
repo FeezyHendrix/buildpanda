@@ -102,6 +102,15 @@ export function useDecideMaterialApproval(db: Db | null, projectId: string | und
   };
 }
 
+/** Only a `Pending` request may go: the server refuses anything already decided. */
+export function useDeleteMaterialApproval(db: Db | null, projectId: string | undefined) {
+  return async (approvalId: string) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await materialApprovalsRepository.deleteLocal(db, projectId, approvalId);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
 export function useAddMaterialApprovalComment(db: Db | null, projectId: string | undefined) {
   return async (comment: ApprovalCommentDraft) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");

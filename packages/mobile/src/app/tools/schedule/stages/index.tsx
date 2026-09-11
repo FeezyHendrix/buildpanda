@@ -12,7 +12,7 @@ export default function Stages() {
 
   return (
     <ScheduleListScreen
-      title="Build Stages"
+      title="Build stages"
       isPending={stages.isPending}
       isStale={stages.isStale}
       isEmpty={data.length === 0}

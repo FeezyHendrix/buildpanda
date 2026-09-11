@@ -23,25 +23,3 @@ export function MaterialApprovalStatusBadge({ status }: { status: ApprovalStatus
 }
 
 MaterialApprovalStatusBadge.displayName = "MaterialApprovalStatusBadge";
-
-/** Day/month only — a needed-by date has no meaningful time of day on site. */
-export function shortDate(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
-
-export function timeLabel(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleString(undefined, {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-}

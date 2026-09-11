@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { memo } from "react";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/atoms";
+import { ICON_BRAND } from "@/constants/colors";
 import { cn } from "@/lib/utils";
 
 export interface CategoryCardData {
@@ -58,7 +59,7 @@ export const CategoryCard = memo(function CategoryCard({
         <Ionicons
           name={TONE_ICON[category.name] ?? "folder-outline"}
           size={18}
-          color="#004DE7"
+          color={ICON_BRAND}
         />
       </View>
       <View className="pt-3">

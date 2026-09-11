@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { Pressable, View } from "react-native";
 import type { ProposedAction, ProposedActionKind } from "@/api/voice-report-types";
 import { Card, Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_DANGER, ICON_FAINT } from "@/constants/colors";
 import { outstandingFields, type MissingFieldValues } from "@/lib/voice-missing-fields";
 import { cn } from "@/lib/utils";
 import { VoiceMissingFields } from "./voice-missing-fields";
@@ -13,15 +14,15 @@ const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typ
   change_request: { label: "Submit Change Request", icon: "swap-horizontal-outline" },
   material_log: { label: "Log Material Movement", icon: "archive-outline" },
   material_order: { label: "Request Material", icon: "cube-outline" },
-  look_ahead: { label: "Create Look Ahead", icon: "eye-outline" },
+  look_ahead: { label: "Create look ahead", icon: "eye-outline" },
   update_rfi: { label: "Update RFI", icon: "create-outline" },
   transition_rfi: { label: "Change RFI Status", icon: "swap-vertical-outline" },
   update_change_request: { label: "Update Change Request", icon: "create-outline" },
   delete_change_request: { label: "Delete Change Request", icon: "trash-outline", destructive: true },
   update_material_order: { label: "Update Material Request", icon: "create-outline" },
   delete_material_order: { label: "Cancel Material Request", icon: "trash-outline", destructive: true },
-  update_look_ahead: { label: "Update Look Ahead", icon: "create-outline" },
-  delete_look_ahead: { label: "Delete Look Ahead", icon: "trash-outline", destructive: true },
+  update_look_ahead: { label: "Update look ahead", icon: "create-outline" },
+  delete_look_ahead: { label: "Delete look ahead", icon: "trash-outline", destructive: true },
   update_daily_log: { label: "Update Daily Log", icon: "time-outline" },
   log_activity: { label: "Log Activity Work", icon: "hammer-outline" },
   comment_rfi: { label: "Respond to RFI", icon: "chatbubble-outline" },
@@ -35,7 +36,7 @@ const META: Record<ProposedActionKind, { label: string; icon: ComponentProps<typ
 function NeedsBadge({ count }: { count: number }) {
   return (
     <View className="flex-row items-center gap-1 rounded-full bg-error-50 px-2 py-0.5">
-      <Ionicons name="alert-circle" size={11} color="#D42C19" />
+      <Ionicons name="alert-circle" size={11} color={ICON_DANGER} />
       <Text tone="danger" weight="semibold" className="text-[10px] uppercase">
         Needs {count} {count === 1 ? "detail" : "details"}
       </Text>
@@ -79,7 +80,7 @@ export function VoiceActionsReview({
               className="min-h-11 flex-row items-start gap-3"
             >
               <View className={cn("h-10 w-10 items-center justify-center rounded-xl", meta.destructive ? "bg-error-50" : "bg-primary-50")}>
-                <Ionicons name={meta.icon} size={20} color={meta.destructive ? "#D42C19" : "#004DE7"} />
+                <Ionicons name={meta.icon} size={20} color={meta.destructive ? ICON_DANGER : ICON_BRAND} />
               </View>
               <View className="min-w-0 flex-1">
                 <View className="flex-row flex-wrap items-center gap-2">
@@ -98,7 +99,7 @@ export function VoiceActionsReview({
               <Ionicons
                 name={included ? "checkmark-circle" : "ellipse-outline"}
                 size={24}
-                color={included ? "#004DE7" : "#C8C8C8"}
+                color={included ? ICON_BRAND : ICON_FAINT}
               />
             </Pressable>
 

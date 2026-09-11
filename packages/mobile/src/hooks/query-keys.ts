@@ -21,11 +21,6 @@ export const documentKeys = {
   list: (projectId: string | undefined) => [...documentKeys.all(projectId), "list"] as const,
 };
 
-export const rfiKeys = {
-  all: (projectId: string | undefined) => ["rfis", projectId ?? "none"] as const,
-  list: (projectId: string | undefined) => [...rfiKeys.all(projectId), "list"] as const,
-};
-
 export const stageKeys = {
   all: (projectId: string | undefined) => ["stages", projectId ?? "none"] as const,
   list: (projectId: string | undefined) => [...stageKeys.all(projectId), "list"] as const,

@@ -10,6 +10,20 @@ export const WEATHER_CONDITIONS = [
 ] as const;
 export type WeatherCondition = (typeof WEATHER_CONDITIONS)[number];
 
+/** Same wording as the web's day form. */
+export const WEATHER_CONDITION_LABELS: Record<WeatherCondition, string> = {
+  Sunny: "Sunny",
+  Cloudy: "Cloudy",
+  Rain: "Rain",
+  Storm: "Storm",
+  Fog: "Fog",
+  ExtremeHeat: "Extreme heat",
+};
+
+export function isWeatherCondition(value: string | null | undefined): value is WeatherCondition {
+  return typeof value === "string" && (WEATHER_CONDITIONS as readonly string[]).includes(value);
+}
+
 export interface DailyLogEntry {
   id: string;
   authorName: string;
@@ -33,6 +47,10 @@ export interface DailyLogDay {
 
 /** The log itself is keyed by date, not id — one log per project per day. */
 export interface UpsertDailyLogInput {
+  weatherCondition?: WeatherCondition | null;
+  temperatureC?: number | null;
+  workersExpected?: number;
+  workersPresent?: number;
   totalHours?: number;
   summary?: string | null;
   buildingId?: string | null;

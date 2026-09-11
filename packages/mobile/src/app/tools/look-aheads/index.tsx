@@ -2,11 +2,13 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
 import { useLocalDb } from "@/db/provider";
 import { useLocalLookAheads } from "@/hooks/use-local-look-aheads";
+import { formatDateRange } from "@/lib/dates";
 import { useFieldSession } from "@/lib/field-session";
 
 function List({ db, projectId }: { db: Db; projectId: string }) {
@@ -24,10 +26,10 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
     return (
       <View className="items-center py-12">
         <Text weight="semibold" className="text-center text-base">
-          No look-aheads
+          No look aheads yet
         </Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
-          Plan the next window of work with the crew.
+          Create one to plan the next window of work with the crew.
         </Text>
       </View>
     );
@@ -47,12 +49,12 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
               {row.name}
             </Text>
             <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
-              {row.status} · {row.startDate} → {row.endDate}
+              {row.status} · {formatDateRange(row.startDate, row.endDate)}
               {row.totalWorkers ? ` · ${row.totalWorkers} crew` : ""}
             </Text>
           </View>
           {row.isPendingSync ? <PendingBadge /> : null}
-          <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+          <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
         </Pressable>
       ))}
     </Card>
@@ -65,10 +67,10 @@ export default function LookAheads() {
 
   return (
     <Page
-      title="Look Aheads"
+      title="Look aheads"
       onBack={() => router.back()}
       rightButtons={
-        <HeaderIconButton icon="add" label="New look-ahead" onPress={() => router.push("/tools/look-aheads/new")} />
+        <HeaderIconButton icon="add" label="New look ahead" onPress={() => router.push("/tools/look-aheads/new")} />
       }
     >
       {ready && db && projectId ? (
@@ -78,7 +80,6 @@ export default function LookAheads() {
           <Spinner size="md" />
         </View>
       )}
-
     </Page>
   );
 }

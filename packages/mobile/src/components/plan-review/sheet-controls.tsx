@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/atoms";
+import { ICON_DEFAULT, ICON_INVERSE, ICON_MUTED, ICON_SUBTLE } from "@/constants/colors";
 import {
   SHEET_LAYERS,
   SHEET_TOOL,
@@ -64,7 +65,7 @@ function RailButton({
       accessibilityState={{ selected: Boolean(active) }}
       className={`h-11 w-11 items-center justify-center rounded-full ${active ? "bg-primary-500" : "bg-transparent"}`}
     >
-      <Ionicons name={icon} size={19} color={active ? "#FFFFFF" : dimmed ? "#ADADAD" : "#1A1A1A"} />
+      <Ionicons name={icon} size={19} color={active ? ICON_INVERSE : dimmed ? ICON_SUBTLE : ICON_DEFAULT} />
     </Pressable>
   );
 }
@@ -154,14 +155,21 @@ export function SheetPager({
 }
 SheetPager.displayName = "SheetPager";
 
-/** How many markups on this sheet are still waiting for signal. */
+/**
+ * How many markups on this sheet are still waiting for signal. A count over
+ * the whole sheet, not one row's badge, so it is a pill of its own rather
+ * than `PendingBadge` — but it uses the same glyph and wording.
+ */
 export function PendingSyncPill({ count }: { count: number }) {
   if (count < 1) return null;
   return (
-    <View className="absolute left-3 top-3 flex-row items-center gap-1.5 rounded-full border border-hairline bg-surface/95 px-3 py-1.5 shadow-sm">
-      <Ionicons name="cloud-upload-outline" size={13} color="#5C5C5C" />
+    <View
+      accessibilityLabel={`${count} waiting to upload`}
+      className="absolute left-3 top-3 flex-row items-center gap-1.5 rounded-full border border-hairline bg-surface/95 px-3 py-1.5 shadow-sm"
+    >
+      <Ionicons name="cloud-upload-outline" size={13} color={ICON_MUTED} />
       <Text tone="secondary" className="text-[11px]">
-        {count} waiting to sync
+        {count} pending
       </Text>
     </View>
   );

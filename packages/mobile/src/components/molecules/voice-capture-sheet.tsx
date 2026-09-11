@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/atoms";
+import { ICON_BRAND, ICON_DEFAULT, ICON_INVERSE, ICON_STRONG } from "@/constants/colors";
 import { useVoiceRecorder, type Recording } from "@/hooks/use-voice-recorder";
 
 // Recording is a moment, not a destination. Speaking about what just happened
@@ -21,7 +22,9 @@ function clock(totalSeconds: number): string {
 
 /** A waveform that scrolls as you speak, so the mic is visibly listening. */
 function Waveform({ level, active }: { level: number; active: boolean }) {
-  const bars = useRef([...Array(BARS)].map(() => new Animated.Value(IDLE_HEIGHT))).current;
+  // The animated values are rendered, so they live in state (created once);
+  // only the write head, which no render reads, is a ref.
+  const [bars] = useState(() => [...Array(BARS)].map(() => new Animated.Value(IDLE_HEIGHT)));
   const write = useRef(0);
 
   useEffect(() => {
@@ -55,7 +58,7 @@ Waveform.displayName = "Waveform";
 
 /** The record button, breathing with the voice it is hearing. */
 function RecordButton({ level, live, onPress }: { level: number; live: boolean; onPress: () => void }) {
-  const halo = useRef(new Animated.Value(0)).current;
+  const [halo] = useState(() => new Animated.Value(0));
   useEffect(() => {
     Animated.timing(halo, { toValue: live ? level : 0, duration: 120, useNativeDriver: true }).start();
   }, [level, live, halo]);
@@ -76,7 +79,7 @@ function RecordButton({ level, live, onPress }: { level: number; live: boolean; 
         accessibilityLabel={live ? "Stop recording" : "Start recording"}
         className={`h-20 w-20 items-center justify-center rounded-full ${live ? "bg-error-500" : "bg-primary-500"}`}
       >
-        <Ionicons name={live ? "stop" : "mic"} size={32} color="#FFFFFF" />
+        <Ionicons name={live ? "stop" : "mic"} size={32} color={ICON_INVERSE} />
       </Pressable>
     </View>
   );
@@ -138,7 +141,7 @@ export function VoiceCaptureSheet({
             accessibilityLabel="Cancel recording"
             className="h-11 w-11 items-center justify-center rounded-full active:bg-surface-alt"
           >
-            <Ionicons name="close" size={22} color="#5C5C5C" />
+            <Ionicons name="close" size={22} color={ICON_STRONG} />
           </Pressable>
         </View>
 
@@ -160,7 +163,7 @@ export function VoiceCaptureSheet({
             accessibilityLabel={recorder.isPaused ? "Resume" : "Pause"}
             className={`h-14 w-14 items-center justify-center rounded-full bg-surface-alt ${live ? "" : "opacity-40"}`}
           >
-            <Ionicons name={recorder.isPaused ? "play" : "pause"} size={22} color="#1A1A1A" />
+            <Ionicons name={recorder.isPaused ? "play" : "pause"} size={22} color={ICON_DEFAULT} />
           </Pressable>
 
           <RecordButton level={recorder.level} live={live} onPress={() => (live ? void finish() : void recorder.start())} />
@@ -172,7 +175,7 @@ export function VoiceCaptureSheet({
             accessibilityLabel="Finish and review"
             className={`h-14 w-14 items-center justify-center rounded-full bg-primary-50 ${live && recorder.seconds >= 1 ? "" : "opacity-40"}`}
           >
-            <Ionicons name="arrow-forward" size={22} color="#004DE7" />
+            <Ionicons name="arrow-forward" size={22} color={ICON_BRAND} />
           </Pressable>
         </View>
 

@@ -1,7 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
+import { materialOrderStatusLabel } from "@/api/materials";
 import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
+import { ICON_FAINT } from "@/constants/colors";
 import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { Page } from "@/components/molecules/page";
 import type { Db } from "@/db/client";
@@ -24,7 +26,7 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
     return (
       <View className="items-center py-12">
         <Text weight="semibold" className="text-center text-base">
-          No material orders
+          No material orders yet
         </Text>
         <Text tone="secondary" className="px-6 pt-2 text-center text-[13px]">
           Raise a request when site needs materials.
@@ -47,11 +49,11 @@ function List({ db, projectId }: { db: Db; projectId: string }) {
               {row.title || row.materialName}
             </Text>
             <Text tone="secondary" className="pt-0.5 text-xs" numberOfLines={1}>
-              {[`${row.quantity} ${row.unit}`, row.supplier, row.status].filter(Boolean).join(" · ")}
+              {[`${row.quantity} ${row.unit}`, row.supplier, materialOrderStatusLabel(row.status)].filter(Boolean).join(" · ")}
             </Text>
           </View>
           {row.isPendingSync ? <PendingBadge /> : null}
-          <Ionicons name="chevron-forward" size={18} color="#C8C8C8" />
+          <Ionicons name="chevron-forward" size={18} color={ICON_FAINT} />
         </Pressable>
       ))}
     </Card>
@@ -77,7 +79,6 @@ export default function Materials() {
           <Spinner size="md" />
         </View>
       )}
-
     </Page>
   );
 }

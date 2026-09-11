@@ -122,6 +122,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
             kind: r.kind,
             geometry: r.geometry,
             color: r.color,
+            resolvedAt: r.resolvedAt,
             comments: r.comments,
           })),
         );

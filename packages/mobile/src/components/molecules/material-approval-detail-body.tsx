@@ -1,9 +1,9 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { View } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Card, PendingBadge, Spinner, Text } from "@/components/atoms";
 import type { LocalMaterialApprovalComment } from "@/db/material-approval-comments-repository";
 import type { LocalMaterialApproval } from "@/db/material-approvals-repository";
-import { MaterialApprovalStatusBadge, shortDate, timeLabel } from "./material-approval-status";
+import { formatDateTime, formatShortDate } from "@/lib/dates";
+import { MaterialApprovalStatusBadge } from "./material-approval-status";
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
@@ -31,17 +31,6 @@ function Section({ title, body }: { title: string; body: string }) {
   );
 }
 
-function PendingChip() {
-  return (
-    <View className="flex-row items-center gap-1 rounded-full bg-surface-alt px-2 py-1">
-      <Ionicons name="cloud-upload-outline" size={12} color="#717171" />
-      <Text weight="semibold" tone="secondary" className="text-[10px] uppercase">
-        Pending
-      </Text>
-    </View>
-  );
-}
-
 function CommentThread({
   comments,
   isPending,
@@ -59,8 +48,8 @@ function CommentThread({
 
   if (comments.length === 0) {
     return (
-      <Text tone="secondary" className="py-4 text-center text-[13px]">
-        No comments yet.
+      <Text tone="secondary" className="px-6 py-4 text-center text-[13px]">
+        No comments yet. Add one below — it is saved on your device and uploads when you have signal.
       </Text>
     );
   }
@@ -74,10 +63,10 @@ function CommentThread({
               {comment.authorName || "You"}
             </Text>
             {comment.isPendingSync ? (
-              <PendingChip />
+              <PendingBadge />
             ) : (
               <Text tone="muted" className="text-[11px]">
-                {timeLabel(new Date(comment.createdAt).toISOString())}
+                {formatDateTime(comment.createdAt)}
               </Text>
             )}
           </View>
@@ -97,14 +86,14 @@ export function MaterialApprovalDetailBody({
   comments: readonly LocalMaterialApprovalComment[];
   commentsPending: boolean;
 }) {
-  const neededBy = shortDate(approval.neededBy);
+  const neededBy = formatShortDate(approval.neededBy);
 
   return (
     <View className="gap-6">
       <View className="gap-3">
         <View className="flex-row flex-wrap items-center gap-2">
           <MaterialApprovalStatusBadge status={approval.status} />
-          {approval.isPendingSync ? <PendingChip /> : null}
+          {approval.isPendingSync ? <PendingBadge /> : null}
           {approval.requestedReviewerName ? (
             <View className="rounded-full bg-primary-50 px-2.5 py-1">
               <Text weight="semibold" className="text-[11px] uppercase text-primary-700">
@@ -144,7 +133,7 @@ export function MaterialApprovalDetailBody({
           {approval.reviewedByName ? (
             <Text tone="muted" className="pt-1 text-xs">
               {approval.reviewedByName}
-              {approval.reviewedAt ? ` · ${timeLabel(approval.reviewedAt)}` : ""}
+              {approval.reviewedAt ? ` · ${formatDateTime(approval.reviewedAt)}` : ""}
             </Text>
           ) : null}
         </View>

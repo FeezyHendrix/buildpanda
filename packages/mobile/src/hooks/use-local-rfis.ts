@@ -1,6 +1,6 @@
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useMemo } from "react";
-import type { UpsertRfiInput } from "@/api/rfis";
+import type { RfiStatusTransition, UpsertRfiInput } from "@/api/rfis";
 import type { Db } from "@/db/client";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDb } from "@/db/provider";
@@ -22,6 +22,15 @@ export function useLocalRfis(db: Db, projectId: string) {
   return { data, isPending: live.data === undefined };
 }
 
+/** One RFI from SQLite; `null` once the query has run and found nothing. */
+export function useLocalRfi(db: Db, id: string) {
+  const query = useMemo(() => rfisRepository.byIdQuery(db, id), [db, id]);
+  const live = useLiveQuery(query);
+  const row = live.data?.[0];
+  const data = useMemo(() => (row ? toRfi(row) : null), [row]);
+  return { data, isPending: live.data === undefined };
+}
+
 export function useCreateLocalRfi() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
@@ -36,21 +45,45 @@ export function useCreateLocalRfi() {
   };
 }
 
-/**
- * Only subject, question and priority are editable: those are the fields the
- * outbox pushes on an RFI update, so exposing more would save locally and
- * never reach the server.
- */
+/** Every field the update endpoint accepts; the source-sheet fields are create-only. */
+export type EditableRfiPatch = Partial<
+  Pick<
+    UpsertRfiInput,
+    | "subject"
+    | "question"
+    | "questionHtml"
+    | "priority"
+    | "ballInCourtId"
+    | "ballInCourtName"
+    | "dueDate"
+    | "costImpact"
+    | "scheduleImpact"
+  >
+>;
+
 export function useUpdateLocalRfi() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();
 
-  return async (
-    rfiId: string,
-    patch: Pick<UpsertRfiInput, "subject" | "question" | "questionHtml" | "priority">,
-  ) => {
+  return async (rfiId: string, patch: EditableRfiPatch) => {
     if (!db || !projectId) throw new Error("Local database is not ready yet.");
     await rfisRepository.updateLocal(db, projectId, rfiId, patch);
+    void flushOutbox(db).catch(() => undefined);
+  };
+}
+
+/**
+ * Close, void or reopen. Applied locally and queued; the server enforces who
+ * may do it and which statuses can be reopened, so a refused push surfaces
+ * on the sync screen rather than silently reverting here.
+ */
+export function useTransitionLocalRfi() {
+  const { projectId } = useFieldSession();
+  const { db } = useLocalDb();
+
+  return async (rfiId: string, status: RfiStatusTransition) => {
+    if (!db || !projectId) throw new Error("Local database is not ready yet.");
+    await rfisRepository.transitionLocal(db, projectId, rfiId, status);
     void flushOutbox(db).catch(() => undefined);
   };
 }

@@ -7,6 +7,7 @@ import type { VoiceReport } from "@/api/voice-report-types";
 import { Button, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { VoiceActionsReview } from "@/components/molecules/voice-actions-review";
+import { ICON_DANGER, ICON_INVERSE, ICON_SUCCESS, palette } from "@/constants/colors";
 import { useApplyProposedAction } from "@/hooks/use-voice-report";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useFieldSession } from "@/lib/field-session";
@@ -145,7 +146,7 @@ export default function Capture() {
     return (
       <Page title="Captured" showSync={false} scroll={false}>
         <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="checkmark-circle" size={56} color="#18D085" />
+          <Ionicons name="checkmark-circle" size={56} color={ICON_SUCCESS} />
           <Text weight="bold" className="pt-4 text-lg">
             {savedCount} {savedCount === 1 ? "record" : "records"} queued
           </Text>
@@ -177,7 +178,7 @@ export default function Capture() {
           <View className="gap-2">
             {outstanding > 0 ? (
               <View className="flex-row items-center justify-center gap-1.5">
-                <Ionicons name="alert-circle" size={14} color="#D42C19" />
+                <Ionicons name="alert-circle" size={14} color={ICON_DANGER} />
                 <Text tone="danger" weight="semibold" className="text-[13px]">
                   Fill in {outstanding} {outstanding === 1 ? "detail" : "details"} before saving
                 </Text>
@@ -262,14 +263,14 @@ export default function Capture() {
               !canRecord && "opacity-40",
             )}
             style={{
-              shadowColor: recorder.isRecording ? "#E9301C" : "#004DE7",
+              shadowColor: recorder.isRecording ? palette.error500 : palette.primary500,
               shadowOpacity: 0.3,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
               elevation: 8,
             }}
           >
-            <Ionicons name={recorder.isRecording ? "stop" : "mic"} size={40} color="#FFFFFF" />
+            <Ionicons name={recorder.isRecording ? "stop" : "mic"} size={40} color={ICON_INVERSE} />
           </Pressable>
           <Text tone="secondary" className="pt-4 text-[13px]">
             {recorder.isRecording ? "Tap to stop" : "Tap to start recording"}
