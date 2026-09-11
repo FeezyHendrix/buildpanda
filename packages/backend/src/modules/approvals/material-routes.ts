@@ -60,6 +60,8 @@ const createBody = {
     requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
     documentId: { type: ["string", "null"], maxLength: 100 },
     documentVersionId: { type: ["string", "null"], maxLength: 100 },
+    // The pin a request was raised from, so the markup can link back to it.
+    sourceMarkupId: { type: ["string", "null"], maxLength: 100 },
   },
 } as const;
 

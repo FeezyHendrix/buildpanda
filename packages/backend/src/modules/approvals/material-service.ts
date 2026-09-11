@@ -163,6 +163,7 @@ export function materialApprovalsService(
           requested_reviewer_id: input.requestedReviewerId ?? null,
           document_id: input.documentId ?? null,
           document_version_id: input.documentVersionId ?? null,
+          source_markup_id: input.sourceMarkupId ?? null,
         },
         {
           approval_id: id,
