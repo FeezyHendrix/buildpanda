@@ -11,6 +11,12 @@ export interface PopoverAnchor {
 const MARGIN = 12;
 const WIDTH = 320;
 
+/** Where a popover opened from a pin hangs: centred under the pin's element. */
+export function anchorBelow(el: Element): PopoverAnchor {
+  const rect = el.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.bottom + 8 };
+}
+
 /**
  * Shell shared by the composer and the thread: portalled to <body> so it
  * escapes the sheet's CSS transform, kept on screen, closed by Esc or the X.

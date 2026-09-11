@@ -1,9 +1,10 @@
 import { Minus, Plus, Ruler, Trash2 } from "lucide-react";
-import { MARKUP_KIND } from "@/api/drawing-markup";
+import { MARKUP_KIND, type DrawingMarkup } from "@/api/drawing-markup";
 import { cn } from "@/lib/utils";
 import { clamp, type Sheet } from "./plan-review-data";
 import { MarkupLayer } from "./plan-review-markup";
 import { CommentPin } from "@/components/molecules/comment-pin";
+import { anchorBelow } from "@/components/molecules/markup-thread/pin-popover";
 import { SheetImage } from "./plan-review-sheet-image";
 import { BLEND_MODE, REC_STATUS, SELECTION_KIND, TOOL, TOOL_CURSORS } from "./plan-review-types";
 import { IconBtn, Kbd } from "./plan-review-ui";
@@ -15,6 +16,12 @@ import type { SheetScaleController } from "./use-sheet-scale";
 const ZOOM_MIN = 50;
 const ZOOM_MAX = 300;
 const ZOOM_STEP = 25;
+
+function pinLabel(record: DrawingMarkup | undefined, index: number): string {
+  if (!record) return `Comment ${index + 1} (unsaved)`;
+  const n = record.comments.length;
+  return `${n} comment${n === 1 ? "" : "s"}${record.resolvedAt ? " · resolved" : ""}`;
+}
 
 interface PlanReviewStageProps {
   sheet: Sheet;
@@ -103,6 +110,7 @@ export function PlanReviewStage({
               markups={markup.sheetMarkups}
               draft={markup.draft ?? markup.measureDraft}
               selectedId={selection?.kind === SELECTION_KIND.MARKUP ? selection.id : null}
+              dimmedIds={markup.dimmedIds}
               scale={sheet.scale}
               aspect={scale.imgAspect}
               customFtPerPct={scale.scaleFor(sheet.id)}
@@ -110,20 +118,33 @@ export function PlanReviewStage({
           )}
 
           {markup.markupVisible &&
-            markup.sheetPins.map((pin, index) => (
-              <CommentPin
-                key={pin.id}
-                color={pin.color}
-                label={`Comment ${index + 1}`}
-                selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
-                draggable={markup.activeTool === TOOL.SELECT}
-                onPointerDown={(e) => markup.handlePinPointerDown(e, pin.id)}
-                onClick={(e) => {
-                  if (markup.activeTool === TOOL.SELECT) e.stopPropagation();
-                }}
-                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-              />
-            ))}
+            markup.sheetPins.map((pin, index) => {
+              const record = markup.serverMarkups.get(pin.id);
+              const selecting = markup.activeTool === TOOL.SELECT;
+              return (
+                <CommentPin
+                  key={pin.id}
+                  color={pin.color}
+                  label={pinLabel(record, index)}
+                  selected={selection?.kind === SELECTION_KIND.PIN && selection.id === pin.id}
+                  draggable={selecting && !record}
+                  dimmed={markup.dimmedIds.has(pin.id)}
+                  onPointerDown={(e) => {
+                    if (record) {
+                      if (selecting) e.stopPropagation();
+                    } else {
+                      markup.handlePinPointerDown(e, pin.id);
+                    }
+                  }}
+                  onClick={(e) => {
+                    if (!selecting) return;
+                    e.stopPropagation();
+                    if (record) markup.openThread(pin.id, anchorBelow(e.currentTarget));
+                  }}
+                  style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                />
+              );
+            })}
 
           {(recording.status === REC_STATUS.RECORDING ||
             (recording.status === REC_STATUS.SAVED && recording.trace.length > 1)) && (
@@ -174,7 +195,11 @@ export function PlanReviewStage({
       {selection && (
         <div className="absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 py-1 pl-3 pr-1 shadow-lg ring-1 ring-black/5">
           <span className="text-[11px] font-medium text-gray-600">
-            {selection.kind === SELECTION_KIND.PIN ? "Pin selected — drag to move" : "Markup selected"}
+            {selection.kind === SELECTION_KIND.PIN
+              ? markup.serverMarkups.has(selection.id)
+                ? "Comment selected"
+                : "Pin selected — drag to move"
+              : "Markup selected"}
           </span>
           {selection.kind === SELECTION_KIND.MARKUP &&
             markup.markups.find((m) => m.id === selection.id)?.tool === MARKUP_KIND.MEASURE && (

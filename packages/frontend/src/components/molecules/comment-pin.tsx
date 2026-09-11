@@ -12,6 +12,7 @@ export function CommentPin({
   label,
   selected,
   draggable,
+  dimmed = false,
   onPointerDown,
   onClick,
   style,
@@ -20,6 +21,8 @@ export function CommentPin({
   label: string;
   selected: boolean;
   draggable: boolean;
+  /** Resolved, or raised on a superseded revision: still on the sheet, but faded so it reads as closed. */
+  dimmed?: boolean;
   onPointerDown?: (e: React.PointerEvent) => void;
   onClick?: (e: React.MouseEvent) => void;
   style?: React.CSSProperties;
@@ -33,7 +36,8 @@ export function CommentPin({
       className={cn(
         "absolute flex size-7 -translate-x-1/2 -translate-y-full items-center justify-center",
         "rounded-full rounded-bl-sm border-2 border-white text-white shadow-lg",
-        draggable && "cursor-move",
+        draggable ? "cursor-move" : "cursor-pointer",
+        dimmed && "opacity-45",
         selected && "ring-2 ring-primary-500 ring-offset-1",
       )}
     >
