@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { ContractorsIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   InviteHomeownerDialog,
   type InviteHomeownerValues,
@@ -60,16 +62,16 @@ export default function ProjectPeople() {
 
       <div className="mt-6 flex flex-col gap-3">
         {isLoading ? (
-          <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+          <div className="flex justify-center py-10">
+            <Spinner size="md" />
+          </div>
         ) : participants.length === 0 ? (
-          <Card padding="lg" className="text-center">
-            <p className="text-sm font-medium text-gray-900">
-              No one invited yet
-            </p>
-            <p className="mt-1 text-sm text-gray-500">
-              Invite the homeowner so they can follow progress.
-            </p>
-          </Card>
+          <EmptyState
+            icon={<ContractorsIcon className="size-8 text-gray-300" />}
+            title="No one invited yet"
+            description="Invite the homeowner so they can follow progress."
+            className="py-10"
+          />
         ) : (
           participants.map((p) => (
             <Card key={p.id} padding="md" className="flex items-center gap-4">

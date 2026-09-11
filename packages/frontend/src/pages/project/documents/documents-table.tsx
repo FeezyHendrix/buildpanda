@@ -3,12 +3,14 @@ import { ReactSVG } from "react-svg";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { DocumentsIcon } from "@/components/atoms/project-nav-icons";
 import { icons } from "@/assets/icons/icons";
 import {
   UpsertDocumentDialog,
   type UpsertDocumentValues,
 } from "@/components/molecules/upsert-document-dialog";
 import { DocumentVersionsDialog } from "@/components/molecules/document-versions-dialog";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
 import {
   documentVersionViewUrl,
@@ -78,11 +80,12 @@ export function DocumentsTable({
         <tbody>
           {documents.length === 0 ? (
             <tr>
-              <td
-                colSpan={5}
-                className="px-6 py-10 text-center text-sm text-gray-500"
-              >
-                {emptyMessage}
+              <td colSpan={5} className="px-6">
+                <EmptyState
+                  icon={<DocumentsIcon className="size-8 text-gray-300" />}
+                  title={emptyMessage.replace(/\.$/, "")}
+                  className="py-10"
+                />
               </td>
             </tr>
           ) : (

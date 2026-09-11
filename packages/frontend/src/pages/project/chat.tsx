@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { Button } from "@/components/atoms/button";
 import { useProjectContext } from "@/layouts/project-layout";
 import { toast } from "@/lib/toast";
 import {
@@ -300,14 +301,15 @@ export default function ProjectChat() {
           <div className="flex-1 overflow-y-auto py-4">
             {hasPreviousPage && (
               <div className="flex justify-center py-4">
-                <button
-                  type="button"
-                  disabled={isFetchingPreviousPage}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={isFetchingPreviousPage}
                   onClick={() => fetchPreviousPage()}
-                  className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-medium text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full"
                 >
-                  {isFetchingPreviousPage ? "Loading..." : "Load older messages"}
-                </button>
+                  Load older messages
+                </Button>
               </div>
             )}
             

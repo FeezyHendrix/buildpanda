@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Spinner } from "@/components/atoms/spinner";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertStageDialog,
   type UpsertStageValues,
@@ -244,22 +246,21 @@ export default function ProjectStages() {
             <tbody className="divide-y divide-[#F0F0F0]">
               {isLoading ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-10 text-center text-sm text-gray-500"
-                  >
-                    Loading stages…
+                  <td colSpan={8} className="px-4">
+                    <div className="flex justify-center py-10">
+                      <Spinner size="md" />
+                    </div>
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-4 py-10 text-center text-sm text-gray-500"
-                  >
-                    {stages.length === 0
-                      ? "No stages yet. Add your first stage to start tracking the build."
-                      : "No stages match your search."}
+                  <td colSpan={8} className="px-4">
+                    <EmptyState
+                      icon={<BlocksIcon className="size-8 text-gray-300" />}
+                      title={stages.length === 0 ? "No stages yet" : "No stages match your search"}
+                      description={stages.length === 0 ? "Add your first stage to start tracking the build." : "Try a different search term."}
+                      className="py-10"
+                    />
                   </td>
                 </tr>
               ) : (

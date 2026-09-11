@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { ListTodo } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertActionItemDialog,
   type UpsertActionItemValues,
@@ -169,7 +172,9 @@ export default function ProjectActionItems() {
       {view === "board" ? (
         <div className="mt-5">
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+            <div className="flex justify-center py-10">
+              <Spinner size="md" />
+            </div>
           ) : (
             <KanbanBoard
               items={items}
@@ -191,14 +196,16 @@ export default function ProjectActionItems() {
       ) : (
         <div className="mt-5 flex flex-col gap-3">
           {isLoading ? (
-            <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+            <div className="flex justify-center py-10">
+              <Spinner size="md" />
+            </div>
           ) : items.length === 0 ? (
-            <Card padding="lg" className="text-center">
-              <p className="text-sm font-medium text-gray-900">Nothing here</p>
-              <p className="mt-1 text-sm text-gray-500">
-                No action items match this filter.
-              </p>
-            </Card>
+            <EmptyState
+              icon={<ListTodo className="size-8 text-gray-300" />}
+              title="No action items here"
+              description="Nothing matches this filter yet. Add an action item or change the filter."
+              className="py-10"
+            />
           ) : (
             items.map((item) => (
               <Card

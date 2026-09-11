@@ -394,9 +394,11 @@ function DayCard({
 
       <div className="flex flex-col divide-y divide-[#EDEDED]">
         {day.entries.length === 0 ? (
-          <p className="px-6 py-6 text-center text-[13px] text-black-300">
-            No team logs for this day yet.
-          </p>
+          <EmptyState
+            title="No team logs for this day yet"
+            description="Entries added by the team for this day will appear here."
+            className="py-6"
+          />
         ) : (
           day.entries.map((entry) => (
             <EntryRow

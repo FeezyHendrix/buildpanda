@@ -4,10 +4,12 @@ import { type ReactNode, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
+import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { AddCashFlowDialog } from "@/components/molecules/add-cash-flow-dialog";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -179,9 +181,12 @@ export default function ProjectFinances() {
           title="Finance"
           description="See where the project's money stands — what's budgeted, spent, and still to pay."
         />
-        <Card padding="lg" className="mt-8 text-center text-sm text-gray-500">
-          No finance data yet for this project.
-        </Card>
+        <EmptyState
+          icon={<FinancesIcon className="size-8 text-gray-300" />}
+          title="No finance data yet"
+          description="Budget, spend and payment records will appear here once the project's finances are set up."
+          className="py-10"
+        />
       </div>
     );
   }

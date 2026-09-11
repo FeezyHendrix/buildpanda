@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { ReactSVG } from "react-svg";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { icons } from "@/assets/icons/icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { EmptyState } from "@/components/molecules/empty-state";
 import { UploadDocumentDialog } from "@/components/molecules/upload-document-dialog";
 import { FileViewerDialog } from "@/components/molecules/file-viewer-dialog";
-import { PlayIcon } from "@/components/atoms/project-nav-icons";
+import { CameraIcon, PlayIcon } from "@/components/atoms/project-nav-icons";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   documentVersionViewUrl,
@@ -125,12 +125,12 @@ export default function ProjectMediaLibrary() {
 
       <section className="mt-6">
         {mediaDocuments.length === 0 ? (
-          <Card padding="lg" className="border border-dashed border-[#D9D9D9] bg-[#FAFAFA] text-center shadow-none">
-            <p className="text-sm font-medium text-gray-900">No media yet</p>
-            <p className="mt-1 text-xs text-gray-500">
-              Photos and videos uploaded from site will appear here.
-            </p>
-          </Card>
+          <EmptyState
+            icon={<CameraIcon className="size-8 text-gray-300" />}
+            title="No media yet"
+            description="Photos and videos uploaded from site will appear here."
+            className="py-10"
+          />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {mediaDocuments.map((doc) => (

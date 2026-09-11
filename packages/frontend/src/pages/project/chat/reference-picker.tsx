@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Spinner } from "@/components/atoms/spinner";
 import { useReferenceSearch } from "@/hooks/use-chat";
 
 export function ReferencePicker({
@@ -42,7 +43,9 @@ export function ReferencePicker({
         {debouncedQuery.length < 2 ? (
           <div className="p-2 text-center text-xs text-gray-500">Type 2+ chars to search</div>
         ) : isLoading ? (
-          <div className="p-2 text-center text-xs text-gray-500">Loading...</div>
+          <div className="flex justify-center p-2">
+            <Spinner size="xs" />
+          </div>
         ) : !results?.length ? (
           <div className="p-2 text-center text-xs text-gray-500">No results found</div>
         ) : (
