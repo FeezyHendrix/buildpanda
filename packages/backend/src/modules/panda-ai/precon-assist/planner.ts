@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { chatJsonValidated, type LlmMessage } from "../../../lib/llm.ts";
+import type { LlmMessage } from "../../../lib/llm.ts";
+import { chatLongJsonValidated, longTextCharBudget } from "../../../lib/llm-long-text.ts";
 import { ValidationError } from "../../../lib/errors.ts";
 import type { PreconBill, PreconBoqRowDto, PreconProgrammeTask, PreconSheet } from "../pdf-takeoff/types.ts";
 import {
@@ -57,7 +58,7 @@ export type AssistDraft = z.infer<typeof draftSchema>;
 export type DraftLlm = (messages: LlmMessage[]) => Promise<AssistDraft | null>;
 
 export const defaultDraftLlm: DraftLlm = async (messages) => {
-  const result = await chatJsonValidated(messages, draftSchemaLoose);
+  const result = await chatLongJsonValidated(messages, draftSchemaLoose);
   return result?.data ?? null;
 };
 
@@ -72,7 +73,13 @@ export interface ProgrammeContext {
   tasks: PreconProgrammeTask[];
 }
 
-const MAX_CONTEXT_ROWS = 400;
+// A compact row is ~150 chars. 400 rows is the historical cap for a 24K-char
+// budget; a long-context provider lifts it so a full bill fits in one call.
+const MIN_CONTEXT_ROWS = 400;
+const MAX_CONTEXT_ROWS = 3000;
+export function contextRowBudget(): number {
+  return Math.max(MIN_CONTEXT_ROWS, Math.min(MAX_CONTEXT_ROWS, Math.floor(longTextCharBudget() / 150)));
+}
 
 const SYSTEM_RULES = [
   "You are Panda AI, a quantity surveyor's assistant inside BuildPanda. The user asks for a change to an AI-drafted record; you answer with a short plan and a list of concrete changes.",
@@ -126,7 +133,7 @@ function compactTask(task: PreconProgrammeTask) {
 }
 
 export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[] {
-  const rows = ctx.rows.slice(0, MAX_CONTEXT_ROWS).map(compactRow);
+  const rows = ctx.rows.slice(0, contextRowBudget()).map(compactRow);
   return [
     {
       role: "system",
@@ -157,7 +164,7 @@ export function buildBillMessages(prompt: string, ctx: BillContext): LlmMessage[
 }
 
 export function buildProgrammeMessages(prompt: string, ctx: ProgrammeContext): LlmMessage[] {
-  const tasks = ctx.tasks.slice(0, MAX_CONTEXT_ROWS).map(compactTask);
+  const tasks = ctx.tasks.slice(0, contextRowBudget()).map(compactTask);
   return [
     {
       role: "system",

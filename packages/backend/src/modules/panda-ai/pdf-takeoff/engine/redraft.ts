@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import { NotFoundError, BadRequestError } from "../../../../lib/errors.ts";
-import { chatJsonValidated, isLlmConfigured } from "../../../../lib/llm.ts";
+import { isLlmConfigured } from "../../../../lib/llm.ts";
+import { chatLongJsonValidated } from "../../../../lib/llm-long-text.ts";
 import { preconRepository } from "../repository.ts";
 import type { MeasuredBoqItem, PreconBoqRowRow } from "../types.ts";
 import { FULL_TAKEOFF_SCOPE } from "../types.ts";
@@ -72,7 +73,7 @@ export async function redraftBill(db: Knex, sessionId: string, progress: Progres
   const outcome = await buildUpBill(
     anchors,
     `${sheets.length} sheets; anchors from verified and measured lines only`,
-    async (messages, schema) => chatJsonValidated(messages, schema),
+    async (messages, schema) => chatLongJsonValidated(messages, schema),
     (message) => void progress("building", message),
     briefs,
     besmmResolverFor(db),

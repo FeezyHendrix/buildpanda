@@ -186,6 +186,11 @@ export const config = {
     baseUrl: optional("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
     model: optional("DEEPSEEK_MODEL", "deepseek-flash"),
     timeoutMs: optionalNumber("DEEPSEEK_TIMEOUT_MS", 60_000),
+    // Long-document calls (spec/BoQ extraction, schedules, bill build-up) use
+    // the 1M window. The char cap bounds spend per call; the output cap must be
+    // explicit because DeepSeek defaults to 8K output tokens.
+    maxInputChars: optionalNumber("DEEPSEEK_MAX_INPUT_CHARS", 400_000),
+    maxOutputTokens: optionalNumber("DEEPSEEK_MAX_OUTPUT_TOKENS", 32_000),
   },
 
   storage: {

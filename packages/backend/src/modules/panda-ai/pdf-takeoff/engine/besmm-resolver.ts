@@ -1,6 +1,6 @@
 import type { Knex } from "knex";
 import { besmmRag } from "../../../../lib/besmm-rag.ts";
-import { isEmbeddingConfigured } from "../../../../lib/llm.ts";
+import { isEmbeddingConfigured } from "../../../../lib/llm-embeddings.ts";
 import { staticBesmmResolver, type BesmmResolver } from "./enrich.ts";
 
 // BESMM reference passages for a brief, from the embedded reference when it is
