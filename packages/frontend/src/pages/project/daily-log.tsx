@@ -114,7 +114,7 @@ export default function ProjectDailyLog() {
   return (
     <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title="Daily Log"
+        title="Daily log"
         actions={
           canCreateEntry || canGenerateReport ? (
             <div className="flex items-center gap-2">
