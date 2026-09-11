@@ -31,6 +31,18 @@ export function useLocalRfi(db: Db, id: string) {
   return { data, isPending: live.data === undefined };
 }
 
+/**
+ * The RFI raised from one plan pin, if this device raised it. The link is
+ * read from the local row's `sourceMarkupId`, not the server's `linkedRfiId`,
+ * so it shows in a basement and while the pin's own create is still queued.
+ */
+export function useLocalRfiForMarkup(db: Db, markupId: string) {
+  const query = useMemo(() => rfisRepository.bySourceMarkupQuery(db, markupId), [db, markupId]);
+  const live = useLiveQuery(query);
+  const row = live.data?.[0];
+  return useMemo(() => (row ? toRfi(row) : null), [row]);
+}
+
 export function useCreateLocalRfi() {
   const { projectId } = useFieldSession();
   const { db } = useLocalDb();

@@ -8,7 +8,10 @@ export function useProjectUpdates(projectId: string | undefined) {
   return usePersistentQuery({
     queryKey: updateKeys.list(projectId),
     ownerId: storageOwnerId,
-    queryFn: () => updatesApi.list(projectId!),
+    // The server includes drafts for anyone who could publish them. Field
+    // Tools is for what has been posted, so drafts never reach the feed or
+    // the offline cache.
+    queryFn: async () => (await updatesApi.list(projectId!)).filter((update) => !update.isDraft),
     enabled: Boolean(projectId),
   });
 }

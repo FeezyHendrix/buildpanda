@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { View, useWindowDimensions } from "react-native";
-import { drawingMarkupApi, type DrawingMarkup } from "@/api/drawing-markup";
-import { participantsApi, toAssignees, type CommentAssignee } from "@/api/participants";
 import { Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
+import { DEFAULT_ASPECT } from "@/components/plan-review/canvas-support";
 import { CommentComposer } from "@/components/plan-review/comment-composer";
 import { MarkupPanel } from "@/components/plan-review/markup-panel";
 import {
   ALL_LAYERS_VISIBLE,
+  DEFAULT_MARKUP_COLOR,
   MARKUP_KIND,
   SHEET_TOOL,
   type MarkupGeometry,
@@ -18,8 +18,9 @@ import {
   type SheetLayer,
   type SheetTool,
 } from "@/components/plan-review/markup-types";
-import { PendingSyncPill, SheetControls, SheetPager, ToolHint } from "@/components/plan-review/sheet-controls";
+import { PendingSyncPill, SheetControls, SheetPager, ToolHint, ZoomReadout } from "@/components/plan-review/sheet-controls";
 import SheetCanvas from "@/components/plan-review/sheet-canvas.dom";
+import { ScalePrompt, type ScalePromptStage } from "@/components/plan-review/sheet-scale-prompt";
 import { SheetStrip } from "@/components/plan-review/sheet-strip";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
@@ -28,13 +29,17 @@ import { useLocalDb } from "@/db/provider";
 import { drawingMarkupsRepository } from "@/db/drawing-markups-repository";
 import { flushOutbox } from "@/db/outbox";
 import { useLocalDocuments } from "@/hooks/use-local-documents";
-import { useFieldSession } from "@/lib/field-session";
-import { useSheetSource } from "@/hooks/use-sheet-source";
 import { useMarkupActions } from "@/hooks/use-markup-actions";
-
+import { useMarkupUndo } from "@/hooks/use-markup-undo";
+import { usePageMarkups } from "@/hooks/use-page-markups";
+import { useSheetScale } from "@/hooks/use-sheet-scale";
+import { useSheetSource } from "@/hooks/use-sheet-source";
+import { useFieldSession } from "@/lib/field-session";
+import { useProjectAssignees } from "@/hooks/use-participants";
+import { sheetLabel } from "@/components/plan-review/sheet-strip";
 
 export default function PlanReview() {
-  const { projectId } = useFieldSession();
+  const { projectId, userId } = useFieldSession();
   const { db, ready } = useLocalDb();
 
   if (!db || !ready || !projectId) {
@@ -46,106 +51,57 @@ export default function PlanReview() {
       </Page>
     );
   }
-  return <ReviewScreen db={db} projectId={projectId} />;
+  return <ReviewScreen db={db} projectId={projectId} userId={userId} />;
 }
 
-function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
+function ReviewScreen({ db, projectId, userId }: { db: Db; projectId: string; userId: string | undefined }) {
   const { documentId } = useLocalSearchParams<{ documentId?: string }>();
   const plans = useLocalDocuments(db, projectId, DOCUMENT_GROUP.PLAN);
   const { width, height } = useWindowDimensions();
   const sidePanel = width > height && width >= TabletMinWidth;
 
-  const sheets = useMemo(
-    () => plans.data.filter((doc) => doc.currentVersionId),
-    [plans.data],
-  );
+  const sheets = useMemo(() => plans.data.filter((doc) => doc.currentVersionId), [plans.data]);
 
   const [activeDocId, setActiveDocId] = useState<string | undefined>(documentId);
-  const activeSheet = useMemo(
-    () => sheets.find((s) => s.id === activeDocId) ?? sheets[0],
-    [sheets, activeDocId],
-  );
+  const activeSheet = useMemo(() => sheets.find((s) => s.id === activeDocId) ?? sheets[0], [sheets, activeDocId]);
 
   const [pageNo, setPageNo] = useState(1);
   const [tool, setTool] = useState<SheetTool>(SHEET_TOOL.PAN);
+  const [color, setColor] = useState<string>(DEFAULT_MARKUP_COLOR);
   const [layers, setLayers] = useState(ALL_LAYERS_VISIBLE);
   const [controlsOpen, setControlsOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pendingAnchor, setPendingAnchor] = useState<MarkupPoint | null>(null);
-  const [markups, setMarkups] = useState<DrawingMarkup[]>([]);
-  const [assignees, setAssignees] = useState<CommentAssignee[]>([]);
   const [renderInfo, setRenderInfo] = useState<SheetRenderInfo | null>(null);
+  const [zoomPct, setZoomPct] = useState(100);
+  const [fitNonce, setFitNonce] = useState(0);
+  const [calibrating, setCalibrating] = useState<ScalePromptStage | null>(null);
+  const [calibrationLine, setCalibrationLine] = useState<{ a: MarkupPoint; b: MarkupPoint } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sheetId = activeSheet?.id;
   const versionId = activeSheet?.currentVersionId ?? null;
   const fileName = activeSheet?.fileName ?? "";
+  const assignees = useProjectAssignees(projectId);
+  const aspect = renderInfo?.aspect ?? DEFAULT_ASPECT;
 
   const { source } = useSheetSource(db, projectId, sheetId, fileName, setError);
+  const { markups, readLocal, reset: resetMarkups } = usePageMarkups(db, projectId, sheetId, versionId, pageNo);
+  const undo = useMarkupUndo(db, projectId, versionId ? `${versionId}:${pageNo}` : null);
+  const sheetScale = useSheetScale(userId, versionId);
+  const metresPerPct = sheetScale.scale?.metresPerPct ?? null;
 
   const actions = useMarkupActions({
     db,
     projectId,
     sheetId,
     versionId,
+    sheetCode: activeSheet ? sheetLabel(activeSheet).code : fileName,
     pageNo,
     onChanged: () => readLocal(),
     onError: setError,
   });
 
-  const readLocal = useCallback(async () => {
-    if (!versionId) return;
-    setMarkups(await drawingMarkupsRepository.pageWithComments(db, versionId, pageNo));
-  }, [db, versionId, pageNo]);
-
-  // Local first, so a sheet marked up in a basement still shows its markups.
-  // The server's copy refreshes what is not still queued; losing signal here is
-  // not an error, it is the normal case this app is built for.
-  useEffect(() => {
-    if (!versionId || !sheetId) return;
-    let cancelled = false;
-    void readLocal();
-    drawingMarkupApi
-      .listForVersion(projectId, versionId, pageNo)
-      .then(async (rows) => {
-        if (cancelled) return;
-        await drawingMarkupsRepository.replacePage(
-          db,
-          versionId,
-          pageNo,
-          rows.map((r) => ({
-            id: r.id,
-            projectId,
-            documentId: r.documentId,
-            documentVersionId: r.documentVersionId,
-            pageNo: r.pageNo,
-            kind: r.kind,
-            geometry: r.geometry,
-            color: r.color,
-            resolvedAt: r.resolvedAt,
-            comments: r.comments,
-          })),
-        );
-        if (!cancelled) await readLocal();
-      })
-      .catch((err: unknown) => console.warn("markup refresh deferred, working from the local copy", err));
-    return () => {
-      cancelled = true;
-    };
-  }, [db, projectId, versionId, sheetId, pageNo, readLocal]);
-
-  useEffect(() => {
-    let cancelled = false;
-    participantsApi
-      .list(projectId)
-      .then((rows) => {
-        if (!cancelled) setAssignees(toAssignees(rows));
-      })
-      .catch((err: unknown) => console.error("participants load failed", err));
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
 
   const pendingCount = useMemo(
     () =>
@@ -156,7 +112,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
 
   const layerCounts = useMemo(
     () => ({
-      ink: markups.filter((m) => m.kind === MARKUP_KIND.PEN).length,
+      ink: markups.filter((m) => m.kind === MARKUP_KIND.PEN || m.kind === MARKUP_KIND.CLOUD).length,
       comments: markups.filter((m) => m.kind === MARKUP_KIND.PIN).length,
     }),
     [markups],
@@ -165,28 +121,29 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
   const canvasMarkups = useMemo<SheetMarkup[]>(
     () =>
       markups
-        .filter((m) => (m.kind === MARKUP_KIND.PEN ? layers.ink : m.kind === MARKUP_KIND.PIN ? layers.comments : true))
-        .map((m) => ({
-        id: m.id,
-        kind: m.kind,
-        geometry: m.geometry,
-        color: m.color,
-        resolved: Boolean(m.resolvedAt),
-      })),
+        .filter((m) => {
+          if (m.kind === MARKUP_KIND.PIN) return layers.comments;
+          if (m.kind === MARKUP_KIND.PEN || m.kind === MARKUP_KIND.CLOUD) return layers.ink;
+          return true;
+        })
+        .map((m) => ({ id: m.id, kind: m.kind, geometry: m.geometry, color: m.color, resolved: Boolean(m.resolvedAt) })),
     [markups, layers],
   );
 
-  const selected = useMemo(
-    () => markups.find((m) => m.id === selectedId) ?? null,
-    [markups, selectedId],
-  );
+  const selected = useMemo(() => markups.find((m) => m.id === selectedId) ?? null, [markups, selectedId]);
+
+  function clearTransient() {
+    setSelectedId(null);
+    setPendingAnchor(null);
+    setCalibrating(null);
+    setCalibrationLine(null);
+  }
 
   function switchSheet(id: string) {
     setActiveDocId(id);
     setPageNo(1);
-    setSelectedId(null);
-    setPendingAnchor(null);
-    setMarkups([]);
+    clearTransient();
+    resetMarkups();
     setError(null);
     // the page count belongs to the sheet that is going away
     setRenderInfo(null);
@@ -203,9 +160,17 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
         pageNo,
         kind: geometry.kind,
         geometry: { ...geometry, space: "percent" },
+        color,
       });
+      undo.push({ id, kind: geometry.kind, geometry });
       await readLocal();
-      setSelectedId(id);
+      if (calibrating === "draw" && geometry.kind === MARKUP_KIND.MEASURE) {
+        // the line is a real measure too; it reads its length once the scale is in
+        setCalibrationLine({ a: geometry.a, b: geometry.b });
+        setCalibrating("enter");
+      } else {
+        setSelectedId(id);
+      }
       // push now when there is signal; the outbox keeps it when there is not
       void flushOutbox(db).then(readLocal);
     } catch (err) {
@@ -213,6 +178,38 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't save that markup.");
     }
   }
+
+  async function undoLast() {
+    try {
+      if (!(await undo.undo(markups))) return;
+      setSelectedId(null);
+      await readLocal();
+      void flushOutbox(db).then(readLocal);
+    } catch (err) {
+      console.error("markup undo failed", err);
+      setError(err instanceof Error && err.message ? err.message : "Couldn't undo that markup.");
+    }
+  }
+
+  function startSetScale() {
+    setTool(SHEET_TOOL.MEASURE);
+    setSelectedId(null);
+    setPendingAnchor(null);
+    setCalibrationLine(null);
+    setCalibrating("draw");
+  }
+
+  function saveScale(metres: number) {
+    if (!calibrationLine) return;
+    if (!sheetScale.setFromLine(calibrationLine.a, calibrationLine.b, aspect, metres)) {
+      setError("That line is too short to set a scale from. Draw a longer one.");
+      return;
+    }
+    setCalibrating(null);
+    setCalibrationLine(null);
+  }
+
+  const scaleLabel = metresPerPct ? "scale set" : null;
 
   if (sheets.length === 0) {
     return (
@@ -235,12 +232,22 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
     );
   }
 
-  const sidebar = pendingAnchor ? (
+  const sidebar = calibrating ? (
+    <ScalePrompt stage={calibrating} onCancel={() => setCalibrating(null)} onSave={saveScale} />
+  ) : pendingAnchor ? (
     <CommentComposer
       assignees={assignees}
       busy={actions.busy}
       onCancel={() => setPendingAnchor(null)}
-      onSubmit={(draft) => { if (pendingAnchor) void actions.submitComment(draft, pendingAnchor, (id) => { setPendingAnchor(null); setSelectedId(id); }); }}
+      onSubmit={(draft) => {
+        if (!pendingAnchor) return;
+        const at = pendingAnchor;
+        void actions.submitComment({ ...draft, color }, at, (id) => {
+          undo.push({ id, kind: MARKUP_KIND.PIN, geometry: { kind: MARKUP_KIND.PIN, at } });
+          setPendingAnchor(null);
+          setSelectedId(id);
+        });
+      }}
     />
   ) : selected ? (
     <MarkupPanel
@@ -253,7 +260,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
       onError={setError}
     />
   ) : (
-    <ToolHint tool={tool} />
+    <ToolHint tool={tool} scaleLabel={scaleLabel} onSetScale={startSetScale} />
   );
 
   return (
@@ -281,6 +288,9 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
                 markups={canvasMarkups}
                 selectedId={selectedId}
                 tool={tool}
+                color={color}
+                metresPerPct={metresPerPct}
+                fitNonce={fitNonce}
                 draftPin={pendingAnchor}
                 onCreate={persistMarkup}
                 onTapPoint={async (pt) => {
@@ -289,6 +299,7 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
                 }}
                 onSelect={async (id) => setSelectedId(id)}
                 onRendered={async (info) => setRenderInfo(info)}
+                onZoom={async (pct) => setZoomPct(pct)}
               />
             ) : (
               <View className="flex-1 items-center justify-center">
@@ -301,20 +312,28 @@ function ReviewScreen({ db, projectId }: { db: Db; projectId: string }) {
             <PendingSyncPill count={pendingCount} />
             <SheetControls
               tool={tool}
-              onSelectTool={setTool}
+              onSelectTool={(next) => {
+                setTool(next);
+                if (next !== SHEET_TOOL.MEASURE) setCalibrating(null);
+              }}
+              color={color}
+              onSelectColor={setColor}
+              canUndo={undo.canUndo}
+              onUndo={() => void undoLast()}
+              onFit={() => setFitNonce((n) => n + 1)}
               layers={layers}
               counts={layerCounts}
               onToggleLayer={(layer: SheetLayer) => setLayers((current) => ({ ...current, [layer]: !current[layer] }))}
               open={controlsOpen}
               onToggleOpen={() => setControlsOpen((v) => !v)}
             />
+            <ZoomReadout pct={zoomPct} onFit={() => setFitNonce((n) => n + 1)} />
             <SheetPager
               pageNo={pageNo}
               pageCount={renderInfo?.pageCount ?? 1}
               onChangePage={(next) => {
                 setPageNo(next);
-                setSelectedId(null);
-                setPendingAnchor(null);
+                clearTransient();
               }}
             />
           </View>

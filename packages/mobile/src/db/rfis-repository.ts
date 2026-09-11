@@ -72,6 +72,14 @@ export const rfisRepository = {
       .where(and(eq(rfis.id, id), isNull(rfis.deletedAt)))
       .limit(1),
 
+  /** The RFI raised from one plan pin, or nothing; derived locally so it reads offline. */
+  bySourceMarkupQuery: (db: Db, markupId: string) =>
+    db
+      .select()
+      .from(rfis)
+      .where(and(eq(rfis.sourceMarkupId, markupId), isNull(rfis.deletedAt)))
+      .limit(1),
+
   /**
    * Writes the RFI locally and queues the push in one transaction, so the row
    * and its outbox entry can never disagree if the app is killed mid-write.

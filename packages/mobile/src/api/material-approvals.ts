@@ -92,8 +92,16 @@ export interface MaterialApprovalCreateInput {
   phaseId?: string | null;
   activityId?: string | null;
   description?: string | null;
+  descriptionHtml?: string | null;
   dueDate?: string | null;
   requestedReviewerId?: string | null;
+  /**
+   * Create-only: the sheet and revision a request was raised from. The
+   * material route does not accept `sourceMarkupId` (unlike `/approvals` and
+   * `/rfis`), so the pin is kept locally and never sent.
+   */
+  documentId?: string | null;
+  documentVersionId?: string | null;
 }
 
 export interface MaterialApprovalUpdateInput {

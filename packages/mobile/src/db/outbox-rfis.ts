@@ -114,6 +114,10 @@ async function pushRfi(db: Db, item: OutboxRow): Promise<OutboxHandlerResult> {
   }
 
   if (item.operation === "create") {
+    // Raised from a pin whose own create has not landed: the markup's push
+    // re-points this row to the server id, so wait for it rather than sending
+    // a reference the server cannot resolve.
+    if (row.sourceMarkupId?.startsWith("local_")) return done(false);
     const server = await rfisApi.create(item.projectId, {
       subject: row.subject,
       question: row.question,

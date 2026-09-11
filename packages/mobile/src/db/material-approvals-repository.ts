@@ -20,6 +20,15 @@ export type { ApprovalDecisionInput, LocalMaterialApproval, MaterialApprovalDraf
 
 export const MATERIAL_APPROVALS_RESOURCE = "material-approvals";
 
+/**
+ * What a request raised on this device carries. The pin it came from is kept
+ * locally so the plan can show the link; the server's material route does not
+ * take it, so the outbox never sends it.
+ */
+export type LocalMaterialApprovalDraft = MaterialApprovalDraft & {
+  sourceMarkupId?: string | null;
+};
+
 function localId(): string {
   return `local_${randomUUID()}`;
 }
@@ -75,7 +84,15 @@ export const materialApprovalsRepository = {
     return row;
   },
 
-  async createLocal(db: Db, projectId: string, input: MaterialApprovalDraft): Promise<string> {
+  /** One request raised from a plan pin, or nothing; the row is read as the plan needs it. */
+  bySourceMarkupQuery: (db: Db, markupId: string) =>
+    db
+      .select()
+      .from(materialApprovals)
+      .where(eq(materialApprovals.sourceMarkupId, markupId))
+      .limit(1),
+
+  async createLocal(db: Db, projectId: string, input: LocalMaterialApprovalDraft): Promise<string> {
     const id = localId();
     await db.transaction(async (tx) => {
       await tx.insert(materialApprovals).values({
@@ -92,6 +109,9 @@ export const materialApprovalsRepository = {
         status: "Pending",
         requestedReviewerId: input.requestedReviewerId ?? null,
         requestedReviewerName: input.requestedReviewerName,
+        documentId: input.documentId ?? null,
+        documentVersionId: input.documentVersionId ?? null,
+        sourceMarkupId: input.sourceMarkupId ?? null,
         isPendingSync: true,
         serverLastSyncedAt: null,
         updatedAt: Date.now(),
@@ -243,8 +263,24 @@ export const materialApprovalsRepository = {
   ): Promise<void> {
     const now = Date.now();
     await db.transaction(async (tx) => {
+      // The DTO does not echo the sheet or pin back; keep what was sent so the
+      // plan still shows the link after the id changes.
+      const [local] = await tx
+        .select({
+          documentId: materialApprovals.documentId,
+          documentVersionId: materialApprovals.documentVersionId,
+          sourceMarkupId: materialApprovals.sourceMarkupId,
+        })
+        .from(materialApprovals)
+        .where(eq(materialApprovals.id, localRowId))
+        .limit(1);
       await tx.delete(materialApprovals).where(eq(materialApprovals.id, localRowId));
-      await tx.insert(materialApprovals).values(materialApprovalServerValues(projectId, server, now));
+      await tx.insert(materialApprovals).values({
+        ...materialApprovalServerValues(projectId, server, now),
+        documentId: local?.documentId ?? null,
+        documentVersionId: local?.documentVersionId ?? null,
+        sourceMarkupId: local?.sourceMarkupId ?? null,
+      });
 
       await tx
         .update(materialApprovalComments)

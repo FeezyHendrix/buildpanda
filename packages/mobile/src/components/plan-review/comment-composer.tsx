@@ -26,6 +26,27 @@ const MODES: readonly SegmentedTab<CommentMode>[] = [
 
 const NOBODY = "";
 
+// The web's follow-up choice on a pin: the note is filed, and the office gets
+// the RFI or approval it needs to act on it, from the same tap.
+export const FOLLOW_UP = {
+  NONE: "none",
+  RFI: "rfi",
+  APPROVAL: "approval",
+} as const;
+export type FollowUpKind = (typeof FOLLOW_UP)[keyof typeof FOLLOW_UP];
+
+const FOLLOW_UPS: readonly { value: FollowUpKind; label: string }[] = [
+  { value: FOLLOW_UP.NONE, label: "None" },
+  { value: FOLLOW_UP.RFI, label: "Raise an RFI" },
+  { value: FOLLOW_UP.APPROVAL, label: "Request material approval" },
+];
+
+/** A pin's note plus who it is for and what the office should open from it. */
+export interface PinCommentDraft extends CommentDraft {
+  assigneeName: string | null;
+  followUp: FollowUpKind;
+}
+
 interface CapturedMedia {
   kind: MediaKind;
   uri: string;
@@ -47,11 +68,12 @@ export function CommentComposer({
   assignees: CommentAssignee[];
   busy: boolean;
   onCancel: () => void;
-  onSubmit: (draft: CommentDraft) => void;
+  onSubmit: (draft: PinCommentDraft) => void;
 }) {
   const [mode, setMode] = useState<CommentMode>(COMMENT_MODE.TEXT);
   const [text, setText] = useState("");
   const [assigneeId, setAssigneeId] = useState(NOBODY);
+  const [followUp, setFollowUp] = useState<FollowUpKind>(FOLLOW_UP.NONE);
   const [captured, setCaptured] = useState<CapturedMedia | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const recorder = useVoiceRecorder();
@@ -98,6 +120,8 @@ export function CommentComposer({
       mediaUri: captured?.uri ?? null,
       mediaDurationSeconds: captured?.durationSeconds ?? null,
       assigneeId: assigneeId === NOBODY ? null : assigneeId,
+      assigneeName: assignees.find((person) => person.id === assigneeId)?.name ?? null,
+      followUp,
     });
   }
 
@@ -193,6 +217,10 @@ export function CommentComposer({
           />
         </View>
       ) : null}
+
+      <View className="pt-3">
+        <OptionRow label="Follow-up" options={FOLLOW_UPS} value={followUp} onChange={setFollowUp} />
+      </View>
 
       <View className="flex-row items-center gap-2 pt-3">
         <Button variant="ghost" onPress={cancel} className="flex-1">

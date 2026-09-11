@@ -2,36 +2,30 @@
 
 import "./pdfjs-setup";
 import { useEffect, useRef, useState } from "react";
-import * as pdfjs from "pdfjs-dist";
 import {
-  BASE_SCALE,
-  clamp,
+  beginPinch,
   clampTransform as clampToViewport,
-  DEFAULT_ASPECT,
+  CLOUD_MIN_SIZE_PCT,
+  FIT_TRANSFORM,
   GESTURE_MODE,
   IDLE_GESTURE,
-  MAX_CANVAS_PIXELS,
-  MAX_ZOOM,
-  MIN_ZOOM,
+  LOUPE_MODES,
+  MEASURE_MIN_LEN_PCT,
   overlayStyle,
   PEN_MIN_STEP_PCT,
+  pinchTransform,
   round2,
   TAP_SLOP_PX,
   type Gesture,
   type Transform,
 } from "./canvas-support";
+import { measureDistancePct, normalizedRect } from "./markup-shapes";
 import { hitTestMarkup, MarkupLayer } from "./markup-svg";
 import { SheetLoupe } from "./sheet-loupe";
+import { useSheetPage } from "./use-sheet-page";
 import { palette } from "@/constants/colors";
 import { MARKUP_KIND, SHEET_TOOL } from "./markup-types";
-import type {
-  MarkupGeometry,
-  MarkupPoint,
-  MarkupRect,
-  SheetMarkup,
-  SheetRenderInfo,
-  SheetTool,
-} from "./markup-types";
+import type { MarkupGeometry, MarkupPoint, MarkupRect, SheetMarkup, SheetRenderInfo, SheetTool } from "./markup-types";
 
 export default function SheetCanvas({
   docKey,
@@ -41,11 +35,15 @@ export default function SheetCanvas({
   markups,
   selectedId,
   tool,
+  color,
+  metresPerPct,
+  fitNonce,
   draftPin,
   onCreate,
   onTapPoint,
   onSelect,
   onRendered,
+  onZoom,
   dom: _dom,
 }: {
   docKey: string;
@@ -55,31 +53,44 @@ export default function SheetCanvas({
   markups: SheetMarkup[];
   selectedId: string | null;
   tool: SheetTool;
+  /** The rail's markup colour: what a draft is drawn in before it is saved. */
+  color: string;
+  /** The sheet's calibrated scale, or null while a measure can only say "no scale set". */
+  metresPerPct: number | null;
+  /** Bump to fit the page to the viewport again (the rail's Fit button). */
+  fitNonce: number;
   draftPin: MarkupPoint | null;
   onCreate: (geometry: MarkupGeometry) => Promise<void>;
   onTapPoint: (at: MarkupPoint) => Promise<void>;
   onSelect: (id: string | null) => Promise<void>;
   onRendered: (info: SheetRenderInfo) => Promise<void>;
+  /** The zoom as a whole percentage, whenever it settles on a new value. */
+  onZoom: (pct: number) => Promise<void>;
   dom?: import("expo/dom").DOMProps;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const docCache = useRef<{ key: string; doc: import("pdfjs-dist").PDFDocumentProxy } | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<Gesture>({ ...IDLE_GESTURE });
+  // drafts are mirrored in refs so a pointer-up can read them without a setState updater side effect
+  const penRef = useRef<MarkupPoint[] | null>(null);
+  const rectRef = useRef<MarkupRect | null>(null);
+  const measureStartRef = useRef<MarkupPoint | null>(null);
+  const onZoomRef = useRef(onZoom);
+  onZoomRef.current = onZoom;
 
   const [vpSize, setVpSize] = useState({ w: 0, h: 0 });
-  const [aspect, setAspect] = useState(DEFAULT_ASPECT);
-  const [transform, setTransform] = useState<Transform>({ s: 1, tx: 0, ty: 0 });
+  const [transform, setTransform] = useState<Transform>(FIT_TRANSFORM);
   const [draftPen, setDraftPen] = useState<MarkupPoint[] | null>(null);
   const [draftRect, setDraftRect] = useState<MarkupRect | null>(null);
+  const [draftMeasure, setDraftMeasure] = useState<{ a: MarkupPoint; b: MarkupPoint } | null>(null);
+  const [measureStart, setMeasureStart] = useState<MarkupPoint | null>(null);
   // where the finger is while it places a point, so the loupe can show what it covers
   const [touch, setTouch] = useState<{ x: number; y: number } | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  const { aspect, loading, error, imageLoaded } = useSheetPage({ docKey, pdfBase64, imageDataUri, pageNo, canvasRef, onRendered });
   const box = { w: vpSize.w, h: vpSize.w * aspect };
 
   useEffect(() => {
@@ -92,69 +103,40 @@ export default function SheetCanvas({
     return () => ro.disconnect();
   }, []);
 
+  // A new page, and the Fit button, both start from the page fitted to the viewport.
   useEffect(() => {
-    setTransform({ s: 1, tx: 0, ty: 0 });
-    setDraftPen(null);
-    setDraftRect(null);
-  }, [docKey, pageNo]);
+    setTransform(FIT_TRANSFORM);
+    clearDrafts();
+  }, [docKey, pageNo, fitNonce]);
 
-  useEffect(
-    () => () => {
-      docCache.current?.doc.loadingTask.destroy().catch(() => undefined);
-      docCache.current = null;
-    },
-    [],
-  );
-
+  // A measure's first point belongs to the tool that placed it.
   useEffect(() => {
-    if (!pdfBase64 || imageDataUri) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+    if (tool !== SHEET_TOOL.MEASURE) setMeasureStartBoth(null);
+  }, [tool]);
 
-    (async () => {
-      let entry = docCache.current;
-      if (!entry || entry.key !== docKey) {
-        const raw = atob(pdfBase64);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-        const doc = await pdfjs.getDocument({ data: bytes, useSystemFonts: true }).promise;
-        docCache.current?.doc.loadingTask.destroy().catch(() => undefined);
-        entry = { key: docKey, doc };
-        docCache.current = entry;
-      }
-      if (cancelled) return;
+  const zoomPct = Math.round(transform.s * 100);
+  useEffect(() => {
+    void onZoomRef.current(zoomPct);
+  }, [zoomPct]);
 
-      const safePage = clamp(pageNo, 1, entry.doc.numPages);
-      const page = await entry.doc.getPage(safePage);
-      if (cancelled) return;
-
-      const probe = page.getViewport({ scale: 1 });
-      const scale = Math.min(BASE_SCALE, Math.sqrt(MAX_CANVAS_PIXELS / (probe.width * probe.height)));
-      const viewport = page.getViewport({ scale });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-      if (cancelled) return;
-
-      setAspect(viewport.height / viewport.width);
-      setLoading(false);
-      void onRendered({ aspect: viewport.height / viewport.width, pageCount: entry.doc.numPages });
-    })().catch((err: unknown) => {
-      if (cancelled) return;
-      setLoading(false);
-      setError(err instanceof Error ? err.message : "Could not render this sheet");
-    });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docKey, pdfBase64, imageDataUri, pageNo]);
+  function setPenBoth(points: MarkupPoint[] | null) {
+    penRef.current = points;
+    setDraftPen(points);
+  }
+  function setRectBoth(rect: MarkupRect | null) {
+    rectRef.current = rect;
+    setDraftRect(rect);
+  }
+  function setMeasureStartBoth(at: MarkupPoint | null) {
+    measureStartRef.current = at;
+    setMeasureStart(at);
+  }
+  function clearDrafts() {
+    setPenBoth(null);
+    setRectBoth(null);
+    setDraftMeasure(null);
+    setMeasureStartBoth(null);
+  }
 
   function pctFromClient(clientX: number, clientY: number): MarkupPoint | null {
     const el = contentRef.current;
@@ -168,6 +150,10 @@ export default function SheetCanvas({
   }
 
   const clampTransform = (t: Transform): Transform => clampToViewport(t, box, vpSize);
+  const viewportOrigin = () => {
+    const vp = viewportRef.current?.getBoundingClientRect();
+    return { left: vp?.left ?? 0, top: vp?.top ?? 0 };
+  };
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -176,16 +162,9 @@ export default function SheetCanvas({
 
     if (pointers.current.size === 2) {
       const [p1, p2] = [...pointers.current.values()];
-      const vp = viewportRef.current?.getBoundingClientRect();
-      setDraftPen(null);
-      setDraftRect(null);
-      g.mode = GESTURE_MODE.PINCH;
-      g.pinchDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-      g.pinchScale = transform.s;
-      g.pinchTx = transform.tx;
-      g.pinchTy = transform.ty;
-      g.pinchMidX = (p1.x + p2.x) / 2 - (vp?.left ?? 0);
-      g.pinchMidY = (p1.y + p2.y) / 2 - (vp?.top ?? 0);
+      clearDrafts();
+      setTouch(null);
+      beginPinch(g, p1, p2, transform, viewportOrigin());
       return;
     }
     if (pointers.current.size !== 1) return;
@@ -194,17 +173,24 @@ export default function SheetCanvas({
     g.startY = g.lastY = e.clientY;
     g.moved = false;
     g.startPct = pctFromClient(e.clientX, e.clientY);
-
-    if (tool === SHEET_TOOL.PEN || tool === SHEET_TOOL.COMMENT) setTouch({ x: e.clientX, y: e.clientY });
+    g.measureFrom = null;
 
     if (tool === SHEET_TOOL.PEN) {
       g.mode = GESTURE_MODE.PEN;
-      setDraftPen(g.startPct ? [g.startPct] : []);
+      setPenBoth(g.startPct ? [g.startPct] : []);
     } else if (tool === SHEET_TOOL.COMMENT) {
       g.mode = GESTURE_MODE.TAP;
+    } else if (tool === SHEET_TOOL.CLOUD) {
+      g.mode = GESTURE_MODE.CLOUD;
+      setRectBoth(g.startPct ? { ...g.startPct, w: 0, h: 0 } : null);
+    } else if (tool === SHEET_TOOL.MEASURE) {
+      g.mode = GESTURE_MODE.MEASURE;
+      // a second tap measures from the first; a fresh drag measures from where it began
+      g.measureFrom = measureStartRef.current ?? g.startPct;
     } else {
       g.mode = GESTURE_MODE.PAN;
     }
+    if (LOUPE_MODES.includes(g.mode)) setTouch({ x: e.clientX, y: e.clientY });
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
@@ -214,26 +200,13 @@ export default function SheetCanvas({
 
     if (Math.abs(e.clientX - g.startX) + Math.abs(e.clientY - g.startY) > TAP_SLOP_PX) g.moved = true;
 
-    // the loupe rides the finger while it draws or places a comment
-    if (g.mode === GESTURE_MODE.PEN || g.mode === GESTURE_MODE.TAP) setTouch({ x: e.clientX, y: e.clientY });
-    else if (g.mode === GESTURE_MODE.PINCH) setTouch(null);
+    // the loupe rides the finger while it draws, places a comment or measures
+    if (LOUPE_MODES.includes(g.mode)) setTouch({ x: e.clientX, y: e.clientY });
 
     if (g.mode === GESTURE_MODE.PINCH && pointers.current.size >= 2) {
       const [p1, p2] = [...pointers.current.values()];
-      const vp = viewportRef.current?.getBoundingClientRect();
-      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-      if (g.pinchDist <= 0) return;
-      const s = clamp(g.pinchScale * (dist / g.pinchDist), MIN_ZOOM, MAX_ZOOM);
-      const midX = (p1.x + p2.x) / 2 - (vp?.left ?? 0);
-      const midY = (p1.y + p2.y) / 2 - (vp?.top ?? 0);
-      const ratio = s / g.pinchScale;
-      setTransform(
-        clampTransform({
-          s,
-          tx: midX - ratio * (g.pinchMidX - g.pinchTx),
-          ty: midY - ratio * (g.pinchMidY - g.pinchTy),
-        }),
-      );
+      const next = pinchTransform(g, p1, p2, viewportOrigin());
+      if (next) setTransform(clampTransform(next));
       return;
     }
 
@@ -246,18 +219,35 @@ export default function SheetCanvas({
       return;
     }
 
+    const pt = pctFromClient(e.clientX, e.clientY);
+    if (!pt) return;
+
     if (g.mode === GESTURE_MODE.PEN) {
-      const pt = pctFromClient(e.clientX, e.clientY);
-      if (!pt) return;
-      setDraftPen((prev) => {
-        if (!prev) return prev;
-        const last = prev[prev.length - 1];
-        if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < PEN_MIN_STEP_PCT) return prev;
-        return [...prev, pt];
-      });
+      const prev = penRef.current;
+      if (!prev) return;
+      const last = prev[prev.length - 1];
+      if (last && Math.hypot(pt.x - last.x, pt.y - last.y) < PEN_MIN_STEP_PCT) return;
+      setPenBoth([...prev, pt]);
+    } else if (g.mode === GESTURE_MODE.CLOUD && g.startPct) {
+      setRectBoth(normalizedRect(g.startPct, pt));
+    } else if (g.mode === GESTURE_MODE.MEASURE && g.measureFrom && g.moved) {
+      setDraftMeasure({ a: g.measureFrom, b: pt });
+    }
+  }
+
+  function finishMeasure(g: Gesture, e: React.PointerEvent<HTMLDivElement>) {
+    const pt = pctFromClient(e.clientX, e.clientY);
+    setDraftMeasure(null);
+    if (!g.moved && !measureStartRef.current) {
+      // first of two taps: hold the point and wait for the second
+      setMeasureStartBoth(g.startPct);
       return;
     }
-
+    const from = g.measureFrom;
+    setMeasureStartBoth(null);
+    if (!from || !pt) return;
+    if (measureDistancePct(from, pt, aspect) < MEASURE_MIN_LEN_PCT) return;
+    void onCreate({ kind: MARKUP_KIND.MEASURE, a: from, b: pt });
   }
 
   function finishSinglePointer(e: React.PointerEvent<HTMLDivElement>) {
@@ -265,23 +255,22 @@ export default function SheetCanvas({
     setTouch(null);
 
     if (g.mode === GESTURE_MODE.PEN) {
-      setDraftPen((points) => {
-        if (points && points.length >= 2) void onCreate({ kind: MARKUP_KIND.PEN, points });
-        return null;
-      });
+      const points = penRef.current;
+      setPenBoth(null);
+      if (points && points.length >= 2) void onCreate({ kind: MARKUP_KIND.PEN, points });
+    } else if (g.mode === GESTURE_MODE.CLOUD) {
+      const rect = rectRef.current;
+      setRectBoth(null);
+      if (rect && rect.w > CLOUD_MIN_SIZE_PCT && rect.h > CLOUD_MIN_SIZE_PCT) void onCreate({ kind: MARKUP_KIND.CLOUD, rect });
+    } else if (g.mode === GESTURE_MODE.MEASURE) {
+      finishMeasure(g, e);
     } else if (g.mode === GESTURE_MODE.TAP && !g.moved) {
       const pt = pctFromClient(e.clientX, e.clientY);
       if (pt) void onTapPoint(pt);
     } else if (g.mode === GESTURE_MODE.PAN && !g.moved) {
       const pt = pctFromClient(e.clientX, e.clientY);
       if (pt) {
-        const hit = hitTestMarkup(
-          markups,
-          { x: (pt.x / 100) * box.w, y: (pt.y / 100) * box.h },
-          box.w,
-          box.h,
-          24 / transform.s,
-        );
+        const hit = hitTestMarkup(markups, { x: (pt.x / 100) * box.w, y: (pt.y / 100) * box.h }, box.w, box.h, 24 / transform.s);
         void onSelect(hit);
       }
     }
@@ -344,27 +333,20 @@ export default function SheetCanvas({
             alt="Plan sheet"
             draggable={false}
             style={{ width: "100%", height: "100%", display: "block" }}
-            onLoad={(e) => {
-              const el = e.currentTarget;
-              if (el.naturalWidth > 0) {
-                const nextAspect = el.naturalHeight / el.naturalWidth;
-                setAspect(nextAspect);
-                setLoading(false);
-                void onRendered({ aspect: nextAspect, pageCount: 1 });
-              }
-            }}
+            onLoad={(e) => imageLoaded(e.currentTarget)}
           />
         ) : (
           <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
         )}
         <MarkupLayer
           markups={markups}
-          draftPen={draftPen}
-          draftRect={draftRect}
-          draftPin={draftPin}
+          draft={{ pen: draftPen, rect: draftRect, measure: draftMeasure, measureStart, pin: draftPin }}
+          draftColor={color}
           width={box.w}
           height={box.h}
           selectedId={selectedId}
+          aspect={aspect}
+          metresPerPct={metresPerPct}
         />
       </div>
 
@@ -373,6 +355,7 @@ export default function SheetCanvas({
         at={touch}
         transform={transform}
         viewportW={viewportRef.current?.clientWidth ?? 0}
+        color={color}
       />
 
       {loading ? (
