@@ -1,14 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useState } from "react";
 import { router } from "expo-router";
 import { FlatList, Pressable, View, useWindowDimensions } from "react-native";
 import { Card, Spinner, Text } from "@/components/atoms";
 import { Page } from "@/components/molecules/page";
 import { UpdateCard } from "@/components/molecules/update-card";
-import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { ICON_BRAND } from "@/constants/colors";
 import { TabletMinWidth } from "@/constants/theme";
-import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { useProjectUpdates } from "@/hooks/use-updates";
 import { useFieldSession } from "@/lib/field-session";
@@ -65,14 +63,11 @@ function ToolCard({ tool, isWide }: { tool: FieldTool; isWide: boolean }) {
 export default function ToolsTab() {
   const { width } = useWindowDimensions();
   const { projectId, organizationId } = useFieldSession();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [switchingId, setSwitchingId] = useState<string | undefined>(undefined);
   const isWide = width >= TabletMinWidth;
 
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
   const { data: updates, isPending: updatesPending } = useProjectUpdates(projectId);
-  const setActive = useSetActiveOrganization();
 
   return (
     <Page
@@ -81,7 +76,6 @@ export default function ToolsTab() {
       workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
       projectName={project?.name}
       projectPending={Boolean(projectId) && !project}
-      onPressWorkspace={() => setSheetOpen(true)}
       onPressProject={() => router.push("/select-project")}
       scroll={false}
     >
@@ -133,27 +127,6 @@ export default function ToolsTab() {
         />
       </View>
 
-      <WorkspaceSheet
-        visible={sheetOpen}
-        workspaces={(organizations ?? []).map((o) => ({ id: o.id, name: o.name }))}
-        activeId={organizationId}
-        busyId={switchingId}
-        onClose={() => setSheetOpen(false)}
-        onSelect={async (id) => {
-          if (id === organizationId) {
-            setSheetOpen(false);
-            return;
-          }
-          setSwitchingId(id);
-          try {
-            await setActive.mutateAsync(id);
-            router.replace("/");
-          } finally {
-            setSwitchingId(undefined);
-            setSheetOpen(false);
-          }
-        }}
-      />
     </Page>
   );
 }

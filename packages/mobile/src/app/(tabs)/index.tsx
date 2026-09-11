@@ -2,20 +2,18 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
-import { Card, Spinner, Text } from "@/components/atoms";
+import { Button, Card, Spinner, Text } from "@/components/atoms";
 import { CategoryCard } from "@/components/molecules/category-card";
 import { DocumentFileRow } from "@/components/molecules/document-file-row";
 import { Page } from "@/components/molecules/page";
-import { HeaderIconButton } from "@/components/molecules/header-icon-button";
 import { SegmentedTabs, type SegmentedTab } from "@/components/molecules/segmented-tabs";
-import { WorkspaceSheet } from "@/components/molecules/workspace-sheet";
 import { ICON_BRAND } from "@/constants/colors";
 import { TabletMinWidth } from "@/constants/theme";
 import type { Db } from "@/db/client";
 import { DOCUMENT_GROUP, documentsRepository, type DocumentGroup } from "@/db/documents-repository";
 import { useLocalDb } from "@/db/provider";
 import { useDocumentCategories, useLocalDocuments, useRecentDocuments } from "@/hooks/use-local-documents";
-import { useOrganizations, useSetActiveOrganization } from "@/hooks/use-organizations";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { useProject } from "@/hooks/use-projects";
 import { cacheDocument } from "@/lib/download-file";
 import { useFieldSession } from "@/lib/field-session";
@@ -176,27 +174,16 @@ export default function Plans() {
   const { db, ready } = useLocalDb();
   const { data: organizations } = useOrganizations();
   const { data: project } = useProject(projectId);
-  const setActive = useSetActiveOrganization();
 
   const [group, setGroup] = useState<DocumentGroup>(DOCUMENT_GROUP.PLAN);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [switchingId, setSwitchingId] = useState<string | undefined>(undefined);
   const isPlans = group === DOCUMENT_GROUP.PLAN;
 
   return (
     <Page
       title={isPlans ? "Plans" : "Documents"}
-      rightButtons={
-        <HeaderIconButton
-          icon="cloud-upload-outline"
-          label={isPlans ? "Upload a plan" : "Upload a document"}
-          onPress={() => router.push(`/tools/documents/upload?group=${group}` as never)}
-        />
-      }
       workspaceName={(organizations ?? []).find((o) => o.id === organizationId)?.name}
       projectName={project?.name}
       projectPending={Boolean(projectId) && !project}
-      onPressWorkspace={() => setSheetOpen(true)}
       onPressProject={() => router.push("/select-project")}
     >
       <View className="pb-3">
@@ -204,34 +191,24 @@ export default function Plans() {
       </View>
 
       {ready && db && projectId ? (
-        <Browser db={db} projectId={projectId} group={group} />
+        <>
+          <Browser db={db} projectId={projectId} group={group} />
+          <View className="pt-4">
+            <Button
+              variant="secondary"
+              onPress={() => router.push(`/tools/documents/upload?group=${group}` as never)}
+              accessibilityLabel={isPlans ? "Upload a plan" : "Upload a document"}
+            >
+              {isPlans ? "Upload a plan" : "Upload a document"}
+            </Button>
+          </View>
+        </>
       ) : (
         <View className="items-center py-12">
           <Spinner size="md" />
         </View>
       )}
 
-      <WorkspaceSheet
-        visible={sheetOpen}
-        workspaces={(organizations ?? []).map((o) => ({ id: o.id, name: o.name }))}
-        activeId={organizationId}
-        busyId={switchingId}
-        onClose={() => setSheetOpen(false)}
-        onSelect={async (id) => {
-          if (id === organizationId) {
-            setSheetOpen(false);
-            return;
-          }
-          setSwitchingId(id);
-          try {
-            await setActive.mutateAsync(id);
-            router.replace("/");
-          } finally {
-            setSwitchingId(undefined);
-            setSheetOpen(false);
-          }
-        }}
-      />
     </Page>
   );
 }

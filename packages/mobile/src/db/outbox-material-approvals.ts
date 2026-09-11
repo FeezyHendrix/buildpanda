@@ -38,6 +38,10 @@ export async function pushMaterialApprovalOutboxItem(
     }
 
     if (item.operation === "create") {
+      // Raised from a pin whose own create has not landed: the markup's push
+      // re-points this row to the server id, so wait for it rather than
+      // sending a reference the server cannot resolve.
+      if (row.sourceMarkupId?.startsWith("local_")) return done(false);
       const server = await materialApprovalsApi.create(item.projectId, {
         title: row.title,
         materialName: row.materialName,
@@ -48,6 +52,9 @@ export async function pushMaterialApprovalOutboxItem(
         neededBy: row.neededBy,
         description: row.description,
         requestedReviewerId: row.requestedReviewerId,
+        // The material route takes the sheet and revision but not the pin.
+        documentId: row.documentId,
+        documentVersionId: row.documentVersionId,
       });
       await materialApprovalsRepository.reconcileCreate(db, item.projectId, row.id, server);
     } else if (item.operation === "decision") {

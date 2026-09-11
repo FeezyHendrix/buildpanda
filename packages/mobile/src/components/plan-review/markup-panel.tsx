@@ -6,8 +6,13 @@ import { Pressable, ScrollView, TextInput, View } from "react-native";
 import type { DrawingMarkup, DrawingMarkupComment } from "@/api/drawing-markup";
 import { PendingBadge, Spinner, Text } from "@/components/atoms";
 import { ICON_BRAND, ICON_DANGER, ICON_INVERSE, ICON_MUTED, ICON_STRONG, ICON_SUBTLE, ICON_SUCCESS } from "@/constants/colors";
+import type { Db } from "@/db/client";
+import { useLocalDb } from "@/db/provider";
+import { useLocalRfiForMarkup } from "@/hooks/use-local-rfis";
+import { useLocalMaterialApprovalForMarkup } from "@/hooks/use-material-approvals";
 import { formatDateTime } from "@/lib/dates";
 import { cacheFileById } from "@/lib/download-file";
+import { htmlToText } from "@/lib/html";
 import { MEDIA_KIND, type MarkupKind } from "./markup-types";
 
 const KIND_LABELS: Record<MarkupKind, string> = {
@@ -119,6 +124,63 @@ function VideoCommentControl({
   );
 }
 
+/** One tap from the pin to the record the office is working. */
+function FollowUpChip({
+  label,
+  pending,
+  onPress,
+}: {
+  label: string;
+  pending: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={`Open ${label}`}
+      className="h-11 flex-row items-center gap-2 rounded-full bg-primary-50 px-4"
+    >
+      <Ionicons name="link-outline" size={14} color={ICON_BRAND} />
+      <Text weight="semibold" tone="brand" numberOfLines={1} className="max-w-56 text-[13px]">
+        {label}
+      </Text>
+      {pending ? <PendingBadge /> : null}
+    </Pressable>
+  );
+}
+FollowUpChip.displayName = "FollowUpChip";
+
+/**
+ * The RFI or approval raised from this pin. Derived from the local rows'
+ * `sourceMarkupId`, not the server's `linkedRfiId`, so the link shows with no
+ * signal and while the pin's own create is still queued.
+ */
+function FollowUpLinks({ db, markupId }: { db: Db; markupId: string }) {
+  const rfi = useLocalRfiForMarkup(db, markupId);
+  const approval = useLocalMaterialApprovalForMarkup(db, markupId);
+  if (!rfi && !approval) return null;
+  return (
+    <View className="flex-row flex-wrap gap-2 px-4 pt-2">
+      {rfi ? (
+        <FollowUpChip
+          label={rfi.number > 0 ? `RFI #${rfi.number}` : "RFI"}
+          pending={rfi.isPendingSync}
+          onPress={() => router.push(`/tools/rfis/${rfi.id}`)}
+        />
+      ) : null}
+      {approval ? (
+        <FollowUpChip
+          label={`Approval: ${approval.title}`}
+          pending={approval.isPendingSync}
+          onPress={() => router.push(`/tools/material-approvals/${approval.id}`)}
+        />
+      ) : null}
+    </View>
+  );
+}
+FollowUpLinks.displayName = "FollowUpLinks";
+
 /** Rows read from SQLite carry a pending flag the API type does not know about. */
 type LocalComment = DrawingMarkupComment & { isPendingSync?: boolean };
 
@@ -151,7 +213,8 @@ function CommentRow({
           </View>
         ) : null}
       </View>
-      <Text className="pt-0.5 text-sm">{comment.body}</Text>
+      {/* No read-only rich-text renderer exists in the app yet; the HTML is read as text. */}
+      <Text className="pt-0.5 text-sm">{comment.bodyHtml ? htmlToText(comment.bodyHtml) || comment.body : comment.body}</Text>
       {comment.mediaKind === MEDIA_KIND.AUDIO ? (
         <AudioCommentControl comment={comment} onError={onError} />
       ) : null}
@@ -180,6 +243,7 @@ export function MarkupPanel({
   onError: (message: string) => void;
 }) {
   const [draft, setDraft] = useState("");
+  const { db } = useLocalDb();
   const resolved = Boolean(markup.resolvedAt);
 
   function send() {
@@ -241,6 +305,8 @@ export function MarkupPanel({
       <Text tone="secondary" className="px-4 pt-1 text-xs">
         {markup.authorName ?? "You"} · {formatDateTime(markup.createdAt)}
       </Text>
+
+      {db ? <FollowUpLinks db={db} markupId={markup.id} /> : null}
 
       <ScrollView className="max-h-44 px-4 pt-2" keyboardShouldPersistTaps="handled">
         {markup.comments.length === 0 && !busy ? (

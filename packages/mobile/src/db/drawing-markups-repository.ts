@@ -6,7 +6,15 @@ import type { MarkupGeometry } from "@/components/plan-review/markup-types";
 import { palette } from "@/constants/colors";
 import type { Db } from "./client";
 import { enqueueDelete, reviveOrQueue } from "./enqueue-update";
-import { drawingMarkupComments, drawingMarkups, outbox, type DrawingMarkupCommentRow, type DrawingMarkupRow } from "./schema";
+import {
+  drawingMarkupComments,
+  drawingMarkups,
+  materialApprovals,
+  outbox,
+  rfis,
+  type DrawingMarkupCommentRow,
+  type DrawingMarkupRow,
+} from "./schema";
 
 // Markups drawn on site are written here first and pushed by the outbox, so a
 // redline survives a basement with no signal. Geometry is stored as the JSON
@@ -148,7 +156,9 @@ export const drawingMarkupsRepository = {
    * Replaces the local id with the server's once the push lands, and moves the
    * comments queued against it in the same transaction. Split in two, a crash
    * between them would leave comments pointing at a markup row that no longer
-   * exists, and they would wait for a parent that never arrives.
+   * exists, and they would wait for a parent that never arrives. An RFI or
+   * material approval raised from the pin is re-pointed here too: its own
+   * push waits on this id, so it must change in the same write.
    */
   async reconcileCreate(db: Db, localId: string, serverId: string): Promise<void> {
     await db.transaction(async (tx) => {
@@ -157,6 +167,11 @@ export const drawingMarkupsRepository = {
         .set({ id: serverId, isPendingSync: false, updatedAt: Date.now() })
         .where(eq(drawingMarkups.id, localId));
       await tx.update(drawingMarkupComments).set({ markupId: serverId }).where(eq(drawingMarkupComments.markupId, localId));
+      await tx.update(rfis).set({ sourceMarkupId: serverId }).where(eq(rfis.sourceMarkupId, localId));
+      await tx
+        .update(materialApprovals)
+        .set({ sourceMarkupId: serverId })
+        .where(eq(materialApprovals.sourceMarkupId, localId));
     });
   },
 

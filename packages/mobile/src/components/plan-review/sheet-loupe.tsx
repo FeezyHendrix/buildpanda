@@ -26,6 +26,8 @@ export interface LoupeProps {
   /** The viewport transform the sheet is drawn under. */
   transform: { tx: number; ty: number; s: number };
   viewportW: number;
+  /** The crosshair takes the markup colour, so it previews the mark it will place. */
+  color?: string;
 }
 
 function naturalSize(el: HTMLCanvasElement | HTMLImageElement): { w: number; h: number } {
@@ -33,7 +35,7 @@ function naturalSize(el: HTMLCanvasElement | HTMLImageElement): { w: number; h: 
 }
 
 /** The sheet under the fingertip, magnified, while a point is being placed. */
-export function SheetLoupe({ source, at, transform, viewportW }: LoupeProps) {
+export function SheetLoupe({ source, at, transform, viewportW, color = palette.primary500 }: LoupeProps) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function SheetLoupe({ source, at, transform, viewportW }: LoupeProps) {
     } catch {
       // a source that is not yet decodable draws nothing; the crosshair still helps
     }
-    ctx.strokeStyle = palette.primary500;
+    ctx.strokeStyle = color;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(SIZE / 2, SIZE / 2 - 10);
@@ -70,7 +72,7 @@ export function SheetLoupe({ source, at, transform, viewportW }: LoupeProps) {
     ctx.moveTo(SIZE / 2 - 10, SIZE / 2);
     ctx.lineTo(SIZE / 2 + 10, SIZE / 2);
     ctx.stroke();
-  }, [source.el, source.boxW, source.boxH, at, transform.tx, transform.ty, transform.s]);
+  }, [source.el, source.boxW, source.boxH, at, transform.tx, transform.ty, transform.s, color]);
 
   if (!at || !source.el) return null;
   // sit above the finger, and flip to the other side rather than leave the screen

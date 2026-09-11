@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SyncIndicator, Text } from "@/components/atoms";
 import { ICON_INVERSE } from "@/constants/colors";
@@ -22,7 +22,6 @@ interface PageProps {
   projectName?: string;
   /** Keeps the scope slot in place with a spinner while the project name loads. */
   projectPending?: boolean;
-  onPressWorkspace?: () => void;
   onPressProject?: () => void;
   /** Set false when the child owns scrolling (FlatList screens). */
   scroll?: boolean;
@@ -49,7 +48,6 @@ export function Page({
   workspaceName,
   projectName,
   projectPending = false,
-  onPressWorkspace,
   onPressProject,
   scroll = true,
   footer,
@@ -57,7 +55,11 @@ export function Page({
   children,
 }: PageProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const sync = useSyncState();
+  // Project names are long ("Marbella Modern Phase 2 Block C"); give the
+  // switcher just under half the bar, capped so a tablet does not stretch it.
+  const scopeWidth = Math.min(320, Math.round(width * 0.45));
   const isCentred = variant === "default";
   const hasBar = Boolean(onBack || title || rightButtons || showSync);
   const hasScope = Boolean(projectName || workspaceName || projectPending);
@@ -80,12 +82,11 @@ export function Page({
                 </Pressable>
               ) : null}
               {hasScope ? (
-                <View className="min-w-0" style={{ maxWidth: 150 }}>
+                <View className="min-w-0" style={{ maxWidth: scopeWidth }}>
                   <ScopeSelector
                     workspaceName={workspaceName}
                     projectName={projectName}
                     projectPending={projectPending}
-                    onPressWorkspace={onPressWorkspace}
                     onPressProject={onPressProject}
                     compact
                   />
@@ -121,7 +122,7 @@ export function Page({
               <View
                 pointerEvents="none"
                 className="absolute inset-0 items-center justify-center"
-                style={{ paddingHorizontal: hasScope ? 150 : 56 }}
+                style={{ paddingHorizontal: hasScope ? scopeWidth : 56 }}
               >
                 {title ? (
                   <Text weight="bold" tone="inverse" className="text-[17px]" numberOfLines={1}>

@@ -56,6 +56,20 @@ export function useLocalMaterialApproval(db: Db, projectId: string, approvalId: 
   return { approval, isPending };
 }
 
+/**
+ * The material approval raised from one plan pin, if this device raised it.
+ * Derived from the local row's `sourceMarkupId`, so it reads with no signal.
+ */
+export function useLocalMaterialApprovalForMarkup(db: Db, markupId: string) {
+  const query = useMemo(
+    () => materialApprovalsRepository.bySourceMarkupQuery(db, markupId),
+    [db, markupId],
+  );
+  const live = useLiveQuery(query);
+  const row = live.data?.[0];
+  return useMemo(() => (row ? toMaterialApproval(row) : null), [row]);
+}
+
 export function useLocalMaterialApprovalComments(db: Db, projectId: string, approvalId: string) {
   const query = useMemo(
     () => materialApprovalCommentsRepository.listQuery(db, approvalId),

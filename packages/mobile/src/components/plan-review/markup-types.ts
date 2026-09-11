@@ -45,19 +45,41 @@ type MarkupShape =
 
 export type MarkupGeometry = MarkupShape & { space?: GeometrySpace };
 
-// Cloud is no longer offered: a revision cloud is a drafting convention for
-// "this changed", and the revision compare says that better. Existing clouds
-// still render, they just cannot be drawn any more.
-export const SHEET_TOOLS = ["pan", "comment", "pen"] as const;
+// Cloud was once dropped here on the grounds that the revision compare says
+// "this changed" better. The web draws revision clouds (plan-review-toolbar),
+// so an office markup can arrive as a cloud and the field must be able to
+// answer in kind — the tool set mirrors the web's, minus its mouse-only Select.
+export const SHEET_TOOLS = ["pan", "comment", "pen", "cloud", "measure"] as const;
 export type SheetTool = (typeof SHEET_TOOLS)[number];
 
 export const SHEET_TOOL = {
   PAN: "pan",
   COMMENT: "comment",
   PEN: "pen",
+  CLOUD: "cloud",
+  MEASURE: "measure",
 } as const satisfies Record<string, SheetTool>;
 
+/**
+ * The web's markup palette (packages/frontend plan-review-types.ts
+ * MARKUP_COLORS), same hex values so a colour chosen here reads the same on
+ * the office screen. These are not tailwind tokens — they are markup ink,
+ * chosen to contrast with a drawing — so they live here, not in `palette`.
+ */
+export const MARKUP_COLORS = [
+  { value: "#004DE7", label: "Blue" },
+  { value: "#ef4444", label: "Red" },
+  { value: "#f97316", label: "Orange" },
+  { value: "#eab308", label: "Yellow" },
+  { value: "#22c55e", label: "Green" },
+  { value: "#111827", label: "Black" },
+] as const;
+export type MarkupColor = (typeof MARKUP_COLORS)[number]["value"];
+export const DEFAULT_MARKUP_COLOR: MarkupColor = MARKUP_COLORS[0].value;
+
 // A sheet carries pen and comments; a reader wants one without the other.
+// Clouds ride with the ink layer: both are drawn marks, and a sheet with ink
+// hidden is a sheet with nothing drawn on it.
 export const SHEET_LAYERS = ["ink", "comments"] as const;
 export type SheetLayer = (typeof SHEET_LAYERS)[number];
 export type LayerVisibility = Record<SheetLayer, boolean>;
@@ -69,6 +91,8 @@ export interface CommentDraft {
   mediaUri: string | null;
   mediaDurationSeconds: number | null;
   assigneeId: string | null;
+  /** The rail's markup colour, for the pin this comment anchors to. */
+  color?: string;
 }
 
 export interface SheetMarkup {
@@ -82,4 +106,14 @@ export interface SheetMarkup {
 export interface SheetRenderInfo {
   aspect: number;
   pageCount: number;
+}
+
+/**
+ * A sheet's calibrated scale: metres per percent of sheet width, set by a
+ * user drawing a line along a known length. Per revision, kept on the
+ * device — it is a reading aid, not a record, so it has no server row.
+ */
+export interface SheetScale {
+  metresPerPct: number;
+  calibratedAt: number;
 }
