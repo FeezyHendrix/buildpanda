@@ -52,12 +52,15 @@ export function DocumentsTable({
   categories,
   canManage,
   onOpenDocument,
+  emptyMessage = "No documents uploaded yet.",
 }: {
   documents: ProjectDocument[];
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
   onOpenDocument?: (doc: ProjectDocument) => void;
+  /** Shown when there are no rows — the page says whether that is "none uploaded" or "none match". */
+  emptyMessage?: string;
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
@@ -79,7 +82,7 @@ export function DocumentsTable({
                 colSpan={5}
                 className="px-6 py-10 text-center text-sm text-gray-500"
               >
-                No documents uploaded yet.
+                {emptyMessage}
               </td>
             </tr>
           ) : (

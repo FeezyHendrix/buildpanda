@@ -80,6 +80,7 @@ export default function ProjectPlans() {
 
         <DocumentsTable
           documents={visible}
+          emptyMessage={planDocuments.length > 0 ? "No plans match these filters." : "No plans uploaded yet."}
           projectId={project.id}
           categories={planCategories}
           canManage={canManage}
