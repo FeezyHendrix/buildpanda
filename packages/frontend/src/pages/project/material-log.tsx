@@ -169,18 +169,12 @@ export default function ProjectMaterialLog() {
         {sortedStock.length === 0 ? (
           <Card padding="none">
             <EmptyState
-              icon={<StackIcon className="size-8 text-gray-300" />}
+              variant="inline"
+              icon={<StackIcon />}
               title="No stock yet"
               description="Log the first delivery and this project's running stock levels will build up here."
-              action={
-                canManage ? (
-                  <Button variant="primary" size="md" onClick={() => setLogOpen(true)}>
-                    <PlusIcon className="size-4" />
-                    Log material
-                  </Button>
-                ) : undefined
-              }
-              className="px-6 py-12"
+              action={canManage ? { label: "Log material", onClick: () => setLogOpen(true), icon: <PlusIcon /> } : undefined}
+              className="px-6"
             />
           </Card>
         ) : (

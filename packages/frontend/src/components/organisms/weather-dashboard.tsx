@@ -261,10 +261,9 @@ export function WeatherDashboard({ projectId }: { projectId: string }) {
             </div>
           ) : (
             <EmptyState
-              title="No scheduled activities today due to weather"
-              // icon={(<ReactSVG src={icons.riskShield} />)}
-              description="Weather analysis is unavailable right now"
-              className="py-6"
+              title="No weather-affected activities today"
+              description="Weather analysis is unavailable right now."
+              variant="inline"
             />
           )}
         </div>

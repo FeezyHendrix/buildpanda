@@ -7,7 +7,6 @@ import {
   useParams,
 } from "react-router-dom";
 import { useState, type ReactNode } from "react";
-import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -69,11 +68,7 @@ export default function ProjectLayout() {
           <EmptyState
             title="Project not found"
             description="We couldn't find the project you're looking for. It may have been removed or you don't have access."
-            action={
-              <Button variant="primary" onClick={() => navigate("/")}>
-                Back to home
-              </Button>
-            }
+            action={{ label: "Back to home", onClick: () => navigate("/") }}
           />
         </main>
       </AppShell>

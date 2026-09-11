@@ -270,21 +270,10 @@ export function ScheduleOfValuesDrawer({
 
           {draft.length === 0 ? (
             <EmptyState
+              variant="inline"
               title="No billing months yet"
               description="Add the months this stage gets billed in and give each one its share of the stage value."
-              className="py-2"
-              action={
-                canManage ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={addLine}
-                  >
-                    Add month
-                  </Button>
-                ) : undefined
-              }
+              action={canManage ? { label: "Add month", onClick: addLine } : undefined}
             />
           ) : (
             <ul className="flex flex-col gap-2">

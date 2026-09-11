@@ -503,10 +503,10 @@ export default function ProjectKeyDates() {
                 <tr>
                   <td colSpan={6} className="px-4">
                     <EmptyState
-                      icon={<CalendarIcon className="size-8 text-gray-300" />}
+                      variant="inline"
+                      icon={<CalendarIcon />}
                       title={keyDates.length === 0 ? "No key dates yet" : "No key dates match your filters"}
                       description={keyDates.length === 0 ? "Add the milestones you want to track." : "Try clearing the search or status filter."}
-                      className="py-10"
                     />
                   </td>
                 </tr>

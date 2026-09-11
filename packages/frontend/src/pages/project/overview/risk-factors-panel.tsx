@@ -52,10 +52,10 @@ export function RiskFactorsPanel({
       <div className="bg-white rounded-[12px] h-full m-1 p-6">
         {risks.length === 0 ? (
           <EmptyState
-            title="No active risks"
-            icon={(<ReactSVG src={icons.riskShield} />)}
+            variant="inline"
+            title="No active risks yet"
+            icon={<ReactSVG src={icons.riskShield} />}
             description="Add a risk factor to track and mitigate issues on this project."
-            className="py-6"
           />
         ) : (
           <ul className="flex flex-col gap-3">

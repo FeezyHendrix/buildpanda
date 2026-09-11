@@ -578,21 +578,14 @@ export default function ProjectPurchaseOrders() {
             <Spinner size="lg" />
           </div>
         ) : purchaseOrders.length === 0 ? (
-          <Card padding="lg">
-            <EmptyState
-              icon={<FinancesIcon className="size-6" />}
-              title="No purchase orders yet"
-              description="Create vendor POs with line items to track committed spend before invoices arrive."
-              action={
-                canManage ? (
-                  <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-                    <PlusIcon className="size-4" />
-                    New purchase order
-                  </Button>
-                ) : undefined
-              }
-            />
-          </Card>
+          <EmptyState
+            icon={<FinancesIcon />}
+            title="No purchase orders yet"
+            description="Create vendor POs with line items to track committed spend before invoices arrive."
+            action={
+              canManage ? { label: "New purchase order", onClick: () => setCreateOpen(true), icon: <PlusIcon /> } : undefined
+            }
+          />
         ) : (
           <div className="grid gap-4">
             {purchaseOrders.map((purchaseOrder) => (

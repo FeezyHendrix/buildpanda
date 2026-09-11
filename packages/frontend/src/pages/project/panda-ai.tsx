@@ -210,25 +210,17 @@ export default function ProjectPandaAi() {
         </div>
       ) : !insight ? (
         <EmptyState
-          title="No Analysis Yet"
+          title="No analysis yet"
           description="Run your first Panda AI analysis to get prioritized suggestions and health metrics."
-          action={
-            <Button variant="primary" size="md" onClick={handleAnalyze}>
-              Run first analysis
-            </Button>
-          }
+          action={{ label: "Run first analysis", onClick: handleAnalyze }}
         />
       ) : insight.status === "failed" ? (
         <EmptyState
-          title="Analysis Failed"
+          title="Analysis failed"
           description={
             insight.error || "An error occurred while generating the analysis."
           }
-          action={
-            <Button variant="primary" size="md" onClick={handleAnalyze}>
-              Try again
-            </Button>
-          }
+          action={{ label: "Try again", onClick: handleAnalyze }}
         />
       ) : (
         <div className="mt-8 grid gap-6">

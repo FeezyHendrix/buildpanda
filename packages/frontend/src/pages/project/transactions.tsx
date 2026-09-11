@@ -612,18 +612,16 @@ export default function TransactionsPage() {
             </div>
           ) : isEmpty ? (
             <EmptyState
-              icon={<FinancesIcon className="size-12 text-gray-300" />}
+              icon={<FinancesIcon />}
               title="No expenses recorded yet"
               description="Start recording site spend to build your log."
-              action={<Button onClick={() => setUpsertTarget("new")}>Record expense</Button>}
-              className="py-16"
+              action={{ label: "Record expense", onClick: () => setUpsertTarget("new") }}
             />
           ) : transactions.length === 0 ? (
             <EmptyState
-              title="No results found"
+              title="No expenses match these filters"
               description="Try adjusting your filters."
-              action={<Button variant="secondary" onClick={handleClearFilters}>Clear filters</Button>}
-              className="py-16"
+              action={{ label: "Clear filters", onClick: handleClearFilters }}
             />
           ) : (
             <div className="overflow-x-auto">

@@ -74,6 +74,7 @@ function TemplateRow({ template, canManage, onDelete }: { template: ProposalTemp
 TemplateRow.displayName = "TemplateRow";
 
 export default function ProposalTemplatesPage() {
+  const navigate = useNavigate();
   const ability = useAbility();
   const canManage = ability.can("update", "proposals");
   const { data: templates = [], isPending, isError } = useProposalTemplates();
@@ -93,12 +94,13 @@ export default function ProposalTemplatesPage() {
       {isPending ? (
         <div className="flex justify-center py-10"><Spinner size="sm" /></div>
       ) : isError ? (
-        <EmptyState title="Could not load templates" description="Refresh the page to try again." />
+        <EmptyState variant="inline" title="Could not load templates" description="Refresh the page to try again." />
       ) : templates.length === 0 ? (
         <EmptyState
+          variant="inline"
           title="No templates yet"
           description="Open a proposal whose payment stages and terms you would reuse, and choose Save as template on its Overview tab."
-          action={<Link to="/sales/proposals"><Button variant="secondary">Go to proposals</Button></Link>}
+          action={{ label: "Go to proposals", onClick: () => navigate("/sales/proposals") }}
         />
       ) : (
         <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">

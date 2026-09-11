@@ -197,21 +197,10 @@ export default function ProjectDailyLog() {
           </div>
         ) : days.length === 0 ? (
           <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
+            icon={<CalendarIcon />}
             title="No daily logs yet"
-            description="Add your first log to start the project diary. Anyone on the team can contribute."
-            action={
-              canCreateEntry ? (
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={() => setEntryDate(today)}
-                >
-                  <PlusIcon className="size-4" />
-                  Add my log
-                </Button>
-              ) : undefined
-            }
+            description="Add your first log to start the project diary, which anyone on the team can contribute to."
+            action={canCreateEntry ? { label: "Add my log", onClick: () => setEntryDate(today), icon: <PlusIcon /> } : undefined}
           />
         ) : (
           days.map((day) => (
@@ -395,9 +384,9 @@ function DayCard({
       <div className="flex flex-col divide-y divide-[#EDEDED]">
         {day.entries.length === 0 ? (
           <EmptyState
+            variant="inline"
             title="No team logs for this day yet"
             description="Entries added by the team for this day will appear here."
-            className="py-6"
           />
         ) : (
           day.entries.map((entry) => (

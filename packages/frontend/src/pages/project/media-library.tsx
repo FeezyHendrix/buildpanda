@@ -126,10 +126,9 @@ export default function ProjectMediaLibrary() {
       <section className="mt-6">
         {mediaDocuments.length === 0 ? (
           <EmptyState
-            icon={<CameraIcon className="size-8 text-gray-300" />}
+            icon={<CameraIcon />}
             title="No media yet"
             description="Photos and videos uploaded from site will appear here."
-            className="py-10"
           />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

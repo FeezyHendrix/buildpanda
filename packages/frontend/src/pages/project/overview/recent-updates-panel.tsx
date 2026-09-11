@@ -42,10 +42,10 @@ export function RecentUpdatesPanel({
         <div className="flex flex-col gap-6">
           {updates.length === 0 ? (
             <EmptyState
-              title="No active updates"
-              icon={(<ReactSVG src={icons.updateEmpty} />)}
-              description="Add a risk factor to track and mitigate issues on this project."
-              className="py-6"
+              variant="inline"
+              title="No updates yet"
+              icon={<ReactSVG src={icons.updateEmpty} />}
+              description="Progress updates posted on this project will appear here."
             />
           ) : (
             <ul className="flex flex-col gap-4">

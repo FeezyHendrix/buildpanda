@@ -206,20 +206,11 @@ export default function ProjectBudget() {
         </h2>
         {categories.length === 0 ? (
           <EmptyState
-            icon={<FinancesIcon className="h-6 w-6" />}
-            title="No cost categories"
+            variant="inline"
+            icon={<FinancesIcon />}
+            title="No cost categories yet"
             description="Add budget categories to track your planned vs actual costs."
-            action={
-              canManage ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setCreateCategoryOpen(true)}
-                >
-                  Add category
-                </Button>
-              ) : undefined
-            }
+            action={canManage ? { label: "Add category", onClick: () => setCreateCategoryOpen(true) } : undefined}
           />
         ) : (
           <div className="flex flex-col gap-4">
@@ -263,20 +254,11 @@ export default function ProjectBudget() {
 
         {sortedPeriods.length === 0 ? (
           <EmptyState
-            icon={<FinancesIcon className="h-6 w-6" />}
-            title="No cash flow data"
+            variant="inline"
+            icon={<FinancesIcon />}
+            title="No cash flow data yet"
             description="Add monthly forecasts to track your project's spend over time."
-            action={
-              canManage ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setCreatePeriodOpen(true)}
-                >
-                  Add month
-                </Button>
-              ) : undefined
-            }
+            action={canManage ? { label: "Add month", onClick: () => setCreatePeriodOpen(true) } : undefined}
           />
         ) : (
           <div className="flex flex-col gap-4">

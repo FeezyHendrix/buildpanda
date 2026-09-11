@@ -199,10 +199,9 @@ export default function ProjectQueries() {
             </div>
           ) : queries.length === 0 ? (
             <EmptyState
-              icon={<MessageCircleQuestion className="size-8 text-gray-300" />}
+              icon={<MessageCircleQuestion />}
               title="No queries yet"
               description="Raise a query when you need a clarification."
-              className="py-10"
             />
           ) : (
             queries.map((q) => (

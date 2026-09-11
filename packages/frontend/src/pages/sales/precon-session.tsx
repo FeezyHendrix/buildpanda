@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
 import type { PreconTool } from "@/components/molecules/precon-sheet-viewer";
@@ -40,6 +40,7 @@ function reachableSteps(reviewing: boolean, manual: boolean, areasOnly: boolean)
 
 export default function PreconSessionPage() {
   const { sessionId = "" } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
   const { data: snapshot, isPending, isError, error } = usePreconSnapshot(sessionId);
   usePreconChannel(sessionId || null);
   const retry = useRetryPreconSession(sessionId);
@@ -88,11 +89,7 @@ export default function PreconSessionPage() {
         <EmptyState
           title="Take-off not found"
           description={getApiErrorMessage(error, "This take-off may have been deleted or belongs to another workspace.")}
-          action={
-            <Link to="/sales/proposals">
-              <Button variant="secondary">Back to proposals</Button>
-            </Link>
-          }
+          action={{ label: "Back to proposals", onClick: () => navigate("/sales/proposals") }}
         />
       </div>
     );

@@ -182,17 +182,10 @@ export default function ProjectRfis() {
           </div>
         ) : rfis.length === 0 ? (
           <EmptyState
-            icon={<MessageCircleQuestion className="size-8 text-gray-300" />}
+            icon={<MessageCircleQuestion />}
             title="No RFIs yet"
             description="Requests for information raised against this project will appear here."
-            action={
-              canRaise ? (
-                <Button variant="secondary" size="sm" onClick={() => setCreateOpen(true)}>
-                  Raise the first RFI
-                </Button>
-              ) : undefined
-            }
-            className="py-10"
+            action={canRaise ? { label: "Raise the first RFI", onClick: () => setCreateOpen(true) } : undefined}
           />
         ) : (
           rfis.map((rfi) => (

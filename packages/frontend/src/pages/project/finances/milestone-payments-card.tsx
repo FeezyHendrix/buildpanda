@@ -44,10 +44,9 @@ export function MilestonePaymentsCard({
         {milestones.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <EmptyState
+              variant="inline"
               title="No milestone payments yet"
-              // icon={(<ReactSVG src={icons.riskShield} />)}
               description="No milestones have been added to this project."
-              className="py-6"
             />
           </div>
         ) : (

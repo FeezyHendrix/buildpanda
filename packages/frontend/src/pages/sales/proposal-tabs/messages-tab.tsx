@@ -29,7 +29,7 @@ export function MessagesTab({ proposalId }: Props) {
           <Spinner size="sm" />
         </div>
       ) : comments.length === 0 ? (
-        <EmptyState title="No messages yet" description="Leave an internal note or message for your team." />
+        <EmptyState variant="inline" title="No messages yet" description="Leave an internal note or message for your team." />
       ) : (
         <div className="flex flex-col gap-3">
           {comments.map((c) => (

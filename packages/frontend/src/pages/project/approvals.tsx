@@ -142,17 +142,10 @@ export default function ProjectApprovals() {
         </div>
       ) : approvals.length === 0 && filter === "all" ? (
         <EmptyState
-          icon={<FileCheck className="size-8 text-gray-300" />}
+          icon={<FileCheck />}
           title="No approvals yet"
           description="Submit a selection or spec to get sign-off."
-          action={
-            canManage ? (
-              <Button variant="primary" onClick={() => setCreateOpen(true)}>
-                Submit for approval
-              </Button>
-            ) : undefined
-          }
-          className="py-10"
+          action={canManage ? { label: "Submit for approval", onClick: () => setCreateOpen(true) } : undefined}
         />
       ) : (
         <div className="flex flex-col gap-8">

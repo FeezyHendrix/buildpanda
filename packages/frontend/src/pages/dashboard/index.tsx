@@ -1,7 +1,6 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
 import { ProgressBar } from "@/components/atoms/progress-bar";
@@ -179,20 +178,10 @@ function DashboardEmptyState({ onCreate }: { onCreate: () => void }) {
         <PendingInvitesBanner />
       </div>
       <EmptyState
-        icon={<img src={emptyIcon} alt="" className="size-[159px]" />}
+        illustration={<img src={emptyIcon} alt="" className="size-[159px]" />}
         title="Welcome to Build Panda"
         description="Build and manage your construction projects in Nigeria with complete transparency and control, no matter where you live."
-        action={
-          <Button
-            variant="ghost"
-            size="md"
-            className="text-base font-semibold leading-[120%] text-[#004DE7] hover:bg-[#004DE7]/5 active:bg-[#004DE7]/10"
-            onClick={onCreate}
-          >
-            <PlusIcon className="size-5" />
-            Create your first project
-          </Button>
-        }
+        action={{ label: "Create your first project", onClick: onCreate, icon: <PlusIcon /> }}
       />
     </div>
   );

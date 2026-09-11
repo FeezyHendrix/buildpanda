@@ -71,6 +71,7 @@ export function ActivityTab({ proposalId }: Props) {
   if (events.length === 0) {
     return (
       <EmptyState
+        variant="inline"
         title="No activity yet"
         description="Lifecycle events (created, sent, viewed, accepted…) appear here."
       />

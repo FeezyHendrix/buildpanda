@@ -330,9 +330,9 @@ export default function ContractStages() {
                 </tr>
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10">
+                  <td colSpan={7} className="px-4">
                     <EmptyState
-                      className="py-2"
+                      variant="inline"
                       title={
                         stages.length === 0
                           ? "No stages on this build yet"
@@ -340,7 +340,7 @@ export default function ContractStages() {
                       }
                       description={
                         stages.length === 0
-                          ? "Stages come from the build plan. Once they exist you can price them and schedule how each one gets billed."
+                          ? "Stages come from the build plan, and once they exist you can price them and schedule how each one gets billed."
                           : "Try a different stage name."
                       }
                     />

@@ -196,7 +196,7 @@ export default function SalesDashboard() {
       <div className="flex flex-col gap-6 p-6">
         <Header onNew={() => navigate("/sales/proposals")} />
         <EmptyState
-          title="Your pipeline is empty"
+          title="No deals in the pipeline yet"
           description="Capture a lead or draft your first proposal to start tracking deals here."
         />
       </div>

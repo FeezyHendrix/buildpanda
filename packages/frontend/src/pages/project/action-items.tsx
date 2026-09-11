@@ -201,10 +201,9 @@ export default function ProjectActionItems() {
             </div>
           ) : items.length === 0 ? (
             <EmptyState
-              icon={<ListTodo className="size-8 text-gray-300" />}
-              title="No action items here"
-              description="Nothing matches this filter yet. Add an action item or change the filter."
-              className="py-10"
+              icon={<ListTodo />}
+              title="No action items yet"
+              description="Add an action item or change the filter to see items here."
             />
           ) : (
             items.map((item) => (

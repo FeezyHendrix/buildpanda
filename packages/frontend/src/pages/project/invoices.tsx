@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -130,14 +129,12 @@ export default function ProjectInvoices() {
             <Spinner size="lg" />
           </div>
         ) : invoices.length === 0 ? (
-          <Card padding="lg">
-            <EmptyState
-              icon={<FinancesIcon className="size-6" />}
-              title="No invoices yet"
-              description="Send an invoice or record a bill to track what's billed, held back, and paid."
-              action={actions}
-            />
-          </Card>
+          <EmptyState
+            icon={<FinancesIcon />}
+            title="No invoices yet"
+            description="Send an invoice or record a bill to track what's billed, held back, and paid."
+            action={canManage ? { label: "Send invoice", onClick: openComposer, icon: <PlusIcon /> } : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {invoices.map((invoice) => (

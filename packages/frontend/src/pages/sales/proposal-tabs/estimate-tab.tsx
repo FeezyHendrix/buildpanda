@@ -53,24 +53,25 @@ export function EstimateTab({ proposalId, estimate, currency, projectId, validUn
 
   if (!estimate) {
     return (
-      <div className="flex flex-col items-center gap-4 py-16">
+      <div className="flex flex-col items-center gap-4">
         <EmptyState
+          variant="inline"
           title="No estimate yet"
           description={
             canCreate
               ? "Create the first estimate for this proposal."
               : "No estimate has been created for this proposal yet."
           }
+          action={
+            canCreate
+              ? {
+                  label: "Create estimate",
+                  onClick: () => createEstimate.mutate({}),
+                  loading: createEstimate.isPending,
+                }
+              : undefined
+          }
         />
-        {canCreate && (
-          <Button
-            variant="primary"
-            onClick={() => createEstimate.mutate({})}
-            loading={createEstimate.isPending}
-          >
-            Create estimate
-          </Button>
-        )}
         {createEstimate.isError && (
           <p className="text-xs text-red-600">Failed to create estimate.</p>
         )}

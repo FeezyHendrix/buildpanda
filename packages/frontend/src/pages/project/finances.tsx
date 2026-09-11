@@ -182,10 +182,9 @@ export default function ProjectFinances() {
           description="See where the project's money stands — what's budgeted, spent, and still to pay."
         />
         <EmptyState
-          icon={<FinancesIcon className="size-8 text-gray-300" />}
+          icon={<FinancesIcon />}
           title="No finance data yet"
           description="Budget, spend and payment records will appear here once the project's finances are set up."
-          className="py-10"
         />
       </div>
     );

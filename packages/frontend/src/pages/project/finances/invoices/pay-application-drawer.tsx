@@ -287,15 +287,15 @@ export function PayApplicationDrawer({
 
           {!hasStages ? (
             <EmptyState
+              variant="inline"
               title="No build stages yet"
-              description="A progress application bills against build stages. Add stages to the contract first, then come back to record what was completed this period."
-              className="py-2"
+              description="A progress application bills against build stages, so add stages to the contract first and then come back to record what was completed this period."
             />
           ) : draft.length === 0 ? (
             <EmptyState
-              title="Nothing billed on this application"
+              variant="inline"
+              title="No lines on this application yet"
               description="Put a build stage on the application, then record what was completed this period, what is stored on site, and what is being held back."
-              className="py-2"
             />
           ) : (
             <ul className="flex flex-col gap-2">

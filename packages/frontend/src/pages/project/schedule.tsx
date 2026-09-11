@@ -147,17 +147,14 @@ export default function ProjectSchedule() {
       ) : !hasSchedule ? (
         <div className="flex flex-1 items-center justify-center p-6">
           <EmptyState
-            icon={<CalendarIcon className="size-8 text-gray-300" />}
-            title="No scheduled activities"
+            icon={<CalendarIcon />}
+            title="No scheduled activities yet"
             description="Create milestone work items from Site Activity, or import a Microsoft Project (.mpp/.xml) or Excel programme of works to populate the chart."
             action={
-              canEdit && isProgrammeImportEnabled ? (
-                <Button variant="primary" size="sm" onClick={() => setImportOpen(true)}>
-                  Import programme of works
-                </Button>
-              ) : undefined
+              canEdit && isProgrammeImportEnabled
+                ? { label: "Import programme of works", onClick: () => setImportOpen(true) }
+                : undefined
             }
-            className="py-10"
           />
         </div>
       ) : (

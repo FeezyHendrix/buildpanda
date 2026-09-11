@@ -88,12 +88,13 @@ export default function ComplianceDocsPage() {
       {isPending ? (
         <div className="flex justify-center py-10"><Spinner size="sm" /></div>
       ) : isError ? (
-        <EmptyState title="Could not load compliance documents" description="Refresh the page to try again." />
+        <EmptyState variant="inline" title="Could not load compliance documents" description="Refresh the page to try again." />
       ) : docs.length === 0 ? (
         <EmptyState
-          title="Nothing filed yet"
-          description="Start with the all-risk insurance certificate. Building control asks for its number on the site board, and the proposal pack shows it to the client."
-          action={canManage ? <Button onClick={() => setUploadOpen(true)}>File a document</Button> : undefined}
+          variant="inline"
+          title="No compliance documents yet"
+          description="Start with the all-risk insurance certificate, which building control asks for on the site board and the proposal pack shows to the client."
+          action={canManage ? { label: "File a document", onClick: () => setUploadOpen(true) } : undefined}
         />
       ) : (
         <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">

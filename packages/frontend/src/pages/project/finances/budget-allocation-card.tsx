@@ -70,10 +70,9 @@ export function BudgetAllocationCard({
       <div className="bg-white rounded-[12px] h-full m-1 p-6">
         {chartData.length === 0 ? (
           <EmptyState
+            variant="inline"
             title="No budget allocation yet"
-            // icon={(<ReactSVG src={icons.riskShield} />)}
             description="Add budget categories to see planned vs actual by phase."
-            className="py-6"
           />
         ) : (
           <>

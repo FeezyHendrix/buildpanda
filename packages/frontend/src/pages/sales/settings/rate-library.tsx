@@ -96,9 +96,9 @@ export default function RateLibraryPage() {
       {tab !== "rates" ? null : isPending ? (
         <div className="flex justify-center py-10"><Spinner size="sm" /></div>
       ) : isError ? (
-        <EmptyState title="Could not load the rate library" description="Refresh the page to try again." />
+        <EmptyState variant="inline" title="Could not load the rate library" description="Refresh the page to try again." />
       ) : cards.length === 0 ? (
-        <EmptyState title="No rate cards yet" description="Create a card above, then add the rates you price with most. One card is enough to start." />
+        <EmptyState variant="inline" title="No rate cards yet" description="Create a card above, then add the rates you price with most; one card is enough to start." />
       ) : (
         cards.map((card) => (
           <RateCardPanel
