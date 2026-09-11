@@ -9,7 +9,7 @@ import { toast } from "@/lib/toast";
 import { CommentPin } from "@/components/molecules/comment-pin";
 import { PinComposerPopover } from "./pin-composer-popover";
 import { PinThreadPopover } from "./pin-thread-popover";
-import type { PopoverAnchor } from "./pin-popover";
+import { anchorBelow, type PopoverAnchor } from "@/components/molecules/markup-thread/pin-popover";
 
 const OPEN_COLOR = "#004DE7";
 const RESOLVED_COLOR = "#9CA3AF";
@@ -54,11 +54,6 @@ export function lineLabelFor(rowId: string | null, rowById: ReadonlyMap<string, 
 function pinLabel(markup: DrawingMarkup): string {
   const n = markup.comments.length;
   return `${n} comment${n === 1 ? "" : "s"}${markup.resolvedAt ? " · resolved" : ""}`;
-}
-
-function anchorBelow(el: Element): PopoverAnchor {
-  const rect = el.getBoundingClientRect();
-  return { x: rect.left + rect.width / 2, y: rect.bottom + 8 };
 }
 
 /**

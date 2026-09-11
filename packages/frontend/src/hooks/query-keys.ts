@@ -26,6 +26,11 @@ export const documentKeys = {
     [...documentKeys.all(projectId), "versions", documentId] as const,
 };
 
+export const fileKeys = {
+  all: ["files"] as const,
+  url: (fileId: string) => [...fileKeys.all, "url", fileId] as const,
+};
+
 export const drawingMarkupKeys = {
   all: (projectId: string) => ["projects", projectId, "drawing-markups"] as const,
   version: (projectId: string, documentVersionId: string, pageNo?: number) =>

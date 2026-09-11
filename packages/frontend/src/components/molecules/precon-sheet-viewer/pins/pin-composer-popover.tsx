@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { PinPopover, TEXTAREA_CLASS, type PopoverAnchor } from "./pin-popover";
+import { PinPopover, TEXTAREA_CLASS, type PopoverAnchor } from "@/components/molecules/markup-thread/pin-popover";
 
 /**
  * First comment on a new pin. Text only for now: a take-off note is a sentence
