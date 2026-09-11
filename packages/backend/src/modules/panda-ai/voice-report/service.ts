@@ -34,6 +34,8 @@ const materialOrderPayload = z.object({
   quantity: z.number(),
   unit: z.string().min(1),
   supplier: z.string().nullish(),
+  // The orders API requires this; when unsaid the reviewer is asked for it.
+  neededBy: z.string().nullish(),
 });
 
 const materialLogPayload = z.object({
@@ -202,7 +204,7 @@ CREATE actions:
 - "daily_log": a site-diary note (work done, deliveries, weather, delays). payload { bodyText } — one clean sentence, keep first person.
 - "change_request": a change to contracted scope, cost or programme. payload { title, description?, reason? }.
 - "material_log": a material movement that ALREADY HAPPENED on site. entryType "IN" = received/delivered/arrived; "USED" = consumed/installed. payload { entryType, materialName, quantity, unit, locationKey?, reason? }. "received 30 bags of cement" => material_log IN, never material_order.
-- "material_order": FUTURE procurement — need/order/request/buy. payload { title, materialName, quantity, unit, supplier? }. Only when material AND quantity were stated and it is a request, not a receipt.
+- "material_order": FUTURE procurement — need/order/request/buy. payload { title, materialName, quantity, unit, supplier?, neededBy? }. neededBy is the date the material must be on site as YYYY-MM-DD, only when the speaker gave one ("by Friday", "next week Tuesday" resolved against today). Only when material AND quantity were stated and it is a request, not a receipt.
 - "look_ahead": a forward plan for a date range. payload { name, description?, startDate YYYY-MM-DD, endDate YYYY-MM-DD, totalWorkers?, buildingId? }. Resolve relative dates against TODAY; set a date to null only if none can be worked out.
 - "transition_stage": start or complete a build stage ("we've started/finished X"). payload { stageId, status "InProgress" (started) | "Done" (completed) | "Pending", buildingId? }. stageId MUST come from the stage list below; set it to null if no stage clearly matches.
 
@@ -340,6 +342,7 @@ function requiredFields(action: DraftAction): MissingField[] {
         { name: "materialName", label: "Material", type: "text" },
         { name: "quantity", label: "Quantity", type: "number" },
         { name: "unit", label: "Unit", type: "text" },
+        { name: "neededBy", label: "Needed by", type: "date" },
       ];
     default:
       return [];

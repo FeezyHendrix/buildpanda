@@ -46,6 +46,9 @@ const upsertBody = {
   type: "object",
   additionalProperties: false,
   properties: {
+    // Which block the day belongs to. Required by the service on a
+    // multi-building project; the field app always sends it.
+    buildingId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
     weatherCondition: {
       type: ["string", "null"],
       enum: ["Sunny", "Cloudy", "Rain", "Storm", "Fog", "ExtremeHeat", null],

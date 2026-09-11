@@ -20,6 +20,7 @@ export interface MaterialOrderPayload {
   quantity: number;
   unit: string;
   supplier?: string | null;
+  neededBy?: string | null;
 }
 
 export interface MaterialLogPayload {
