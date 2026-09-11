@@ -74,6 +74,7 @@ function toDay(log: DailyLog, entries: DailyLogEntry[]): DailyLogDay {
     totalHours: log.totalHours,
     activities: log.activities,
     entries,
+    voidedAt: log.voidedAt,
   };
 }
 
@@ -315,6 +316,7 @@ export function dailyLogsService(
           totalHours: 0,
           activities: [],
           entries,
+          voidedAt: null,
         };
       }
       const [log] = await attachActivities([row]);
