@@ -50,19 +50,19 @@ interface ChatUsage {
   completion_tokens?: number;
 }
 
-interface ChatResponse {
+export interface ChatResponse {
   choices?: Array<{ message?: { content?: string; tool_calls?: LlmToolCall[] } }>;
   usage?: ChatUsage;
 }
 
-interface Provider {
+export interface Provider {
   apiKey: string;
   baseUrl: string;
   model: string;
   timeoutMs: number;
 }
 
-function activeProvider(): Provider | null {
+export function activeProvider(): Provider | null {
   if (config.openai.apiKey) return config.openai;
   if (config.ai.apiKey) return config.ai;
   return null;
@@ -140,7 +140,7 @@ export function setLlmCallSink(sink: LlmCallSink | null): void {
   callSink = sink;
 }
 
-function emitCallRecord(record: LlmCallRecord): void {
+export function emitCallRecord(record: LlmCallRecord): void {
   if (!callSink) return;
   try {
     callSink({ ...record, orgId: record.orgId ?? getLlmContext()?.orgId ?? null });
@@ -434,59 +434,6 @@ export async function chatStream(
       retryCount: 0,
       tokensIn: usage?.prompt_tokens ?? null,
       tokensOut: usage?.completion_tokens ?? null,
-    });
-    throw error;
-  }
-}
-
-export async function chatVision(
-  textPrompt: string,
-  images: string[],
-  options: { detail?: "low" | "high"; signal?: AbortSignal } = {},
-): Promise<string | null> {
-  const provider = activeProvider();
-  if (!provider) return null;
-
-  const detail = options.detail ?? "low";
-  const content: Array<LlmTextContent | LlmImageContent> = [
-    { type: "text", text: textPrompt },
-    ...images.map((url): LlmImageContent => ({ type: "image_url", image_url: { url, detail } })),
-  ];
-
-  const start = Date.now();
-  try {
-    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
-      },
-      signal: options.signal,
-      body: JSON.stringify({
-        model: provider.model,
-        temperature: 0.2,
-        messages: [{ role: "user", content }],
-      }),
-    });
-    if (!response.ok) {
-      throw new Error(`LLM API ${response.status}: ${await response.text()}`);
-    }
-    const payload = (await response.json()) as ChatResponse;
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "unvalidated",
-      retryCount: 0,
-      tokensIn: payload.usage?.prompt_tokens ?? null,
-      tokensOut: payload.usage?.completion_tokens ?? null,
-    });
-    return payload.choices?.[0]?.message?.content ?? null;
-  } catch (error) {
-    emitCallRecord({
-      modelVersion: provider.model,
-      latencyMs: Date.now() - start,
-      validationStatus: "failed",
-      retryCount: 0,
     });
     throw error;
   }

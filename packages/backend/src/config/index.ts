@@ -178,6 +178,16 @@ export const config = {
     timeoutMs: optionalNumber("OPENAI_TIMEOUT_MS", 60_000),
   },
 
+  // Vision-only provider. DeepSeek V4.1 (served as `deepseek-flash`) reads
+  // drawings and site photos for Panda AI; text/tool calls stay on the
+  // providers above. Empty key => vision falls back to the active text provider.
+  deepseek: {
+    apiKey: optional("DEEPSEEK_API_KEY", ""),
+    baseUrl: optional("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+    model: optional("DEEPSEEK_MODEL", "deepseek-flash"),
+    timeoutMs: optionalNumber("DEEPSEEK_TIMEOUT_MS", 60_000),
+  },
+
   storage: {
     bucket: optional("S3_BUCKET", "buildpanda"),
     region: optional("AWS_REGION", "us-east-1"),

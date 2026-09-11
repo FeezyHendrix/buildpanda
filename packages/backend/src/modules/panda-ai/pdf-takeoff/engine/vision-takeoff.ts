@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { chatVision, isLlmConfigured } from "../../../../lib/llm.ts";
+import { chatVision, isVisionConfigured } from "../../../../lib/llm-vision.ts";
 import { openStoredFile, streamToBuffer } from "../../../../lib/file-storage.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../../lib/document-render.ts";
 import type { MeasuredBoqItem } from "../types.ts";
@@ -71,7 +71,7 @@ export async function measureSheetViaVision(
   input: VisionTakeoffInput,
   budget: VisionBudget,
 ): Promise<MeasuredBoqItem[] | null> {
-  if (!isLlmConfigured() || budget.remainingSheets <= 0) return null;
+  if (!isVisionConfigured() || budget.remainingSheets <= 0) return null;
 
   let pngs: Buffer[];
   try {

@@ -2,7 +2,8 @@ import type { Knex } from "knex";
 import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
-import { chatVision, type LlmTool } from "../../../lib/llm.ts";
+import type { LlmTool } from "../../../lib/llm.ts";
+import { chatVision } from "../../../lib/llm-vision.ts";
 import {
   assertProjectPermission,
   type ProjectSectionPermissions,
