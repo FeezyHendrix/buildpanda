@@ -90,7 +90,6 @@ export default function ProjectMaterialLog() {
       />
       <PageHeader
         title="Material log"
-        description="An append-only record of everything received and used on site, with live stock levels behind it."
         actions={
           <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
             <Button

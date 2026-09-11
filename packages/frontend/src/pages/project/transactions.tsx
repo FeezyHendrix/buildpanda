@@ -483,7 +483,6 @@ export default function TransactionsPage() {
       />
       <PageHeader
         title="Expenses"
-        description="Record what you spend on site, with receipts."
         actions={
           <div className="flex items-center gap-3">
             <Button

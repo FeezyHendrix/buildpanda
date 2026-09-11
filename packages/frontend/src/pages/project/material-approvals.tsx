@@ -5,6 +5,7 @@ import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { MaterialApprovalCard } from "@/components/molecules/material-approval-card";
 import { MaterialApprovalDetailDialog } from "@/components/molecules/material-approval-detail-dialog";
 import {
@@ -146,27 +147,14 @@ export default function ProjectMaterialApprovals() {
     <div className="w-full px-4 py-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Material Approvals"
-        description="Materials and specifications awaiting sign-off before they are ordered or installed."
         actions={createButton}
       />
 
-      <div className="mb-8 flex flex-wrap items-center gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            aria-pressed={filter === f.value}
-            className={cn(
-              "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-              filter === f.value
-                ? "bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
+      <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter material approvals" />
+        {awaiting.length > 0 ? (
+          <span className="text-sm text-gray-500">{awaiting.length} awaiting decision</span>
+        ) : null}
       </div>
 
       {isPending ? (

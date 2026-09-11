@@ -113,7 +113,6 @@ export default function ProjectLookAheads() {
       <Breadcrumbs items={[{ label: "Site Control" }, { label: "Look Aheads" }]} className="mb-4" />
       <PageHeader
         title="Look Aheads"
-        description="Plan rolling look-ahead periods by picking activities from the project chart or imported programme, and preview what's coming up next."
       />
 
       {lowStock.length > 0 && (

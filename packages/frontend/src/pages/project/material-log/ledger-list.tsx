@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { Card } from "@/components/atoms/card";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { formatLongDate } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 import type { LedgerEntry } from "@/lib/project-types";
 import { StackIcon } from "./icons";
 import { LedgerRow } from "./ledger-row";
@@ -83,28 +83,13 @@ export function LedgerList({
             {filter === "all" ? "" : ` of ${entries.length}`} shown.
           </p>
         </div>
-        <div
-          role="group"
-          aria-label="Filter ledger entries"
-          className="inline-flex max-w-full shrink-0 overflow-x-auto rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1"
-        >
-          {LEDGER_FILTERS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              aria-pressed={filter === item.value}
-              onClick={() => setFilter(item.value)}
-              className={cn(
-                "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === item.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <FilterTabs
+          items={LEDGER_FILTERS}
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Filter ledger entries"
+          className="shrink-0"
+        />
       </div>
 
       {entries.length === 0 ? (

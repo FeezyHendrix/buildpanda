@@ -268,7 +268,6 @@ function Header({ onNew }: { onNew: () => void }) {
   return (
     <PageHeader
       title="Pre-Construction"
-      description="Your sales pipeline, from first enquiry to a signed build."
       actions={
         <Button
           variant="primary"

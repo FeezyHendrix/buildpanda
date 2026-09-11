@@ -106,7 +106,6 @@ export default function ProjectDailyLog() {
       />
       <PageHeader
         title="Daily Log"
-        description="Everyone on the team logs what they did each day. The report covers the whole day."
         actions={
           canCreateEntry ? (
             <Button

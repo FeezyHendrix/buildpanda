@@ -539,7 +539,6 @@ export default function ProjectPurchaseOrders() {
       />
       <PageHeader
         title="Purchase Orders"
-        description="Track vendor POs, line items, and committed spend before invoice capture."
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>

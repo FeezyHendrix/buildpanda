@@ -71,7 +71,6 @@ export default function ProjectSuppliers() {
       />
       <PageHeader
         title="Suppliers"
-        description="Your directory of material and equipment suppliers for this project."
         actions={
           canManage && (
             <Button

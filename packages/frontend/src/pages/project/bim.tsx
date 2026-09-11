@@ -341,7 +341,6 @@ export default function ProjectBim() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="BIM models"
-        description="Import your Revit, ArchiCAD or Navisworks model (via IFC) and view it in 3D. Anchor coordination issues to elements and promote them to RFIs."
         actions={
           canUpload ? (
             <Button variant="primary" size="md" onClick={() => setUploadOpen(true)}>

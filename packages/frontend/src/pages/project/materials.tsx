@@ -12,6 +12,7 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -22,14 +23,13 @@ import {
   type MaterialOrderInput,
 } from "@/hooks/use-materials-equipment";
 import { formatCurrency } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { MetricCard } from "./materials/metric-card";
 import { MaterialOrderRow } from "./materials/material-order-row";
 import { LifecyclePanel } from "./materials/lifecycle-panel";
 import { MaterialOrderDialog } from "./materials/material-order-dialog";
-import { STATUS_META, STATUS_FILTERS } from "./materials/shared";
+import { STATUS_FILTER_ITEMS } from "./materials/shared";
 
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
@@ -74,7 +74,6 @@ export default function ProjectMaterials() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Materials & equipment"
-        description="Request materials, track deliveries, and connect every order to phases, site activities, receipts, and project cost control."
         actions={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -120,7 +119,19 @@ export default function ProjectMaterials() {
         }
       />
 
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          items={STATUS_FILTER_ITEMS}
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Filter material orders by status"
+        />
+        <span className="text-sm text-gray-500">
+          {orders.length} order{orders.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
         <MetricCard
           label="Open material orders"
           value={orders.length.toString()}
@@ -142,33 +153,14 @@ export default function ProjectMaterials() {
 
       <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card padding="lg" className="min-w-0">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">
-                Material orders & requests
-              </h2>
-              <p className="mt-0.5 text-xs text-gray-500">
-                Every row carries schedule, activity, document, and finance
-                context.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {STATUS_FILTERS.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setFilter(item)}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-xs font-semibold",
-                    filter === item
-                      ? "bg-[#004DE7] text-white"
-                      : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
-                  )}
-                >
-                  {item === "all" ? "All" : STATUS_META[item].label}
-                </button>
-              ))}
-            </div>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">
+              Material orders & requests
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Every row carries schedule, activity, document, and finance
+              context.
+            </p>
           </div>
 
           {isLoading ? (

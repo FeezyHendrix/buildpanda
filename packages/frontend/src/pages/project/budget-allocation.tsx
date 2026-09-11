@@ -63,7 +63,6 @@ export default function ProjectBudgetAllocation() {
       />
       <PageHeader
         title="Budget Allocation & Analysis"
-        description="Create budget categories, then track planned vs actual allocation by phase."
         actions={
           canManage ? (
             <Button

@@ -103,7 +103,6 @@ export default function ProjectSchedule() {
         />
         <PageHeader
           title="Project Chart"
-          description="Gantt chart of milestone work items, planned dates, progress, and every logged delay's project timeline impact."
           actions={
             <div className="flex items-center gap-2">
               {canEdit && isProgrammeImportEnabled && (

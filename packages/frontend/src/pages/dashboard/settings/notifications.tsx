@@ -82,7 +82,6 @@ export default function NotificationSettings() {
     <div className="mx-auto w-full max-w-7xl px-6 py-8 sm:px-10">
       <PageHeader
         title="Notifications"
-        description="Choose which in-app notifications you want to receive. Changes apply immediately."
       />
 
       {isLoading ? (

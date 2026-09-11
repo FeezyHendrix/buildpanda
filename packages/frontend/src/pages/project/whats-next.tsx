@@ -48,7 +48,6 @@ export default function ProjectWhatsNext() {
       <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
         <PageHeader
           title="What's Next"
-          description="The next two weeks at a glance."
         />
         <div className="flex justify-center py-10">
           <Spinner size="md" />
@@ -70,7 +69,6 @@ export default function ProjectWhatsNext() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="What's Next"
-        description={`Coming up between ${fmt(data.from)} and ${fmt(data.to)}, so you always know what's happening, wherever you are.`}
       />
 
       {total === 0 ? (

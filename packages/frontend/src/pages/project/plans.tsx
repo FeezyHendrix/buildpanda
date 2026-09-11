@@ -37,7 +37,6 @@ export default function ProjectPlans() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Plans"
-        description="Drawings and schematics with full revision history."
         actions={
           canManage ? (
             <Button

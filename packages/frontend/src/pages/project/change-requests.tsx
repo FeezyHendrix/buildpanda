@@ -6,6 +6,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { ClipboardIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertChangeRequestDialog,
@@ -29,7 +30,6 @@ import {
   useDeleteChangeRequest,
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
-import { cn } from "@/lib/utils";
 import { canResourceAction } from "@/lib/project-types";
 import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
 import { formatWholeCurrency } from "@/lib/formatters";
@@ -100,7 +100,6 @@ export default function ProjectChangeRequests() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Change Requests"
-        description="Proposed changes to scope, cost or schedule, with their budget and time impact."
         actions={
           canManage ? (
             <Button
@@ -115,42 +114,10 @@ export default function ProjectChangeRequests() {
         }
       />
 
-      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter change requests" />
         <div className="flex items-center gap-3 justify-end lg:justify-start self-end lg:self-auto">
-          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
-            {(["list", "board"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900",
-                )}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+          <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
           {approvedCost > 0 && (
             <p className="text-xs text-gray-500">
               Approved impact: {money(approvedCost, "NGN")}

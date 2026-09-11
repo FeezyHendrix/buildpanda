@@ -179,7 +179,6 @@ export default function ProjectFinances() {
       <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
         <PageHeader
           title="Finance"
-          description="See where the project's money stands — what's budgeted, spent, and still to pay."
         />
         <EmptyState
           icon={<FinancesIcon />}
@@ -194,7 +193,6 @@ export default function ProjectFinances() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Finance"
-        description="See where the project's money stands — what's budgeted, spent, and still to pay."
         actions={
           canManage ? (
             <div className="flex items-center gap-2">

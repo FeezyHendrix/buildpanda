@@ -7,6 +7,7 @@ import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertQueryDialog,
@@ -30,7 +31,6 @@ import {
   useProjectQueries,
   useUpdateQuery,
 } from "@/hooks/use-queries";
-import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import type { QueryStatus, SiteQuery } from "@/lib/project-types";
@@ -112,7 +112,6 @@ export default function ProjectQueries() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Queries"
-        description="Site questions and clarifications between you, the builder and the design team."
         actions={
           canRaiseQueries ? (
             <Button
@@ -127,42 +126,10 @@ export default function ProjectQueries() {
         }
       />
 
-      <div className="mt-6 flex flex-col lg:flex-row flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 overflow-x-auto max-w-full lg:max-w-[657px]">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter queries" />
         <div className="flex items-center gap-3">
-          <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
-            {(["list", "board"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                  view === v
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900",
-                )}
-              >
-                {v}
-              </button>
-            ))}
-          </div>
+          <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
           <p className="text-xs text-gray-500">{openCount} open</p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertStageDialog,
@@ -54,10 +55,10 @@ function StatusCell({ status }: { status: StageStatus }) {
 
 type FilterTab = "all" | "in-progress" | "completed";
 
-const TABS: { key: FilterTab; label: string }[] = [
-  { key: "all", label: "All Stages" },
-  { key: "in-progress", label: "In Progress" },
-  { key: "completed", label: "Completed" },
+const TABS: { value: FilterTab; label: string }[] = [
+  { value: "all", label: "All Stages" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
 ];
 
 export default function ProjectStages() {
@@ -127,7 +128,6 @@ export default function ProjectStages() {
       />
       <PageHeader
         title="Build Stages"
-        description="Break the build into stages and track progress all the way to handover."
         actions={
           canManage ? (
             <Button
@@ -198,23 +198,7 @@ export default function ProjectStages() {
           />
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg bg-[#F8F8F8] p-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setFilter(tab.key)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
-                filter === tab.key
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <FilterTabs items={TABS} value={filter} onChange={setFilter} ariaLabel="Filter stages" />
       </div>
 
       {/* Table */}

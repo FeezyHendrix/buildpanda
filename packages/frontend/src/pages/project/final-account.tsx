@@ -111,7 +111,6 @@ export default function ProjectFinalAccount() {
         />
         <PageHeader
           title="Final Account"
-          description="Contract settlement — closing statement showing what has been certified, paid, held and what remains."
         />
         <EmptyState
           icon={<FinancesIcon />}
@@ -159,7 +158,6 @@ export default function ProjectFinalAccount() {
       />
       <PageHeader
         title="Final Account"
-        description="Contract settlement — closing statement showing what has been certified, paid, held and what remains."
         badges={
           isSettled ? (
             <Badge tone="success" size="md" className="gap-1.5">

@@ -2,16 +2,21 @@ import { useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { useLeads } from "@/hooks/use-leads";
 import { LEAD_STATUSES, type Lead, type LeadStatus } from "@/api/leads";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 import { Can } from "@/components/atoms/can";
-import { cn } from "@/lib/utils";
 
 import { statusLabel } from "./leads/lead-status-badge";
 import { CreateLeadDrawer } from "./leads/create-lead-drawer";
 import { LeadDetailDrawer } from "./leads/lead-detail-drawer";
 import { LeadRow } from "./leads/lead-row";
+
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  ...LEAD_STATUSES.map((status) => ({ value: status, label: statusLabel(status) })),
+] as const;
 
 export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
@@ -44,25 +49,16 @@ export default function LeadsPage() {
         </Can>
       </div>
 
-      <div className="flex items-center gap-3">
-        <select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          items={STATUS_FILTERS}
           value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as LeadStatus | "");
+          onChange={(status) => {
+            setStatusFilter(status);
             setOffset(0);
           }}
-          className={cn(
-            "h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700",
-            "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/25",
-          )}
-        >
-          <option value="">All statuses</option>
-          {LEAD_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {statusLabel(s)}
-            </option>
-          ))}
-        </select>
+          ariaLabel="Filter leads by status"
+        />
 
         {total > 0 && (
           <span className="text-sm text-gray-400">

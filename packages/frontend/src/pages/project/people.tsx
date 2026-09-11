@@ -45,7 +45,6 @@ export default function ProjectPeople() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="People"
-        description="Homeowners and stakeholders with a portal on this build. Workspace staff are managed under Team."
         actions={
           canManage ? (
             <Button

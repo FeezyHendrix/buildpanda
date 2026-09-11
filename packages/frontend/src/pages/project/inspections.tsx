@@ -5,6 +5,7 @@ import { Card } from "@/components/atoms/card";
 import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { MediaGallery } from "@/components/molecules/media-gallery";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs, VIEW_MODE_ITEMS } from "@/components/molecules/filter-tabs";
 import { RequestInspectionDialog } from "@/components/molecules/request-inspection-dialog";
 import {
   UpsertInspectionDialog,
@@ -24,7 +25,6 @@ import {
   useDeleteInspection,
 } from "@/hooks/use-inspections";
 import { INSPECTION_STATUS_TONE, RISK_LEVEL_TONE } from "@/lib/project-meta";
-import { cn } from "@/lib/utils";
 import {
   canResourceAction,
   type InspectionCategory,
@@ -34,7 +34,7 @@ import {
 import { icons } from "@/assets/icons/icons";
 import { ReactSVG } from "react-svg";
 
-const FILTERS: InspectionCategory[] = [
+const CATEGORIES: InspectionCategory[] = [
   "All Reports",
   "Structural",
   "Quantity Survey",
@@ -42,6 +42,7 @@ const FILTERS: InspectionCategory[] = [
   "Electrical",
   "Plumbing",
 ];
+const FILTERS = CATEGORIES.map((value) => ({ value, label: value }));
 
 export default function ProjectInspections() {
   const { project, access } = useProjectContext();
@@ -83,7 +84,6 @@ export default function ProjectInspections() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Independent Inspections & Quality Reports"
-        description="Verified structural and progress assessments for peace of mind."
         actions={
           canRequestInspection ? (
             <Button
@@ -116,29 +116,14 @@ export default function ProjectInspections() {
         }}
       />
 
-      <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <FilterTabs
-          filters={FILTERS}
-          active={activeFilter}
+          items={FILTERS}
+          value={activeFilter}
           onChange={setActiveFilter}
+          ariaLabel="Inspection categories"
         />
-        <div className="inline-flex shrink-0 rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1 self-end lg:self-auto">
-          {(["list", "board"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                view === v
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
       </div>
 
       {view === "board" ? (
@@ -177,45 +162,6 @@ export default function ProjectInspections() {
           )}
         </section>
       )}
-    </div>
-  );
-}
-
-interface FilterTabsProps {
-  filters: readonly InspectionCategory[];
-  active: InspectionCategory;
-  onChange: (filter: InspectionCategory) => void;
-  className?: string;
-}
-
-function FilterTabs({ filters, active, onChange, className }: FilterTabsProps) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Inspection categories"
-      className={cn(
-        "flex bg-[#F6F6F6] rounded-[1000px] h-[32px] overflow-x-auto max-w-full lg:max-w-[657px]",
-        className,
-      )}
-    >
-      {filters.map((filter) => (
-        <button
-          key={filter}
-          type="button"
-          role="tab"
-          aria-selected={filter === active}
-          onClick={() => onChange(filter)}
-          className={cn(
-            "rounded-full whitespace-nowrap px-4 text-xs font-medium transition-colors m-1 cursor-pointer",
-            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            filter === active
-              ? "bg-[#FFFFFF] text-black-500"
-              : "bg-transparent text-black-300 hover:bg-[#EDEDED]",
-          )}
-        >
-          {filter}
-        </button>
-      ))}
     </div>
   );
 }

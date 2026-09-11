@@ -20,6 +20,11 @@ export const STATUS_FILTERS: Array<MaterialOrderStatus | "all"> = [
   "Delivered",
 ];
 
+export const STATUS_FILTER_ITEMS = STATUS_FILTERS.map((status) => ({
+  value: status,
+  label: status === "all" ? "All" : STATUS_META[status].label,
+}));
+
 export const FIELD = "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 export function today(): string {

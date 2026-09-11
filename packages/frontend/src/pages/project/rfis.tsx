@@ -6,6 +6,7 @@ import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import {
   UpsertRfiDialog,
@@ -20,7 +21,6 @@ import { useCreateRfi, useProjectRfis } from "@/hooks/use-rfis";
 import { useParticipants } from "@/hooks/use-participants";
 import { useProjectTeam } from "@/hooks/use-team";
 import type { AssigneeOption } from "@/components/molecules/upsert-rfi-dialog";
-import { cn } from "@/lib/utils";
 import { formatDayMonth } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import type { Rfi, RfiStatus } from "@/lib/project-types";
@@ -135,7 +135,6 @@ export default function ProjectRfis() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="RFIs"
-        description="Requests for Information: formal, numbered questions with a ball-in-court owner and an official response."
         actions={
           canRaise ? (
             <Button
@@ -151,23 +150,7 @@ export default function ProjectRfis() {
       />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                filter === f.value
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter RFIs" />
         {openCount > 0 && (
           <span className="text-sm text-gray-500">
             {openCount} awaiting response

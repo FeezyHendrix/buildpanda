@@ -38,7 +38,6 @@ export default function ProjectDocuments() {
     <div className="w-full px-4 lg:px-6 py-8 sm:px-10">
       <PageHeader
         title="Documents"
-        description="Secure, centralized management for project compliance."
         actions={
           canManage ? (
             <Button

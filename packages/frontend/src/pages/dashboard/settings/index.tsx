@@ -37,7 +37,6 @@ export default function SettingsPage() {
         </Link>
         <PageHeader
           title="Settings"
-          description="Manage your account, organization, and preferences."
           className="flex-1"
         />
       </div>

@@ -4,6 +4,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { JobProfilePicker } from "@/components/molecules/job-profile-picker";
 import type { JobProfile } from "@/api/proposals";
@@ -226,6 +227,11 @@ function CreateProposalDrawer({
   );
 }
 
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  ...PROPOSAL_STATUSES.map((status) => ({ value: status, label: LABEL_MAP[status] })),
+] as const;
+
 export default function ProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "">("");
   const [offset, setOffset] = useState(0);
@@ -275,7 +281,6 @@ export default function ProposalsPage() {
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
         title="Proposals"
-        description="Pre-construction proposals and estimates for your clients."
         actions={
           <Can do="create" on="proposals">
             <Button
@@ -290,25 +295,16 @@ export default function ProposalsPage() {
         }
       />
 
-      <div className="flex items-center gap-3">
-        <select
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          items={STATUS_FILTERS}
           value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as ProposalStatus | "");
+          onChange={(status) => {
+            setStatusFilter(status);
             setOffset(0);
           }}
-          className={cn(
-            "h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700",
-            "outline-none focus-visible:ring-2 focus-visible:ring-[#004DE7]/25",
-          )}
-        >
-          <option value="">All statuses</option>
-          {PROPOSAL_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {LABEL_MAP[s]}
-            </option>
-          ))}
-        </select>
+          ariaLabel="Filter proposals by status"
+        />
 
         {total > 0 && (
           <span className="text-sm text-gray-400">

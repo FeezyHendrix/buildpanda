@@ -256,7 +256,6 @@ export default function ContractStages() {
       />
       <PageHeader
         title="Contract & stages"
-        description="What each stage of the build is worth, and which months that value gets billed in."
       />
 
       <section

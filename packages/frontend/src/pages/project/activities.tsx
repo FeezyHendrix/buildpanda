@@ -64,7 +64,6 @@ export default function ProjectActivities() {
       />
       <PageHeader
         title="Site Activities"
-        description="Track discrete work items with planned vs actual times and delay causes."
         actions={
           canManage ? (
             <Button variant="primary" size="md" onClick={startNewActivity}>
