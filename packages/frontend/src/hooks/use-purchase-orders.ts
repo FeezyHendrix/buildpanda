@@ -8,7 +8,7 @@ export type {
   PurchaseOrderItemInput,
   PurchaseOrderInput,
 } from "@/api/purchase-orders";
-import { purchaseOrderKeys } from "./query-keys";
+import { financeKeys, purchaseOrderKeys } from "./query-keys";
 
 export function usePurchaseOrders(projectId: string | undefined) {
   return useQuery({
@@ -31,6 +31,7 @@ export function useCreatePurchaseOrder() {
     mutationFn: ({ projectId, ...body }: CreatePurchaseOrderVariables) => purchaseOrdersApi.create(projectId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }
@@ -47,6 +48,7 @@ export function useUpdatePurchaseOrder() {
     mutationFn: ({ projectId, purchaseOrderId, ...body }: UpdatePurchaseOrderVariables) => purchaseOrdersApi.update(projectId, purchaseOrderId, body),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }
@@ -63,6 +65,7 @@ export function useDeletePurchaseOrder() {
     mutationFn: ({ projectId, purchaseOrderId }: DeletePurchaseOrderVariables) => purchaseOrdersApi.delete(projectId, purchaseOrderId),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: purchaseOrderKeys.list(projectId) });
+      queryClient.invalidateQueries({ queryKey: financeKeys.stageCosts(projectId) });
     },
   });
 }

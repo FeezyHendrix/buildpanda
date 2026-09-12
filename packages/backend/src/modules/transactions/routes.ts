@@ -1,16 +1,17 @@
 import type { FastifyPluginAsync } from "fastify";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { stagesRepository } from "../stages/repository.ts";
 import {
   customCategoriesRepository,
   transactionsRepository,
 } from "./repository.ts";
-import {
-  transactionsService,
-  type CreateCustomCategoryInput,
-  type CreateTransactionInput,
-  type EditTransactionInput,
-} from "./service.ts";
-import type { TransactionListFilters } from "./types.ts";
+import { transactionsService } from "./service.ts";
+import type {
+  CreateCustomCategoryInput,
+  CreateTransactionInput,
+  EditTransactionInput,
+  TransactionListFilters,
+} from "./types.ts";
 
 const transactionParams = {
   type: "object",
@@ -37,6 +38,7 @@ const listQuery = {
   additionalProperties: false,
   properties: {
     category: { type: "string", minLength: 1, maxLength: 200 },
+    stageId: { type: "string", minLength: 1, maxLength: 200 },
     from: { type: "string", minLength: 1, maxLength: 30 },
     to: { type: "string", minLength: 1, maxLength: 30 },
     search: { type: "string", minLength: 1, maxLength: 200 },
@@ -56,6 +58,7 @@ const createTransactionBody = {
     vendor: { type: ["string", "null"], maxLength: 200 },
     reference: { type: ["string", "null"], maxLength: 200 },
     receiptFileId: { type: ["string", "null"], maxLength: 200 },
+    stageId: { type: ["string", "null"], maxLength: 200 },
   },
 } as const;
 
@@ -79,6 +82,7 @@ const createCategoryBody = {
 function toFilters(query: Record<string, unknown>): TransactionListFilters {
   const filters: TransactionListFilters = {};
   if (typeof query.category === "string") filters.category = query.category;
+  if (typeof query.stageId === "string") filters.stageId = query.stageId;
   if (typeof query.from === "string") filters.from = query.from;
   if (typeof query.to === "string") filters.to = query.to;
   if (typeof query.search === "string") filters.search = query.search;
@@ -86,9 +90,14 @@ function toFilters(query: Record<string, unknown>): TransactionListFilters {
 }
 
 const transactionRoutes: FastifyPluginAsync = async (fastify) => {
+  const stages = stagesRepository(fastify.db);
   const service = transactionsService(
     transactionsRepository(fastify.db),
     customCategoriesRepository(fastify.db),
+    {
+      stageBelongsToProject: async (projectId, stageId) =>
+        (await stages.findById(stageId))?.project_id === projectId,
+    },
   );
 
   fastify.get<{ Params: { id: string }; Querystring: Record<string, unknown> }>(

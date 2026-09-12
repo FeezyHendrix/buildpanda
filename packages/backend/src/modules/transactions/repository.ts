@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type {
   CategoryType,
   CustomCategoryRow,
+  StageExpenseSumRow,
   TransactionListFilters,
   TransactionRow,
   TransactionRowWithUser,
@@ -19,6 +20,7 @@ export interface NewTransactionRecord {
   vendor: string | null;
   reference: string | null;
   receipt_file_id: string | null;
+  stage_id: string | null;
   created_by_id: string | null;
 }
 
@@ -32,6 +34,7 @@ export interface TransactionUpdatePatch {
   vendor?: string | null;
   reference?: string | null;
   receipt_file_id?: string | null;
+  stage_id?: string | null;
   updated_at?: Date | string;
 }
 
@@ -50,6 +53,9 @@ function applyFilters(
   if (!filters) return builder;
   if (filters.category) {
     builder.where("project_transactions.category", filters.category);
+  }
+  if (filters.stageId) {
+    builder.where("project_transactions.stage_id", filters.stageId);
   }
   if (filters.from) {
     builder.where("project_transactions.transacted_at", ">=", filters.from);
@@ -79,8 +85,10 @@ export function transactionsRepository(db: Knex) {
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
+          "project_phases.name as stage_name",
         )
         .leftJoin("user", "user.id", "project_transactions.created_by_id")
+        .leftJoin("project_phases", "project_phases.id", "project_transactions.stage_id")
         .where("project_transactions.project_id", projectId)
         .orderBy("project_transactions.transacted_at", "desc")
         .orderBy("project_transactions.created_at", "desc");
@@ -94,8 +102,10 @@ export function transactionsRepository(db: Knex) {
         .select(
           "project_transactions.*",
           db.raw("\"user\".name as created_by_name"),
+          "project_phases.name as stage_name",
         )
         .leftJoin("user", "user.id", "project_transactions.created_by_id")
+        .leftJoin("project_phases", "project_phases.id", "project_transactions.stage_id")
         .where("project_transactions.id", id)
         .first();
       return row as TransactionRowWithUser | undefined;
@@ -156,6 +166,17 @@ export function transactionsRepository(db: Knex) {
       return query as unknown as Promise<
         Array<{ month: string; total: string }>
       >;
+    },
+
+    // Actual cost attributed to each stage. Expenses have no void state: a
+    // wrong entry is deleted, so every row still present counts.
+    async sumByStage(projectId: string): Promise<StageExpenseSumRow[]> {
+      return db<TransactionRow>("project_transactions")
+        .select("stage_id")
+        .sum({ total: "amount" })
+        .where("project_transactions.project_id", projectId)
+        .whereNotNull("stage_id")
+        .groupBy("stage_id") as unknown as Promise<StageExpenseSumRow[]>;
     },
 
     async totals(

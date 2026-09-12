@@ -33,6 +33,7 @@ export interface TransactionRow {
   vendor: string | null;
   reference: string | null;
   receipt_file_id: string | null;
+  stage_id: string | null;
   created_by_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -40,6 +41,7 @@ export interface TransactionRow {
 
 export interface TransactionRowWithUser extends TransactionRow {
   created_by_name: string | null;
+  stage_name: string | null;
 }
 
 export interface CustomCategoryRow {
@@ -65,6 +67,8 @@ export interface Transaction {
   vendor: string | null;
   reference: string | null;
   receiptFileId: string | null;
+  stageId: string | null;
+  stageName: string | null;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -110,7 +114,43 @@ export interface TransactionAnalytics {
 
 export interface TransactionListFilters {
   category?: string;
+  stageId?: string;
   from?: string;
   to?: string;
   search?: string;
+}
+
+export interface CreateTransactionInput {
+  title: string;
+  description?: string | null;
+  category: string;
+  amount: number;
+  transactedAt: string;
+  vendor?: string | null;
+  reference?: string | null;
+  receiptFileId?: string | null;
+  stageId?: string | null;
+}
+
+export interface EditTransactionInput {
+  title?: string;
+  description?: string | null;
+  category?: string;
+  amount?: number;
+  transactedAt?: string;
+  vendor?: string | null;
+  reference?: string | null;
+  receiptFileId?: string | null;
+  stageId?: string | null;
+}
+
+export interface CreateCustomCategoryInput {
+  label: string;
+  color?: string | null;
+}
+
+/** Σ amount of expenses attributed to each stage; `stage_id` is never null here. */
+export interface StageExpenseSumRow {
+  stage_id: string;
+  total: string;
 }

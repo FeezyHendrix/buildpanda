@@ -106,6 +106,13 @@ export function agentRepository(db: Knex) {
       return db("project_finances").where({ project_id: projectId }).first();
     },
 
+    stageNames(projectId: string): Promise<Array<{ id: string; name: string }>> {
+      return db("project_phases")
+        .where({ project_id: projectId })
+        .orderBy("sort_order", "asc")
+        .select("id", "name");
+    },
+
     financeEvents(projectId: string) {
       return db("finance_events")
         .where({ project_id: projectId })

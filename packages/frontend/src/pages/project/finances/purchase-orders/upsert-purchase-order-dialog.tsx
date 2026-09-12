@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
+import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import type { PurchaseOrderStatus } from "@/hooks/use-purchase-orders";
+import { useStages } from "@/hooks/use-stages";
+import type { Stage } from "@/lib/project-types";
 import { currencySymbol, formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import {
@@ -17,7 +20,14 @@ import {
 } from "./purchase-order-model";
 import { PoMetric } from "./po-metric";
 
+const NO_STAGE = "__none__";
+
+function toStageItems(stages: Stage[]): ComboItem[] {
+  return [{ id: NO_STAGE, label: "No stage" }, ...stages.map((s) => ({ id: s.id, label: s.name }))];
+}
+
 interface UpsertPurchaseOrderDialogProps {
+  projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
@@ -88,6 +98,7 @@ function LineItemRow({
 }
 
 export function UpsertPurchaseOrderDialog({
+  projectId,
   open,
   onOpenChange,
   mode,
@@ -98,6 +109,8 @@ export function UpsertPurchaseOrderDialog({
   currency,
 }: UpsertPurchaseOrderDialogProps) {
   const [values, setValues] = useState<UpsertPurchaseOrderValues>(EMPTY_PO);
+  const { data: stages = [] } = useStages(open ? projectId : undefined);
+  const stageItems = useMemo(() => toStageItems(stages), [stages]);
 
   useEffect(() => {
     if (open) setValues(initial ?? EMPTY_PO);
@@ -144,6 +157,7 @@ export function UpsertPurchaseOrderDialog({
       orderDate: values.orderDate.trim(),
       expectedDate: values.expectedDate.trim(),
       notes: values.notes.trim(),
+      stageId: values.stageId,
       items: values.items.map((item) => ({
         description: item.description.trim(),
         quantity: String(Number(item.quantity || "1")),
@@ -229,6 +243,17 @@ export function UpsertPurchaseOrderDialog({
             className={poInputClass}
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="po-stage">Stage</Label>
+        <ComboSelect
+          items={stageItems}
+          value={values.stageId || NO_STAGE}
+          onChange={(val) => update("stageId", val && val !== NO_STAGE ? val : "")}
+          placeholder="Attribute to a build stage"
+        />
+        <p className="text-xs text-gray-500">Issued POs count as committed cost for this stage.</p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-2xl border border-[#F0F0F0] p-4">

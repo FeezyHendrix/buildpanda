@@ -1,8 +1,11 @@
 import type { Knex } from "knex";
-import type {
-  PurchaseOrderItemRow,
-  PurchaseOrderRow,
-  PurchaseOrderStatus,
+import {
+  COMMITTED_PURCHASE_ORDER_STATUSES,
+  type PurchaseOrderItemRow,
+  type PurchaseOrderRow,
+  type PurchaseOrderRowWithStage,
+  type PurchaseOrderStatus,
+  type StageCommittedSumRow,
 } from "./types.ts";
 
 export interface NewPurchaseOrderRecord {
@@ -14,6 +17,7 @@ export interface NewPurchaseOrderRecord {
   order_date: string | null;
   expected_date: string | null;
   notes: string | null;
+  stage_id: string | null;
 }
 
 export interface PurchaseOrderUpdatePatch {
@@ -23,6 +27,7 @@ export interface PurchaseOrderUpdatePatch {
   order_date?: string | null;
   expected_date?: string | null;
   notes?: string | null;
+  stage_id?: string | null;
 }
 
 export interface NewPurchaseOrderItemRecord {
@@ -33,16 +38,37 @@ export interface NewPurchaseOrderItemRecord {
   unit_price: string;
 }
 
+function withStage(db: Knex) {
+  return db<PurchaseOrderRow>("purchase_orders")
+    .select("purchase_orders.*", "project_phases.name as stage_name")
+    .leftJoin("project_phases", "project_phases.id", "purchase_orders.stage_id");
+}
+
 export function purchaseOrdersRepository(db: Knex) {
   return {
-    listByProject(projectId: string): Promise<PurchaseOrderRow[]> {
-      return db<PurchaseOrderRow>("purchase_orders")
-        .where({ project_id: projectId })
-        .orderBy("created_at", "desc");
+    listByProject(projectId: string): Promise<PurchaseOrderRowWithStage[]> {
+      return withStage(db)
+        .where("purchase_orders.project_id", projectId)
+        .orderBy("purchase_orders.created_at", "desc") as unknown as Promise<PurchaseOrderRowWithStage[]>;
     },
 
-    findById(id: string): Promise<PurchaseOrderRow | undefined> {
-      return db<PurchaseOrderRow>("purchase_orders").where({ id }).first();
+    findById(id: string): Promise<PurchaseOrderRowWithStage | undefined> {
+      return withStage(db)
+        .where("purchase_orders.id", id)
+        .first() as unknown as Promise<PurchaseOrderRowWithStage | undefined>;
+    },
+
+    // Money committed to suppliers per stage: only POs that have actually been
+    // issued count, and a cancelled or draft order commits nothing.
+    committedByStage(projectId: string): Promise<StageCommittedSumRow[]> {
+      return db("purchase_orders as po")
+        .join("purchase_order_items as it", "it.purchase_order_id", "po.id")
+        .where("po.project_id", projectId)
+        .whereNotNull("po.stage_id")
+        .whereIn("po.status", [...COMMITTED_PURCHASE_ORDER_STATUSES])
+        .groupBy("po.stage_id")
+        .select("po.stage_id")
+        .sum({ total: db.raw("it.quantity * it.unit_price") }) as unknown as Promise<StageCommittedSumRow[]>;
     },
 
     listItemsForPurchaseOrders(purchaseOrderIds: string[]): Promise<PurchaseOrderItemRow[]> {

@@ -9,6 +9,7 @@ import {
   type ScheduleOfValueLineInput,
   type UpdateStageInput,
 } from "./service.ts";
+import type { UpdateScheduleProgressBody } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -97,6 +98,47 @@ const scheduleOfValuesBody = {
       },
     },
   },
+} as const;
+
+const periodParams = {
+  type: "object",
+  required: ["id", "stageId", "period"],
+  additionalProperties: false,
+  properties: {
+    id: { type: "string", minLength: 1 },
+    stageId: { type: "string", minLength: 1 },
+    period: { type: "string", pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+  },
+} as const;
+
+const scheduleProgressBody = {
+  type: "object",
+  required: ["percentComplete"],
+  additionalProperties: false,
+  properties: {
+    percentComplete: { type: ["number", "null"], minimum: 0, maximum: 100 },
+  },
+} as const;
+
+const scheduleOfValueSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    stageId: { type: "string" },
+    period: { type: "string" },
+    percent: { type: "number" },
+    amount: { type: "number" },
+    billed: { type: "boolean" },
+    sortOrder: { type: "integer" },
+    percentComplete: { type: ["number", "null"] },
+    periodPercent: { type: "number" },
+    periodAmount: { type: "number" },
+    toDateAmount: { type: "number" },
+  },
+} as const;
+
+const scheduleOfValuesResponse = {
+  200: { type: "array", items: scheduleOfValueSchema },
 } as const;
 
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
@@ -191,6 +233,26 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
         project.id,
         request.params.stageId,
         request.body.lines,
+      );
+    },
+  );
+
+  // One cell of the billing sheet: cumulative % complete for a stage-month.
+  // Billing progress is a finance record, so it takes the finances permission
+  // rather than the stage-planning one.
+  fastify.patch<{
+    Params: { id: string; stageId: string; period: string };
+    Body: UpdateScheduleProgressBody;
+  }>(
+    "/projects/:id/stages/:stageId/schedule-of-values/:period",
+    { schema: { params: periodParams, body: scheduleProgressBody, response: scheduleOfValuesResponse } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
+      return service.updateScheduleProgress(
+        project.id,
+        request.params.stageId,
+        request.params.period,
+        request.body.percentComplete,
       );
     },
   );

@@ -47,6 +47,7 @@ export interface UpsertPurchaseOrderValues {
   orderDate: string;
   expectedDate: string;
   notes: string;
+  stageId: string;
   items: LineItemValues[];
 }
 
@@ -57,6 +58,7 @@ export const EMPTY_PO: UpsertPurchaseOrderValues = {
   orderDate: "",
   expectedDate: "",
   notes: "",
+  stageId: "",
   items: [{ description: "", quantity: "1", unitPrice: "" }],
 };
 
@@ -87,6 +89,7 @@ export function toInput(values: UpsertPurchaseOrderValues): PurchaseOrderInput {
     orderDate: values.orderDate || undefined,
     expectedDate: values.expectedDate || undefined,
     notes: values.notes || undefined,
+    stageId: values.stageId || null,
     items: values.items.map((item) => ({
       description: item.description,
       quantity: Number(item.quantity || "1"),
@@ -103,6 +106,7 @@ export function toValues(purchaseOrder: PurchaseOrder): UpsertPurchaseOrderValue
     orderDate: purchaseOrder.orderDate ?? "",
     expectedDate: purchaseOrder.expectedDate ?? "",
     notes: purchaseOrder.notes ?? "",
+    stageId: purchaseOrder.stageId ?? "",
     items: purchaseOrder.items.map((item) => ({
       description: item.description,
       quantity: String(item.quantity),

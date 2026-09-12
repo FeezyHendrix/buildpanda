@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { Money } from "../../lib/money.ts";
 import type {
@@ -6,7 +6,9 @@ import type {
   StagesRepository,
   StageUpdatePatch,
 } from "./repository.ts";
+import { periodBilling } from "./period-billing.ts";
 import type {
+  PeriodBillingLine,
   Stage,
   StageRow,
   StageScheduleOfValue,
@@ -75,7 +77,14 @@ function toStage(row: StageRow): Stage {
   };
 }
 
-function toScheduleOfValue(row: StageScheduleOfValueRow): StageScheduleOfValue {
+function percentCompleteOf(row: StageScheduleOfValueRow): number | null {
+  return row.percent_complete === null ? null : Number(row.percent_complete);
+}
+
+function toScheduleOfValue(
+  row: StageScheduleOfValueRow,
+  billing: PeriodBillingLine | undefined,
+): StageScheduleOfValue {
   return {
     id: row.id,
     stageId: row.stage_id,
@@ -84,7 +93,54 @@ function toScheduleOfValue(row: StageScheduleOfValueRow): StageScheduleOfValue {
     amount: Number(row.amount),
     billed: row.billed,
     sortOrder: row.sort_order,
+    percentComplete: percentCompleteOf(row),
+    periodPercent: billing?.periodPct ?? 0,
+    periodAmount: billing?.periodAmount ?? 0,
+    toDateAmount: billing?.toDateAmount ?? 0,
   };
+}
+
+/**
+ * Prices every line's period figures off its stage's scheduled value. One
+ * `periodBilling` per stage, so a project-wide list stays a single pass.
+ */
+function toScheduleOfValues(
+  rows: StageScheduleOfValueRow[],
+  valueByStage: Map<string, number>,
+): StageScheduleOfValue[] {
+  const byStage = new Map<string, StageScheduleOfValueRow[]>();
+  for (const row of rows) {
+    const bucket = byStage.get(row.stage_id);
+    if (bucket) bucket.push(row);
+    else byStage.set(row.stage_id, [row]);
+  }
+  const billingByKey = new Map<string, PeriodBillingLine>();
+  for (const [stageId, stageRows] of byStage) {
+    const lines = periodBilling(
+      stageRows.map((row) => ({ period: row.period, percentComplete: percentCompleteOf(row) })),
+      valueByStage.get(stageId) ?? 0,
+    );
+    for (const line of lines) billingByKey.set(`${stageId}:${line.period}`, line);
+  }
+  return rows.map((row) => toScheduleOfValue(row, billingByKey.get(`${row.stage_id}:${row.period}`)));
+}
+
+function recordedBefore(rows: StageScheduleOfValueRow[], period: string): StageScheduleOfValueRow | undefined {
+  let found: StageScheduleOfValueRow | undefined;
+  for (const row of rows) {
+    if (row.period >= period || row.percent_complete === null) continue;
+    if (!found || row.period > found.period) found = row;
+  }
+  return found;
+}
+
+function recordedAfter(rows: StageScheduleOfValueRow[], period: string): StageScheduleOfValueRow | undefined {
+  let found: StageScheduleOfValueRow | undefined;
+  for (const row of rows) {
+    if (row.period <= period || row.percent_complete === null) continue;
+    if (!found || row.period < found.period) found = row;
+  }
+  return found;
 }
 
 const ACTIVE_STATUSES: ReadonlySet<StageStatus> = new Set(["InProgress", "Done"]);
@@ -206,10 +262,70 @@ export function stagesService(
       projectId: string,
       stageId?: string,
     ): Promise<StageScheduleOfValue[]> {
-      const rows = stageId
-        ? await repository.listScheduleOfValuesByStage(projectId, stageId)
-        : await repository.listScheduleOfValuesByProject(projectId);
-      return rows.map(toScheduleOfValue);
+      const [rows, stages] = await Promise.all([
+        stageId
+          ? repository.listScheduleOfValuesByStage(projectId, stageId)
+          : repository.listScheduleOfValuesByProject(projectId),
+        repository.listByProject(projectId),
+      ]);
+      return toScheduleOfValues(rows, new Map(stages.map((stage) => [stage.id, Number(stage.value)])));
+    },
+
+    /**
+     * Records the cumulative percent complete for one stage-month, the cell a
+     * QS types into on the billing sheet. Progress is cumulative, so a month can
+     * never sit below the last recorded month or above the next one; clearing
+     * runs from the latest month backwards so no gap opens in the middle.
+     */
+    async updateScheduleProgress(
+      projectId: string,
+      stageId: string,
+      period: string,
+      percentComplete: number | null,
+    ): Promise<StageScheduleOfValue[]> {
+      const stage = await repository.findById(stageId);
+      if (!stage || stage.project_id !== projectId) throw new NotFoundError("Stage");
+      if (Number(stage.value) <= 0) {
+        throw new BadRequestError("Price the stage before recording progress against it");
+      }
+      const rows = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      const others = rows.filter((row) => row.period !== period);
+      const previous = recordedBefore(others, period);
+      const next = recordedAfter(others, period);
+
+      if (percentComplete === null) {
+        if (next) {
+          throw new ConflictError(
+            `Clear ${next.period} first — progress is cumulative, so months are cleared from the latest one backwards`,
+          );
+        }
+      } else {
+        if (previous && percentComplete < Number(previous.percent_complete)) {
+          throw new ConflictError(
+            `${period} cannot fall below ${previous.period}'s ${Number(previous.percent_complete)}% — progress is cumulative`,
+          );
+        }
+        if (next && percentComplete > Number(next.percent_complete)) {
+          throw new ConflictError(
+            `${period} cannot exceed ${next.period}'s ${Number(next.percent_complete)}% — progress is cumulative`,
+          );
+        }
+      }
+
+      await repository.upsertScheduleProgress({
+        id: generateId("sov"),
+        project_id: projectId,
+        stage_id: stageId,
+        period,
+        percent_complete: percentComplete === null ? null : String(percentComplete),
+      });
+      const updated = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      return toScheduleOfValues(updated, new Map([[stageId, Number(stage.value)]]));
+    },
+
+    /** Flags a month as invoiced on the given stages once a progress invoice is raised for it. */
+    async markPeriodBilled(projectId: string, period: string, stageIds: string[]): Promise<void> {
+      await repository.markScheduleOfValuesBilled(projectId, period, stageIds);
     },
 
     async replaceScheduleOfValues(
@@ -227,6 +343,11 @@ export function stagesService(
         );
       }
 
+      // Replacing the planned schedule must not wipe the progress already
+      // recorded on those months — carry it across by period.
+      const existing = await repository.listScheduleOfValuesByStage(projectId, stageId);
+      const progressByPeriod = new Map(existing.map((row) => [row.period, row.percent_complete]));
+
       const billedTotal = Money.of(stage.value).percent(totalPercent);
       const amounts = billedTotal.allocate(lines.map((line) => line.percent));
       const records: NewStageScheduleOfValueRecord[] = lines.map((line, index) => ({
@@ -238,11 +359,12 @@ export function stagesService(
         amount: amounts[index]?.toFixed(2) ?? "0.00",
         billed: line.billed ?? false,
         sort_order: index,
+        percent_complete: progressByPeriod.get(line.period) ?? null,
       }));
 
       await repository.replaceScheduleOfValues(stageId, records);
       const rows = await repository.listScheduleOfValuesByStage(projectId, stageId);
-      return rows.map(toScheduleOfValue);
+      return toScheduleOfValues(rows, new Map([[stageId, Number(stage.value)]]));
     },
   };
 }

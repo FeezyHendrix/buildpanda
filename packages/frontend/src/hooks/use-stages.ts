@@ -4,10 +4,16 @@ import {
   type ScheduleOfValueLineInput,
   type StageInput,
   type StageScheduleOfValue,
+  type UpdateScheduleProgressInput,
 } from "@/api/stages";
 import { stageKeys } from "./query-keys";
 
-export type { StageInput, ScheduleOfValueLineInput, StageScheduleOfValue };
+export type {
+  StageInput,
+  ScheduleOfValueLineInput,
+  StageScheduleOfValue,
+  UpdateScheduleProgressInput,
+};
 
 export function useStages(projectId: string | undefined, buildingId?: string) {
   return useQuery({
@@ -79,7 +85,7 @@ export function useScheduleOfValues(
 /** Every stage's schedule of values in one request — for list views, so a table doesn't fetch per row. */
 export function useProjectScheduleOfValues(projectId: string | undefined) {
   return useQuery({
-    queryKey: stageKeys.scheduleOfValues(projectId ?? "__none__"),
+    queryKey: stageKeys.projectScheduleOfValues(projectId ?? "__none__"),
     queryFn: () => stagesApi.projectScheduleOfValues(projectId!),
     enabled: Boolean(projectId),
   });
@@ -97,6 +103,17 @@ export function useReplaceScheduleOfValues() {
       stageId: string;
       lines: ScheduleOfValueLineInput[];
     }) => stagesApi.replaceScheduleOfValues(projectId, stageId, lines),
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
+    },
+  });
+}
+
+export function useUpdateScheduleProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ...input }: UpdateScheduleProgressInput & { projectId: string }) =>
+      stagesApi.updateScheduleProgress(projectId, input),
     onSuccess: (_data, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },

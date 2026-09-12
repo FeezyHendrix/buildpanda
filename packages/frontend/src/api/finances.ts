@@ -64,7 +64,21 @@ export interface RecordVariationVariables {
   description: string;
 }
 
+export interface StageCost {
+  stageId: string;
+  committed: number;
+  actual: number;
+  currency: string;
+}
+
+export interface StageCostsResponse {
+  stages: StageCost[];
+}
+
 export const financesApi = {
+  stageCosts: (projectId: string) =>
+    api.get<StageCostsResponse>(`/projects/${projectId}/finances/stage-costs`).then((r) => r.data),
+
   cashFlow: {
     list: (projectId: string) =>
       api.get<CashFlowEntry[]>(`/projects/${projectId}/finances/cash-flow`).then((r) => r.data),

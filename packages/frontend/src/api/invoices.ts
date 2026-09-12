@@ -181,11 +181,13 @@ export const invoicesApi = {
   scan: (projectId: string, fileId: string) =>
     api.post<InvoiceScanResult>(`/projects/${projectId}/invoices/scan`, { fileId }).then(r => r.data),
 
-  payApplication: (projectId: string, invoiceId: string) =>
-    api.get<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`).then(r => r.data),
+  /** `period` seeds an application that has no lines yet from the billing sheet's month. */
+  payApplication: (projectId: string, invoiceId: string, period?: string) =>
+    api.get<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`, { params: period ? { period } : undefined }).then(r => r.data),
 
-  setPayApplication: (projectId: string, invoiceId: string, lines: PayApplicationLineInput[]) =>
-    api.put<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`, { lines }).then(r => r.data),
+  /** `period` flags that billing-sheet month as invoiced on the stages saved. */
+  setPayApplication: (projectId: string, invoiceId: string, lines: PayApplicationLineInput[], period?: string) =>
+    api.put<PayApplicationSummary>(`/projects/${projectId}/invoices/${invoiceId}/pay-application`, { lines, period }).then(r => r.data),
 };
 
 export type InvoiceDocumentKind = "invoice" | "receipt" | "quote" | "other";

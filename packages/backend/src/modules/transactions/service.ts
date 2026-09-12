@@ -1,15 +1,25 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
+import {
+  asIsoDate,
+  categoryDisplay,
+  csvEscape,
+  isPresetKey,
+  toCustomCategory,
+  toTransaction,
+  trim,
+} from "./mappers.ts";
 import type {
   CustomCategoriesRepository,
   TransactionsRepository,
 } from "./repository.ts";
 import {
-  PRESET_CATEGORY_KEYS,
   PRESET_TRANSACTION_CATEGORIES,
   type CategoryType,
+  type CreateCustomCategoryInput,
+  type CreateTransactionInput,
   type CustomCategoryRow,
-  type CustomTransactionCategory,
+  type EditTransactionInput,
   type Transaction,
   type TransactionAnalytics,
   type TransactionAnalyticsByCategory,
@@ -19,130 +29,32 @@ import {
   type TransactionRowWithUser,
 } from "./types.ts";
 
-export interface CreateTransactionInput {
-  title: string;
-  description?: string | null;
-  category: string;
-  amount: number;
-  transactedAt: string;
-  vendor?: string | null;
-  reference?: string | null;
-  receiptFileId?: string | null;
-}
+// Request-body shapes live in types.ts; re-exported so existing importers keep working.
+export type { CreateCustomCategoryInput, CreateTransactionInput, EditTransactionInput };
 
-export interface EditTransactionInput {
-  title?: string;
-  description?: string | null;
-  category?: string;
-  amount?: number;
-  transactedAt?: string;
-  vendor?: string | null;
-  reference?: string | null;
-  receiptFileId?: string | null;
-}
-
-export interface CreateCustomCategoryInput {
-  label: string;
-  color?: string | null;
-}
-
-const PRESET_MAP = new Map<string, { label: string; color: string }>(
-  PRESET_TRANSACTION_CATEGORIES.map((c) => [c.key, { label: c.label, color: c.color }]),
-);
-
-function isPresetKey(key: string): boolean {
-  return PRESET_CATEGORY_KEYS.includes(key as (typeof PRESET_CATEGORY_KEYS)[number]);
-}
-
-function trim(value: string | null | undefined): string | null {
-  if (value === undefined || value === null) return null;
-  const t = value.trim();
-  return t.length > 0 ? t : null;
-}
-
-function asIsoDate(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new BadRequestError("Invalid date");
-  }
-  return parsed.toISOString().slice(0, 10);
-}
-
-function asIsoDateTime(value: Date | string): string {
-  return value instanceof Date ? value.toISOString() : value;
-}
-
-function asIsoDay(value: Date | string): string {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return value.length >= 10 ? value.slice(0, 10) : value;
-}
-
-function categoryDisplay(
-  category: string,
-  categoryType: CategoryType,
-  customIndex: Map<string, CustomCategoryRow>,
-): { label: string; color: string | null } {
-  if (categoryType === "preset") {
-    const preset = PRESET_MAP.get(category);
-    return preset
-      ? { label: preset.label, color: preset.color }
-      : { label: category, color: null };
-  }
-  const custom = customIndex.get(category.toLowerCase());
-  return custom
-    ? { label: custom.label, color: custom.color }
-    : { label: category, color: null };
-}
-
-function toTransaction(
-  row: TransactionRowWithUser,
-  customIndex: Map<string, CustomCategoryRow>,
-): Transaction {
-  const display = categoryDisplay(row.category, row.category_type, customIndex);
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    title: row.title,
-    description: row.description,
-    category: row.category,
-    categoryLabel: display.label,
-    categoryColor: display.color,
-    categoryType: row.category_type,
-    amount: Number(row.amount),
-    transactedAt: asIsoDay(row.transacted_at),
-    vendor: row.vendor,
-    reference: row.reference,
-    receiptFileId: row.receipt_file_id,
-    createdById: row.created_by_id,
-    createdByName: row.created_by_name,
-    createdAt: asIsoDateTime(row.created_at),
-    updatedAt: asIsoDateTime(row.updated_at),
-  };
-}
-
-function toCustomCategory(row: CustomCategoryRow): CustomTransactionCategory {
-  return {
-    id: row.id,
-    orgId: row.org_id,
-    label: row.label,
-    color: row.color,
-    createdAt: asIsoDateTime(row.created_at),
-  };
-}
-
-function csvEscape(value: string | number | null): string {
-  if (value === null || value === undefined) return "";
-  const str = String(value);
-  if (/[",\n\r]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
+export interface TransactionsDeps {
+  // Wired by the route plugin from the stages module so this service never
+  // touches project_phases directly.
+  stageBelongsToProject?: (projectId: string, stageId: string) => Promise<boolean>;
 }
 
 export function transactionsService(
   transactions: TransactionsRepository,
   customCategories: CustomCategoriesRepository,
+  deps: TransactionsDeps = {},
 ) {
+  async function resolveStageId(
+    projectId: string,
+    stageId: string | null | undefined,
+  ): Promise<string | null> {
+    const trimmed = trim(stageId);
+    if (!trimmed) return null;
+    if (deps.stageBelongsToProject && !(await deps.stageBelongsToProject(projectId, trimmed))) {
+      throw new BadRequestError("Stage does not belong to this project");
+    }
+    return trimmed;
+  }
+
   async function customIndexFor(orgId: string): Promise<Map<string, CustomCategoryRow>> {
     const rows = await customCategories.listByOrg(orgId);
     const map = new Map<string, CustomCategoryRow>();
@@ -234,11 +146,13 @@ export function transactionsService(
         vendor: trim(input.vendor),
         reference: trim(input.reference),
         receipt_file_id: trim(input.receiptFileId),
+        stage_id: await resolveStageId(projectId, input.stageId),
         created_by_id: userId,
       });
       const enriched = (await transactions.findById(row.id)) ?? {
         ...(row as TransactionRow),
         created_by_name: null,
+        stage_name: null,
       };
       const customIndex = await customIndexFor(orgId);
       return toTransaction(enriched, customIndex);
@@ -276,6 +190,7 @@ export function transactionsService(
       if (input.receiptFileId !== undefined) {
         patch.receipt_file_id = trim(input.receiptFileId);
       }
+      if (input.stageId !== undefined) patch.stage_id = await resolveStageId(projectId, input.stageId);
 
       const updated = await transactions.update(transactionId, patch);
       if (!updated) throw new NotFoundError("Transaction");
@@ -284,6 +199,7 @@ export function transactionsService(
         (await transactions.findById(updated.id)) ?? {
           ...(updated as TransactionRow),
           created_by_name: null,
+          stage_name: null,
         };
       const customIndex = await customIndexFor(orgId);
       return toTransaction(enriched, customIndex);
@@ -410,6 +326,7 @@ export function transactionsService(
         "Date",
         "Title",
         "Category",
+        "Stage",
         "Amount",
         "Vendor",
         "Reference",
@@ -422,6 +339,7 @@ export function transactionsService(
           r.transactedAt,
           r.title,
           r.categoryLabel,
+          r.stageName ?? "",
           r.amount.toFixed(2),
           r.vendor ?? "",
           r.reference ?? "",

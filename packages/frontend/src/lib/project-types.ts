@@ -1503,6 +1503,8 @@ export interface Transaction {
   vendor: string | null;
   reference: string | null;
   receiptFileId: string | null;
+  stageId: string | null;
+  stageName: string | null;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -1540,6 +1542,7 @@ export interface TransactionAnalytics {
 
 export interface TransactionListFilters {
   category?: string;
+  stageId?: string;
   from?: string;
   to?: string;
   search?: string;
@@ -1554,6 +1557,7 @@ export interface CreateTransactionInput {
   vendor?: string | null;
   reference?: string | null;
   receiptFileId?: string | null;
+  stageId?: string | null;
 }
 
 export interface UpdateTransactionInput {
@@ -1565,6 +1569,7 @@ export interface UpdateTransactionInput {
   vendor?: string | null;
   reference?: string | null;
   receiptFileId?: string | null;
+  stageId?: string | null;
 }
 
 export interface CreateCustomCategoryInput {
