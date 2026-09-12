@@ -519,33 +519,6 @@ export function agentRepository(db: Knex) {
         );
     },
 
-    invoices(projectId: string, status?: string) {
-      // One query: invoices with their paid total aggregated via the payments join.
-      return db("project_invoices as i")
-        .leftJoin("invoice_payments as p", "p.invoice_id", "i.id")
-        .where("i.project_id", projectId)
-        .modify((q) => {
-          if (status) q.where("i.status", status);
-        })
-        .groupBy("i.id")
-        .orderBy("i.created_at", "desc")
-        .limit(100)
-        .select(
-          "i.id",
-          "i.number",
-          "i.vendor_name",
-          "i.invoice_type",
-          "i.status",
-          "i.currency",
-          "i.issue_date",
-          "i.due_date",
-          "i.total_invoiced",
-          "i.net_payable",
-          "i.to_party",
-        )
-        .sum({ amount_paid: "p.amount" });
-    },
-
     budgetCategories(projectId: string) {
       return db("project_budget_categories")
         .where({ project_id: projectId })

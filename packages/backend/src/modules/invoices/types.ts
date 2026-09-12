@@ -1,10 +1,14 @@
 export const INVOICE_TYPES = ["progress", "final", "variation", "vendor", "material"] as const;
-export const INVOICE_STATUSES = ["Draft", "Sent", "Approved", "PartiallyPaid", "Paid", "Overdue"] as const;
+/** Derived (API) statuses: the workflow ladder plus the payment states derived from recorded payments. */
+export const INVOICE_STATUSES = ["Draft", "Sent", "Queried", "Approved", "PartiallyPaid", "Paid", "Overdue"] as const;
+/** Workflow statuses a client may set; "Submitted" is the stored spelling of "Sent". */
+export const INVOICE_WORKFLOW_STATUSES = ["Draft", "Sent", "Submitted", "Queried", "Approved"] as const;
+export const PAYMENT_METHODS = ["Bank Transfer", "Cash", "Card", "Cheque", "Other"] as const;
 
 export type InvoiceType = (typeof INVOICE_TYPES)[number];
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
-export type StoredInvoiceStatus = "Draft" | "Sent" | "Approved" | "Submitted";
-export type PaymentMethod = "Bank Transfer" | "Cash" | "Card" | "Cheque" | "Other";
+export type StoredInvoiceStatus = (typeof INVOICE_WORKFLOW_STATUSES)[number];
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export interface InvoicePartyBank {
   accountName: string | null;
@@ -54,6 +58,10 @@ export interface Invoice {
   number: string | null;
   status: InvoiceStatus;
   workflowStatus: StoredInvoiceStatus;
+  /** Workflow statuses this invoice may move to next (forward-only ladder). */
+  nextStatuses: StoredInvoiceStatus[];
+  /** The billing-sheet month (YYYY-MM) the pay application was raised for. */
+  budgetMonth: string | null;
   currency: string;
   amount: number;
   retainagePercentage: number;
@@ -139,6 +147,7 @@ export interface InvoiceRow {
   public_token: string | null;
   viewed_at: string | null;
   pdf_storage_key: string | null;
+  billing_period: string | null;
   created_at: Date | string;
 }
 
@@ -211,4 +220,130 @@ export interface PayApplicationSummary {
   balanceToFinish: number;
   retainedTotal: number;
   currentPaymentDue: number;
+}
+
+export interface InvoicePartyInput {
+  name?: string | null;
+  address?: string | null;
+  tin?: string | null;
+  firsNumber?: string | null;
+  email?: string | null;
+  bank?: {
+    accountName?: string | null;
+    accountNumber?: string | null;
+    bankName?: string | null;
+  } | null;
+}
+
+export interface InvoiceLineItemInput {
+  description: string;
+  quantity?: number;
+  unit?: string;
+  unitRate?: number;
+  budgetCategoryId?: string;
+  isVariation?: boolean;
+}
+
+export interface CreateInvoiceInput {
+  vendorName: string;
+  trade: string;
+  number?: string;
+  status?: StoredInvoiceStatus;
+  amount?: number;
+  retainagePercentage?: number;
+  invoiceType?: InvoiceType;
+  currency?: string;
+  vatRate?: number;
+  whtRate?: number;
+  retentionRate?: number;
+  issueDate?: string;
+  dueDate?: string;
+  notes?: string;
+  fromParty?: InvoicePartyInput | null;
+  toParty?: InvoicePartyInput | null;
+  recipientEmail?: string;
+  ccEmails?: string[];
+  bccEmails?: string[];
+  poReferenceId?: string;
+  paymentClaimId?: string;
+  milestonePaymentId?: string;
+  contractReference?: string;
+  paymentTerms?: string;
+  paymentInstructions?: string;
+  coverNote?: string;
+  headerText?: string;
+  footerText?: string;
+  sourceFileId?: string;
+  lineItems?: InvoiceLineItemInput[];
+}
+
+export interface EditInvoiceInput {
+  vendorName?: string;
+  trade?: string;
+  number?: string;
+  status?: StoredInvoiceStatus;
+  amount?: number;
+  retainagePercentage?: number;
+  invoiceType?: InvoiceType;
+  currency?: string;
+  vatRate?: number;
+  whtRate?: number;
+  retentionRate?: number;
+  issueDate?: string;
+  dueDate?: string;
+  notes?: string;
+  fromParty?: InvoicePartyInput | null;
+  toParty?: InvoicePartyInput | null;
+  recipientEmail?: string;
+  ccEmails?: string[];
+  bccEmails?: string[];
+  poReferenceId?: string;
+  paymentClaimId?: string;
+  milestonePaymentId?: string;
+  contractReference?: string;
+  paymentTerms?: string;
+  paymentInstructions?: string;
+  coverNote?: string;
+  headerText?: string;
+  footerText?: string;
+  lineItems?: InvoiceLineItemInput[];
+}
+
+export interface AddPaymentInput {
+  amount: number;
+  method?: PaymentMethod;
+  paidAt?: string;
+  note?: string;
+}
+
+export interface SendInvoiceInput {
+  recipientEmail: string;
+  cc?: string[];
+  bcc?: string[];
+  coverNote?: string;
+  headerText?: string;
+  footerText?: string;
+}
+
+/** Parent row of the Payments tab: the invoice with its recorded payments nested. */
+export interface InvoiceWithPayments {
+  id: string;
+  number: string | null;
+  vendorName: string;
+  invoiceType: InvoiceType;
+  status: InvoiceStatus;
+  workflowStatus: StoredInvoiceStatus;
+  currency: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  budgetMonth: string | null;
+  netPayable: number;
+  amountPaid: number;
+  balanceDue: number;
+  payments: InvoicePayment[];
+}
+
+export interface InvoicePaymentsOverview {
+  invoices: InvoiceWithPayments[];
+  totals: { invoiced: number; paid: number; outstanding: number };
 }

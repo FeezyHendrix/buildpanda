@@ -1,5 +1,7 @@
-export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
 import type { CurrencyCode } from "../../lib/currencies.ts";
+
+export const CHANGE_STATUSES = ["Draft", "Submitted", "Approved", "Executed", "Rejected"] as const;
+export type ChangeStatus = (typeof CHANGE_STATUSES)[number];
 export type Currency = CurrencyCode;
 
 export interface ChangeRequest {
@@ -21,9 +23,30 @@ export interface ChangeRequest {
   assigneeId: string | null;
   assigneeName: string | null;
   estimateId: string | null;
+  /** The change-order contract generated at approval; null until approved. */
+  contractId: string | null;
   commentCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Counts by status for the Change Orders tab header. */
+export interface ChangeRequestSummary {
+  draft: number;
+  submitted: number;
+  approved: number;
+  executed: number;
+  rejected: number;
+  /**
+   * Margin on the change orders. Null until change requests carry a cost
+   * build-up (labour/material/markup) — the cost impact alone has no margin.
+   */
+  grossProfit: number | null;
+}
+
+export interface ChangeStatusCountRow {
+  status: ChangeStatus;
+  count: string;
 }
 
 export interface ChangeBudgetLink {

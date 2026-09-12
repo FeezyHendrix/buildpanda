@@ -3,6 +3,7 @@ import type {
   ChangeCommentRow,
   ChangeRequestRow,
   ChangeStatus,
+  ChangeStatusCountRow,
   Currency,
 } from "./types.ts";
 
@@ -87,6 +88,14 @@ export function changeRequestsRepository(db: Knex) {
 
     findById(id: string): Promise<ChangeRequestRow | undefined> {
       return base().where("c.id", id).select(...SELECT).first();
+    },
+
+    countsByStatus(projectId: string): Promise<ChangeStatusCountRow[]> {
+      return db("change_requests")
+        .where({ project_id: projectId })
+        .groupBy("status")
+        .select("status")
+        .count<ChangeStatusCountRow[]>("id as count");
     },
 
     async commentCounts(ids: string[]): Promise<Map<string, number>> {

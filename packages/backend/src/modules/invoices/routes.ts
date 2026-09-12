@@ -10,13 +10,13 @@ import { invoiceMaterialSyncer } from "./invoice-material-sync.ts";
 import { renderInvoicePdf } from "./invoice-pdf.ts";
 import { invoicesRepository } from "./repository.ts";
 import { invoicesScanService } from "./scan-service.ts";
+import { invoicesService } from "./service.ts";
 import {
-  invoicesService,
-  type AddPaymentInput,
+  INVOICE_WORKFLOW_STATUSES,
   type CreateInvoiceInput,
   type EditInvoiceInput,
   type SendInvoiceInput,
-} from "./service.ts";
+} from "./types.ts";
 
 const invoiceParams = {
   type: "object",
@@ -25,17 +25,6 @@ const invoiceParams = {
   properties: {
     id: { type: "string", minLength: 1 },
     invoiceId: { type: "string", minLength: 1 },
-  },
-} as const;
-
-const paymentParams = {
-  type: "object",
-  required: ["id", "invoiceId", "paymentId"],
-  additionalProperties: false,
-  properties: {
-    id: { type: "string", minLength: 1 },
-    invoiceId: { type: "string", minLength: 1 },
-    paymentId: { type: "string", minLength: 1 },
   },
 } as const;
 
@@ -61,7 +50,7 @@ const allocationsBody = {
 
 const statusSchema = {
   type: "string",
-  enum: ["Draft", "Sent", "Submitted", "Approved"],
+  enum: INVOICE_WORKFLOW_STATUSES,
 } as const;
 
 const invoiceTypeSchema = {
@@ -102,11 +91,6 @@ const lineItemSchema = {
     budgetCategoryId: { type: "string", minLength: 1 },
     isVariation: { type: "boolean" },
   },
-} as const;
-
-const methodSchema = {
-  type: "string",
-  enum: ["Bank Transfer", "Cash", "Card", "Cheque", "Other"],
 } as const;
 
 const createInvoiceBody = {
@@ -152,18 +136,6 @@ const editInvoiceBody = {
   additionalProperties: false,
   minProperties: 1,
   properties: createInvoiceBody.properties,
-} as const;
-
-const addPaymentBody = {
-  type: "object",
-  required: ["amount"],
-  additionalProperties: false,
-  properties: {
-    amount: { type: "number", exclusiveMinimum: 0 },
-    method: methodSchema,
-    paidAt: { type: "string", maxLength: 30 },
-    note: { type: "string", maxLength: 500 },
-  },
 } as const;
 
 const sendInvoiceBody = {
@@ -337,36 +309,6 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
         footerText: invoice.footerText,
       });
       return invoice;
-    },
-  );
-
-  fastify.post<{
-    Params: { id: string; invoiceId: string };
-    Body: AddPaymentInput;
-  }>(
-    "/projects/:id/invoices/:invoiceId/payments",
-    { schema: { params: invoiceParams, body: addPaymentBody } },
-    async (request, reply) => {
-      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
-      const invoice = await service.addPayment(
-        project.id,
-        request.params.invoiceId,
-        request.body,
-      );
-      return reply.status(201).send(invoice);
-    },
-  );
-
-  fastify.delete<{ Params: { id: string; invoiceId: string; paymentId: string } }>(
-    "/projects/:id/invoices/:invoiceId/payments/:paymentId",
-    { schema: { params: paymentParams } },
-    async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "finances", "approve");
-      return service.removePayment(
-        project.id,
-        request.params.invoiceId,
-        request.params.paymentId,
-      );
     },
   );
 

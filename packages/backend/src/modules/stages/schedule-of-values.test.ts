@@ -24,6 +24,11 @@ function stageRow(over: Partial<StageRow> = {}): StageRow {
     progress_percent: 0,
     value: "100000.00",
     sort_order: 0,
+    contract_id: null,
+    expected_cost: "0",
+    estimated_labor_hours: "0",
+    labor_budget: "0",
+    material_budget: "0",
     ...over,
   };
 }
@@ -66,6 +71,7 @@ function fakeRepo(stage: StageRow, sink: Sink): StagesRepository {
     update: async () => stage,
     remove: async () => {},
     reorder: async () => {},
+    countByContract: async () => [],
     listScheduleOfValuesByProject: async () => rowsFrom(sink),
     listScheduleOfValuesByStage: async () => rowsFrom(sink),
     replaceScheduleOfValues: async (_stageId, records) => {

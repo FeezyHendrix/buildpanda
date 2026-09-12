@@ -32,7 +32,8 @@ function fakeRepo(seedLines: InvoiceStageLineRow[]): PayApplicationRepository {
     stored.set(seeded.invoice_id, bucket);
   }
   return {
-    findById: async () => ({ project_id: "proj_1" }),
+    findById: async () => ({ project_id: "proj_1", billing_period: null }),
+    setBillingPeriod: async () => {},
     listStageLines: async (invoiceId) => stored.get(invoiceId) ?? [],
     listStageLinesForStages: async (projectId, stageIds) =>
       [...stored.values()]

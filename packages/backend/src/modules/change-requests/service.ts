@@ -9,6 +9,7 @@ import type {
   ChangeRequest,
   ChangeRequestDetail,
   ChangeRequestRow,
+  ChangeRequestSummary,
   ChangeStatus,
   Currency,
 } from "./types.ts";
@@ -38,8 +39,19 @@ export interface UpdateChangeRequestInput {
   assigneeId?: string | null;
 }
 
+/** The contract records an approved change order is generated into (modules/contracts). */
+export interface ChangeOrderContracts {
+  ensureForChangeRequest(
+    projectId: string,
+    source: { id: string; title: string; costImpact: number },
+  ): Promise<{ id: string; status: string }>;
+  findByChangeRequest(changeRequestId: string): Promise<{ id: string; status: string } | null>;
+  idsByChangeRequests(changeRequestIds: string[]): Promise<Map<string, string>>;
+}
+
 export interface ChangeRequestsDeps {
   notifications?: NotificationsService;
+  contracts?: ChangeOrderContracts;
   // An approved change is a variation against the accepted estimate, so the
   // contract sum moves through the finances module, never by editing it here.
   recordVariation?: (
@@ -49,7 +61,8 @@ export interface ChangeRequestsDeps {
   ) => Promise<void>;
 }
 
-const DECISIONS: ChangeStatus[] = ["Approved", "Rejected"];
+// Executed follows Approved, so it keeps the decision stamp rather than clearing it.
+const DECISIONS: ChangeStatus[] = ["Approved", "Executed", "Rejected"];
 
 function notifyChangeAssignee(
   deps: ChangeRequestsDeps,
@@ -86,7 +99,7 @@ function notifyChangeDecided(
     .catch(() => undefined);
 }
 
-function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
+function toChange(row: ChangeRequestRow, commentCount: number, contractId: string | null = null): ChangeRequest {
   return {
     id: row.id,
     projectId: row.project_id,
@@ -106,6 +119,7 @@ function toChange(row: ChangeRequestRow, commentCount: number): ChangeRequest {
     assigneeId: row.assignee_id,
     assigneeName: row.assignee_name,
     estimateId: row.estimate_id ?? null,
+    contractId,
     commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -127,18 +141,54 @@ export function changeRequestsService(
   repository: ChangeRequestsRepository,
   deps: ChangeRequestsDeps = {},
 ) {
+  async function contractIds(ids: string[]): Promise<Map<string, string>> {
+    if (!deps.contracts || ids.length === 0) return new Map();
+    return deps.contracts.idsByChangeRequests(ids);
+  }
+
+  // Executed means the change-order contract is in force, so the signed copy
+  // must be on file first — the reference product will not execute a CO
+  // without its contract.
+  async function assertExecutable(changeRequest: ChangeRequestRow): Promise<void> {
+    if (changeRequest.status !== "Approved") {
+      throw new BadRequestError("Only an approved change request can be executed");
+    }
+    const contract = deps.contracts ? await deps.contracts.findByChangeRequest(changeRequest.id) : null;
+    if (!contract || contract.status !== "Signed") {
+      throw new BadRequestError("Sign the change order contract before executing it");
+    }
+  }
+
   return {
     async list(projectId: string, status?: ChangeStatus): Promise<ChangeRequest[]> {
       const rows = await repository.listByProject(projectId, status);
-      const counts = await repository.commentCounts(rows.map((r) => r.id));
-      return rows.map((r) => toChange(r, counts.get(r.id) ?? 0));
+      const ids = rows.map((r) => r.id);
+      const [counts, contracts] = await Promise.all([repository.commentCounts(ids), contractIds(ids)]);
+      return rows.map((r) => toChange(r, counts.get(r.id) ?? 0, contracts.get(r.id) ?? null));
     },
 
     async get(projectId: string, id: string): Promise<ChangeRequestDetail> {
       const row = await repository.findById(id);
       if (!row || row.project_id !== projectId) throw new NotFoundError("Change request");
-      const comments = await repository.listComments(id);
-      return { ...toChange(row, comments.length), comments: comments.map(toComment) };
+      const [comments, contracts] = await Promise.all([repository.listComments(id), contractIds([id])]);
+      return {
+        ...toChange(row, comments.length, contracts.get(id) ?? null),
+        comments: comments.map(toComment),
+      };
+    },
+
+    async summary(projectId: string): Promise<ChangeRequestSummary> {
+      const rows = await repository.countsByStatus(projectId);
+      const count = (status: ChangeStatus): number =>
+        Number(rows.find((row) => row.status === status)?.count ?? 0);
+      return {
+        draft: count("Draft"),
+        submitted: count("Submitted"),
+        approved: count("Approved"),
+        executed: count("Executed"),
+        rejected: count("Rejected"),
+        grossProfit: null,
+      };
     },
 
     async create(projectId: string, input: CreateChangeRequestInput, userId: string): Promise<ChangeRequest> {
@@ -200,6 +250,9 @@ export function changeRequestsService(
       if (approvedNow && !existing.estimate_id) {
         patch.estimate_id = await repository.projectEstimateId(projectId);
       }
+      if (input.status === "Executed" && existing.status !== "Executed") {
+        await assertExecutable(existing);
+      }
 
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
@@ -211,11 +264,20 @@ export function changeRequestsService(
           { id: userId, name: actorName },
         );
       }
+      // An approved change becomes a change-order contract (kind change_order)
+      // carrying its cost impact; idempotent so re-approving never duplicates it.
+      if (approvedNow && deps.contracts) {
+        await deps.contracts.ensureForChangeRequest(projectId, {
+          id: updated.id,
+          title: updated.title,
+          costImpact,
+        });
+      }
       if (reassigned) {
         notifyChangeAssignee(deps, updated.assignee_id, projectId, updated.title, userId);
       }
-      const counts = await repository.commentCounts([id]);
-      return toChange(updated, counts.get(id) ?? 0);
+      const [counts, contracts] = await Promise.all([repository.commentCounts([id]), contractIds([id])]);
+      return toChange(updated, counts.get(id) ?? 0, contracts.get(id) ?? null);
     },
 
     async remove(projectId: string, id: string): Promise<void> {

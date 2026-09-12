@@ -90,6 +90,7 @@ export interface InvoiceUpdatePatch {
   public_token?: string | null;
   viewed_at?: Date | string | null;
   pdf_storage_key?: string | null;
+  billing_period?: string | null;
 }
 
 export interface InvoiceOrganizationRow {
@@ -225,6 +226,11 @@ export function invoicesRepository(db: Knex) {
           "o.default_retention_pct",
         )
         .first<InvoiceOrgDefaultsRow>();
+    },
+
+    /** The billing-sheet month a pay application was raised for. */
+    async setBillingPeriod(invoiceId: string, period: string): Promise<void> {
+      await db("project_invoices").where({ id: invoiceId }).update({ billing_period: period });
     },
 
     findPayment(paymentId: string): Promise<InvoicePaymentRow | undefined> {
