@@ -76,6 +76,15 @@ export function useScheduleOfValues(
   });
 }
 
+/** Every stage's schedule of values in one request — for list views, so a table doesn't fetch per row. */
+export function useProjectScheduleOfValues(projectId: string | undefined) {
+  return useQuery({
+    queryKey: stageKeys.scheduleOfValues(projectId ?? "__none__"),
+    queryFn: () => stagesApi.projectScheduleOfValues(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
 export function useReplaceScheduleOfValues() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -6,9 +6,12 @@ import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
-import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useScheduleOfValues, useStages } from "@/hooks/use-stages";
+import {
+  useProjectScheduleOfValues,
+  useStages,
+  type StageScheduleOfValue,
+} from "@/hooks/use-stages";
 import { formatCurrency } from "@/lib/formatters";
 import { Money } from "@/lib/money";
 import {
@@ -20,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
+import { TabHeader } from "./finance-tabs";
 import {
   ScheduleBar,
   formatPercent,
@@ -27,13 +31,15 @@ import {
 } from "./schedule-of-values-parts";
 
 /**
- * Contract & stages — the contract side of a build read stage by stage.
+ * Stages & billing — the contract side of a build read stage by stage.
  *
  * Each stage carries a scheduled value (its slice of the contract); the Schedule
  * of Values breaks that value into the months it gets billed in. Everything on
- * this page is a recorded figure: BuildPanda logs money that moved off-platform,
+ * this tab is a recorded figure: BuildPanda logs money that moved off-platform,
  * it never bills, charges or transfers anything.
  */
+
+const NO_LINES: StageScheduleOfValue[] = [];
 
 const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string }> = {
   Pending: { tone: "neutral", label: "Not started" },
@@ -47,7 +53,9 @@ const HEAD_CELL =
 interface StageRowProps {
   stage: Stage;
   index: number;
-  projectId: string;
+  /** This stage's schedule-of-values lines, sliced from the one project-wide query. */
+  lines: StageScheduleOfValue[];
+  isPending: boolean;
   currency: Currency;
   canManage: boolean;
   onEditValue: (stage: Stage) => void;
@@ -57,28 +65,26 @@ interface StageRowProps {
 function StageRow({
   stage,
   index,
-  projectId,
+  lines,
+  isPending,
   currency,
   canManage,
   onEditValue,
   onOpenSchedule,
 }: StageRowProps) {
-  const { data: lines, isPending } = useScheduleOfValues(projectId, stage.id);
   const status = STATUS_META[stage.status];
 
   // Amounts come back priced by the backend; summing them through Money keeps
   // the row's totals identical to the drawer's, to the cent.
-  const summary = useMemo(() => {
-    const rows = lines ?? [];
-    return {
-      count: rows.length,
-      totalPercent: Money.sum(rows.map((row) => row.percent)),
-      scheduled: Money.sum(rows.map((row) => row.amount)),
-      billed: Money.sum(
-        rows.flatMap((row) => (row.billed ? [row.amount] : [])),
-      ),
-    };
-  }, [lines]);
+  const summary = useMemo(
+    () => ({
+      count: lines.length,
+      totalPercent: Money.sum(lines.map((row) => row.percent)),
+      scheduled: Money.sum(lines.map((row) => row.amount)),
+      billed: Money.sum(lines.flatMap((row) => (row.billed ? [row.amount] : []))),
+    }),
+    [lines],
+  );
 
   const isOverBooked = summary.totalPercent.gt(100);
   const handleEditValue = useCallback(
@@ -180,10 +186,11 @@ function StageRow({
 
 StageRow.displayName = "StageRow";
 
-export default function ContractStages() {
+export function ContractStagesTab() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "stages", "manage");
   const { data: stages = [], isPending } = useStages(project.id);
+  const { data: allLines, isPending: linesPending } = useProjectScheduleOfValues(project.id);
 
   const [search, setSearch] = useState("");
   const [valueTarget, setValueTarget] = useState<Stage | null>(null);
@@ -210,6 +217,17 @@ export default function ContractStages() {
     [stages],
   );
 
+  /** One request for every stage's schedule, sliced per row (no N+1). */
+  const linesByStage = useMemo(() => {
+    const map = new Map<string, StageScheduleOfValue[]>();
+    for (const line of allLines ?? []) {
+      const rows = map.get(line.stageId);
+      if (rows) rows.push(line);
+      else map.set(line.stageId, [line]);
+    }
+    return map;
+  }, [allLines]);
+
   const handleSearch = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => setSearch(event.target.value),
     [],
@@ -222,14 +240,15 @@ export default function ContractStages() {
   }, []);
 
   return (
-    <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
-      <PageHeader
-        title="Contract & stages"
+    <section aria-label="Stages and billing">
+      <TabHeader
+        heading="Stages & billing"
+        description="Each stage's slice of the contract and the months it gets billed in."
       />
 
       <section
         aria-label="Contract summary"
-        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="mt-6 grid gap-4 sm:grid-cols-2"
       >
         <KpiCard
           label="Scheduled contract value"
@@ -244,11 +263,6 @@ export default function ContractStages() {
               ? `${totals.unpriced} still carry no value`
               : "Every stage carries a value"
           }
-        />
-        <KpiCard
-          label="Recorded, not transacted"
-          value="Bookkeeping only"
-          helper="BuildPanda logs money that moved off-platform"
         />
       </section>
 
@@ -320,7 +334,8 @@ export default function ContractStages() {
                     key={stage.id}
                     stage={stage}
                     index={positionById.get(stage.id) ?? 0}
-                    projectId={project.id}
+                    lines={linesByStage.get(stage.id) ?? NO_LINES}
+                    isPending={linesPending}
                     currency={project.currency}
                     canManage={canManage}
                     onEditValue={setValueTarget}
@@ -332,6 +347,10 @@ export default function ContractStages() {
           </table>
         </div>
       </div>
+
+      <p className="mt-3 text-[12px] text-black-200">
+        Recorded, not transacted — BuildPanda logs money that moved off-platform.
+      </p>
 
       <StageValueDrawer
         open={valueTarget !== null}
@@ -349,6 +368,8 @@ export default function ContractStages() {
         currency={project.currency}
         canManage={canManage}
       />
-    </div>
+    </section>
   );
 }
+
+ContractStagesTab.displayName = "ContractStagesTab";

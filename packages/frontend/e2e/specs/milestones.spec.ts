@@ -14,7 +14,7 @@ import { uniqueName } from "../fixtures/ids";
 test.describe("Milestone payments @regression @milestones", () => {
   test("creates a milestone that persists with its name @smoke", async ({ page, project }) => {
     const milestones = new ListUpsertPage(page, project.id, {
-      route: "finances/milestone-payments",
+      route: "finances/billing?tab=stage-payments",
       createButton: /new milestone/i,
       createTitle: /new milestone/i,
       createSubmit: /create milestone/i,

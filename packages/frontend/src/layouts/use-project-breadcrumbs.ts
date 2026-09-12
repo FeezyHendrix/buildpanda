@@ -10,6 +10,7 @@ import {
   SITE_TOOL_ENTRIES,
   type NavEntry,
 } from "@/components/organisms/project-sidebar/constants";
+import { FINANCE_TABBED_PAGES } from "@/lib/finance-routes";
 import type { Project } from "@/lib/project-types";
 
 /**
@@ -79,18 +80,11 @@ const EXTRA_ROUTES = {
   "whats-next": { label: "What's next", group: "Schedules" },
   "schedules/whats-next": { label: "What's next", group: "Schedules" },
   "key-dates": { label: "Key dates", group: "Schedules" },
-  "schedules/milestones": { label: "Stage payments", group: "Schedules" },
-  milestones: { label: "Stage payments", group: "Finance" },
   activities: { label: "Site activity", group: "Schedules" },
   "activities/:activityId": { label: "Site activity", group: "Schedules" },
   "project-chart": { label: "Project chart", group: "Schedules" },
   schedule: { label: "Project chart", group: "Schedules" },
   stages: { label: "Build stages", group: "Schedules" },
-  "finances/budget-allocation": { label: "Budget allocation", group: "Finance" },
-  "finances/payment-claims": { label: "Payment requests", group: "Finance" },
-  "finances/purchase-orders": { label: "Purchase orders", group: "Finance" },
-  "finances/budget": { label: "Budget", group: "Finance" },
-  "finances/contract": { label: "Contract", group: "Finance" },
   buildings: { label: "Buildings" },
   "buildings/:buildingId/stages": { label: "Stages", group: "Buildings" },
 } as const satisfies Record<string, ExtraRoute>;
@@ -148,7 +142,16 @@ function routeTail(pathname: string, projectId: string): string {
   return pathname.startsWith(base) ? pathname.slice(base.length).replace(/\/+$/, "") : "";
 }
 
-function resolveTrail(tail: string, isClient: boolean): BreadcrumbItem[] {
+/** Finance pages are tabbed: the trail ends with the active tab (Finance › Contract › Terms). */
+function financeTabCrumb(tail: string, search: string): BreadcrumbItem | undefined {
+  const tabs = FINANCE_TABBED_PAGES[tail];
+  if (!tabs) return undefined;
+  const wanted = new URLSearchParams(search).get("tab");
+  const tab = tabs.find((t) => t.id === wanted) ?? tabs[0];
+  return tab ? { label: tab.label } : undefined;
+}
+
+function resolveTrail(tail: string, isClient: boolean, search: string): BreadcrumbItem[] {
   if (tail === "") return [];
 
   if (isClient) {
@@ -170,9 +173,11 @@ function resolveTrail(tail: string, isClient: boolean): BreadcrumbItem[] {
 
   const grouped = findGroupEntry(tail);
   if (grouped) {
+    const tabCrumb = financeTabCrumb(tail, search);
     return [
       { label: grouped.group.heading, to: GROUP_LINK[grouped.group.heading] },
-      { label: grouped.entry.label },
+      tabCrumb ? { label: grouped.entry.label, to: grouped.entry.slug } : { label: grouped.entry.label },
+      ...(tabCrumb ? [tabCrumb] : []),
     ];
   }
 
@@ -180,9 +185,9 @@ function resolveTrail(tail: string, isClient: boolean): BreadcrumbItem[] {
 }
 
 export function useProjectBreadcrumbs(project: Project, isClient: boolean): BreadcrumbItem[] {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const prefix = `/project/${project.id}`;
-  const trail = resolveTrail(routeTail(pathname, project.id), isClient).map((item) =>
+  const trail = resolveTrail(routeTail(pathname, project.id), isClient, search).map((item) =>
     item.to ? { ...item, to: `${prefix}/${item.to}` } : item,
   );
   return [{ label: project.name, to: `${prefix}/overview` }, ...trail];

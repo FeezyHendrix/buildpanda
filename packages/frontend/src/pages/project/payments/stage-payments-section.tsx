@@ -5,16 +5,12 @@ import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
-import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog";
 import { UpsertMilestoneDialog } from "@/components/molecules/upsert-milestone-dialog";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useProjectFinances,
   useDeleteMilestone,
-  useRaiseDispute,
-  useReleaseMilestone,
   useUpsertMilestone,
 } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
@@ -25,16 +21,15 @@ import type {
   ProjectFinances,
 } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
+import { TabHeader } from "../finances/finance-tabs";
+import { StagePaymentDialogs } from "./stage-payment-dialogs";
 
 /**
  * Stage payments: the milestone cost gates plus the payment record.
- * Shared by the merged Payments workspace and the schedule-scoped milestone view.
  * Wording is "record payment", never "release funds" — BuildPanda logs money
  * movements made off-platform, it does not move money.
  */
-export function StagePaymentsSection({ heading = "section" }: { heading?: "page" | "section" }) {
+export function StagePaymentsSection() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const canDispute = canManage || canResourceAction(access, "finances", "dispute");
@@ -47,8 +42,6 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
   const [disputeTarget, setDisputeTarget] = useState<MilestonePayment | null>(null);
   const upsertMilestone = useUpsertMilestone();
   const deleteMilestone = useDeleteMilestone();
-  const releaseMilestone = useReleaseMilestone();
-  const raiseDispute = useRaiseDispute();
 
   if (!finances) return null;
 
@@ -68,20 +61,22 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
 
   return (
     <section aria-label="Stage payments">
-      {heading === "page" ? (
-        <PageHeader title="Stage payments" actions={newButton} />
-      ) : (
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-gray-900">Stage payments</h3>
-          {newButton}
-        </div>
-      )}
+      <TabHeader
+        heading="Stage payments"
+        description="Milestone cost gates and the payments recorded against them."
+        actions={newButton}
+      />
 
-      <ContractSummary finances={finances} />
-
-      <section className="mt-10">
+      <section className="mt-6">
         <h2 className="mb-4 text-base font-semibold text-gray-900">Stages</h2>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {finances.milestones.length === 0 ? (
+          <EmptyState
+            variant="inline"
+            title="No stage payments yet"
+            description="Add a stage payment to gate contractor payments on completed work."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {finances.milestones.map((milestone, idx) => (
               <MilestoneCard
                 key={`${milestone.id}-${idx}`}
@@ -97,7 +92,8 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
                 onRaiseDispute={canDispute ? () => setDisputeTarget(milestone) : undefined}
               />
             ))}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="mt-10">
@@ -116,6 +112,7 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
         description="This removes the milestone cost gate. Site activities remain assigned to their project phase."
         confirmLabel="Delete"
         variant="danger"
+        loading={deleteMilestone.isPending}
         onConfirm={() => {
           if (!deleteTarget) return;
           deleteMilestone.mutate(
@@ -125,41 +122,13 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
         }}
       />
 
-      <ConfirmDialog
-        open={releaseTarget !== null}
-        onOpenChange={(next) => {
-          if (!next) setReleaseTarget(null);
-        }}
-        title={`Record payment for ${releaseTarget?.name ?? "this stage"}?`}
-        description={`Logs ${
-          releaseTarget ? formatCurrency(releaseTarget.amount, finances.currency) : ""
-        } as paid to the contractor. This records a payment made off-platform — BuildPanda does not move money.`}
-        confirmLabel="Record payment"
-        cancelLabel="Cancel"
-        onConfirm={() => {
-          if (!releaseTarget) return;
-          releaseMilestone.mutate(
-            { projectId: project.id, milestoneId: releaseTarget.id },
-            { onSettled: () => setReleaseTarget(null) },
-          );
-        }}
-      />
-
-      <RaiseDisputeDialog
-        open={disputeTarget !== null}
-        onOpenChange={(next) => {
-          if (!next) setDisputeTarget(null);
-        }}
-        milestoneName={disputeTarget?.name ?? ""}
-        isSubmitting={raiseDispute.isPending}
-        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
-        onSubmit={({ reason }) => {
-          if (!disputeTarget) return;
-          raiseDispute.mutate(
-            { projectId: project.id, milestoneId: disputeTarget.id, reason },
-            { onSuccess: () => setDisputeTarget(null) },
-          );
-        }}
+      <StagePaymentDialogs
+        projectId={project.id}
+        currency={finances.currency}
+        releaseTarget={releaseTarget}
+        disputeTarget={disputeTarget}
+        onReleaseClose={() => setReleaseTarget(null)}
+        onDisputeClose={() => setDisputeTarget(null)}
       />
 
       <UpsertMilestoneDialog
@@ -190,36 +159,7 @@ export function StagePaymentsSection({ heading = "section" }: { heading?: "page"
 
 StagePaymentsSection.displayName = "StagePaymentsSection";
 
-function ContractSummary({ finances }: { finances: ProjectFinances }) {
-  return (
-    <Card padding="lg" className="mt-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] font-semibold text-black-300">Contract summary</p>
-          <p className="text-[25px] font-bold text-black-500">{formatCurrency(finances.adjustedContract, finances.currency)}</p>
-          <Badge size="md" className="bg-success-50 text-success-700">
-            <ReactSVG src={icons.verified} className="[&svg]:[&>path]:fill-success-500" />
-            Revised contract
-          </Badge>
-        </div>
-        <div className="flex gap-6">
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Contract amount</p>
-            <p className="text-black-500">{formatCurrency(finances.contractSum, finances.currency)}</p>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Changes</p>
-            <p className="text-black-500">{formatCurrency(finances.variationsTotal, finances.currency)}</p>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-black-300">Paid</p>
-            <p className="text-black-500">{formatCurrency(finances.amountPaidToDate, finances.currency)}</p>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
+const HEAD_CELL = "px-6 py-3 text-[11px] font-semibold capitalize text-black-300";
 
 function PaymentRecord({
   entries,
@@ -238,31 +178,28 @@ function PaymentRecord({
     );
   }
   return (
-    <section>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="border-b border-[#EDEDED] bg-[#F6F6F6] text-xs uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Date</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Stage</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Amount</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Status</th>
-              <th className="px-6 py-3 font-semibold text-black-300 text-[11px] capitalize">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, idx) => (
-              <LedgerRow
-                key={entry.id}
-                entry={entry}
-                currency={currency}
-                isLast={idx === entries.length - 1}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[480px] text-left text-sm">
+        <thead className="border-b border-[#EDEDED] bg-[#F6F6F6]">
+          <tr>
+            <th className={HEAD_CELL}>Date</th>
+            <th className={HEAD_CELL}>Stage</th>
+            <th className={HEAD_CELL}>Amount</th>
+            <th className={HEAD_CELL}>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry, idx) => (
+            <LedgerRow
+              key={entry.id}
+              entry={entry}
+              currency={currency}
+              isLast={idx === entries.length - 1}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -286,11 +223,6 @@ function LedgerRow({
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="md">
           {entry.type}
         </Badge>
-      </td>
-      <td className="px-6 py-3 text-[13px]">
-        <button className="h-[32px] cursor-pointer text-primary text-[13px] font-semibold">
-          View Receipt
-        </button>
       </td>
     </tr>
   );

@@ -1,20 +1,10 @@
-import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
-import { CashFlowSCurve } from "@/components/organisms/charts/cash-flow-s-curve";
-import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actual-bar";
-
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { FeatureGate } from "@/components/atoms/feature-gate";
 import { Spinner } from "@/components/atoms/spinner";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
-import { PageHeader } from "@/components/molecules/page-header";
-import { useProjectContext } from "@/layouts/project-layout";
-import {
-  useProjectBudget,
-  useCreateBudgetCategory,
-  useCreateBudgetPeriod,
-} from "@/hooks/use-budget";
 import {
   UpsertBudgetCategoryDialog,
   type UpsertBudgetCategoryValues,
@@ -23,26 +13,34 @@ import {
   UpsertBudgetPeriodDialog,
   type UpsertBudgetPeriodValues,
 } from "@/components/molecules/upsert-budget-period-dialog";
+import { BudgetVsActualBar } from "@/components/organisms/charts/budget-vs-actual-bar";
+import { CashFlowSCurve } from "@/components/organisms/charts/cash-flow-s-curve";
+import { useProjectContext } from "@/layouts/project-layout";
+import {
+  useProjectBudget,
+  useCreateBudgetCategory,
+  useCreateBudgetPeriod,
+} from "@/hooks/use-budget";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
-
-import { CategoryCard } from "./budget/category-card";
-import { PeriodCard } from "./budget/period-card";
-import { toCategoryInput, toPeriodInput } from "./budget/budget-helpers";
-import { FeatureGate } from "@/components/atoms/feature-gate";
+import { BudgetAllocationSection } from "../budget/budget-allocation-section";
+import { CategoryCard } from "../budget/category-card";
+import { PeriodCard } from "../budget/period-card";
+import { toCategoryInput, toPeriodInput } from "../budget/budget-helpers";
+import { TabHeader } from "./finance-tabs";
 
 function percentOfPlanned(amount: number, planned: number): number {
   return planned > 0 ? Math.round((amount / planned) * 100) : 0;
 }
 
-export default function ProjectBudget() {
+/** Budget — cost categories with planned, committed and actual figures, plus the monthly forecast. */
+export function BudgetTab() {
   const { project, access } = useProjectContext();
   const canManage = Boolean(access && canResourceAction(access, "finances", "manage"));
   const currency = project.currency;
   const { data: budget, isPending } = useProjectBudget(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
-    project.id,
-  );
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
 
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [createPeriodOpen, setCreatePeriodOpen] = useState(false);
@@ -74,36 +72,21 @@ export default function ProjectBudget() {
 
   const { categories = [], periods = [], summary } = budget ?? {};
 
-  const effectiveTotalPlanned = categories.reduce(
-    (sum, cat) => sum + cat.effectivePlanned,
-    0,
-  );
-  const effectiveTotalCommitted = categories.reduce(
-    (sum, cat) => sum + cat.effectiveCommitted,
-    0,
-  );
-  const effectiveTotalActual = categories.reduce(
-    (sum, cat) => sum + cat.effectiveActual,
-    0,
-  );
+  const effectiveTotalPlanned = categories.reduce((sum, cat) => sum + cat.effectivePlanned, 0);
+  const effectiveTotalCommitted = categories.reduce((sum, cat) => sum + cat.effectiveCommitted, 0);
+  const effectiveTotalActual = categories.reduce((sum, cat) => sum + cat.effectiveActual, 0);
 
-  const sortedPeriods = [...periods].sort((a, b) =>
-    a.period.localeCompare(b.period),
-  );
+  const sortedPeriods = [...periods].sort((a, b) => a.period.localeCompare(b.period));
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-
-      <PageHeader
-        title="Budget"
+    <section aria-label="Budget">
+      <TabHeader
+        heading="Budget"
+        description="Planned, committed and actual cost by category."
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setCreateCategoryOpen(true)}
-            >
-              <PlusIcon className="h-4 w-4" /> Add Category
+            <Button variant="primary" size="md" onClick={() => setCreateCategoryOpen(true)}>
+              <PlusIcon className="h-4 w-4" /> Add category
             </Button>
           ) : undefined
         }
@@ -115,11 +98,12 @@ export default function ProjectBudget() {
         mode="create"
         onSubmit={handleCreateCategory}
         isSubmitting={createCategory.isPending}
+        error={(createCategory.error as Error | undefined)?.message ?? null}
         currency={currency}
       />
 
-      {summary && (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+      {summary ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <KpiCard label="Total planned" value={formatCurrency(effectiveTotalPlanned, currency)} />
           <KpiCard
             label="Committed"
@@ -145,32 +129,30 @@ export default function ProjectBudget() {
             />
           ) : null}
         </div>
-      )}
+      ) : null}
+
+      <BudgetAllocationSection categories={categories} currency={currency} />
 
       <FeatureGate flag="projects.reporting">
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {snapshot && (
-            <>
-              <CashFlowSCurve
-                points={snapshot.finance.cashFlow.points}
-                programmeCurve={snapshot.schedule.programmeCostCurve}
-                currency={snapshot.currency}
-                isLoading={isSnapshotLoading}
-              />
-              <BudgetVsActualBar
-                categories={snapshot.finance.budget.categories}
-                currency={snapshot.currency}
-                isLoading={isSnapshotLoading}
-              />
-            </>
-          )}
-        </div>
+        {snapshot ? (
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <CashFlowSCurve
+              points={snapshot.finance.cashFlow.points}
+              programmeCurve={snapshot.schedule.programmeCostCurve}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+            <BudgetVsActualBar
+              categories={snapshot.finance.budget.categories}
+              currency={snapshot.currency}
+              isLoading={isSnapshotLoading}
+            />
+          </div>
+        ) : null}
       </FeatureGate>
 
       <section className="mt-12">
-        <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">
-          Cost Categories
-        </h2>
+        <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">Cost categories</h2>
         {categories.length === 0 ? (
           <EmptyState
             variant="inline"
@@ -196,18 +178,12 @@ export default function ProjectBudget() {
 
       <section className="mt-16">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-tight text-gray-900">
-            Monthly Cash Flow
-          </h2>
-          {canManage && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setCreatePeriodOpen(true)}
-            >
-              Add Month
+          <h2 className="text-xl font-semibold tracking-tight text-gray-900">Monthly cash flow</h2>
+          {canManage ? (
+            <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
+              Add month
             </Button>
-          )}
+          ) : null}
         </div>
 
         <UpsertBudgetPeriodDialog
@@ -241,6 +217,8 @@ export default function ProjectBudget() {
           </div>
         )}
       </section>
-    </div>
+    </section>
   );
 }
+
+BudgetTab.displayName = "BudgetTab";
