@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { FilterTrigger } from "@/components/atoms/filter-trigger";
 import { cn } from "@/lib/utils";
 
 interface DateRangeFilterProps {
@@ -67,27 +68,21 @@ function DateRangeFilter({ from, to, label, onApply, onClear, className }: DateR
 
   return (
     <div ref={ref} className={cn("relative", className)}>
-      <button
-        type="button"
+      <FilterTrigger
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          hasFilter ? "border-primary bg-primary/5 text-primary" : "border-[#F0F0F0] bg-white text-gray-700",
-        )}
+        icon={
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        }
       >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
         {label}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m3 4.5 3 3 3-3" />
-        </svg>
-      </button>
+      </FilterTrigger>
 
       {open ? (
         <div role="dialog" aria-label="Date range" className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl bg-white p-4 shadow-lg ring-1 ring-black/5">
