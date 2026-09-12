@@ -50,7 +50,7 @@ function Metric({ label, value, accent = false }: { label: string; value: string
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-gray-500">{label}</span>
-      <span className={cn("text-sm font-semibold tabular-nums", accent ? "text-[#004DE7]" : "text-gray-900")}>{value}</span>
+      <span className={cn("text-sm font-semibold tabular-nums", accent ? "text-primary-500" : "text-gray-900")}>{value}</span>
     </div>
   );
 }
@@ -71,14 +71,14 @@ function InvoiceLines({ claim, currency }: { claim: PaymentClaim; currency: stri
       {rows.map((row) => (
         <div key={row.label} className="flex items-center justify-between gap-2">
           <dt className={cn(row.strong ? "font-semibold text-gray-900" : "text-gray-500")}>{row.label}</dt>
-          <dd className={cn("tabular-nums", row.strong ? "font-bold text-gray-900" : "text-gray-700")}>
+          <dd className={cn("tabular-nums", row.strong ? "font-medium text-gray-900" : "text-gray-700")}>
             {row.sign ? `${row.sign} ` : ""}
             {formatCurrency(row.value, currency)}
           </dd>
         </div>
       ))}
       {claim.invoiceRecordedAt ? (
-        <p className="col-span-full text-[11px] text-gray-400">
+        <p className="col-span-full text-xs text-gray-400">
           Invoice recorded {new Date(claim.invoiceRecordedAt).toLocaleDateString()}. Logged, not charged.
         </p>
       ) : null}

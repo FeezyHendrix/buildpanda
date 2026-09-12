@@ -27,7 +27,7 @@ function Section({
           {count}
         </Badge>
       </div>
-      <ul className="flex flex-col divide-y divide-[#F0F0F0]">{children}</ul>
+      <ul className="flex flex-col divide-y divide-line-hair">{children}</ul>
     </Card>
   );
 }

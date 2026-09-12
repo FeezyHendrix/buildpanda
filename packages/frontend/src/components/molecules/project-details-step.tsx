@@ -154,10 +154,10 @@ function ProjectDetailsStep({
 
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
         Tell us about your project
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
+      <p className="mt-2 text-center text-sm text-gray-400 text-pretty">
         {isRenovation
           ? "Define the scope, budget, and schedule for the renovation work."
           : "Define the core parameters and scope for your construction project in your home country."}
@@ -198,7 +198,7 @@ function ProjectDetailsStep({
                       "rounded-lg border px-3 py-2.5 text-center text-[12px] font-medium transition-colors",
                       currency === c
                         ? "border-primary bg-primary-50 text-primary rounded-lg"
-                        : "border-none bg-[#F6F6F6] text-black-500 hover:bg-[#F6F6F6]",
+                        : "border-none bg-surface-alt text-black-500 hover:bg-surface-alt",
                     )}
                   >
                     {c}
@@ -237,7 +237,7 @@ function ProjectDetailsStep({
                       "rounded-lg border px-3 py-3 text-center text-[12px] font-medium transition-colors",
                       isActive
                         ? "border-primary bg-primary-50 text-primary rounded-lg"
-                        : "border-none bg-[#F6F6F6] text-black-500 hover:bg-[#F6F6F6]",
+                        : "border-none bg-surface-alt text-black-500 hover:bg-surface-alt",
                     )}
                   >
                     {presetLabel(preset, symbol)}
@@ -247,7 +247,7 @@ function ProjectDetailsStep({
             </div>
 
             {budget[1] > 0 && budget[1] < budget[0] && (
-              <p className="text-xs text-[#C72525]">
+              <p className="text-xs text-negative-500">
                 Maximum budget should be greater than the minimum.
               </p>
             )}
@@ -300,7 +300,7 @@ function CustomBudgetInput({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-sm font-medium text-gray-500">{label}</span>
-      <div className="flex h-12 items-center rounded-lg border border-[#EDEDED] bg-white px-3 focus-within:ring-2 focus-within:ring-gray-900/10">
+      <div className="flex h-12 items-center rounded-lg border border-line-hair bg-white px-3 focus-within:ring-2 focus-within:ring-gray-900/10">
         <span className="mr-2 shrink-0 text-sm font-medium text-gray-400">{symbol}</span>
         <input
           type="text"

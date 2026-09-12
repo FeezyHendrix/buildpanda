@@ -38,10 +38,10 @@ const options = [
 function ProjectTypeStep({ selected, onSelect }: ProjectTypeStepProps) {
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
         What would you like to do?
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
+      <p className="mt-2 text-center text-sm text-gray-400 text-pretty">
         Select the option that best describes your goal. We'll help you manage
         the process from anywhere in the world.
       </p>

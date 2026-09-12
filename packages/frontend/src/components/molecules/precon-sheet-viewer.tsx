@@ -269,7 +269,7 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
   const composerSheet = activeSheet && pending ? { ...activeSheet, scaleMmPerPt: scaleForDraft(activeSheet.scaleMmPerPt, viewports, pending.vertices) } : activeSheet;
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white">
       <SheetToolbar sheets={sheets} activeSheet={activeSheet} onSelectSheet={onSelectSheet} settingsOpen={settingsOpen} onToggleSettings={() => setSettingsOpen((v) => !v)} />
 
       {activeSheet && !scalePrompt && !tools.viewportDraft && !tools.matches ? (
@@ -298,11 +298,11 @@ export function PreconSheetViewer({ sessionId, sheets, activeSheet, onSelectShee
       ) : null}
       {tools.matches ? <SymbolMatchesBanner matches={tools.matches} onConfirm={tools.confirmMatches} onDiscard={() => changeTool("select")} /> : null}
       {tools.overlayOn && tools.previous.status === "ready" ? (
-        <p className="border-b border-red-100 bg-red-50 px-3 py-1 text-[11px] text-red-700">
+        <p className="border-b border-red-100 bg-red-50 px-3 py-1 text-xs text-red-700">
           Overlay: the previous revision{tools.previous.revision ? ` (rev ${tools.previous.revision})` : ""} in red under this sheet. O to hide.
         </p>
       ) : null}
-      {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-[11px] text-amber-700">{banner}</p> : null}
+      {banner ? <p className="border-b border-amber-100 bg-amber-50 px-3 py-1 text-xs text-amber-700">{banner}</p> : null}
 
       <div className="flex min-h-0 flex-1">
         <ToolPalette tool={tool} onToolChange={changeTool} blockedReasonFor={blockedFor} legendOpen={legendOpen} onToggleLegend={() => setLegendOpen((v) => !v)} toggles={{ overlay: tools.overlayOn, magnifier: magnifierSticky }} />

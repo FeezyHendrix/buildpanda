@@ -21,27 +21,29 @@ function ExpenseRow({
 }) {
   return (
     <TableRow className="group" onClick={() => onOpen(tx)}>
-      <TableCell className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</TableCell>
       <TableCell>
-        <div className="font-medium text-gray-900">{tx.title}</div>
-        {tx.description ? (
-          <div className="text-xs text-gray-500 line-clamp-1 max-w-[200px] mt-0.5">{tx.description}</div>
-        ) : null}
-        {tx.reference ? <div className="text-xs text-gray-400 mt-0.5">Ref: {tx.reference}</div> : null}
+        <div className="font-medium text-ink">{tx.title}</div>
+        {tx.vendor ? <div className="mt-0.5 text-xs text-ink-muted">{tx.vendor}</div> : null}
+        {tx.reference ? <div className="mt-0.5 text-xs text-ink-muted">Ref: {tx.reference}</div> : null}
       </TableCell>
       <TableCell>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
       </TableCell>
-      <TableCell className="text-gray-600">{tx.stageName || "—"}</TableCell>
-      <TableCell>{tx.vendor || "—"}</TableCell>
-      <TableCell align="right" className="font-medium text-gray-900 tabular-nums">
+      <TableCell className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</TableCell>
+      <TableCell className="whitespace-nowrap text-ink-muted">—</TableCell>
+      <TableCell className="text-ink-subtle">{tx.stageName || "—"}</TableCell>
+      <TableCell align="right" className="font-medium text-ink tabular-nums">
         {formatCurrency(tx.amount, currency)}
       </TableCell>
-      <TableCell className="text-xs">{tx.createdByName || "Unknown"}</TableCell>
+      <TableCell className="whitespace-nowrap text-xs text-ink-subtle">
+        {formatDayMonth(tx.createdAt)}
+        {tx.createdByName ? <span className="text-ink-muted"> · {tx.createdByName}</span> : null}
+      </TableCell>
       <TableCell align="right">
         <Button
-          variant="ghost"
-          className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 px-2"
+          variant="danger"
+          size="sm"
+          className="opacity-0 group-hover:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             onDelete(tx);
@@ -96,14 +98,16 @@ export function ExpenseTable({
         <Table>
           <TableHead>
             <tr>
-              <TableHeaderCell>Date</TableHeaderCell>
-              <TableHeaderCell>Details</TableHeaderCell>
+              <TableHeaderCell>Name</TableHeaderCell>
               <TableHeaderCell>Category</TableHeaderCell>
+              <TableHeaderCell>From</TableHeaderCell>
+              <TableHeaderCell title="Expenses are logged on a single date">To</TableHeaderCell>
               <TableHeaderCell>Stage</TableHeaderCell>
-              <TableHeaderCell>Vendor</TableHeaderCell>
               <TableHeaderCell align="right">Amount</TableHeaderCell>
-              <TableHeaderCell>Logged by</TableHeaderCell>
-              <TableHeaderCell className="w-[100px]" />
+              <TableHeaderCell>Created</TableHeaderCell>
+              <TableHeaderCell className="w-[100px]">
+                <span className="sr-only">Actions</span>
+              </TableHeaderCell>
             </tr>
           </TableHead>
           <TableBody>

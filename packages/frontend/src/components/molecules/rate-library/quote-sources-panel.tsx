@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { Input } from "@/components/atoms/input";
+import {  Input, INPUT_SM_CLASS } from "@/components/atoms/input";
 import type { QuoteSource, QuoteStatus, RateCard } from "@/api/rate-library";
 import { useAddQuoteSource, useDeleteQuoteSource, useQuoteSources } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatShortDate, formatWholeCurrency } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 const STATUS_META: Record<QuoteStatus, { label: string; tone: BadgeTone }> = {
   valid: { label: "Valid", tone: "success" },
@@ -16,10 +15,7 @@ const STATUS_META: Record<QuoteStatus, { label: string; tone: BadgeTone }> = {
   open: { label: "No expiry", tone: "neutral" },
 };
 
-const selectClass = cn(
-  "h-9 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900",
-  "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const selectClass = INPUT_SM_CLASS;
 
 function QuoteRow({ quote, rateLabel, currency, canManage }: { quote: QuoteSource; rateLabel: string | null; currency: string; canManage: boolean }) {
   const remove = useDeleteQuoteSource();
@@ -69,23 +65,23 @@ export function QuoteSourcesPanel({ cards, canManage }: { cards: RateCard[]; can
   const valid = supplierName.trim().length > 0;
 
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="border-b border-line-hair bg-gray-50 px-4 py-3">
         <h2 className="text-sm font-semibold text-gray-900">Supplier and subcontractor quotes</h2>
         <p className="text-xs text-gray-500">A dated quote backs a rate. Expiring quotes are flagged thirty days out.</p>
       </div>
       {isPending ? null : quotes.length === 0 ? (
         <p className="px-4 py-6 text-sm text-gray-500">No quotes recorded. Add the supplier, the figure and the date it is valid to.</p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-line-hair">
           {quotes.map((q) => (
             <QuoteRow key={q.id} quote={q} rateLabel={q.rateId ? (rateLabelById.get(q.rateId) ?? null) : null} currency={currency} canManage={canManage} />
           ))}
         </ul>
       )}
       {canManage ? (
-        <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-gray-100 px-4 py-3">
-          <Input className="h-9 text-xs" placeholder="Supplier or subcontractor" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
+        <div className="grid grid-cols-[2fr_2fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-line-hair px-4 py-3">
+          <Input inputSize="sm" placeholder="Supplier or subcontractor" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} />
           <select className={selectClass} value={rateId} onChange={(e) => setRateId(e.target.value)} aria-label="Linked rate">
             <option value="">Not linked to a rate</option>
             {cards.map((card) =>
@@ -94,9 +90,9 @@ export function QuoteSourcesPanel({ cards, canManage }: { cards: RateCard[]; can
               )),
             )}
           </select>
-          <Input className="h-9 text-xs" type="number" min="0" step="any" inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Input className="h-9 text-xs" placeholder="Reference" value={reference} onChange={(e) => setReference(e.target.value)} />
-          <Input className="h-9 text-xs" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} aria-label="Valid until" />
+          <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" placeholder="Amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <Input inputSize="sm" placeholder="Reference" value={reference} onChange={(e) => setReference(e.target.value)} />
+          <Input inputSize="sm" type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} aria-label="Valid until" />
           <Button
             size="sm"
             disabled={!valid}

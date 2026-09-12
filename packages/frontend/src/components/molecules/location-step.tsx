@@ -26,10 +26,10 @@ function LocationStep({
 }: LocationStepProps) {
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-2xl font-medium text-ink text-balance">
         Project Location
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
+      <p className="mt-2 text-center text-sm text-ink-muted text-pretty">
         Tell us where your next dream project is located.
       </p>
 
@@ -58,10 +58,10 @@ function LocationStep({
 
         {showBim && (
           <div>
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-sm font-semibold text-ink">
               Do you have a 3D model (BIM)?
             </p>
-            <p className="mt-1 text-xs text-[#929292] text-pretty">
+            <p className="mt-1 text-xs text-ink-muted text-pretty">
               If you have an IFC model from your architect, upload it to view it in 3D and link RFIs to elements.
             </p>
             <FileUpload

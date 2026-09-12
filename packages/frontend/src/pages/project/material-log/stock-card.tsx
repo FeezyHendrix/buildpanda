@@ -33,7 +33,7 @@ function ReorderLine({
     : `Set reorder level for ${stock.materialName}`;
 
   return (
-    <div className="flex items-center gap-2 border-t border-[#F0F0F0] px-4 py-2.5">
+    <div className="flex items-center gap-2 border-t border-line-hair px-4 py-2.5">
       <ClipboardCheckIcon className="size-3.5 shrink-0 text-gray-400" />
       <p className="min-w-0 flex-1 truncate text-xs text-gray-500">
         {thresholdSet ? (
@@ -53,7 +53,7 @@ function ReorderLine({
           onClick={onEditPolicy}
           title={actionLabel}
           aria-label={actionLabel}
-          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-[#F6F6F6] hover:text-primary-500"
+          className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-alt hover:text-primary-500"
         >
           {thresholdSet ? "Edit" : "Set"}
         </button>
@@ -119,13 +119,13 @@ export function StockCard({
             max={stock.totalReceived}
             size="sm"
             tone={negative ? "danger" : "brand"}
-            trackClassName="mt-3 bg-[#F0F0F0]"
+            trackClassName="mt-3 bg-gray-100"
             aria-label={`${formatMeasure(stock.totalUsed, stock.unit)} used of ${formatMeasure(stock.totalReceived, stock.unit)} received`}
           />
         ) : null}
       </div>
 
-      <div className="mt-auto grid grid-cols-2 gap-3 border-t border-[#F0F0F0] px-4 py-3">
+      <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line-hair px-4 py-3">
         <MiniStat
           label="Received"
           value={formatMeasure(stock.totalReceived, stock.unit)}

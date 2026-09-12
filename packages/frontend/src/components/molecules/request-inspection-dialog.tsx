@@ -3,6 +3,8 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
 import type { InspectionCategory } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 type ApiInspectionCategory = Exclude<InspectionCategory, "All Reports">;
 
@@ -82,7 +84,7 @@ function RequestInspectionDialog({
         autoFocus
         maxLength={200}
         placeholder="e.g. Foundation strength check"
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div>
     
@@ -90,19 +92,9 @@ function RequestInspectionDialog({
       <Label>Category</Label>
       <div className="flex flex-wrap gap-2">
         {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setCategory(cat)}
-            className={cn(
-              "h-9 rounded-full px-3.5 text-xs font-medium transition-colors",
-              category === cat
-                ? "bg-[#004DE7] text-white"
-                : "bg-[#F6F6F6] text-gray-700 hover:bg-[#EDEDED]",
-            )}
-          >
+          <Button key={cat} size="sm" variant={category === cat ? "primary" : "secondary"} onClick={() => setCategory(cat)}>
             {cat}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -116,7 +108,7 @@ function RequestInspectionDialog({
         rows={3}
         maxLength={2000}
         placeholder="Scope of the inspection, areas to check, any concerns."
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
       />
     </div>
     
@@ -127,7 +119,7 @@ function RequestInspectionDialog({
         type="date"
         value={scheduledAt}
         onChange={(e) => setScheduledAt(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div></FormDrawer>
   );

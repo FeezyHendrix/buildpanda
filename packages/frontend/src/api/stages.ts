@@ -9,6 +9,11 @@ export interface StageInput {
   endDate?: string | null;
   progressPercent?: number;
   value?: number;
+  contractId?: string | null;
+  expectedCost?: number | null;
+  estimatedLaborHours?: number | null;
+  laborBudget?: number | null;
+  materialBudget?: number | null;
 }
 
 export interface StageScheduleOfValue {

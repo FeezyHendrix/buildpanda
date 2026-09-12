@@ -22,10 +22,10 @@ function HealthScoreCard({ score }: { score: number | null }) {
     score === null
       ? "text-gray-900"
       : score >= 80
-        ? "text-[#16A34A]"
+        ? "text-success-500"
         : score >= 50
-          ? "text-[#D97706]"
-          : "text-[#DC2626]";
+          ? "text-warning-500"
+          : "text-negative-500";
 
   return (
     <Card
@@ -33,7 +33,7 @@ function HealthScoreCard({ score }: { score: number | null }) {
       padding="lg"
     >
       <h2 className="text-sm font-medium text-gray-500">Health Score</h2>
-      <div className={cn("mt-2 text-6xl font-bold", healthColor)}>
+      <div className={cn("mt-2 text-6xl font-medium", healthColor)}>
         {score !== null ? score : "--"}
       </div>
       <p className="mt-2 text-xs text-gray-400">
@@ -74,7 +74,7 @@ function SuggestionsList({ suggestions }: { suggestions: AiSuggestion[] }) {
             <div className="flex items-center space-x-3">
               <span
                 className={cn(
-                  "rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
+                  "rounded px-2 py-0.5 text-xs font-medium uppercase",
                   badgeClass,
                 )}
               >
@@ -84,7 +84,7 @@ function SuggestionsList({ suggestions }: { suggestions: AiSuggestion[] }) {
                 {sugg.category}
               </span>
             </div>
-            <h3 className="font-bold text-gray-900">{sugg.title}</h3>
+            <h3 className="font-medium text-gray-900">{sugg.title}</h3>
             <p className="text-sm text-gray-600">{sugg.detail}</p>
           </Card>
         );

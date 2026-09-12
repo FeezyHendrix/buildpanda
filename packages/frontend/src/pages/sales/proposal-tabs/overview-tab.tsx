@@ -36,8 +36,8 @@ export function OverviewTab({ proposalId }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             Client
           </h3>
           <dl className="flex flex-col gap-2 text-sm">
@@ -66,8 +66,8 @@ export function OverviewTab({ proposalId }: Props) {
           </dl>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             Proposal
           </h3>
           <dl className="flex flex-col gap-2 text-sm">
@@ -94,8 +94,8 @@ export function OverviewTab({ proposalId }: Props) {
       </div>
 
       {proposal.brief && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h3 className="mb-2 text-xs font-medium uppercase text-ink-muted">
             Brief
           </h3>
           <p className="whitespace-pre-line text-sm text-gray-700">{proposal.brief}</p>
@@ -103,7 +103,7 @@ export function OverviewTab({ proposalId }: Props) {
       )}
 
       {estimate && ability.can("update", "proposals") ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-5">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Reuse this proposal</h3>
             <p className="mt-0.5 text-xs text-gray-500">
@@ -123,8 +123,8 @@ export function OverviewTab({ proposalId }: Props) {
       ) : null}
 
       {events.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="rounded-lg border border-line bg-white p-5">
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             Activity
           </h3>
           <ol className="flex flex-col gap-3">
@@ -142,7 +142,7 @@ export function OverviewTab({ proposalId }: Props) {
       )}
 
       {proposal.status === "Accepted" && !proposal.projectId && (
-        <div className="rounded-xl border border-[#004DE7]/20 bg-[#004DE7]/5 p-5">
+        <div className="rounded-lg border border-primary-500/20 bg-primary-500/5 p-5">
           <h3 className="mb-1 text-sm font-semibold text-gray-900">Ready to build</h3>
           <p className="mb-4 text-sm text-gray-500">
             This proposal has been accepted. Convert it into a construction project to start
@@ -175,7 +175,7 @@ export function OverviewTab({ proposalId }: Props) {
       )}
 
       {proposal.projectId && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-5">
           <h3 className="mb-1 text-sm font-semibold text-green-800">Project created</h3>
           <p className="mb-4 text-sm text-green-700">
             This proposal has been converted to a construction project.

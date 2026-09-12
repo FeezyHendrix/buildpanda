@@ -3,7 +3,7 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
   return (
     <kbd
       className={cn(
-        "rounded border border-[#E2E2E2] bg-[#F6F6F6] px-1.5 py-0.5 font-mono text-[10px] leading-none text-gray-500",
+        "rounded border border-line bg-surface-alt px-1.5 py-0.5 font-mono text-[10px] leading-none text-gray-500",
         className,
       )}
     >
@@ -47,7 +47,7 @@ export function IconBtn({
       aria-haspopup={hasPopup ? "true" : undefined}
       className={cn(
         "inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-gray-500 outline-none transition-colors",
-        "hover:bg-gray-100 hover:text-gray-700 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+        "hover:bg-gray-100 hover:text-gray-700 focus-visible:shadow-focus",
         "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent",
         active && "bg-primary-600 text-white ring-1 ring-primary-200 hover:bg-primary-600 hover:text-white",
         className,
@@ -63,7 +63,7 @@ export function PopShell({ children, className }: { children: React.ReactNode; c
     <div
       data-popover-root
       className={cn(
-        "absolute z-50 mt-2 rounded-xl bg-white p-2 text-sm text-gray-700 shadow-lg ring-1 ring-black/5",
+        "absolute z-50 mt-2 rounded-lg bg-white p-2 text-sm text-gray-700 shadow-lg ring-1 ring-black/5",
         className,
       )}
     >
@@ -73,4 +73,4 @@ export function PopShell({ children, className }: { children: React.ReactNode; c
 }
 
 export const POP_ITEM_CLS =
-  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-[#F6F6F6]";
+  "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-gray-700 hover:bg-surface-alt";

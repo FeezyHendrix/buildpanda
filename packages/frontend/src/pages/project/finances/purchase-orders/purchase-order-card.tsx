@@ -16,11 +16,11 @@ import { UpsertPurchaseOrderDialog } from "./upsert-purchase-order-dialog";
 
 function LineItem({ item, currency }: { item: PurchaseOrderItem; currency: string }) {
   return (
-    <div className="grid gap-2 rounded-xl bg-[#FAFAFA] px-3 py-2 text-sm sm:grid-cols-[1fr_96px_132px_132px] sm:items-center">
-      <span className="font-medium text-gray-900">{item.description}</span>
-      <span className="text-gray-500 tabular-nums">Qty {item.quantity}</span>
-      <span className="text-gray-500 tabular-nums">{formatCurrency(item.unitPrice, currency)}</span>
-      <span className="font-semibold text-gray-900 tabular-nums sm:text-right">
+    <div className="grid gap-2 rounded-lg bg-surface-alt px-3 py-2 text-sm sm:grid-cols-[1fr_96px_132px_132px] sm:items-center">
+      <span className="font-medium text-ink">{item.description}</span>
+      <span className="text-ink-muted tabular-nums">Qty {item.quantity}</span>
+      <span className="text-ink-muted tabular-nums">{formatCurrency(item.unitPrice, currency)}</span>
+      <span className="font-semibold text-ink tabular-nums sm:text-right">
         {formatCurrency(item.lineTotal, currency)}
       </span>
     </div>
@@ -55,12 +55,12 @@ export function PurchaseOrderCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="truncate text-base font-semibold text-gray-900">{purchaseOrder.vendorName}</p>
+            <p className="truncate text-base font-semibold text-ink">{purchaseOrder.vendorName}</p>
             <Badge tone={PO_STATUS_TONE[purchaseOrder.status]} size="md">
               {purchaseOrder.status}
             </Badge>
           </div>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-ink-muted">
             {purchaseOrder.poNumber}
             {purchaseOrder.orderDate ? ` · Ordered ${purchaseOrder.orderDate}` : ""}
             {purchaseOrder.expectedDate ? ` · Expected ${purchaseOrder.expectedDate}` : ""}
@@ -83,8 +83,8 @@ export function PurchaseOrderCard({
 
       {purchaseOrder.notes ? <p className="text-sm text-gray-600 text-pretty">{purchaseOrder.notes}</p> : null}
 
-      <div className="flex flex-col gap-2 border-t border-[#F0F0F0] pt-3">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Line items</p>
+      <div className="flex flex-col gap-2 border-t border-line-hair pt-3">
+        <p className="text-xs font-medium uppercase text-ink-muted">Line items</p>
         {purchaseOrder.items.map((item) => (
           <LineItem key={item.id} item={item} currency={currency} />
         ))}

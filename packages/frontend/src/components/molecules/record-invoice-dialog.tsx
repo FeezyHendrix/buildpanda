@@ -4,6 +4,7 @@ import { FormDialog } from "@/components/molecules/form-dialog";
 import type { PaymentClaim } from "@/api/payment-claims";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface Props {
   open: boolean;
@@ -41,8 +42,7 @@ function linesFor(claim: PaymentClaim): Line[] {
   ];
 }
 
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const inputClass = INPUT_CLASS;
 
 export function RecordInvoiceDialog({ open, onOpenChange, claim, currency, milestoneName, submitting, error, onSubmit }: Props) {
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -65,7 +65,7 @@ export function RecordInvoiceDialog({ open, onOpenChange, claim, currency, miles
       error={error}
       onSubmit={() => onSubmit(invoiceNumber.trim())}
     >
-      <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+      <dl className="divide-y divide-line-hair rounded-lg border border-line px-4">
         {lines.map((line) => (
           <div
             key={line.label}
@@ -74,7 +74,7 @@ export function RecordInvoiceDialog({ open, onOpenChange, claim, currency, miles
             <dt className={cn(line.strong ? "font-semibold text-gray-900" : "text-gray-600", line.muted && "text-gray-400")}>
               {line.label}
             </dt>
-            <dd className={cn("tabular-nums", line.strong ? "text-base font-bold text-gray-900" : "text-gray-800", line.muted && "text-gray-400")}>
+            <dd className={cn("tabular-nums", line.strong ? "text-base font-medium text-gray-900" : "text-gray-800", line.muted && "text-gray-400")}>
               {line.sign ? `${line.sign} ` : ""}
               {formatCurrency(line.value, currency)}
             </dd>

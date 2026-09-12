@@ -7,6 +7,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { SHEET_KIND_OPTIONS, mmPerPtForRatio, scaleRatioOf } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
 import { LayerMapTable } from "./layer-map-table";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface Props {
   sessionId: string;
@@ -15,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-const FIELD = "mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = cn(INPUT_SM_CLASS, "mt-0.5");
 const DIM_UNITS = ["mm", "cm", "m"] as const;
 
 /**
@@ -56,7 +58,7 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
 
   return (
     <div
-      className="absolute right-3 top-3 z-20 w-72 space-y-3 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+      className="absolute right-3 top-3 z-20 w-72 space-y-3 rounded-lg border border-line bg-white p-3 shadow-lg"
       onMouseDown={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
@@ -65,7 +67,7 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-gray-900">{sheet.code ?? `Page ${sheet.pageNumber}`}</p>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-xs text-gray-500">
             {sheet.scaleConfidence === 1 ? "Scale set by reviewer" : sheet.scaleMmPerPt ? `Engine read 1:${scaleRatioOf(sheet.scaleMmPerPt)} at ${Math.round((sheet.scaleConfidence ?? 0) * 100)}%` : "No scale detected"}
           </p>
         </div>
@@ -110,7 +112,7 @@ export function SheetSettings({ sessionId, sheet, onDrawScale, onClose }: Props)
         Or draw a known dimension on the sheet
       </button>
 
-      <div className="flex gap-2 border-t border-gray-100 pt-3">
+      <div className="flex gap-2 border-t border-line-hair pt-3">
         <Button size="sm" loading={update.isPending} onClick={save}>
           Save
         </Button>

@@ -11,8 +11,8 @@ export function PoMetric({
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className={cn("text-sm font-semibold tabular-nums", accent ? "text-[#004DE7]" : "text-gray-900")}>
+      <span className="text-xs text-ink-muted">{label}</span>
+      <span className={cn("text-sm font-semibold tabular-nums", accent ? "text-primary-500" : "text-ink")}>
         {value}
       </span>
     </div>

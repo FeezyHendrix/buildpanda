@@ -184,8 +184,8 @@ export function DrawingsTab({ proposalId }: Props) {
           description="Drop the first drawing above; files are private to your team and the client receiving this proposal."
         />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white">
-          <ul className="divide-y divide-gray-100">
+        <div className="rounded-lg border border-line bg-white">
+          <ul className="divide-y divide-line-hair">
             {visible.map((plan) => (
               <PlanRow
                 key={plan.id}
@@ -209,7 +209,7 @@ export function DrawingsTab({ proposalId }: Props) {
           {superseded.length > 0 ? (
             <button
               type="button"
-              className="w-full border-t border-gray-100 px-4 py-2 text-left text-xs font-medium text-gray-500 hover:bg-gray-50"
+              className="w-full border-t border-line-hair px-4 py-2 text-left text-xs font-medium text-gray-500 hover:bg-gray-50"
               onClick={() => setShowSuperseded((v) => !v)}
             >
               {showSuperseded ? "Hide" : "Show"} {superseded.length} superseded revision{superseded.length === 1 ? "" : "s"}

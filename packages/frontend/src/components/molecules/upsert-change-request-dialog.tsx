@@ -6,6 +6,8 @@ import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
 import type { ChangeStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface UpsertChangeValues {
   title: string;
@@ -40,11 +42,11 @@ const STATUS: { value: ChangeStatus; label: string }[] = [
   { value: "Draft", label: "Draft" },
   { value: "Submitted", label: "Submitted" },
   { value: "Approved", label: "Approved" },
+  { value: "Executed", label: "Executed" },
   { value: "Rejected", label: "Rejected" },
 ];
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initial, assigneeOptions = [], onSubmit, isSubmitting = false, error }: Props) {
   const [title, setTitle] = useState("");
@@ -106,7 +108,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-desc">Details</Label>
-        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
+        <textarea id="cr-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What's changing?" className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} />
       </div>
       <RichTextField
         label="Reason"

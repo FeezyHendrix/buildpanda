@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { type Sheet } from "./plan-review-data";
 import { CALIBRATED_LABEL, KEY, POPOVER, REVISIONS, type Note, type PopoverId } from "./plan-review-types";
 import { IconBtn, Kbd, POP_ITEM_CLS, PopShell } from "./plan-review-ui";
+import { Button } from "@/components/atoms/button";
 
 interface SheetSearchResult extends Sheet {
   index: number;
@@ -73,12 +74,12 @@ export function WorkspaceHeader({
 }: WorkspaceHeaderProps) {
   const revisionOptions = sheet.scale ? REVISIONS : [currentRevision];
   return (
-    <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-[#F0F0F0] bg-white px-3 py-2">
+    <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-line-hair bg-white px-3 py-2">
       <button
         type="button"
         onClick={onExit}
         title="Exit document review"
-        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 hover:bg-surface-alt hover:text-gray-900"
       >
         <X size={15} /> Exit
       </button>
@@ -110,7 +111,7 @@ export function WorkspaceHeader({
             </span>
           )}
           {!sheet.scale && !scaleLabel && (
-            <span className="flex items-center gap-1 rounded bg-[#F6F6F6] px-1.5 py-0.5 text-gray-500">
+            <span className="flex items-center gap-1 rounded bg-surface-alt px-1.5 py-0.5 text-gray-500">
               No scale on sheet — measure, then Calibrate
             </span>
           )}
@@ -126,7 +127,7 @@ export function WorkspaceHeader({
             aria-expanded={popover.open === POPOVER.REVISION}
             title="Select revision"
             onClick={() => popover.onOpen(popover.open === POPOVER.REVISION ? null : POPOVER.REVISION)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-surface-alt hover:text-gray-900"
           >
             {currentRevision} <ChevronDown size={12} />
           </button>
@@ -168,7 +169,7 @@ export function WorkspaceHeader({
           </IconBtn>
           {popover.open === POPOVER.SEARCH && (
             <PopShell className="right-0 w-80 p-3">
-              <div className="flex items-center gap-2 rounded-lg bg-[#F6F6F6] px-2.5 py-2">
+              <div className="flex items-center gap-2 rounded-lg bg-surface-alt px-2.5 py-2">
                 <Search size={14} className="shrink-0 text-gray-400" />
                 <input
                   ref={search.inputRef}
@@ -192,11 +193,11 @@ export function WorkspaceHeader({
                 <p className="px-1 pt-3 text-xs text-gray-500">No results for &ldquo;{search.trimmed}&rdquo;</p>
               ) : (
                 <div className="max-h-72 overflow-y-auto pt-2">
-                  <p className="px-1 pb-1 text-[11px] text-gray-500">
+                  <p className="px-1 pb-1 text-xs text-gray-500">
                     {search.resultCount} result{search.resultCount === 1 ? "" : "s"}
                   </p>
                   {search.sheetResults.length > 0 && (
-                    <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sheets</p>
+                    <p className="px-1 pt-1 text-xs font-medium uppercase text-ink-muted">Sheets</p>
                   )}
                   {search.sheetResults.map((s) => (
                     <button
@@ -206,7 +207,7 @@ export function WorkspaceHeader({
                         search.onGoToSheet(s.index);
                         popover.onOpen(null);
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-surface-alt"
                     >
                       <FileText size={13} className="shrink-0 text-gray-400" />
                       <span className="font-medium text-gray-900">{s.code}</span>
@@ -214,7 +215,7 @@ export function WorkspaceHeader({
                     </button>
                   ))}
                   {search.noteResults.length > 0 && (
-                    <p className="px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                    <p className="px-1 pt-2 text-xs font-medium uppercase text-ink-muted">
                       Markup &amp; Notes
                     </p>
                   )}
@@ -226,7 +227,7 @@ export function WorkspaceHeader({
                         search.onGoToSheetById(n.sheetId);
                         popover.onOpen(null);
                       }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-[#F6F6F6]"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-surface-alt"
                     >
                       <MessageSquare size={13} className="shrink-0 text-gray-400" />
                       <span className="truncate text-gray-600">{n.text}</span>
@@ -244,19 +245,19 @@ export function WorkspaceHeader({
         </IconBtn>
 
         <div className="relative">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
             data-popover-trigger
             aria-haspopup="true"
             aria-expanded={popover.open === POPOVER.REVIEW_TOOLS}
             title="Review tools"
             onClick={() => popover.onOpen(popover.open === POPOVER.REVIEW_TOOLS ? null : POPOVER.REVIEW_TOOLS)}
-            className="flex items-center gap-1.5 rounded-lg border border-[#EDEDED] bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-[#F6F6F6]"
           >
             <span className="hidden sm:inline">Review Tools</span>
             <MoreHorizontal size={16} className="sm:hidden" />
             <ChevronDown size={13} className="hidden sm:inline" />
-          </button>
+          </Button>
           {popover.open === POPOVER.REVIEW_TOOLS && (
             <PopShell className="right-0 w-56">
               {compare.can && (

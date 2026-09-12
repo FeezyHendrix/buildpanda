@@ -23,7 +23,7 @@ function WizardFooter({
       Need help?{" "}
       <a
         href="mailto:support@buildpanda.com"
-        className="font-medium text-[#004DE7] hover:underline"
+        className="font-medium text-primary-500 hover:underline"
       >
         Contact Support
       </a>
@@ -34,7 +34,7 @@ function WizardFooter({
   return (
     <div
       className={cn(
-        "flex flex-col lg:flex-row gap-4 lg:gap-0 items-center justify-between border-t border-[#F6F6F6] pt-6",
+        "flex flex-col lg:flex-row gap-4 lg:gap-0 items-center justify-between border-t border-line-hair pt-6",
         className,
       )}
     >
@@ -45,7 +45,7 @@ function WizardFooter({
           variant="ghost"
           size="md"
           onClick={onCancel}
-          className="text-[#004DE7] hover:bg-[#004DE7]/5 active:bg-[#004DE7]/10 w-full lg:auto"
+          className="text-primary-500 hover:bg-primary-500/5 active:bg-primary-500/10 w-full lg:auto"
         >
           {cancelLabel}
         </Button>

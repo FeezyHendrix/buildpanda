@@ -225,7 +225,7 @@ function DataGrid<T>({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full max-w-xs rounded-lg bg-[#F6F6F6]">
+        <div className="w-full max-w-xs rounded-lg bg-surface-alt">
           <SearchInput
             value={searchDraft}
             onChange={handleSearchChange}
@@ -236,7 +236,7 @@ function DataGrid<T>({
 
         {isNarrowed ? (
           <div className="flex items-center gap-2">
-            <p aria-live="polite" className="text-xs text-gray-500">
+            <p aria-live="polite" className="text-xs text-ink-muted">
               {total} {total === 1 ? "match" : "matches"}
             </p>
             <Button
@@ -252,7 +252,7 @@ function DataGrid<T>({
         ) : null}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-grey-50 bg-white">
+      <div className="overflow-hidden rounded-lg border border-grey-50 bg-white">
         <Table className="min-w-[640px] border-collapse">
           <DataGridHeaderRow
             columns={columns}

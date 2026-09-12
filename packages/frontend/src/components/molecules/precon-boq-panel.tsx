@@ -83,13 +83,13 @@ function BillRow({
 }) {
   if (row.rowType === "heading" || row.rowType === "work_section") {
     return (
-      <li className={cn("px-3 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wide text-gray-500", row.rowType === "work_section" && "text-gray-400")}>
+      <li className={cn("px-3 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-gray-500", row.rowType === "work_section" && "text-gray-400")}>
         {row.description}
       </li>
     );
   }
   if (row.rowType === "spec_note") {
-    return <li className="px-3 py-1 text-[11px] italic text-gray-400">{row.description}</li>;
+    return <li className="px-3 py-1 text-xs italic text-gray-400">{row.description}</li>;
   }
   const reason = row.status !== "verified" ? confidenceReasonLabel(row.confidenceReason) : null;
   return (
@@ -132,13 +132,13 @@ function ManualEmptyState() {
       <p className="text-xs font-medium text-gray-700">Nothing measured yet — pick a tool and draw on the sheet.</p>
       <ul className="mt-3 flex flex-wrap justify-center gap-1.5">
         {MEASURING_TOOLS.map((meta) => (
-          <li key={meta.key} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">
+          <li key={meta.key} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">
             <kbd className="rounded bg-white px-1 font-mono text-[10px] font-semibold text-gray-800 shadow-sm">{meta.shortcut}</kbd>
             {meta.label}
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-[11px] text-gray-400">Enter finishes a shape and asks for its name. Esc goes back to Select.</p>
+      <p className="mt-2 text-xs text-gray-400">Enter finishes a shape and asks for its name. Esc goes back to Select.</p>
     </div>
   );
 }
@@ -176,8 +176,8 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
   const showQueue = hasLines && (!manual || attentionRows(snapshot.rows).length > 0 || confidentDrafts(snapshot.rows).length > 0);
 
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white">
-      <div className="border-b border-gray-200 p-3">
+    <aside className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-line bg-white">
+      <div className="border-b border-line p-3">
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Bill of quantities</h2>
           <span className="text-xs text-gray-500">
@@ -202,7 +202,7 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
         ) : null}
         {snapshot.bills.map((bill) => (
           <section key={bill.id}>
-            <h3 className="sticky top-0 z-10 bg-gray-900 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white">{bill.title}</h3>
+            <h3 className="sticky top-0 z-10 border-b border-line-hair bg-surface-alt px-3 py-2 text-xs font-medium uppercase text-ink">{bill.title}</h3>
             <ul>
               {(rowsByBill.get(bill.id) ?? []).map((row) => (
                 <BillRow
@@ -236,12 +236,12 @@ export function PreconBoqPanel({ sessionId, snapshot, selectedRowId, onSelectRow
         </div>
       </div>
 
-      <div className="border-t border-gray-200 bg-gray-50 p-3">
+      <div className="border-t border-line bg-gray-50 p-3">
         <div className="flex items-baseline justify-between">
           <span className="text-xs uppercase tracking-wide text-gray-500">Draft total</span>
-          <span className="text-lg font-bold text-gray-900">{naira.format(snapshot.summary.grandTotal)}</span>
+          <span className="text-lg font-medium text-gray-900">{naira.format(snapshot.summary.grandTotal)}</span>
         </div>
-        <p className="text-[11px] text-gray-400">
+        <p className="text-xs text-gray-400">
           Incl. prelims {snapshot.settings.prelimsPct}%, contingency {snapshot.settings.contingencyPct}%, VAT {snapshot.settings.vatPct}%
         </p>
       </div>

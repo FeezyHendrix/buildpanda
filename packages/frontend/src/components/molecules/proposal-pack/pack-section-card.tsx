@@ -52,7 +52,7 @@ export function PackSectionCard({ meta, section, canEdit, saving, drafting, onSa
   const origin = section ? ORIGIN_META[section.origin] : null;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5">
+    <section className="rounded-lg border border-line bg-white p-5">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

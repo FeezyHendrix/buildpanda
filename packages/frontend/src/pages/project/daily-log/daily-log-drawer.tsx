@@ -61,12 +61,12 @@ function DailyLogDrawer({
           // land on the close button and beat the editor; the composer focuses itself.
           initialFocus={focusComposer ? false : true}
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-white shadow-xl outline-none md:w-[min(750px,100vw)]",
+            "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line-hair bg-white shadow-drawer outline-none md:w-[min(750px,100vw)]",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
-          <header className="flex items-start justify-between gap-4 border-b border-[#F0F0F0] px-6 py-5">
+          <header className="flex items-start justify-between gap-4 border-b border-line-hair px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-gray-900">
                 Daily log · {logDate ? formatDayDate(logDate) : ""}
@@ -78,7 +78,7 @@ function DailyLogDrawer({
             </div>
             <Dialog.Close
               aria-label="Close"
-              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-gray-500 outline-none hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
             >
               <X className="size-5" />
             </Dialog.Close>
@@ -87,7 +87,7 @@ function DailyLogDrawer({
           {!day || !logDate ? (
             <div className="flex flex-1 items-center justify-center">
               {dayQuery.isError ? (
-                <p className="text-sm text-red-600">Could not load this day.</p>
+                <p className="text-sm text-negative-600">Could not load this day.</p>
               ) : (
                 <Spinner size="md" />
               )}
@@ -119,7 +119,7 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
   return (
     <section>
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{title}</h4>
+        <h4 className="text-xs font-medium uppercase text-ink-muted">{title}</h4>
         {action}
       </div>
       <div className="mt-3">{children}</div>
@@ -129,16 +129,16 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
 
 function EditLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-[13px] font-medium text-primary hover:underline">
+    <Button type="button" variant="ghost" size="sm" onClick={onClick}>
       {label}
-    </button>
+    </Button>
   );
 }
 
 function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-xl border border-[#EDEDED] bg-white p-3">
-      <p className="text-[11px] font-medium text-gray-500">{label}</p>
+    <div className="rounded-lg border border-line-hair bg-white p-3">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
       <div className="mt-1 text-lg font-semibold tabular-nums text-gray-900">{value}</div>
     </div>
   );
@@ -165,7 +165,7 @@ function ConditionsSection({ day, canEdit, onEdit }: { day: DailyLogDay; canEdit
           <Metric label="Total hours" value={formatHours(day.totalHours)} />
         </div>
       ) : (
-        <p className="rounded-xl bg-[#F8F8F8] p-4 text-sm text-gray-500">No site conditions recorded for this day.</p>
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No site conditions recorded for this day.</p>
       )}
     </Section>
   );
@@ -176,9 +176,9 @@ function ActivitiesSection({ day }: { day: DailyLogDay }) {
   return (
     <Section title="Activities">
       {day.activities.length === 0 ? (
-        <p className="rounded-xl bg-[#F8F8F8] p-4 text-sm text-gray-500">No activities logged against this day.</p>
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No activities logged against this day.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[#EDEDED]">
+        <div className="overflow-hidden rounded-lg border border-line-hair">
           <Table>
             <TableHead>
               <tr>
@@ -218,9 +218,9 @@ function EntriesSection({ day, projectId, userId, canCreateEntry, canVoidEntry, 
   return (
     <Section title={`Entries (${day.entries.length})`}>
       {day.entries.length === 0 ? (
-        <p className="rounded-xl bg-[#F8F8F8] p-4 text-sm text-gray-500">No team logs for this day yet.</p>
+        <p className="rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No team logs for this day yet.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-[#EDEDED]">
+        <div className="flex flex-col divide-y divide-line-hair">
           {day.entries.map((entry) => (
             <DailyLogEntryRow
               key={entry.id}
@@ -285,7 +285,7 @@ function EntryComposer({ projectId, logDate, autoFocus }: { projectId: string; l
   }
 
   return (
-    <div ref={wrapperRef} className="mt-4 flex flex-col gap-3 border-t border-[#EDEDED] pt-4">
+    <div ref={wrapperRef} className="mt-4 flex flex-col gap-3 border-t border-line-hair pt-4">
       <RichTextField
         key={editorKey}
         label="Add my log"
@@ -296,7 +296,7 @@ function EntryComposer({ projectId, logDate, autoFocus }: { projectId: string; l
         placeholder="e.g. Completed the level 3 slab pour, inspected rebar, flagged a delivery delay…"
       />
       {addEntry.error ? (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{(addEntry.error as Error).message}</p>
+        <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">{(addEntry.error as Error).message}</p>
       ) : null}
       <div className="flex justify-end">
         <Button type="button" variant="primary" size="sm" disabled={!hasContent} loading={addEntry.isPending} onClick={submit}>

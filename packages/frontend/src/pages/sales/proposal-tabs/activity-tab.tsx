@@ -40,22 +40,22 @@ function ClientSummary({ events, acceptedByName, acceptedAt, acceptedIp, pdfHash
   if (views.length === 0 && !acceptedAt) return null;
   return (
     <div className="mb-6 grid gap-3 sm:grid-cols-2">
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Client engagement</p>
+      <div className="rounded-lg border border-line bg-white p-4">
+        <p className="text-xs font-medium uppercase text-ink-muted">Client engagement</p>
         <p className="mt-1 text-sm text-gray-900">
           {views.length === 0 ? "Not opened yet" : `Opened ${views.length} time${views.length === 1 ? "" : "s"}`}
         </p>
         {lastViewed ? <p className="text-xs text-gray-500">Last opened {formatActivityTimestamp(lastViewed)}</p> : null}
       </div>
       {acceptedAt ? (
-        <div className="rounded-xl border border-success-200 bg-success-50 p-4">
+        <div className="rounded-lg border border-success-200 bg-success-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-success-700">Acceptance record</p>
           <p className="mt-1 text-sm text-gray-900">Signed by {acceptedByName ?? "the client"}</p>
           <p className="text-xs text-gray-600">
             {formatActivityTimestamp(acceptedAt)}
             {acceptedIp ? ` · from ${acceptedIp}` : ""}
           </p>
-          {pdfHash ? <p className="mt-1 font-mono text-[11px] text-gray-500">document {pdfHash.slice(0, 16)}…</p> : null}
+          {pdfHash ? <p className="mt-1 font-mono text-xs text-gray-500">document {pdfHash.slice(0, 16)}…</p> : null}
         </div>
       ) : null}
     </div>
@@ -87,7 +87,7 @@ export function ActivityTab({ proposalId }: Props) {
       acceptedIp={estimate?.acceptedIp ?? null}
       pdfHash={estimate?.acceptedPdfHash ?? null}
     />
-    <ol className="relative ml-3 border-l-2 border-gray-100 pl-6">
+    <ol className="relative ml-3 border-l-2 border-line-hair pl-6">
       {events.map((event) => {
         const meta = EVENT_LABELS[event.type] ?? { label: event.type, tone: "neutral" as const };
         return (

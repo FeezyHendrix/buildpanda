@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
@@ -24,15 +25,15 @@ import {
   diffToPatch,
   toForm,
   type ContractTermsForm,
-} from "./contract/contract-terms-model";
-import { RadioCard, TermsSection, UnitNumberField } from "./contract/contract-terms-fields";
+} from "../contract/contract-terms-model";
+import { RadioCard, TermsSection, UnitNumberField } from "../contract/contract-terms-fields";
 
 /**
- * Terms — the contract sum and the commercial terms that govern how it is
- * certified, retained and paid. Saving records the agreed terms; nothing here
- * moves money.
+ * Terms — the contract sum and the commercial terms that govern how the main
+ * contract is certified, retained and paid. A section of the main contract's
+ * drawer. Saving records the agreed terms; nothing here moves money.
  */
-export function ContractTermsTab() {
+export function ContractTermsSection() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "finances", "manage");
   const { data: finances, isPending, isError, error } = useProjectFinances(project.id);
@@ -81,7 +82,7 @@ export function ContractTermsTab() {
 
   if (isError || !finances || !form) {
     return (
-      <Card padding="lg" className="mt-8 text-center text-sm text-red-600">
+      <Card padding="lg" className="mt-8 text-center text-sm text-negative-600">
         {getApiErrorMessage(error, "Failed to load contract terms.")}
       </Card>
     );
@@ -96,7 +97,7 @@ export function ContractTermsTab() {
         title="Contract amount"
         description="The base amount agreed with the contractor before changes. Revised contract = contract amount + changes."
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contract-sum">Contract sum</Label>
             <MoneyInput
@@ -106,9 +107,9 @@ export function ContractTermsTab() {
               currencySymbol={symbolFor(finances.currency)}
               disabled={disabled}
             />
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-muted">
               Currently{" "}
-              <span className="font-medium tabular-nums text-gray-600">
+              <span className="font-medium tabular-nums text-ink-subtle">
                 {formatCurrency(finances.contractSum, finances.currency)}
               </span>
               . Variations recorded so far:{" "}
@@ -116,10 +117,10 @@ export function ContractTermsTab() {
                 className={cn(
                   "font-medium tabular-nums",
                   finances.variationsTotal > 0
-                    ? "text-emerald-600"
+                    ? "text-success-600"
                     : finances.variationsTotal < 0
-                      ? "text-rose-600"
-                      : "text-gray-600",
+                      ? "text-negative-600"
+                      : "text-ink-subtle",
                 )}
               >
                 {finances.variationsTotal >= 0 ? "+" : "−"}
@@ -128,28 +129,28 @@ export function ContractTermsTab() {
               .
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 rounded-xl bg-[#FAFAFA] px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+          <div className="flex flex-col gap-1.5 rounded-lg bg-surface-alt px-4 py-3">
+            <p className="text-xs font-medium uppercase text-ink-muted">
               Adjusted contract (live)
             </p>
-            <p className="mt-1 text-lg font-bold tabular-nums text-[#004DE7]">
+            <p className="mt-1 text-lg font-medium tabular-nums text-primary-500">
               {formatCurrency(
                 (Number(form.contractSum) || 0) + finances.variationsTotal,
                 finances.currency,
               )}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-muted">
               Preview based on the value in the field above. Save to apply.
             </p>
           </div>
         </div>
         {canManage ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-gray-200 bg-white px-4 py-3">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-line bg-white px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-ink">
                 Approved change to the contract value?
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-muted">
                 Record it as a variation — positive for additional works, negative
                 for omissions. Every entry is kept in the audit trail.
               </p>
@@ -165,7 +166,7 @@ export function ContractTermsTab() {
         title="Contract type"
         description="Which pricing structure governs this contract? This affects how changes and approvals are handled."
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3">
           {CONTRACT_TYPES.map((type) => (
             <RadioCard
               key={type}
@@ -185,7 +186,7 @@ export function ContractTermsTab() {
         title="Retention"
         description="Percentage held from each approved payment as security against defects."
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <UnitNumberField
             id="retention-rate"
             label="Retention rate"
@@ -221,7 +222,7 @@ export function ContractTermsTab() {
         title="Advance / mobilisation"
         description="Up-front payment made to the contractor for mobilisation, recovered from later payments."
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <UnitNumberField
             id="advance-percentage"
             label="Advance percentage"
@@ -251,7 +252,7 @@ export function ContractTermsTab() {
 
         <div className="mt-6">
           <Label>Recovery mode</Label>
-          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="mt-2 grid grid-cols-1 gap-3">
             {ADVANCE_RECOVERY_MODES.map((mode) => (
               <RadioCard
                 key={mode}
@@ -272,7 +273,7 @@ export function ContractTermsTab() {
         title="Payment terms"
         description="Timelines that govern when invoices are due and how long retention is held after completion."
       >
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <UnitNumberField
             id="payment-days"
             label="Payment terms"
@@ -306,9 +307,9 @@ export function ContractTermsTab() {
           rows={5}
           maxLength={2000}
           placeholder="e.g. JCT SBC/Q 2016 with amendments. Insurance clause 6.5.1 waived by side letter dated 3 Feb."
-          className="w-full resize-y rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-y py-3")}
         />
-        <p className="mt-1 text-[11px] text-gray-400">
+        <p className="mt-1 text-xs text-ink-muted">
           {form.contractNotes.trim().length}/2000
         </p>
       </TermsSection>
@@ -323,7 +324,7 @@ export function ContractTermsTab() {
           </Button>
         </div>
       ) : (
-        <Card padding="md" className="mt-6 text-xs text-gray-500">
+        <Card padding="md" className="mt-6 text-xs text-ink-muted">
           You have read-only access. Contact a finance manager to change contract terms.
         </Card>
       )}
@@ -340,4 +341,4 @@ export function ContractTermsTab() {
   );
 }
 
-ContractTermsTab.displayName = "ContractTermsTab";
+ContractTermsSection.displayName = "ContractTermsSection";

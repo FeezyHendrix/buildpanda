@@ -7,6 +7,8 @@ import {
   useSetActiveOrganization,
 } from "@/hooks/use-organization";
 import { useState, useEffect } from "react";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(false);
@@ -94,7 +96,7 @@ function OrgSwitcher() {
       <Menu.Trigger
         className={cn(
           "inline-flex max-w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-gray-700",
-          "outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "outline-none hover:bg-white focus-visible:shadow-focus",
         )}
         aria-label="Switch workspace"
       >
@@ -110,15 +112,15 @@ function OrgSwitcher() {
           align={isDesktop ? "start" : "center"} 
           alignOffset={isDesktop ? 50 : 20} 
           sideOffset={isDesktop ? 30 : 8} 
-          className="z-50 border border-muted rounded-xl"
+          className="z-50 border border-muted rounded-lg"
         >
           <Menu.Popup
             className={cn(
-              "min-w-[240px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 border border-muted",
+              "min-w-[240px] rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5 border border-muted",
               "origin-top-left outline-none",
             )}
           >
-            <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <p className="px-3 py-1.5 text-xs font-medium uppercase text-ink-muted">
               Your workspaces
             </p>
 
@@ -128,19 +130,19 @@ function OrgSwitcher() {
                 onClick={() => handleSelect(org.id)}
                 className={cn(
                   "flex cursor-default select-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-gray-700",
-                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                  "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-gray-900",
                 )}
               >
                 <span className="truncate">{org.name}</span>
                 {org.id === activeOrganizationId && (
-                  <span className="text-[#004DE7]">
+                  <span className="text-primary-500">
                     <CheckIcon />
                   </span>
                 )}
               </Menu.Item>
             ))}
 
-            <form onSubmit={handleCreate} className="mt-1 border-t border-gray-100 px-2 py-2">
+            <form onSubmit={handleCreate} className="mt-1 border-t border-line-hair px-2 py-2">
               <label className="text-xs font-medium text-gray-500" htmlFor="new-company-name">
                 New workspace
               </label>
@@ -150,15 +152,11 @@ function OrgSwitcher() {
                   value={newCompanyName}
                   onChange={(event) => setNewCompanyName(event.target.value)}
                   placeholder="Workspace name"
-                  className="h-8 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_SM_CLASS, "min-w-0 flex-1")}
                 />
-                <button
-                  type="submit"
-                  disabled={!newCompanyName.trim() || createOrganization.isPending}
-                  className="rounded-lg bg-[#004DE7] px-2.5 text-xs font-semibold text-white disabled:opacity-50"
-                >
+                <Button type="submit" size="sm" disabled={!newCompanyName.trim()} loading={createOrganization.isPending}>
                   Add
-                </button>
+                </Button>
               </div>
               {createOrganization.error && (
                 <p className="mt-1 text-xs text-red-600">

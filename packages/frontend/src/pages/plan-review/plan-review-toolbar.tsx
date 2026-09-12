@@ -2,6 +2,7 @@ import { Check, ChevronDown, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MARKUP_COLORS, TOOL, TOOLS, type Tool } from "./plan-review-types";
 import { Kbd, PopShell } from "./plan-review-ui";
+import { Button } from "@/components/atoms/button";
 
 export function MarkupToolbar({
   activeTool,
@@ -25,7 +26,7 @@ export function MarkupToolbar({
   onCompare: () => void;
 }) {
   return (
-      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#F0F0F0] bg-white px-3 py-1.5">
+      <div className="relative z-30 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-hair bg-white px-3 py-1.5">
         {TOOLS.map(({ id, label, shortcut, Icon }) => (
           <button
             key={id}
@@ -38,7 +39,7 @@ export function MarkupToolbar({
               "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors",
               activeTool === id
                 ? "bg-primary-600 text-white ring-1 ring-primary-200"
-                : "text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900",
+                : "text-gray-600 hover:bg-surface-alt hover:text-gray-900",
             )}
           >
             <Icon size={15} />
@@ -56,7 +57,7 @@ export function MarkupToolbar({
             aria-expanded={colorOpen}
             title="Markup color"
             onClick={onToggleColor}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-[#F6F6F6]"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-surface-alt"
           >
             <span className="size-4 rounded-full border border-black/10" style={{ backgroundColor: markupColor }} />
             <ChevronDown size={12} className="text-gray-400" />
@@ -81,20 +82,15 @@ export function MarkupToolbar({
         </div>
 
         {activeTool === TOOL.MEASURE && (
-          <span className="ml-2 hidden shrink-0 text-[11px] text-gray-500 md:inline">
+          <span className="ml-2 hidden shrink-0 text-xs text-gray-500 md:inline">
             {measuring ? "Click the second point to finish" : "Click two points to measure"}
           </span>
         )}
 
         {canCompare && (
-          <button
-            type="button"
-            title="Compare revisions"
-            onClick={onCompare}
-            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-lg border border-[#EDEDED] px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-          >
+          <Button variant="secondary" size="sm" className="ml-auto" title="Compare revisions" onClick={onCompare}>
             <Layers size={14} /> Compare
-          </button>
+          </Button>
         )}
       </div>
   );

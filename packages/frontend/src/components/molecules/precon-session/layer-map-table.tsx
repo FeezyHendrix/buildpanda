@@ -5,12 +5,13 @@ import { LAYER_ELEMENTS, type LayerElement, type LayerMap } from "@/api/precon";
 import { usePreconSnapshot, useUpdatePreconLayerMap } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 interface Props {
   sessionId: string;
 }
 
-const FIELD = "h-7 w-full rounded-md border-0 bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = INPUT_SM_CLASS;
 
 const ELEMENT_LABELS: Record<LayerElement, string> = {
   walls: "Walls",
@@ -57,17 +58,17 @@ export function LayerMapTable({ sessionId }: Props) {
   };
 
   return (
-    <div className="space-y-2 border-t border-gray-100 pt-3">
+    <div className="space-y-2 border-t border-line-hair pt-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-gray-900">Layer map</p>
-        <p className="text-[11px] text-gray-500">{layers.length} layers</p>
+        <p className="text-xs text-gray-500">{layers.length} layers</p>
       </div>
-      <div className="max-h-48 overflow-y-auto rounded-md border border-gray-100">
+      <div className="max-h-48 overflow-y-auto rounded-md border border-line-hair">
         <Table className="text-xs">
           <TableBody>
             {layers.map((layer) => (
               <TableRow key={layer}>
-                <TableCell className="max-w-28 truncate px-2 py-1 font-mono text-[11px] text-gray-700" title={layer}>
+                <TableCell className="max-w-28 truncate px-2 py-1 font-mono text-xs text-gray-700" title={layer}>
                   {layer}
                 </TableCell>
                 <TableCell className="px-1 py-1">

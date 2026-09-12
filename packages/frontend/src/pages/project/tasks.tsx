@@ -334,7 +334,7 @@ export default function ProjectTasks() {
           {canManage && (
             <div className="w-[85vw] shrink-0 snap-start sm:w-72">
               {addingColumn ? (
-                <div className="flex flex-col gap-2 rounded-2xl bg-[#FAFAFA] p-3">
+                <div className="flex flex-col gap-2 rounded-lg bg-surface-alt p-3">
                   <input
                     autoFocus
                     value={newColumnName}
@@ -374,7 +374,7 @@ export default function ProjectTasks() {
                 <button
                   type="button"
                   onClick={() => setAddingColumn(true)}
-                  className="flex w-full items-center gap-1.5 rounded-2xl border border-dashed border-gray-300 px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900"
+                  className="flex w-full items-center gap-1.5 rounded-lg border border-dashed border-gray-300 px-3 py-3 text-sm font-medium text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900"
                 >
                   <PlusIcon className="size-4" />
                   Add column

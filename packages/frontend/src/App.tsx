@@ -1,6 +1,7 @@
-import { createBrowserRouter, Navigate, RouterProvider, useLocation, useRouteError } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider, useLocation, useParams, useRouteError } from "react-router-dom";
 import { lazy as reactLazy, type ComponentType, type ReactElement } from "react";
 import type { FeatureFlagKey } from "@/lib/feature-flags";
+import { LEGACY_FINANCE_PATHS, resolveLegacyFinancePath } from "@/lib/finance-routes";
 import {
   HomeRedirect,
   RequireAuth,
@@ -86,9 +87,9 @@ const ProjectChat = lazy(() => import("@/pages/project/chat"));
 const ProjectOverview = lazy(() => import("@/pages/project/overview"));
 const ProjectUpdates = lazy(() => import("@/pages/project/updates"));
 const ProjectFinances = lazy(() => import("@/pages/project/finances"));
-const ProjectContractPage = lazy(() => import("@/pages/project/finances/contract-page"));
-const ProjectBillingPage = lazy(() => import("@/pages/project/finances/billing-page"));
-const ProjectCostsPage = lazy(() => import("@/pages/project/finances/costs-page"));
+const ProjectContractsPhasesPage = lazy(() => import("@/pages/project/finances/contracts-phases-page"));
+const ProjectExpensesPage = lazy(() => import("@/pages/project/finances/expenses-page"));
+const ProjectBudgetInvoicesPage = lazy(() => import("@/pages/project/finances/budget-invoices-page"));
 const ProjectPandaAi = lazy(() => import("@/pages/project/panda-ai"));
 const ProjectMaterials = lazy(() => import("@/pages/project/materials"));
 const ProjectMaterialLog = lazy(() => import("@/pages/project/material-log"));
@@ -132,11 +133,22 @@ function pf(flag: FeatureFlagKey, el: ReactElement) {
   return <ProjectFeatureFlagGate flag={flag}>{el}</ProjectFeatureFlagGate>;
 }
 /** Feature flag + resource permission (RBAC) gate for project routes. */
-/** `finances/invoices[?compose=1]` → the Invoices tab, keeping `?compose=1` so the composer still opens. */
-function LegacyInvoicesRedirect() {
+/**
+ * Every retired finance path (`finances/contract?tab=terms`, `finances/billing`,
+ * `finances/invoices/new`, …) hops to its new home; `?tab=` picks the page and
+ * the other params (`compose=1&period=`) survive. The map lives in
+ * `lib/finance-routes.ts`.
+ */
+function LegacyFinanceRedirect({ tail }: { tail: string }) {
   const { search } = useLocation();
-  return <Navigate to={`../billing${search}`} replace relative="path" />;
+  const { projectId } = useParams();
+  return <Navigate to={`/project/${projectId}/${resolveLegacyFinancePath(tail, search)}`} replace />;
 }
+
+const legacyFinanceRoutes = LEGACY_FINANCE_PATHS.map((tail) => ({
+  path: tail,
+  element: <LegacyFinanceRedirect tail={tail} />,
+}));
 
 function pfr(flag: FeatureFlagKey, resource: string, el: ReactElement) {
   return (
@@ -333,20 +345,10 @@ export const router = createBrowserRouter([
       // Finance: an overview plus three tabbed pages (Contract, Billing, Costs). Every
       // retired path below redirects to the tab that now owns it.
       { path: "finances", element: pfr("commercial.finances", "finances", <ProjectFinances />) },
-      { path: "finances/contract", element: pfr("commercial.finances", "finances", <ProjectContractPage />) },
-      { path: "finances/billing", element: pfr("commercial.finances", "finances", <ProjectBillingPage />) },
-      { path: "finances/costs", element: pfr("commercial.finances", "finances", <ProjectCostsPage />) },
-      { path: "finances/contract-stages", element: <Navigate to="../contract" replace relative="path" /> },
-      { path: "finances/final-account", element: <Navigate to="../contract?tab=final-account" replace relative="path" /> },
-      { path: "finances/payments", element: <Navigate to="../billing?tab=stage-payments" replace relative="path" /> },
-      { path: "finances/milestone-payments", element: <Navigate to="../billing?tab=stage-payments" replace relative="path" /> },
-      { path: "finances/payment-claims", element: <Navigate to="../billing?tab=payment-requests" replace relative="path" /> },
-      { path: "finances/invoices", element: <LegacyInvoicesRedirect /> },
-      { path: "finances/invoices/new", element: <Navigate to="../../billing?compose=1" replace relative="path" /> },
-      { path: "finances/budget", element: <Navigate to="../costs?tab=budget" replace relative="path" /> },
-      { path: "finances/budget-allocation", element: <Navigate to="../costs?tab=budget" replace relative="path" /> },
-      { path: "finances/transactions", element: <Navigate to="../costs?tab=expenses" replace relative="path" /> },
-      { path: "finances/purchase-orders", element: <Navigate to="../costs?tab=purchase-orders" replace relative="path" /> },
+      { path: "finances/contracts-phases", element: pfr("commercial.finances", "finances", <ProjectContractsPhasesPage />) },
+      { path: "finances/expenses", element: pfr("commercial.finances", "finances", <ProjectExpensesPage />) },
+      { path: "finances/budget-invoices", element: pfr("commercial.finances", "finances", <ProjectBudgetInvoicesPage />) },
+      ...legacyFinanceRoutes,
 
       { path: "materials", element: pf("commercial.materialsEquipment", <ProjectMaterials />) },
       { path: "material-log", element: pf("commercial.materialsLedger", <ProjectMaterialLog />) },
@@ -360,7 +362,6 @@ export const router = createBrowserRouter([
       { path: "schedules", element: <Navigate to="stages" replace /> },
       { path: "schedules/activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "schedules/activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "schedules/milestones", element: <Navigate to="../../finances/billing?tab=stage-payments" replace relative="path" /> },
       { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
@@ -373,7 +374,6 @@ export const router = createBrowserRouter([
       // legacy flat routes kept for deep-link compatibility
       { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
       { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "milestones", element: <Navigate to="../finances/billing?tab=stage-payments" replace relative="path" /> },
       { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "stages", element: pf("projects.schedule", <ProjectStages />) },

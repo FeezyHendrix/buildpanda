@@ -54,9 +54,9 @@ function InsightsSummary({ projectId }: Props) {
       {tiles.map((t) => (
         <Link key={t.label} to={t.to}>
           <Card padding="md" interactive className="flex h-full flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">{t.label}</span>
-            <span className="text-xl font-bold text-gray-900">{t.value}</span>
-            <span className="text-[11px] leading-tight text-gray-400">{t.hint}</span>
+            <span className="text-xs font-medium text-ink-muted">{t.label}</span>
+            <span className="text-xl font-medium text-ink">{t.value}</span>
+            <span className="text-xs leading-tight text-ink-muted">{t.hint}</span>
           </Card>
         </Link>
       ))}

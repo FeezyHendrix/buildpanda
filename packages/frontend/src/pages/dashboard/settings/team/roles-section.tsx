@@ -17,10 +17,10 @@ export function RoleRow({ role, canManage, isDeleting, onEdit, onDelete }: RoleR
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
+        <p className="truncate text-sm font-medium text-ink">
           {formatRoleLabel(role.role)}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           {resourceCount} resource{resourceCount === 1 ? "" : "s"} configured
         </p>
       </div>
@@ -34,7 +34,6 @@ export function RoleRow({ role, canManage, isDeleting, onEdit, onDelete }: RoleR
             size="sm"
             onClick={() => onDelete(role)}
             disabled={isDeleting}
-            className="text-red-600 hover:bg-red-50"
           >
             Delete
           </Button>

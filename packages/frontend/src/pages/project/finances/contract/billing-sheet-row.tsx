@@ -27,7 +27,7 @@ export const STICKY_INDEX = "sticky left-0 z-10 w-14";
 export const STICKY_STAGE = "sticky left-14 z-10 min-w-[220px]";
 export const UNPRICED_REASON = "Price the stage first";
 
-const DASH = <span className="text-black-200">—</span>;
+const DASH = <span className="text-ink-muted">—</span>;
 
 function money(value: number | undefined, currency: Currency) {
   return value === undefined ? DASH : formatCurrency(value, currency);
@@ -71,27 +71,27 @@ export function BillingSheetRow({
   );
 
   return (
-    <TableRow className="group hover:bg-[#FAFAFA]">
-      <TableCell className={cn(STICKY_INDEX, "bg-white group-hover:bg-[#FAFAFA]")}>
-        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-black-500">
+    <TableRow className="group hover:bg-surface-alt">
+      <TableCell className={cn(STICKY_INDEX, "bg-white group-hover:bg-surface-alt")}>
+        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-surface-alt text-xs font-medium text-ink">
           {row.index + 1}
         </span>
       </TableCell>
-      <TableCell className={cn(STICKY_STAGE, "bg-white group-hover:bg-[#FAFAFA]")}>
-        <p className="font-medium text-black-500">{stage.name}</p>
+      <TableCell className={cn(STICKY_STAGE, "bg-white group-hover:bg-surface-alt")}>
+        <p className="font-medium text-ink">{stage.name}</p>
         <div className="mt-1">
           <Badge tone={status.tone} size="sm">{status.label}</Badge>
         </div>
       </TableCell>
       <TableCell>{claim ? <Badge tone={claim.tone} size="sm">{claim.label}</Badge> : DASH}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums text-black-500">
-        {priced ? formatCurrency(stage.value, currency) : <span className="font-normal text-black-200">Not priced</span>}
+      <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums text-ink">
+        {priced ? formatCurrency(stage.value, currency) : <span className="font-normal text-ink-muted">Not priced</span>}
       </TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.committed, currency)}</TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.actual, currency)}</TableCell>
       <TableCell
         align="right"
-        className={cn("whitespace-nowrap tabular-nums", variance !== undefined && variance < 0 && "text-error-600")}
+        className={cn("whitespace-nowrap tabular-nums", variance !== undefined && variance < 0 && "text-negative-600")}
       >
         {money(variance, currency)}
       </TableCell>
@@ -109,8 +109,8 @@ export function BillingSheetRow({
         </TableCell>
       ))}
       <TableCell align="right" className="whitespace-nowrap bg-primary-50/40 tabular-nums">
-        <p className="text-[13px] font-semibold text-black-500">{formatCumulative(row.toDate.percent)}</p>
-        <p className="text-[11px] text-black-300">
+        <p className="text-sm font-semibold text-ink">{formatCumulative(row.toDate.percent)}</p>
+        <p className="text-xs text-ink-muted">
           {row.toDate.percent === null ? " " : formatCurrency(row.toDate.amount, currency)}
         </p>
       </TableCell>

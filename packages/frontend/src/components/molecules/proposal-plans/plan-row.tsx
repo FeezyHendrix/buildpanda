@@ -60,7 +60,7 @@ function MeasuredBadges({ sessions, staleSessions }: { sessions: PreconSession[]
   return (
     <span className="flex flex-wrap items-center gap-1">
       {currentPerScope(sessions).map((s) => (
-        <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-100" title="Open the current take-off">
+        <Link key={s.id} to={`/sales/takeoff/${s.id}`} className="rounded-full focus:outline-none focus:shadow-focus" title="Open the current take-off">
           <Badge tone={s.status === "failed" ? "danger" : "success"}>
             {s.takeoffKind === "manual" ? "Measured by hand" : "Measured"} · {describeScope(s.scope)}
             {s.revision > 1 ? ` · Rev ${s.revision}` : ""}
@@ -99,7 +99,7 @@ export function PlanRow({ plan, sessions, staleSessions, onMeasure, onMeasureByH
             >
               {plan.fileName}
             </a>
-            {meta.length > 0 ? <span className="font-mono text-[11px] text-gray-500">{meta.join(" · ")}</span> : null}
+            {meta.length > 0 ? <span className="font-mono text-xs text-gray-500">{meta.join(" · ")}</span> : null}
             <MeasuredBadges sessions={sessions} staleSessions={staleSessions} />
           </div>
           <p className="text-xs text-gray-400">

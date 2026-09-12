@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
+import { Button } from "@/components/atoms/button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { cn } from "@/lib/utils";
 import { NRM_WORK_SECTIONS, type NrmWorkItem } from "@/lib/nrm-work-items";
@@ -51,21 +52,21 @@ function ActivityTemplateDialog({
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col bg-white shadow-xl outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line-hair bg-white shadow-drawer outline-none",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
-          <header className="border-b border-[#F0F0F0] px-6 py-5">
-            <Dialog.Title className="text-lg font-semibold text-gray-900">
+          <header className="border-b border-line-hair px-6 py-5">
+            <Dialog.Title className="text-lg font-semibold text-ink">
               Choose a work item
             </Dialog.Title>
-            <Dialog.Description className="mt-1.5 text-sm text-gray-500 text-pretty">
+            <Dialog.Description className="mt-1.5 text-sm text-ink-muted text-pretty">
               Start from a standard NRM2 work section, then complete the activity details.
             </Dialog.Description>
           </header>
 
-          <div className="border-b border-[#F0F0F0] px-6 py-4">
+          <div className="border-b border-line-hair px-6 py-4">
             <SearchInput
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -76,17 +77,17 @@ function ActivityTemplateDialog({
 
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
             {sections.length === 0 ? (
-              <p className="py-10 text-center text-sm text-gray-500">
+              <p className="py-10 text-center text-sm text-ink-muted">
                 No work items match “{query}”.
               </p>
             ) : (
               sections.map((section) => (
                 <div key={section.code} className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
+                    <span className="rounded-md bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-500">
                       NRM2 · {section.code}
                     </span>
-                    <span className="text-sm font-semibold text-gray-900">
+                    <span className="text-sm font-semibold text-ink">
                       {section.group}
                     </span>
                   </div>
@@ -97,13 +98,13 @@ function ActivityTemplateDialog({
                         type="button"
                         onClick={() => onPick(item)}
                         className={cn(
-                          "flex items-center justify-between rounded-xl border border-[#EDEDED] bg-white px-3.5 py-3 text-left",
-                          "transition-colors hover:border-[#004DE7] hover:bg-[#F8FAFF]",
-                          "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                          "flex items-center justify-between rounded-lg border border-line-hair bg-white px-3.5 py-3 text-left",
+                          "transition-colors hover:border-primary-500 hover:bg-primary-50",
+                          "outline-none focus-visible:shadow-focus",
                         )}
                       >
-                        <span className="text-sm font-medium text-gray-900">{item.name}</span>
-                        <span className="font-mono text-xs text-gray-400">{item.type}</span>
+                        <span className="text-sm font-medium text-ink">{item.name}</span>
+                        <span className="font-mono text-xs text-ink-muted">{item.type}</span>
                       </button>
                     ))}
                   </div>
@@ -112,17 +113,11 @@ function ActivityTemplateDialog({
             )}
           </div>
 
-          <footer className="flex items-center justify-between gap-2 border-t border-[#F0F0F0] px-6 py-4">
-            <button
-              type="button"
-              onClick={onBlank}
-              className="text-sm font-medium text-[#004DE7] hover:underline"
-            >
+          <footer className="flex items-center justify-between gap-2 border-t border-line-hair px-6 py-4">
+            <Button type="button" variant="ghost" size="md" onClick={onBlank}>
               Start from blank instead
-            </button>
-            <Dialog.Close className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 outline-none hover:text-gray-900">
-              Cancel
-            </Dialog.Close>
+              </Button>
+            <Dialog.Close render={<Button type="button" variant="secondary" size="md">Cancel</Button>} />
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>

@@ -191,7 +191,7 @@ function DocumentRow({
                 type="button"
                 onClick={() => onOpenDocument(doc)}
                 title={`Open ${doc.fileName} in the review workspace`}
-                className="group min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                className="group min-w-0 text-left outline-none focus-visible:shadow-focus"
               >
                 <p className="truncate text-sm font-medium text-gray-900 group-hover:text-primary-600 group-hover:underline">
                   {doc.fileName}
@@ -337,14 +337,14 @@ function RowMenu({
     setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
   }
 
-  const itemCls = "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700 outline-none hover:bg-[#F6F6F6]";
+  const itemCls = "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700 outline-none hover:bg-surface-alt";
 
   return (
     <div ref={ref} className="relative flex items-center justify-end">
       <button
         type="button"
         onClick={toggleMenu}
-        className="flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className="flex items-center justify-center rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
         aria-label="Actions"
         aria-haspopup="true"
         aria-expanded={open}
@@ -360,7 +360,7 @@ function RowMenu({
         <div
           ref={menuRef}
           style={{ top: menuPos.top, right: menuPos.right }}
-          className="fixed z-50 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5"
+          className="fixed z-50 min-w-[160px] rounded-lg border border-line bg-white p-1.5 shadow-card"
         >
           {/* A plan opens in the review workspace, a document in the viewer:
               one "View" either way, never a choice between two ways to look
@@ -381,7 +381,7 @@ function RowMenu({
           {canManage && (
             <>
               <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onEdit(); }}>Edit</button>
-              <button type="button" className={cn(itemCls, "text-red-600 hover:bg-red-50")} onClick={() => { setMenuPos(null); onDelete(); }}>Delete</button>
+              <button type="button" className={cn(itemCls, "text-negative-600 hover:bg-negative-50")} onClick={() => { setMenuPos(null); onDelete(); }}>Delete</button>
             </>
           )}
         </div>

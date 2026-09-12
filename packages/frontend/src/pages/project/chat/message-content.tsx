@@ -44,18 +44,18 @@ export function LinkPreviewCard({ text }: { text: string }) {
       href={preview.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-2 flex max-w-md gap-3 overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-sm"
+      className="mt-2 flex max-w-md gap-3 overflow-hidden rounded-lg border border-line-hair bg-white transition-shadow hover:shadow-sm"
     >
       {preview.image && (
         <img src={preview.image} alt="" className="h-20 w-20 shrink-0 object-cover" loading="lazy" />
       )}
       <div className="min-w-0 flex-1 py-2 pr-3">
         {preview.siteName && (
-          <div className="truncate text-[11px] uppercase tracking-wide text-gray-400">{preview.siteName}</div>
+          <div className="truncate text-xs font-medium uppercase text-ink-muted">{preview.siteName}</div>
         )}
-        <div className="truncate text-[13px] font-semibold text-gray-900">{preview.title}</div>
+        <div className="truncate text-sm font-semibold text-ink">{preview.title}</div>
         {preview.description && (
-          <div className="mt-0.5 line-clamp-2 text-xs text-gray-500">{preview.description}</div>
+          <div className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{preview.description}</div>
         )}
       </div>
     </a>

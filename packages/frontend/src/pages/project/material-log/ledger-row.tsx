@@ -4,6 +4,7 @@ import { formatDateTime, formatTimeAgo } from "@/lib/formatters";
 import type { LedgerEntry } from "@/lib/project-types";
 import { AlertTriangleIcon, ClockAlertIcon, PaperclipIcon } from "./icons";
 import { ENTRY_TYPE_META, formatMeasure } from "./shared";
+import { Button } from "@/components/atoms/button";
 
 function EntryFlags({ entry }: { entry: LedgerEntry }) {
   return (
@@ -59,7 +60,7 @@ export function LedgerRow({
 
   return (
     <div
-      className={cn("flex gap-3 px-4 py-3.5 sm:px-5", isVoided && "bg-[#FAFAFA]")}
+      className={cn("flex gap-3 px-4 py-3.5 sm:px-5", isVoided && "bg-surface-alt")}
     >
       <Badge
         tone={meta.tone}
@@ -103,7 +104,7 @@ export function LedgerRow({
         </p>
 
         {isPending ? (
-          <p className="mt-1.5 text-xs text-[#C26A00]">
+          <p className="mt-1.5 text-xs text-warning-500">
             Awaiting approval — not counted in stock yet
           </p>
         ) : null}
@@ -139,15 +140,9 @@ export function LedgerRow({
           </a>
         ) : null}
           {canManage && isPending && !isVoided ? (
-            <button
-              type="button"
-              onClick={onApprove}
-              disabled={approving}
-              title={`Approve this ${meta.verb.toLowerCase()} so it counts toward stock`}
-              className="rounded-md bg-primary-500 px-2 py-1 text-xs font-semibold text-white transition-colors hover:bg-primary-600 disabled:opacity-50"
-            >
+            <Button size="sm" onClick={onApprove} loading={approving} title={`Approve this ${meta.verb.toLowerCase()} so it counts toward stock`}>
               Approve
-            </button>
+            </Button>
           ) : null}
           {canManage && !isVoided && !isReversal ? (
             <button

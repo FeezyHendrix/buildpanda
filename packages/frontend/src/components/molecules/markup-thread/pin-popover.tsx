@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { MessageSquare, X } from "lucide-react";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface PopoverAnchor {
   /** Viewport coordinates of the pin the popover hangs off. */
@@ -69,7 +71,7 @@ export function PinPopover({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      className="fixed z-[60] -translate-x-1/2 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/10"
+      className="fixed z-[60] -translate-x-1/2 rounded-lg bg-white p-3 border border-line shadow-card"
     >
       <div className="flex items-center gap-2">
         <span className="flex size-6 items-center justify-center rounded-full text-white" style={{ backgroundColor: color }}>
@@ -81,7 +83,7 @@ export function PinPopover({
           aria-label="Close"
           title="Close"
           onClick={onClose}
-          className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-[#F6F6F6] hover:text-gray-700"
+          className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-surface-alt hover:text-gray-700"
         >
           <X size={14} />
         </button>
@@ -93,5 +95,4 @@ export function PinPopover({
 }
 PinPopover.displayName = "PinPopover";
 
-export const TEXTAREA_CLASS =
-  "w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+export const TEXTAREA_CLASS = cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3");

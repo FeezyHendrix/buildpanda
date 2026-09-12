@@ -7,6 +7,8 @@ import type { MaterialOrder, RequestPriority } from "@/lib/project-types";
 import { useProjectBoqMaterials, type MaterialOrderInput } from "@/hooks/use-materials-equipment";
 import { FIELD, nextWeek, today } from "./shared";
 import { UnitInput } from "@/components/atoms/unit-input";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface MaterialOrderDialogProps {
   open: boolean;
@@ -129,7 +131,7 @@ export function MaterialOrderDialog({ open, onOpenChange, projectId, initial, on
       <Field label="Delivery location" id="mat-location" value={deliveryLocation} onChange={setDeliveryLocation} placeholder="Site store, gate, yard…" />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-notes">Lifecycle notes</Label>
-        <textarea id="mat-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" />
+        <textarea id="mat-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")} />
       </div>
     </FormDrawer>
   );

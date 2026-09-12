@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 import { UnitInput } from "@/components/atoms/unit-input";
 import { ComboInput } from "@/components/atoms/combo-input";
 import { ArrowIntoSiteIcon, ArrowOutOfSiteIcon } from "./icons";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const FIELD = INPUT_CLASS;
 
 /**
  * The two directions a material can move. Each carries an icon as well as a
@@ -141,21 +142,17 @@ export function LogMaterialDrawer({
           className="flex gap-2"
         >
           {ENTRY_TYPE_CHOICES.map((choice) => (
-            <button
+            <Button
               key={choice.value}
-              type="button"
+              size="lg"
+              variant={entryType === choice.value ? "primary" : "secondary"}
+              className="flex-1 gap-2"
               aria-pressed={entryType === choice.value}
               onClick={() => setEntryType(choice.value)}
-              className={cn(
-                "inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors",
-                entryType === choice.value
-                  ? "bg-primary-500 text-white"
-                  : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
-              )}
             >
               <choice.Icon className="size-4" />
               {choice.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -210,7 +207,7 @@ export function LogMaterialDrawer({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mat-photo">Photo proof (optional)</Label>
         {fileId ? (
-          <div className="flex items-center justify-between rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-700">
+          <div className="flex items-center justify-between rounded-lg bg-surface-alt px-3 py-2 text-sm text-gray-700">
             <span className="truncate">{fileName}</span>
             <button type="button" onClick={() => { setFileId(null); setFileName(null); }} className="text-gray-400 hover:text-error-600">
               Remove

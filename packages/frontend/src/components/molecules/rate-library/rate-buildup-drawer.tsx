@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { Button } from "@/components/atoms/button";
-import { Input } from "@/components/atoms/input";
+import {  Input, INPUT_SM_CLASS } from "@/components/atoms/input";
 import { BUILDUP_COMPONENTS, type BuildupComponent, type BuildupInput, type Rate } from "@/api/rate-library";
 import { useSetRateBuildups } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatWholeCurrency } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 
 const COMPONENT_LABEL: Record<BuildupComponent, string> = {
   labour: "Labour",
@@ -27,10 +26,7 @@ interface LineDraft {
 
 const EMPTY_LINE: LineDraft = { component: "material", description: "", qty: "1", unit: "item", unitCost: "0", wastePct: "0" };
 
-const selectClass = cn(
-  "h-9 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900",
-  "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const selectClass = INPUT_SM_CLASS;
 
 function lineCost(line: LineDraft): number {
   const qty = parseFloat(line.qty) || 0;
@@ -107,26 +103,26 @@ export function RateBuildupDrawer({ open, onOpenChange, cardId, currency, rate }
                 <option key={c} value={c}>{COMPONENT_LABEL[c]}</option>
               ))}
             </select>
-            <Input className="h-9 text-xs" placeholder="Description" value={line.description} onChange={(e) => update(i, { description: e.target.value })} />
-            <Input className="h-9 text-xs" type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(e) => update(i, { qty: e.target.value })} aria-label="Quantity" />
-            <Input className="h-9 text-xs" placeholder="unit" value={line.unit} onChange={(e) => update(i, { unit: e.target.value })} aria-label="Unit" />
-            <Input className="h-9 text-xs" type="number" min="0" step="any" inputMode="decimal" value={line.unitCost} onChange={(e) => update(i, { unitCost: e.target.value })} aria-label="Unit cost" />
-            <Input className="h-9 text-xs" type="number" min="0" max="100" step="any" inputMode="decimal" value={line.wastePct} onChange={(e) => update(i, { wastePct: e.target.value })} aria-label="Waste percent" />
+            <Input inputSize="sm" placeholder="Description" value={line.description} onChange={(e) => update(i, { description: e.target.value })} />
+            <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" value={line.qty} onChange={(e) => update(i, { qty: e.target.value })} aria-label="Quantity" />
+            <Input inputSize="sm" placeholder="unit" value={line.unit} onChange={(e) => update(i, { unit: e.target.value })} aria-label="Unit" />
+            <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" value={line.unitCost} onChange={(e) => update(i, { unitCost: e.target.value })} aria-label="Unit cost" />
+            <Input inputSize="sm" type="number" min="0" max="100" step="any" inputMode="decimal" value={line.wastePct} onChange={(e) => update(i, { wastePct: e.target.value })} aria-label="Waste percent" />
             <button
               type="button"
               aria-label="Remove line"
               onClick={() => setLines((prev) => prev.filter((_, j) => j !== i))}
-              className="flex h-9 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500"
+              className="flex h-9 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-negative-50 hover:text-negative-500"
             >
               ×
             </button>
           </div>
         ))}
-        <div className="grid grid-cols-[1.1fr_2fr_0.7fr_0.7fr_1fr_0.7fr_auto] gap-1.5 text-[11px] text-gray-400">
+        <div className="grid grid-cols-[1.1fr_2fr_0.7fr_0.7fr_1fr_0.7fr_auto] gap-1.5 text-xs text-gray-400">
           <span>Component</span><span>Description</span><span>Qty</span><span>Unit</span><span>Unit cost</span><span>Waste %</span><span />
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+      <div className="flex items-center justify-between border-t border-line-hair pt-3">
         <Button variant="secondary" size="sm" onClick={() => setLines((prev) => [...prev, EMPTY_LINE])}>
           + Add line
         </Button>

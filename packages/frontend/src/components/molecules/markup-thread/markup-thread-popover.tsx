@@ -16,6 +16,8 @@ import type { CommentAssignee } from "@/lib/markup-meta";
 import { toast } from "@/lib/toast";
 import { MarkupCommentItem } from "./markup-comment-item";
 import { PinPopover, TEXTAREA_CLASS, type PopoverAnchor } from "./pin-popover";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 const KIND_TITLE: Record<MarkupKind, string> = {
   [MARKUP_KIND.PIN]: "Comment",
@@ -24,8 +26,7 @@ const KIND_TITLE: Record<MarkupKind, string> = {
   [MARKUP_KIND.MEASURE]: "Measurement",
 };
 
-const SELECT_CLASS =
-  "h-8 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const SELECT_CLASS = INPUT_SM_CLASS;
 
 /**
  * The mutations a thread writes through. Project drawings and take-off sheets
@@ -128,7 +129,7 @@ export function MarkupThreadPopover({
 
   return (
     <PinPopover anchor={anchor} title={KIND_TITLE[markup.kind]} color={markup.color} onClose={onClose}>
-      <p className="mt-1.5 truncate text-[11px] text-gray-500">
+      <p className="mt-1.5 truncate text-xs text-gray-500">
         {subtitle}
         {subtitle && markup.authorName ? " · " : ""}
         {markup.authorName ? `raised by ${markup.authorName}` : ""}
@@ -136,7 +137,7 @@ export function MarkupThreadPopover({
       <ThreadBadges markup={markup} links={links} />
       <ul className="mt-2 flex max-h-72 flex-col gap-1.5 overflow-y-auto">
         {markup.comments.length === 0 ? (
-          <li className="rounded-lg bg-[#F6F6F6] px-2.5 py-2 text-[11px] text-gray-500">No comments yet.</li>
+          <li className="rounded-lg bg-surface-alt px-2.5 py-2 text-xs text-gray-500">No comments yet.</li>
         ) : (
           markup.comments.map((c) => <MarkupCommentItem key={c.id} comment={c} />)
         )}
@@ -152,14 +153,14 @@ export function MarkupThreadPopover({
             }}
             placeholder="Reply…"
             aria-label="Reply"
-            className={`mt-2 ${TEXTAREA_CLASS}`}
+            className={cn(TEXTAREA_CLASS, "mt-2")}
           />
           {assignees && assignees.length > 0 ? (
             <select
               value={assigneeId}
               onChange={(e) => setAssigneeId(e.target.value)}
               aria-label="Assign reply to"
-              className={`mt-1.5 ${SELECT_CLASS}`}
+              className={cn(SELECT_CLASS, "mt-1.5")}
             >
               <option value="">Assign to nobody</option>
               {assignees.map((a) => (
@@ -171,7 +172,7 @@ export function MarkupThreadPopover({
           ) : null}
           {confirmingDelete ? (
             <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-2">
-              <p className="text-[11px] font-medium text-red-700">Delete this markup and every comment on it?</p>
+              <p className="text-xs font-medium text-red-700">Delete this markup and every comment on it?</p>
               <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setConfirmingDelete(false)}>
                 Keep
               </Button>

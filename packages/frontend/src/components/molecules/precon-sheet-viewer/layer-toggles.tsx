@@ -30,7 +30,7 @@ export function LayerToggles({
   onToggle: (layer: SheetLayer) => void;
 }) {
   return (
-    <div className="absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-lg border border-gray-200 bg-white/95 p-1 shadow-sm">
+    <div className="absolute right-3 top-3 z-10 flex flex-col gap-0.5 rounded-lg border border-line bg-white/95 p-1 shadow-sm">
       {LAYER_META.map(({ key, label, Icon }) => {
         const on = layers[key];
         const count = counts[key];
@@ -42,7 +42,7 @@ export function LayerToggles({
             aria-pressed={on}
             title={`${on ? "Hide" : "Show"} ${label.toLowerCase()}${count ? ` (${count})` : ""}`}
             className={cn(
-              "flex items-center gap-1.5 rounded px-2 py-1 text-[11px] transition-colors",
+              "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors",
               on ? "text-gray-700 hover:bg-gray-100" : "text-gray-400 hover:bg-gray-50",
             )}
           >

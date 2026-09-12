@@ -9,6 +9,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
 import { toast } from "@/lib/toast";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export default function ProjectSettings() {
   const { project, access } = useProjectContext();
@@ -31,7 +33,7 @@ export default function ProjectSettings() {
         title="Settings"
       />
 
-      <section className="rounded-2xl border border-[#F0F0F0] bg-white p-6">
+      <section className="rounded-lg border border-line-hair bg-white p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Project budget</h2>
@@ -48,13 +50,13 @@ export default function ProjectSettings() {
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl bg-[#FAFAFA] px-4 py-3">
+          <div className="rounded-lg bg-surface-alt px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
               Budget range
             </p>
             <p className="mt-1 text-lg font-semibold text-gray-900">{rangeLabel}</p>
           </div>
-          <div className="rounded-xl bg-[#FAFAFA] px-4 py-3">
+          <div className="rounded-lg bg-surface-alt px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
               Total budget
             </p>
@@ -65,7 +67,7 @@ export default function ProjectSettings() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-[#F0F0F0] bg-white p-6">
+      <section className="mt-6 rounded-lg border border-line-hair bg-white p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Currency</h2>
@@ -86,7 +88,7 @@ export default function ProjectSettings() {
                 id="project-currency"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="h-11 w-72 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
+                className={cn(INPUT_CLASS, "w-72")}
               >
                 {SUPPORTED_CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>

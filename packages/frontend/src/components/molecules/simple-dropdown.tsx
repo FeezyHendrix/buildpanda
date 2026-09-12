@@ -50,7 +50,7 @@ function SimpleDropdown<T extends string>({
         {selected.label}
       </FilterTrigger>
       {open ? (
-        <div role="listbox" className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
+        <div role="listbox" className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -62,7 +62,7 @@ function SimpleDropdown<T extends string>({
                 setOpen(false);
               }}
               className={cn(
-                "flex w-full items-center rounded-lg px-3 py-2 text-[13px] hover:bg-[#F6F6F6]",
+                "flex w-full items-center rounded-lg px-3 py-2 text-sm hover:bg-surface-alt",
                 opt.value === value ? "font-semibold text-gray-900" : "text-gray-700",
               )}
             >

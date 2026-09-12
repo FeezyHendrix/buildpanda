@@ -26,7 +26,7 @@ function ToggleRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 rounded-xl border-2 border-[#F6F6F6] p-4 transition-colors hover:bg-gray-50",
+        "flex items-center justify-between gap-4 rounded-xl border-2 border-line-hair p-4 transition-colors hover:bg-gray-50",
         disabled && "opacity-60",
         className,
       )}

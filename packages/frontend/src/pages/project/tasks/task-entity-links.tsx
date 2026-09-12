@@ -97,22 +97,22 @@ export function TaskEntityLinks({
           {grouped.map((group) => (
             <div key={group.type} className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
-                <span className="rounded bg-[#F0F0F0] px-1.5 py-0.5 text-[10px] font-semibold uppercase text-gray-500">
+                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-gray-500">
                   {ENTITY_META[group.type].label}
                 </span>
-                <span className="text-[11px] text-gray-400">{group.links.length}</span>
+                <span className="text-xs text-gray-400">{group.links.length}</span>
               </div>
               {group.links.map((link) => (
                 <div key={link.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-gray-50">
                   <button
                     type="button"
                     onClick={() => navigate(`/project/${projectId}/${ENTITY_META[link.entityType].route}`)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-gray-700 hover:text-[#004DE7]"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-gray-700 hover:text-primary-500"
                     title={`Open ${ENTITY_META[link.entityType].label.toLowerCase()}`}
                   >
                     <span className="truncate">{link.label}</span>
                     {link.status && (
-                      <span className="shrink-0 rounded-full bg-[#F6F6F6] px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                      <span className="shrink-0 rounded-full bg-surface-alt px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
                         {link.status}
                       </span>
                     )}
@@ -135,7 +135,7 @@ export function TaskEntityLinks({
       )}
 
       {canManageTasks && (
-        <div className="flex flex-col gap-2 rounded-xl bg-[#FAFAFA] p-2">
+        <div className="flex flex-col gap-2 rounded-lg bg-surface-alt p-2">
           <div className="flex gap-2">
             <select
               value={entityType}

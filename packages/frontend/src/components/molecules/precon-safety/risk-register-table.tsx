@@ -36,8 +36,8 @@ export function RiskRegisterTable({ proposalId }: Props) {
   const confirmedCount = risks.filter((r) => r.editState === "confirmed").length;
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+    <section className="rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-gray-900">Risk register</p>
           <p className="text-xs text-gray-500">
@@ -84,12 +84,12 @@ export function RiskRegisterTable({ proposalId }: Props) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-[minmax(0,2fr)_110px_110px_64px_minmax(0,1fr)_120px_130px_auto] gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          <div className="grid grid-cols-[minmax(0,2fr)_110px_110px_64px_minmax(0,1fr)_120px_130px_auto] gap-2 border-b border-line-hair bg-gray-50 px-4 py-2 text-xs font-medium uppercase text-ink-muted">
             {HEADERS.map((h, i) => (
               <span key={i}>{h}</span>
             ))}
           </div>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-line-hair">
             {risks.map((risk) => (
               <RiskRow
                 key={risk.id}

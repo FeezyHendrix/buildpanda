@@ -77,13 +77,13 @@ export function AiUpdateCadenceSection({
   }
 
   return (
-    <section className="mt-6 rounded-2xl border border-[#F0F0F0] bg-white p-6">
+    <section className="mt-6 rounded-lg border border-line-hair bg-white p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-gray-900">
+          <h2 className="text-base font-semibold text-ink">
             Panda AI update drafts
           </h2>
-          <p className="mt-1 text-sm text-gray-500 text-pretty">
+          <p className="mt-1 text-sm text-ink-muted text-pretty">
             Choose what Panda AI drafts from this project's field data. Every draft
             waits in Drafts for your team to review — nothing reaches the homeowner
             until someone here publishes it.

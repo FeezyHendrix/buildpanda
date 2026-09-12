@@ -41,7 +41,7 @@ function StatusCell({ status }: { status: BuildingStatus }) {
         On Hold
       </Badge>
     );
-  return <span className="text-[13px] text-gray-400">Planned</span>;
+  return <span className="text-sm text-ink-muted">Planned</span>;
 }
 
 export default function ProjectBuildings() {
@@ -101,29 +101,29 @@ export default function ProjectBuildings() {
         {realBuildings.map((b) => (
           <div
             key={b.id}
-            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-lg border border-line-hair bg-white p-4 shadow-card"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <Link
                   to={`/project/${project.id}/buildings/${b.id}/stages`}
-                  className="text-base font-semibold text-gray-900 hover:text-[#004DE7] transition-colors"
+                  className="text-base font-semibold text-ink hover:text-primary-500 transition-colors"
                 >
                   {b.name}
                 </Link>
                 {b.code && (
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                  <Badge tone="neutral" size="sm">
                     {b.code}
-                  </span>
+                  </Badge>
                 )}
                 <StatusCell status={b.status} />
               </div>
             </div>
 
             <div className="flex w-full sm:w-48 flex-col gap-1.5 shrink-0">
-              <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center justify-between text-xs text-ink-muted">
                 <span>Progress</span>
-                <span className="font-medium text-gray-900">{b.progressPercent}%</span>
+                <span className="font-medium text-ink">{b.progressPercent}%</span>
               </div>
               <ProgressBar value={b.progressPercent} className="h-2" />
             </div>
@@ -131,7 +131,6 @@ export default function ProjectBuildings() {
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                className="text-sm"
                 onClick={() => setCloneTarget(b)}
                 disabled={!canManage}
               >
@@ -139,15 +138,13 @@ export default function ProjectBuildings() {
               </Button>
               <Button
                 variant="ghost"
-                className="text-sm text-gray-500 hover:text-gray-900"
                 onClick={() => setEditTarget(b)}
                 disabled={!canManage}
               >
                 Edit
               </Button>
               <Button
-                variant="ghost"
-                className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                variant="danger"
                 onClick={() => setDeleteTarget(b)}
                 disabled={!canManage}
               >
@@ -158,9 +155,9 @@ export default function ProjectBuildings() {
         ))}
 
         {realBuildings.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-12 text-center">
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No buildings</h3>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-line py-12 text-center">
+            <h3 className="mt-2 text-sm font-semibold text-ink">No buildings</h3>
+            <p className="mt-1 text-sm text-ink-muted">
               Get started by adding a building to this project.
             </p>
             {canManage && (

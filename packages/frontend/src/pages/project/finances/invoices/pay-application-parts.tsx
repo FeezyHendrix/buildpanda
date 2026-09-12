@@ -1,4 +1,5 @@
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Money } from "@/lib/money";
 import type { Stage } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
@@ -74,7 +75,7 @@ export function CompletionBar({
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-black-300">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
         <LegendKey swatchClassName="bg-primary-500" label="Previous applications" />
         <LegendKey
           swatchClassName={currentClass}
@@ -106,19 +107,19 @@ export function SummaryFigure({
 }: SummaryFigureProps) {
   return (
     <div className={align === "right" ? "text-right" : undefined}>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-black-200">
+      <p className="text-xs font-medium uppercase text-ink-muted">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 font-bold tabular-nums",
-          emphasis ? "text-2xl text-primary-500" : "text-lg text-black-500",
+          "mt-1 font-medium tabular-nums",
+          emphasis ? "text-2xl text-primary-500" : "text-lg text-ink",
         )}
       >
         {value}
       </p>
       {caption ? (
-        <p className="mt-0.5 text-xs tabular-nums text-black-300">{caption}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-ink-muted">{caption}</p>
       ) : null}
     </div>
   );
@@ -154,7 +155,7 @@ export function StagePicker({
         disabled={exhausted}
         aria-label="Build stage to add to this application"
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 min-w-0 flex-1 rounded-lg bg-[#F6F6F6] px-3 text-sm text-black-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-60"
+        className={cn(INPUT_SM_CLASS, "min-w-0 flex-1")}
       >
         <option value="">
           {exhausted ? "Every stage is on this application" : "Add a stage…"}

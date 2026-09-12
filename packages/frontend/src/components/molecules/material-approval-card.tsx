@@ -75,7 +75,7 @@ function MaterialApprovalCard({
   const awaitingDecision = approval.status === "Pending" || approval.status === "Resubmit";
 
   return (
-    <Card className="group overflow-hidden transition-colors hover:border-gray-300">
+    <Card className="group overflow-hidden transition-colors hover:border-line-hover">
       <div
         className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between"
         onClick={onOpen}
@@ -119,7 +119,7 @@ function MaterialApprovalCard({
           </div>
 
           {approval.response ? (
-            <p className="rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-600">
+            <p className="rounded-lg bg-surface-alt px-3 py-2 text-sm text-gray-600">
               <span className="font-medium text-gray-900">
                 {approval.reviewedByName ?? "Reviewer"}:
               </span>{" "}

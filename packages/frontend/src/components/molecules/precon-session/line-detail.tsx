@@ -6,6 +6,8 @@ import { isVersionConflict, useDeletePreconRow, useRejectPreconRow, useUpdatePre
 import { ROW_ORIGIN_LABEL } from "@/lib/precon-meta";
 import { LineEvidence } from "./line-evidence";
 import { formatShortDate } from "@/lib/formatters";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface Props {
   row: PreconBoqRow;
@@ -13,7 +15,7 @@ interface Props {
   onConflict: (message: string) => void;
 }
 
-const FIELD = "mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = cn(INPUT_SM_CLASS, "mt-0.5");
 
 /**
  * One bill line opened for review: where it came from, why the engine doubted
@@ -55,9 +57,9 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="space-y-3 rounded-lg border border-line bg-gray-50 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{ROW_ORIGIN_LABEL[row.origin]}</p>
+        <p className="text-xs font-medium uppercase text-ink-muted">{ROW_ORIGIN_LABEL[row.origin]}</p>
         {row.confidence ? (
           <Badge tone={row.confidence === "high" ? "success" : "warning"}>{row.confidence === "high" ? "High confidence" : "Low confidence"}</Badge>
         ) : null}
@@ -65,7 +67,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
       <LineEvidence row={row} />
 
       {row.editedAt ? (
-        <p className="rounded-md bg-white px-2 py-1 text-[11px] text-gray-600">
+        <p className="rounded-md bg-white px-2 py-1 text-xs text-gray-600">
           Edited {formatShortDate(row.editedAt)}. The line above is Panda AI's original basis; the figures below are the current values.
         </p>
       ) : null}
@@ -99,7 +101,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
               </dd>
             </div>
           ))}
-          <div className="flex justify-between border-t border-gray-200 pt-1">
+          <div className="flex justify-between border-t border-line pt-1">
             <dt className="text-gray-600">Net quantity</dt>
             <dd className="font-semibold text-gray-900">
               {row.qty} {row.unit}
@@ -136,7 +138,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
           />
         </label>
       </div>
-      {row.rateSource ? <p className="text-[11px] text-gray-400">Rate from {row.rateSource}</p> : null}
+      {row.rateSource ? <p className="text-xs text-gray-400">Rate from {row.rateSource}</p> : null}
 
       <div className="flex gap-2">
         <Button
@@ -163,7 +165,7 @@ export function LineDetail({ row, sessionId, onConflict }: Props) {
         </Button>
       </div>
       {row.verifiedBy && row.status === "verified" ? (
-        <p className="text-[11px] text-gray-400">Verified {row.verifiedAt ? formatShortDate(row.verifiedAt) : ""}</p>
+        <p className="text-xs text-gray-400">Verified {row.verifiedAt ? formatShortDate(row.verifiedAt) : ""}</p>
       ) : null}
     </div>
   );

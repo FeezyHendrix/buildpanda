@@ -22,7 +22,7 @@ function RateRow({ card, rate, canManage, onBuildUp }: { card: RateCard; rate: R
     <TableRow>
       <TableCell>
         {rate.label ?? rate.descriptionPattern ?? "Unlabelled rate"}
-        {rate.codePrefix ? <span className="ml-2 font-mono text-[11px] text-gray-400">{rate.codePrefix}</span> : null}
+        {rate.codePrefix ? <span className="ml-2 font-mono text-xs text-gray-400">{rate.codePrefix}</span> : null}
       </TableCell>
       <TableCell className="text-xs text-gray-500">{rate.unit}</TableCell>
       <TableCell align="right" className="tabular-nums">{formatWholeCurrency(rate.rate, card.currency)}</TableCell>
@@ -63,11 +63,11 @@ function AddRateForm({ cardId }: { cardId: string }) {
   const [rate, setRate] = useState("");
   const valid = label.trim().length > 0 && unit.trim().length > 0 && parseFloat(rate) >= 0;
   return (
-    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-gray-100 px-3 py-3">
-      <Input className="h-9 text-xs" placeholder="Rate label, e.g. 225mm blockwork" value={label} onChange={(e) => setLabel(e.target.value)} />
-      <Input className="h-9 text-xs" placeholder="Code prefix (F10)" value={codePrefix} onChange={(e) => setCodePrefix(e.target.value)} />
-      <Input className="h-9 text-xs" placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
-      <Input className="h-9 text-xs" type="number" min="0" step="any" inputMode="decimal" placeholder="Rate" value={rate} onChange={(e) => setRate(e.target.value)} />
+    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] items-end gap-2 border-t border-line-hair px-3 py-3">
+      <Input inputSize="sm" placeholder="Rate label, e.g. 225mm blockwork" value={label} onChange={(e) => setLabel(e.target.value)} />
+      <Input inputSize="sm" placeholder="Code prefix (F10)" value={codePrefix} onChange={(e) => setCodePrefix(e.target.value)} />
+      <Input inputSize="sm" placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
+      <Input inputSize="sm" type="number" min="0" step="any" inputMode="decimal" placeholder="Rate" value={rate} onChange={(e) => setRate(e.target.value)} />
       <Button
         size="sm"
         disabled={!valid}
@@ -94,8 +94,8 @@ export function RateCardPanel({ card, canManage, onBuildUp }: Props) {
   const remove = useDeleteRateCard();
   const [confirmOpen, setConfirmOpen] = useState(false);
   return (
-    <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3">
+    <section className="overflow-hidden rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair bg-gray-50 px-4 py-3">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-900">{card.name}</h2>
           {card.region ? <span className="text-xs text-gray-500">{card.region}</span> : null}

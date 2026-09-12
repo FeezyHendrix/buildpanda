@@ -19,7 +19,7 @@ interface PlanReviewSplitProps {
 export function PlanReviewSplit({ sheets, nav, popover }: PlanReviewSplitProps) {
   const split = nav.split;
   return (
-    <div ref={nav.splitStageRef} className="flex min-h-0 flex-1 flex-col gap-2 bg-[#F0F0F0] p-3 md:flex-row md:gap-0">
+    <div ref={nav.splitStageRef} className="flex min-h-0 flex-1 flex-col gap-2 bg-gray-100 p-3 md:flex-row md:gap-0">
       <div className="flex min-h-0 min-w-0 flex-1 md:flex-none" style={{ flexBasis: `${split.dividerRatio * 100}%` }}>
         <SheetPane
           paneKey="primary"
@@ -97,7 +97,7 @@ export function PlanReviewSplit({ sheets, nav, popover }: PlanReviewSplitProps) 
           aria-label="Exit Split View"
           title="Exit Split View"
           onClick={() => nav.setSplit((s) => ({ ...s, open: false }))}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-surface-alt hover:text-gray-900"
         >
           <X size={13} /> Exit Split View
         </button>

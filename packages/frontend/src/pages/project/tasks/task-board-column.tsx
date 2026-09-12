@@ -5,6 +5,7 @@ import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
 import type { Task, TaskColumn } from "@/lib/project-types";
 import { TaskCard } from "./task-card";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 // Per-column collapse preference; column ids are stable so they key storage.
 function collapseKey(columnId: string): string {
@@ -85,8 +86,8 @@ export function BoardColumn({
         style={{ transform: CSS.Translate.toString(transform), transition }}
         onClick={toggleCollapsed}
         className={cn(
-          "flex w-11 shrink-0 cursor-pointer snap-start flex-col items-center gap-2 rounded-2xl bg-[#FAFAFA] px-1 py-3 transition-colors hover:bg-gray-100",
-          isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
+          "flex w-11 shrink-0 cursor-pointer snap-start flex-col items-center gap-2 rounded-lg bg-surface-alt px-1 py-3 transition-colors hover:bg-gray-100",
+          isOver && "bg-primary-50 ring-2 ring-primary-200",
           isDragging && "opacity-50",
         )}
       >
@@ -115,8 +116,8 @@ export function BoardColumn({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        "flex w-[85vw] shrink-0 snap-start flex-col gap-3 rounded-2xl bg-[#FAFAFA] p-3 transition-colors sm:w-72",
-        isOver && "bg-[#EEF2FF] ring-2 ring-[#C7D7FF]",
+        "flex w-[85vw] shrink-0 snap-start flex-col gap-3 rounded-lg bg-surface-alt p-3 transition-colors sm:w-72",
+        isOver && "bg-primary-50 ring-2 ring-primary-200",
         isDragging && "opacity-50",
       )}
     >
@@ -150,13 +151,13 @@ export function BoardColumn({
                 if (e.key === "Enter") commitRename();
                 if (e.key === "Escape") { setName(column.name); setRenaming(false); }
               }}
-              className="h-7 min-w-0 flex-1 rounded-md bg-white px-2 text-sm font-semibold text-gray-900 outline-none ring-1 ring-gray-300"
+              className={cn(INPUT_SM_CLASS, "min-w-0 flex-1 font-semibold")}
             />
           ) : (
             <button
               type="button"
               onClick={() => canManage && setRenaming(true)}
-              className={cn("truncate text-left text-sm font-semibold text-gray-900", canManage && "hover:text-[#004DE7]")}
+              className={cn("truncate text-left text-sm font-semibold text-gray-900", canManage && "hover:text-primary-500")}
               title={canManage ? "Rename column" : undefined}
             >
               {column.name}
@@ -183,7 +184,7 @@ export function BoardColumn({
               type="button"
               onClick={onDelete}
               aria-label={`Delete ${column.name} column`}
-              className="flex size-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+              className="flex size-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-negative-50 hover:text-negative-500"
             >
               <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18" />
@@ -199,7 +200,7 @@ export function BoardColumn({
           <TaskCard key={task.id} task={task} canManage={canManage} onOpen={() => onOpenTask(task)} />
         ))}
         {tasks.length === 0 && (
-          <div className="rounded-xl border border-dashed border-gray-200 py-6 text-center text-xs text-gray-400">
+          <div className="rounded-lg border border-dashed border-line py-6 text-center text-xs text-gray-400">
             No tasks
           </div>
         )}

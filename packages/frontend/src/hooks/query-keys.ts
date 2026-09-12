@@ -108,6 +108,7 @@ export const invoiceKeys = {
   detail: (projectId: string, invoiceId: string) => [...invoiceKeys.all(projectId), "detail", invoiceId] as const,
   payApplication: (projectId: string, invoiceId: string) =>
     [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
+  payments: (projectId: string) => [...invoiceKeys.all(projectId), "payments"] as const,
 };
 
 export const paymentClaimKeys = {
@@ -152,6 +153,11 @@ export const stageKeys = {
   // fn (stage "undefined") answer a project-wide refetch with an empty list.
   projectScheduleOfValues: (projectId: string) =>
     [...stageKeys.all(projectId), "schedule-of-values", "project"] as const,
+};
+
+export const contractKeys = {
+  all: (projectId: string) => ["projects", projectId, "contracts"] as const,
+  list: (projectId: string) => [...contractKeys.all(projectId), "list"] as const,
 };
 
 export const buildingKeys = {
@@ -222,6 +228,7 @@ export const changeRequestKeys = {
     [...changeRequestKeys.all(projectId), "list", status ?? "all"] as const,
   detail: (projectId: string, changeId: string) =>
     [...changeRequestKeys.all(projectId), "detail", changeId] as const,
+  summary: (projectId: string) => [...changeRequestKeys.all(projectId), "summary"] as const,
 };
 
 export const permitKeys = {

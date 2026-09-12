@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDialog } from "./form-dialog";
 import type { ApprovalStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 /** Only the three lifecycle moves a reviewer can record; "Pending" is not a decision. */
 export type MaterialDecision = Extract<ApprovalStatus, "Approved" | "Rejected" | "Resubmit">;
@@ -82,7 +84,7 @@ function MaterialApprovalDecisionDialog({
           onChange={(e) => setResponse(e.target.value)}
           rows={4}
           placeholder={copy.placeholder}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
         <p className="text-xs text-gray-400">
           Recorded against the request with your name and the time of the decision.

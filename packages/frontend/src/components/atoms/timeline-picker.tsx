@@ -27,10 +27,10 @@ function TimelinePicker({
           onClick={() => onChange(opt.id)}
           className={cn(
             "rounded-lg px-3 py-3 text-center text-sm font-medium transition-colors",
-            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+            "outline-none focus-visible:shadow-focus",
             value === opt.id
-              ? "bg-[#F0F4FF] text-primary border border-primary"
-              : "bg-[#F6F6F6] text-gray-700 hover:bg-gray-200",
+              ? "bg-primary-50 text-primary border border-primary"
+              : "bg-surface-alt text-gray-700 hover:bg-gray-200",
           )}
         >
           {opt.label}

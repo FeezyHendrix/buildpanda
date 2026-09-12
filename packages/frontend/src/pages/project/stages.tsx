@@ -60,7 +60,7 @@ function StatusCell({ status }: { status: StageStatus }) {
         Completed
       </Badge>
     );
-  return <span className="text-[13px] text-gray-400">Not started</span>;
+  return <span className="text-sm text-gray-400">Not started</span>;
 }
 
 type FilterTab = "all" | "in-progress" | "completed";
@@ -160,7 +160,7 @@ export default function ProjectStages() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -171,7 +171,7 @@ export default function ProjectStages() {
         <FilterTabs items={TABS} value={filter} onChange={setFilter} ariaLabel="Filter stages" />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
         <Table className="min-w-[700px]">
           <TableHead>
             <tr>
@@ -267,7 +267,7 @@ function StageRow({
 
   return (
     <>
-      <TableRow className="group hover:bg-[#FAFAFA]">
+      <TableRow className="group hover:bg-surface-alt">
         <TableCell className="px-3">
           <div className="flex flex-col items-center">
             <button
@@ -292,7 +292,7 @@ function StageRow({
         </TableCell>
 
         <TableCell>
-          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
+          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-surface-alt text-[12px] font-medium text-ink">
             {index + 1}
           </span>
         </TableCell>
@@ -310,7 +310,7 @@ function StageRow({
         <TableCell>
           <div className="flex items-center gap-2">
             <ProgressBar tone="success" value={stage.progressPercent} size="md" />
-            <span className="w-8 text-right text-[12px] tabular-nums text-[#000000]">
+            <span className="w-8 text-right text-[12px] tabular-nums text-ink">
               {stage.progressPercent}%
             </span>
           </div>

@@ -38,10 +38,10 @@ export function computeSettlement(finances: ProjectFinances, retentionHeld: numb
 type LineTone = "muted" | "positive" | "negative" | "brand";
 
 const TONE_CLASS: Record<LineTone, string> = {
-  muted: "text-gray-900",
-  positive: "text-emerald-600",
-  negative: "text-rose-600",
-  brand: "text-[#004DE7]",
+  muted: "text-ink",
+  positive: "text-success-600",
+  negative: "text-negative-600",
+  brand: "text-primary-500",
 };
 
 export function SettlementLine({
@@ -63,23 +63,23 @@ export function SettlementLine({
         "flex items-center justify-between gap-4 py-3",
         emphasis
           ? "border-t border-gray-900/10 mt-1 pt-4"
-          : "border-t border-gray-100 first:border-t-0 first:pt-0",
+          : "border-t border-line-hair first:border-t-0 first:pt-0",
       )}
     >
       <div className="flex items-center gap-3 text-sm">
         {operator ? (
-          <span className="w-4 text-center font-semibold text-gray-400">{operator}</span>
+          <span className="w-4 text-center font-semibold text-ink-muted">{operator}</span>
         ) : (
           <span className="w-4" aria-hidden="true" />
         )}
-        <span className={cn(emphasis ? "text-sm font-semibold text-gray-900" : "text-gray-600")}>
+        <span className={cn(emphasis ? "text-sm font-semibold text-ink" : "text-gray-600")}>
           {label}
         </span>
       </div>
       <span
         className={cn(
           "tabular-nums",
-          emphasis ? "text-lg font-bold" : "text-sm font-medium",
+          emphasis ? "text-lg font-medium" : "text-sm font-medium",
           TONE_CLASS[tone],
         )}
       >
@@ -147,13 +147,13 @@ export function SettlementStatement({
       />
 
       <div className="mt-6">
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-ink-muted">
           <span>Paid vs adjusted contract</span>
-          <span className="font-semibold text-gray-900 tabular-nums">{settlement.percentPaid}%</span>
+          <span className="font-semibold text-ink tabular-nums">{settlement.percentPaid}%</span>
         </div>
-        <div className="mt-1.5 h-2 w-full rounded-full bg-gray-100">
+        <div className="mt-1.5 h-2 w-full rounded-full bg-surface-track">
           <div
-            className="h-full rounded-full bg-[#004DE7] transition-[width] duration-300"
+            className="h-full rounded-full bg-primary-500 transition-[width] duration-300"
             style={{ width: `${settlement.percentPaid}%` }}
           />
         </div>

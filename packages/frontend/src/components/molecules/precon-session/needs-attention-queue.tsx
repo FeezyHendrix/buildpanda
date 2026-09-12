@@ -44,7 +44,7 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
   const verifyMany = useVerifyPreconRows(sessionId);
 
   return (
-    <section className="border-b border-gray-200">
+    <section className="border-b border-line">
       <div className="flex items-center justify-between gap-2 px-3 py-2">
         <div className="flex items-center gap-2">
           <AlertTriangle className="size-3.5 text-amber-600" aria-hidden="true" />
@@ -73,7 +73,7 @@ export function NeedsAttentionQueue({ sessionId, rows, sheetByRow, selectedRowId
         ) : null}
       </div>
       {queue.length === 0 ? (
-        <p className="px-3 pb-3 text-[11px] text-gray-500">Nothing flagged. Confident drafts sit in the bill below; verify them one by one or in bulk.</p>
+        <p className="px-3 pb-3 text-xs text-gray-500">Nothing flagged. Confident drafts sit in the bill below; verify them one by one or in bulk.</p>
       ) : (
         <ul className="max-h-48 overflow-y-auto">
           {queue.map((row) => {

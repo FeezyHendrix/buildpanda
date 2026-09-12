@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
 import type { MaterialApproval } from "@/api/material-approvals";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface MaterialApprovalReviewerOption {
   id: string;
@@ -34,10 +36,8 @@ interface Props {
 /** Site-standard units — a free-text unit drifts and breaks reconciliation. */
 const UNITS = ["ea", "m", "m2", "m3", "kg", "tonne", "bag", "roll", "litre", "set"] as const;
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
-const area =
-  "rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
+const area = cn(INPUT_CLASS, "h-auto min-h-24 py-3");
 
 function parseQuantity(value: string): number {
   const parsed = Number.parseFloat(value);

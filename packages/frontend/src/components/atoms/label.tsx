@@ -3,12 +3,13 @@ import { cn } from "@/lib/utils";
 
 type LabelProps = LabelHTMLAttributes<HTMLLabelElement>;
 
+/** Field label: 14/22 medium ink (Ernest's subtitle-3). */
 const Label = forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, ...props }, ref) => (
     <label
       ref={ref}
       className={cn(
-        "text-sm font-medium text-gray-700 text-pretty",
+        "text-sm font-medium text-ink text-pretty",
         className,
       )}
       {...props}

@@ -11,6 +11,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ProgrammeChart } from "./programme-chart";
 import { ProgrammeTable } from "./programme-table";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 // Step 3 of the take-off: the programme drafted from the verified bill, in two
 // views of the same rows. Panda AI drafts tasks, durations, milestones and
@@ -34,7 +35,7 @@ const slugify = (value: string) => value.replace(/[^a-z0-9]+/gi, "-").slice(0, 6
 
 function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   return (
-    <div role="tablist" aria-label="Programme view" className="inline-flex overflow-hidden rounded-lg border border-gray-200 text-xs font-semibold">
+    <div role="tablist" aria-label="Programme view" className="inline-flex overflow-hidden rounded-lg border border-line text-xs font-semibold">
       {(["table", "chart"] as const).map((v) => (
         <button
           key={v}
@@ -118,8 +119,8 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <header className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-3">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-white">
+      <header className="flex flex-wrap items-center gap-3 border-b border-line-hair px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-gray-900">Programme of work</h2>
           <p className="text-xs text-gray-500">
@@ -134,7 +135,7 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
             Start
             <input
               type="date"
-              className="h-8 rounded-lg border-0 bg-[#F6F6F6] px-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
+              className={INPUT_SM_CLASS}
               value={programme ? programme.startDate.slice(0, 10) : ""}
               disabled={!programme || !editable || setStart.isPending}
               onChange={(e) => {
@@ -161,14 +162,14 @@ export function ProgrammeStep({ sessionId, sessionTitle, editable = true }: Prop
       ) : null}
 
       {drafting ? (
-        <div className="flex items-center gap-3 border-b border-gray-100 bg-primary-50 px-4 py-2.5">
+        <div className="flex items-center gap-3 border-b border-line-hair bg-primary-50 px-4 py-2.5">
           <Spinner size="xs" />
           <p className="truncate text-xs text-primary-700">{latestMessage ?? "Sequencing work packages and estimating durations from the bill."}</p>
         </div>
       ) : null}
-      {failed ? <p className="border-b border-gray-100 bg-red-50 px-4 py-2 text-xs text-red-700">{latestMessage}</p> : null}
+      {failed ? <p className="border-b border-line-hair bg-red-50 px-4 py-2 text-xs text-red-700">{latestMessage}</p> : null}
       {timedOut ? (
-        <p className="border-b border-gray-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+        <p className="border-b border-line-hair bg-amber-50 px-4 py-2 text-xs text-amber-800">
           The draft is taking longer than expected. Reload the page to check whether Panda AI has finished.
         </p>
       ) : null}

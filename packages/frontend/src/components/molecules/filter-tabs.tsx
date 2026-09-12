@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 
 interface FilterTabItem<T extends string> {
@@ -21,8 +22,9 @@ const VIEW_MODE_ITEMS = [
 ] as const;
 
 /**
- * Segmented control for filtering a list by status or category. One design
- * for every page: a grey track with the active segment lifted to white.
+ * Segmented control (Ernest's SegmentControls): a grey track with the active
+ * segment lifted to white, hairline separators between the resting segments,
+ * counts in a small tag.
  */
 function FilterTabs<T extends string>({
   items,
@@ -36,39 +38,41 @@ function FilterTabs<T extends string>({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex max-w-full overflow-x-auto rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-1",
+        "inline-flex max-w-full items-center overflow-x-auto rounded-lg bg-surface-track p-1",
         className,
       )}
     >
-      {items.map((item) => {
+      {items.map((item, index) => {
         const selected = item.value === value;
+        const nextSelected = items[index + 1]?.value === value;
+        const showSeparator = index < items.length - 1 && !selected && !nextSelected;
         return (
-          <button
-            key={item.value}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            onClick={() => onChange(item.value)}
-            className={cn(
-              "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              selected
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-900",
-            )}
-          >
-            {item.label}
-            {item.count !== undefined ? (
-              <span
-                className={cn(
-                  "ml-1.5 text-xs tabular-nums",
-                  selected ? "text-gray-500" : "text-gray-400",
-                )}
-              >
-                {item.count}
-              </span>
-            ) : null}
-          </button>
+          <Fragment key={item.value}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => onChange(item.value)}
+              className={cn(
+                "flex min-w-20 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm transition-colors",
+                "outline-none focus-visible:shadow-focus",
+                selected
+                  ? "bg-white font-semibold text-ink shadow-card"
+                  : "font-normal text-ink hover:bg-black/5",
+              )}
+            >
+              {item.label}
+              {item.count !== undefined ? (
+                <span className="rounded-sm bg-surface-brand px-1 py-0.5 text-[10px] font-medium leading-3 tabular-nums text-ink-muted">
+                  {item.count}
+                </span>
+              ) : null}
+            </button>
+            <span
+              aria-hidden="true"
+              className={cn("h-3 w-px shrink-0 rounded-full bg-ink-disabled", !showSeparator && "invisible")}
+            />
+          </Fragment>
         );
       })}
     </div>

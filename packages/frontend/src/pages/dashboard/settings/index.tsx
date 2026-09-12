@@ -31,7 +31,7 @@ export default function SettingsPage() {
         <Link
           to="/dashboard"
           aria-label="Back to dashboard"
-          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#F6F6F6] text-gray-600 hover:bg-gray-200"
+          className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-black/5 hover:text-ink"
         >
           <BackArrowIcon className="size-4" />
         </Link>
@@ -41,7 +41,7 @@ export default function SettingsPage() {
         />
       </div>
       <div className="mt-6 flex flex-col">
-        <div className="border-b border-gray-200">
+        <div className="border-b border-line-hair">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
             {TABS.map((tab) => {
               const isActive = activeTabId === tab.id;
@@ -53,7 +53,7 @@ export default function SettingsPage() {
                     "whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium",
                     isActive
                       ? "border-primary-600 text-primary-600"
-                      : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                      : "border-transparent text-ink-muted hover:border-line hover:text-gray-700",
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >

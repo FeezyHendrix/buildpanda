@@ -167,7 +167,7 @@ export default function ProjectKeyDates() {
       ) : null}
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -188,7 +188,7 @@ export default function ProjectKeyDates() {
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
         <Table className="min-w-[600px]">
           <TableHead>
             <tr>
@@ -283,9 +283,9 @@ function KeyDateRow({
   onDelete: () => void;
 }) {
   return (
-    <TableRow className="hover:bg-[#FAFAFA]">
+    <TableRow className="hover:bg-surface-alt">
       <TableCell>
-        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
+        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-surface-alt text-xs font-medium text-ink">
           {index + 1}
         </span>
       </TableCell>

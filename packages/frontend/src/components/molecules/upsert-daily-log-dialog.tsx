@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useCurrentWeather, type WeatherSnapshot } from "@/hooks/use-weather";
-import { cn } from "@/lib/utils";
 import type { DailyLogDay, WeatherCondition } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 const WEATHER_OPTIONS: { value: WeatherCondition; label: string }[] = [
   { value: "Sunny", label: "Sunny" },
@@ -138,7 +139,7 @@ function UpsertDailyLogDialog({
         value={logDate}
         onChange={(e) => setLogDate(e.target.value)}
         disabled={!!initial}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:opacity-60"
+        className={INPUT_CLASS}
       />
     </div>
     
@@ -157,19 +158,14 @@ function UpsertDailyLogDialog({
       </div>
       <div className="flex flex-wrap gap-2">
         {WEATHER_OPTIONS.map((opt) => (
-          <button
+          <Button
             key={opt.value}
-            type="button"
+            size="sm"
+            variant={weatherCondition === opt.value ? "primary" : "secondary"}
             onClick={() => setWeatherCondition(opt.value)}
-            className={cn(
-              "h-9 rounded-full px-3.5 text-xs font-medium transition-colors",
-              weatherCondition === opt.value
-                ? "bg-[#004DE7] text-white"
-                : "bg-[#F6F6F6] text-gray-700 hover:bg-[#EDEDED]",
-            )}
           >
             {opt.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>
@@ -183,7 +179,7 @@ function UpsertDailyLogDialog({
           step="any"
           value={temperatureC}
           onChange={(e) => setTemperatureC(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -195,7 +191,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={precipitationMm}
           onChange={(e) => setPrecipitationMm(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -207,7 +203,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={windKph}
           onChange={(e) => setWindKph(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
@@ -221,7 +217,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={workersExpected}
           onChange={(e) => setWorkersExpected(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -232,7 +228,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={workersPresent}
           onChange={(e) => setWorkersPresent(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -244,7 +240,7 @@ function UpsertDailyLogDialog({
           min={0}
           value={totalHours}
           onChange={(e) => setTotalHours(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>

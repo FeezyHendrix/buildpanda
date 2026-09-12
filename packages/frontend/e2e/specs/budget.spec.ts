@@ -21,7 +21,7 @@ test.describe("Budget allocation @regression @budget", () => {
   // tests; un-fixme once the expected behaviour is confirmed.
   test.fixme("creates a budget category that persists with its name @smoke", async ({ page, project }) => {
     const budget = new ListUpsertPage(page, project.id, {
-      route: "finances/costs?tab=budget",
+      route: "finances/budget-invoices",
       createButton: /add category/i,
       createTitle: /new category/i,
       createSubmit: /create category/i,

@@ -46,15 +46,15 @@ function PushNotificationsSection() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-gray-900">This device</h2>
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+      <h2 className="text-sm font-semibold text-ink">This device</h2>
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-line-hair bg-white px-4 py-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-sm font-medium text-gray-900">
+          <p className="text-sm font-medium text-ink">
             Push notifications on this device
           </p>
-          <p className="text-xs text-gray-500">{pushStatusText(push)}</p>
+          <p className="text-xs text-ink-muted">{pushStatusText(push)}</p>
           {push.error !== null ? (
-            <p className="text-xs text-red-600">{push.error}</p>
+            <p className="text-xs text-negative-600">{push.error}</p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -85,13 +85,13 @@ export default function NotificationSettings() {
       />
 
       {isLoading ? (
-        <p className="py-10 text-center text-sm text-gray-500">Loading…</p>
+        <p className="py-10 text-center text-sm text-ink-muted">Loading…</p>
       ) : (
         <div className="mt-6 flex flex-col gap-8">
           <PushNotificationsSection />
           {groups.map(([group, list]) => (
             <section key={group} className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-gray-900">{group}</h2>
+              <h2 className="text-sm font-semibold text-ink">{group}</h2>
               <div className="flex flex-col gap-3">
                 {list.map((pref) => (
                   <ToggleRow

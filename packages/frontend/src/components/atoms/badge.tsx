@@ -1,6 +1,7 @@
 import { forwardRef, type HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/** The status vocabulary: success / warning (pending) / danger (negative) / info (other) / neutral / accent. */
 type BadgeTone =
   | "neutral"
   | "success"
@@ -17,48 +18,41 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone;
   variant?: BadgeVariant;
   size?: BadgeSize;
+  /** Leading 6px square dot in the tone colour — the non-colour cue a status pill carries. */
   dot?: boolean;
 }
 
 const softStyles: Record<BadgeTone, string> = {
-  neutral: "bg-[#F6F6F6] text-gray-700",
-  success: "bg-[#E8F7EE] text-[#1B8E45]",
-  warning: "bg-[#FFF3E0] text-[#C26A00]",
-  danger: "bg-[#FDECEC] text-[#C72525]",
-  info: "bg-[#E6EFFE] text-[#004DE7]",
-  accent: "bg-[#EDE7FF] text-[#5A3DD0]",
+  neutral: "bg-neutral-50 text-neutral-500",
+  success: "bg-success-50 text-success-500",
+  warning: "bg-warning-50 text-warning-500",
+  danger: "bg-negative-50 text-negative-500",
+  info: "bg-primary-50 text-primary-600",
+  accent: "bg-accent-50 text-accent-500",
 };
 
 const solidStyles: Record<BadgeTone, string> = {
-  neutral: "bg-gray-700 text-white",
-  success: "bg-[#1B8E45] text-white",
-  warning: "bg-[#C26A00] text-white",
-  danger: "bg-[#C72525] text-white",
-  info: "bg-[#004DE7] text-white",
-  accent: "bg-[#5A3DD0] text-white",
+  neutral: "bg-neutral-500 text-white",
+  success: "bg-success-500 text-white",
+  warning: "bg-warning-500 text-white",
+  danger: "bg-negative-500 text-white",
+  info: "bg-primary-500 text-white",
+  accent: "bg-accent-500 text-white",
 };
 
 const outlineStyles: Record<BadgeTone, string> = {
-  neutral: "border border-gray-300 text-gray-700",
-  success: "border border-[#1B8E45]/40 text-[#1B8E45]",
-  warning: "border border-[#C26A00]/40 text-[#C26A00]",
-  danger: "border border-[#C72525]/40 text-[#C72525]",
-  info: "border border-[#004DE7]/40 text-[#004DE7]",
-  accent: "border border-[#5A3DD0]/40 text-[#5A3DD0]",
+  neutral: "border border-line text-neutral-500",
+  success: "border border-success-500/40 text-success-500",
+  warning: "border border-warning-500/40 text-warning-500",
+  danger: "border border-negative-500/40 text-negative-500",
+  info: "border border-primary-500/40 text-primary-600",
+  accent: "border border-accent-500/40 text-accent-500",
 };
 
-const dotStyles: Record<BadgeTone, string> = {
-  neutral: "bg-gray-500",
-  success: "bg-success-500",
-  warning: "bg-[#C26A00]",
-  danger: "bg-[#C72525]",
-  info: "bg-[#004DE7]",
-  accent: "bg-[#5A3DD0]",
-};
-
+/** Ernest's pill: medium = 4px 8px padding on an 8px radius; small = a 2px-radius tag. */
 const sizeStyles: Record<BadgeSize, string> = {
-  sm: "h-5 gap-1 rounded-full px-2 text-[11px]",
-  md: "h-6 gap-1.5 rounded-full px-2.5 text-xs",
+  sm: "h-6 gap-1 rounded-md px-2 text-xs",
+  md: "h-[30px] min-w-16 gap-1.5 rounded-lg px-2 text-sm",
 };
 
 const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
@@ -85,7 +79,7 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          "inline-flex items-center font-medium leading-none whitespace-nowrap",
+          "inline-flex w-fit max-w-full items-center font-medium whitespace-nowrap",
           sizeStyles[size],
           variantClass,
           className,
@@ -95,10 +89,10 @@ const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
         {dot && (
           <span
             aria-hidden="true"
-            className={cn("size-1.5 shrink-0 rounded-full", dotStyles[tone])}
+            className={cn("shrink-0 rounded-[2px] bg-current", size === "md" ? "size-1.5" : "size-1")}
           />
         )}
-        {children}
+        <span className="truncate">{children}</span>
       </span>
     );
   },

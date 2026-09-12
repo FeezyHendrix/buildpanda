@@ -81,21 +81,21 @@ export function ConvertPreviewDialog({ proposalId, open, onOpenChange, submittin
           <Spinner size="sm" />
         </div>
       ) : isError || !preview ? (
-        <p className="text-sm text-red-600">Could not load what conversion would create. Close and try again.</p>
+        <p className="text-sm text-negative-500">Could not load what conversion would create. Close and try again.</p>
       ) : (
         <>
-          <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm">
+          <div className="flex items-center justify-between rounded-lg bg-surface-alt px-4 py-3 text-sm">
             <div>
-              <p className="font-semibold text-gray-900">
+              <p className="font-semibold text-ink">
                 {preview.setup.projectType} · {preview.setup.buildingType} · {preview.setup.timeline}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-muted">
                 {preview.setup.source === "takeoff-structure"
                   ? "Setup read from the take-off's structure reading"
                   : "Default setup; no structure reading on the take-off"}
               </p>
             </div>
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-sm font-semibold text-ink">
               {formatWholeCurrency(preview.contractSum, preview.currency)}
             </p>
           </div>
@@ -105,7 +105,7 @@ export function ConvertPreviewDialog({ proposalId, open, onOpenChange, submittin
             onToggle={(key, on) => setInclude((prev) => ({ ...prev, [key]: on }))}
           />
           {preview.warnings.length > 0 ? (
-            <ul className="flex flex-col gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <ul className="flex flex-col gap-1.5 rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-700">
               {preview.warnings.map((w) => (
                 <li key={w} className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />

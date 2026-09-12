@@ -136,7 +136,7 @@ export function UpdateCard({
   }
 
   return (
-    <Card className="flex flex-col gap-4 border border-[#F6F6F6] rounded-[8px] p-[24px]">
+    <Card className="flex flex-col gap-4 border border-line-hair rounded-[8px] p-[24px]">
       <header className="flex flex-wrap gap-3 items-start justify-between">
         <div className="flex gap-2">
           <Avatar
@@ -146,10 +146,10 @@ export function UpdateCard({
             className={cn("h-[40px] w-[40px] rounded-[12px]")}
           />
           <div>
-            <p className="text-[#131B2E] font-semibold text-[13px]">
+            <p className="text-ink font-semibold text-sm">
               {update.author.name}
             </p>
-            <p className="text-black-300 text-[13px]">
+            <p className="text-black-300 text-sm">
               {update.author.role} · {formatDateTime(update.createdAt)}
             </p>
           </div>
@@ -169,14 +169,14 @@ export function UpdateCard({
 
       <div className='flex flex-col gap-6'>
         <div>
-          <h3 className="font-semibold text-[#131B2E]">
+          <h3 className="font-semibold text-ink">
             {update.title}
           </h3>
-          <p className="text-[13px] text-black-300">
+          <p className="text-sm text-black-300">
             {update.description}
           </p>
           {!isOpen && update.action.takenBy && update.action.takenAt && (
-            <p className="mt-1.5 text-[11px] text-gray-500">
+            <p className="mt-1.5 text-xs text-gray-500">
               {update.status} by {update.action.takenBy.name} ·{" "}
               {formatTimeAgo(update.action.takenAt)}
             </p>
@@ -186,12 +186,12 @@ export function UpdateCard({
       </div>
 
 
-      <footer className='flex flex-wrap gap-3 justify-between items-center border-t border-[#F6F6F6] pt-6'>
+      <footer className='flex flex-wrap gap-3 justify-between items-center border-t border-line-hair pt-6'>
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setCommentsOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black-300 hover:text-black-500 cursor-pointer p-0"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-black-300 hover:text-black-500 cursor-pointer p-0"
           >
             <ReactSVG src={icons.comment} />
             <p>{commentsOpen ? "Hide comments" : "Comment"}</p>
@@ -199,7 +199,7 @@ export function UpdateCard({
           {update.secondaryAction && (
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-[13px] font-medium text-black-300 hover:text-black-500 p-0 cursor-pointer"
+              className="inline-flex items-center gap-1 text-sm font-medium text-black-300 hover:text-black-500 p-0 cursor-pointer"
             >
               {update.secondaryAction.label === 'View Report' && <ReactSVG src={icons.report} />}
               {update.secondaryAction.label === 'Escalation Details' && <ReactSVG src={icons.warningCircle} />}

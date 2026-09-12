@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { ComboSelect } from "@/components/molecules/combo-select";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import {
@@ -17,7 +18,6 @@ import { cn } from "@/lib/utils";
 import type { Transaction, TransactionListFilters } from "@/lib/project-types";
 import {
   UpsertTransactionDialog,
-  expenseInputClass,
   toCategoryItems,
 } from "./expenses/expense-dialogs";
 import { ManageCategoriesDialog } from "./expenses/manage-categories-dialog";
@@ -93,21 +93,21 @@ export function ExpensesTab() {
           <div className="flex items-center gap-2">
             <input
               type="date"
-              className={cn(expenseInputClass, "w-40")}
+              className={cn(INPUT_SM_CLASS, "w-40")}
               value={filters.from || ""}
               onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value || undefined }))}
             />
-            <span className="text-gray-400">to</span>
+            <span className="text-ink-muted">to</span>
             <input
               type="date"
-              className={cn(expenseInputClass, "w-40")}
+              className={cn(INPUT_SM_CLASS, "w-40")}
               value={filters.to || ""}
               onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value || undefined }))}
             />
           </div>
           <div className="flex-1 flex gap-2 min-w-[200px]">
             <input
-              className={cn(expenseInputClass, "flex-1")}
+              className={cn(INPUT_SM_CLASS, "flex-1")}
               placeholder="Search title, vendor, ref..."
               value={draftSearch}
               onChange={(e) => setDraftSearch(e.target.value)}
@@ -118,7 +118,7 @@ export function ExpensesTab() {
             </Button>
           </div>
           {isFiltered ? (
-            <Button variant="ghost" onClick={handleClearFilters} className="text-gray-500">
+            <Button variant="ghost" onClick={handleClearFilters} className="text-ink-muted">
               Clear
             </Button>
           ) : null}

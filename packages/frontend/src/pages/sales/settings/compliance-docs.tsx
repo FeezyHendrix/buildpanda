@@ -97,7 +97,7 @@ export default function ComplianceDocsPage() {
           action={canManage ? { label: "File a document", onClick: () => setUploadOpen(true) } : undefined}
         />
       ) : (
-        <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+        <ul className="divide-y divide-line-hair rounded-lg border border-line bg-white">
           {docs.map((doc) => (
             <DocRow key={doc.id} doc={doc} canManage={canManage} onRemove={setRemoveTarget} />
           ))}

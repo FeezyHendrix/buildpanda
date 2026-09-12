@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useAppBarTitle } from "@/contexts/app-bar-title-context";
 import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
@@ -9,6 +10,11 @@ interface PageHeaderProps {
   className?: string;
 }
 
+/**
+ * Inside the project shell the title lives in the 64px app bar (Ernest), so
+ * this renders only the page's toolbar row: optional description on the left,
+ * actions on the right. Outside a shell with an app bar it also draws the title.
+ */
 function PageHeader({
   title,
   description,
@@ -16,29 +22,34 @@ function PageHeader({
   badges,
   className,
 }: PageHeaderProps) {
+  const titleInAppBar = useAppBarTitle(title);
+  const hasLeft = !titleInAppBar || Boolean(description) || Boolean(badges);
+  if (!hasLeft && !actions) return null;
+
   return (
     <div
       className={cn(
-        "flex flex-col lg:items-center gap-4 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
         className,
       )}
     >
-      <div className="flex-1 min-w-0 order-2 lg:order-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[22px] font-bold leading-tight text-black-900 text-balance">
-            {title}
-          </h1>
-          {/* {badges} */}
+      {hasLeft ? (
+        <div className="min-w-0 flex-1">
+          {titleInAppBar ? null : (
+            <h1 className="text-2xl font-medium text-ink text-balance">{title}</h1>
+          )}
+          {description && (
+            <p className={cn("max-w-2xl text-sm text-ink-muted text-pretty", !titleInAppBar && "mt-1")}>
+              {description}
+            </p>
+          )}
+          {badges ? <div className="mt-2 flex flex-wrap items-center gap-2">{badges}</div> : null}
         </div>
-        {description && (
-          <p className="mt-2 max-w-2xl text-[13px] text-black-300 text-pretty">
-            {description}
-          </p>
-        )}
-      </div>
-      {badges}
+      ) : (
+        <span />
+      )}
       {actions && (
-        <div className="flex shrink-0 items-center gap-2 order-1 self-end lg:order-2 lg:self-auto">
+        <div className="flex shrink-0 flex-wrap items-center gap-3 sm:justify-end">
           {actions}
         </div>
       )}

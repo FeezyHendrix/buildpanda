@@ -8,6 +8,8 @@ import {
   SALES_RESOURCES,
   statement,
 } from "@/lib/permissions";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 type Permission = Record<string, string[]>;
 
@@ -191,10 +193,7 @@ function RoleBuilderDialog({
           autoFocus={!isEditing}
           maxLength={50}
           placeholder="e.g. Site supervisor"
-          className={cn(
-            "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            isEditing && "cursor-not-allowed text-gray-500",
-          )}
+          className={cn(INPUT_CLASS, isEditing && "cursor-not-allowed text-ink-muted")}
         />
         {isEditing ? (
           <p className="text-xs text-gray-400">Role name can&rsquo;t be changed.</p>
@@ -209,7 +208,7 @@ function RoleBuilderDialog({
       <div className="flex max-h-[46vh] flex-col gap-5 overflow-y-auto pr-1">
         {RESOURCE_GROUPS.map((group) => (
           <div key={group.label} className="flex flex-col gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <p className="text-xs font-medium uppercase text-ink-muted">
               {group.label}
             </p>
             {group.resources.map((resource) => {
@@ -227,20 +226,14 @@ function RoleBuilderDialog({
                     {actions.map((action) => {
                       const active = selected.includes(action);
                       return (
-                        <button
+                        <Button
                           key={action}
-                          type="button"
+                          size="sm"
+                          variant={active ? "primary" : "secondary"}
                           onClick={() => toggleAction(resource, action)}
-                          className={cn(
-                            "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-                            active
-                              ? "bg-[#004DE7] text-white"
-                              : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
-                          )}
                         >
                           {ACTION_LABELS[action] ?? action}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>

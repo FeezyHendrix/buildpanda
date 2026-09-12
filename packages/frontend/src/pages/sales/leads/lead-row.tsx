@@ -3,6 +3,7 @@ import { useUpdateLead } from "@/hooks/use-leads";
 import { LEAD_STATUSES, type Lead, type LeadStatus } from "@/api/leads";
 import { formatShortDate } from "@/lib/formatters";
 import { LeadStatusBadge, statusLabel } from "./lead-status-badge";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 export function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => void }) {
   const update = useUpdateLead();
@@ -28,7 +29,7 @@ export function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => 
           value={lead.status}
           onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
           disabled={update.isPending}
-          className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 outline-none hover:border-gray-300 focus-visible:border-[#004DE7]"
+          className={INPUT_SM_CLASS}
         >
           {LEAD_STATUSES.map((s) => (
             <option key={s} value={s}>

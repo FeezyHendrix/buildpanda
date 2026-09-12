@@ -20,7 +20,7 @@ export function SafetyTab({ proposalId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
+      <div className="rounded-lg border border-line-hair bg-gray-50 p-4 text-sm text-gray-600">
         Panda AI drafts each document from the brief, the structure it read off the drawings and the programme. Nothing is
         final until a person confirms it, and every field stays editable afterwards. Confirmed items carry into the project at handoff.
       </div>

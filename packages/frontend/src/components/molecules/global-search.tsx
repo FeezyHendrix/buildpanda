@@ -37,7 +37,7 @@ function ResultGroup({
 
   return (
     <div className="py-1">
-      <p className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+      <p className="px-4 pb-1 pt-2 text-xs font-medium uppercase text-ink-muted">
         {label}
       </p>
       {rows.map((row) => (
@@ -47,13 +47,13 @@ function ResultGroup({
           onClick={() => onSelect(row.to)}
           className={cn(
             "flex w-full flex-col items-start gap-0.5 px-4 py-2 text-left",
-            "outline-none transition-colors hover:bg-[#F6F6F6] focus-visible:bg-[#F6F6F6]",
+            "outline-none transition-colors hover:bg-surface-alt focus-visible:bg-surface-alt",
           )}
         >
-          <span className="line-clamp-1 text-sm font-medium text-gray-900">
+          <span className="line-clamp-1 text-sm font-medium text-ink">
             {row.title}
           </span>
-          <span className="line-clamp-1 text-xs text-gray-500">
+          <span className="line-clamp-1 text-xs text-ink-muted">
             {row.subtitle}
           </span>
         </button>
@@ -142,7 +142,7 @@ function GlobalSearch({ placeholder, className }: GlobalSearchProps) {
       <SearchInput
         value={query}
         placeholder={placeholder}
-        className="w-full bg-[#F6F6F6]"
+        className="w-full bg-surface-alt"
         onChange={(event) => {
           setQuery(event.target.value);
           setOpen(true);
@@ -154,9 +154,9 @@ function GlobalSearch({ placeholder, className }: GlobalSearchProps) {
       />
 
       {open && hasQuery && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[80vw] overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[28rem] max-w-[80vw] overflow-hidden rounded-lg border border-line bg-white shadow-card">
           {totalHits === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-500">
+            <p className="px-4 py-3 text-sm text-ink-muted">
               {isFetching ? "Searching…" : `No results for "${debounced}".`}
             </p>
           ) : (

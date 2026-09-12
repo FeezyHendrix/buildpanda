@@ -1,4 +1,5 @@
 import { type InvoiceStatus, type InvoiceType, type ExtractedInvoice } from "@/hooks/use-invoices";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Money } from "@/lib/money";
 
 export interface UpsertLineItem {
@@ -53,8 +54,7 @@ export const TYPES: { value: InvoiceType; label: string }[] = [
   { value: "material", label: "Material" },
 ];
 
-export const inputClass =
-  "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-primary-500/20 focus-visible:bg-white transition-colors";
+export const inputClass = INPUT_CLASS;
 
 export function emptyLine(): UpsertLineItem {
   return { description: "", quantity: "1", unit: "", unitRate: "" };

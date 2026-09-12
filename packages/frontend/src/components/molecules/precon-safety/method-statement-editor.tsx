@@ -132,8 +132,8 @@ export function MethodStatementEditor({ statement, programmeTasks, saving, onSav
         </div>
         <ol className="flex flex-col gap-2">
           {steps.map((step, index) => (
-            <li key={index} className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-gray-100 p-2">
-              <span className="pt-1.5 text-center text-xs font-bold text-gray-400">{index + 1}</span>
+            <li key={index} className="grid grid-cols-[28px_minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-line-hair p-2">
+              <span className="pt-1.5 text-center text-xs font-medium text-gray-400">{index + 1}</span>
               <textarea aria-label="Step" className={cellTextareaClass} placeholder="What is done" value={step.text} onChange={(e) => updateStep(index, { text: e.target.value })} />
               <textarea aria-label="Controls" className={cellTextareaClass} placeholder="Control measures" value={step.controls} onChange={(e) => updateStep(index, { controls: e.target.value })} />
               <textarea aria-label="PPE" className={cellTextareaClass} placeholder="PPE" value={step.ppe} onChange={(e) => updateStep(index, { ppe: e.target.value })} />

@@ -46,11 +46,11 @@ const STICKY = "sticky right-0 z-[1]";
 const COLUMN_COUNT = 8;
 
 const MENU_ITEM =
-  "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-left text-[13px] text-gray-700 outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900";
+  "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-left text-sm text-gray-700 outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-gray-900";
 
 function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerateReport, actions }: DailyLogTableProps) {
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
+    <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
       <Table className="min-w-[960px]">
         <TableHead>
           <tr>
@@ -61,7 +61,7 @@ function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerat
             <TableHeaderCell className="whitespace-nowrap">Weather</TableHeaderCell>
             <TableHeaderCell className="whitespace-nowrap">Activities</TableHeaderCell>
             <TableHeaderCell className="whitespace-nowrap">Entries</TableHeaderCell>
-            <TableHeaderCell align="right" className={cn(STICKY, "w-28 bg-[#F6F6F6]")}>
+            <TableHeaderCell align="right" className={cn(STICKY, "w-28 bg-surface-alt")}>
               <span className="sr-only">Actions</span>
             </TableHeaderCell>
           </tr>
@@ -125,12 +125,12 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
   return (
     <TableRow
       tone={tone}
-      className={cn("h-[61px] transition-colors", !missed && "bg-white hover:bg-[#FAFAFA]")}
+      className={cn("h-[61px] transition-colors", !missed && "bg-white hover:bg-surface-alt")}
       onClick={missed ? undefined : () => actions.onView(row.logDate)}
     >
       <TableCell className="py-2">
         <p className="whitespace-nowrap font-medium">{formatDayDate(row.logDate)}</p>
-        <p className={cn("text-[12px]", missed ? "text-error-600" : "text-black-300")}>{formatWeekday(row.logDate)}</p>
+        <p className={cn("text-xs", missed ? "text-error-600" : "text-black-300")}>{formatWeekday(row.logDate)}</p>
       </TableCell>
       <TableCell className="py-2">
         {missed ? (
@@ -160,7 +160,7 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
         {day ? (
           <>
             <p>{day.activities.length}</p>
-            <p className="text-[12px] text-black-300">{formatHours(row.activityHours)} logged</p>
+            <p className="text-xs text-black-300">{formatHours(row.activityHours)} logged</p>
           </>
         ) : (
           "—"
@@ -196,7 +196,7 @@ function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, actions }
     <Menu.Root>
       <Menu.Trigger
         aria-label={`Actions for ${formatDayDate(logDate)}`}
-        className="inline-flex size-8 items-center justify-center rounded-lg text-gray-400 outline-none transition-colors hover:bg-gray-100 hover:text-gray-600 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className="inline-flex size-8 items-center justify-center rounded-md text-ink-muted outline-none transition-colors hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <circle cx="8" cy="3" r="1.5" />
@@ -206,7 +206,7 @@ function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, actions }
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={4} className="z-[60]">
-          <Menu.Popup className="min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5 outline-none">
+          <Menu.Popup className="min-w-[160px] rounded-lg border border-line bg-white p-1.5 shadow-card outline-none">
             <Menu.Item className={MENU_ITEM} onClick={() => actions.onView(logDate)}>
               View
             </Menu.Item>

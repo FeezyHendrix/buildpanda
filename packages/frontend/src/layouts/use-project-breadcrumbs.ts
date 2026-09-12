@@ -137,6 +137,11 @@ function humanise(segment: string): string {
     .join(" ");
 }
 
+/** The sidebar group a non-sidebar route (daily log, key dates, …) belongs to, so its group can show as active. */
+export function extraRouteGroup(pathname: string, projectId: string): GroupHeading | undefined {
+  return findExtraRoute(routeTail(pathname, projectId))?.group;
+}
+
 function routeTail(pathname: string, projectId: string): string {
   const base = `/project/${projectId}/`;
   return pathname.startsWith(base) ? pathname.slice(base.length).replace(/\/+$/, "") : "";

@@ -1,26 +1,4 @@
 import { Button } from "@/components/atoms/button";
-import { cn } from "@/lib/utils";
-
-function ChevronIcon({ direction }: { direction: "left" | "right" }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 12 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path d={direction === "left" ? "M7.5 2.5 4 6l3.5 3.5" : "M4.5 2.5 8 6l-3.5 3.5"} />
-    </svg>
-  );
-}
-
-ChevronIcon.displayName = "ChevronIcon";
 
 interface DataGridPaginationProps {
   /** 1-based current page (already clamped to `pageCount` by the grid). */
@@ -32,8 +10,7 @@ interface DataGridPaginationProps {
   onPageChange: (page: number) => void;
 }
 
-const pageButtonClass = "h-8 gap-1.5 px-2.5 text-xs";
-
+/** Ernest's grid footer: "1–25 of 138 items" on the left, Previous / Next on the right. */
 function DataGridPagination({
   page,
   pageCount,
@@ -47,48 +24,34 @@ function DataGridPagination({
   return (
     <nav
       aria-label="Table pagination"
-      className={cn(
-        "flex flex-wrap items-center justify-between gap-3",
-        "border-t border-grey-50 px-6 py-3",
-      )}
+      className="flex flex-wrap items-center justify-between gap-3 px-6 py-4"
     >
-      <p className="text-xs text-gray-500">
-        Showing{" "}
-        <span className="font-semibold text-gray-700">
-          {first}–{last}
-        </span>{" "}
-        of <span className="font-semibold text-gray-700">{total}</span>
+      <p className="text-sm font-medium text-ink tabular-nums" aria-live="polite">
+        {first}–{last} of {total} items
       </p>
 
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={pageButtonClass}
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          <ChevronIcon direction="left" />
-          Prev
-        </Button>
-
-        <p aria-live="polite" className="px-1 text-xs font-medium text-gray-600">
-          Page <span className="text-gray-900">{page}</span> of {pageCount}
-        </p>
-
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={pageButtonClass}
-          disabled={page >= pageCount}
-          onClick={() => onPageChange(page + 1)}
-        >
-          Next
-          <ChevronIcon direction="right" />
-        </Button>
-      </div>
+      {pageCount > 1 ? (
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            disabled={page >= pageCount}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </nav>
   );
 }

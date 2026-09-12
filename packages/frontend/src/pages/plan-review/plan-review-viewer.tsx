@@ -120,7 +120,7 @@ export function PlanReviewViewer({
           aria-label="Stop recording"
           title="Stop recording"
           onClick={recording.stop}
-          className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl hover:bg-red-500"
+          className="absolute bottom-16 right-4 z-30 flex items-center gap-2 rounded-full bg-negative-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-negative-600"
         >
           <span className="size-2 animate-pulse rounded-full bg-white" />
           <Square size={13} fill="currentColor" /> Stop · {formatClock(recording.seconds)}
@@ -129,7 +129,7 @@ export function PlanReviewViewer({
 
       {/* ── Page switcher — fixed to the viewer, never inside the pan/zoom surface ── */}
       {nav.pdfPageCount > 1 && !nav.split.open && (
-        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/95 p-1 shadow-xl ring-1 ring-black/5">
+        <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1 rounded-full bg-white/95 p-1 border border-line shadow-card">
           <IconBtn
             label="Previous page"
             disabled={nav.pdfPage <= 1}

@@ -1,6 +1,8 @@
 import { Avatar } from "@/components/atoms/avatar";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { formatRoleLabel, roleTone } from "./utils";
 import { Section, RowMessage } from "./section";
 import type { Member } from "./types";
@@ -18,7 +20,7 @@ export function RoleSelect({ value, options, disabled, onChange }: RoleSelectPro
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="h-9 rounded-lg bg-[#F6F6F6] px-2.5 text-xs font-medium text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+      className={cn(INPUT_SM_CLASS, "w-auto text-xs font-medium")}
     >
       {options.map((role) => (
         <option key={role} value={role}>
@@ -56,11 +58,11 @@ export function MemberRow({
     <div className="flex items-center gap-4 px-5 py-4">
       <Avatar name={member.user.name} src={member.user.image} size="md" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">
+        <p className="truncate text-sm font-medium text-ink">
           {member.user.name}
-          {isSelf && <span className="ml-2 text-xs text-gray-400">You</span>}
+          {isSelf && <span className="ml-2 text-xs text-ink-muted">You</span>}
         </p>
-        <p className="truncate text-xs text-gray-500">{member.user.email}</p>
+        <p className="truncate text-xs text-ink-muted">{member.user.email}</p>
       </div>
 
       {canEditRole ? (
@@ -81,7 +83,6 @@ export function MemberRow({
           variant="ghost"
           size="sm"
           onClick={() => onRemove(member)}
-          className="text-red-600 hover:bg-red-50"
         >
           Remove
         </Button>

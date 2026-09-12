@@ -7,6 +7,7 @@ import {
   type CreateRowInput,
   type PreconRowType,
 } from "@/api/precon";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 const ROW_TYPE_OPTIONS: { value: PreconRowType; label: string }[] = [
   { value: "item", label: "Item" },
@@ -16,8 +17,7 @@ const ROW_TYPE_OPTIONS: { value: PreconRowType; label: string }[] = [
   { value: "spec_note", label: "Spec note" },
 ];
 
-const FIELD_CLASS =
-  "h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD_CLASS = INPUT_SM_CLASS;
 
 interface Props {
   sessionId: string;

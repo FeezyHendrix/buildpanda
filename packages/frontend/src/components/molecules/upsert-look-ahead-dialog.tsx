@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
 import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const FIELD = INPUT_CLASS;
 
 const STATUS_LABEL: Record<LookAheadStatus, string> = {
   Draft: "Draft",
@@ -134,7 +134,7 @@ function UpsertLookAheadDialog({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
 
@@ -201,7 +201,7 @@ function UpsertLookAheadDialog({
           placeholder="Search activities…"
           className={FIELD}
         />
-        <div className="max-h-56 overflow-y-auto rounded-lg border border-[#EDEDED]">
+        <div className="max-h-56 overflow-y-auto rounded-lg border border-line-hair">
           {filteredActivities.length === 0 ? (
             <p className="px-3 py-4 text-center text-xs text-gray-400">
               No activities on the project chart yet.
@@ -213,8 +213,8 @@ function UpsertLookAheadDialog({
                 <label
                   key={activity.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 border-b border-[#F0F0F0] px-3 py-2 text-sm transition-colors last:border-b-0",
-                    selected ? "bg-primary-50" : "hover:bg-[#FAFAFA]",
+                    "flex cursor-pointer items-center gap-2.5 border-b border-line-hair px-3 py-2 text-sm transition-colors last:border-b-0",
+                    selected ? "bg-primary-50" : "hover:bg-surface-alt",
                   )}
                 >
                   <input

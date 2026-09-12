@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/atoms/card";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
 
-const inputClass =
-  "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
-const numericInputClass = cn(inputClass, "tabular-nums pr-14");
+const numericInputClass = cn(INPUT_CLASS, "tabular-nums pr-14");
 
 export function TermsSection({
   title,
@@ -19,8 +18,8 @@ export function TermsSection({
   return (
     <Card padding="lg" className="mt-6">
       <div className="mb-5">
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        <h3 className="text-base font-semibold text-ink">{title}</h3>
+        <p className="mt-1 text-sm text-ink-muted">{description}</p>
       </div>
       {children}
     </Card>
@@ -51,8 +50,8 @@ export function RadioCard<TValue extends string>({
       className={cn(
         "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition",
         checked
-          ? "border-[#004DE7] bg-[#004DE7]/5"
-          : "border-gray-200 hover:border-gray-300",
+          ? "border-primary-500 bg-primary-500/5"
+          : "border-line-hair hover:border-line-hover",
         disabled && "cursor-not-allowed opacity-60",
       )}
     >
@@ -63,11 +62,11 @@ export function RadioCard<TValue extends string>({
         checked={checked}
         disabled={disabled}
         onChange={() => onChange(value)}
-        className="mt-1 h-4 w-4 accent-[#004DE7]"
+        className="mt-1 h-4 w-4 accent-primary-500"
       />
       <div className="flex-1">
-        <div className="text-sm font-medium text-gray-900">{label}</div>
-        <div className="mt-0.5 text-xs text-gray-500">{hint}</div>
+        <div className="text-sm font-medium text-ink">{label}</div>
+        <div className="mt-0.5 text-xs text-ink-muted">{hint}</div>
       </div>
     </label>
   );
@@ -114,11 +113,11 @@ export function UnitNumberField({
           disabled={disabled}
           className={numericInputClass}
         />
-        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-gray-500">
+        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-ink-muted">
           {unit}
         </span>
       </div>
-      <p className="text-xs text-gray-400">{hint}</p>
+      <p className="text-xs text-ink-muted">{hint}</p>
     </div>
   );
 }

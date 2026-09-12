@@ -61,7 +61,7 @@ export function PlanUploadCard({ uploads, onFiles }: Props) {
         onChange={onFiles}
       />
       {uploads.length > 0 ? (
-        <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+        <ul className="divide-y divide-line-hair rounded-lg border border-line bg-white">
           {uploads.map((item) => (
             <UploadRow key={item.id} item={item} />
           ))}

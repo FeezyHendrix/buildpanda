@@ -142,7 +142,7 @@ export default function ProjectDailyLog() {
       </section>
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
           <SearchInput
             value={query}
             onChange={(e) => setQuery(e.target.value)}

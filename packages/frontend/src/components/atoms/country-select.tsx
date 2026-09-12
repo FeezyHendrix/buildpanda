@@ -1,4 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
+import { INPUT_CLASS, INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 import { countries, type Country } from "@/lib/countries";
 
@@ -43,9 +44,8 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
     >
       <Combobox.Trigger
         className={cn(
-          "flex h-14 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
-          "border-0 outline-none ring-0",
-          "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          INPUT_CLASS,
+          "flex items-center justify-between gap-2 text-left",
           "cursor-default select-none",
           className,
         )}
@@ -57,11 +57,11 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
                 {selected.flag} {selected.name}
               </span>
             ) : (
-              <span className="text-gray-400">Select country</span>
+              <span className="text-ink-muted">Select country</span>
             )
           }
         </Combobox.Value>
-        <Combobox.Icon className="flex shrink-0 text-gray-400">
+        <Combobox.Icon className="flex shrink-0 text-ink-muted">
           <ChevronIcon />
         </Combobox.Icon>
       </Combobox.Trigger>
@@ -71,8 +71,7 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
           <Combobox.Popup
             className={cn(
               "max-h-[20rem] max-w-[var(--available-width)] origin-[var(--transform-origin)]",
-              "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
-              "outline outline-1 outline-gray-200",
+"rounded-lg border border-line bg-white text-ink shadow-card",
             )}
             aria-label="Select country"
           >
@@ -80,15 +79,12 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
               <Combobox.Input
                 placeholder="Search countries…"
                 className={cn(
-                  "h-9 w-full rounded-md bg-[#F6F6F6] px-3 text-base lg:text-sm text-gray-900",
-                  "border-0 outline-none ring-0",
-                  "placeholder:text-gray-400",
-                  "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+INPUT_SM_CLASS,
                 )}
               />
             </div>
 
-            <Combobox.Empty className="px-4 py-1 text-sm text-gray-400">
+            <Combobox.Empty className="px-4 py-1 text-sm text-ink-muted">
               No countries found.
             </Combobox.Empty>
 
@@ -99,7 +95,7 @@ function CountrySelect({ value, onChange, className }: CountrySelectProps) {
                   value={country}
                   className={cn(
                     "grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none select-none",
-                    "data-[highlighted]:bg-[#F6F6F6]",
+                    "data-[highlighted]:bg-black/5",
                   )}
                 >
                   <Combobox.ItemIndicator className="col-start-1">

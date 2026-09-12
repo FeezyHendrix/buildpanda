@@ -4,6 +4,7 @@ import { ToggleRow } from "@/components/atoms/toggle-row";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { FormDrawer } from "./form-drawer";
 import type { RfiPriority } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface UpsertRfiValues {
   subject: string;
@@ -41,8 +42,7 @@ const PRIORITIES: { value: RfiPriority; label: string }[] = [
   { value: "High", label: "High" },
 ];
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 const EMPTY: UpsertRfiValues = {
   subject: "",

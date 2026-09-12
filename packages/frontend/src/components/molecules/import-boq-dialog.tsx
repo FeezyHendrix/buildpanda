@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { FileUpload } from "@/components/atoms/file-upload";
 import { Spinner } from "@/components/atoms/spinner";
+import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import {
   useBoqImportJob,
@@ -21,7 +25,7 @@ interface ImportBoqDialogProps {
   onImported: (count: number) => void;
 }
 
-const CELL = "h-9 w-full rounded-md bg-[#F6F6F6] px-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const CELL = cn(INPUT_SM_CLASS, "px-2");
 
 function groupNumber(value: number): string {
   return value > 0 ? value.toLocaleString("en-US") : "";
@@ -125,8 +129,8 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
       {processing && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <Spinner size="md" />
-          <p className="text-sm font-medium text-gray-900">Extracting materials…</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium text-ink">Extracting materials…</p>
+          <p className="text-xs text-ink-muted">
             We're reading the BoQ and pulling out the materials. This can take a moment for large bills.
           </p>
         </div>
@@ -135,15 +139,15 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
       {hasRows && (
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-muted">
               {rows.length} material{rows.length === 1 ? "" : "s"} found. Review and edit before adding.
             </p>
-            <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
+            <Badge tone="info">
               {usedAi ? "AI extracted" : "Auto extracted"}
-            </span>
+            </Badge>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[#EDEDED]">
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-line-hair">
             <Table>
               <TableHead className="sticky top-0">
                 <tr>
@@ -179,13 +183,13 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                       <UnitInput value={row.unit} onChange={(v) => updateRow(i, { unit: v })} className={CELL} />
                     </TableCell>
                     <TableCell className="px-2 py-1.5">
-                      <div className="flex items-center rounded-md bg-[#F6F6F6] focus-within:ring-2 focus-within:ring-gray-900/10">
-                        <span className="pl-2 text-sm text-gray-400">{symbol}</span>
+                      <div className={cn(INPUT_SM_CLASS, "flex items-center gap-1 px-2 focus-within:border-primary-500 focus-within:shadow-focus")}>
+                        <span className="text-sm text-ink-muted">{symbol}</span>
                         <input
                           inputMode="numeric"
                           value={groupNumber(row.estimatedCost)}
                           onChange={(e) => updateRow(i, { estimatedCost: parseGrouped(e.target.value) })}
-                          className="h-9 w-full bg-transparent px-1.5 text-sm tabular-nums text-gray-900 outline-none"
+                          className="h-full w-full min-w-0 bg-transparent text-sm tabular-nums text-ink outline-none"
                         />
                       </div>
                     </TableCell>
@@ -193,7 +197,7 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                       <button
                         type="button"
                         onClick={() => removeRow(i)}
-                        className="text-gray-400 outline-none hover:text-red-500"
+                        className="rounded-md p-1.5 text-ink-muted outline-none hover:bg-black/5 hover:text-negative-500"
                         aria-label="Remove material"
                       >
                         ×
@@ -205,13 +209,15 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
             </Table>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setRows([])}
-            className="self-start text-xs font-medium text-[#004DE7] hover:underline"
+            className="self-start"
           >
             Upload a different file
-          </button>
+          </Button>
         </div>
       )}
     </FormDrawer>

@@ -31,7 +31,7 @@ const Avatar = forwardRef<HTMLDivElement, AvatarProps>(
       <div
         ref={ref}
         className={cn(
-          "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#004DE7] font-semibold text-white select-none",
+          "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-500 font-semibold text-white select-none",
           sizeStyles[size],
           className,
         )}

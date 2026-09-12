@@ -83,7 +83,7 @@ export function LookAheadsTable({
   return (
     <>
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 flex-1 rounded-lg border border-[#EDEDED] bg-white lg:max-w-md">
+        <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
           <SearchInput
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -159,7 +159,7 @@ function LookAheadRow({
   const material = materialState(lookAhead, activityCoverage);
 
   return (
-    <TableRow className="bg-white align-middle transition-colors hover:bg-[#FAFAFA]">
+    <TableRow className="bg-white align-middle transition-colors hover:bg-surface-alt">
       <TableCell className="max-w-[260px]">
         <button type="button" onClick={() => onView(lookAhead)} className="text-left">
           <span className="block truncate font-semibold text-gray-900 hover:text-primary-700">{lookAhead.name}</span>
@@ -176,7 +176,7 @@ function LookAheadRow({
         <div className="flex justify-end gap-1.5">
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(lookAhead)}>View</Button>
           {canManage ? <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button> : null}
-          {canManage ? <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}
+          {canManage ? <Button type="button" variant="danger" size="sm" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}
         </div>
       </TableCell>
     </TableRow>

@@ -45,7 +45,7 @@ export function PreconSessionHeader({ snapshot, step, reviewing, onSelectStep }:
             {manual && running ? "Rendering sheets" : PRECON_STATUS_LABEL[session.status]}
           </Badge>
           {manual ? <Badge tone="neutral">Measured by hand</Badge> : <Badge tone="info">Panda AI</Badge>}
-          {session.planId ? <span className="font-mono text-[11px] text-gray-400">Rev {session.revision}</span> : null}
+          {session.planId ? <span className="font-mono text-xs text-gray-400">Rev {session.revision}</span> : null}
         </div>
         {session.supersededBy ? (
           <p className="mt-1 inline-flex items-center gap-2 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-800">

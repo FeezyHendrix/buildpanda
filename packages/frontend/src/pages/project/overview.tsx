@@ -1,195 +1,147 @@
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/atoms/badge";
-import { Card } from "@/components/atoms/card";
-import { KpiCard } from "@/components/molecules/kpi-card";
-import { ProgressBar } from "@/components/atoms/progress-bar";
+import { useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/atoms/button";
 import { PageHeader } from "@/components/molecules/page-header";
+import { Tabs, type TabItem } from "@/components/molecules/tabs";
 import { TourGuide } from "@/components/molecules/tour-guide";
-import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectUpdates } from "@/hooks/use-updates";
+import {
+  UpsertActionItemDialog,
+  type UpsertActionItemValues,
+} from "@/components/molecules/upsert-action-item-dialog";
+import { WeatherDashboard } from "@/components/organisms/weather-dashboard";
+import { WhatsNextCard } from "@/components/organisms/whats-next-card";
+import { useCreateActionItem } from "@/hooks/use-action-items";
 import { useBuildings } from "@/hooks/use-buildings";
 import { useFeatureFlagState } from "@/hooks/use-feature-flags";
-import { useTour } from "@/hooks/use-tour";
-import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import { useAutoWindow } from "@/hooks/use-look-aheads";
-import {
-  useProjectRiskFactors,
-} from "@/hooks/use-risks";
-import { formatCurrency } from "@/lib/formatters";
-import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
-import { cn } from "@/lib/utils";
-
-import { WhatsNextCard } from "@/components/organisms/whats-next-card";
-import { WeatherDashboard } from "@/components/organisms/weather-dashboard";
-import { useSession } from "@/stores/auth";
-import { RecentUpdatesPanel } from "./overview/recent-updates-panel";
+import { useParticipants } from "@/hooks/use-participants";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
+import { useProjectRiskFactors } from "@/hooks/use-risks";
+import { useTour } from "@/hooks/use-tour";
+import { useProjectUpdates } from "@/hooks/use-updates";
+import { useProjectContext } from "@/layouts/project-layout";
+import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
+import { ActivityPanel } from "./overview/activity-panel";
+import { BuildingsPanel } from "./overview/buildings-panel";
+import { OverviewKpis } from "./overview/overview-kpis";
+import { OVERVIEW_TABS, useOverviewTab, type OverviewTab } from "./overview/overview-tabs";
 import { RiskFactorsPanel } from "./overview/risk-factors-panel";
-import { TimelineStepper } from "./overview/timeline-stepper";
-import { FeatureGate } from "@/components/atoms/feature-gate";
 
-const RECENT_UPDATE_LIMIT = 2;
+const RECENT_UPDATE_LIMIT = 5;
 
 export default function ProjectOverview() {
   const { project } = useProjectContext();
-  const { data: session } = useSession();
+  const navigate = useNavigate();
   const { data: updates = [] } = useProjectUpdates(project.id);
   const { data: risks = [] } = useProjectRiskFactors(project.id);
   const { data: autoWindow } = useAutoWindow(project.id, 4);
+  const { data: snapshot } = useReportingSnapshot(project.id);
+  const { data: participants = [] } = useParticipants(project.id);
+  const createItem = useCreateActionItem();
+
+  const weatherFlag = useFeatureFlagState("projects.weather");
   const multiBuilding = useFeatureFlagState("projects.multiBuilding");
-  const { data: buildings = [] } = useBuildings(
-    project.id,
-    multiBuilding.enabled && !multiBuilding.isLoading,
-  );
+  const { data: buildings = [] } = useBuildings(project.id, multiBuilding.enabled && !multiBuilding.isLoading);
   const realBuildings = buildings.filter((b) => b.kind === "real");
 
-  const firstName = (session?.user?.name ?? "").trim().split(" ")[0] || "there";
-  const recent = updates.slice(0, RECENT_UPDATE_LIMIT);
-  const upcomingCount = autoWindow?.activities.length ?? 0;
-  const uncoveredCount = autoWindow?.activities.filter((a) => !a.hasMaterialCoverage).length ?? 0;
-
-  const tour = useTour({
-    tourKey: CONSTRUCTION_TOUR_KEY,
-    steps: CONSTRUCTION_TOUR_STEPS,
-    enabled: true,
+  const visibleTabs: readonly TabItem<OverviewTab>[] = OVERVIEW_TABS.filter((t) => {
+    if (t.id === "weather") return weatherFlag.enabled;
+    if (t.id === "buildings") return realBuildings.length > 1;
+    return true;
   });
+  const { tab, setTab } = useOverviewTab(visibleTabs);
+
+  const [createItemOpen, setCreateItemOpen] = useState(false);
+  const [createRiskOpen, setCreateRiskOpen] = useState(false);
+
+  const assigneeOptions = participants
+    .filter((p) => p.userId)
+    .map((p) => ({ id: p.userId as string, name: p.name ?? p.email }));
+
+  function handleCreateItem(values: UpsertActionItemValues): void {
+    createItem.mutate({ projectId: project.id, ...values }, { onSuccess: () => setCreateItemOpen(false) });
+  }
+
+  const tour = useTour({ tourKey: CONSTRUCTION_TOUR_KEY, steps: CONSTRUCTION_TOUR_STEPS, enabled: true });
+
+  const tabActions: Record<OverviewTab, ReactNode> = {
+    activity: (
+      <>
+        <Button variant="ghost" size="md" onClick={() => navigate(`/project/${project.id}/updates`)}>
+          All updates
+        </Button>
+        <Button variant="ghost" size="md" onClick={() => navigate(`/project/${project.id}/project-chart`)}>
+          Detailed Gantt
+        </Button>
+      </>
+    ),
+    risks: (
+      <Button variant="ghost" size="md" onClick={() => setCreateRiskOpen(true)}>
+        Add risk
+      </Button>
+    ),
+    weather: null,
+    actions: (
+      <Button variant="ghost" size="md" onClick={() => navigate(`/project/${project.id}/whats-next`)}>
+        All recommendations
+      </Button>
+    ),
+    buildings: null,
+  };
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
+    <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
-        title={`Welcome back, ${firstName}`}
-        badges={
-          <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
-            <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
-              <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
-                <ReactSVG src={icons.shield} />
-            </div>
-              <p className='text-[13px] font-semibold text-black-200'>{project.risk}</p>
-            </Badge>
-          </div>
+        title="Overview"
+        actions={
+          <Button variant="ghost" size="md" onClick={() => setCreateItemOpen(true)}>
+            Add action item
+          </Button>
         }
       />
 
-      {/* <div className="mt-6">
-        <InsightsSummary projectId={project.id} />
-      </div> */}
+      <OverviewKpis project={project} risks={risks} autoWindow={autoWindow} snapshot={snapshot} />
 
-      <FeatureGate flag="projects.weather">
-        <div className="mt-8">
+      <Tabs
+        items={visibleTabs}
+        value={tab}
+        onChange={setTab}
+        actions={tabActions[tab]}
+        ariaLabel="Project insights"
+      />
+
+      <OverviewTabPanel tab={tab}>
+        {tab === "activity" ? (
+          <ActivityPanel
+            projectId={project.id}
+            updates={updates.slice(0, RECENT_UPDATE_LIMIT)}
+            phases={project.timeline}
+          />
+        ) : tab === "risks" ? (
+          <RiskFactorsPanel
+            projectId={project.id}
+            risks={risks}
+            createOpen={createRiskOpen}
+            onCreateOpenChange={setCreateRiskOpen}
+          />
+        ) : tab === "weather" ? (
           <WeatherDashboard projectId={project.id} />
-        </div>
-      </FeatureGate>
+        ) : tab === "actions" ? (
+          <WhatsNextCard projectId={project.id} />
+        ) : (
+          <BuildingsPanel projectId={project.id} buildings={realBuildings} />
+        )}
+      </OverviewTabPanel>
 
-      {realBuildings.length > 1 && (
-        <section className="mt-8 flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-gray-900">Buildings</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {realBuildings.map((b) => (
-              <Card key={b.id} className="p-4 flex flex-col gap-3 rounded-xl shadow-sm border border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to={`/project/${project.id}/buildings/${b.id}/stages`}
-                      className="text-base font-semibold text-gray-900 hover:text-[#004DE7]"
-                    >
-                      {b.name}
-                    </Link>
-                    {b.code && (
-                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
-                        {b.code}
-                      </span>
-                    )}
-                  </div>
-                  <Badge tone={b.status === "completed" ? "success" : b.status === "active" ? "info" : b.status === "on_hold" ? "warning" : "neutral"} size="sm">
-                    {b.status === "completed" ? "Completed" : b.status === "active" ? "Active" : b.status === "on_hold" ? "On Hold" : "Planned"}
-                  </Badge>
-                </div>
-                <div className="flex flex-col gap-1.5 mt-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>Progress</span>
-                    <span className="font-medium text-gray-900">{b.progressPercent}%</span>
-                  </div>
-                  <ProgressBar value={b.progressPercent} className="h-2" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div data-tour="construction-progress">
-          <KpiCard
-            label="Construction progress"
-            icon={icons.constructionProgress}
-            progress={project.progressPercent}
-          />
-        </div>
-        <div data-tour="construction-budget">
-          <KpiCard
-            label="Budget used"
-            value={formatCurrency(project.budgetUsed, project.currency)}
-            helper={`of ${formatCurrency(project.budgetTotal, project.currency)}`}
-            icon={icons.card}
-          />
-        </div>
-        <div data-tour="construction-approvals">
-          <KpiCard
-            label="Pending approvals"
-            value={project.pendingApprovals}
-            helper={project.pendingApprovals > 0 ? "Awaiting your review" : "Nothing pending"}
-            icon={icons.penSquare}
-          />
-        </div>
-        <KpiCard
-          label="Upcoming look aheads"
-          value={upcomingCount > 0 ? upcomingCount : "None scheduled"}
-          helper={
-            upcomingCount === 0
-              ? undefined
-              : uncoveredCount > 0
-                ? `${uncoveredCount} without materials ordered`
-                : "All materials ordered"
-          }
-          tone={uncoveredCount > 0 ? "danger" : undefined}
-          icon={icons.calendarSearch}
-        />
-      </section>
-
-      <div className="mt-6">
-        <WhatsNextCard projectId={project.id} />
-      </div>
-
-      <Card data-tour="construction-timeline" className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0 mt-6">
-        <div className="flex items-center justify-between py-3 px-5">
-          <div className="flex gap-2 items-center">
-            <ReactSVG src={icons.hourglass} />
-            <h3 className="text-[13px] font-semibold text-black-300">
-              Project Timeline
-            </h3>
-          </div>
-          <Link
-            to={`/project/${project.id}/project-chart`}
-            className="text-xs font-semibold text-[#004DE7] bg-white rounded-[100px] py-[4px] px-[16px]"
-          >
-            View Detailed Gantt
-          </Link>
-        </div>
-        <div className="bg-white rounded-[12px] h-full m-1 overflow-x-auto">
-          <div className="min-w-[480px] p-6">
-            <TimelineStepper phases={project.timeline} />
-          </div>
-        </div>
-      </Card>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 pb-8 lg:grid-cols-2">
-        <RecentUpdatesPanel
-          updates={recent}
-          projectId={project.id}
-          className="rounded-[16px] border-none bg-[#F8F8F8] flex flex-col h-full py-0 px-0"
-        />
-        <RiskFactorsPanel projectId={project.id} risks={risks} className="rounded-[16px] bg-[#F8F8F8] flex flex-col h-full py-0 px-0 border-none" />
-      </div>
+      <UpsertActionItemDialog
+        open={createItemOpen}
+        onOpenChange={setCreateItemOpen}
+        mode="create"
+        assigneeOptions={assigneeOptions}
+        onSubmit={handleCreateItem}
+        isSubmitting={createItem.isPending}
+        error={(createItem.error as Error | undefined)?.message ?? null}
+      />
 
       <TourGuide
         active={tour.active}
@@ -204,3 +156,17 @@ export default function ProjectOverview() {
   );
 }
 
+/**
+ * Tables bleed to the page gutter (their 24px outer-cell padding becomes the
+ * gutter), so the panel pulls the tab rule's 16px gap back to zero for them.
+ */
+function OverviewTabPanel({ tab, children }: { tab: OverviewTab; children: ReactNode }) {
+  const bleeds = tab !== "weather";
+  return (
+    <div role="tabpanel" className={bleeds ? "-mt-4" : undefined}>
+      {children}
+    </div>
+  );
+}
+
+OverviewTabPanel.displayName = "OverviewTabPanel";

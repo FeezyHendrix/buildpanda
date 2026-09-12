@@ -44,7 +44,7 @@ function formatDim(value: number | null): string {
 export function ExtractionSummary({ summary }: { summary: GeoSummary }) {
   const pct = Math.round(summary.coverage.measuredShare * 100);
   return (
-    <div className="space-y-1.5 rounded-lg border border-gray-100 bg-gray-50 p-2.5 text-[11px] text-gray-600">
+    <div className="space-y-1.5 rounded-lg border border-line-hair bg-gray-50 p-2.5 text-xs text-gray-600">
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold text-gray-800">What Panda AI found</span>
         <Badge tone={unitsTone(summary.units.confidence)} size="sm">
@@ -73,7 +73,7 @@ ExtractionSummary.displayName = "ExtractionSummary";
 
 function LayerTable({ layers }: { layers: ExtractionReport["layers"] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200">
+    <div className="overflow-hidden rounded-lg border border-line">
       <Table className="text-xs">
         <TableHead>
           <tr>
@@ -86,7 +86,7 @@ function LayerTable({ layers }: { layers: ExtractionReport["layers"] }) {
         <TableBody>
           {layers.map((layer) => (
             <TableRow key={layer.name}>
-              <TableCell className="px-3 py-1.5 font-mono text-[11px] text-gray-800">{layer.name}</TableCell>
+              <TableCell className="px-3 py-1.5 font-mono text-xs text-gray-800">{layer.name}</TableCell>
               <TableCell align="right" className="px-3 py-1.5 text-xs tabular-nums text-gray-700">{layer.count.toLocaleString()}</TableCell>
               <TableCell className="px-3 py-1.5 text-xs text-gray-500">
                 {Object.entries(layer.byType)
@@ -155,7 +155,7 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
       <div>
         <h4 className="mb-1.5 text-xs font-semibold text-gray-700">Layers</h4>
         <LayerTable layers={report.layers} />
-        <p className="mt-1 text-[11px] text-gray-400">
+        <p className="mt-1 text-xs text-gray-400">
           "Treated as" is what today's measuring rules do with the layer. Ignored layers are not measured. Measured layers: {report.coverage.measuredLayers.join(", ") || "none"}.
         </p>
       </div>
@@ -169,7 +169,7 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
             <ul className="space-y-0.5 text-xs">
               {report.blocks.slice(0, 12).map((b) => (
                 <li key={b.name} className="flex justify-between gap-2">
-                  <span className="truncate font-mono text-[11px] text-gray-800">{b.name}</span>
+                  <span className="truncate font-mono text-xs text-gray-800">{b.name}</span>
                   <span className="shrink-0 tabular-nums text-gray-500">×{b.inserts}</span>
                 </li>
               ))}
@@ -203,7 +203,7 @@ export function ExtractionReportPanel({ report, title }: { report: ExtractionRep
             <ul className="space-y-1 text-xs text-gray-600">
               {report.unreadable.map((u) => (
                 <li key={u.what}>
-                  <span className="font-mono text-[11px] text-gray-800">{u.what}</span> ×{u.count.toLocaleString()} · {u.note}
+                  <span className="font-mono text-xs text-gray-800">{u.what}</span> ×{u.count.toLocaleString()} · {u.note}
                 </li>
               ))}
             </ul>

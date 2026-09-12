@@ -4,6 +4,8 @@ import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol } from "@/lib/formatters";
 import type { DelayReason } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface RaiseDelayValues {
   reasonCode: string;
@@ -92,7 +94,7 @@ function RaiseDelayDialog({
         id="delay-reason"
         value={reasonCode}
         onChange={(e) => setReasonCode(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       >
         <option value="">Select a reason…</option>
         {Object.entries(grouped).map(([category, list]) => (
@@ -114,7 +116,7 @@ function RaiseDelayDialog({
         type="datetime-local"
         value={startedAt}
         onChange={(e) => setStartedAt(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div>
     
@@ -127,7 +129,7 @@ function RaiseDelayDialog({
         rows={2}
         maxLength={2000}
         placeholder="Brief description of the situation."
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
       />
     </div>
     
@@ -151,7 +153,7 @@ function RaiseDelayDialog({
         rows={2}
         maxLength={2000}
         placeholder="Optional, fill once known."
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
       />
     </div></FormDrawer>
   );

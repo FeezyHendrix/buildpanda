@@ -58,7 +58,7 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup 
   if (entries.length === 0) return null;
   return (
     <div
-      className="absolute bottom-3 left-3 z-10 flex max-w-64 flex-col rounded-lg border border-gray-200 bg-white/95 shadow-sm backdrop-blur"
+      className="absolute bottom-3 left-3 z-10 flex max-w-64 flex-col rounded-lg border border-line bg-white/95 shadow-sm backdrop-blur"
       onMouseDown={(e) => e.stopPropagation()}
       onMouseMove={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -73,7 +73,7 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup 
         <ChevronDown className={cn("ml-2 size-3 transition-transform", open && "rotate-180")} aria-hidden="true" />
       </button>
       {open ? (
-        <ul className="flex max-h-48 flex-col overflow-y-auto border-t border-gray-100 p-1">
+        <ul className="flex max-h-48 flex-col overflow-y-auto border-t border-line-hair p-1">
           {entries.map((entry) => {
             const active = entry.group === activeGroup;
             return (
@@ -84,7 +84,7 @@ export function SheetLegend({ entries, open, onToggle, activeGroup, onPickGroup 
                   title={active ? "Show every group again" : `Highlight ${entry.group} and dim the rest`}
                   onClick={() => onPickGroup(active ? null : entry.group)}
                   className={cn(
-                    "flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] hover:bg-gray-100",
+                    "flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-xs hover:bg-gray-100",
                     active && "bg-primary-50 text-primary-700 hover:bg-primary-50",
                   )}
                 >

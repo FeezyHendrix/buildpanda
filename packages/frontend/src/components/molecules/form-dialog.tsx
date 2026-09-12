@@ -22,6 +22,7 @@ interface SubmitEventLike {
   preventDefault(): void;
 }
 
+/** Centred form modal: 12px corners, 24px padding, [Cancel · text][Submit · primary] footer. */
 function FormDialog({
   open,
   onOpenChange,
@@ -49,34 +50,34 @@ function FormDialog({
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[min(480px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
             className,
           )}
         >
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="px-6 pt-6">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
+              <Dialog.Title className="text-lg font-medium text-ink">
                 {title}
               </Dialog.Title>
               {description && (
-                <Dialog.Description className="mt-1.5 text-sm text-gray-500 text-pretty">
+                <Dialog.Description className="mt-1 text-sm text-ink-muted text-pretty">
                   {description}
                 </Dialog.Description>
               )}
             </header>
 
-            <div className="flex flex-col gap-4 overflow-y-auto px-6 py-5">{children}</div>
+            <div className="flex flex-col gap-4 overflow-y-auto px-6 py-6">{children}</div>
 
             {error && (
-              <p className="mx-6 mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+              <p className="mx-6 mb-3 rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">
                 {error}
               </p>
             )}
 
-            <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+            <footer className="flex shrink-0 items-center justify-end gap-4 px-6 pb-6">
               <Dialog.Close
                 render={
-                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                  <Button type="button" variant="ghost" size="md">
                     {cancelLabel}
                   </Button>
                 }
@@ -84,11 +85,11 @@ function FormDialog({
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
+                size="md"
+                loading={submitting}
                 disabled={submitting || submitDisabled}
-                className="h-9 px-4 text-sm"
               >
-                {submitting ? "Submitting…" : submitLabel}
+                {submitLabel}
               </Button>
             </footer>
           </form>

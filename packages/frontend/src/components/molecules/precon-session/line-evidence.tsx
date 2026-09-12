@@ -65,7 +65,7 @@ export function LineEvidence({ row }: { row: PreconBoqRow }) {
       {source ? <p className="text-gray-700">{source}</p> : null}
       {basis ? (
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Basis</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Basis</p>
           {sentences(basis).map((s) => (
             <p key={s} className="mt-0.5 text-gray-600">
               {s}
@@ -75,7 +75,7 @@ export function LineEvidence({ row }: { row: PreconBoqRow }) {
       ) : null}
       {checks.length > 0 ? (
         <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Checks</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Checks</p>
           <ul className="mt-0.5 space-y-0.5 text-gray-600">
             {checks.map((c) => (
               <CheckLine key={c} check={c} />

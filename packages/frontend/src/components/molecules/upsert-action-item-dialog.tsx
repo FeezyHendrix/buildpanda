@@ -3,6 +3,8 @@ import { Label } from "@/components/atoms/label";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { FormDrawer } from "./form-drawer";
 import type { ActionPriority, ActionStatus, RecurrenceUnit } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface UpsertActionItemValues {
   title: string;
@@ -51,8 +53,7 @@ const REPEAT: { value: "" | RecurrenceUnit; label: string }[] = [
 
 const UNIT_NOUN: Record<RecurrenceUnit, string> = { day: "day", week: "week", month: "month" };
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function UpsertActionItemDialog({
   open,
@@ -211,7 +212,7 @@ function UpsertActionItemDialog({
                 max={365}
                 value={recurEvery}
                 onChange={(e) => setRecurEvery(e.target.value)}
-                className={`${field} w-20`}
+                className={cn(field, "w-20")}
               />
               <span className="text-sm text-gray-500">
                 {UNIT_NOUN[repeat]}

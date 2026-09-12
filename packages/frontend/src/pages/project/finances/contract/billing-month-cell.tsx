@@ -1,4 +1,5 @@
 import { useCallback, useState, type KeyboardEvent } from "react";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
 import { useUpdateScheduleProgress, type StageScheduleOfValue } from "@/hooks/use-stages";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -112,17 +113,14 @@ export function BillingMonthCell({
             }}
             onKeyDown={handleKeyDown}
             onBlur={commit}
-            className={cn(
-              "h-9 w-full rounded-lg bg-white pl-2 pr-7 text-right text-sm tabular-nums text-black-500 outline-none ring-2",
-              error ? "ring-error-300" : "ring-primary-500/40",
-            )}
+            className={cn(INPUT_SM_CLASS, "pl-2 pr-7 text-right tabular-nums")}
           />
-          <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-black-200">
+          <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-ink-muted">
             {update.isPending ? <Spinner size="xs" /> : "%"}
           </span>
         </div>
         {error ? (
-          <p role="alert" className="max-w-[180px] text-[11px] leading-snug text-error-600">
+          <p role="alert" className="max-w-[180px] text-xs leading-snug text-negative-600">
             {error}
           </p>
         ) : null}
@@ -145,13 +143,13 @@ export function BillingMonthCell({
     >
       <span
         className={cn(
-          "text-[13px] font-semibold tabular-nums",
-          current === null ? "text-black-200" : "text-black-500",
+          "text-sm font-semibold tabular-nums",
+          current === null ? "text-ink-muted" : "text-ink",
         )}
       >
         {formatCumulative(current)}
       </span>
-      <span className="text-[11px] tabular-nums text-black-300">
+      <span className="text-xs tabular-nums text-ink-muted">
         {line && current !== null ? formatCurrency(line.periodAmount, currency) : " "}
       </span>
     </button>

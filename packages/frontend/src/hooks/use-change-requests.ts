@@ -3,17 +3,28 @@ import {
   changeRequestsApi,
   type ChangeRequestBudgetLink,
   type ChangeRequestInput,
+  type ChangeRequestSummary,
 } from "@/api/change-requests";
 import { changeRequestKeys } from "./query-keys";
 import type { ChangeStatus } from "@/lib/project-types";
 
-export type { ChangeRequestInput, ChangeRequestBudgetLink };
+export type { ChangeRequestInput, ChangeRequestBudgetLink, ChangeRequestSummary };
 
 export function useChangeRequests(projectId: string | undefined, status?: ChangeStatus) {
   return useQuery({
     queryKey: changeRequestKeys.list(projectId ?? "__none__", status),
     queryFn: () => changeRequestsApi.list(projectId!, status),
     enabled: Boolean(projectId),
+  });
+}
+
+/** Status counts for the cards; the endpoint may not be live yet, so a failure reads as "no data" (cards show a dash). */
+export function useChangeRequestSummary(projectId: string | undefined) {
+  return useQuery({
+    queryKey: changeRequestKeys.summary(projectId ?? "__none__"),
+    queryFn: () => changeRequestsApi.summary(projectId!),
+    enabled: Boolean(projectId),
+    retry: false,
   });
 }
 

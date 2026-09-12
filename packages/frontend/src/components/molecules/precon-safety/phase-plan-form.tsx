@@ -72,8 +72,8 @@ export function PhasePlanForm({ proposalId }: Props) {
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+    <section className="rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div className="flex items-center gap-2">
           <div>
             <p className="text-sm font-semibold text-gray-900">Construction phase plan</p>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_BASE_CLASS } from "@/components/atoms/input";
 import {
   useAddApprovalComment,
   useApproval,
@@ -90,11 +91,11 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
           )}
         >
           {isLoading || !approval ? (
-            <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
+            <div className="p-8 text-center text-sm text-ink-muted">Loading…</div>
           ) : (
             <>
               <header className="px-6 pt-6">
@@ -107,33 +108,33 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                     <Badge tone="info" size="sm">For {approval.requestedReviewerName}</Badge>
                   )}
                   {approval.dueDate && (
-                    <span className="text-xs text-gray-500">Needed by {formatWhen(approval.dueDate)}</span>
+                    <span className="text-xs text-ink-muted">Needed by {formatWhen(approval.dueDate)}</span>
                   )}
                 </div>
-                <Dialog.Title className="mt-2 text-lg font-semibold text-gray-900">
+                <Dialog.Title className="mt-2 text-lg font-semibold text-ink">
                   {approval.title}
                 </Dialog.Title>
                 {approval.description && (
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">{approval.description}</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{approval.description}</p>
                 )}
               </header>
 
-              <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   {decided ? `Decision · ${APPROVAL_STATUS_META[approval.status].label}` : "Decision"}
                 </p>
                 {decided && approval.response ? (
-                  <div className="mt-2 rounded-xl bg-[#FAFAFA] p-3">
+                  <div className="mt-2 rounded-lg bg-surface-alt p-3">
                     {approval.responseHtml ? (
                       <div
-                        className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
+                        className="prose prose-sm max-w-none text-sm text-ink [&_img]:max-h-64 [&_img]:rounded"
                         dangerouslySetInnerHTML={{ __html: approval.responseHtml }}
                       />
                     ) : (
-                      <p className="whitespace-pre-wrap text-sm text-gray-900">{approval.response}</p>
+                      <p className="whitespace-pre-wrap text-sm text-ink">{approval.response}</p>
                     )}
                     {approval.reviewedByName && (
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-ink-muted">
                         {approval.reviewedByName}
                         {approval.reviewedAt ? ` · ${formatWhen(approval.reviewedAt)}` : ""}
                       </p>
@@ -151,22 +152,22 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                       placeholder="Add a note for your decision (optional)"
                     />
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="primary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
+                      <Button type="button" variant="primary" size="md" loading={updateApproval.isPending} onClick={() => decide("Approved")}>
                         {approval.status === "Approved" ? "Approved" : "Approve"}
                       </Button>
-                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
+                      <Button type="button" variant="secondary" size="md" loading={updateApproval.isPending} onClick={() => decide("Resubmit")}>
                         Request resubmit
                       </Button>
-                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm text-red-600" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
+                      <Button type="button" variant="secondary" size="md" className="text-negative-500" loading={updateApproval.isPending} onClick={() => decide("Rejected")}>
                         {approval.status === "Rejected" ? "Rejected" : "Reject"}
                       </Button>
                     </div>
                     {decided && (
-                      <p className="text-xs text-gray-400">This approval is {APPROVAL_STATUS_META[approval.status].label.toLowerCase()}. Choosing a different outcome updates the decision.</p>
+                      <p className="text-xs text-ink-muted">This approval is {APPROVAL_STATUS_META[approval.status].label.toLowerCase()}. Choosing a different outcome updates the decision.</p>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-gray-500">
+                  <p className="mt-2 text-sm text-ink-muted">
                     {!decided && approval.requestedReviewerName
                       ? `Awaiting a decision from ${approval.requestedReviewerName}.`
                       : decided
@@ -175,39 +176,38 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                   </p>
                 )}
 
-                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({approval.comments.length})
                 </p>
                 {approval.comments.length === 0 ? (
-                  <p className="py-3 text-sm text-gray-500">No comments yet.</p>
+                  <p className="py-3 text-sm text-ink-muted">No comments yet.</p>
                 ) : (
                   <ul className="mt-2 flex flex-col gap-3">
                     {approval.comments.map((c) => (
-                      <li key={c.id} className="rounded-xl bg-[#FAFAFA] p-3">
+                      <li key={c.id} className="rounded-lg bg-surface-alt p-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
-                          <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
+                          <span className="text-sm font-medium text-ink">{c.authorName}</span>
+                          <span className="text-xs text-ink-muted">{formatWhen(c.createdAt)}</span>
                         </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{c.body}</p>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              <footer className="flex items-center gap-2 border-t border-[#F0F0F0] px-6 py-4">
+              <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={1}
                   placeholder="Add a comment…"
-                  className="min-h-[40px] flex-1 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_BASE_CLASS, "min-h-[40px] flex-1 px-3 py-2")}
                 />
                 <Button
                   type="button"
                   variant="primary"
-                  size="sm"
-                  className="h-9 px-4 text-sm"
+                  size="md"
                   disabled={!comment.trim()} loading={addComment.isPending}
                   onClick={submitComment}
                 >
@@ -215,7 +215,7 @@ function ApprovalDetailDialog({ open, onOpenChange, projectId, approvalId, canDe
                 </Button>
                 <Dialog.Close
                   render={
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                    <Button type="button" variant="secondary" size="md">
                       Close
                     </Button>
                   }

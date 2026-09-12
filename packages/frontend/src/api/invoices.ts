@@ -1,6 +1,6 @@
 import api from "./client";
 
-export type InvoiceStatus = "Draft" | "Sent" | "Approved" | "PartiallyPaid" | "Paid" | "Overdue";
+export type InvoiceStatus = "Draft" | "Sent" | "Submitted" | "Queried" | "Approved" | "PartiallyPaid" | "Paid" | "Overdue";
 export type InvoiceType = "progress" | "final" | "variation" | "vendor" | "material";
 
 export type PaymentMethod =
@@ -84,6 +84,39 @@ export interface Invoice {
   sentAt: string | null;
   publicToken: string | null;
   viewedAt: string | null;
+  /** Billing-sheet month (YYYY-MM) a progress invoice bills; null for the other types. */
+  budgetMonth?: string | null;
+  /** Statuses this invoice may move to next; the inline status select offers only these. */
+  nextStatuses?: InvoiceStatus[];
+}
+
+/** One invoice with its recorded payments, as `GET /invoices/payments` lists them. */
+export interface InvoicePaymentsRow {
+  id: string;
+  number: string | null;
+  vendorName: string;
+  invoiceType: InvoiceType;
+  status: InvoiceStatus;
+  workflowStatus?: InvoiceStatus;
+  currency: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  budgetMonth: string | null;
+  netPayable: number;
+  amountPaid: number;
+  balanceDue: number;
+  payments: InvoicePayment[];
+}
+
+export interface InvoicePaymentsTotals {
+  invoiced: number;
+  paid: number;
+  outstanding: number;
+}
+
+export interface InvoicePaymentsResponse {
+  invoices: InvoicePaymentsRow[];
+  totals: InvoicePaymentsTotals;
 }
 
 export interface InvoiceLineItemInput {
@@ -160,8 +193,13 @@ export const invoicesApi = {
   delete: (projectId: string, invoiceId: string) =>
     api.delete(`/projects/${projectId}/invoices/${invoiceId}`).then(r => r.data),
     
+  /** Every invoice with its payments, for the Payments tab. */
+  payments: (projectId: string) =>
+    api.get<InvoicePaymentsResponse>(`/projects/${projectId}/invoices/payments`).then(r => r.data),
+
+  /** Records a payment (finances:approve); the response is the invoice with its balances recomputed. */
   addPayment: (projectId: string, invoiceId: string, body: PaymentInput) =>
-    api.post<InvoicePayment>(`/projects/${projectId}/invoices/${invoiceId}/payments`, body).then(r => r.data),
+    api.post<Invoice>(`/projects/${projectId}/invoices/${invoiceId}/payments`, body).then(r => r.data),
     
   deletePayment: (projectId: string, invoiceId: string, paymentId: string) =>
     api.delete(`/projects/${projectId}/invoices/${invoiceId}/payments/${paymentId}`).then(r => r.data),

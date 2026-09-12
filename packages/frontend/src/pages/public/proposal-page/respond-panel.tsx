@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import type { ClientResponse } from "@/api/proposals";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ export function RespondPanel({ clientName, submitting, error, onRespond }: Props
 
   const copy = COPY[action];
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-lg border border-line bg-gray-50 p-4">
       <p className="text-sm font-semibold text-gray-900">{copy.title}</p>
       <p className="mt-1 text-xs text-gray-500">{copy.hint}</p>
       <div className="mt-4 flex flex-col gap-3">
@@ -74,7 +74,7 @@ export function RespondPanel({ clientName, submitting, error, onRespond }: Props
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
-              className="w-full rounded-lg border-0 bg-white px-3 py-2 text-sm text-gray-900 outline-none ring-1 ring-gray-200 focus:ring-2 focus:ring-primary-200"
+              className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
               placeholder={action === "decline" ? "We went with another contractor" : "Please leave out the boundary wall and split the roof stage in two"}
             />
           </div>

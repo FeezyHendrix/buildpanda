@@ -18,6 +18,16 @@ export interface ChangeRequestInput {
   assigneeId?: string | null;
 }
 
+/** Status counts for the cards on the Change orders page; `grossProfit` is null until costs are recorded. */
+export interface ChangeRequestSummary {
+  draft: number;
+  submitted: number;
+  approved: number;
+  executed: number;
+  rejected: number;
+  grossProfit: number | null;
+}
+
 export interface ChangeRequestBudgetLink {
   budgetCategoryId: string;
   amount: number;
@@ -35,6 +45,11 @@ export const changeRequestsApi = {
   detail: (projectId: string, changeId: string) =>
     api
       .get<ChangeRequestDetail>(`/projects/${projectId}/change-requests/${changeId}`)
+      .then((r) => r.data),
+
+  summary: (projectId: string) =>
+    api
+      .get<ChangeRequestSummary>(`/projects/${projectId}/change-requests/summary`)
       .then((r) => r.data),
 
   create: (projectId: string, body: ChangeRequestInput) =>

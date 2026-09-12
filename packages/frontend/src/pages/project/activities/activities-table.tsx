@@ -41,7 +41,7 @@ export function ActivitiesTable({
   onDelete,
 }: ActivitiesTableProps) {
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
+    <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
       <Table className="min-w-[960px]">
         <TableHead>
           <tr>
@@ -123,15 +123,15 @@ function ActivityRow({
     .join(" · ");
 
   return (
-    <TableRow className="hover:bg-[#FAFAFA]">
+    <TableRow className="hover:bg-surface-alt">
       <TableCell>
-        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
+        <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-surface-alt text-xs font-medium text-ink">
           {index + 1}
         </span>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-900">
+          <span className="font-medium text-ink">
             {titlePrefix}
             {activity.name}
           </span>
@@ -141,7 +141,7 @@ function ActivityRow({
             </Badge>
           ) : null}
         </div>
-        {subLine ? <p className="mt-0.5 text-[12px] text-gray-400">{subLine}</p> : null}
+        {subLine ? <p className="mt-0.5 text-xs text-ink-muted">{subLine}</p> : null}
       </TableCell>
       <TableCell>
         <Badge tone={ACTIVITY_STATUS_TONE[activity.status]} size="sm">
@@ -150,12 +150,12 @@ function ActivityRow({
       </TableCell>
       <TableCell className="whitespace-nowrap">
         {formatDateSpan(activity.plannedStartAt, activity.plannedEndAt)}
-        <p className="mt-0.5 text-[12px] text-gray-400">{schedule.plannedDays} days</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{schedule.plannedDays} days</p>
       </TableCell>
       <TableCell className="whitespace-nowrap">
         {formatDateSpan(activity.actualStartAt, activity.actualEndAt)}
         {schedule.actualDays !== null ? (
-          <p className="mt-0.5 text-[12px] text-gray-400">{schedule.actualDays} days</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{schedule.actualDays} days</p>
         ) : null}
       </TableCell>
       <TableCell
@@ -164,20 +164,20 @@ function ActivityRow({
           schedule.variance === null
             ? undefined
             : schedule.variance > 0
-              ? "text-red-600"
-              : "text-[#1B8E45]",
+              ? "text-negative-500"
+              : "text-success-500",
         )}
       >
         {formatVariance(schedule.variance)}
       </TableCell>
       <TableCell
-        className={cn("whitespace-nowrap", schedule.totalDelayCost > 0 ? "text-[#C26A00]" : undefined)}
+        className={cn("whitespace-nowrap", schedule.totalDelayCost > 0 ? "text-warning-500" : undefined)}
       >
         {schedule.totalDelayCost > 0
           ? formatCurrency(schedule.totalDelayCost, schedule.delayCurrency)
           : "—"}
         {schedule.openDelays > 0 ? (
-          <p className="mt-0.5 text-[12px] text-gray-400">{schedule.openDelays} open</p>
+          <p className="mt-0.5 text-xs text-ink-muted">{schedule.openDelays} open</p>
         ) : null}
       </TableCell>
       <TableCell className="whitespace-nowrap tabular-nums">{activity.percentComplete}%</TableCell>

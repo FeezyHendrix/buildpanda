@@ -88,7 +88,7 @@ export default function LeadsPage() {
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-gray-200">
+          <div className="overflow-hidden rounded-lg border border-line">
             <Table>
               <TableHead>
                 <tr>

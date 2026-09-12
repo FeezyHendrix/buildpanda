@@ -13,7 +13,7 @@ interface Props {
 }
 
 const SCORE_TONE = (score: number | null) =>
-  score === null ? "bg-gray-100 text-gray-500" : score >= 6 ? "bg-red-100 text-red-700" : score >= 3 ? "bg-amber-100 text-amber-700" : "bg-success-100 text-success-700";
+  score === null ? "bg-surface-alt text-ink-muted" : score >= 6 ? "bg-negative-50 text-negative-500" : score >= 3 ? "bg-warning-50 text-warning-500" : "bg-success-50 text-success-500";
 
 // Every field commits on its own: text on blur, selects on change. The row
 // never holds unsaved state longer than one field, so a refresh loses nothing.
@@ -45,7 +45,7 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
         />
         <EnumSelect ariaLabel="Likelihood" value={risk.likelihood} options={RISK_LEVELS_3} placeholder="Likelihood" onChange={(v) => onSave({ likelihood: v })} />
         <EnumSelect ariaLabel="Impact" value={risk.impact} options={RISK_LEVELS_3} placeholder="Impact" onChange={(v) => onSave({ impact: v })} />
-        <span className={cn("flex h-8 items-center justify-center rounded-lg text-xs font-bold tabular-nums", SCORE_TONE(risk.score))} title="Likelihood × impact">
+        <span className={cn("flex h-8 items-center justify-center rounded-lg text-xs font-medium tabular-nums", SCORE_TONE(risk.score))} title="Likelihood × impact">
           {risk.score ?? "—"}
         </span>
         <input
@@ -77,7 +77,7 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <label className="text-xs font-medium uppercase text-ink-muted">
           Cause and effect
           <textarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}
@@ -86,7 +86,7 @@ export function RiskRow({ risk, onSave, onConfirm, onDelete, saving }: Props) {
             onBlur={() => commitText("description", description, risk.description)}
           />
         </label>
-        <label className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <label className="text-xs font-medium uppercase text-ink-muted">
           Mitigation
           <textarea
             className={cn(cellTextareaClass, "mt-1 font-normal normal-case tracking-normal")}

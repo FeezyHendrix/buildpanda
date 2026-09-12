@@ -12,7 +12,7 @@ function StepperBar({ currentStep, totalSteps, className }: StepperBarProps) {
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-900">
+        <span className="font-medium text-ink">
           Step {currentStep} of {totalSteps}
         </span>
         <span className="font-medium text-[#1AE592]">
@@ -26,7 +26,7 @@ function StepperBar({ currentStep, totalSteps, className }: StepperBarProps) {
             key={i}
             className={cn(
               "h-1.5 flex-1 rounded-full",
-              i < currentStep ? "bg-[#1AE592]" : "bg-[#F6F6F6]",
+              i < currentStep ? "bg-[#1AE592]" : "bg-surface-alt",
             )}
           />
         ))}
