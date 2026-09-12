@@ -19,7 +19,8 @@ export interface StageInfo {
 export type ProgressByStage = Map<string, PeriodBillingLine[]>;
 
 export interface PayApplicationRepository {
-  findById(id: string): Promise<{ project_id: string } | undefined>;
+  findById(id: string): Promise<{ project_id: string; billing_period: string | null } | undefined>;
+  setBillingPeriod(invoiceId: string, period: string): Promise<void>;
   listStageLines(invoiceId: string): Promise<InvoiceStageLineRow[]>;
   listStageLinesForStages(
     projectId: string,
@@ -39,9 +40,10 @@ export function payApplicationService(
   progressForProject: (projectId: string) => Promise<ProgressByStage> = async () => new Map(),
   markPeriodBilled: (projectId: string, period: string, stageIds: string[]) => Promise<void> = async () => {},
 ) {
-  async function ownedInvoice(projectId: string, invoiceId: string): Promise<void> {
+  async function ownedInvoice(projectId: string, invoiceId: string): Promise<{ billingPeriod: string | null }> {
     const invoice = await repository.findById(invoiceId);
     if (!invoice || invoice.project_id !== projectId) throw new NotFoundError("Invoice");
+    return { billingPeriod: invoice.billing_period };
   }
 
   // "Billed in previous applications" (AIA) = everything billed on the stage in
@@ -149,11 +151,12 @@ export function payApplicationService(
       invoiceId: string,
       period?: string,
     ): Promise<PayApplicationSummary> {
-      await ownedInvoice(projectId, invoiceId);
+      const invoice = await ownedInvoice(projectId, invoiceId);
+      const month = period ?? invoice.billingPeriod ?? undefined;
       const stages = await stagesForProject(projectId);
       const saved = await repository.listStageLines(invoiceId);
       const lines =
-        saved.length === 0 && period ? await seedFromSheet(projectId, invoiceId, period, stages) : saved;
+        saved.length === 0 && month ? await seedFromSheet(projectId, invoiceId, month, stages) : saved;
       const prior = await priorByStage(
         projectId,
         invoiceId,
@@ -201,6 +204,9 @@ export function payApplicationService(
 
       await repository.replaceStageLines(invoiceId, records);
       if (period) {
+        // The month is persisted on the invoice so the Budget sheet can tell
+        // which months are invoiced without re-deriving it from the lines.
+        await repository.setBillingPeriod(invoiceId, period);
         await markPeriodBilled(projectId, period, records.map((record) => record.stage_id));
       }
       const lines = await repository.listStageLines(invoiceId);

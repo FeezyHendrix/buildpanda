@@ -1,15 +1,21 @@
 import type { FastifyPluginAsync } from "fastify";
 import { buildingsRepository } from "../buildings/repository.ts";
+import { contractsRepository } from "../contracts/repository.ts";
+import { contractsService } from "../contracts/service.ts";
+import { dailyLogsRepository } from "../daily-logs/repository.ts";
+import { documentsRepository } from "../documents/repository.ts";
 import { claimChain } from "../finances/claim-chain.ts";
 import { financesRepository } from "../finances/repository.ts";
+import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
+import { transactionsRepository } from "../transactions/repository.ts";
+import { phaseRollup } from "./phase-rollup.ts";
 import { stagesRepository } from "./repository.ts";
 import {
   stagesService,
   type CreateStageInput,
   type ScheduleOfValueLineInput,
-  type UpdateStageInput,
 } from "./service.ts";
-import type { UpdateScheduleProgressBody } from "./types.ts";
+import type { UpdateScheduleProgressBody, UpdateStageInput } from "./types.ts";
 
 const projectIdParams = {
   type: "object",
@@ -62,6 +68,11 @@ const updateStageBody = {
     endDate: { type: ["string", "null"], maxLength: 40 },
     progressPercent: { type: "integer", minimum: 0, maximum: 100 },
     value: { type: "number", minimum: 0 },
+    contractId: { type: ["string", "null"], minLength: 1, maxLength: 100 },
+    expectedCost: { type: "number", minimum: 0 },
+    estimatedLaborHours: { type: "number", minimum: 0 },
+    laborBudget: { type: "number", minimum: 0 },
+    materialBudget: { type: "number", minimum: 0 },
   },
 } as const;
 
@@ -144,8 +155,14 @@ const scheduleOfValuesResponse = {
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
   const buildings = buildingsRepository(fastify.db);
   const finances = financesRepository(fastify.db);
+  const stages = stagesRepository(fastify.db);
+  const contracts = contractsService(contractsRepository(fastify.db), {
+    finances,
+    stages,
+    documents: documentsRepository(fastify.db),
+  });
   const service = stagesService(
-    stagesRepository(fastify.db),
+    stages,
     (projectId) => buildings.soleRealBuildingId(projectId),
     async (projectId) => {
       const summary = await finances.findSummary(projectId);
@@ -153,6 +170,15 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (projectId, stage) => {
       await claimChain(finances).markStageMilestonesClaimable(projectId, stage, null);
+    },
+    {
+      rollup: phaseRollup({
+        dailyLogs: dailyLogsRepository(fastify.db),
+        purchaseOrders: purchaseOrdersRepository(fastify.db),
+        transactions: transactionsRepository(fastify.db),
+        mainContractId: (projectId) => contracts.mainContractId(projectId),
+      }),
+      contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
     },
   );
 

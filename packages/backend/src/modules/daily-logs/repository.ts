@@ -149,6 +149,20 @@ export function dailyLogsRepository(db: Knex) {
       return row;
     },
 
+    /**
+     * Labour hours logged against each build stage, through the activity the
+     * hours were logged on. One grouped query for the whole project.
+     */
+    hoursByPhase(projectId: string): Promise<{ phase_id: string; total: string }[]> {
+      return db("daily_log_activities as dla")
+        .join("activities as a", "a.id", "dla.activity_id")
+        .where("dla.project_id", projectId)
+        .whereNotNull("a.phase_id")
+        .groupBy("a.phase_id")
+        .select("a.phase_id")
+        .sum({ total: "dla.hours_logged" }) as unknown as Promise<{ phase_id: string; total: string }[]>;
+    },
+
     activityNamesByIds(activityIds: string[]): Promise<{ id: string; name: string }[]> {
       if (activityIds.length === 0) return Promise.resolve([]);
       return db("activities").whereIn("id", activityIds).select("id", "name");

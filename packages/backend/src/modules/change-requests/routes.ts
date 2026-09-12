@@ -1,17 +1,19 @@
 import type { FastifyPluginAsync } from "fastify";
+import { contractsRepository } from "../contracts/repository.ts";
+import { contractsService } from "../contracts/service.ts";
+import { documentsRepository } from "../documents/repository.ts";
 import { financesRepository } from "../finances/repository.ts";
 import { financesService } from "../finances/service.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { stagesRepository } from "../stages/repository.ts";
 import { changeRequestsRepository } from "./repository.ts";
 import {
   changeRequestsService,
   type CreateChangeRequestInput,
   type UpdateChangeRequestInput,
 } from "./service.ts";
-import type { ChangeStatus } from "./types.ts";
-
-const STATUS = ["Draft", "Submitted", "Approved", "Rejected"] as const;
+import { CHANGE_STATUSES as STATUS, type ChangeStatus } from "./types.ts";
 const CURRENCY = ["NGN", "USD"] as const;
 
 const projectIdParams = {
@@ -100,14 +102,45 @@ const commentBody = {
   properties: { body: { type: "string", minLength: 1, maxLength: 2000 } },
 } as const;
 
+const summaryResponse = {
+  200: {
+    type: "object",
+    properties: {
+      draft: { type: "integer" },
+      submitted: { type: "integer" },
+      approved: { type: "integer" },
+      executed: { type: "integer" },
+      rejected: { type: "integer" },
+      grossProfit: { type: ["number", "null"] },
+    },
+  },
+} as const;
+
 const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
-  const finances = financesService(financesRepository(fastify.db));
+  const financesRepo = financesRepository(fastify.db);
+  const finances = financesService(financesRepo);
+  const contracts = contractsService(contractsRepository(fastify.db), {
+    finances: financesRepo,
+    stages: stagesRepository(fastify.db),
+    documents: documentsRepository(fastify.db),
+  });
   const service = changeRequestsService(changeRequestsRepository(fastify.db), {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    contracts,
     recordVariation: async (projectId, input, actor) => {
       await finances.recordVariation(projectId, { amount: input.amount, description: input.description }, actor);
     },
   });
+
+  // Declared before the :changeId routes so "summary" is never read as an id.
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/change-requests/summary",
+    { schema: { params: projectIdParams, response: summaryResponse } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "change-requests", "view");
+      return service.summary(project.id);
+    },
+  );
 
   fastify.get<{ Params: { id: string }; Querystring: { status?: ChangeStatus } }>(
     "/projects/:id/change-requests",

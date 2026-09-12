@@ -13,6 +13,17 @@ export interface Stage {
   progressPercent: number;
   value: number;
   sortOrder: number;
+  /** The contract the stage bills against; a null column resolves to the main contract. */
+  contractId: string | null;
+  /** Estimate figures entered on the Phases tab. */
+  expectedCost: number;
+  estimatedLaborHours: number;
+  laborBudget: number;
+  materialBudget: number;
+  /** Used figures rolled up from daily logs, purchase orders and expenses. */
+  usedLaborHours: number;
+  usedMaterialCost: number;
+  totalCost: number;
 }
 
 export interface StageRow {
@@ -27,6 +38,38 @@ export interface StageRow {
   progress_percent: number;
   value: string;
   sort_order: number;
+  contract_id: string | null;
+  expected_cost: string;
+  estimated_labor_hours: string;
+  labor_budget: string;
+  material_budget: string;
+}
+
+/** What each stage has used so far, stitched from three module sums. */
+export interface StageUsage {
+  usedLaborHours: number;
+  usedMaterialCost: number;
+  totalCost: number;
+}
+
+/** Stage count per contract; a null `contract_id` is the main-contract bucket. */
+export interface StageContractCountRow {
+  contract_id: string | null;
+  count: string;
+}
+
+export interface UpdateStageInput {
+  name?: string;
+  status?: StageStatus;
+  startDate?: string | null;
+  endDate?: string | null;
+  progressPercent?: number;
+  value?: number;
+  contractId?: string | null;
+  expectedCost?: number;
+  estimatedLaborHours?: number;
+  laborBudget?: number;
+  materialBudget?: number;
 }
 
 export interface StageScheduleOfValue {

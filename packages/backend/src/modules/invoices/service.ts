@@ -1,350 +1,30 @@
 import { config } from "../../config/index.ts";
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
-import type { InvoicesRepository, NewInvoiceLineItemRecord } from "./repository.ts";
+import { Money } from "../../lib/money.ts";
+import {
+  computeMoney,
+  itemRecords,
+  normalizeParty,
+  optional,
+  optionalArray,
+  optionalRate,
+  validateLineItems,
+} from "./invoice-inputs.ts";
+import { num, toInvoice } from "./invoice-mapper.ts";
+import { assertInvoiceTransition, toDatabaseStatus, toWorkflowStatus } from "./invoice-status.ts";
+import type { InvoicesRepository } from "./repository.ts";
 import type {
+  AddPaymentInput,
+  CreateInvoiceInput,
+  EditInvoiceInput,
   Invoice,
   InvoiceBudgetAllocation,
-  InvoiceLineItem,
   InvoiceLineItemRow,
-  InvoiceParty,
-  InvoicePayment,
   InvoicePaymentRow,
   InvoiceRow,
-  InvoiceStatus,
-  InvoiceType,
-  PaymentMethod,
-  StoredInvoiceStatus,
+  SendInvoiceInput,
 } from "./types.ts";
-import { Money } from "../../lib/money.ts";
-
-export interface InvoicePartyInput {
-  name?: string | null;
-  address?: string | null;
-  tin?: string | null;
-  firsNumber?: string | null;
-  email?: string | null;
-  bank?: {
-    accountName?: string | null;
-    accountNumber?: string | null;
-    bankName?: string | null;
-  } | null;
-}
-
-export interface InvoiceLineItemInput {
-  description: string;
-  quantity?: number;
-  unit?: string;
-  unitRate?: number;
-  budgetCategoryId?: string;
-  isVariation?: boolean;
-}
-
-export interface CreateInvoiceInput {
-  vendorName: string;
-  trade: string;
-  number?: string;
-  status?: StoredInvoiceStatus;
-  amount?: number;
-  retainagePercentage?: number;
-  invoiceType?: InvoiceType;
-  currency?: string;
-  vatRate?: number;
-  whtRate?: number;
-  retentionRate?: number;
-  issueDate?: string;
-  dueDate?: string;
-  notes?: string;
-  fromParty?: InvoicePartyInput | null;
-  toParty?: InvoicePartyInput | null;
-  recipientEmail?: string;
-  ccEmails?: string[];
-  bccEmails?: string[];
-  poReferenceId?: string;
-  paymentClaimId?: string;
-  milestonePaymentId?: string;
-  contractReference?: string;
-  paymentTerms?: string;
-  paymentInstructions?: string;
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-  sourceFileId?: string;
-  lineItems?: InvoiceLineItemInput[];
-}
-
-export interface EditInvoiceInput {
-  vendorName?: string;
-  trade?: string;
-  number?: string;
-  status?: StoredInvoiceStatus;
-  amount?: number;
-  retainagePercentage?: number;
-  invoiceType?: InvoiceType;
-  currency?: string;
-  vatRate?: number;
-  whtRate?: number;
-  retentionRate?: number;
-  issueDate?: string;
-  dueDate?: string;
-  notes?: string;
-  fromParty?: InvoicePartyInput | null;
-  toParty?: InvoicePartyInput | null;
-  recipientEmail?: string;
-  ccEmails?: string[];
-  bccEmails?: string[];
-  poReferenceId?: string;
-  paymentClaimId?: string;
-  milestonePaymentId?: string;
-  contractReference?: string;
-  paymentTerms?: string;
-  paymentInstructions?: string;
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-  lineItems?: InvoiceLineItemInput[];
-}
-
-export interface AddPaymentInput {
-  amount: number;
-  method?: PaymentMethod;
-  paidAt?: string;
-  note?: string;
-}
-
-export interface SendInvoiceInput {
-  recipientEmail: string;
-  cc?: string[];
-  bcc?: string[];
-  coverNote?: string;
-  headerText?: string;
-  footerText?: string;
-}
-
-interface MoneySnapshot {
-  subtotal: number;
-  vatRate: number;
-  whtRate: number;
-  retentionRate: number;
-  vatAmount: number;
-  whtAmount: number;
-  retentionAmount: number;
-  totalInvoiced: number;
-  netPayable: number;
-}
-
-function num(value: string | null | undefined): number {
-  return Number(value ?? 0);
-}
-
-function optional(value: string | null | undefined): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function optionalArray(value: string[] | undefined): string[] | null | undefined {
-  if (value === undefined) return undefined;
-  const clean = value.map((item) => item.trim()).filter(Boolean);
-  return clean.length > 0 ? clean : null;
-}
-
-function optionalRate(value: number | undefined): number | undefined {
-  if (value === undefined) return undefined;
-  if (value < 0 || value > 100) throw new BadRequestError("Rate must be between 0 and 100");
-  return value;
-}
-
-function toWorkflowStatus(status: StoredInvoiceStatus | InvoiceStatus | undefined): StoredInvoiceStatus {
-  if (status === undefined) return "Draft";
-  if (status === "Submitted") return "Sent";
-  if (status === "Draft" || status === "Sent" || status === "Approved") return status;
-  if (status === "Paid" || status === "PartiallyPaid" || status === "Overdue") return "Approved";
-  throw new BadRequestError("Invoice status must be Draft, Sent, or Approved");
-}
-
-function toDatabaseStatus(status: StoredInvoiceStatus): StoredInvoiceStatus {
-  return status === "Sent" ? "Submitted" : status;
-}
-
-function normalizeParty(input: InvoicePartyInput | null | undefined): InvoiceParty | null | undefined {
-  if (input === undefined) return undefined;
-  if (input === null) return null;
-  return {
-    name: optional(input.name) ?? null,
-    address: optional(input.address) ?? null,
-    tin: optional(input.tin) ?? null,
-    firsNumber: optional(input.firsNumber) ?? null,
-    email: optional(input.email) ?? null,
-    bank: {
-      accountName: optional(input.bank?.accountName) ?? null,
-      accountNumber: optional(input.bank?.accountNumber) ?? null,
-      bankName: optional(input.bank?.bankName) ?? null,
-    },
-  };
-}
-
-function toPayment(row: InvoicePaymentRow): InvoicePayment {
-  return {
-    id: row.id,
-    amount: num(row.amount),
-    method: row.method,
-    paidAt: row.paid_at,
-    note: row.note,
-  };
-}
-
-function toLineItem(row: InvoiceLineItemRow): InvoiceLineItem {
-  return {
-    id: row.id,
-    position: row.position,
-    description: row.description,
-    quantity: num(row.quantity),
-    unit: row.unit,
-    unitRate: num(row.unit_rate),
-    amount: num(row.amount),
-    budgetCategoryId: row.budget_category_id,
-    isVariation: row.is_variation,
-  };
-}
-
-function deriveStatus(
-  row: InvoiceRow,
-  amountPaid: number,
-  balanceDue: number,
-  netPayable: number,
-): InvoiceStatus {
-  const workflowStatus = toWorkflowStatus(row.status);
-  if (balanceDue <= 0 && netPayable > 0) return "Paid";
-  if (amountPaid > 0) return "PartiallyPaid";
-  const dueDate = row.due_date ? new Date(row.due_date) : null;
-  if (dueDate && dueDate < new Date() && balanceDue > 0 && workflowStatus !== "Draft") return "Overdue";
-  return workflowStatus === "Submitted" ? "Sent" : workflowStatus;
-}
-
-function toInvoice(
-  row: InvoiceRow,
-  paymentRows: InvoicePaymentRow[],
-  lineItemRows: InvoiceLineItemRow[],
-): Invoice {
-  const amount = num(row.amount);
-  const retainagePercentage = num(row.retainage_percentage);
-  const retainageAmount = Money.of(amount).percent(retainagePercentage).round(2).toNumber();
-  const payableAmount = Money.of(amount).sub(retainageAmount).round(2).toNumber();
-  const payments = paymentRows.map(toPayment);
-  const amountPaid = Money.sum(payments.map((p) => p.amount)).round(2).toNumber();
-  const netPayable = num(row.net_payable);
-  const balanceDue = Money.of(netPayable).sub(amountPaid).round(2).toNumber();
-  const workflowStatus = toWorkflowStatus(row.status);
-
-  return {
-    id: row.id,
-    invoiceType: row.invoice_type,
-    vendorName: row.vendor_name,
-    trade: row.trade,
-    number: row.number,
-    status: deriveStatus(row, amountPaid, balanceDue, netPayable),
-    workflowStatus,
-    currency: row.currency,
-    amount,
-    retainagePercentage,
-    vatRate: num(row.vat_rate),
-    whtRate: num(row.wht_rate),
-    retentionRate: num(row.retention_rate),
-    subtotal: num(row.subtotal),
-    vatAmount: num(row.vat_amount),
-    whtAmount: num(row.wht_amount),
-    retentionAmount: num(row.retention_amount),
-    totalInvoiced: num(row.total_invoiced),
-    netPayable,
-    issueDate: row.issue_date,
-    dueDate: row.due_date,
-    notes: row.notes,
-    fromParty: row.from_party,
-    toParty: row.to_party,
-    recipientEmail: row.recipient_email,
-    ccEmails: row.cc_emails ?? [],
-    bccEmails: row.bcc_emails ?? [],
-    poReferenceId: row.po_reference_id,
-    paymentClaimId: row.payment_claim_id,
-    milestonePaymentId: row.milestone_payment_id,
-    contractReference: row.contract_reference,
-    paymentTerms: row.payment_terms,
-    paymentInstructions: row.payment_instructions,
-    coverNote: row.cover_note,
-    headerText: row.header_text,
-    footerText: row.footer_text,
-    sentAt: row.sent_at,
-    sentTo: row.sent_to,
-    publicToken: row.public_token,
-    viewedAt: row.viewed_at,
-    pdfStorageKey: row.pdf_storage_key,
-    retainageAmount,
-    payableAmount,
-    amountPaid,
-    balanceDue,
-    lineItems: lineItemRows.map(toLineItem),
-    payments,
-  };
-}
-
-function validateLineItems(items: InvoiceLineItemInput[]): void {
-  for (const item of items) {
-    if (item.description.trim().length === 0) throw new BadRequestError("Line item description is required");
-    const quantity = item.quantity ?? 1;
-    const unitRate = item.unitRate ?? 0;
-    if (quantity <= 0) throw new BadRequestError("Line item quantity must be positive");
-    if (unitRate < 0) throw new BadRequestError("Line item unit rate cannot be negative");
-  }
-}
-
-function computeMoney(
-  items: InvoiceLineItemInput[],
-  rates: { vatRate?: number; whtRate?: number; retentionRate?: number },
-): MoneySnapshot {
-  const subtotal = Money.sum(
-    items.map((item) => Money.of(item.quantity ?? 1).mul(item.unitRate ?? 0)),
-  ).round(2);
-  const vatRate = rates.vatRate ?? config.finance.vatPct;
-  const whtRate = rates.whtRate ?? config.finance.whtPct;
-  const retentionRate = rates.retentionRate ?? config.finance.retentionPct;
-  const vatAmount = subtotal.percent(vatRate).round(2);
-  const totalInvoiced = subtotal.add(vatAmount).round(2);
-  const whtAmount = subtotal.percent(whtRate).round(2);
-  const retentionAmount = subtotal.percent(retentionRate).round(2);
-  const netPayable = totalInvoiced.sub(whtAmount).sub(retentionAmount).round(2);
-  return {
-    subtotal: subtotal.toNumber(),
-    vatRate,
-    whtRate,
-    retentionRate,
-    vatAmount: vatAmount.toNumber(),
-    whtAmount: whtAmount.toNumber(),
-    retentionAmount: retentionAmount.toNumber(),
-    totalInvoiced: totalInvoiced.toNumber(),
-    netPayable: netPayable.toNumber(),
-  };
-}
-
-function itemRecords(invoiceId: string, items: InvoiceLineItemInput[]): NewInvoiceLineItemRecord[] {
-  return items.map((item, index) => {
-    const quantity = item.quantity ?? 1;
-    const unitRate = item.unitRate ?? 0;
-    return {
-      id: generateId("invl"),
-      invoice_id: invoiceId,
-      position: index,
-      description: item.description.trim(),
-      quantity: String(quantity),
-      unit: optional(item.unit) ?? null,
-      unit_rate: String(unitRate),
-      amount: String(Money.of(quantity).mul(unitRate).round(2).toNumber()),
-      budget_category_id: optional(item.budgetCategoryId) ?? null,
-      is_variation: item.isVariation ?? false,
-    };
-  });
-}
 
 export function invoicesService(repository: InvoicesRepository) {
   async function buildInvoice(row: InvoiceRow): Promise<Invoice> {
@@ -520,7 +200,10 @@ export function invoicesService(repository: InvoicesRepository) {
       if (input.vendorName !== undefined) patch.vendor_name = input.vendorName.trim();
       if (input.trade !== undefined) patch.trade = input.trade.trim();
       if (input.number !== undefined) patch.number = optional(input.number) ?? null;
-      if (input.status !== undefined) patch.status = toDatabaseStatus(toWorkflowStatus(input.status));
+      if (input.status !== undefined) {
+        assertInvoiceTransition(existing.status, input.status);
+        patch.status = toDatabaseStatus(toWorkflowStatus(input.status));
+      }
       if (input.invoiceType !== undefined) patch.invoice_type = input.invoiceType;
       if (input.currency !== undefined) patch.currency = optional(input.currency) ?? defaults.currency;
       if (input.retainagePercentage !== undefined) patch.retainage_percentage = String(input.retainagePercentage);
@@ -558,8 +241,11 @@ export function invoicesService(repository: InvoicesRepository) {
       const recipientEmail = optional(input.recipientEmail);
       if (!recipientEmail) throw new BadRequestError("Recipient email is required");
       const sentAt = new Date();
+      // Sending bills the invoice; re-sending an approved one only re-delivers
+      // the document and never walks the ladder backwards.
+      const billsNow = toWorkflowStatus(existing.status) === "Draft" || toWorkflowStatus(existing.status) === "Queried";
       const patch: Parameters<typeof repository.update>[1] = {
-        status: "Submitted",
+        ...(billsNow ? { status: "Submitted" as const } : {}),
         recipient_email: recipientEmail,
         cc_emails: optionalArray(input.cc) ?? null,
         bcc_emails: optionalArray(input.bcc) ?? null,

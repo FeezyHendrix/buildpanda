@@ -1,5 +1,10 @@
 import type { Knex } from "knex";
-import type { StageRow, StageStatus, StageScheduleOfValueRow } from "./types.ts";
+import type {
+  StageContractCountRow,
+  StageRow,
+  StageStatus,
+  StageScheduleOfValueRow,
+} from "./types.ts";
 
 export interface NewStageRecord {
   id: string;
@@ -13,6 +18,7 @@ export interface NewStageRecord {
   progress_percent: number;
   value: string;
   sort_order: number;
+  contract_id: string | null;
 }
 
 export interface StageUpdatePatch {
@@ -24,6 +30,11 @@ export interface StageUpdatePatch {
   progress_percent?: number;
   value?: string;
   sort_order?: number;
+  contract_id?: string | null;
+  expected_cost?: string;
+  estimated_labor_hours?: string;
+  labor_budget?: string;
+  material_budget?: string;
 }
 
 export interface NewStageScheduleOfValueRecord {
@@ -58,6 +69,11 @@ const COLUMNS = [
   "progress_percent",
   "value",
   "sort_order",
+  "contract_id",
+  "expected_cost",
+  "estimated_labor_hours",
+  "labor_budget",
+  "material_budget",
 ] as const;
 
 export function stagesRepository(db: Knex) {
@@ -99,6 +115,15 @@ export function stagesRepository(db: Knex) {
 
     async remove(id: string): Promise<void> {
       await db("project_phases").where({ id }).del();
+    },
+
+    /** One row per contract (null = main contract) with how many stages sit on it. */
+    countByContract(projectId: string): Promise<StageContractCountRow[]> {
+      return db("project_phases")
+        .where({ project_id: projectId })
+        .groupBy("contract_id")
+        .select("contract_id")
+        .count<StageContractCountRow[]>("id as count");
     },
 
     /** Persists a new ordering; sort_order = index in the provided id list. */

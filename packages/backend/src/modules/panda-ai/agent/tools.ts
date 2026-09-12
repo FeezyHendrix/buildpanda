@@ -2,7 +2,6 @@ import type { Knex } from "knex";
 import { openStoredFile, streamToBuffer } from "../../../lib/file-storage.ts";
 import { extractDocumentText } from "../../../lib/document-text.ts";
 import { renderPdfPagesToPng, pngToDataUrl } from "../../../lib/document-render.ts";
-import type { LlmTool } from "../../../lib/llm.ts";
 import { chatVision } from "../../../lib/llm-vision.ts";
 import {
   assertProjectPermission,
@@ -22,7 +21,9 @@ import { financesRepository } from "../../finances/repository.ts";
 import { stageCostsService } from "../../finances/stage-costs.ts";
 import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
+import { financeTools } from "./finance-tools.ts";
 import { agentRepository } from "./repository.ts";
+import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
 
 export interface ToolResult {
   output: unknown;
@@ -61,11 +62,6 @@ function callerAccessContext(ctx: ToolContext) {
     projectSectionPermissions: ctx.caller.projectSectionPermissions,
     projectGrants: ctx.caller.projectGrants,
   };
-}
-
-interface AgentTool {
-  spec: LlmTool;
-  run(ctx: ToolContext, args: Record<string, unknown>): Promise<ToolResult>;
 }
 
 const NAV_TARGETS: Record<string, string> = {
@@ -112,26 +108,7 @@ const NAV_TARGETS: Record<string, string> = {
   settings: "settings",
 };
 
-function tool(spec: LlmTool, run: AgentTool["run"]): AgentTool {
-  return { spec, run };
-}
-
-function fn(name: string, description: string, properties: Record<string, unknown> = {}, required: string[] = []): LlmTool {
-  return {
-    type: "function",
-    function: {
-      name,
-      description,
-      parameters: { type: "object", properties, required, additionalProperties: false },
-    },
-  };
-}
-
 const MAX_DOC_TEXT_CHARS = 16000;
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 function optionalString(value: unknown, maxLength: number): string | null {
   if (value === undefined || value === null) return null;
@@ -144,10 +121,6 @@ function requiredString(value: unknown, maxLength: number, field: string): strin
   if (!s) throw new Error(`${field} is required`);
   return s;
 }
-
-// The stored invoice workflow statuses; payment state (paid/overdue) is derived
-// from payments + due date, so it is exposed as amountPaid/outstanding/isOverdue.
-const INVOICE_WORKFLOW_STATUSES = ["Draft", "Sent", "Approved", "Submitted"] as const;
 
 export function buildTools(): AgentTool[] {
   return [
@@ -376,53 +349,6 @@ export function buildTools(): AgentTool[] {
           count: typedRows.length,
         },
         navigate: "transactions",
-      };
-    }),
-
-    tool(fn("get_invoices", "Get the project's invoices in detail: number, vendor, billed-to party, workflow status, issue/due dates, total, amount paid, outstanding balance and an isOverdue flag. Use for questions about specific invoices, what is unpaid, or what is overdue. get_finances is only the high-level budget summary.", { status: { type: "string", enum: [...INVOICE_WORKFLOW_STATUSES], description: "Optional workflow status filter" } }), async (ctx, args) => {
-      const repo = agentRepository(ctx.db);
-      const status = optionalString(args.status, 20) ?? undefined;
-      const invoices = (await repo.invoices(ctx.projectId, status)) as Array<{
-        id: string;
-        number: string | null;
-        vendor_name: string;
-        invoice_type: string;
-        status: string;
-        currency: string;
-        issue_date: string | null;
-        due_date: string | null;
-        total_invoiced: string | null;
-        net_payable: string | null;
-        to_party: unknown;
-        amount_paid: string | null;
-      }>;
-      const now = Date.now();
-      return {
-        output: invoices.map((i) => {
-          const paid = round2(Number(i.amount_paid ?? 0));
-          const netPayable = Number(i.net_payable ?? 0);
-          const outstanding = round2(netPayable - paid);
-          const toParty = i.to_party as { name?: string | null } | null;
-          return {
-            id: i.id,
-            number: i.number,
-            vendor: i.vendor_name,
-            billedTo: toParty?.name ?? null,
-            type: i.invoice_type,
-            status: i.status,
-            currency: i.currency,
-            issueDate: i.issue_date,
-            dueDate: i.due_date,
-            total: Number(i.total_invoiced ?? 0),
-            amountPaid: paid,
-            outstanding,
-            isOverdue:
-              Boolean(i.due_date) &&
-              new Date(String(i.due_date)).getTime() < now &&
-              outstanding > 0 &&
-              i.status !== "Draft",
-          };
-        }),
       };
     }),
 
@@ -1069,6 +995,8 @@ export function buildTools(): AgentTool[] {
         },
       };
     }),
+
+    ...financeTools(),
 
     tool(fn("navigate", "Point the user to a page in the app. Returns a navigation target the UI shows as a button. Use when the user asks to go somewhere or you reference a page they should open.", { target: { type: "string", description: `One of: ${Object.keys(NAV_TARGETS).join(", ")}` } }, ["target"]), async (ctx, args) => {
       const key = String(args.target ?? "").toLowerCase();

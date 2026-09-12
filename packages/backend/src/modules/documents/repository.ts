@@ -97,6 +97,13 @@ export function documentsRepository(db: Knex) {
       return db<CategoryRow>("document_categories").where({ id }).first();
     },
 
+    /** Display names for a set of documents in one query (for cross-module DTOs). */
+    async fileNamesByIds(ids: string[]): Promise<Map<string, string>> {
+      if (ids.length === 0) return new Map();
+      const rows = await db<DocumentRow>("project_documents").whereIn("id", ids).select("id", "file_name");
+      return new Map(rows.map((row) => [row.id, row.file_name]));
+    },
+
     findDocumentById(id: string): Promise<DocumentRow | undefined> {
       return db<DocumentRow>("project_documents").where({ id }).first();
     },
