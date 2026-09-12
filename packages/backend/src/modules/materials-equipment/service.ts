@@ -274,7 +274,19 @@ export function materialsEquipmentService(repository: MaterialsEquipmentReposito
     async updateMaterialOrder(projectId: string, orderId: string, input: UpdateMaterialOrderInput): Promise<MaterialOrder> {
       const current = await materialRow(projectId, orderId);
       if (input.status) assertMaterialTransition(current.status, input.status);
+      // A transition is the moment the thing happened: reaching Ordered dates
+      // the order, reaching Delivered dates the delivery, unless the caller
+      // states the real date. Without this both stayed null for ever.
+      const today = new Date().toISOString().slice(0, 10);
+      const stamps: { ordered_at?: string; delivered_at?: string } = {};
+      if (input.status === "Ordered" && current.status !== "Ordered" && !current.ordered_at && !input.orderedAt) {
+        stamps.ordered_at = today;
+      }
+      if (input.status === "Delivered" && current.status !== "Delivered" && !current.delivered_at && !input.deliveredAt) {
+        stamps.delivered_at = today;
+      }
       const row = await repository.updateMaterialOrder(orderId, {
+        ...stamps,
         ...(input.title !== undefined ? { title: requiredText(input.title) } : {}),
         ...(input.materialName !== undefined ? { material_name: requiredText(input.materialName) } : {}),
         ...(input.quantity !== undefined ? { quantity: String(input.quantity) } : {}),

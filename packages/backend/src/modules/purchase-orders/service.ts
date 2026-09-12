@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
+import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type {
   NewPurchaseOrderItemRecord,
@@ -115,6 +115,24 @@ export function purchaseOrdersService(repository: PurchaseOrdersRepository) {
     return toPurchaseOrder(row, items);
   }
 
+  // Forward-only, mirroring material orders: money committed to a supplier
+  // does not un-issue itself, and a closed order stays closed.
+  const PURCHASE_ORDER_FORWARD: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
+    Draft: ["Issued", "Cancelled"],
+    Issued: ["PartiallyReceived", "Received", "Cancelled"],
+    PartiallyReceived: ["Received", "Cancelled"],
+    Received: ["Closed"],
+    Closed: [],
+    Cancelled: [],
+  };
+
+  function assertPurchaseOrderTransition(from: PurchaseOrderStatus, to: PurchaseOrderStatus): void {
+    if (from === to) return;
+    if (!PURCHASE_ORDER_FORWARD[from].includes(to)) {
+      throw new ConflictError(`Cannot move purchase order from ${from} to ${to}`);
+    }
+  }
+
   async function getOwnedPurchaseOrder(
     projectId: string,
     purchaseOrderId: string,
@@ -163,8 +181,9 @@ export function purchaseOrdersService(repository: PurchaseOrdersRepository) {
       purchaseOrderId: string,
       input: EditPurchaseOrderInput,
     ): Promise<PurchaseOrder> {
-      await getOwnedPurchaseOrder(projectId, purchaseOrderId);
+      const current = await getOwnedPurchaseOrder(projectId, purchaseOrderId);
       validateItems(input.items);
+      if (input.status !== undefined) assertPurchaseOrderTransition(current.status, input.status);
       const patch: Parameters<typeof repository.update>[1] = {};
       if (input.poNumber !== undefined) patch.po_number = input.poNumber.trim();
       if (input.vendorName !== undefined) patch.vendor_name = input.vendorName.trim();
