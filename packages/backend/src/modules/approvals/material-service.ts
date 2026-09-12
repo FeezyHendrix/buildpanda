@@ -1,4 +1,4 @@
-import { NotFoundError } from "../../lib/errors.ts";
+import { ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type {
   MaterialApprovalDetailPatch,
@@ -20,6 +20,7 @@ import {
 import type { ApprovalUpdatePatch } from "./repository.ts";
 import {
   DECISION_STATUSES,
+  type ApprovalStatus,
   type ApprovalComment,
   type ApprovalCommentRow,
   type ApprovalRow,
@@ -106,6 +107,23 @@ function detailPatchFrom(input: UpdateMaterialApprovalInput): MaterialApprovalDe
   if (input.phaseId !== undefined) patch.phase_id = input.phaseId;
   if (input.activityId !== undefined) patch.activity_id = input.activityId;
   return patch;
+}
+
+// A decision can be revisited by reopening to Pending, and a resubmission
+// request can be answered with a decision, but Approved never turns straight
+// into Rejected: the record must show it was reopened first.
+const APPROVAL_FORWARD: Record<ApprovalStatus, ApprovalStatus[]> = {
+  Pending: ["Approved", "Rejected", "Resubmit"],
+  Resubmit: ["Pending", "Approved", "Rejected"],
+  Approved: ["Pending"],
+  Rejected: ["Pending", "Resubmit"],
+};
+
+function assertApprovalTransition(from: ApprovalStatus, to: ApprovalStatus): void {
+  if (from === to) return;
+  if (!APPROVAL_FORWARD[from].includes(to)) {
+    throw new ConflictError(`Cannot move a material approval from ${from} to ${to}`);
+  }
 }
 
 export function materialApprovalsService(
@@ -215,6 +233,7 @@ export function materialApprovalsService(
       }
 
       if (input.status !== undefined) {
+        assertApprovalTransition(existing.status, input.status);
         patch.status = input.status;
         if (
           DECISION_STATUSES.includes(input.status) &&
