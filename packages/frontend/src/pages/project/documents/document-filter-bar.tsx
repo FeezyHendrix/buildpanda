@@ -50,6 +50,7 @@ export function DocumentFilterBar({
         placeholder="All categories"
         searchPlaceholder="Find a category"
         emptyText="No category matches."
+        variant="filter"
         className="lg:w-56"
       />
     </div>

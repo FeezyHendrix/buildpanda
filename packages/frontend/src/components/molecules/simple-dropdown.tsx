@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { FilterTrigger } from "@/components/atoms/filter-trigger";
 import { cn } from "@/lib/utils";
 
 interface DropdownOption<T extends string> {
@@ -40,19 +41,14 @@ function SimpleDropdown<T extends string>({
 
   return (
     <div ref={ref} className={cn("relative", className)}>
-      <button
-        type="button"
+      <FilterTrigger
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#F0F0F0] bg-white px-3 text-[13px] font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
       >
         {selected.label}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="m3 4.5 3 3 3-3" />
-        </svg>
-      </button>
+      </FilterTrigger>
       {open ? (
         <div role="listbox" className="absolute right-0 top-full z-50 mt-1 min-w-[160px] rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
           {options.map((opt) => (
