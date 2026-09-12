@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -149,17 +149,13 @@ export default function ProjectEquipmentRequests() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="Rental / equipment requests"
-        badges={<Badge tone="info">{activeMeta.label}</Badge>}
+        title="Equipment requests"
         actions={
           <div className="flex flex-wrap gap-2">
-            <Link
-              to={`/project/${project.id}/materials`}
-              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-200"
-            >
+            <Button variant="secondary" size="md" onClick={() => navigate(`/project/${project.id}/materials`)}>
               Materials
               <ChevronRightIcon className="size-4" />
-            </Link>
+            </Button>
             {canRequest && (
               <Button
                 variant="primary"
