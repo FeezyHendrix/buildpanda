@@ -4,12 +4,12 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { SimpleDropdown, type DropdownOption } from "@/components/molecules/simple-dropdown";
 import { DateRangeFilter, formatDateRangeLabel } from "@/components/molecules/date-range-filter";
 import { LOOK_AHEAD_STATUSES, type LookAhead, type LookAheadStatus } from "@/lib/project-types";
-import { cn } from "@/lib/utils";
 import { formatLookAheadDate, LOOK_AHEAD_STATUS_META } from "./look-ahead-helpers";
 
 type StatusFilter = LookAheadStatus | "all";
@@ -26,8 +26,6 @@ const SORT_OPTIONS: DropdownOption<SortMode>[] = [
   { value: "end-desc", label: "Latest end" },
   { value: "status", label: "Status" },
 ];
-
-const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
 
 function compareRows(sort: SortMode, a: LookAhead, b: LookAhead): number {
   if (sort === "start-asc") return a.startDate.localeCompare(b.startDate);
@@ -116,35 +114,33 @@ export function LookAheadsTable({
             action={canManage ? { label: "Add look ahead", onClick: onCreate } : undefined}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[980px] w-full text-left text-sm">
-              <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
-                <tr>
-                  <th className={HEAD_CELL}>Name</th>
-                  <th className={HEAD_CELL}>Status</th>
-                  <th className={HEAD_CELL}>Manpower</th>
-                  <th className={HEAD_CELL}>Start date</th>
-                  <th className={HEAD_CELL}>End date</th>
-                  <th className={HEAD_CELL}>Activities</th>
-                  <th className={HEAD_CELL}>Materials</th>
-                  <th className={cn(HEAD_CELL, "text-right")}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EDEDED]">
-                {rows.map((lookAhead) => (
-                  <LookAheadRow
-                    key={lookAhead.id}
-                    lookAhead={lookAhead}
-                    canManage={canManage}
-                    activityCoverage={activityCoverage}
-                    onView={onView}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[980px]">
+            <TableHead>
+              <tr>
+                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Manpower</TableHeaderCell>
+                <TableHeaderCell>Start date</TableHeaderCell>
+                <TableHeaderCell>End date</TableHeaderCell>
+                <TableHeaderCell>Activities</TableHeaderCell>
+                <TableHeaderCell>Materials</TableHeaderCell>
+                <TableHeaderCell align="right">Actions</TableHeaderCell>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {rows.map((lookAhead) => (
+                <LookAheadRow
+                  key={lookAhead.id}
+                  lookAhead={lookAhead}
+                  canManage={canManage}
+                  activityCoverage={activityCoverage}
+                  onView={onView}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Card>
     </>
@@ -163,27 +159,27 @@ function LookAheadRow({
   const material = materialState(lookAhead, activityCoverage);
 
   return (
-    <tr className="bg-white align-middle text-gray-700 transition-colors hover:bg-[#FAFAFA]">
-      <td className="max-w-[260px] px-4 py-4">
+    <TableRow className="bg-white align-middle transition-colors hover:bg-[#FAFAFA]">
+      <TableCell className="max-w-[260px]">
         <button type="button" onClick={() => onView(lookAhead)} className="text-left">
           <span className="block truncate font-semibold text-gray-900 hover:text-primary-700">{lookAhead.name}</span>
           {lookAhead.description ? <span className="mt-1 line-clamp-1 text-xs text-gray-500">{lookAhead.description}</span> : null}
         </button>
-      </td>
-      <td className="px-4 py-4"><Badge tone={status.tone} size="sm">{status.label}</Badge></td>
-      <td className="px-4 py-4 tabular-nums">{lookAhead.totalWorkers ?? "-"}</td>
-      <td className="px-4 py-4 whitespace-nowrap">{formatLookAheadDate(lookAhead.startDate)}</td>
-      <td className="px-4 py-4 whitespace-nowrap">{formatLookAheadDate(lookAhead.endDate)}</td>
-      <td className="px-4 py-4">{lookAhead.activities.length}</td>
-      <td className="px-4 py-4"><Badge tone={material.tone} size="sm">{material.label}</Badge></td>
-      <td className="px-4 py-4">
+      </TableCell>
+      <TableCell><Badge tone={status.tone} size="sm">{status.label}</Badge></TableCell>
+      <TableCell className="tabular-nums">{lookAhead.totalWorkers ?? "-"}</TableCell>
+      <TableCell className="whitespace-nowrap">{formatLookAheadDate(lookAhead.startDate)}</TableCell>
+      <TableCell className="whitespace-nowrap">{formatLookAheadDate(lookAhead.endDate)}</TableCell>
+      <TableCell>{lookAhead.activities.length}</TableCell>
+      <TableCell><Badge tone={material.tone} size="sm">{material.label}</Badge></TableCell>
+      <TableCell>
         <div className="flex justify-end gap-1.5">
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(lookAhead)}>View</Button>
           {canManage ? <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button> : null}
           {canManage ? <Button type="button" variant="ghost" size="sm" className="text-red-600 hover:text-red-700" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 

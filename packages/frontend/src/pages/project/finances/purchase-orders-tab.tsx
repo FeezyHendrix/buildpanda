@@ -8,7 +8,7 @@ import { useCreatePurchaseOrder, usePurchaseOrders } from "@/hooks/use-purchase-
 import { useProjectContext } from "@/layouts/project-layout";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
-import { TabHeader } from "./finance-tabs";
+import { TabActions } from "./finance-tabs";
 import { PurchaseOrderCard } from "./purchase-orders/purchase-order-card";
 import { toInput, type UpsertPurchaseOrderValues } from "./purchase-orders/purchase-order-model";
 import { UpsertPurchaseOrderDialog } from "./purchase-orders/upsert-purchase-order-dialog";
@@ -47,18 +47,14 @@ export function PurchaseOrdersTab() {
 
   return (
     <section aria-label="Purchase orders">
-      <TabHeader
-        heading="Purchase orders"
-        description="Vendor POs and the spend they commit."
-        actions={
-          canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
-              <PlusIcon className="size-4" />
-              New purchase order
-            </Button>
-          ) : undefined
-        }
-      />
+      <TabActions>
+        {canManage ? (
+          <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="size-4" />
+            New purchase order
+          </Button>
+        ) : null}
+      </TabActions>
 
       <UpsertPurchaseOrderDialog
         open={createOpen}
@@ -70,7 +66,7 @@ export function PurchaseOrdersTab() {
         currency={currency}
       />
 
-      <section aria-label="Purchase order summary" className="mt-6 grid gap-4 sm:grid-cols-3">
+      <section aria-label="Purchase order summary" className="grid gap-4 sm:grid-cols-3">
         <KpiCard label="Committed spend" value={formatCurrency(summary.committed, currency)} />
         <KpiCard label="Open POs" value={formatCurrency(summary.open, currency)} />
         <KpiCard label="Received / closed" value={formatCurrency(summary.received, currency)} />

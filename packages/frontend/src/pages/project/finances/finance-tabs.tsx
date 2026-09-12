@@ -51,26 +51,17 @@ export function FinanceTabBar<T extends string>({ tabs, value, onChange, ariaLab
 
 FinanceTabBar.displayName = "FinanceTabBar";
 
-interface TabHeaderProps {
-  heading: string;
-  description?: string;
-  actions?: ReactNode;
+/**
+ * The action row a tab body opens with. The tab label already names the
+ * content, so a body never repeats it as a heading; renders nothing when the
+ * tab has no actions.
+ */
+export function TabActions({ children }: { children?: ReactNode }) {
+  if (!children) return null;
+  return <div className="mb-6 flex flex-wrap items-center justify-end gap-3">{children}</div>;
 }
 
-/** The heading row every tab body opens with; the page above it owns the title. */
-export function TabHeader({ heading, description, actions }: TabHeaderProps) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h3 className="text-base font-semibold text-gray-900">{heading}</h3>
-        {description ? <p className="mt-0.5 text-xs text-gray-500">{description}</p> : null}
-      </div>
-      {actions}
-    </div>
-  );
-}
-
-TabHeader.displayName = "TabHeader";
+TabActions.displayName = "TabActions";
 
 /** Outer frame shared by the finance pages so every page sits on the same gutter. */
 export function FinancePageFrame({ children }: { children: ReactNode }) {

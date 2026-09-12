@@ -1,3 +1,4 @@
+import { TableCell, TableRow } from "@/components/atoms/table";
 import { useUpdateLead } from "@/hooks/use-leads";
 import { LEAD_STATUSES, type Lead, type LeadStatus } from "@/api/leads";
 import { formatShortDate } from "@/lib/formatters";
@@ -11,21 +12,18 @@ export function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => 
   }
 
   return (
-    <tr
-      className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
-      onClick={() => onOpen(lead)}
-    >
-      <td className="px-4 py-3">
+    <TableRow onClick={() => onOpen(lead)}>
+      <TableCell>
         <p className="font-medium text-gray-900">{lead.name}</p>
         <p className="text-xs text-gray-500">{lead.email}</p>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{lead.location ?? "-"}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{lead.projectType ?? "-"}</td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell className="text-gray-600">{lead.location ?? "-"}</TableCell>
+      <TableCell className="text-gray-600">{lead.projectType ?? "-"}</TableCell>
+      <TableCell>
         <LeadStatusBadge status={lead.status} />
-      </td>
-      <td className="px-4 py-3 text-xs text-gray-400">{formatShortDate(lead.createdAt)}</td>
-      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+      </TableCell>
+      <TableCell className="text-xs text-gray-400">{formatShortDate(lead.createdAt)}</TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <select
           value={lead.status}
           onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
@@ -38,7 +36,7 @@ export function LeadRow({ lead, onOpen }: { lead: Lead; onOpen: (lead: Lead) => 
             </option>
           ))}
         </select>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

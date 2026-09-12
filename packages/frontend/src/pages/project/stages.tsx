@@ -6,6 +6,15 @@ import { ProgressBar } from "@/components/atoms/progress-bar";
 import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -61,8 +70,6 @@ const TABS: { value: FilterTab; label: string }[] = [
   { value: "in-progress", label: "In progress" },
   { value: "completed", label: "Completed" },
 ];
-
-const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
 
 export default function ProjectStages() {
   const { project, access } = useProjectContext();
@@ -165,71 +172,65 @@ export default function ProjectStages() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] text-left">
-            <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
-              <tr>
-                <th className="w-10 px-3 py-3" />
-                <th className={HEAD_CELL} />
-                <th className={HEAD_CELL}>Build stage</th>
-                <th className={HEAD_CELL}>Status</th>
-                <th className={HEAD_CELL}>Start date</th>
-                <th className={HEAD_CELL}>End date</th>
-                <th className={HEAD_CELL}>Progress</th>
-                <th className="w-10 px-3 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F0F0]">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="px-4">
-                    <div className="flex justify-center py-10">
-                      <Spinner size="md" />
-                    </div>
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4">
-                    <EmptyState
-                      variant="inline"
-                      icon={<BlocksIcon />}
-                      title={stages.length === 0 ? "No stages yet" : "No stages match your search"}
-                      description={stages.length === 0 ? "Add your first stage to start tracking the build." : "Try a different search term."}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((stage) => {
-                  const originalIndex = stages.indexOf(stage);
-                  return (
-                    <StageRow
-                      key={stage.id}
-                      stage={stage}
-                      index={originalIndex}
-                      total={stages.length}
-                      canManage={canManage}
-                      onMove={move}
-                      onUpdate={(values) =>
-                        updateStage.mutate({
-                          projectId: project.id,
-                          stageId: stage.id,
-                          ...values,
-                        })
-                      }
-                      onDelete={() =>
-                        deleteStage.mutate({
-                          projectId: project.id,
-                          stageId: stage.id,
-                        })
-                      }
-                    />
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table className="min-w-[700px]">
+          <TableHead>
+            <tr>
+              <TableHeaderCell className="w-10 px-3" />
+              <TableHeaderCell />
+              <TableHeaderCell>Build stage</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Start date</TableHeaderCell>
+              <TableHeaderCell>End date</TableHeaderCell>
+              <TableHeaderCell>Progress</TableHeaderCell>
+              <TableHeaderCell className="w-10 px-3" />
+            </tr>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableEmptyRow colSpan={8}>
+                <div className="flex justify-center py-10">
+                  <Spinner size="md" />
+                </div>
+              </TableEmptyRow>
+            ) : filtered.length === 0 ? (
+              <TableEmptyRow colSpan={8}>
+                <EmptyState
+                  variant="inline"
+                  icon={<BlocksIcon />}
+                  title={stages.length === 0 ? "No stages yet" : "No stages match your search"}
+                  description={stages.length === 0 ? "Add your first stage to start tracking the build." : "Try a different search term."}
+                />
+              </TableEmptyRow>
+            ) : (
+              filtered.map((stage) => {
+                const originalIndex = stages.indexOf(stage);
+                return (
+                  <StageRow
+                    key={stage.id}
+                    stage={stage}
+                    index={originalIndex}
+                    total={stages.length}
+                    canManage={canManage}
+                    onMove={move}
+                    onUpdate={(values) =>
+                      updateStage.mutate({
+                        projectId: project.id,
+                        stageId: stage.id,
+                        ...values,
+                      })
+                    }
+                    onDelete={() =>
+                      deleteStage.mutate({
+                        projectId: project.id,
+                        stageId: stage.id,
+                      })
+                    }
+                  />
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <UpsertStageDialog
@@ -266,8 +267,8 @@ function StageRow({
 
   return (
     <>
-      <tr className="group hover:bg-[#FAFAFA]">
-        <td className="px-3 py-3">
+      <TableRow className="group hover:bg-[#FAFAFA]">
+        <TableCell className="px-3">
           <div className="flex flex-col items-center">
             <button
               type="button"
@@ -288,48 +289,42 @@ function StageRow({
               ▼
             </button>
           </div>
-        </td>
+        </TableCell>
 
-        <td className="px-4 py-3">
+        <TableCell>
           <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
             {index + 1}
           </span>
-        </td>
+        </TableCell>
 
-        <td className="px-4 py-3 text-[13px] font-medium text-[#000000]">
-          {stage.name}
-        </td>
+        <TableCell className="font-medium">{stage.name}</TableCell>
 
-        <td className="px-4 py-3">
+        <TableCell>
           <StatusCell status={stage.status} />
-        </td>
+        </TableCell>
 
-        <td className="whitespace-nowrap px-4 py-3 text-[13px] text-[#000000]">
-          {formatDate(stage.startDate)}
-        </td>
+        <TableCell className="whitespace-nowrap">{formatDate(stage.startDate)}</TableCell>
 
-        <td className="whitespace-nowrap px-4 py-3 text-[13px] text-[#000000]">
-          {formatDate(stage.endDate)}
-        </td>
+        <TableCell className="whitespace-nowrap">{formatDate(stage.endDate)}</TableCell>
 
-        <td className="px-4 py-3">
+        <TableCell>
           <div className="flex items-center gap-2">
             <ProgressBar tone="success" value={stage.progressPercent} size="md" />
             <span className="w-8 text-right text-[12px] tabular-nums text-[#000000]">
               {stage.progressPercent}%
             </span>
           </div>
-        </td>
+        </TableCell>
 
-        <td className="px-3 py-3">
+        <TableCell className="px-3">
           {canManage ? (
             <RowActionsMenu
               onEdit={() => setEditOpen(true)}
               onDelete={() => setDeleteOpen(true)}
             />
           ) : null}
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
 
       <UpsertStageDialog
         open={editOpen}

@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { UpsertAssemblyDialog } from "@/components/molecules/rate-library/upsert-assembly-dialog";
 import type { Assembly } from "@/api/precon";
@@ -27,17 +28,17 @@ function describeItems(assembly: Assembly): string {
 
 function AssemblyRow({ assembly, canManage, onEdit, onDelete }: { assembly: Assembly; canManage: boolean; onEdit: () => void; onDelete: () => void }) {
   return (
-    <tr className="border-t border-gray-100">
-      <td className="px-3 py-2 text-sm text-gray-900">
+    <TableRow>
+      <TableCell>
         {assembly.name}
         <span className="ml-2 text-[11px] text-gray-400">{assembly.elementGroup}</span>
-      </td>
-      <td className="px-3 py-2 text-xs text-gray-500">per {assembly.unit}</td>
-      <td className="px-3 py-2 text-xs text-gray-500">
+      </TableCell>
+      <TableCell className="text-xs text-gray-500">per {assembly.unit}</TableCell>
+      <TableCell className="text-xs text-gray-500">
         {assembly.items.length} item{assembly.items.length === 1 ? "" : "s"}
         <span className="ml-1 text-gray-400">· {describeItems(assembly)}</span>
-      </td>
-      <td className="px-3 py-2 text-right">
+      </TableCell>
+      <TableCell align="right">
         {canManage ? (
           <span className="inline-flex gap-1">
             <Button size="sm" variant="ghost" onClick={onEdit}>
@@ -48,8 +49,8 @@ function AssemblyRow({ assembly, canManage, onEdit, onDelete }: { assembly: Asse
             </Button>
           </span>
         ) : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 AssemblyRow.displayName = "AssemblyRow";
@@ -87,17 +88,17 @@ export function AssembliesPanel({ cards, canManage }: Props) {
       ) : assemblies.length === 0 ? (
         <EmptyState variant="inline" title="No assemblies yet" description="Create one above, then pick it from the composer in the sheet viewer so one drawn shape makes all of its lines." />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-          <table className="w-full text-left">
-            <thead className="text-[11px] uppercase tracking-wide text-gray-400">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <Table>
+            <TableHead>
               <tr>
-                <th className="px-3 py-2 font-medium">Assembly</th>
-                <th className="px-3 py-2 font-medium">Drawn as</th>
-                <th className="px-3 py-2 font-medium">Items</th>
-                <th />
+                <TableHeaderCell>Assembly</TableHeaderCell>
+                <TableHeaderCell>Drawn as</TableHeaderCell>
+                <TableHeaderCell>Items</TableHeaderCell>
+                <TableHeaderCell />
               </tr>
-            </thead>
-            <tbody>
+            </TableHead>
+            <TableBody>
               {assemblies.map((assembly) => (
                 <AssemblyRow
                   key={assembly.id}
@@ -107,8 +108,8 @@ export function AssembliesPanel({ cards, canManage }: Props) {
                   onDelete={() => setDeleting(assembly)}
                 />
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

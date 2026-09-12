@@ -4,6 +4,15 @@ import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { DocumentsIcon } from "@/components/atoms/project-nav-icons";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { icons } from "@/assets/icons/icons";
 import {
   UpsertDocumentDialog,
@@ -66,34 +75,30 @@ export function DocumentsTable({
 }) {
   return (
     <Card padding="none" className="overflow-hidden border-none">
-      <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left">
-        <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
+      <Table className="min-w-[640px]">
+        <TableHead>
           <tr>
-            <TableHeader className="pr-6 font-semibold capitalize">File Name</TableHeader>
-            <TableHeader className="pr-6 font-semibold capitalize">Category</TableHeader>
-            <TableHeader className="pr-6  font-semibold capitalize">Date Uploaded</TableHeader>
-            <TableHeader className="pr-6 font-semibold capitalize">Status</TableHeader>
-            <TableHeader className="pr-6 text-right font-semibold capitalize">Actions</TableHeader>
+            <TableHeaderCell>File Name</TableHeaderCell>
+            <TableHeaderCell>Category</TableHeaderCell>
+            <TableHeaderCell>Date Uploaded</TableHeaderCell>
+            <TableHeaderCell>Status</TableHeaderCell>
+            <TableHeaderCell align="right">Actions</TableHeaderCell>
           </tr>
-        </thead>
-        <tbody>
+        </TableHead>
+        <TableBody>
           {documents.length === 0 ? (
-            <tr>
-              <td colSpan={5} className="px-6">
-                <EmptyState
-                  variant="inline"
-                  icon={<DocumentsIcon />}
-                  title={emptyMessage.replace(/\.$/, "")}
-                />
-              </td>
-            </tr>
+            <TableEmptyRow colSpan={5}>
+              <EmptyState
+                variant="inline"
+                icon={<DocumentsIcon />}
+                title={emptyMessage.replace(/\.$/, "")}
+              />
+            </TableEmptyRow>
           ) : (
-            documents.map((doc, idx) => (
+            documents.map((doc) => (
               <DocumentRow
                 key={doc.id}
                 doc={doc}
-                isLast={idx === documents.length - 1}
                 projectId={projectId}
                 categories={categories}
                 canManage={canManage}
@@ -101,23 +106,20 @@ export function DocumentsTable({
               />
             ))
           )}
-        </tbody>
-      </table>
-      </div>
+        </TableBody>
+      </Table>
     </Card>
   );
 }
 
 function DocumentRow({
   doc,
-  isLast,
   projectId,
   categories,
   canManage,
   onOpenDocument,
 }: {
   doc: ProjectDocument;
-  isLast: boolean;
   projectId: string;
   categories: DocumentCategory[];
   canManage: boolean;
@@ -180,7 +182,7 @@ function DocumentRow({
 
   return (
     <>
-      <tr className={isLast ? undefined : "border-b border-[#F0F0F0]"}>
+      <TableRow>
         <TableCell>
           <div className="flex items-center gap-3">
             <ReactSVG src={getFileTypeIcon(doc.fileName)} className="shrink-0" />
@@ -212,8 +214,8 @@ function DocumentRow({
             )}
           </div>
         </TableCell>
-        <TableCell className="text-sm text-gray-600">{doc.category}</TableCell>
-        <TableCell className="whitespace-nowrap text-sm text-gray-600">
+        <TableCell className="text-gray-600">{doc.category}</TableCell>
+        <TableCell className="whitespace-nowrap text-gray-600">
           {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
         </TableCell>
         <TableCell>
@@ -222,7 +224,7 @@ function DocumentRow({
             <p>{doc.status}</p>
           </Badge>
         </TableCell>
-        <TableCell className="pr-6">
+        <TableCell>
           <RowMenu
             doc={doc}
             canManage={canManage}
@@ -235,7 +237,7 @@ function DocumentRow({
             onDelete={() => setDeleteOpen(true)}
           />
         </TableCell>
-      </tr>
+      </TableRow>
 
       <UpsertDocumentDialog
         open={editOpen}
@@ -387,33 +389,3 @@ function RowMenu({
     </div>
   );
 }
-
-function TableHeader({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <th
-      className={cn(
-        "px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500",
-        className,
-      )}
-    >
-      {children}
-    </th>
-  );
-}
-
-function TableCell({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <td className={cn("px-6 py-4", className)}>{children}</td>;
-}
-

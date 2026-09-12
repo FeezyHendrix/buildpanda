@@ -31,6 +31,7 @@ import {
   type RequestValues,
 } from "./payment-request-model";
 import { UpsertRequestDialog } from "./upsert-request-dialog";
+import { TabActions } from "../finances/finance-tabs";
 
 /**
  * Payment requests: contractor progress requests linked to stage payments.
@@ -226,20 +227,14 @@ export function PaymentRequestsSection() {
 
   return (
     <section aria-label="Payment requests">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">Payment requests</h3>
-          <p className="mt-0.5 text-xs text-gray-500">
-            Contractor requests for payment, and their approval status.
-          </p>
-        </div>
-        {canManage && (
+      <TabActions>
+        {canManage ? (
           <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
             New request
           </Button>
-        )}
-      </div>
+        ) : null}
+      </TabActions>
 
       <UpsertRequestDialog
         open={createOpen}
@@ -252,7 +247,7 @@ export function PaymentRequestsSection() {
         milestones={finances?.milestones ?? []}
       />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Total requested" value={formatCurrency(summary.total, currency)} />
         <KpiCard label="Submitted" value={formatCurrency(summary.submitted, currency)} />
         <KpiCard label="Approved" value={formatCurrency(summary.approved, currency)} />

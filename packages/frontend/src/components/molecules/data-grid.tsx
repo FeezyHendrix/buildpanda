@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/atoms/button";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody } from "@/components/atoms/table";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "./empty-state";
 import {
@@ -252,52 +253,50 @@ function DataGrid<T>({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-grey-50 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left">
-            <DataGridHeaderRow
-              columns={columns}
-              sortColumnId={sort?.columnId ?? null}
-              sortDirection={sort?.direction ?? null}
-              filters={filters}
-              filterOptions={filterOptions}
-              onToggleSort={handleToggleSort}
-              onFilterChange={handleFilterChange}
-            />
-            <tbody>
-              {state === "loading" ? (
-                <DataGridStateRow colSpan={columns.length}>
-                  <Spinner size="md" />
-                </DataGridStateRow>
-              ) : null}
+        <Table className="min-w-[640px] border-collapse">
+          <DataGridHeaderRow
+            columns={columns}
+            sortColumnId={sort?.columnId ?? null}
+            sortDirection={sort?.direction ?? null}
+            filters={filters}
+            filterOptions={filterOptions}
+            onToggleSort={handleToggleSort}
+            onFilterChange={handleFilterChange}
+          />
+          <TableBody>
+            {state === "loading" ? (
+              <DataGridStateRow colSpan={columns.length}>
+                <Spinner size="md" />
+              </DataGridStateRow>
+            ) : null}
 
-              {state === "empty" ? (
-                <DataGridStateRow colSpan={columns.length}>
-                  {isNarrowed ? (
-                    <EmptyState
-                      title="No matching records"
-                      description="Adjust your search or clear the column filters to see everything."
-                      variant="inline"
-                      action={{ label: "Reset filters", onClick: handleReset }}
-                    />
-                  ) : (
-                    (emptyState ?? DEFAULT_EMPTY_STATE)
-                  )}
-                </DataGridStateRow>
-              ) : null}
+            {state === "empty" ? (
+              <DataGridStateRow colSpan={columns.length}>
+                {isNarrowed ? (
+                  <EmptyState
+                    title="No matching records"
+                    description="Adjust your search or clear the column filters to see everything."
+                    variant="inline"
+                    action={{ label: "Reset filters", onClick: handleReset }}
+                  />
+                ) : (
+                  (emptyState ?? DEFAULT_EMPTY_STATE)
+                )}
+              </DataGridStateRow>
+            ) : null}
 
-              {state === "rows"
-                ? pageRows.map((row) => (
-                    <DataGridRow
-                      key={getRowId(row)}
-                      row={row}
-                      columns={columns}
-                      onRowClick={onRowClick}
-                    />
-                  ))
-                : null}
-            </tbody>
-          </table>
-        </div>
+            {state === "rows"
+              ? pageRows.map((row) => (
+                  <DataGridRow
+                    key={getRowId(row)}
+                    row={row}
+                    columns={columns}
+                    onRowClick={onRowClick}
+                  />
+                ))
+              : null}
+          </TableBody>
+        </Table>
 
         {state === "rows" ? (
           <DataGridPagination

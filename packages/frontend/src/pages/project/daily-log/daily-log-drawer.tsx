@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import {
   useAddDailyLogEntry,
@@ -178,28 +179,26 @@ function ActivitiesSection({ day }: { day: DailyLogDay }) {
         <p className="rounded-xl bg-[#F8F8F8] p-4 text-sm text-gray-500">No activities logged against this day.</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-[#EDEDED]">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
+          <Table>
+            <TableHead>
               <tr>
-                <th className="px-4 py-2.5 text-[11px] font-semibold capitalize text-black-300">Activity</th>
-                <th className="px-4 py-2.5 text-right text-[11px] font-semibold capitalize text-black-300">Hours</th>
+                <TableHeaderCell>Activity</TableHeaderCell>
+                <TableHeaderCell align="right">Hours</TableHeaderCell>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F0F0]">
+            </TableHead>
+            <TableBody>
               {day.activities.map((a) => (
-                <tr key={a.activityId}>
-                  <td className="px-4 py-2.5 text-gray-900">{a.activityName}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-900">{formatHours(a.hoursLogged)}</td>
-                </tr>
+                <TableRow key={a.activityId}>
+                  <TableCell>{a.activityName}</TableCell>
+                  <TableCell align="right" className="tabular-nums">{formatHours(a.hoursLogged)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-            <tfoot className="border-t border-[#EDEDED] bg-[#FAFAFA]">
-              <tr>
-                <td className="px-4 py-2.5 font-semibold text-gray-900">Total</td>
-                <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-gray-900">{formatHours(total)}</td>
-              </tr>
-            </tfoot>
-          </table>
+              <TableRow tone="total">
+                <TableCell>Total</TableCell>
+                <TableCell align="right" className="tabular-nums">{formatHours(total)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </div>
       )}
     </Section>

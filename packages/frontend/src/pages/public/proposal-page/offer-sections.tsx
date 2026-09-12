@@ -1,4 +1,5 @@
 import type { BuyingListLine, Estimate, PackSection, PublicCompany } from "@/api/proposals";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
 
 const SECTION_TITLE: Partial<Record<PackSection["kind"], string>> = {
@@ -85,29 +86,29 @@ export function PriceSection({ estimate, currency }: { estimate: Estimate; curre
       <SectionHeading>Price</SectionHeading>
       {estimate.items.length > 0 ? (
         <div className="mb-4 overflow-hidden rounded-xl border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="border-b border-gray-100 bg-gray-50">
+          <Table>
+            <TableHead>
               <tr>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">{grouped ? "Section" : "Description"}</th>
-                {grouped ? null : <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">Qty</th>}
-                {grouped ? null : <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">Rate</th>}
-                <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">Total</th>
+                <TableHeaderCell>{grouped ? "Section" : "Description"}</TableHeaderCell>
+                {grouped ? null : <TableHeaderCell align="right">Qty</TableHeaderCell>}
+                {grouped ? null : <TableHeaderCell align="right">Rate</TableHeaderCell>}
+                <TableHeaderCell align="right">Total</TableHeaderCell>
               </tr>
-            </thead>
-            <tbody>
+            </TableHead>
+            <TableBody>
               {estimate.items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-4 py-3">
+                <TableRow key={item.id}>
+                  <TableCell>
                     <p className="font-medium text-gray-800">{item.description}</p>
                     {!grouped && item.groupLabel ? <p className="text-xs text-gray-400">{item.groupLabel}</p> : null}
-                  </td>
-                  {grouped ? null : <td className="px-4 py-3 text-right text-gray-600">{item.qty} {item.unit}</td>}
-                  {grouped ? null : <td className="px-4 py-3 text-right text-gray-600">{fmt(item.unitRate, currency)}</td>}
-                  <td className="px-4 py-3 text-right font-medium text-gray-800">{fmt(item.total, currency)}</td>
-                </tr>
+                  </TableCell>
+                  {grouped ? null : <TableCell align="right" className="text-gray-600">{item.qty} {item.unit}</TableCell>}
+                  {grouped ? null : <TableCell align="right" className="text-gray-600">{fmt(item.unitRate, currency)}</TableCell>}
+                  <TableCell align="right" className="font-medium text-gray-800">{fmt(item.total, currency)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       ) : null}
       <div className="rounded-xl bg-gray-50 p-4">
@@ -165,27 +166,27 @@ export function BuyingListSection({ lines }: { lines: BuyingListLine[] }) {
       <SectionHeading>Your buying list</SectionHeading>
       <p className="mb-3 text-sm text-gray-600">This is a labour-only job. You buy these materials; the quantities come from the measured drawings.</p>
       <div className="overflow-hidden rounded-xl border border-gray-200">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gray-100 bg-gray-50">
+        <Table>
+          <TableHead>
             <tr>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-500">Item</th>
-              <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-500">Quantity</th>
+              <TableHeaderCell>Item</TableHeaderCell>
+              <TableHeaderCell align="right">Quantity</TableHeaderCell>
             </tr>
-          </thead>
-          <tbody>
+          </TableHead>
+          <TableBody>
             {lines.map((line, i) => (
-              <tr key={`${line.description}-${i}`} className="border-b border-gray-100 last:border-0">
-                <td className="px-4 py-2.5">
+              <TableRow key={`${line.description}-${i}`}>
+                <TableCell>
                   <p className="text-gray-800">{line.description}</p>
                   {line.section ? <p className="text-xs text-gray-400">{line.section}</p> : null}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">
+                </TableCell>
+                <TableCell align="right" className="tabular-nums text-gray-700">
                   {line.qty} {line.unit}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

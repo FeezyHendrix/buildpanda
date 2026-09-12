@@ -4,6 +4,7 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { MilestoneCard } from "@/components/molecules/milestone-card";
 import { UpsertMilestoneDialog } from "@/components/molecules/upsert-milestone-dialog";
@@ -21,7 +22,7 @@ import type {
   ProjectFinances,
 } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { TabHeader } from "../finances/finance-tabs";
+import { TabActions } from "../finances/finance-tabs";
 import { StagePaymentDialogs } from "./stage-payment-dialogs";
 
 /**
@@ -61,13 +62,9 @@ export function StagePaymentsSection() {
 
   return (
     <section aria-label="Stage payments">
-      <TabHeader
-        heading="Stage payments"
-        description="Milestone cost gates and the payments recorded against them."
-        actions={newButton}
-      />
+      <TabActions>{newButton}</TabActions>
 
-      <section className="mt-6">
+      <section>
         <h2 className="mb-4 text-base font-semibold text-gray-900">Stages</h2>
         {finances.milestones.length === 0 ? (
           <EmptyState
@@ -159,8 +156,6 @@ export function StagePaymentsSection() {
 
 StagePaymentsSection.displayName = "StagePaymentsSection";
 
-const HEAD_CELL = "px-6 py-3 text-[11px] font-semibold capitalize text-black-300";
-
 function PaymentRecord({
   entries,
   currency,
@@ -178,52 +173,41 @@ function PaymentRecord({
     );
   }
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[480px] text-left text-sm">
-        <thead className="border-b border-[#EDEDED] bg-[#F6F6F6]">
-          <tr>
-            <th className={HEAD_CELL}>Date</th>
-            <th className={HEAD_CELL}>Stage</th>
-            <th className={HEAD_CELL}>Amount</th>
-            <th className={HEAD_CELL}>Type</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry, idx) => (
-            <LedgerRow
-              key={entry.id}
-              entry={entry}
-              currency={currency}
-              isLast={idx === entries.length - 1}
-            />
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table className="min-w-[480px]">
+      <TableHead>
+        <tr>
+          <TableHeaderCell>Date</TableHeaderCell>
+          <TableHeaderCell>Stage</TableHeaderCell>
+          <TableHeaderCell>Amount</TableHeaderCell>
+          <TableHeaderCell>Type</TableHeaderCell>
+        </tr>
+      </TableHead>
+      <TableBody>
+        {entries.map((entry) => (
+          <LedgerRow key={entry.id} entry={entry} currency={currency} />
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 function LedgerRow({
   entry,
   currency,
-  isLast,
 }: {
   entry: PaymentLedgerEntry;
   currency: ProjectFinances["currency"];
-  isLast: boolean;
 }) {
   return (
-    <tr className={isLast ? undefined : "border-b border-[#F0F0F0]"}>
-      <td className="px-6 py-3 text-[13px] tabular-nums text-[#131B2E]">{entry.date}</td>
-      <td className="px-6 py-3 text-[13px] text-[#131B2E]">{entry.description}</td>
-      <td className="px-6 py-3 text-[13px] tabular-nums text-[#131B2E]">
-        {formatCurrency(entry.amount, currency)}
-      </td>
-      <td className="px-6 py-3 text-[13px]">
+    <TableRow>
+      <TableCell className="tabular-nums">{entry.date}</TableCell>
+      <TableCell>{entry.description}</TableCell>
+      <TableCell className="tabular-nums">{formatCurrency(entry.amount, currency)}</TableCell>
+      <TableCell>
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="md">
           {entry.type}
         </Badge>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

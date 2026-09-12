@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
+import { Table, TableBody, TableHead, TableHeaderCell } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { useLeads } from "@/hooks/use-leads";
@@ -88,23 +89,23 @@ export default function LeadsPage() {
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-                  <th className="px-4 py-3 font-medium">Lead</th>
-                  <th className="px-4 py-3 font-medium">Location</th>
-                  <th className="px-4 py-3 font-medium">Project</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Received</th>
-                  <th className="w-32 px-4 py-3 font-medium">Update</th>
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeaderCell>Lead</TableHeaderCell>
+                  <TableHeaderCell>Location</TableHeaderCell>
+                  <TableHeaderCell>Project</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Received</TableHeaderCell>
+                  <TableHeaderCell className="w-32">Update</TableHeaderCell>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHead>
+              <TableBody>
                 {leads.map((lead) => (
                   <LeadRow key={lead.id} lead={lead} onOpen={setActiveLead} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {(hasPrev || hasNext) && (

@@ -1,5 +1,6 @@
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import type { ExtractionReport, GeoSummary, LayerElement } from "@/api/precon";
 import { cn } from "@/lib/utils";
 
@@ -72,36 +73,36 @@ ExtractionSummary.displayName = "ExtractionSummary";
 
 function LayerTable({ layers }: { layers: ExtractionReport["layers"] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="w-full text-xs">
-        <thead className="bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500">
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <Table className="text-xs">
+        <TableHead>
           <tr>
-            <th className="px-3 py-1.5 text-left font-medium">Layer</th>
-            <th className="px-3 py-1.5 text-right font-medium">Entities</th>
-            <th className="px-3 py-1.5 text-left font-medium">Contents</th>
-            <th className="px-3 py-1.5 text-left font-medium">Treated as</th>
+            <TableHeaderCell className="px-3 py-1.5">Layer</TableHeaderCell>
+            <TableHeaderCell align="right" className="px-3 py-1.5">Entities</TableHeaderCell>
+            <TableHeaderCell className="px-3 py-1.5">Contents</TableHeaderCell>
+            <TableHeaderCell className="px-3 py-1.5">Treated as</TableHeaderCell>
           </tr>
-        </thead>
-        <tbody>
+        </TableHead>
+        <TableBody>
           {layers.map((layer) => (
-            <tr key={layer.name} className="border-t border-gray-100">
-              <td className="px-3 py-1.5 font-mono text-[11px] text-gray-800">{layer.name}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums text-gray-700">{layer.count.toLocaleString()}</td>
-              <td className="px-3 py-1.5 text-gray-500">
+            <TableRow key={layer.name}>
+              <TableCell className="px-3 py-1.5 font-mono text-[11px] text-gray-800">{layer.name}</TableCell>
+              <TableCell align="right" className="px-3 py-1.5 text-xs tabular-nums text-gray-700">{layer.count.toLocaleString()}</TableCell>
+              <TableCell className="px-3 py-1.5 text-xs text-gray-500">
                 {Object.entries(layer.byType)
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, n]) => `${n} ${type}`)
                   .join(" · ")}
-              </td>
-              <td className="px-3 py-1.5">
+              </TableCell>
+              <TableCell className="px-3 py-1.5">
                 <Badge tone={elementTone(layer.element)} size="sm">
                   {ELEMENT_LABEL[layer.element]}
                 </Badge>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,4 +1,11 @@
 import { type KeyboardEvent, type ReactNode } from "react";
+import {
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { cn } from "@/lib/utils";
 import {
   DataGridFilterPopover,
@@ -34,12 +41,6 @@ const HEADER_ALIGN_CLASS: Record<DataGridAlign, string> = {
   left: "justify-start",
   center: "justify-center",
   right: "justify-end",
-};
-
-const CELL_ALIGN_CLASS: Record<DataGridAlign, string> = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
 };
 
 const ARIA_SORT: Record<DataGridSortDirection, "ascending" | "descending"> = {
@@ -100,17 +101,14 @@ function DataGridHeaderCell<T>({
   const align = column.align ?? "left";
 
   return (
-    <th
+    <TableHeaderCell
       scope="col"
+      align={align}
       style={column.width ? { width: column.width } : undefined}
       aria-sort={
         column.sortable ? (direction ? ARIA_SORT[direction] : "none") : undefined
       }
-      className={cn(
-        "px-6 py-3 text-xs font-medium uppercase tracking-wider text-gray-500",
-        CELL_ALIGN_CLASS[align],
-        column.className,
-      )}
+      className={column.className}
     >
       <div className={cn("flex items-center gap-1.5", HEADER_ALIGN_CLASS[align])}>
         {column.sortable ? (
@@ -120,11 +118,9 @@ function DataGridHeaderCell<T>({
             aria-label={`${column.header}, ${SORT_HINT[direction ?? "none"]}`}
             className={cn(
               "-mx-1 inline-flex min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5",
-              "tracking-wider outline-none transition-colors",
+              "outline-none transition-colors",
               "hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              direction
-                ? "text-primary-500"
-                : "text-gray-500 hover:text-gray-700",
+              direction ? "text-primary-500" : "hover:text-gray-700",
             )}
           >
             <span className="truncate">{column.header}</span>
@@ -144,7 +140,7 @@ function DataGridHeaderCell<T>({
           />
         ) : null}
       </div>
-    </th>
+    </TableHeaderCell>
   );
 }
 
@@ -168,7 +164,7 @@ function DataGridHeaderRow<T>({
   onFilterChange: (columnId: string, next: DataGridFilterValue) => void;
 }) {
   return (
-    <thead className="border-b border-grey-50 bg-[#FAFAFA]">
+    <TableHead>
       <tr>
         {columns.map((column) => (
           <DataGridHeaderCell
@@ -182,7 +178,7 @@ function DataGridHeaderRow<T>({
           />
         ))}
       </tr>
-    </thead>
+    </TableHead>
   );
 }
 
@@ -212,29 +208,25 @@ function DataGridRow<T>({
   }
 
   return (
-    <tr
+    <TableRow
       tabIndex={onRowClick ? 0 : undefined}
       onClick={onRowClick ? () => onRowClick(row) : undefined}
       onKeyDown={onRowClick ? handleKeyDown : undefined}
       className={cn(
-        "border-b border-grey-50/70 outline-none last:border-b-0",
-        onRowClick &&
-          "cursor-pointer transition-colors hover:bg-[#FAFAFA] focus-visible:bg-[#FAFAFA]",
+        "outline-none",
+        onRowClick && "transition-colors focus-visible:bg-gray-50",
       )}
     >
       {columns.map((column) => (
-        <td
+        <TableCell
           key={column.id}
-          className={cn(
-            "px-6 py-4 text-sm text-black-400",
-            CELL_ALIGN_CLASS[column.align ?? "left"],
-            column.className,
-          )}
+          align={column.align ?? "left"}
+          className={column.className}
         >
           {column.cell ? column.cell(row) : renderValue(column.accessor(row))}
-        </td>
+        </TableCell>
       ))}
-    </tr>
+    </TableRow>
   );
 }
 
@@ -248,11 +240,9 @@ function DataGridStateRow({
   children: ReactNode;
 }) {
   return (
-    <tr>
-      <td colSpan={colSpan} className="px-6 py-10">
-        <div className="flex items-center justify-center">{children}</div>
-      </td>
-    </tr>
+    <TableEmptyRow colSpan={colSpan} className="py-10">
+      <div className="flex items-center justify-center">{children}</div>
+    </TableEmptyRow>
   );
 }
 
