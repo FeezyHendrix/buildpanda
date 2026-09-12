@@ -103,7 +103,7 @@ export default function ProposalTemplatesPage() {
           action={{ label: "Go to proposals", onClick: () => navigate("/sales/proposals") }}
         />
       ) : (
-        <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white">
+        <ul className="divide-y divide-line-hair rounded-lg border border-line bg-white">
           {templates.map((t) => (
             <TemplateRow key={t.id} template={t} canManage={canManage} onDelete={setDeleteTarget} />
           ))}

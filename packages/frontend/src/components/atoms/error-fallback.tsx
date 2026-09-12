@@ -96,10 +96,10 @@ function ErrorFallback({ error, reset }: ErrorFallbackProps) {
 
       {/* Copy */}
       <div className="mt-6 max-w-sm text-center">
-        <h1 className="text-[22px] font-semibold text-[#131B2E]">
+        <h1 className="text-[22px] font-semibold text-ink">
           Something broke on site
         </h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-[#606060]">
+        <p className="mt-2 text-[14px] leading-relaxed text-ink-subtle">
           An unexpected error stopped this page from loading. Try reloading
           if it keeps happening, head back to your dashboard.
         </p>
@@ -118,7 +118,7 @@ function ErrorFallback({ error, reset }: ErrorFallbackProps) {
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
-          className="rounded-[10px] border border-[#EBEBEB] bg-white px-5 py-2.5 text-[13px] font-semibold text-[#131B2E] transition-colors hover:bg-[#F8F8F8] active:scale-95"
+          className="rounded-[10px] border border-line-hair bg-white px-5 py-2.5 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-alt active:scale-95"
         >
           Go to dashboard
         </button>
@@ -129,12 +129,12 @@ function ErrorFallback({ error, reset }: ErrorFallbackProps) {
         <button
           type="button"
           onClick={() => setShowDetails((v) => !v)}
-          className="text-[12px] text-[#888888] underline underline-offset-2 hover:text-[#606060]"
+          className="text-[12px] text-[#888888] underline underline-offset-2 hover:text-ink-subtle"
         >
           {showDetails ? "Hide error details" : "Show error details"}
         </button>
         {showDetails && (
-          <pre className="mt-3 max-w-md rounded-xl bg-[#F8F8F8] px-4 py-3 text-left font-mono text-[11px] leading-relaxed text-[#606060] whitespace-pre-wrap break-all">
+          <pre className="mt-3 max-w-md rounded-lg bg-surface-alt px-4 py-3 text-left font-mono text-[11px] leading-relaxed text-ink-subtle whitespace-pre-wrap break-all">
             {error.message || "Unknown error"}
           </pre>
         )}

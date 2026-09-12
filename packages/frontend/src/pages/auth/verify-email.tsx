@@ -132,10 +132,10 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Check your email
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             We sent a verification link
             {email ? (
               <>
@@ -148,12 +148,12 @@ export default function VerifyEmailPage() {
 
         <div className="flex flex-col gap-3">
           {resent ? (
-            <p className="text-sm text-green-600 text-pretty" role="status">
+            <p className="text-sm text-success-600 text-pretty" role="status">
               Verification email sent. Check your inbox.
             </p>
           ) : null}
           {resendError ? (
-            <p className="text-sm text-red-600 text-pretty" role="alert">
+            <p className="text-sm text-negative-600 text-pretty" role="alert">
               {resendError}
             </p>
           ) : null}
@@ -172,7 +172,7 @@ export default function VerifyEmailPage() {
           </Button>
 
           {!email ? (
-            <p className="text-xs text-gray-400 text-pretty text-center">
+            <p className="text-xs text-ink-muted text-pretty text-center">
               Sign in to resend your verification email.
             </p>
           ) : null}
@@ -191,10 +191,10 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Verifying email
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             Verifying your email...
           </p>
         </div>
@@ -206,15 +206,15 @@ export default function VerifyEmailPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Email verified
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             Your email has been successfully verified.
           </p>
         </div>
 
-        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
+        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-success-600">
           Email verified!
         </p>
 
@@ -230,15 +230,15 @@ export default function VerifyEmailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Verification failed
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
+        <p className="text-sm text-ink-muted text-pretty">
           We could not verify your email address.
         </p>
       </div>
 
-      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+      <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
         {error}
       </p>
 

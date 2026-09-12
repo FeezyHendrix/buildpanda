@@ -54,7 +54,7 @@ function OptionCard({ option, selection, selectable, onPick }: OptionCardProps) 
         "flex min-w-0 flex-col gap-1 rounded-lg border p-3 text-left transition-colors",
         isChosen
           ? "border-primary-500 bg-primary-50/50 ring-1 ring-primary-500"
-          : "border-[#EDEDED] bg-white",
+          : "border-line-hair bg-white",
         selectable
           ? "cursor-pointer hover:border-primary-300"
           : "cursor-default",
@@ -200,7 +200,7 @@ function SelectionCard({
       )}
 
       {selection.status === "decided" ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F6F6F6] px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-alt px-3 py-2">
           <p className="text-xs text-gray-600">
             {chosen ? (
               <>
@@ -228,7 +228,7 @@ function SelectionCard({
           {selection.changeRequestId !== null ? (
             <Link
               to={`/project/${projectId}/change-requests`}
-              className="inline-flex items-center gap-1 rounded-full bg-[#E6EFFE] px-2.5 py-1 text-xs font-medium text-[#004DE7] hover:bg-[#d6e4fd]"
+              className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-500 hover:bg-primary-100"
             >
               Change request created →
             </Link>

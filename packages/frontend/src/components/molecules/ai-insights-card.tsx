@@ -5,7 +5,8 @@ import {
   GlobeIcon,
   TrendingUpIcon,
 } from "@/components/atoms/project-nav-icons";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/atoms/button";
+import { Card } from "@/components/atoms/card";
 
 type InsightKind = "trend" | "good" | "warning";
 
@@ -39,55 +40,38 @@ function AiInsightsCard({
   className,
 }: AiInsightsCardProps) {
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-2xl p-6 text-white",
-        "bg-gradient-to-br from-[#1A4AD9] via-[#004DE7] to-[#0036A8]",
-        className,
-      )}
-    >
-      <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-12 size-72 rounded-full bg-white/5 blur-2xl" />
-
-      <header className="relative flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-full bg-white/15">
+    <Card padding="md" className={className}>
+      <header className="flex items-center gap-2">
+        <div className="flex size-8 items-center justify-center rounded-full bg-surface-alt text-ink-muted">
           <GlobeIcon className="size-4" />
         </div>
-        <p className="text-sm font-semibold tracking-wide">{title}</p>
+        <p className="text-sm font-medium text-ink">{title}</p>
       </header>
 
-      <p className="relative mt-2 max-w-md text-sm text-white/80 text-pretty">
+      <p className="mt-2 max-w-md text-sm text-ink-muted text-pretty">
         {subtitle}
       </p>
 
-      <ul className="relative mt-5 flex flex-col gap-2.5">
+      <ul className="mt-5 flex flex-col gap-2.5">
         {insights.map((insight) => (
           <li
             key={insight.id}
-            className="flex items-start gap-3 rounded-xl bg-white/10 p-3 backdrop-blur-sm"
+            className="flex items-start gap-3 rounded-lg border border-line-hair bg-surface-alt p-3"
           >
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/20">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-ink-muted">
               {ICON_BY_KIND[insight.kind]}
             </div>
-            <p className="text-sm leading-snug text-white/95 text-pretty">
+            <p className="text-sm leading-snug text-ink text-pretty">
               {insight.message}
             </p>
           </li>
         ))}
       </ul>
 
-      <button
-        type="button"
-        onClick={onCtaClick}
-        className={cn(
-          "relative mt-5 inline-flex h-10 items-center justify-center rounded-full bg-white px-5",
-          "text-sm font-semibold text-[#004DE7] transition-colors",
-          "outline-none hover:bg-white/95 focus-visible:ring-2 focus-visible:ring-white",
-        )}
-      >
+      <Button type="button" variant="primary" size="md" className="mt-5" onClick={onCtaClick}>
         {ctaLabel}
-      </button>
-    </div>
+      </Button>
+    </Card>
   );
 }
 

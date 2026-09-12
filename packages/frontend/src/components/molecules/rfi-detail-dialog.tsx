@@ -16,6 +16,7 @@ import { useActionItems } from "@/hooks/use-action-items";
 import { useParticipants } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import type { RfiStatus } from "@/lib/project-types";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 export const RFI_STATUS_META: Record<
   RfiStatus,
@@ -68,7 +69,7 @@ function ReferencePicker({
   }
 
   return (
-    <div className="rounded-lg border border-[#EDEDED] bg-white p-2">
+    <div className="rounded-lg border border-line-hair bg-white p-2">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-500">Reference an item</span>
         <button type="button" className="text-xs text-gray-400" onClick={() => setOpen(false)}>
@@ -169,14 +170,14 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
         <Dialog.Popup
           className={cn(
             "fixed right-0 top-0 z-50 flex h-dvh w-[60vw] min-w-[420px] max-w-[1100px] flex-col",
-            "overflow-hidden border-l border-[#EDEDED] bg-white shadow-2xl outline-none",
+            "overflow-hidden border-l border-line-hair bg-white shadow-lg outline-none",
           )}
         >
           {isLoading || !rfi ? (
             <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
           ) : (
             <>
-              <header className="border-b border-[#F0F0F0] px-6 pt-6 pb-4">
+              <header className="border-b border-line-hair px-6 pt-6 pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-gray-400">RFI-{rfi.number}</span>
@@ -186,7 +187,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     {rfi.priority === "High" && <Badge tone="danger" size="sm">High priority</Badge>}
                     {canManage ? (
                       <select
-                        className="rounded-md border border-[#E5E5E5] bg-white px-2 py-1 text-xs text-gray-700 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                        className={INPUT_SM_CLASS}
                         value={rfi.ballInCourtId ?? ""}
                         disabled={updateRfi.isPending}
                         onChange={(e) =>
@@ -237,10 +238,10 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
               <div className="flex-1 overflow-y-auto px-6 py-4">
                 {rfi.officialResponse && (
                   <div className="mb-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <p className="text-xs font-medium uppercase text-ink-muted">
                       Official response
                     </p>
-                    <div className="mt-2 rounded-xl bg-[#F0F4FF] p-3">
+                    <div className="mt-2 rounded-lg bg-primary-50 p-3">
                       {rfi.officialResponseHtml ? (
                         <div
                           className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
@@ -259,7 +260,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                   </div>
                 )}
 
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   Responses &amp; comments
                 </p>
                 <div className="mt-2 flex flex-col gap-2">
@@ -267,7 +268,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
                     <p className="text-sm text-gray-400">No responses yet.</p>
                   )}
                   {rfi.comments.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-[#F0F0F0] p-3">
+                    <div key={c.id} className="rounded-lg border border-line-hair p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
                         {c.isProposedResponse && <Badge tone="warning" size="sm">Proposed</Badge>}
@@ -353,7 +354,7 @@ function RfiDetailDialog({ open, onOpenChange, projectId, rfiId, canManage, canR
               </div>
 
               {canManage && (
-                <footer className="flex flex-wrap items-center gap-2 border-t border-[#F0F0F0] px-6 py-4">
+                <footer className="flex flex-wrap items-center gap-2 border-t border-line-hair px-6 py-4">
                   {!isClosed && (
                     <Button
                       variant="secondary"

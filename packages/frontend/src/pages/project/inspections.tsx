@@ -90,7 +90,7 @@ export default function ProjectInspections() {
               variant="primary"
               size="md"
               onClick={() => setRequestOpen(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
             >
               <ReactSVG src={icons.plusCircle} />
               Request New Inspection
@@ -194,7 +194,7 @@ function InspectionCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3 ">
           <div>
-            <p className="text-base font-semibold text-[#131B2E]">
+            <p className="text-base font-semibold text-ink">
               {report.title}
             </p>
           </div>
@@ -207,17 +207,17 @@ function InspectionCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-start gap-4 sm:gap-6 border-b border-[#F6F6F6] pb-6">
+      <div className="flex flex-wrap items-start gap-4 sm:gap-6 border-b border-line-hair pb-6">
         <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Inspector</p>
-          <p className="text-[13px] text-black-500">{report.inspector.name}</p>
+          <p className="text-sm font-medium text-black-300">Inspector</p>
+          <p className="text-sm text-black-500">{report.inspector.name}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Date & Time</p>
-          <p className="text-[13px] text-black-500">{report.scheduledAt}</p>
+          <p className="text-sm font-medium text-black-300">Date & Time</p>
+          <p className="text-sm text-black-500">{report.scheduledAt}</p>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-[13px] font-medium text-black-300">Risk Level</p>
+          <p className="text-sm font-medium text-black-300">Risk Level</p>
           <Badge
             tone={RISK_LEVEL_TONE[report.riskLevel]}
             size="md"
@@ -233,7 +233,7 @@ function InspectionCard({
 
       <MediaGallery items={report.media} />
 
-      <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-4">
+      <div className="flex items-center justify-between border-t border-line-hair pt-4">
         <span className="text-xs text-gray-500">
           Category · {report.category}
         </span>
@@ -242,7 +242,7 @@ function InspectionCard({
             href={report.reportUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-500 hover:underline"
           >
             View Full Report
             <ChevronRightIcon className="size-3.5" />

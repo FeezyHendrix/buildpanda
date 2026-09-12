@@ -36,66 +36,66 @@ export function DataCommitmentGate() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl max-h-[calc(100dvh-2rem)]">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-lg max-h-[calc(100dvh-2rem)]">
         <header className="px-8 pt-8">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-medium text-ink">
             Your data is yours. Here's our commitment.
           </h2>
-          <p className="mt-2 text-sm text-gray-600 text-pretty">
+          <p className="mt-2 text-sm text-ink-muted text-pretty">
             Before you continue, please review how BuildPanda protects your workspace's data.
           </p>
         </header>
 
         <div className="flex flex-col gap-5 overflow-y-auto px-8 py-6">
-          <ul className="flex flex-col gap-4 text-sm text-gray-700">
+          <ul className="flex flex-col gap-4 text-sm text-ink">
             <li className="flex gap-2">
-              <span className="shrink-0 mt-0.5 text-blue-600">•</span>
+              <span className="shrink-0 mt-0.5 text-primary-500">•</span>
               <span>
-                <strong className="font-semibold text-gray-900">We never sell your data.</strong> — Your leads, drawings, budgets, invoices and site records are never sold, rented, or shared with data brokers or advertisers.
+                <strong className="font-semibold text-ink">We never sell your data.</strong> — Your leads, drawings, budgets, invoices and site records are never sold, rented, or shared with data brokers or advertisers.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="shrink-0 mt-0.5 text-blue-600">•</span>
+              <span className="shrink-0 mt-0.5 text-primary-500">•</span>
               <span>
-                <strong className="font-semibold text-gray-900">It's encrypted.</strong> — Your data is encrypted in transit, and your uploaded files are encrypted at rest.
+                <strong className="font-semibold text-ink">It's encrypted.</strong> — Your data is encrypted in transit, and your uploaded files are encrypted at rest.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="shrink-0 mt-0.5 text-blue-600">•</span>
+              <span className="shrink-0 mt-0.5 text-primary-500">•</span>
               <span>
-                <strong className="font-semibold text-gray-900">Your files stay private.</strong> — Documents are served only through short-lived private links, never left open to the public web.
+                <strong className="font-semibold text-ink">Your files stay private.</strong> — Documents are served only through short-lived private links, never left open to the public web.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="shrink-0 mt-0.5 text-blue-600">•</span>
+              <span className="shrink-0 mt-0.5 text-primary-500">•</span>
               <span>
-                <strong className="font-semibold text-gray-900">Your data is walled off.</strong> — Strict access controls keep each organization's data separate. Only people you invite, with the access you grant, can see it.
+                <strong className="font-semibold text-ink">Your data is walled off.</strong> — Strict access controls keep each organization's data separate. Only people you invite, with the access you grant, can see it.
               </span>
             </li>
             <li className="flex gap-2">
-              <span className="shrink-0 mt-0.5 text-blue-600">•</span>
+              <span className="shrink-0 mt-0.5 text-primary-500">•</span>
               <span>
-                <strong className="font-semibold text-gray-900">You stay in control.</strong> — You decide who joins your workspace and exactly what each person can see or edit.
+                <strong className="font-semibold text-ink">You stay in control.</strong> — You decide who joins your workspace and exactly what each person can see or edit.
               </span>
             </li>
           </ul>
         </div>
 
         <div className="px-8 pb-6">
-          <p className="text-xs text-gray-500">
-            By continuing you agree to our <a href="/privacy" className="underline hover:text-gray-700">Privacy Policy</a> and <a href="/dpa" className="underline hover:text-gray-700">Data Processing Agreement</a>.
+          <p className="text-xs text-ink-muted">
+            By continuing you agree to our <a href="/privacy" className="underline hover:text-ink">Privacy Policy</a> and <a href="/dpa" className="underline hover:text-ink">Data Processing Agreement</a>.
           </p>
         </div>
 
         {accept.error && (
           <div className="px-8 pb-4">
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+            <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-500">
               {accept.error instanceof Error ? accept.error.message : "Failed to accept the commitment. Please try again."}
             </p>
           </div>
         )}
 
-        <footer className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50 px-8 py-5">
+        <footer className="flex flex-col gap-3 border-t border-line-hair bg-surface-alt px-8 py-5">
           <div className="flex items-center justify-end gap-3">
             <Button
               type="button"
@@ -116,7 +116,7 @@ export function DataCommitmentGate() {
               {accept.isPending ? "Saving..." : "Agree & continue"}
             </Button>
           </div>
-          <p className="text-center text-[11px] text-gray-500">
+          <p className="text-center text-xs text-ink-muted">
             Accepted on behalf of your workspace by the owner.
           </p>
         </footer>

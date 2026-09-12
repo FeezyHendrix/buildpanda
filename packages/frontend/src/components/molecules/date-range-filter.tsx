@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { FilterTrigger } from "@/components/atoms/filter-trigger";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 interface DateRangeFilterProps {
@@ -41,8 +42,7 @@ function formatDateRangeLabel(
   return first === last ? first : `${first} – ${last}`;
 }
 
-const DATE_INPUT_CLASS =
-  "h-8 w-full rounded-lg border border-[#F0F0F0] px-2 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30";
+const DATE_INPUT_CLASS = cn(INPUT_SM_CLASS, "px-2");
 
 /** From/to date popover for a filter row. Applies on "Apply", never on keystroke. */
 function DateRangeFilter({ from, to, label, onApply, onClear, className }: DateRangeFilterProps) {
@@ -85,15 +85,15 @@ function DateRangeFilter({ from, to, label, onApply, onClear, className }: DateR
       </FilterTrigger>
 
       {open ? (
-        <div role="dialog" aria-label="Date range" className="absolute right-0 top-full z-50 mt-1 w-72 rounded-xl bg-white p-4 shadow-lg ring-1 ring-black/5">
-          <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-gray-400">Date range</p>
+        <div role="dialog" aria-label="Date range" className="absolute right-0 top-full z-50 mt-1 w-72 rounded-lg border border-line bg-white p-4 shadow-card">
+          <p className="mb-3 text-xs font-medium uppercase text-ink-muted">Date range</p>
           <div className="flex flex-col gap-3">
             <label className="block">
-              <span className="mb-1 block text-[12px] text-gray-500">From</span>
+              <span className="mb-1 block text-xs text-ink-muted">From</span>
               <input type="date" value={localFrom} onChange={(e) => setLocalFrom(e.target.value)} className={DATE_INPUT_CLASS} />
             </label>
             <label className="block">
-              <span className="mb-1 block text-[12px] text-gray-500">To</span>
+              <span className="mb-1 block text-xs text-ink-muted">To</span>
               <input type="date" value={localTo} onChange={(e) => setLocalTo(e.target.value)} className={DATE_INPUT_CLASS} />
             </label>
           </div>

@@ -58,7 +58,7 @@ export function PackTab({ proposalId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-hair bg-gray-50 p-4">
         <p className="max-w-2xl text-sm text-gray-600">
           These sections are rendered on the client's proposal page and frozen into the PDF when you send. The site survey
           stays internal.

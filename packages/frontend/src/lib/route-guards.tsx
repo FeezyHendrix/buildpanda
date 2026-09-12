@@ -40,7 +40,7 @@ export function homePathFor(accountType: string | null | undefined): string {
 
 function FullScreenLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAFAFA]">
+    <div className="flex min-h-screen items-center justify-center bg-surface-alt">
       <p className="text-sm text-gray-500">Loading…</p>
     </div>
   );

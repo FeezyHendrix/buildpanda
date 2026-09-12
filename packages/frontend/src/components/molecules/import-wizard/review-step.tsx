@@ -14,14 +14,14 @@ export function ReviewStep({ sessionId }: ReviewStepProps) {
   if (isPending) {
     return (
       <div className="flex flex-col items-center justify-center p-12">
-        <Spinner className="h-8 w-8 text-[#004DE7]" />
+        <Spinner className="h-8 w-8 text-primary-500" />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="text-center p-12 text-gray-500">
+      <div className="text-center p-12 text-ink-muted">
         Failed to load session details.
       </div>
     );
@@ -31,38 +31,38 @@ export function ReviewStep({ sessionId }: ReviewStepProps) {
     switch (status) {
       case "applied":
       case "ready":
-        return <Badge className="bg-green-100 text-green-800 border-none">Success</Badge>;
+        return <Badge tone="success" dot>Success</Badge>;
       case "failed":
-        return <Badge className="bg-red-100 text-red-800 border-none">Failed</Badge>;
+        return <Badge tone="danger" dot>Failed</Badge>;
       case "skipped":
-        return <Badge className="bg-gray-100 text-gray-800 border-none">Skipped</Badge>;
+        return <Badge tone="neutral" dot>Skipped</Badge>;
       default:
-        return <Badge className="bg-blue-100 text-blue-800 border-none">Processing</Badge>;
+        return <Badge tone="info" dot>Processing</Badge>;
     }
   };
 
   return (
     <div className="flex flex-col max-w-2xl mx-auto mt-8">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-2">Almost done</h2>
-      <p className="text-gray-500 mb-8">Review your imported files before opening the project.</p>
+      <h2 className="text-2xl font-semibold text-ink mb-2">Almost done</h2>
+      <p className="text-ink-muted mb-8">Review your imported files before opening the project.</p>
 
       {session.documents.length === 0 ? (
-        <div className="p-8 text-center bg-gray-50 rounded-xl border border-gray-200 text-gray-500">
+        <div className="p-8 text-center bg-surface-alt rounded-lg border border-line-hair text-ink-muted">
           {session.projectId ? "Your project is ready." : "No files were uploaded during this session."}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {session.documents.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
+            <div key={doc.id} className="flex items-center justify-between p-4 rounded-lg border border-line-hair bg-white">
               <div className="flex flex-col">
-                <span className="font-medium text-gray-900 capitalize">{doc.kind}</span>
-                <span className="text-sm text-gray-500">{doc.fileName || "Unknown file"}</span>
-                {doc.error && <span className="text-xs text-red-500 mt-1">{doc.error}</span>}
+                <span className="font-medium text-ink capitalize">{doc.kind}</span>
+                <span className="text-sm text-ink-muted">{doc.fileName || "Unknown file"}</span>
+                {doc.error && <span className="text-xs text-negative-500 mt-1">{doc.error}</span>}
               </div>
               <div className="flex items-center gap-3">
                 {getStatusBadge(doc.status)}
                 {doc.status === "failed" && (
-                  <Button variant="ghost" size="sm" className="text-sm text-[#004DE7]">
+                  <Button variant="ghost" size="sm" className="text-sm text-primary-500">
                     Retry
                   </Button>
                 )}

@@ -18,15 +18,15 @@ export default function ResetPasswordForm() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Invalid reset link
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             Invalid or missing reset link.
           </p>
         </div>
 
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           Invalid or missing reset link
         </p>
 
@@ -69,16 +69,16 @@ export default function ResetPasswordForm() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Password reset successfully
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             Your password has been successfully reset. You can now sign in with
             your new password.
           </p>
         </div>
 
-        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-600">
+        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm text-success-600">
           Password reset successfully
         </p>
 
@@ -94,16 +94,16 @@ export default function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Set new password
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
+        <p className="text-sm text-ink-muted text-pretty">
           Enter your new password below.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {error}
         </p>
       )}

@@ -1,3 +1,4 @@
+import { Button } from "@/components/atoms/button";
 import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import {
   type InvoiceStatus,
@@ -60,14 +61,10 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
         title="Line items"
         description="Each line is quantity × rate. Add as many as you need."
         action={
-          <button
-            type="button"
-            onClick={addLine}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 hover:bg-primary-100"
-          >
-            <PlusIcon className="size-3.5" />
+          <Button type="button" variant="secondary" size="sm" onClick={addLine}>
+            <PlusIcon />
             Add line
-          </button>
+          </Button>
         }
       >
         <LineItemsList
@@ -97,7 +94,7 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
         </div>
       </Section>
 
-      <details className="group rounded-2xl border border-[#F0F0F0] bg-white">
+      <details className="group rounded-lg border border-line-hair bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 sm:px-6 [&::-webkit-details-marker]:hidden">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-gray-900">More options</h2>
@@ -108,7 +105,7 @@ function InvoiceForm({ form, money }: InvoiceFormProps) {
           <ChevronRightIcon className="size-4 shrink-0 text-gray-400 transition-transform duration-200 group-open:rotate-90" />
         </summary>
 
-        <div className="flex flex-col gap-6 border-t border-[#F0F0F0] p-5 sm:p-6">
+        <div className="flex flex-col gap-6 border-t border-line-hair p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-2">
             <SelectField<InvoiceType>
               id="type"

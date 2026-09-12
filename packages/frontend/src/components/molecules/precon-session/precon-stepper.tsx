@@ -32,7 +32,7 @@ interface Props {
 export function PreconStepper({ steps, active, reachable, onSelect }: Props) {
   const activeIndex = steps.findIndex((s) => s.key === active);
   return (
-    <nav aria-label="Take-off steps" className="flex items-center gap-2 border-b border-gray-200 pb-3">
+    <nav aria-label="Take-off steps" className="flex items-center gap-2 border-b border-line pb-3">
       {steps.map((step, index) => {
         const done = index < activeIndex;
         const current = step.key === active;
@@ -47,19 +47,19 @@ export function PreconStepper({ steps, active, reachable, onSelect }: Props) {
               onClick={() => onSelect(step.key)}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-2 py-1 text-left outline-none transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                "focus-visible:shadow-focus",
                 clickable && "hover:bg-gray-50",
                 !clickable && !current && "cursor-default",
               )}
             >
               <span
                 className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                  "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                   done
                     ? "bg-primary-500 text-white"
                     : current
                       ? "border-2 border-primary-500 text-primary-600"
-                      : "border-2 border-gray-200 text-gray-400",
+                      : "border-2 border-line text-gray-400",
                 )}
               >
                 {done ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}
@@ -68,7 +68,7 @@ export function PreconStepper({ steps, active, reachable, onSelect }: Props) {
                 <span className={cn("text-xs font-semibold", current ? "text-primary-700" : done ? "text-gray-900" : "text-gray-400")}>
                   {step.label}
                 </span>
-                <span className="hidden text-[11px] text-gray-400 sm:block">{step.hint}</span>
+                <span className="hidden text-xs text-gray-400 sm:block">{step.hint}</span>
               </span>
             </button>
           </div>

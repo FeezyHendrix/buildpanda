@@ -10,6 +10,7 @@ import {
 } from "@/hooks/use-queries";
 import { cn } from "@/lib/utils";
 import type { QueryStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export const QUERY_STATUS_META: Record<
   QueryStatus,
@@ -64,7 +65,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line bg-white shadow-card outline-none",
           )}
         >
           {isLoading || !query ? (
@@ -93,10 +94,10 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                   )}
               </header>
 
-              <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Answer</p>
+              <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
+                <p className="text-xs font-medium uppercase text-ink-muted">Answer</p>
                 {query.answer && query.status !== "Open" ? (
-                  <div className="mt-2 rounded-xl bg-[#F0F4FF] p-3">
+                  <div className="mt-2 rounded-lg bg-primary-50 p-3">
                       {query.answerHtml ? (
                         <div
                           className="prose prose-sm max-w-none text-sm text-gray-900 [&_img]:max-h-64 [&_img]:rounded"
@@ -119,14 +120,13 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                       onChange={(e) => setAnswer(e.target.value)}
                       rows={3}
                       placeholder="Write an answer…"
-                      className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                      className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
                     />
                     <div>
                       <Button
                         type="button"
                         variant="primary"
-                        size="sm"
-                        className="h-9 px-4 text-sm"
+                        size="md"
                         loading={updateQuery.isPending}
                         disabled={!answer.trim()}
                         onClick={saveAnswer}
@@ -137,7 +137,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                   </div>
                 )}
 
-                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({query.comments.length})
                 </p>
                 {query.comments.length === 0 ? (
@@ -145,7 +145,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                 ) : (
                   <ul className="mt-2 flex flex-col gap-3">
                     {query.comments.map((c) => (
-                      <li key={c.id} className="rounded-xl bg-[#FAFAFA] p-3">
+                      <li key={c.id} className="rounded-lg bg-surface-alt p-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
                           <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
@@ -157,21 +157,20 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                 )}
               </div>
 
-              <footer className="flex flex-col gap-2 border-t border-[#F0F0F0] px-6 py-4">
+              <footer className="flex flex-col gap-2 border-t border-line-hair px-6 py-4">
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={2}
                   placeholder="Add a comment…"
-                  className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
                 />
                 <div className="flex items-center justify-end gap-2">
                   {query.status !== "Closed" && (
                     <Button
                       type="button"
                       variant="secondary"
-                      size="sm"
-                      className="mr-auto h-9 px-4 text-sm"
+                      size="md" className="mr-auto"
                       loading={updateQuery.isPending}
                       onClick={close}
                     >
@@ -180,7 +179,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                   )}
                   <Dialog.Close
                     render={
-                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                      <Button type="button" variant="secondary" size="md">
                         Close
                       </Button>
                     }
@@ -188,8 +187,7 @@ function QueryDetailDialog({ open, onOpenChange, projectId, queryId }: Props) {
                   <Button
                     type="button"
                     variant="primary"
-                    size="sm"
-                    className="h-9 px-4 text-sm"
+                    size="md"
                     disabled={!comment.trim()} loading={addComment.isPending}
                     onClick={submitComment}
                   >

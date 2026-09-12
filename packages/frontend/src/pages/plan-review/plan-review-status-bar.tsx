@@ -51,7 +51,7 @@ export function PlanReviewStatusBar({ sheets, sheet, nav, markup, recording, sav
     <footer
       role="status"
       aria-live="polite"
-      className="flex shrink-0 items-center gap-3 border-t border-[#F0F0F0] bg-white px-3 py-1.5 text-[11px] text-gray-500"
+      className="flex shrink-0 items-center gap-3 border-t border-line-hair bg-white px-3 py-1.5 text-xs text-gray-500"
     >
       <span className="flex items-center gap-1.5">
         {recording.status === REC_STATUS.RECORDING ? (

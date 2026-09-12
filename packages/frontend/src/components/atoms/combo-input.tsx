@@ -1,5 +1,6 @@
 import { Combobox } from "@base-ui/react/combobox";
 import { useId, useRef } from "react";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 interface ComboInputProps {
@@ -70,19 +71,19 @@ function ComboInput({
       <div
         ref={anchorRef}
         className={cn(
-          "flex h-11 w-full items-center gap-2 rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
-          "focus-within:ring-2 focus-within:ring-gray-900/10",
+          INPUT_CLASS,
+          "flex items-center gap-2 focus-within:border-primary-500 focus-within:shadow-focus",
           className,
         )}
       >
         <Combobox.Input
           id={inputId}
           placeholder={placeholder}
-          className="h-full w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
+          className="h-full w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
         />
         <Combobox.Trigger
           aria-label="Show options"
-          className="flex shrink-0 cursor-default text-gray-400"
+          className="flex shrink-0 cursor-default text-ink-muted"
         >
           <CaretDownIcon />
         </Combobox.Trigger>
@@ -98,11 +99,10 @@ function ComboInput({
           <Combobox.Popup
             className={cn(
               "w-[var(--anchor-width)] max-h-[20rem] origin-[var(--transform-origin)]",
-              "rounded-lg bg-white text-gray-900 shadow-lg shadow-gray-200/60",
-              "outline outline-1 outline-gray-200",
+"rounded-lg border border-line bg-white text-ink shadow-card",
             )}
           >
-            <Combobox.Empty className="px-4 py-2 text-sm text-gray-400">
+            <Combobox.Empty className="px-4 py-2 text-sm text-ink-muted">
               {emptyText}
             </Combobox.Empty>
 
@@ -113,7 +113,7 @@ function ComboInput({
                   value={item}
                   className={cn(
                     "grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 px-3 py-2 text-sm outline-none select-none",
-                    "data-[highlighted]:bg-[#F6F6F6]",
+                    "data-[highlighted]:bg-black/5",
                   )}
                 >
                   <Combobox.ItemIndicator className="col-start-1">

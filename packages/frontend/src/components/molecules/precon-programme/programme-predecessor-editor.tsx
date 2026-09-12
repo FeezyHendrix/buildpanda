@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import type { PreconProgrammeTask, ProgrammeDependency } from "@/api/precon";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 // Dependencies are the part of a drafted programme a planner most often has
 // to fix, so they get a full editor: pick the task, the link type, the lag.
@@ -14,8 +16,7 @@ const DEPENDENCY_TYPES: { value: ProgrammeDependency["type"]; label: string }[] 
   { value: "SF", label: "Start → finish" },
 ];
 
-const inputClass =
-  "h-8 rounded-lg border-0 bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const inputClass = cn(INPUT_SM_CLASS, "w-auto");
 
 interface Props {
   task: PreconProgrammeTask;
@@ -46,7 +47,7 @@ export function ProgrammePredecessorEditor({ task, tasks, disabled, onChange }: 
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Depends on</p>
+      <p className="text-xs font-medium uppercase text-ink-muted">Depends on</p>
       {task.predecessors.length === 0 && !adding ? (
         <p className="text-xs text-gray-400">No predecessors. This task can start on day one.</p>
       ) : null}

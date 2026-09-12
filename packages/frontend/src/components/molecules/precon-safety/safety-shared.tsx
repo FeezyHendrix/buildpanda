@@ -2,6 +2,8 @@ import { Sparkles } from "lucide-react";
 import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import type { RiskEditState, SafetyDocStatus } from "@/api/precon-safety";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS, INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 // One chip vocabulary for every AI-drafted safety artefact: where a row sits
 // between Panda AI's draft and a person's sign-off.
@@ -24,10 +26,8 @@ DraftStateChip.displayName = "DraftStateChip";
 
 // Compact controls for dense editable tables. Same tokens as the take-off
 // review panels so the safety pack reads as the same product.
-export const cellInputClass =
-  "h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100 disabled:opacity-60";
-export const cellTextareaClass =
-  "min-h-16 w-full resize-y rounded-lg border-0 bg-[#F6F6F6] px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+export const cellInputClass = INPUT_SM_CLASS;
+export const cellTextareaClass = cn(INPUT_CLASS, "h-auto min-h-24 resize-y py-3");
 
 export function EnumSelect<T extends string>({
   value,
@@ -64,18 +64,10 @@ EnumSelect.displayName = "EnumSelect";
 
 export function DraftButton({ label, loading, onClick }: { label: string; loading: boolean; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-3 text-sm font-semibold text-primary-700",
-        "outline-none transition-colors hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-primary-100 disabled:opacity-60",
-      )}
-    >
+    <Button variant="secondary" size="md" loading={loading} onClick={onClick}>
       <Sparkles className="size-4" aria-hidden="true" />
-      {loading ? "Drafting…" : label}
-    </button>
+      {label}
+    </Button>
   );
 }
 DraftButton.displayName = "DraftButton";

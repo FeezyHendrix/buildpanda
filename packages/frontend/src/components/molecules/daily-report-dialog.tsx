@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { useDownloadPeriodReport } from "@/hooks/use-daily-logs";
@@ -48,7 +49,7 @@ function DailyReportDialog({ open, onOpenChange, projectId }: DailyReportDialogP
               aria-pressed={period === opt.value}
               className={cn(
                 "h-9 rounded-full px-3.5 text-xs font-medium transition-colors",
-                period === opt.value ? "bg-[#004DE7] text-white" : "bg-[#F6F6F6] text-gray-700 hover:bg-[#EDEDED]",
+                period === opt.value ? "bg-primary-500 text-white" : "bg-surface-alt text-ink hover:bg-gray-100",
               )}
             >
               {opt.label}
@@ -64,7 +65,7 @@ function DailyReportDialog({ open, onOpenChange, projectId }: DailyReportDialogP
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </FormDrawer>

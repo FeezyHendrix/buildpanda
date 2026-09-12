@@ -17,6 +17,8 @@ import {
   CHANGE_STATUS_META,
 } from "@/components/molecules/change-request-detail-dialog";
 import { KanbanBoard } from "@/components/molecules/kanban-board";
+import { ChangeOrderSummaryStrip } from "./change-requests/summary-strip";
+import { ContractChip } from "./change-requests/contract-chip";
 import {
   CHANGE_COLUMNS,
   textMeta,
@@ -26,6 +28,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import { useParticipants } from "@/hooks/use-participants";
 import {
   useChangeRequests,
+  useChangeRequestSummary,
   useCreateChangeRequest,
   useDeleteChangeRequest,
   useUpdateChangeRequest,
@@ -39,6 +42,7 @@ const FILTERS: { value: ChangeStatus | "all"; label: string }[] = [
   { value: "Draft", label: "Draft" },
   { value: "Submitted", label: "Submitted" },
   { value: "Approved", label: "Approved" },
+  { value: "Executed", label: "Executed" },
   { value: "Rejected", label: "Rejected" },
 ];
 
@@ -55,6 +59,7 @@ export default function ProjectChangeRequests() {
     project.id,
     filter === "all" ? undefined : filter,
   );
+  const { data: summary } = useChangeRequestSummary(project.id);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
   const deleteCr = useDeleteChangeRequest();
@@ -70,7 +75,7 @@ export default function ProjectChangeRequests() {
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const approvedCost = items
-    .filter((i) => i.status === "Approved")
+    .filter((i) => i.status === "Approved" || i.status === "Executed")
     .reduce((s, i) => s + i.costImpact, 0);
 
   function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
@@ -99,7 +104,7 @@ export default function ProjectChangeRequests() {
   return (
     <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
       <PageHeader
-        title="Change Requests"
+        title="Change orders"
         actions={
           canManage ? (
             <Button
@@ -108,19 +113,21 @@ export default function ProjectChangeRequests() {
               onClick={() => setCreateOpen(true)}
             >
               <PlusIcon className="size-4" />
-              New change request
+              New change order
             </Button>
           ) : undefined
         }
       />
+
+      <ChangeOrderSummaryStrip summary={summary} items={items} className="mt-6" />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter change requests" />
         <div className="flex items-center gap-3 justify-end lg:justify-start self-end lg:self-auto">
           <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
           {approvedCost > 0 && (
-            <p className="text-xs text-gray-500">
-              Approved impact: {money(approvedCost, "NGN")}
+            <p className="text-xs text-ink-muted">
+              Approved impact: {money(approvedCost, project.currency)}
             </p>
           )}
         </div>
@@ -163,7 +170,7 @@ export default function ProjectChangeRequests() {
           ) : items.length === 0 ? (
             <EmptyState
               icon={<ClipboardIcon />}
-              title="No change requests yet"
+              title="No change orders yet"
               description="Raise one when scope, cost or schedule changes."
             />
           ) : (
@@ -180,15 +187,16 @@ export default function ProjectChangeRequests() {
                   className="min-w-0 flex-1 text-left"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-gray-900">
+                    <p className="truncate text-sm font-semibold text-ink">
                       {cr.title}
                     </p>
                     <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
                       {CHANGE_STATUS_META[cr.status].label}
                     </Badge>
+                    {cr.contractId ? <ContractChip projectId={project.id} contractId={cr.contractId} /> : null}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                    <span className="font-medium text-gray-700">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+                    <span className="font-medium text-ink">
                       {money(cr.costImpact, cr.currency)}
                     </span>
                     {cr.timeImpactDays > 0 && (
@@ -203,21 +211,23 @@ export default function ProjectChangeRequests() {
                   </div>
                 </button>
                 {canManage && (
-                  <div className="flex items-center gap-3">
-                    <button
+                  <div className="flex items-center gap-1">
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setEditItem(cr)}
-                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       onClick={() => setDeleteId(cr.id)}
-                      className="text-xs font-medium text-red-500 hover:text-red-600"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 )}
               </Card>
@@ -275,8 +285,8 @@ export default function ProjectChangeRequests() {
             deleteCr.mutate({ projectId: project.id, changeId: deleteId });
           setDeleteId(null);
         }}
-        title="Delete change request"
-        description="This permanently removes the change request and its discussion."
+        title="Delete change order"
+        description="This permanently removes the change order and its discussion."
         confirmLabel="Delete"
         variant="danger"
       />

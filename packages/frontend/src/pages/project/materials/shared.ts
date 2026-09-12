@@ -1,5 +1,6 @@
 import { formatShortDate } from "@/lib/formatters";
 import type { MaterialOrderStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export const STATUS_META: Record<MaterialOrderStatus, { label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" }> = {
   Draft: { label: "Draft", tone: "neutral" },
@@ -25,7 +26,7 @@ export const STATUS_FILTER_ITEMS = STATUS_FILTERS.map((status) => ({
   label: status === "all" ? "All" : STATUS_META[status].label,
 }));
 
-export const FIELD = "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+export const FIELD = INPUT_CLASS;
 
 export function today(): string {
   return new Date().toISOString().slice(0, 10);

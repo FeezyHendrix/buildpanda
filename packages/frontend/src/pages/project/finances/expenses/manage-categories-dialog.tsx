@@ -47,7 +47,7 @@ export function ManageCategoriesDialog({
       >
         <div className="space-y-6">
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-900">Custom Categories</h4>
+            <h4 className="text-sm font-semibold text-ink">Custom Categories</h4>
             <div className="flex gap-2 items-center">
               <input
                 className={cn(expenseInputClass, "flex-1")}
@@ -59,7 +59,7 @@ export function ManageCategoriesDialog({
                 type="color"
                 value={newColor}
                 onChange={(e) => setNewColor(e.target.value)}
-                className="h-11 w-11 p-1 rounded bg-[#F6F6F6] border-0 cursor-pointer"
+                className="size-[46px] cursor-pointer rounded-lg border border-line bg-white p-1"
               />
               <Button onClick={handleCreate} disabled={!newLabel.trim() || create.isPending}>
                 Add
@@ -67,20 +67,16 @@ export function ManageCategoriesDialog({
             </div>
           </div>
 
-          <ul className="divide-y divide-gray-100 border-t border-gray-100">
+          <ul className="divide-y divide-line-hair border-t border-line-hair">
             {categories.map((c) => (
               <li key={c.key} className="flex items-center justify-between py-3">
                 <CategoryBadge categoryLabel={c.label} categoryColor={c.color} />
                 {c.type === "custom" ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setDeleteTarget(c)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-1"
-                  >
+                  <Button variant="danger" size="sm" onClick={() => setDeleteTarget(c)}>
                     Delete
                   </Button>
                 ) : (
-                  <span className="text-xs text-gray-400">Preset</span>
+                  <span className="text-xs text-ink-muted">Preset</span>
                 )}
               </li>
             ))}

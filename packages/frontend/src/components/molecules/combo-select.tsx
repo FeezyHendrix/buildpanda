@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Combobox } from "@base-ui/react/combobox";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 export interface ComboItem {
@@ -40,8 +41,8 @@ export function ComboSelect({
     >
       <Combobox.Trigger
         className={cn(
-          "flex h-11 w-full items-center justify-between gap-2 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
-          "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          INPUT_CLASS,
+          "flex items-center justify-between gap-2 text-left",
           "cursor-default select-none",
           className,
         )}
@@ -51,22 +52,22 @@ export function ComboSelect({
             selected ? (
               <span className="truncate">{labelOf(selected)}</span>
             ) : (
-              <span className="text-gray-400">{placeholder}</span>
+              <span className="text-ink-muted">{placeholder}</span>
             )
           }
         </Combobox.Value>
-        <span className="text-gray-400">▾</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-[22px] shrink-0 text-ink-muted"><path d="m6 9 6 6 6-6" /></svg>
       </Combobox.Trigger>
       <Combobox.Portal>
         <Combobox.Positioner align="start" sideOffset={4} className="z-50">
-          <Combobox.Popup className="z-50 max-h-72 w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
-            <div className="p-1">
+          <Combobox.Popup className="z-50 max-h-72 w-[var(--anchor-width)] overflow-y-auto rounded-lg border border-line bg-white py-2 shadow-card">
+            <div className="px-2 pb-2">
               <Combobox.Input
                 placeholder={searchPlaceholder}
-                className="h-9 w-full rounded-md bg-[#F6F6F6] px-2 text-sm outline-none"
+                className="h-[38px] w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-primary-500 focus:shadow-focus"
               />
             </div>
-            <Combobox.Empty className="px-3 py-2 text-sm text-gray-400">
+            <Combobox.Empty className="px-3 py-2 text-sm text-ink-muted">
               {emptyText}
             </Combobox.Empty>
             <Combobox.List>
@@ -76,11 +77,11 @@ export function ComboSelect({
                   <Combobox.Item
                     key={id}
                     value={id}
-                    className="flex cursor-default items-center justify-between rounded-md px-3 py-2 text-sm text-gray-700 data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900"
+                    className="flex cursor-default items-center justify-between px-3 py-2 text-sm text-ink data-[highlighted]:bg-black/5 data-[selected]:bg-black/5"
                   >
                     <span className="truncate">{item?.label ?? id}</span>
                     {item?.group && (
-                      <span className="ml-2 shrink-0 text-[10px] uppercase tracking-wide text-gray-400">
+                      <span className="ml-2 shrink-0 text-[10px] uppercase text-ink-muted">
                         {item.group}
                       </span>
                     )}

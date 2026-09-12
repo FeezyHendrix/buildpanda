@@ -70,7 +70,7 @@ export default function ProposalWorkspace() {
 
   return (
     <div className="flex flex-col">
-      <div className="border-b border-gray-100 px-6 py-5">
+      <div className="border-b border-line-hair px-6 py-5">
         <div className="mb-1 flex items-center gap-2 text-xs text-gray-400">
           <Link to="/sales/proposals" className="hover:text-gray-600">
             Proposals
@@ -123,7 +123,7 @@ export default function ProposalWorkspace() {
           <div className="flex flex-col gap-8">
             <ActivityTab proposalId={id} />
             <section className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Internal notes</h2>
+              <h2 className="text-xs font-medium uppercase text-ink-muted">Internal notes</h2>
               <MessagesTab proposalId={id} />
             </section>
           </div>

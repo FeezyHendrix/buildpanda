@@ -2,7 +2,14 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { Spinner, type SpinnerTone } from "@/components/atoms/spinner";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+/**
+ * primary   — filled brand blue (the one call to action on a surface)
+ * secondary — white, hairline border; hover tints to the brand
+ * ghost     — text-only; hover wash
+ * danger    — text-only in the negative colour (destructive rows/footers)
+ */
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+/** sm 32px (inline), md 38px (toolbars, the default), lg 46px (forms, drawer footers). */
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,18 +22,24 @@ const spinnerTone: Record<ButtonVariant, SpinnerTone> = {
   primary: "current",
   secondary: "brand",
   ghost: "brand",
+  danger: "current",
 };
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-[#004DE7] text-white hover:bg-[#0041c4] active:bg-[#003aad]",
-  secondary: "bg-[#F6F6F6] text-gray-900 hover:bg-gray-200 active:bg-gray-300",
-  ghost: "bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200",
+  primary:
+    "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 disabled:border disabled:border-line-disabled disabled:bg-surface-alt disabled:text-ink-disabled",
+  secondary:
+    "border border-line bg-white text-ink hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 active:bg-primary-100 disabled:border-line-disabled disabled:bg-surface-alt disabled:text-ink-disabled",
+  ghost:
+    "bg-transparent text-primary-500 hover:bg-black/5 active:bg-black/10 disabled:text-ink-disabled",
+  danger:
+    "bg-transparent text-negative-500 hover:bg-black/5 active:bg-black/10 disabled:text-ink-disabled",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-5 text-sm",
+  sm: "h-8 px-3 text-xs [&_svg]:size-3.5",
+  md: "h-[38px] px-3 text-sm [&_svg]:size-4",
+  lg: "h-[46px] min-w-24 px-6 text-sm [&_svg]:size-4",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -47,9 +60,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       className={cn(
-        "relative inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold",
-        "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        "disabled:cursor-not-allowed disabled:opacity-50",
+        "relative inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg font-semibold",
+        "outline-none transition-colors duration-150 ease-out focus-visible:shadow-focus",
+        "disabled:cursor-not-allowed",
         variantStyles[variant],
         sizeStyles[size],
         className,
@@ -61,7 +74,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           <Spinner size="xs" tone={spinnerTone[variant]} />
         </span>
       )}
-      <span className={cn("inline-flex items-center gap-2.5", loading && "invisible")}>
+      <span className={cn("inline-flex items-center gap-1", loading && "invisible")}>
         {children}
       </span>
     </button>
@@ -70,4 +83,4 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button, type ButtonProps };
+export { Button, type ButtonProps, type ButtonVariant, type ButtonSize };

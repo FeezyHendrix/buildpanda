@@ -38,7 +38,7 @@ function StateCell({ session }: { session: PreconSession }) {
     return (
       <span className="flex min-w-0 flex-col gap-0.5">
         <Badge tone="warning">Drawing revised</Badge>
-        <span className="truncate text-[11px] text-amber-700">
+        <span className="truncate text-xs text-amber-700">
           Measured on an earlier revision{session.stale.newerRevision ? ` · now Rev ${session.stale.newerRevision}` : ""}
         </span>
       </span>
@@ -52,12 +52,12 @@ function StateCell({ session }: { session: PreconSession }) {
         {PRECON_STATUS_LABEL[session.status]}
       </Badge>
       {running ? (
-        <span className="flex items-center gap-1 text-[11px] text-gray-500">
+        <span className="flex items-center gap-1 text-xs text-gray-500">
           <Spinner size="xs" />
           <span className="truncate">{latest?.message ?? "Waiting for a worker…"}</span>
         </span>
       ) : session.status === "failed" ? (
-        <span className="line-clamp-1 text-[11px] text-red-600" title={session.error ?? undefined}>
+        <span className="line-clamp-1 text-xs text-red-600" title={session.error ?? undefined}>
           {session.error ?? "Panda AI could not measure this drawing."}
         </span>
       ) : null}

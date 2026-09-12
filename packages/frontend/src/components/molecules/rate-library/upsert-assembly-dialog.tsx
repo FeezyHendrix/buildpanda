@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/atoms/button";
 import { ComboInput } from "@/components/atoms/combo-input";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_SM_CLASS } from "@/components/atoms/input";
 import { UnitInput } from "@/components/atoms/unit-input";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import type { Assembly, AssemblyItem, UpsertAssemblyInput } from "@/api/precon";
@@ -11,6 +11,7 @@ import { useCreateAssembly, useUpdateAssembly } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { TAKEOFF_SECTIONS } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -86,9 +87,9 @@ function ItemRow({
   onRemove: () => void;
 }) {
   return (
-    <div className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-gray-200 p-3">
+    <div className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-line p-3">
       <div className="flex flex-col gap-2">
-        <Input className="h-9 text-sm" placeholder="Item, e.g. Plaster both faces" value={draft.description} onChange={(e) => onChange({ description: e.target.value })} />
+        <Input inputSize="sm" placeholder="Item, e.g. Plaster both faces" value={draft.description} onChange={(e) => onChange({ description: e.target.value })} />
         <div className="grid grid-cols-3 gap-2">
           <label className={LABEL}>
             Unit
@@ -111,7 +112,7 @@ function ItemRow({
           <label className={LABEL}>
             Rate from the card
             <select
-              className="mt-1 h-9 w-full rounded-lg border-0 bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
+              className={cn(INPUT_SM_CLASS, "mt-1")}
               value={draft.rateId}
               onChange={(e) => {
                 const picked = rates.find((r) => r.id === e.target.value);

@@ -40,6 +40,54 @@ export interface SheetTotals {
 
 export const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
+export type SheetGroupId = "main" | "change_orders";
+
+/** Rows grouped by the contract that prices them; each group carries its own subtotal. */
+export interface SheetGroup {
+  id: SheetGroupId;
+  label: string;
+  rows: SheetRow[];
+  totals: SheetTotals;
+}
+
+const GROUP_LABELS: Record<SheetGroupId, string> = {
+  main: "Original contract",
+  change_orders: "Change orders",
+};
+
+/**
+ * Splits the rows into the original contract and the change orders by the
+ * stage's `contractId`. A stage with no contract (or one the contracts list
+ * does not know) belongs to the original contract. The change-orders group is
+ * kept even when empty once a change-order contract exists, so the section
+ * reads the same before and after its first phase is assigned.
+ */
+export function groupRowsByContract(
+  rows: SheetRow[],
+  periods: string[],
+  changeOrderContractIds: ReadonlySet<string>,
+): SheetGroup[] {
+  const main: SheetRow[] = [];
+  const changeOrders: SheetRow[] = [];
+  for (const row of rows) {
+    const contractId = row.stage.contractId;
+    if (contractId && changeOrderContractIds.has(contractId)) changeOrders.push(row);
+    else main.push(row);
+  }
+  const groups: SheetGroup[] = [
+    { id: "main", label: GROUP_LABELS.main, rows: main, totals: sheetTotals(main, periods) },
+  ];
+  if (changeOrders.length > 0 || changeOrderContractIds.size > 0) {
+    groups.push({
+      id: "change_orders",
+      label: GROUP_LABELS.change_orders,
+      rows: changeOrders,
+      totals: sheetTotals(changeOrders, periods),
+    });
+  }
+  return groups;
+}
+
 export function groupLinesByStage(
   lines: StageScheduleOfValue[] | undefined,
 ): Map<string, StageScheduleOfValue[]> {

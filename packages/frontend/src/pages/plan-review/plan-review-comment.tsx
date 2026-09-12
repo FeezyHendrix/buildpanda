@@ -8,7 +8,6 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { Spinner } from "@/components/atoms/spinner";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { cn } from "@/lib/utils";
 import { formatClock } from "./plan-review-data";
@@ -22,6 +21,8 @@ import {
   type CommentMode,
   type FollowUpKind,
 } from "@/lib/markup-meta";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 
 function ModeTab({
@@ -201,7 +202,7 @@ export function CommentComposerPopover({
       style={{ left: placement.x, top: placement.y }}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      className="fixed z-[60] w-[320px] -translate-x-1/2 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-black/10"
+      className="fixed z-[60] w-[320px] -translate-x-1/2 rounded-lg bg-white p-3 border border-line shadow-card"
     >
       <div className="flex items-center gap-2">
         <span
@@ -216,14 +217,14 @@ export function CommentComposerPopover({
           aria-label="Cancel comment"
           title="Cancel comment"
           onClick={onCancel}
-          className="ml-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-[#F6F6F6] hover:text-gray-700"
+          className="ml-auto flex size-7 items-center justify-center rounded-lg text-gray-400 hover:bg-surface-alt hover:text-gray-700"
         >
           <X size={14} />
         </button>
       </div>
 
       <div
-        className="mt-2.5 flex rounded-lg border border-[#EDEDED] bg-[#F6F6F6] p-0.5"
+        className="mt-2.5 flex rounded-lg border border-line-hair bg-surface-alt p-0.5"
         role="group"
         aria-label="Comment type"
       >
@@ -245,7 +246,7 @@ export function CommentComposerPopover({
       </div>
 
       {mode !== COMMENT_MODE.TEXT && (
-        <div className="mt-2 rounded-lg border border-[#EDEDED] p-2.5">
+        <div className="mt-2 rounded-lg border border-line-hair p-2.5">
           {mode === COMMENT_MODE.VIDEO && (recording || mediaUrl) && (
             <video
               ref={previewRef}
@@ -263,7 +264,7 @@ export function CommentComposerPopover({
               <button
                 type="button"
                 onClick={stopRecording}
-                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
+                className="flex items-center gap-1.5 rounded-lg bg-negative-500 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-negative-600"
               >
                 <Square size={11} fill="currentColor" /> Stop · {formatClock(seconds)}
               </button>
@@ -275,38 +276,34 @@ export function CommentComposerPopover({
                 <button
                   type="button"
                   onClick={resetMedia}
-                  className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-gray-500 hover:bg-[#F6F6F6] hover:text-red-600"
+                  className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-surface-alt hover:text-red-600"
                 >
                   <Trash2 size={11} /> Discard
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={() => void startRecording()}
-                className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
-              >
+              <Button size="sm" onClick={() => void startRecording()}>
                 {mode === COMMENT_MODE.VIDEO ? <Video size={12} /> : <Mic size={12} />}
                 Record {mode === COMMENT_MODE.VIDEO ? "video" : "audio"}
-              </button>
+              </Button>
             )}
             {recording && <span className="size-2 animate-pulse rounded-full bg-red-500" />}
           </div>
 
-          {mediaError && <p className="mt-1.5 text-[11px] text-amber-700">{mediaError}</p>}
+          {mediaError && <p className="mt-1.5 text-xs text-amber-700">{mediaError}</p>}
         </div>
       )}
 
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <div>
-          <label htmlFor="comment-assignee" className="mb-1 block text-[11px] font-medium text-gray-500">
+          <label htmlFor="comment-assignee" className="mb-1 block text-xs font-medium text-gray-500">
             Assign to
           </label>
           <select
             id="comment-assignee"
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
-            className="h-8 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_SM_CLASS}
           >
             <option value="">Nobody</option>
             {assignees.map((a) => (
@@ -317,14 +314,14 @@ export function CommentComposerPopover({
           </select>
         </div>
         <div>
-          <label htmlFor="comment-followup" className="mb-1 block text-[11px] font-medium text-gray-500">
+          <label htmlFor="comment-followup" className="mb-1 block text-xs font-medium text-gray-500">
             Follow-up
           </label>
           <select
             id="comment-followup"
             value={followUp}
             onChange={(e) => setFollowUp(e.target.value as FollowUpKind)}
-            className="h-8 w-full rounded-lg bg-[#F6F6F6] px-2 text-xs text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_SM_CLASS}
           >
             {FOLLOW_UPS.map((f) => (
               <option key={f.id} value={f.id}>
@@ -340,19 +337,13 @@ export function CommentComposerPopover({
         <button
           type="button"
           onClick={onCancel}
-          className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-[#F6F6F6]"
+          className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-surface-alt"
         >
           Cancel
         </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-        >
-          {busy ? <Spinner size="xs" tone="current" /> : null}
+        <Button size="sm" onClick={handleSubmit} disabled={!canSubmit} loading={busy}>
           Save comment
-        </button>
+        </Button>
       </div>
     </div>
   );

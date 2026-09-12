@@ -27,14 +27,14 @@ function NewCardForm() {
   const [name, setName] = useState("");
   const [region, setRegion] = useState("");
   return (
-    <div className="flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4">
+    <div className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line bg-gray-50 p-4">
       <div className="min-w-56 flex-1">
         <label className="text-xs font-medium text-gray-600" htmlFor="rate-card-name">New rate card</label>
-        <Input id="rate-card-name" className="mt-1 h-9 text-sm" placeholder="e.g. Lagos residential 2026" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input id="rate-card-name" inputSize="sm" className="mt-1" placeholder="e.g. Lagos residential 2026" value={name} onChange={(e) => setName(e.target.value)} />
       </div>
       <div className="min-w-40">
         <label className="text-xs font-medium text-gray-600" htmlFor="rate-card-region">Region</label>
-        <Input id="rate-card-region" className="mt-1 h-9 text-sm" placeholder="Lagos" value={region} onChange={(e) => setRegion(e.target.value)} />
+        <Input id="rate-card-region" inputSize="sm" className="mt-1" placeholder="Lagos" value={region} onChange={(e) => setRegion(e.target.value)} />
       </div>
       <Button
         size="sm"

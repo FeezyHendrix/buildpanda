@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface SendInvoiceValues {
   recipientEmail: string;
@@ -19,8 +20,7 @@ interface SendInvoiceDialogProps {
   error?: string | null;
 }
 
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const inputClass = INPUT_CLASS;
 
 function parseEmails(raw: string): string[] {
   return raw

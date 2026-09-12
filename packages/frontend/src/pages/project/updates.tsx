@@ -143,7 +143,7 @@ export default function ProjectUpdates() {
             <section ref={draftsRef} className="flex flex-col gap-4">
               <div>
                 <h2 className="text-sm font-semibold text-black-900">Drafts</h2>
-                <p className="text-[13px] text-black-300">
+                <p className="text-sm text-black-300">
                   Only your team can see drafts. Review, edit and publish to
                   share with the homeowner.
                 </p>

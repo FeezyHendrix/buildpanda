@@ -49,10 +49,10 @@ function FileUpload({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {label && (
-        <p className="text-sm font-medium text-gray-900">
+        <p className="text-sm font-medium text-ink">
           {label}
           {optional && (
-            <span className="font-normal text-gray-400"> (Optional)</span>
+            <span className="font-normal text-ink-muted"> (Optional)</span>
           )}
         </p>
       )}
@@ -65,11 +65,11 @@ function FileUpload({
         onDrop={handleDrop}
         style={{ height }}
         className={cn(
-          "flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#C8C8C8]",
+          "flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[#C8C8C8]",
           "outline-none transition-colors",
-          "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "focus-visible:shadow-focus",
           isDragging
-            ? "border-[#004DE7] bg-blue-50"
+            ? "border-primary-500 bg-blue-50"
             : "hover:border-gray-400 hover:bg-gray-50",
         )}
       >
@@ -82,13 +82,13 @@ function FileUpload({
 
         <div className="flex flex-col items-center gap-1">
           <p className="text-sm text-gray-700">
-            <span className="font-semibold text-[#004DE7]">
+            <span className="font-semibold text-primary-500">
               Click to upload
             </span>{" "}
             or drag and drop
           </p>
           {hint && (
-            <p className="text-xs text-gray-400">{hint}</p>
+            <p className="text-xs text-ink-muted">{hint}</p>
           )}
         </div>
 

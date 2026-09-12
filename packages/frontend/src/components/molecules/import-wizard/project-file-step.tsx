@@ -102,10 +102,10 @@ export function ProjectFileStep({
   return (
     <div className="flex flex-col max-w-2xl mx-auto mt-4 gap-8 pb-12 w-full">
       <div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-2xl font-semibold text-ink mb-2">
           Import Project File
         </h2>
-        <p className="text-gray-500">
+        <p className="text-ink-muted">
           Upload any project document: an Excel workbook, PDF, Word doc or
           brief. We will extract project details, timeline, budget, and materials.
         </p>
@@ -118,16 +118,16 @@ export function ProjectFileStep({
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             className={cn(
-              "flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl transition-colors bg-gray-50 cursor-pointer",
+              "flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg transition-colors bg-surface-alt cursor-pointer",
               isDragging
-                ? "border-[#004DE7] bg-blue-50"
-                : "border-gray-300 hover:border-gray-400 hover:bg-gray-100",
+                ? "border-primary-500 bg-primary-50"
+                : "border-line hover:border-line-hover hover:bg-surface-alt",
             )}
             onClick={() => fileInputRef.current?.click()}
           >
-            <div className="rounded-full bg-white p-3 shadow-sm mb-4">
+            <div className="rounded-full bg-white p-3 shadow-card mb-4">
               <svg
-                className="h-6 w-6 text-gray-400"
+                className="h-6 w-6 text-ink-muted"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -140,10 +140,10 @@ export function ProjectFileStep({
                 />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-ink">
               Click or drag file to this area to upload
             </h3>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-ink-muted text-sm mt-1">
               Supports Excel, PDF, Word, CSV
             </p>
 
@@ -161,17 +161,17 @@ export function ProjectFileStep({
           </div>
         </div>
       ) : isPending ? (
-        <div className="flex flex-col items-center p-12 text-center border border-gray-200 rounded-xl bg-gray-50">
-          <Spinner className="h-10 w-10 text-[#004DE7] mb-4" />
+        <div className="flex flex-col items-center p-12 text-center border border-line-hair rounded-lg bg-surface-alt">
+          <Spinner className="h-10 w-10 text-primary-500 mb-4" />
           <h3 className="text-lg font-medium">Panda AI is reading your file…</h3>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ink-muted mt-2">
             Extracting project details, timeline, and materials.
           </p>
         </div>
       ) : job?.status === "completed" && job.extraction ? (
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-ink">
               Here's what we found in {job.fileName}
             </h3>
             <Button variant="secondary" onClick={() => setJobId(null)}>
@@ -180,37 +180,37 @@ export function ProjectFileStep({
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="p-4 border border-[#004DE7]/20 bg-[#EFF4FF] rounded-xl flex flex-col gap-2 relative">
+            <div className="p-4 border border-primary-500/20 bg-primary-50 rounded-lg flex flex-col gap-2 relative">
               <div className="absolute top-4 right-4">
-                <Badge className="bg-blue-100 text-[#004DE7] border-none font-semibold">
+                <Badge tone="info">
                   Suggested by Panda AI
                 </Badge>
               </div>
-              <h4 className="font-semibold text-gray-900">
+              <h4 className="font-semibold text-ink">
                 {job.extraction.metadata.projectName || "Unnamed Project"}
               </h4>
-              <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-700 mt-2">
+              <div className="grid grid-cols-2 gap-y-2 text-sm text-ink mt-2">
                 <div>
-                  <span className="text-gray-500">Location:</span>{" "}
+                  <span className="text-ink-muted">Location:</span>{" "}
                   {job.extraction.metadata.location || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Client:</span>{" "}
+                  <span className="text-ink-muted">Client:</span>{" "}
                   {job.extraction.metadata.client || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Contractor:</span>{" "}
+                  <span className="text-ink-muted">Contractor:</span>{" "}
                   {job.extraction.metadata.contractor || "Not specified"}
                 </div>
                 <div>
-                  <span className="text-gray-500">Dates:</span>{" "}
+                  <span className="text-ink-muted">Dates:</span>{" "}
                   {job.extraction.metadata.startDate || "Not specified"} to{" "}
                   {job.extraction.metadata.endDate || "Not specified"}
                 </div>
               </div>
               {job.extraction.metadata.description && (
-                <div className="text-sm text-gray-600 mt-2">
-                  <span className="text-gray-500">Description:</span>{" "}
+                <div className="text-sm text-ink-subtle mt-2">
+                  <span className="text-ink-muted">Description:</span>{" "}
                   {job.extraction.metadata.description}
                 </div>
               )}
@@ -260,10 +260,10 @@ export function ProjectFileStep({
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col items-center p-12 text-center border border-gray-200 rounded-xl bg-gray-50">
-          <div className="rounded-full bg-red-100 p-3 mb-4">
+        <div className="flex flex-col items-center p-12 text-center border border-line-hair rounded-lg bg-surface-alt">
+          <div className="rounded-full bg-negative-50 p-3 mb-4">
             <svg
-              className="h-6 w-6 text-red-600"
+              className="h-6 w-6 text-negative-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -276,10 +276,10 @@ export function ProjectFileStep({
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-ink">
             Failed to parse file
           </h3>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ink-muted mt-2">
             {job?.error || "Could not read data from this file."}
           </p>
           <Button
@@ -293,7 +293,7 @@ export function ProjectFileStep({
       )}
 
       {errorMsg && (
-        <p className="text-sm text-red-600 text-center">{errorMsg}</p>
+        <p className="text-sm text-negative-500 text-center">{errorMsg}</p>
       )}
     </div>
   );

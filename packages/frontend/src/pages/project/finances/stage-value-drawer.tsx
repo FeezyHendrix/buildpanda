@@ -80,16 +80,16 @@ export function StageValueDrawer({
           currencySymbol={currencySymbol(currency)}
           autoFocus
         />
-        <p className="text-[11px] text-black-200">
+        <p className="text-xs text-ink-muted">
           Current:{" "}
-          <span className="font-medium tabular-nums text-black-300">
+          <span className="font-medium tabular-nums text-ink-muted">
             {formatCurrency(stage?.value ?? 0, currency)}
           </span>
           . Stage values have to stay within the project's contract sum.
         </p>
       </div>
 
-      <p className="rounded-lg bg-[#F8F8F8] px-3 py-2 text-[11px] text-black-300">
+      <p className="rounded-lg bg-surface-alt px-3 py-2 text-xs text-ink-muted">
         Schedule of Values lines keep the amounts already recorded against them.
         Save the schedule again to re-price it against the new stage value.
       </p>

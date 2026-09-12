@@ -90,14 +90,14 @@ interface ModelsStepProps {
 //       {(!successCount || uploading || errorMsg) && (
 //         <div onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
 //           className={cn(
-//             "flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-colors",
-//             isDragging ? "border-[#004DE7] bg-primary-50" : "border-gray-200 bg-white hover:bg-gray-50",
+//             "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors",
+//             isDragging ? "border-primary-500 bg-primary-50" : "border-gray-200 bg-white hover:bg-gray-50",
 //             uploading && "pointer-events-none opacity-50",
 //           )}
 //         >
 //           {uploading ? (
 //             <div className="flex flex-col items-center gap-3">
-//               <Spinner className="h-8 w-8 text-[#004DE7]" />
+//               <Spinner className="h-8 w-8 text-primary-500" />
 //               <span className="text-sm font-medium text-gray-900">Uploading models...</span>
 //             </div>
 //           ) : (

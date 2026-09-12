@@ -157,27 +157,19 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     flag: "commercial.finances",
   },
   {
-    label: "Contract",
-    slug: "finances/contract",
+    label: "Contracts & phases",
+    slug: "finances/contracts-phases",
     resource: "finances",
     Icon: BlocksIcon,
-    helper: "Stages, terms & final account",
+    helper: "Contracts, terms & phase costs",
     flag: "commercial.finances",
   },
   {
-    label: "Billing",
-    slug: "finances/billing",
-    resource: "finances",
-    Icon: DocumentsIcon,
-    helper: "Invoices, requests & stage payments",
-    flag: "commercial.finances",
-  },
-  {
-    label: "Costs",
-    slug: "finances/costs",
+    label: "Expenses",
+    slug: "finances/expenses",
     resource: "finances",
     Icon: FinancesIcon,
-    helper: "Budget, expenses & purchase orders",
+    helper: "Site spend & purchase orders",
     flag: "commercial.finances",
   },
   {
@@ -187,6 +179,14 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     Icon: FinancesIcon,
     helper: "Scope changes",
     flag: "workflow.changeRequests",
+  },
+  {
+    label: "Budget & invoices",
+    slug: "finances/budget-invoices",
+    resource: "finances",
+    Icon: DocumentsIcon,
+    helper: "Billing sheet, invoices & payments",
+    flag: "commercial.finances",
   },
 ] as const;
 

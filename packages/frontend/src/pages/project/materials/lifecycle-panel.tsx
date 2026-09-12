@@ -10,12 +10,12 @@ export function LifecyclePanel({ projectId, orders }: { projectId: string; order
   const awaiting = orders.filter((order) => ["Requested", "Approved", "Ordered", "PartiallyDelivered"].includes(order.status));
   return (
     <aside className="flex flex-col gap-4">
-      <Card padding="lg" className="bg-[#0F172A] text-white">
+      <Card padding="lg">
         <div className="flex items-start gap-3">
-          <IconBox tone="brand" size="sm" icon={<CalendarIcon className="size-4" />} />
+          <IconBox tone="gray" size="sm" icon={<CalendarIcon className="size-4 text-ink-muted" />} />
           <div>
-            <h2 className="text-base font-semibold">Construction lifecycle links</h2>
-            <p className="mt-2 text-sm text-white/70 text-pretty">
+            <h2 className="text-base font-medium text-ink">Construction lifecycle links</h2>
+            <p className="mt-2 text-sm text-ink-muted text-pretty">
               Material requests are not standalone: they unblock schedule activities, create finance receipts when delivered, and point back to supporting specs or receipts.
             </p>
           </div>
@@ -23,7 +23,7 @@ export function LifecyclePanel({ projectId, orders }: { projectId: string; order
       </Card>
       <Card padding="lg">
         <h2 className="text-sm font-semibold text-gray-900">Next procurement actions</h2>
-        <ul className="mt-3 flex flex-col divide-y divide-[#F0F0F0]">
+        <ul className="mt-3 flex flex-col divide-y divide-line-hair">
           {awaiting.slice(0, 5).map((order) => (
             <li key={order.id} className="py-3">
               <p className="text-sm font-medium text-gray-900">{order.materialName}</p>
@@ -36,10 +36,10 @@ export function LifecyclePanel({ projectId, orders }: { projectId: string; order
       <Card padding="lg">
         <h2 className="text-sm font-semibold text-gray-900">Connected workspaces</h2>
         <div className="mt-3 flex flex-col gap-2 text-sm">
-          <Link className="font-semibold text-[#004DE7] hover:underline" to={`/project/${projectId}/activities`}>Site activities</Link>
-          <Link className="font-semibold text-[#004DE7] hover:underline" to={`/project/${projectId}/finances`}>Finance receipts</Link>
-          <Link className="font-semibold text-[#004DE7] hover:underline" to={`/project/${projectId}/documents`}>Specifications & receipts</Link>
-          <Link className="font-semibold text-[#004DE7] hover:underline" to={`/project/${projectId}/daily-log`}>Daily delivery log</Link>
+          <Link className="font-semibold text-primary-500 hover:underline" to={`/project/${projectId}/activities`}>Site activities</Link>
+          <Link className="font-semibold text-primary-500 hover:underline" to={`/project/${projectId}/finances`}>Finance receipts</Link>
+          <Link className="font-semibold text-primary-500 hover:underline" to={`/project/${projectId}/documents`}>Specifications & receipts</Link>
+          <Link className="font-semibold text-primary-500 hover:underline" to={`/project/${projectId}/daily-log`}>Daily delivery log</Link>
         </div>
       </Card>
     </aside>

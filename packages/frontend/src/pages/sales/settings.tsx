@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Spinner } from "@/components/atoms/spinner";
 import { Label } from "@/components/atoms/label";
 import { Button } from "@/components/atoms/button";
@@ -9,10 +9,7 @@ import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-const selectClass = cn(
-  "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
-  "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const selectClass = INPUT_CLASS;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,7 +21,7 @@ const LIBRARY_LINKS = [
 
 function LibraryLinks() {
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-6">
+    <section className="flex flex-col gap-3 rounded-lg border border-line bg-white p-6">
       <h2 className="text-sm font-semibold text-gray-900">Library</h2>
       <p className="text-xs text-gray-500">What every proposal reuses. Kept once for the company.</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -32,7 +29,7 @@ function LibraryLinks() {
           <Link
             key={link.to}
             to={link.to}
-            className="rounded-lg border border-gray-200 p-4 transition-colors hover:border-primary-300 hover:bg-primary-50"
+            className="rounded-lg border border-line p-4 transition-colors hover:border-primary-300 hover:bg-primary-50"
           >
             <p className="text-sm font-semibold text-gray-900">{link.title}</p>
             <p className="mt-1 text-xs text-gray-500">{link.hint}</p>
@@ -116,7 +113,7 @@ export default function SalesSettings() {
 
       <LibraryLinks />
 
-      <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6">
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">Company Profile</h2>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -154,16 +151,12 @@ export default function SalesSettings() {
             onChange={(e) => setAddress(e.target.value)}
             rows={3}
             placeholder="123 Main Street, Lagos, Nigeria"
-            className={cn(
-              "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-              "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              "resize-none placeholder:text-gray-400",
-            )}
+            className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
           />
         </FieldRow>
       </section>
 
-      <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6">
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">Estimate Defaults</h2>
         <p className="text-xs text-gray-500">
           These defaults pre-fill new estimates. You can override them per estimate.
@@ -204,7 +197,7 @@ export default function SalesSettings() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6">
+      <section className="flex flex-col gap-4 rounded-lg border border-line bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900">Payment Instructions</h2>
         <p className="text-xs text-gray-500">
           Shown on every invoice so clients know how to pay you. Pre-fills new
@@ -218,11 +211,7 @@ export default function SalesSettings() {
             rows={4}
             maxLength={2000}
             placeholder={"Bank: GTBank\nAccount name: Acme Builders Ltd\nAccount number: 0123456789\nReference: invoice number"}
-            className={cn(
-              "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-              "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              "resize-none placeholder:text-gray-400",
-            )}
+            className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
           />
         </FieldRow>
       </section>

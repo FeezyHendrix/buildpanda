@@ -119,8 +119,8 @@ function DataGridHeaderCell<T>({
             className={cn(
               "-mx-1 inline-flex min-w-0 items-center gap-1.5 rounded-md px-1 py-0.5",
               "outline-none transition-colors",
-              "hover:bg-white focus-visible:ring-2 focus-visible:ring-gray-900/10",
-              direction ? "text-primary-500" : "hover:text-gray-700",
+              "hover:bg-white focus-visible:shadow-focus",
+              direction ? "text-primary-500" : "hover:text-ink",
             )}
           >
             <span className="truncate">{column.header}</span>
@@ -186,7 +186,7 @@ DataGridHeaderRow.displayName = "DataGridHeaderRow";
 
 function renderValue(value: DataGridValue): ReactNode {
   if (value === null || value === "") {
-    return <span className="text-gray-300">—</span>;
+    return <span className="text-ink-disabled">—</span>;
   }
   return String(value);
 }

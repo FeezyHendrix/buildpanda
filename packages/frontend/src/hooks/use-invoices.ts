@@ -23,6 +23,9 @@ export type {
   PayApplicationLine,
   PayApplicationSummary,
   PayApplicationLineInput,
+  InvoicePaymentsRow,
+  InvoicePaymentsTotals,
+  InvoicePaymentsResponse,
 } from "@/api/invoices";
 import { invoiceKeys, stageKeys } from "./query-keys";
 
@@ -43,6 +46,16 @@ export function useInvoiceDetail(projectId: string | undefined, invoiceId: strin
       : invoiceKeys.detail("__none__", "__none__"),
     queryFn: () => invoicesApi.detail(projectId!, invoiceId!),
     enabled: Boolean(projectId && invoiceId),
+  });
+}
+
+/** The payments endpoint may not be live yet: a failure reads as "no data" and the tab falls back to the invoice list. */
+export function useInvoicePayments(projectId: string | undefined) {
+  return useQuery({
+    queryKey: invoiceKeys.payments(projectId ?? "__none__"),
+    queryFn: () => invoicesApi.payments(projectId!),
+    enabled: Boolean(projectId),
+    retry: false,
   });
 }
 
@@ -71,9 +84,8 @@ export function useEditInvoice() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, ...patch }: EditInvoiceVariables) => invoicesApi.update(projectId, invoiceId, patch),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all(projectId) });
     },
   });
 }
@@ -104,9 +116,8 @@ export function useAddInvoicePayment() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, ...body }: AddPaymentVariables) => invoicesApi.addPayment(projectId, invoiceId, body),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all(projectId) });
     },
   });
 }
@@ -122,9 +133,8 @@ export function useDeleteInvoicePayment() {
 
   return useMutation({
     mutationFn: ({ projectId, invoiceId, paymentId }: DeletePaymentVariables) => invoicesApi.deletePayment(projectId, invoiceId, paymentId),
-    onSuccess: (_data, { projectId, invoiceId }) => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.detail(projectId, invoiceId) });
+    onSuccess: (_data, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: invoiceKeys.all(projectId) });
     },
   });
 }

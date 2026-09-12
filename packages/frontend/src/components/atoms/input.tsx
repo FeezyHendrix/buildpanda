@@ -6,8 +6,21 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * The one outlined control shell — shared by Input, raw `<select>` / `<textarea>`
+ * elements and the pickers so every field reads the same: white, hairline
+ * border, brand border + 4px ring on focus. `INPUT_SM_CLASS` is the 38px
+ * toolbar height; the default is the 46px form height.
+ */
+const INPUT_BASE_CLASS =
+  "w-full rounded-lg border border-line bg-white font-sans text-sm text-ink placeholder:text-ink-muted outline-none transition-colors hover:border-line-hover focus:border-primary-500 focus:shadow-focus aria-[invalid=true]:border-negative-500 aria-[invalid=true]:shadow-none disabled:cursor-not-allowed disabled:border-line-disabled disabled:bg-surface-alt disabled:text-ink-disabled";
+const INPUT_CLASS = cn(INPUT_BASE_CLASS, "h-[46px] px-3");
+const INPUT_SM_CLASS = cn(INPUT_BASE_CLASS, "h-[38px] px-3");
+
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   suffixIcon?: ReactNode;
+  /** `sm` is the 38px toolbar/filter height; default is the 46px form height. */
+  inputSize?: "sm" | "md";
 }
 
 const EyeIcon = () => (
@@ -45,7 +58,7 @@ const EyeOffIcon = () => (
 );
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, suffixIcon, ...props }, ref) => {
+  ({ className, type, suffixIcon, inputSize = "md", ...props }, ref) => {
     const isPassword = type === "password";
     const [visible, setVisible] = useState(false);
 
@@ -56,7 +69,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         type="button"
         tabIndex={-1}
         aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+        className="absolute inset-y-0 right-3 flex items-center text-ink-muted hover:text-ink"
         onClick={() => setVisible((v) => !v)}
       >
         {suffixIcon ?? (visible ? <EyeOffIcon /> : <EyeIcon />)}
@@ -71,11 +84,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           type={resolvedType}
           className={cn(
-            "flex h-14 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900",
-            "border-0 outline-none ring-0",
-            "placeholder:text-gray-400",
-            "focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "disabled:cursor-not-allowed disabled:opacity-50",
+            inputSize === "sm" ? INPUT_SM_CLASS : INPUT_CLASS,
             hasSuffix && "pr-11",
             className,
           )}
@@ -83,7 +92,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         />
         {isPassword && passwordToggle}
         {!isPassword && suffixIcon && (
-          <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 pointer-events-none">
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-ink-muted [&>svg]:size-5">
             {suffixIcon}
           </span>
         )}
@@ -94,4 +103,4 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = "Input";
 
-export { Input, type InputProps };
+export { Input, INPUT_CLASS, INPUT_SM_CLASS, INPUT_BASE_CLASS, type InputProps };

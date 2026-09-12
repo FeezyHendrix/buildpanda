@@ -6,6 +6,7 @@ import { Switcher } from "@/components/atoms/switcher";
 import { cn } from "@/lib/utils";
 import type { PreconProgrammeTask, PreconRowStatus, ProgrammeDependency, UpdateProgrammeTaskInput } from "@/api/precon";
 import { ProgrammePredecessorEditor } from "./programme-predecessor-editor";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 const STATUS_META: Record<PreconRowStatus, { label: string; tone: BadgeTone; mark: string }> = {
   ai_generated: { label: "AI draft", tone: "info", mark: "◇" },
@@ -21,8 +22,7 @@ const formatDay = (iso: string) => {
 };
 
 const INDENT: Record<number, string> = { 1: "pl-2", 2: "pl-7", 3: "pl-12", 4: "pl-16", 5: "pl-20" };
-const inputClass =
-  "h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100 disabled:text-gray-400";
+const inputClass = INPUT_SM_CLASS;
 
 export interface TaskRowActions {
   update: (taskId: string, input: Omit<UpdateProgrammeTaskInput, "version">, version: number) => void;
@@ -66,7 +66,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
   return (
     <li
       className={cn(
-        "border-b border-gray-100 last:border-b-0",
+        "border-b border-line-hair last:border-b-0",
         selected && "bg-primary-50/60",
         task.status === "rejected" && "opacity-60",
       )}
@@ -120,7 +120,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
       </div>
 
       {open ? (
-        <div className={cn("space-y-3 border-t border-gray-100 bg-gray-50 py-3 pr-3", INDENT[task.outlineLevel] ?? "pl-20")}>
+        <div className={cn("space-y-3 border-t border-line-hair bg-gray-50 py-3 pr-3", INDENT[task.outlineLevel] ?? "pl-20")}>
           <div className="grid gap-3 sm:grid-cols-[1fr_120px_140px]">
             <label className="text-xs text-gray-500">
               Task name
@@ -157,7 +157,7 @@ export function ProgrammeTaskRow({ task, tasks, index, isParent, selected, onSel
             onChange={(predecessors: ProgrammeDependency[]) => patch({ predecessors })}
           />
 
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-gray-200 pt-3">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
             <Button size="sm" variant="ghost" disabled={!canEdit || index === 0} onClick={() => patch({ sort: index - 1 })} aria-label="Move up">
               <ArrowUp className="size-3.5" aria-hidden="true" />
             </Button>

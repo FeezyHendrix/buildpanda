@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ChevronRightIcon } from "@/components/atoms/project-nav-icons";
 import { cn } from "@/lib/utils";
 
 interface BreadcrumbItem {
@@ -12,36 +11,31 @@ interface BreadcrumbsProps {
   className?: string;
 }
 
+/** 14px ink crumbs separated by "/", links underline on hover, each crumb ellipsised at 256px. */
 function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className={cn("flex items-center", className)}>
-      <ol className="flex flex-wrap items-center gap-1.5 text-xs">
+      <ol className="flex flex-wrap items-center gap-2 text-sm text-ink">
         {items.map((item, idx) => {
           const isLast = idx === items.length - 1;
           return (
-            <li key={`${item.label}-${idx}`} className="flex items-center gap-1.5">
+            <li key={`${item.label}-${idx}`} className="flex items-center gap-2">
               {item.to && !isLast ? (
                 <Link
                   to={item.to}
-                  className="text-gray-500 hover:text-primary"
+                  className="max-w-64 truncate hover:text-ink-hover hover:underline"
                 >
                   {item.label}
                 </Link>
               ) : (
                 <span
-                  className={
-                    isLast
-                      ? "font-semibold text-primary"
-                      : "text-gray-500"
-                  }
+                  className={cn("max-w-64 truncate", isLast ? "text-ink-muted" : undefined)}
                   aria-current={isLast ? "page" : undefined}
                 >
                   {item.label}
                 </span>
               )}
-              {!isLast && (
-                <ChevronRightIcon className="size-3 text-gray-300" />
-              )}
+              {!isLast && <span aria-hidden="true" className="text-ink-muted">/</span>}
             </li>
           );
         })}

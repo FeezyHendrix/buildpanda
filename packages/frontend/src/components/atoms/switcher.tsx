@@ -21,10 +21,10 @@ function Switcher({ value, onChange, className }: SwitcherProps) {
         onClick={() => onChange("yes")}
         className={cn(
           "rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors select-none",
-          "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "outline-none focus-visible:shadow-focus",
           value === "yes"
-            ? "bg-white text-gray-900 shadow-sm"
-            : "bg-transparent text-gray-400",
+            ? "bg-white text-ink shadow-sm"
+            : "bg-transparent text-ink-muted",
         )}
       >
         Yes
@@ -34,10 +34,10 @@ function Switcher({ value, onChange, className }: SwitcherProps) {
         onClick={() => onChange("no")}
         className={cn(
           "rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors select-none",
-          "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "outline-none focus-visible:shadow-focus",
           value === "no"
-            ? "bg-white text-gray-900 shadow-sm"
-            : "bg-transparent text-gray-400",
+            ? "bg-white text-ink shadow-sm"
+            : "bg-transparent text-ink-muted",
         )}
       >
         No

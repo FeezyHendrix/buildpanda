@@ -15,6 +15,7 @@ import {
 } from "./task-ui";
 import { TaskExtras } from "./task-extras";
 import { TaskImageGallery } from "./task-image-gallery";
+import { Button } from "@/components/atoms/button";
 
 export function UpsertTaskDialog({
   open,
@@ -163,17 +164,13 @@ export function UpsertTaskDialog({
       onSubmit={handleSubmit}
     >
       {task && (
-        <button
-          type="button"
-          onClick={copyTaskLink}
-          className="-mt-1 flex items-center gap-1.5 self-start rounded-lg bg-[#F6F6F6] px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900"
-        >
+        <Button variant="ghost" size="sm" className="-mt-1 self-start" onClick={copyTaskLink}>
           <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M10 13a5 5 0 0 0 7.07 0l1.93-1.93a5 5 0 0 0-7.07-7.07L10.5 5.5" />
             <path d="M14 11a5 5 0 0 0-7.07 0L5 12.93a5 5 0 0 0 7.07 7.07L13.5 18.5" />
           </svg>
           {linkCopied ? "Link copied" : "Copy task link"}
-        </button>
+        </Button>
       )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="task-title">Title</Label>
@@ -221,12 +218,12 @@ export function UpsertTaskDialog({
             </button>
           )}
         </div>
-        <div className="rounded-lg bg-[#F6F6F6] p-2">
+        <div className="rounded-lg bg-surface-alt p-2">
           <button
             type="button"
             onClick={() => setAssigneePickerOpen((prev) => !prev)}
             aria-expanded={assigneePickerOpen}
-            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-left text-sm text-gray-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className="flex min-h-9 w-full items-center justify-between gap-3 rounded-md bg-white px-2.5 py-2 text-left text-sm text-gray-900 shadow-sm outline-none focus-visible:shadow-focus"
           >
             <span className="min-w-0 flex-1 truncate text-gray-400">
               {assigneeValues.length === 0
@@ -296,7 +293,7 @@ export function UpsertTaskDialog({
                 type="button"
                 onClick={() => setPriority(p)}
                 aria-pressed={selected}
-                className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                className="rounded-full outline-none focus-visible:shadow-focus"
               >
                 <Badge tone={meta.tone} variant={selected ? "solid" : "soft"} size="md">
                   <PriorityIcon shape={meta.shape} />
@@ -314,7 +311,7 @@ export function UpsertTaskDialog({
             {labels.map((label) => (
               <span
                 key={label}
-                className="inline-flex items-center gap-1 rounded-full bg-[#F6F6F6] py-0.5 pl-2.5 pr-1 text-xs font-medium text-gray-700"
+                className="inline-flex items-center gap-1 rounded-full bg-surface-alt py-0.5 pl-2.5 pr-1 text-xs font-medium text-gray-700"
               >
                 {label}
                 <button

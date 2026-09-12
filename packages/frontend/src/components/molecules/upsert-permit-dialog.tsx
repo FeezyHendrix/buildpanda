@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "./form-drawer";
 import type { PermitStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface UpsertPermitValues {
   title: string;
@@ -24,8 +26,7 @@ interface Props {
   error?: string | null;
 }
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSubmitting = false, error }: Props) {
   const [v, setV] = useState<UpsertPermitValues>({
@@ -91,7 +92,7 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
         </div>
       </div>
 
-      <hr className="my-6 border-gray-100" />
+      <hr className="my-6 border-line-hair" />
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
@@ -114,12 +115,12 @@ function UpsertPermitDialog({ open, onOpenChange, mode, initial, onSubmit, isSub
         </div>
       </div>
 
-      <hr className="my-6 border-gray-100" />
+      <hr className="my-6 border-line-hair" />
 
       <div className="flex flex-col gap-4">
         <h4 className="text-sm font-semibold text-gray-900">Notes</h4>
         <div className="flex flex-col gap-1.5">
-          <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-base lg:text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10" placeholder="Add any additional details here..." />
+          <textarea id="pm-notes" value={v.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 lg:text-sm")} placeholder="Add any additional details here..." />
         </div>
       </div>
     </FormDrawer>

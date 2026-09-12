@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { FileUpload } from "@/components/atoms/file-upload";
-import { Input } from "@/components/atoms/input";
+import {  Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { PLAN_DISCIPLINES, type PlanDiscipline, type ProposalPlan, type UpdatePlanInput } from "@/api/proposals";
 import { PLAN_DISCIPLINE_LABEL } from "@/lib/precon-meta";
-import { cn } from "@/lib/utils";
 
 export type PlanDetailsMode = "details" | "revision";
 
@@ -20,10 +19,7 @@ interface Props {
   onUploadRevision: (plan: ProposalPlan, file: File, input: { sheetCode: string; revision: string; discipline: PlanDiscipline | null }) => void;
 }
 
-const selectClass = cn(
-  "flex h-11 w-full rounded-lg bg-[#F6F6F6] px-4 text-sm text-gray-900",
-  "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const selectClass = INPUT_CLASS;
 
 // A sheet code is what ties revisions of the same drawing together. A new
 // revision keeps the code and discipline and bumps the label; the previous

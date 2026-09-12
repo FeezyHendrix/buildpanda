@@ -10,15 +10,15 @@ import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
 
 /**
- * Stages & billing — the contract side of a build read stage by stage.
+ * Budget — the contract side of a build read phase by phase.
  *
- * Each stage carries a scheduled value (its slice of the contract). The
- * billing sheet records, month by month, the cumulative share of each stage
+ * Each phase carries a scheduled value (its slice of the contract). The
+ * billing sheet records, month by month, the cumulative share of each phase
  * that was reached, and prices what that month bills. Everything on this tab
  * is a recorded figure: BuildPanda logs money that moved off-platform, it
  * never bills, charges or transfers anything.
  */
-export function ContractStagesTab() {
+export function BudgetSheetTab() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "stages", "manage");
   const canBill = canResourceAction(access, "finances", "manage");
@@ -44,20 +44,20 @@ export function ContractStagesTab() {
   }, []);
 
   return (
-    <section aria-label="Stages and billing">
+    <section aria-label="Budget">
       <section aria-label="Contract summary" className="grid gap-4 sm:grid-cols-2">
         <KpiCard
           label="Scheduled contract value"
           value={formatCurrency(totals.value.round().toNumber(), project.currency)}
-          helper="Across every stage on this build"
+          helper="Across every phase on this build"
         />
         <KpiCard
-          label="Stages priced"
+          label="Phases priced"
           value={`${totals.priced} of ${stages.length}`}
           helper={
             totals.unpriced > 0
               ? `${totals.unpriced} still carry no value`
-              : "Every stage carries a value"
+              : "Every phase carries a value"
           }
         />
       </section>
@@ -71,8 +71,8 @@ export function ContractStagesTab() {
         onOpenSchedule={setScheduleTarget}
       />
 
-      <p className="mt-3 text-[12px] text-black-200">
-        Each cell is the cumulative % of the stage reached by the end of that month; the amount
+      <p className="mt-3 text-xs text-ink-muted">
+        Each cell is the cumulative % of the phase reached by the end of that month; the amount
         beneath is what the month bills. Recorded, not transacted — BuildPanda logs money that
         moved off-platform.
       </p>
@@ -97,4 +97,4 @@ export function ContractStagesTab() {
   );
 }
 
-ContractStagesTab.displayName = "ContractStagesTab";
+BudgetSheetTab.displayName = "BudgetSheetTab";

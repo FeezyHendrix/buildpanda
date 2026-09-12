@@ -47,7 +47,7 @@ export function SheetStatusBar({ sheet, tool, selectedRow, redrawing, onToggleRe
   const total = meta.measure && draft.length > 0 && mmPerPt ? runningTotal(meta.measure, draft, mmPerPt) : null;
   const hint = instruction(tool, selectedRow, drawingEnabled);
   return (
-    <p className="flex flex-wrap items-center gap-x-2 border-b border-gray-100 px-3 py-1 text-[11px] text-gray-400">
+    <p className="flex flex-wrap items-center gap-x-2 border-b border-line-hair px-3 py-1 text-xs text-gray-400">
       <span>
         {sheet.scaleMmPerPt ? `1:${scaleRatioOf(sheet.scaleMmPerPt)} · dims in ${sheet.dimUnit ?? "mm"} · ${calibration}` : "no sheet scale yet"}
         {viewport ? (

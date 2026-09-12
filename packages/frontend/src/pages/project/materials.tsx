@@ -78,7 +78,7 @@ export default function ProjectMaterials() {
           <div className="flex flex-wrap gap-2">
             <Link
               to={`/project/${project.id}/equipment-requests`}
-              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-[#F6F6F6] px-5 py-3 text-[13px] font-semibold text-gray-900 hover:bg-gray-200"
+              className="inline-flex h-[32px] items-center justify-center gap-2.5 rounded-lg bg-surface-alt px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-200"
             >
               Equipment requests
               <ChevronRightIcon className="size-4" />
@@ -175,7 +175,7 @@ export default function ProjectMaterials() {
               action={canRequest ? { label: "Create order", onClick: () => setCreateOpen(true) } : undefined}
             />
           ) : (
-            <div className="flex flex-col divide-y divide-[#F0F0F0]">
+            <div className="flex flex-col divide-y divide-line-hair">
               {orders.map((order) => (
                 <MaterialOrderRow
                   key={order.id}

@@ -2,9 +2,9 @@ import { ChevronRightIcon, PandaMarkIcon } from "./icons";
 
 export function PandaAiHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-[#EDEDED] bg-white px-4 py-3">
+    <div className="flex shrink-0 items-center justify-between border-b border-line-hair bg-white px-4 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-[#004DE7]">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-primary-500">
           <PandaMarkIcon className="h-5 w-auto" />
         </div>
         <div>

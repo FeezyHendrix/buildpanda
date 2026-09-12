@@ -105,8 +105,8 @@ export function ChangePreview({ changeSet, onApply, onDiscard, onUndo, applying,
   const outcomes = changeSet.appliedResult?.changes ?? [];
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
-      <header className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3">
+    <section className="rounded-lg border border-line bg-white">
+      <header className="flex flex-wrap items-center gap-2 border-b border-line-hair px-4 py-3">
         <p className="text-sm font-semibold text-gray-900">
           {changeSet.status === "proposed" ? "Preview" : changeSet.status === "applied" ? "Applied" : changeSet.status === "undone" ? "Undone" : "Discarded"}
           {" · "}
@@ -120,13 +120,13 @@ export function ChangePreview({ changeSet, onApply, onDiscard, onUndo, applying,
       {total === 0 ? (
         <p className="px-4 py-6 text-sm text-gray-500">Panda AI proposed no changes. Read the plan for why, then change the request.</p>
       ) : (
-        <ul className="max-h-[40vh] divide-y divide-gray-100 overflow-y-auto px-4">
+        <ul className="max-h-[40vh] divide-y divide-line-hair overflow-y-auto px-4">
           {changeSet.changes.map((change, index) => (
             <ChangeRow key={`${change.entity}-${change.id ?? index}`} change={change} outcome={outcomes[index]} />
           ))}
         </ul>
       )}
-      <footer className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
+      <footer className="flex flex-col gap-2 border-t border-line-hair px-4 py-3 text-xs text-gray-500">
         {changeSet.status === "proposed" ? (
           <>
             <p>Changed lines go back to Needs review. Applied changes are logged as made via a Panda AI prompt, and one click undoes the set.</p>

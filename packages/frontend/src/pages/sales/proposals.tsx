@@ -9,7 +9,7 @@ import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { JobProfilePicker } from "@/components/molecules/job-profile-picker";
 import type { JobProfile } from "@/api/proposals";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { useProposals, useCreateProposal } from "@/hooks/use-proposals";
 import { useCreateProposalFromTemplate, useProposalTemplates } from "@/hooks/use-proposal-templates";
@@ -214,11 +214,7 @@ function CreateProposalDrawer({
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
           placeholder="Short description of the project scope…"
-          className={cn(
-            "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-            "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "resize-none placeholder:text-gray-400",
-          )}
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
         />
       </div>
     </FormDrawer>
@@ -331,7 +327,7 @@ export default function ProposalsPage() {
         />
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border border-gray-200">
+          <div className="overflow-hidden rounded-lg border border-line">
             <Table>
               <TableHead>
                 <tr>

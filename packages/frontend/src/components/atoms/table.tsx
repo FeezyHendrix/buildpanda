@@ -7,29 +7,31 @@ import type {
 import { cn } from "@/lib/utils";
 
 /**
- * The one table. Pages used to hand-roll `<table>` markup with two competing
- * header styles; the look lives here now and pages only supply columns, rows
- * and behaviour (sorting, row click, sticky columns).
+ * The one table, on Ernest's data-grid metrics: 44px uppercase header on the
+ * off-white surface, 61px rows, hairline row rules, no zebra, the whole row
+ * washes on hover, 24px padding on the outer cells so a full-bleed table lines
+ * up with the page gutter. Pages only supply columns, rows and behaviour.
  */
 
 type CellAlign = "left" | "right" | "center";
 
 const ALIGN_CLASSES: Record<CellAlign, string | undefined> = {
   left: undefined,
-  right: "text-right",
+  right: "text-right tabular-nums",
   center: "text-center",
 };
 
 interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** Classes for the scroll wrapper (e.g. `max-h-*` for a scrolling body). */
   wrapperClassName?: string;
+  /** Pull the table out to the page edges (`-mx-6`) so its 24px cell padding becomes the gutter. */
+  bleed?: boolean;
 }
 
-/** `<div class="overflow-x-auto">` around a full-width, left-aligned table. */
-function Table({ className, wrapperClassName, children, ...props }: TableProps) {
+function Table({ className, wrapperClassName, bleed = false, children, ...props }: TableProps) {
   return (
-    <div className={cn("overflow-x-auto", wrapperClassName)}>
-      <table className={cn("w-full text-left text-sm", className)} {...props}>
+    <div className={cn("overflow-x-auto border-t border-line-hair", bleed && "-mx-6", wrapperClassName)}>
+      <table className={cn("w-full text-left text-sm text-ink", className)} {...props}>
         {children}
       </table>
     </div>
@@ -40,7 +42,7 @@ Table.displayName = "Table";
 function TableHead({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <thead
-      className={cn("border-b border-[#EDEDED] bg-[#F6F6F6]", className)}
+      className={cn("border-b border-line-hair bg-surface-alt", className)}
       {...props}
     />
   );
@@ -55,7 +57,7 @@ function TableHeaderCell({ align = "left", className, ...props }: TableHeaderCel
   return (
     <th
       className={cn(
-        "px-6 py-3 text-[11px] font-semibold capitalize text-black-300",
+        "h-11 whitespace-nowrap px-3 text-xs font-medium uppercase text-ink-muted first:pl-6 last:pr-6",
         ALIGN_CLASSES[align],
         className,
       )}
@@ -75,11 +77,11 @@ type TableRowTone = "default" | "danger" | "muted" | "total";
 const ROW_TONE_CLASSES: Record<TableRowTone, string | undefined> = {
   default: undefined,
   /** A missed / failed record — the row reads as a warning. */
-  danger: "bg-error-50 text-error-700 [&_td]:text-error-700",
+  danger: "bg-negative-50 text-negative-600 hover:bg-negative-50 [&_td]:text-negative-600",
   /** A voided / superseded record — the row recedes. */
-  muted: "text-black-200 [&_td]:text-black-200",
+  muted: "text-ink-disabled [&_td]:text-ink-disabled",
   /** A totals row. */
-  total: "bg-[#FAFAFA] font-semibold [&_td]:font-semibold",
+  total: "bg-surface-alt font-semibold [&_td]:font-semibold",
 };
 
 interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
@@ -92,8 +94,8 @@ function TableRow({ tone = "default", onClick, className, ...props }: TableRowPr
     <tr
       onClick={onClick}
       className={cn(
-        "border-b border-[#F0F0F0] last:border-b-0",
-        onClick ? "cursor-pointer hover:bg-gray-50" : undefined,
+        "border-b border-line-hair bg-white transition-colors hover:bg-surface-alt",
+        onClick ? "cursor-pointer" : undefined,
         ROW_TONE_CLASSES[tone],
         className,
       )}
@@ -110,12 +112,24 @@ interface TableCellProps extends TdHTMLAttributes<HTMLTableCellElement> {
 function TableCell({ align = "left", className, ...props }: TableCellProps) {
   return (
     <td
-      className={cn("px-6 py-3 text-[13px] text-[#131B2E]", ALIGN_CLASSES[align], className)}
+      className={cn("px-3 py-[19px] align-middle text-sm text-ink first:pl-6 last:pr-6", ALIGN_CLASSES[align], className)}
       {...props}
     />
   );
 }
 TableCell.displayName = "TableCell";
+
+/** An in-table section heading row (Ernest's "OTHER" divider). */
+function TableSectionRow({ colSpan, children }: { colSpan: number; children: ReactNode }) {
+  return (
+    <tr className="border-b border-line-hair bg-surface-alt">
+      <td colSpan={colSpan} className="h-11 px-3 text-xs font-medium uppercase text-ink-muted first:pl-6">
+        {children}
+      </td>
+    </tr>
+  );
+}
+TableSectionRow.displayName = "TableSectionRow";
 
 interface TableEmptyRowProps {
   colSpan: number;
@@ -143,6 +157,7 @@ export {
   TableBody,
   TableRow,
   TableCell,
+  TableSectionRow,
   TableEmptyRow,
 };
 export type {

@@ -10,6 +10,8 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { PRECON_TOOL_META, TAKEOFF_SECTIONS } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
 import { MEASURE_DEFAULT_UNIT, formatQty, previewQuantity, unitLabel } from "./measure-maths";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface PendingMeasurement {
   tool: MeasureTool;
@@ -28,7 +30,7 @@ interface Props {
   onCreated: (row: PreconBoqRow) => void;
 }
 
-const FIELD = "mt-1 h-9 w-full rounded-lg border-0 bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = cn(INPUT_SM_CLASS, "mt-1");
 const LABEL = "block text-xs font-medium text-gray-600";
 const STANDARD_GROUPS: string[] = TAKEOFF_SECTIONS.flatMap((section) => [...section.elements]);
 
@@ -40,7 +42,7 @@ function parsePositive(raw: string): number | undefined {
 /** WS-M3B: what one drawn quantity becomes when an assembly names the lines. */
 function AssemblyItemsPreview({ assembly, gross }: { assembly: Assembly; gross: number | null }) {
   return (
-    <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs">
+    <ul className="divide-y divide-line-hair rounded-lg border border-line text-xs">
       {assembly.items.map((item, index) => (
         <li key={`${item.description}-${index}`} className="flex items-center justify-between gap-2 px-3 py-1.5">
           <span className="min-w-0 truncate text-gray-800">
@@ -149,7 +151,7 @@ export function MeasurementComposer({ sessionId, sheet, pending, elementGroups, 
   // sheet while it is named, and the sheet can still be panned behind it.
   return (
     <form
-      className="absolute right-3 top-3 z-20 flex w-[22rem] max-h-[calc(100%-1.5rem)] flex-col gap-3 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
+      className="absolute right-3 top-3 z-20 flex w-[22rem] max-h-[calc(100%-1.5rem)] flex-col gap-3 overflow-y-auto rounded-lg border border-line bg-white p-4 shadow-lg"
       onSubmit={(e) => {
         e.preventDefault();
         submit();

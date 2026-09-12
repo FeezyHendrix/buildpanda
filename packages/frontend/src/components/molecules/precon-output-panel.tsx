@@ -9,6 +9,8 @@ import { preconApi, preconManualApi, type PreconSnapshot, type PreconSummarySett
 import { useApplyPreconToProposal, useUpdatePreconSettings } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 const squareMetres = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
@@ -74,18 +76,18 @@ function BidSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
         {lines.map((line) => (
           <div key={line.label} className="flex justify-between">
             <dt className={line.strong ? "font-semibold text-gray-900" : "text-gray-500"}>{line.label}</dt>
-            <dd className={line.strong ? "text-lg font-bold text-gray-900" : "tabular-nums text-gray-800"}>
+            <dd className={line.strong ? "text-lg font-medium text-gray-900" : "tabular-nums text-gray-800"}>
               {naira.format(line.value)}
             </dd>
           </div>
         ))}
       </dl>
-      <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-3">
+      <div className="grid grid-cols-3 gap-2 border-t border-line-hair pt-3">
         {SETTING_FIELDS.map(({ key, label }) => (
           <label key={key} className="text-xs text-gray-500">
             {label}
             <input
-              className="mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100"
+              className={cn(INPUT_SM_CLASS, "mt-0.5")}
               inputMode="decimal"
               value={drafts[key] ?? settings[key]}
               onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
@@ -118,7 +120,7 @@ function AreasSummaryCard({ snapshot }: { snapshot: PreconSnapshot }) {
         </div>
         <div className="flex justify-between">
           <dt className="font-semibold text-gray-900">Total floor area</dt>
-          <dd className="text-lg font-bold text-gray-900">{squareMetres.format(totalM2)} m²</dd>
+          <dd className="text-lg font-medium text-gray-900">{squareMetres.format(totalM2)} m²</dd>
         </div>
       </dl>
     </Card>
@@ -182,7 +184,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
             {areas ? "Download areas (Excel)" : "Export Excel"}
           </Button>
           {areas ? null : (
-            <p className="text-[11px] text-gray-500">
+            <p className="text-xs text-gray-500">
               Live formulas, not pasted figures: net = gross − deductions × typical, amount = net × rate, subtotals and the grand total as SUM.
               Change a rate in the workbook and the bill re-adds itself. A Measurements sheet lists every line's sheet, tool, gross and basis.
             </p>
@@ -201,7 +203,7 @@ export function PreconOutputPanel({ snapshot }: OutputProps) {
             </p>
           ) : null}
         </div>
-        <p className="border-t border-gray-100 pt-3 text-[11px] text-gray-400">
+        <p className="border-t border-line-hair pt-3 text-xs text-gray-400">
           {manual
             ? "Measured by hand · every line carries the name of the person who drew it in the audit trail. A quantity surveyor must review before the bill is used contractually."
             : "Measured by Panda AI · verified line items carry the reviewer's name in the audit trail. A quantity surveyor must review before the bill is used contractually."}

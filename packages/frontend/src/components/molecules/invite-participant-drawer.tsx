@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import {
   useInviteParticipant,
   useUpdateParticipant,
@@ -158,9 +159,8 @@ export function InviteParticipantDrawer({
     }
   }
 
-  const inputCls =
-    "w-full rounded-xl border border-[#E8E8E8] bg-[#FAFAFA] px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-brand/40 focus:bg-white focus:ring-2 focus:ring-brand/10";
-  const labelCls = "mb-1.5 block text-xs font-medium text-gray-600";
+  const inputCls = INPUT_CLASS;
+  const labelCls = "mb-1.5 block text-sm font-medium text-ink";
 
   const resourceKeys = Object.keys(resources);
   
@@ -206,7 +206,7 @@ export function InviteParticipantDrawer({
         <div>
           <label className={labelCls}>Email</label>
           {isEdit ? (
-            <div className="w-full rounded-xl border border-[#E8E8E8] bg-[#F4F4F4] px-3.5 py-2.5 text-sm text-gray-400">
+            <div className={cn(INPUT_CLASS, "flex items-center bg-surface-alt text-ink-muted")}>
               {email}
             </div>
           ) : (
@@ -223,7 +223,7 @@ export function InviteParticipantDrawer({
           <div>
             <label className={labelCls}>
               Name{" "}
-              <span className="font-normal text-gray-400">(optional)</span>
+              <span className="font-normal text-ink-muted">(optional)</span>
             </label>
             <input
               type="text"
@@ -237,7 +237,7 @@ export function InviteParticipantDrawer({
       </div>
 
       {/* Phase 2 — role selection */}
-      <div className="mt-5 flex flex-col gap-3 border-t border-[#F0F0F0] pt-5">
+      <div className="mt-5 flex flex-col gap-3 border-t border-line-hair pt-5">
         <div>
           <label className={labelCls}>Role presets</label>
           <div className="flex flex-wrap gap-2">
@@ -252,8 +252,8 @@ export function InviteParticipantDrawer({
                   className={cn(
                     "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     isSelected
-                      ? "border-brand bg-brand/5 text-brand"
-                      : "border-[#E8E8E8] bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                      ? "border-primary-500 bg-primary-50 text-primary-600"
+                      : "border-line bg-white text-ink-subtle hover:border-line-hover hover:bg-surface-alt"
                   )}
                 >
                   {label}
@@ -273,7 +273,7 @@ export function InviteParticipantDrawer({
             className={cn(
               inputCls,
               role.trim() && !presetKeys.some(k => getPresetLabel(k) === role)
-                ? "border-brand/40 bg-white ring-2 ring-brand/10"
+                ? "border-primary-500/40 shadow-focus"
                 : ""
             )}
           />
@@ -281,10 +281,10 @@ export function InviteParticipantDrawer({
       </div>
 
       {/* Phase 3 — permissions */}
-      <div className="mt-5 flex flex-col border-t border-[#F0F0F0] pt-5">
+      <div className="mt-5 flex flex-col border-t border-line-hair pt-5">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Permissions</p>
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="text-sm font-semibold text-ink">Permissions</p>
+          <p className="mt-0.5 text-xs text-ink-muted">
             Grant specific actions for each area of the project. Selecting a preset above sets a baseline.
           </p>
         </div>
@@ -292,14 +292,14 @@ export function InviteParticipantDrawer({
         <div className="mt-4 flex flex-col gap-6">
           {finalGroups.map((group) => (
             <div key={group.name} className="flex flex-col gap-3">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-[#F0F0F0] pb-1">
+              <p className="text-xs font-medium uppercase text-ink-muted border-b border-line-hair pb-1">
                 {group.name}
               </p>
               
               <div className="flex flex-col gap-4">
                 {group.resources.map((resource) => (
                   <div key={resource}>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                    <p className="mb-2 text-xs font-medium uppercase text-ink-muted">
                       {humanizeResource(resource)}
                     </p>
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4">
@@ -313,7 +313,7 @@ export function InviteParticipantDrawer({
                             key={action}
                             className={cn(
                               "flex items-center gap-2 cursor-pointer text-sm transition-colors",
-                              disabled ? "opacity-50 cursor-not-allowed" : "hover:text-brand"
+                              disabled ? "opacity-50 cursor-not-allowed" : "hover:text-primary-600"
                             )}
                           >
                             <input
@@ -321,13 +321,13 @@ export function InviteParticipantDrawer({
                               disabled={disabled}
                               checked={checked}
                               onChange={(e) => handleToggleGrant(resource, action, e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand disabled:cursor-not-allowed"
+                              className="h-4 w-4 rounded border-gray-300 text-brand focus:shadow-focus disabled:cursor-not-allowed"
                             />
                             <span className="flex flex-col">
-                              <span className="flex items-center gap-1.5 text-gray-700">
+                              <span className="flex items-center gap-1.5 text-ink">
                                 {humanizeAction(action)}
                                 {disabled && (
-                                  <span className="text-[10px] text-gray-400 font-medium tracking-wide">(Admin only)</span>
+                                  <span className="text-xs font-medium text-ink-muted">(Admin only)</span>
                                 )}
                               </span>
                             </span>

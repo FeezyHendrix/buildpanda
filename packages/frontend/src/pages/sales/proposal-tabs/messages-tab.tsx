@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/molecules/empty-state";
 import { usePostComment, useProposalComments } from "@/hooks/use-proposals";
 import { formatActivityTimestamp } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface Props {
   proposalId: string;
@@ -33,7 +34,7 @@ export function MessagesTab({ proposalId }: Props) {
       ) : (
         <div className="flex flex-col gap-3">
           {comments.map((c) => (
-            <div key={c.id} className="rounded-xl border border-gray-100 bg-white p-4">
+            <div key={c.id} className="rounded-lg border border-line-hair bg-white p-4">
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium text-gray-800">{c.authorName}</span>
                 <span className="text-xs text-gray-400">{formatActivityTimestamp(c.createdAt)}</span>
@@ -50,11 +51,7 @@ export function MessagesTab({ proposalId }: Props) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Write a note or message…"
-          className={cn(
-            "w-full rounded-lg bg-[#F6F6F6] px-4 py-3 text-sm text-gray-900",
-            "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            "resize-none placeholder:text-gray-400",
-          )}
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
         />
         <div className="flex justify-end">
           <Button

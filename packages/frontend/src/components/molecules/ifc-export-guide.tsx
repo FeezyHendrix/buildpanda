@@ -68,23 +68,23 @@ export function IfcExportGuide({ defaultTool }: { defaultTool?: AuthoringTool })
   const guide = GUIDES.find((g) => g.id === active) ?? GUIDES[0]!;
 
   return (
-    <div className="rounded-lg border border-[#E6EDFD] bg-[#F8FAFF]">
+    <div className="rounded-lg border border-line-hair bg-surface-alt">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className="flex w-full items-center justify-between px-3.5 py-3 text-left"
       >
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-ink">
           How do I export to IFC?
         </span>
-        <span className="text-xs font-medium text-[#004DE7]">
+        <span className="text-xs font-medium text-primary-500">
           {open ? "Hide" : "Show steps"}
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-[#E6EDFD] px-3.5 pb-4 pt-3">
+        <div className="border-t border-line-hair px-3.5 pb-4 pt-3">
           <div className="flex flex-wrap gap-1.5">
             {GUIDES.map((g) => (
               <button
@@ -94,8 +94,8 @@ export function IfcExportGuide({ defaultTool }: { defaultTool?: AuthoringTool })
                 className={cn(
                   "rounded-full px-3 py-1 text-xs font-medium transition-colors",
                   active === g.id
-                    ? "bg-[#004DE7] text-white"
-                    : "bg-white text-gray-600 hover:bg-[#EDEDED]",
+                    ? "border border-primary-500 bg-primary-500 text-white"
+                    : "border border-line bg-white text-ink-subtle hover:border-line-hover hover:bg-surface-alt",
                 )}
               >
                 {g.label}
@@ -105,8 +105,8 @@ export function IfcExportGuide({ defaultTool }: { defaultTool?: AuthoringTool })
 
           <ol className="mt-3 flex flex-col gap-2">
             {guide.steps.map((step, i) => (
-              <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-gray-600">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#E6EDFD] text-[11px] font-semibold text-[#004DE7]">
+              <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-ink-subtle">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-500">
                   {i + 1}
                 </span>
                 <span>{step}</span>
@@ -114,7 +114,7 @@ export function IfcExportGuide({ defaultTool }: { defaultTool?: AuthoringTool })
             ))}
           </ol>
 
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-ink-muted">
             Revit, ArchiCAD and other BIM tools all export the open IFC format for
             free, and it keeps your geometry and element data so issues stay linked.
           </p>

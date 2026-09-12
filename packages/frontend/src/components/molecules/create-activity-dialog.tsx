@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import type { Activity, ProjectPhase } from "@/lib/project-types";
 
 export interface CreateActivityValues {
@@ -147,7 +149,7 @@ function CreateActivityDialog({
         placeholder="e.g. Slab pour, Floor 2"
         maxLength={200}
         autoFocus
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div>
     
@@ -160,7 +162,7 @@ function CreateActivityDialog({
           onChange={(e) => setActivityType(e.target.value)}
           placeholder="concrete_pour"
           maxLength={100}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -169,7 +171,7 @@ function CreateActivityDialog({
           id="activity-phase"
           value={phaseId}
           onChange={(e) => setPhaseId(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         >
           <option value="">Unassigned milestone</option>
           {phases.map((p) => (
@@ -187,7 +189,7 @@ function CreateActivityDialog({
         id="activity-assignee"
         value={assigneeId}
         onChange={(e) => setAssigneeId(e.target.value)}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       >
         <option value="">Unassigned</option>
         {assigneeOptions.map((a) => (
@@ -206,7 +208,7 @@ function CreateActivityDialog({
         onChange={(e) => setLocation(e.target.value)}
         placeholder="e.g. Block A · Floor 2"
         maxLength={200}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div>
     
@@ -218,7 +220,7 @@ function CreateActivityDialog({
           type="datetime-local"
           value={plannedStartAt}
           onChange={(e) => setPlannedStartAt(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -228,7 +230,7 @@ function CreateActivityDialog({
           type="datetime-local"
           value={plannedEndAt}
           onChange={(e) => setPlannedEndAt(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
@@ -242,7 +244,7 @@ function CreateActivityDialog({
             type="datetime-local"
             value={actualStartAt}
             onChange={(e) => setActualStartAt(e.target.value)}
-            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_CLASS}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -252,11 +254,11 @@ function CreateActivityDialog({
             type="datetime-local"
             value={actualEndAt}
             onChange={(e) => setActualEndAt(e.target.value)}
-            className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={INPUT_CLASS}
           />
         </div>
         {!actualRangeValid && (
-          <p className="col-span-2 text-xs text-red-500">Actual end must be after actual start.</p>
+          <p className="col-span-2 text-xs text-negative-500">Actual end must be after actual start.</p>
         )}
       </div>
     )}
@@ -270,7 +272,7 @@ function CreateActivityDialog({
           min={0}
           value={workerCountPlanned}
           onChange={(e) => setWorkerCountPlanned(e.target.value)}
-          className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={INPUT_CLASS}
         />
       </div>
     </div>
@@ -283,7 +285,7 @@ function CreateActivityDialog({
         onChange={(e) => setNotes(e.target.value)}
         rows={2}
         maxLength={2000}
-        className="resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={cn(INPUT_CLASS, "min-h-24 resize-none py-3")}
       />
     </div></FormDrawer>
   );

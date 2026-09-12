@@ -51,8 +51,8 @@ function Segmented<T extends string | number>({
           disabled={disabled}
           onClick={() => onChange(option)}
           className={cn(
-            "h-9 rounded-lg border px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-            value === option ? "border-primary-500 bg-primary-50 text-primary-700" : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+            "h-9 rounded-lg border px-3 text-xs font-medium transition-colors outline-none focus-visible:shadow-focus",
+            value === option ? "border-primary-500 bg-primary-50 text-primary-700" : "border-line bg-white text-gray-600 hover:border-line-hover",
             disabled && "cursor-not-allowed opacity-60",
           )}
         >
@@ -110,10 +110,10 @@ export function EstimateTermsPanel({ proposalId, estimate, validUntil, isDraft, 
     );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-lg border border-line bg-white p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Terms</h3>
+          <h3 className="text-xs font-medium uppercase text-ink-muted">Terms</h3>
           <p className="mt-1 text-sm text-gray-500">What the client signs alongside the price. Recorded on this revision.</p>
         </div>
         {editable ? (

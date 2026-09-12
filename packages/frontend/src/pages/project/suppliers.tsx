@@ -108,11 +108,11 @@ export default function ProjectSuppliers() {
             <Card
               key={supplier.id}
               padding="lg"
-              className="flex flex-col gap-2 rounded-[16px] border-none bg-[#F8F8F8] sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-[16px] border-none bg-surface-alt sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex flex-col gap-1">
                 <p className="text-[15px] font-semibold text-black-500">{supplier.name}</p>
-                <p className="text-[13px] text-black-300">
+                <p className="text-sm text-black-300">
                   {[supplier.contactName, supplier.email, supplier.phone].filter(Boolean).join(" · ") ||
                     "No contact details"}
                 </p>

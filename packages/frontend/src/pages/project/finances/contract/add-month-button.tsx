@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { currentPeriod, nextPeriod } from "../schedule-of-values-line";
 import { PERIOD_PATTERN } from "./billing-sheet-model";
@@ -14,9 +15,6 @@ interface AddMonthButtonProps {
   periods: string[];
   onAdd: (period: string) => void;
 }
-
-const FIELD =
-  "h-10 rounded-lg bg-[#F6F6F6] px-3 text-sm text-black-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 export function AddMonthButton({ periods, onAdd }: AddMonthButtonProps) {
   const [open, setOpen] = useState(false);
@@ -51,8 +49,8 @@ export function AddMonthButton({ periods, onAdd }: AddMonthButtonProps) {
         {last ? "Add next month" : "Add month"}
       </Button>
       {open ? (
-        <div className="absolute right-0 top-full z-20 mt-2 flex w-64 flex-col gap-3 rounded-xl bg-white p-4 shadow-lg ring-1 ring-black/5">
-          <label className="flex flex-col gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-black-200">
+        <div className="absolute right-0 top-full z-20 mt-2 flex w-64 flex-col gap-3 rounded-lg bg-white p-4 shadow-lg border border-line-hair">
+          <label className="flex flex-col gap-1.5 text-xs font-medium uppercase text-ink-muted">
             First billing month
             <input
               type="month"
@@ -62,7 +60,7 @@ export function AddMonthButton({ periods, onAdd }: AddMonthButtonProps) {
               onKeyDown={(event) => {
                 if (event.key === "Enter") confirm();
               }}
-              className={FIELD}
+              className={INPUT_SM_CLASS}
             />
           </label>
           <Button type="button" variant="primary" size="sm" onClick={confirm} disabled={!PERIOD_PATTERN.test(picked)}>

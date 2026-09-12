@@ -38,7 +38,7 @@ const RESPONDED: Record<ClientResponse, Outcome> = {
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F4F6FB] px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-surface-alt px-4">
       <img src={logo} alt="BuildPanda" className="h-9" />
       {children}
       <p className="text-xs text-gray-400">Powered by BuildPanda</p>
@@ -49,11 +49,11 @@ Frame.displayName = "Frame";
 
 function OutcomeCard({ outcome, title, meta }: { outcome: Outcome; title: string; meta: string }) {
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+    <div className="w-full max-w-sm rounded-lg border border-line bg-white p-8 text-center shadow-sm">
       <span className={cn("mx-auto mb-4 flex size-12 items-center justify-center rounded-full text-2xl", outcome.iconBg)}>{outcome.icon}</span>
       <h1 className="text-lg font-semibold text-gray-900">{outcome.heading}</h1>
       <p className="mt-2 text-sm text-gray-500">{outcome.body}</p>
-      <div className="mt-5 border-t border-gray-100 pt-4 text-left">
+      <div className="mt-5 border-t border-line-hair pt-4 text-left">
         <p className="text-xs uppercase tracking-wide text-gray-400">Proposal</p>
         <p className="mt-1 text-sm font-medium text-gray-900">{title}</p>
         <p className="text-xs text-gray-500">{meta}</p>
@@ -88,7 +88,7 @@ export default function PublicProposalPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F4F6FB]">
+      <div className="flex min-h-screen items-center justify-center bg-surface-alt">
         <Spinner size="lg" />
       </div>
     );
@@ -97,7 +97,7 @@ export default function PublicProposalPage() {
   if (isError || !data) {
     return (
       <Frame>
-        <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-sm rounded-lg border border-line bg-white p-8 text-center shadow-sm">
           <h1 className="text-lg font-semibold text-gray-900">Proposal not found</h1>
           <p className="mt-2 text-sm text-gray-500">This link may have expired or the proposal is no longer available.</p>
         </div>
@@ -127,13 +127,13 @@ export default function PublicProposalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6FB] px-4 py-10">
+    <div className="min-h-screen bg-surface-alt px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 flex justify-center">
           <img src={logo} alt="BuildPanda" className="h-9" />
         </div>
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 bg-gray-50 px-6 py-5">
+        <div className="overflow-hidden rounded-lg border border-line bg-white shadow-sm">
+          <div className="border-b border-line-hair bg-gray-50 px-6 py-5">
             <CompanyBlock company={company} />
             <p className="mt-5 font-mono text-xs font-medium text-gray-400">
               {proposal.numberLabel} · {estimate.revisionLabel}

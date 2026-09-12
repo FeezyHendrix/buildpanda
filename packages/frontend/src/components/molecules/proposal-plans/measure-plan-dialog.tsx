@@ -72,10 +72,10 @@ function SectionChip({ label, selected, onToggle }: { label: string; selected: b
       onClick={onToggle}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
-        "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+        "outline-none focus-visible:shadow-focus",
         selected
           ? "border-primary-500 bg-primary-50 text-primary-700"
-          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+          : "border-line bg-white text-gray-600 hover:border-line-hover",
       )}
     >
       {selected ? <Check className="size-3.5" aria-hidden="true" /> : null}
@@ -89,10 +89,10 @@ function SectionPicker({ selected, onChange }: { selected: string[]; onChange: (
   const toggle = (element: string) =>
     onChange(selected.includes(element) ? selected.filter((e) => e !== element) : [...selected, element]);
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 p-4">
+    <div className="space-y-3 rounded-lg border border-line p-4">
       {TAKEOFF_SECTIONS.map((section) => (
         <div key={section.group}>
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{section.group}</p>
+          <p className="mb-1.5 text-xs font-medium uppercase text-ink-muted">{section.group}</p>
           <div className="flex flex-wrap gap-1.5">
             {section.elements.map((element) => (
               <SectionChip

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useOrgProfile, useUpdateOrgProfile } from "@/hooks/use-org-profile";
 import { Spinner } from "@/components/atoms/spinner";
@@ -82,12 +84,12 @@ export function OrgTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
+      <div className="rounded-lg border border-line-hair bg-white shadow-card">
+        <div className="border-b border-line-hair px-6 py-4">
+          <h3 className="text-base font-semibold text-ink">
             Organization details
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Basic information about your company.
           </p>
         </div>
@@ -99,7 +101,7 @@ export function OrgTab() {
                 id="org-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -110,7 +112,7 @@ export function OrgTab() {
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 onBlur={(e) => setContactEmail(e.target.value.trim().toLowerCase())}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -120,7 +122,7 @@ export function OrgTab() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -130,7 +132,7 @@ export function OrgTab() {
                 type="url"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -139,24 +141,24 @@ export function OrgTab() {
                 id="org-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
           </div>
         </div>
-        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-end rounded-b-xl">
+        <div className="border-t border-line-hair bg-surface-alt px-6 py-4 flex justify-end rounded-b-lg">
           <Button onClick={handleSaveDetails} loading={updateOrgProfile.isPending}>
             Save changes
           </Button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h3 className="text-base font-semibold text-gray-900">
+      <div className="rounded-lg border border-line-hair bg-white shadow-card">
+        <div className="border-b border-line-hair px-6 py-4">
+          <h3 className="text-base font-semibold text-ink">
             Financial defaults
           </h3>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-ink-muted">
             Default settings for proposals, invoices, and payments.
           </p>
         </div>
@@ -168,7 +170,7 @@ export function OrgTab() {
                 id="org-currency"
                 value={defaultCurrency}
                 onChange={(e) => setDefaultCurrency(e.target.value)}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -178,7 +180,7 @@ export function OrgTab() {
                 value={defaultTaxLabel}
                 onChange={(e) => setDefaultTaxLabel(e.target.value)}
                 placeholder="e.g. VAT, GST, Sales Tax"
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -190,7 +192,7 @@ export function OrgTab() {
                 min="0"
                 value={defaultTaxPct}
                 onChange={(e) => setDefaultTaxPct(Number(e.target.value))}
-                className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={INPUT_CLASS}
               />
             </div>
             <div className="flex flex-col gap-1.5 sm:col-span-3">
@@ -200,13 +202,13 @@ export function OrgTab() {
                 value={paymentInstructions}
                 onChange={(e) => setPaymentInstructions(e.target.value)}
                 rows={4}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20 focus-visible:border-primary-600"
+                className={cn(INPUT_CLASS, "min-h-24 py-3")}
                 placeholder="Bank transfer details, payment terms, etc."
               />
             </div>
           </div>
         </div>
-        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex justify-end rounded-b-xl">
+        <div className="border-t border-line-hair bg-surface-alt px-6 py-4 flex justify-end rounded-b-lg">
           <Button onClick={handleSaveFinancials} loading={updateOrgProfile.isPending}>
             Save defaults
           </Button>

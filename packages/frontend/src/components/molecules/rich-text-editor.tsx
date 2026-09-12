@@ -78,7 +78,7 @@ function ToolbarButton({
       }}
       className={cn(
         "flex h-7 min-w-7 items-center justify-center rounded px-1.5 text-sm",
-        active ? "bg-gray-900 text-white" : "text-gray-600 hover:bg-gray-100",
+        active ? "bg-primary-50 text-primary-700" : "text-ink-muted hover:bg-black/5 hover:text-ink",
       )}
     >
       {children}
@@ -168,8 +168,8 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
   if (!editor) return null;
 
   return (
-    <div className="rounded-lg border border-[#EDEDED] bg-white">
-      <div className="flex flex-wrap items-center gap-1 border-b border-[#F0F0F0] px-2 py-1.5">
+    <div className="rounded-lg border border-line-hair bg-white">
+      <div className="flex flex-wrap items-center gap-1 border-b border-line-hair px-2 py-1.5">
         <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
           <span className="font-bold">B</span>
         </ToolbarButton>
@@ -182,7 +182,7 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
         <ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           1.
         </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-[#F0F0F0]" />
+        <span className="mx-1 h-5 w-px bg-gray-100" />
         <ToolbarButton label="Attach image" onClick={() => fileInputRef.current?.click()}>
           🖼
         </ToolbarButton>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
@@ -14,7 +15,6 @@ import {
   PO_STATUSES,
   isLineValid,
   lineTotal,
-  poInputClass,
   type LineItemValues,
   type UpsertPurchaseOrderValues,
 } from "./purchase-order-model";
@@ -54,7 +54,7 @@ function LineItemRow({
   onRemove: (index: number) => void;
 }) {
   return (
-    <div className="grid gap-2 rounded-xl bg-[#FAFAFA] p-3 sm:grid-cols-[1fr_88px_132px_112px_auto] sm:items-end">
+    <div className="grid gap-2 rounded-lg bg-surface-alt p-3 sm:grid-cols-[1fr_88px_132px_112px_auto] sm:items-end">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`po-item-description-${index}`}>Description</Label>
         <input
@@ -63,7 +63,7 @@ function LineItemRow({
           onChange={(event) => onChange(index, { description: event.target.value })}
           placeholder="e.g. Cement bags"
           maxLength={500}
-          className={poInputClass}
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -76,7 +76,7 @@ function LineItemRow({
           step="0.01"
           value={item.quantity}
           onChange={(event) => onChange(index, { quantity: event.target.value })}
-          className={poInputClass}
+          className={INPUT_CLASS}
         />
       </div>
       <div className="flex flex-col gap-1.5">
@@ -193,7 +193,7 @@ export function UpsertPurchaseOrderDialog({
             placeholder="e.g. PO-0042"
             maxLength={100}
             autoFocus
-            className={poInputClass}
+            className={INPUT_CLASS}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -204,7 +204,7 @@ export function UpsertPurchaseOrderDialog({
             onChange={(event) => update("vendorName", event.target.value)}
             placeholder="e.g. Adeyemi Builders Ltd"
             maxLength={200}
-            className={poInputClass}
+            className={INPUT_CLASS}
           />
         </div>
       </div>
@@ -216,7 +216,7 @@ export function UpsertPurchaseOrderDialog({
             id="po-status"
             value={values.status}
             onChange={(event) => update("status", event.target.value as PurchaseOrderStatus)}
-            className={poInputClass}
+            className={INPUT_CLASS}
           >
             {PO_STATUSES.map((status) => (
               <option key={status} value={status}>{status}</option>
@@ -230,7 +230,7 @@ export function UpsertPurchaseOrderDialog({
             type="date"
             value={values.orderDate}
             onChange={(event) => update("orderDate", event.target.value)}
-            className={poInputClass}
+            className={INPUT_CLASS}
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -240,7 +240,7 @@ export function UpsertPurchaseOrderDialog({
             type="date"
             value={values.expectedDate}
             onChange={(event) => update("expectedDate", event.target.value)}
-            className={poInputClass}
+            className={INPUT_CLASS}
           />
         </div>
       </div>
@@ -253,14 +253,14 @@ export function UpsertPurchaseOrderDialog({
           onChange={(val) => update("stageId", val && val !== NO_STAGE ? val : "")}
           placeholder="Attribute to a build stage"
         />
-        <p className="text-xs text-gray-500">Issued POs count as committed cost for this stage.</p>
+        <p className="text-xs text-ink-muted">Issued POs count as committed cost for this stage.</p>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-[#F0F0F0] p-4">
+      <div className="flex flex-col gap-3 rounded-lg border border-line-hair p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-gray-900">Line items</p>
-            <p className="text-xs text-gray-500">Quantity × unit price becomes committed spend.</p>
+            <p className="text-sm font-semibold text-ink">Line items</p>
+            <p className="text-xs text-ink-muted">Quantity × unit price becomes committed spend.</p>
           </div>
           <Button type="button" variant="secondary" size="sm" onClick={addItem}>
             Add line
@@ -277,7 +277,7 @@ export function UpsertPurchaseOrderDialog({
             onRemove={removeItem}
           />
         ))}
-        <div className="flex justify-end border-t border-[#F0F0F0] pt-3">
+        <div className="flex justify-end border-t border-line-hair pt-3">
           <PoMetric label="Grand total" value={formatCurrency(grandTotal, currency)} accent />
         </div>
       </div>
@@ -291,7 +291,7 @@ export function UpsertPurchaseOrderDialog({
           placeholder="Delivery terms, approvals, or procurement context…"
           maxLength={2000}
           rows={4}
-          className={cn(poInputClass, "h-auto py-3 resize-none")}
+          className={cn(INPUT_CLASS, "h-auto min-h-24 resize-none py-3")}
         />
       </div>
     </FormDrawer>

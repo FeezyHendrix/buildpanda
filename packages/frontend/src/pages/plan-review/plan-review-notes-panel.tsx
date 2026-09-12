@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 import { formatClock, relativeTime } from "./plan-review-data";
 import { KEY, NOTE_TYPE, type Note } from "./plan-review-types";
 import { IconBtn } from "./plan-review-ui";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { Button } from "@/components/atoms/button";
 
 export function ReviewNotesPanel({
   open,
@@ -35,27 +37,22 @@ export function ReviewNotesPanel({
   return (
         <aside
           className={cn(
-            "flex shrink-0 flex-col border-t border-[#F0F0F0] bg-white lg:border-l lg:border-t-0",
+            "flex shrink-0 flex-col border-t border-line-hair bg-white lg:border-l lg:border-t-0",
             open ? "max-h-[45dvh] lg:max-h-none lg:w-80" : "lg:w-12",
           )}
         >
-          <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-3 py-2.5">
+          <div className="flex items-center gap-2 border-b border-line-hair px-3 py-2.5">
             {open ? (
               <>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900">Review Notes</p>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-xs text-gray-500">
                     {notes.commentCount} note{notes.commentCount === 1 ? "" : "s"} · {notes.recordingCount} recording{notes.recordingCount === 1 ? "" : "s"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={recording.onStart}
-                  title="Record walkthrough"
-                  className="ml-auto flex items-center gap-1 rounded-lg border border-[#EDEDED] px-2 py-1 text-[11px] font-medium text-gray-600 hover:bg-[#F6F6F6] hover:text-gray-900"
-                >
+                <Button variant="secondary" size="sm" className="ml-auto" onClick={recording.onStart} title="Record walkthrough">
                   <Video size={12} /> Record
-                </button>
+                </Button>
               </>
             ) : null}
             <IconBtn
@@ -73,18 +70,18 @@ export function ReviewNotesPanel({
             <>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
                 {notes.items.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#D9D9D9] bg-[#FAFAFA] px-4 py-8 text-center">
+                  <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-line bg-surface-alt px-4 py-8 text-center">
                     <MessageSquare size={20} className="text-gray-400" />
                     <p className="text-sm font-medium text-gray-900">No review notes yet</p>
                     <p className="text-xs text-gray-500">Drop a pin with the comment tool or record a walkthrough.</p>
                   </div>
                 ) : (
                   notes.items.map((note) => (
-                    <article key={note.id} className="rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3">
+                    <article key={note.id} className="rounded-lg border border-line-hair bg-surface-alt p-3">
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
+                            "flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white",
                             note.type === NOTE_TYPE.RECORDING ? "bg-red-600" : "bg-primary-600",
                           )}
                         >
@@ -102,15 +99,10 @@ export function ReviewNotesPanel({
                       <p className="mt-1.5 text-xs text-gray-600">{note.text}</p>
                       {note.type === NOTE_TYPE.RECORDING ? (
                         <div className="mt-2 flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={recording.onPlay}
-                            disabled={recording.playProgress !== null}
-                            className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
-                          >
+                          <Button size="sm" onClick={recording.onPlay} disabled={recording.playProgress !== null}>
                             <Play size={11} fill="currentColor" />
                             {recording.playProgress !== null ? "Playing…" : "Play Recording"}
-                          </button>
+                          </Button>
                           <span className="text-[10px] text-gray-500">Voice + mouse movement</span>
                           <IconBtn label="Clear recording" onClick={recording.onClear} className="ml-auto size-7 text-gray-400 hover:text-red-600">
                             <Trash2 size={13} />
@@ -131,7 +123,7 @@ export function ReviewNotesPanel({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 border-t border-[#F0F0F0] p-3">
+              <div className="flex items-center gap-2 border-t border-line-hair p-3">
                 {composer.pinnedSheetCode && (
                   <span className="flex shrink-0 items-center gap-1 rounded-md bg-primary-50 px-1.5 py-1 text-[10px] font-medium text-primary-700">
                     <MapPin size={10} /> {composer.pinnedSheetCode}
@@ -147,17 +139,11 @@ export function ReviewNotesPanel({
                   }}
                   aria-label="Add a comment"
                   placeholder={composer.pinnedSheetCode ? "Describe the pinned spot…" : "Add a comment…"}
-                  className="h-9 w-full min-w-0 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_SM_CLASS, "min-w-0")}
                 />
-                <button
-                  type="button"
-                  aria-label="Send comment"
-                  title="Send comment"
-                  onClick={composer.onSubmit}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-600 text-white hover:bg-primary-700"
-                >
+                <Button size="md" className="w-[38px] px-0" aria-label="Send comment" title="Send comment" onClick={composer.onSubmit}>
                   <Send size={15} />
-                </button>
+                </Button>
               </div>
             </>
           )}

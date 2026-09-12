@@ -5,6 +5,7 @@ import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { IconBox } from "@/components/atoms/icon-box";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import {
   CalendarIcon,
@@ -27,6 +28,7 @@ import {
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type {
   EquipmentBucket,
   EquipmentRequest,
@@ -63,9 +65,6 @@ const STATUS_META: Record<
   Returned: { label: "Returned", tone: "success" },
   Cancelled: { label: "Cancelled", tone: "danger" },
 };
-
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
 
 function nextStatus(
   status: EquipmentRequestStatus,
@@ -225,7 +224,7 @@ export default function ProjectEquipmentRequests() {
             action={canRequest ? { label: "Create request", onClick: () => setCreateOpen(true) } : undefined}
           />
         ) : (
-          <div className="flex flex-col divide-y divide-[#F0F0F0]">
+          <div className="flex flex-col divide-y divide-line-hair">
             {requests.map((request) => (
               <EquipmentRow
                 key={request.id}
@@ -485,7 +484,7 @@ function EquipmentRequestDialog({
             id="eq-priority"
             value={priority}
             onChange={(e) => setPriority(e.target.value as RequestPriority)}
-            className={FIELD}
+            className={INPUT_CLASS}
           >
             {(["Low", "Normal", "High", "Critical"] as RequestPriority[]).map(
               (item) => (
@@ -546,7 +545,7 @@ function EquipmentRequestDialog({
           id="eq-notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="min-h-24 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "min-h-24 py-3")}
         />
       </div>
     </FormDrawer>
@@ -577,7 +576,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         type={type}
-        className={FIELD}
+        className={INPUT_CLASS}
       />
     </div>
   );

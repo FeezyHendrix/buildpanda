@@ -9,7 +9,7 @@ export function AttachmentChip({ attachment }: { attachment: NonNullable<ChatMes
         <img
           src={attachment.url}
           alt={attachment.name}
-          className="max-h-48 max-w-xs rounded-lg border border-gray-200 object-cover"
+          className="max-h-48 max-w-xs rounded-lg border border-line-hair object-cover"
         />
       </a>
     );
@@ -19,15 +19,15 @@ export function AttachmentChip({ attachment }: { attachment: NonNullable<ChatMes
       href={attachment.url}
       target="_blank"
       rel="noreferrer"
-      className="mt-2 flex w-fit items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-700 transition-colors hover:bg-gray-100"
+      className="mt-2 flex w-fit items-center gap-3 rounded-lg border border-line-hair bg-surface-alt px-3 py-2.5 text-xs text-ink transition-colors hover:bg-black/5"
     >
-      <span className="flex size-9 items-center justify-center rounded-md bg-white text-gray-500 ring-1 ring-gray-200">
+      <span className="flex size-9 items-center justify-center rounded-md bg-white text-ink-muted border border-line">
         <FileTextIcon />
       </span>
       <span className="flex min-w-0 flex-col leading-tight">
-        <span className="max-w-[220px] truncate text-[13px] font-medium text-black-500">{attachment.name}</span>
+        <span className="max-w-[220px] truncate text-sm font-medium text-ink">{attachment.name}</span>
         {attachment.size && (
-          <span className="text-[11px] text-black-300">{Math.max(1, Math.round(attachment.size / 1024))} KB</span>
+          <span className="text-xs text-ink-muted">{Math.max(1, Math.round(attachment.size / 1024))} KB</span>
         )}
       </span>
     </a>

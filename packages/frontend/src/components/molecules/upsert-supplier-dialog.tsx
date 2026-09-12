@@ -3,9 +3,10 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import type { Supplier } from "@/lib/project-types";
 import type { SupplierInput } from "@/hooks/use-suppliers";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
-const FIELD =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const FIELD = INPUT_CLASS;
 
 interface UpsertSupplierDialogProps {
   open: boolean;
@@ -126,7 +127,7 @@ function UpsertSupplierDialog({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
     </FormDrawer>

@@ -1,34 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
-import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
-import { EmptyState } from "@/components/molecules/empty-state";
-import { KpiCard } from "@/components/molecules/kpi-card";
+import { PlusIcon } from "@/components/atoms/project-nav-icons";
+import { SearchInput } from "@/components/atoms/search-input";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
-import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useProjectInvoices, type InvoiceScanResult } from "@/hooks/use-invoices";
-import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
-import { formatCurrency } from "@/lib/formatters";
+import { useProjectInvoices, type Invoice, type InvoiceScanResult } from "@/hooks/use-invoices";
 import { canResourceAction } from "@/lib/project-types";
-import { InvoiceCard } from "../invoices/invoice-card";
 import { InvoiceComposer } from "../invoices/invoice-composer";
 import { PERIOD_PATTERN } from "./contract/billing-sheet-model";
-import { TabActions } from "./finance-tabs";
+import {
+  InvoiceActionDialogs,
+  useDownloadInvoicePdf,
+  type InvoiceAction,
+} from "./invoices/invoice-action-dialogs";
+import { InvoiceDrawer } from "./invoices/invoice-drawer";
+import { filterInvoices, INVOICE_STATUS_FILTERS, type InvoiceStatusFilter } from "./invoices/invoice-model";
+import { InvoiceTable } from "./invoices/invoice-table";
 
-/** Invoices — what's been billed, held back and paid. Sending records an invoice; it never charges. */
+/**
+ * Invoices — the register of what's been billed, held back and paid. Adding
+ * or sending an invoice records it; nothing here charges anyone.
+ */
 export function InvoicesTab() {
   const { project, access } = useProjectContext();
   const [searchParams, setSearchParams] = useSearchParams();
+  const canManage = canResourceAction(access, "finances", "manage");
+  const canRecordPayment = canResourceAction(access, "finances", "approve");
+  const currency = project.currency;
+  const { data: invoices = [], isPending } = useProjectInvoices(project.id);
+  const pdf = useDownloadInvoicePdf(project.id);
+
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<InvoiceStatusFilter>("all");
   const [scanOpen, setScanOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
   const [composePeriod, setComposePeriod] = useState<string | null>(null);
-  const canManage = canResourceAction(access, "finances", "manage");
-  const currency = project.currency;
-  const { data: invoices = [], isPending } = useProjectInvoices(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
+  const [viewId, setViewId] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ invoice: Invoice; action: InvoiceAction } | null>(null);
 
   // The retired /invoices/new route (and any deep link) opens the composer via
   // ?compose=1; the billing sheet adds &period=YYYY-MM to seed a progress
@@ -46,18 +57,10 @@ export function InvoicesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const summary = useMemo(() => {
-    return invoices.reduce(
-      (acc, inv) => {
-        acc.billed += inv.totalInvoiced;
-        acc.retainage += inv.retentionAmount;
-        acc.paid += inv.amountPaid;
-        acc.balance += inv.balanceDue;
-        return acc;
-      },
-      { billed: 0, retainage: 0, paid: 0, balance: 0 },
-    );
-  }, [invoices]);
+  const visible = useMemo(() => filterInvoices(invoices, status, search), [invoices, status, search]);
+  // The drawer reads the live invoice so a payment or status change shows at once.
+  const viewed = useMemo(() => invoices.find((invoice) => invoice.id === viewId) ?? null, [invoices, viewId]);
+  const isFiltered = status !== "all" || search.trim().length > 0;
 
   function openComposer(): void {
     setScanResult(null);
@@ -65,70 +68,78 @@ export function InvoicesTab() {
     setComposerOpen(true);
   }
 
-  const actions = canManage ? (
-    <div className="flex items-center gap-2">
-      <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
-        Scan invoice
-      </Button>
-      <Button variant="primary" size="md" onClick={openComposer}>
-        <PlusIcon className="size-4" />
-        Send invoice
-      </Button>
-    </div>
-  ) : undefined;
+  function clearFilters(): void {
+    setStatus("all");
+    setSearch("");
+  }
 
   return (
     <section aria-label="Invoices">
-      <TabActions>{actions}</TabActions>
-
-      <section
-        aria-label="Invoice summary"
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        <KpiCard label="Total invoiced" value={formatCurrency(summary.billed, currency)} />
-        <KpiCard label="Held back" value={formatCurrency(summary.retainage, currency)} />
-        <KpiCard label="Paid" value={formatCurrency(summary.paid, currency)} />
-        <KpiCard label="Outstanding" value={formatCurrency(summary.balance, currency)} />
-      </section>
-
-      {snapshot ? (
-        <section className="mt-6">
-          <div className="lg:w-1/2">
-            <InvoiceAgingBar
-              aging={snapshot.finance.invoices.aging}
-              currency={snapshot.currency}
-              isLoading={isSnapshotLoading}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-1 flex-wrap items-center gap-3">
+          <div className="w-full rounded-lg bg-surface-alt sm:max-w-xs">
+            <SearchInput
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by invoice # or vendor"
+              aria-label="Search invoices"
             />
           </div>
-        </section>
-      ) : null}
+          <FilterTabs items={INVOICE_STATUS_FILTERS} value={status} onChange={setStatus} ariaLabel="Filter invoices by status" />
+        </div>
+        {canManage ? (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="md" onClick={() => setScanOpen(true)}>
+              Scan invoice
+            </Button>
+            <Button variant="primary" size="md" onClick={openComposer}>
+              <PlusIcon className="size-4" />
+              Add invoice
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
-      <section className="mt-6">
-        {isPending ? (
-          <div className="flex flex-1 items-center justify-center py-20">
-            <Spinner size="lg" />
-          </div>
-        ) : invoices.length === 0 ? (
-          <EmptyState
-            icon={<FinancesIcon />}
-            title="No invoices yet"
-            description="Send an invoice or record a bill to track what's billed, held back, and paid."
-            action={canManage ? { label: "Send invoice", onClick: openComposer, icon: <PlusIcon /> } : undefined}
-          />
-        ) : (
-          <div className="flex flex-col gap-4">
-            {invoices.map((invoice) => (
-              <InvoiceCard
-                key={invoice.id}
-                projectId={project.id}
-                invoice={invoice}
-                currency={currency}
-                canManage={canManage}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <InvoiceTable
+        projectId={project.id}
+        currency={currency}
+        invoices={visible}
+        isLoading={isPending}
+        isFiltered={isFiltered}
+        canManage={canManage}
+        onAdd={canManage ? openComposer : undefined}
+        onClearFilters={clearFilters}
+        onView={(invoice) => setViewId(invoice.id)}
+        onAction={(invoice, action) => setPending({ invoice, action })}
+        onDownloadPdf={pdf.download}
+      />
+
+      <InvoiceDrawer
+        open={viewed !== null}
+        onOpenChange={(next) => {
+          if (!next) setViewId(null);
+        }}
+        projectId={project.id}
+        invoice={viewed}
+        currency={currency}
+        canManage={canManage}
+        canRecordPayment={canRecordPayment}
+        onAction={(invoice, action) => setPending({ invoice, action })}
+        onDownloadPdf={pdf.download}
+        pdfPending={pdf.isPending}
+      />
+
+      <InvoiceActionDialogs
+        projectId={project.id}
+        currency={currency}
+        canManage={canManage}
+        invoice={pending?.invoice ?? null}
+        action={pending?.action ?? null}
+        onClose={() => setPending(null)}
+        onDeleted={(invoiceId) => {
+          if (viewId === invoiceId) setViewId(null);
+        }}
+      />
 
       <ScanInvoiceDialog
         projectId={project.id}

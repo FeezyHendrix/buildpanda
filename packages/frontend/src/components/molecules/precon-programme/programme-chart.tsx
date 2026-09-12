@@ -144,7 +144,7 @@ export function ProgrammeChart({ sessionId, programme, editable, onSelectTask }:
   return (
     <div className="bp-gantt flex min-h-[420px] w-full flex-1 flex-col overflow-hidden [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
       {editable ? (
-        <p className="border-b border-gray-100 px-4 py-2 text-xs text-gray-500">
+        <p className="border-b border-line-hair px-4 py-2 text-xs text-gray-500">
           Drag a bar's edge to change its duration, drag from one bar to another to add a link, and click a link to remove
           it. Red bars are the critical path.
         </p>

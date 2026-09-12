@@ -180,7 +180,7 @@ export default function BimViewer({ fileUrl, onSelect }: Props) {
   }, [fileUrl, onSelect]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#1a1a1a] [&_[data-thatopen-logo]]:!hidden">
+    <div className="relative h-full w-full overflow-hidden rounded-lg bg-ink [&_[data-thatopen-logo]]:!hidden">
       <div ref={containerRef} className="h-full w-full" />
       <div className="pointer-events-none absolute bottom-3 left-3 z-10 select-none rounded-md bg-black/30 px-2.5 py-1 text-xs font-semibold tracking-wide text-white/80 backdrop-blur-sm">
         BuildPanda · BIM

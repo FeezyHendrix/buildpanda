@@ -135,16 +135,16 @@ export default function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col items-center gap-1 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Create your account
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
+        <p className="text-sm text-ink-muted text-pretty">
           Join thousands of diaspora members building with confidence.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {error}
         </p>
       )}
@@ -241,7 +241,7 @@ export default function SignUpForm() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-1 text-center text-xs text-gray-400 text-pretty">
+      <div className="flex flex-col items-center gap-1 text-center text-xs text-ink-muted text-pretty">
         <p className="inline-flex items-center gap-1">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -260,11 +260,11 @@ export default function SignUpForm() {
         </p>
         <p>
           By creating an account, you agree to our{" "}
-          <Link to="/terms" className="text-[#004DE7] underline hover:text-[#0041c4]">
+          <Link to="/terms" className="text-primary-500 underline hover:text-primary-600">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link to="/privacy" className="text-[#004DE7] underline hover:text-[#0041c4]">
+          <Link to="/privacy" className="text-primary-500 underline hover:text-primary-600">
             Privacy Policy
           </Link>
           .

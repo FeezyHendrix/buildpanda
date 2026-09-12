@@ -34,12 +34,12 @@ export function LookAheadDetailDrawer({
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col bg-white shadow-xl outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(520px,100vw)] flex-col border-l border-line-hair bg-white shadow-drawer outline-none",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
-          <header className="border-b border-[#F0F0F0] px-6 py-5">
+          <header className="border-b border-line-hair px-6 py-5">
             <Dialog.Title className="text-lg font-semibold text-gray-900">
               {lookAhead.name}
             </Dialog.Title>
@@ -53,24 +53,24 @@ export function LookAheadDetailDrawer({
 
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
             <section>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Details</p>
+              <p className="text-xs font-medium uppercase text-ink-muted">Details</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <Metric label="Manpower" value={lookAhead.totalWorkers != null ? String(lookAhead.totalWorkers) : "Not set"} />
                 <Metric label="Activities" value={String(lookAhead.activities.length)} />
               </div>
               {lookAhead.description && (
-                <p className="mt-4 rounded-xl bg-[#F8F8F8] p-4 text-sm leading-6 text-gray-700">
+                <p className="mt-4 rounded-lg bg-surface-alt p-4 text-sm leading-6 text-gray-700">
                   {lookAhead.description}
                 </p>
               )}
             </section>
 
             <section>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Activities</p>
+              <p className="text-xs font-medium uppercase text-ink-muted">Activities</p>
               {lookAhead.activities.length === 0 ? (
-                <p className="mt-3 rounded-xl bg-[#F8F8F8] p-4 text-sm text-gray-500">No activities attached yet.</p>
+                <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-gray-500">No activities attached yet.</p>
               ) : (
-                <div className="mt-3 flex flex-col divide-y divide-[#EDEDED] rounded-xl border border-[#EDEDED]">
+                <div className="mt-3 flex flex-col divide-y divide-line-hair rounded-lg border border-line-hair">
                   {lookAhead.activities.map((activity) => (
                     <div key={activity.activityId} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
@@ -87,7 +87,7 @@ export function LookAheadDetailDrawer({
             </section>
           </div>
 
-          <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+          <footer className="flex items-center justify-end gap-2 border-t border-line-hair px-6 py-4">
             <Dialog.Close render={<Button type="button" variant="secondary" size="sm">Close</Button>} />
             {canManage && (
               <Button type="button" size="sm" onClick={() => onEdit(lookAhead)}>
@@ -103,8 +103,8 @@ export function LookAheadDetailDrawer({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-[#EDEDED] bg-white p-3">
-      <p className="text-[11px] font-medium text-gray-500">{label}</p>
+    <div className="rounded-lg border border-line-hair bg-white p-3">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums text-gray-900">{value}</p>
     </div>
   );

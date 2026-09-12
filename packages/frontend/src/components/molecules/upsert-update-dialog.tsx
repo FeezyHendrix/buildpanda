@@ -3,6 +3,8 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { useUploadFile } from "@/hooks/use-files";
 import type { MediaType, UpdateCategory } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 export interface UpsertUpdateMedia {
   type: MediaType;
@@ -36,8 +38,7 @@ const CATEGORIES: UpdateCategory[] = [
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
-const inputClass =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const inputClass = INPUT_CLASS;
 
 function UpsertUpdateDialog({
   open,
@@ -149,7 +150,7 @@ function UpsertUpdateDialog({
           placeholder="Describe what happened on site…"
           maxLength={2000}
           rows={4}
-          className="rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3")}
         />
       </div>
 
@@ -160,7 +161,7 @@ function UpsertUpdateDialog({
             {media.map((item, index) => (
               <div
                 key={`${item.url}-${index}`}
-                className="group relative aspect-square overflow-hidden rounded-lg bg-[#F6F6F6]"
+                className="group relative aspect-square overflow-hidden rounded-lg bg-surface-alt"
               >
                 {item.type === "video" ? (
                   <div className="flex size-full items-center justify-center text-xs font-medium text-gray-500">
@@ -176,7 +177,7 @@ function UpsertUpdateDialog({
                 <button
                   type="button"
                   onClick={() => removeMedia(index)}
-                  className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                  className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-black/60 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100"
                   aria-label="Remove"
                 >
                   ×
@@ -192,7 +193,7 @@ function UpsertUpdateDialog({
           accept="image/*,video/*"
           multiple
           onChange={(e) => void handleFiles(e.target.files)}
-          className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#F6F6F6] file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
+          className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-surface-alt file:px-3 file:py-2 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200"
         />
         {uploadFile.isPending && (
           <p className="text-xs text-gray-500">Uploading…</p>

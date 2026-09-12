@@ -143,17 +143,17 @@ export function EstimateTab({ proposalId, estimate, currency, projectId, validUn
       </div>
 
       {(shareUrl ?? estimate.shareToken) && (
-        <div className="flex items-center gap-3 rounded-xl border border-[#004DE7]/20 bg-blue-50 px-4 py-3">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0 text-[#004DE7]">
+        <div className="flex items-center gap-3 rounded-lg border border-primary-500/20 bg-blue-50 px-4 py-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="size-4 shrink-0 text-primary-500">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
           </svg>
-          <span className="flex-1 truncate text-xs text-[#004DE7]">
+          <span className="flex-1 truncate text-xs text-primary-500">
             {shareUrl ?? `${window.location.origin}/p/${estimate.shareToken}`}
           </span>
           <button
             type="button"
-            className="shrink-0 text-xs font-medium text-[#004DE7] hover:underline"
+            className="shrink-0 text-xs font-medium text-primary-500 hover:underline"
             onClick={() => {
               void navigator.clipboard.writeText(shareUrl ?? `${window.location.origin}/p/${estimate.shareToken ?? ""}`);
             }}

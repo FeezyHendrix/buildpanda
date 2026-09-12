@@ -28,12 +28,12 @@ function OptionCard({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "relative flex flex-1 flex-col items-start gap-4 rounded-xl p-8 text-left",
-        "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+        "relative flex flex-1 flex-col items-start gap-4 rounded-lg p-8 text-left",
+        "outline-none focus-visible:shadow-focus",
         "transition-colors",
         selected
-          ? "border-2 border-[#004DE7] bg-white"
-          : "border-2 border-[#F6F6F6] bg-white",
+          ? "border-2 border-primary-500 bg-white"
+          : "border-2 border-line-hair bg-white",
         disabled && "cursor-not-allowed opacity-70",
         className,
       )}
@@ -47,7 +47,7 @@ function OptionCard({
       <div
         className={cn(
           "flex items-center justify-center",
-          selected ? "text-[#004DE7]" : "text-[#C8C8C8]",
+          selected ? "text-primary-500" : "text-[#C8C8C8]",
         )}
       >
         {icon}
@@ -57,12 +57,12 @@ function OptionCard({
         <span
           className={cn(
             "text-base font-semibold",
-            selected ? "text-[#004DE7]" : "text-gray-900",
+            selected ? "text-primary-500" : "text-ink",
           )}
         >
           {title}
         </span>
-        <span className="text-sm text-gray-500 text-pretty">{subtitle}</span>
+        <span className="text-sm text-ink-muted text-pretty">{subtitle}</span>
       </div>
     </button>
   );

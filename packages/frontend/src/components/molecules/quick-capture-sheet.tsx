@@ -5,6 +5,7 @@ import { uploadFileRequest, resolveFileUrl } from "@/hooks/use-files";
 import { useAddDailyLogEntry } from "@/hooks/use-daily-logs";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 interface PendingPhoto {
   file: File;
@@ -175,9 +176,9 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
                 className={cn(
-                  "flex h-20 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl",
+                  "flex h-20 flex-1 flex-col items-center justify-center gap-1.5 rounded-lg",
                   "border border-dashed border-gray-300 text-gray-600 transition-colors",
-                  "outline-none active:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "outline-none active:bg-gray-50 focus-visible:shadow-focus",
                 )}
               >
                 <CameraIcon className="size-5 text-gray-500" />
@@ -187,9 +188,9 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
                 type="button"
                 onClick={() => libraryInputRef.current?.click()}
                 className={cn(
-                  "flex h-20 flex-1 flex-col items-center justify-center gap-1.5 rounded-xl",
+                  "flex h-20 flex-1 flex-col items-center justify-center gap-1.5 rounded-lg",
                   "border border-dashed border-gray-300 text-gray-600 transition-colors",
-                  "outline-none active:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                  "outline-none active:bg-gray-50 focus-visible:shadow-focus",
                 )}
               >
                 <ImageIcon className="size-5 text-gray-500" />
@@ -220,10 +221,7 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add a short note (optional)"
               enterKeyHint="done"
-              className={cn(
-                "h-11 w-full rounded-lg border border-gray-200 px-3 text-sm text-black-500",
-                "outline-none placeholder:text-gray-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500/30",
-              )}
+              className={INPUT_CLASS}
             />
           </div>
 
@@ -231,8 +229,7 @@ function QuickCaptureSheet({ open, onOpenChange, projectId }: QuickCaptureSheetP
             <Button
               type="button"
               variant="primary"
-              size="sm"
-              className="h-11 w-full text-sm"
+              size="lg" className="w-full"
               disabled={!canSubmit}
               loading={submitting}
               onClick={() => void handleSubmit()}
@@ -288,7 +285,7 @@ function QuickCapture({ projectId }: QuickCaptureProps) {
         className={cn(
           "fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-40 lg:hidden",
           "flex size-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg",
-          "outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-primary-500/40",
+          "outline-none transition-transform active:scale-95 focus-visible:shadow-focus",
         )}
       >
         <CameraIcon className="size-6" />

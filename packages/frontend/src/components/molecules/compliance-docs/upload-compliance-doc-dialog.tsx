@@ -1,19 +1,15 @@
 import { useState } from "react";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { FileUpload } from "@/components/atoms/file-upload";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { COMPLIANCE_DOC_TYPES, type ComplianceDocType } from "@/api/compliance-docs";
 import { useCreateComplianceDoc } from "@/hooks/use-compliance-docs";
 import { useUploadFile } from "@/hooks/use-files";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { COMPLIANCE_DOC_TYPE_LABEL } from "@/lib/compliance-meta";
-import { cn } from "@/lib/utils";
 
-const selectClass = cn(
-  "h-11 w-full rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
-  "border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-);
+const selectClass = INPUT_CLASS;
 
 interface Props {
   open: boolean;

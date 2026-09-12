@@ -53,10 +53,10 @@ function ProjectTemplateStep({ selected, onSelect }: ProjectTemplateStepProps) {
 
   return (
     <div>
-      <h2 className="text-center text-[25px] font-bold text-gray-900 text-balance">
+      <h2 className="text-center text-[25px] font-medium text-gray-900 text-balance">
         Start from a template?
       </h2>
-      <p className="mt-2 text-center text-sm text-[#929292] text-pretty">
+      <p className="mt-2 text-center text-sm text-gray-400 text-pretty">
         Templates pre-fill your project with typical construction stages and starter
         tasks. You can rename, reorder or delete everything later.
       </p>

@@ -1,7 +1,7 @@
 import { type Page, type Locator, expect } from "@playwright/test";
 import { ProjectNav } from "./project-nav";
 
-// Create is a full page (finances/invoices/new), not a drawer. Payment + balance
+// Create opens the composer drawer on the Invoices tab of Budget & invoices. Payment + balance
 // integrity is asserted at the API/DB layer in the spec, not on screen.
 export class InvoicesPage {
   private readonly nav: ProjectNav;
@@ -14,7 +14,7 @@ export class InvoicesPage {
   }
 
   async goto(): Promise<void> {
-    await this.nav.goto("finances/invoices");
+    await this.nav.goto("finances/budget-invoices?tab=invoices");
     await this.newButton().waitFor({ state: "visible" });
     await expect(this.newButton()).toBeEnabled();
   }
@@ -32,7 +32,7 @@ export class InvoicesPage {
   async createInvoice(vendor: string, amount: number, trade = "Electrical"): Promise<void> {
     await this.newButton().click();
     await this.page.waitForURL(
-      `**/project/${this.projectId}/finances/invoices/new`,
+      `**/project/${this.projectId}/finances/budget-invoices**`,
     );
 
     await this.page.getByLabel(/vendor \/ payee/i).fill(vendor);
@@ -48,7 +48,7 @@ export class InvoicesPage {
       .click();
 
     await this.page.waitForURL(
-      `**/project/${this.projectId}/finances/invoices`,
+      `**/project/${this.projectId}/finances/budget-invoices**`,
     );
     await expect(this.row(vendor)).toBeVisible();
   }

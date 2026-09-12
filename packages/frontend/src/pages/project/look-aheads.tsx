@@ -132,8 +132,8 @@ export default function ProjectLookAheads() {
       />
 
       {lowStock.length > 0 && (
-        <section className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[#FED7AA] bg-[#FFF7ED] p-4">
-          <p className="mr-2 text-[13px] font-semibold text-[#9A5B13]">
+        <section className="mt-6 flex flex-wrap items-center gap-2 rounded-lg border border-warning-200 bg-warning-50 p-4">
+          <p className="mr-2 text-sm font-semibold text-warning-700">
             {lowStock.length} material{lowStock.length === 1 ? "" : "s"} running low
           </p>
           {lowStock.slice(0, 6).map((s) => (
@@ -266,11 +266,11 @@ function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[15px] font-semibold text-black-500">{activity.activityName}</p>
+            <p className="text-base font-semibold text-black-500">{activity.activityName}</p>
             {activity.phaseName && <Badge tone="neutral" size="sm">{activity.phaseName}</Badge>}
             {activity.fromProgramme && <Badge tone="info" size="sm">From programme</Badge>}
           </div>
-          <p className="text-[12px] text-black-300">
+          <p className="text-xs text-black-300">
             {formatDate(activity.plannedStartAt)} – {formatDate(activity.plannedEndAt)} · Crew{" "}
             {activity.workerCountPlanned}
           </p>
@@ -281,14 +281,14 @@ function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
       </header>
 
       {activity.materialOrders.length > 0 && (
-        <div className="mt-3 flex flex-col divide-y divide-[#EDEDED] border-t border-[#EDEDED]">
+        <div className="mt-3 flex flex-col divide-y divide-line-hair border-t border-line-hair">
           {activity.materialOrders.map((order) => (
             <div key={order.id} className="flex items-center justify-between gap-3 py-3">
               <div className="flex flex-col gap-0.5">
-                <p className="text-[13px] font-medium text-black-500">
+                <p className="text-sm font-medium text-black-500">
                   {order.quantity} {order.unit} · {order.materialName}
                 </p>
-                <p className="text-[12px] text-black-300">
+                <p className="text-xs text-black-300">
                   {order.supplier ?? "No supplier set"} · Needed by {formatDate(order.neededBy)}
                 </p>
               </div>

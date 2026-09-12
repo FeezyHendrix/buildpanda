@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import {
   documentVersionViewUrl,
   useAddDocumentVersion,
@@ -82,34 +83,34 @@ function DocumentVersionsDialog({
           <Dialog.Popup
             className={cn(
               "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-              "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+              "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
             )}
           >
             <header className="px-6 pt-6">
-              <Dialog.Title className="text-lg font-semibold text-gray-900">
+              <Dialog.Title className="text-lg font-semibold text-ink">
                 Version history
               </Dialog.Title>
-              <Dialog.Description className="mt-1.5 truncate text-sm text-gray-500">
+              <Dialog.Description className="mt-1.5 truncate text-sm text-ink-muted">
                 {document.fileName}
               </Dialog.Description>
             </header>
 
             {/* Upload a new revision */}
             {canManage && (
-            <div className="mx-6 mt-4 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-4">
-              <p className="text-sm font-medium text-gray-900">Upload new version</p>
+            <div className="mx-6 mt-4 rounded-lg border border-line-hair bg-surface-alt p-4">
+              <p className="text-sm font-medium text-ink">Upload new version</p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={revisionLabel}
                   onChange={(e) => setRevisionLabel(e.target.value)}
                   placeholder="Revision label (e.g. Rev C)"
-                  className="h-10 flex-1 rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_SM_CLASS, "flex-1")}
                 />
                 <input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="What changed? (optional)"
-                  className="h-10 flex-1 rounded-lg border border-[#EDEDED] bg-white px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_SM_CLASS, "flex-1")}
                 />
               </div>
               <input
@@ -121,15 +122,15 @@ function DocumentVersionsDialog({
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
-                className="mt-3 h-9 px-4 text-sm"
-                disabled={busy}
+                size="md"
+                className="mt-3"
+                loading={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
-                {busy ? "Uploading…" : "Choose file & upload"}
+                Choose file & upload
               </Button>
               {error && (
-                <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+                <p className="mt-2 rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-500">{error}</p>
               )}
             </div>
             )}
@@ -137,16 +138,16 @@ function DocumentVersionsDialog({
             {/* History */}
             <div className="mt-4 flex-1 overflow-y-auto px-6 pb-2">
               {isLoading ? (
-                <p className="py-6 text-center text-sm text-gray-500">Loading…</p>
+                <p className="py-6 text-center text-sm text-ink-muted">Loading…</p>
               ) : versions.length === 0 ? (
-                <p className="py-6 text-center text-sm text-gray-500">No versions yet.</p>
+                <p className="py-6 text-center text-sm text-ink-muted">No versions yet.</p>
               ) : (
-                <ul className="flex flex-col divide-y divide-[#F0F0F0]">
+                <ul className="flex flex-col divide-y divide-line-hair">
                   {versions.map((v) => (
                     <li key={v.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">
+                          <span className="text-sm font-semibold text-ink">
                             v{v.versionNo}
                             {v.revisionLabel ? ` · ${v.revisionLabel}` : ""}
                           </span>
@@ -156,15 +157,15 @@ function DocumentVersionsDialog({
                             </Badge>
                           )}
                         </div>
-                        <p className="truncate text-xs text-gray-500">
+                        <p className="truncate text-xs text-ink-muted">
                           {v.fileName} · {v.size} · {formatWhen(v.createdAt)}
                         </p>
-                        {v.notes && <p className="mt-0.5 truncate text-xs text-gray-400">{v.notes}</p>}
+                        {v.notes && <p className="mt-0.5 truncate text-xs text-ink-muted">{v.notes}</p>}
                       </div>
                       <button
                         type="button"
                         onClick={() => setViewer(v)}
-                        className="shrink-0 text-xs font-medium text-[#004DE7] hover:text-[#0041c4]"
+                        className="shrink-0 text-xs font-medium text-primary-500 hover:text-primary-600"
                       >
                         View
                       </button>
@@ -174,10 +175,10 @@ function DocumentVersionsDialog({
               )}
             </div>
 
-            <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
+            <footer className="flex items-center justify-end gap-2 border-t border-line-hair px-6 py-4">
               <Dialog.Close
                 render={
-                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                  <Button type="button" variant="secondary" size="md">
                     Done
                   </Button>
                 }

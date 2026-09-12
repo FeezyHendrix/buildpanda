@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { useProjectBudget } from "@/hooks/use-budget";
 import {
@@ -94,8 +95,8 @@ export function InvoiceBudgetAllocations({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-[#F0F0F0] pt-3">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+    <div className="flex flex-col gap-2 border-t border-line-hair pt-3">
+      <p className="mb-1 text-xs font-medium uppercase text-ink-muted">
         Charge to budget category
       </p>
       <div className="flex flex-col gap-2">
@@ -114,7 +115,7 @@ export function InvoiceBudgetAllocations({
               <select
                 value={a.categoryId}
                 onChange={(e) => updateRow(i, "categoryId", e.target.value)}
-                className="h-9 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm"
+                className={cn(INPUT_SM_CLASS, "flex-1")}
               >
                 {budget.categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -126,14 +127,9 @@ export function InvoiceBudgetAllocations({
                 currencySymbol={currencySymbol(currency)}
                 value={a.amount}
                 onChange={(val) => updateRow(i, "amount", val)}
-                className="h-9 w-32 rounded-lg border border-gray-200 px-3 text-sm"
+                className={cn(INPUT_SM_CLASS, "w-32")}
               />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 text-red-500"
-                onClick={() => removeRow(i)}
-              >
+              <Button variant="danger" size="sm" onClick={() => removeRow(i)}>
                 ✕
               </Button>
             </div>
@@ -150,7 +146,7 @@ export function InvoiceBudgetAllocations({
           <span
             className={cn(
               "text-sm font-medium",
-              isOver ? "text-red-600" : "text-gray-700",
+              isOver ? "text-negative-600" : "text-gray-700",
             )}
           >
             Total: {formatCurrency(totalAllocated, currency)} /{" "}

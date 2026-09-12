@@ -59,9 +59,9 @@ PaletteButton.displayName = "PaletteButton";
  */
 export function ToolPalette({ tool, onToolChange, blockedReasonFor, legendOpen, onToggleLegend, toggles = NO_TOGGLES }: Props) {
   return (
-    <nav aria-label="Measuring tools" className="flex w-16 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-gray-200 bg-white px-1 py-1.5">
+    <nav aria-label="Measuring tools" className="flex w-16 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-white px-1 py-1.5">
       {PRECON_TOOL_GROUPS.map((group, index) => (
-        <div key={group} role="group" aria-label={group} className={cn("flex flex-col gap-0.5", index > 0 && "mt-1 border-t border-gray-200 pt-1")}>
+        <div key={group} role="group" aria-label={group} className={cn("flex flex-col gap-0.5", index > 0 && "mt-1 border-t border-line pt-1")}>
           {PRECON_TOOL_META.filter((meta) => meta.group === group).map((meta) => {
             const blocked = meta.deferred ? `Arrives in ${meta.deferred}` : blockedReasonFor(meta);
             const isLegend = meta.key === "legend";

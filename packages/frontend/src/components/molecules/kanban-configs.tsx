@@ -20,15 +20,15 @@ import type {
 import type { KanbanColumn } from "@/components/molecules/kanban-board";
 
 export const ACTION_ITEM_COLUMNS: KanbanColumn<ActionStatus>[] = [
-  { status: "Open", label: "Open", accent: "bg-gray-300" },
-  { status: "InProgress", label: "In progress", accent: "bg-[#004DE7]" },
+  { status: "Open", label: "Open", accent: "bg-ink-disabled" },
+  { status: "InProgress", label: "In progress", accent: "bg-primary-500" },
   { status: "Blocked", label: "Blocked", accent: "bg-amber-500" },
   { status: "Resolved", label: "Resolved", accent: "bg-emerald-500" },
 ];
 
 export const QUERY_COLUMNS: KanbanColumn<QueryStatus>[] = [
   { status: "Open", label: "Open", accent: "bg-amber-500" },
-  { status: "Answered", label: "Answered", accent: "bg-[#004DE7]" },
+  { status: "Answered", label: "Answered", accent: "bg-primary-500" },
   { status: "Closed", label: "Closed", accent: "bg-emerald-500" },
 ];
 
@@ -36,26 +36,27 @@ export const APPROVAL_COLUMNS: KanbanColumn<ApprovalStatus>[] = [
   { status: "Pending", label: "Pending", accent: "bg-amber-500" },
   { status: "Resubmit", label: "Resubmit", accent: "bg-orange-500" },
   { status: "Approved", label: "Approved", accent: "bg-emerald-500" },
-  { status: "Rejected", label: "Rejected", accent: "bg-red-500" },
+  { status: "Rejected", label: "Rejected", accent: "bg-negative-500" },
 ];
 
 export const CHANGE_COLUMNS: KanbanColumn<ChangeStatus>[] = [
-  { status: "Draft", label: "Draft", accent: "bg-gray-300" },
-  { status: "Submitted", label: "Submitted", accent: "bg-[#004DE7]" },
+  { status: "Draft", label: "Draft", accent: "bg-ink-disabled" },
+  { status: "Submitted", label: "Submitted", accent: "bg-primary-500" },
   { status: "Approved", label: "Approved", accent: "bg-emerald-500" },
-  { status: "Rejected", label: "Rejected", accent: "bg-red-500" },
+  { status: "Executed", label: "Executed", accent: "bg-accent-500" },
+  { status: "Rejected", label: "Rejected", accent: "bg-negative-500" },
 ];
 
 export const PERMIT_COLUMNS: KanbanColumn<PermitStatus>[] = [
-  { status: "NotStarted", label: "Not started", accent: "bg-gray-300" },
-  { status: "Applied", label: "Applied", accent: "bg-[#004DE7]" },
+  { status: "NotStarted", label: "Not started", accent: "bg-ink-disabled" },
+  { status: "Applied", label: "Applied", accent: "bg-primary-500" },
   { status: "Approved", label: "Approved", accent: "bg-emerald-500" },
-  { status: "Rejected", label: "Rejected", accent: "bg-red-500" },
+  { status: "Rejected", label: "Rejected", accent: "bg-negative-500" },
   { status: "Expired", label: "Expired", accent: "bg-amber-500" },
 ];
 
 export const INSPECTION_COLUMNS: KanbanColumn<InspectionStatus>[] = [
-  { status: "Scheduled", label: "Scheduled", accent: "bg-[#004DE7]" },
+  { status: "Scheduled", label: "Scheduled", accent: "bg-primary-500" },
   { status: "Action Required", label: "Action required", accent: "bg-amber-500" },
   { status: "Completed", label: "Completed", accent: "bg-emerald-500" },
 ];
@@ -72,12 +73,12 @@ export function assigneeFooter(name: string | null, due: string | null) {
       {name ? (
         <>
           <Avatar name={name} size="sm" />
-          <span className="truncate text-xs text-gray-500">{name}</span>
+          <span className="truncate text-xs text-ink-muted">{name}</span>
         </>
       ) : (
-        <span className="text-xs text-gray-400">Unassigned</span>
+        <span className="text-xs text-ink-muted">Unassigned</span>
       )}
-      {due && <span className="ml-2 shrink-0 text-xs text-gray-500">{formatDayMonth(due)}</span>}
+      {due && <span className="ml-2 shrink-0 text-xs text-ink-muted">{formatDayMonth(due)}</span>}
     </>
   );
 }
@@ -89,9 +90,9 @@ export function actionItemMeta(item: ActionItem) {
         {item.priority}
       </Badge>
       {item.recurrenceUnit && (
-        <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
+        <Badge tone="info" size="sm">
           Repeats {recurrenceShort(item.recurrenceUnit, item.recurrenceInterval)}
-        </span>
+        </Badge>
       )}
     </>
   );
@@ -100,18 +101,18 @@ export function actionItemMeta(item: ActionItem) {
 export function dueMeta(due: string | null) {
   if (!due) return null;
   return (
-    <span className="rounded-md bg-[#F6F6F6] px-2 py-0.5 text-xs font-medium text-gray-600">
+    <Badge tone="neutral" size="sm">
       Due {formatDayMonth(due)}
-    </span>
+    </Badge>
   );
 }
 
 export function textMeta(text: string | null) {
   if (!text) return null;
   return (
-    <span className="rounded-md bg-[#F6F6F6] px-2 py-0.5 text-xs font-medium text-gray-600">
-      {text}
-    </span>
+    <Badge tone="neutral" size="sm">
+
+    </Badge>
   );
 }
 

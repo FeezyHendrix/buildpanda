@@ -73,7 +73,7 @@ function RowActionsMenu({
       </Button>
 
       {open ? (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex min-w-[120px] flex-col rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex min-w-[120px] flex-col rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-black/5">
           {entries.map((entry) => (
             <Button
               key={entry.label}

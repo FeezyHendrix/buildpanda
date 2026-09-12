@@ -132,7 +132,7 @@ export default function ProjectActionItems() {
         <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter action items" />
         <div className="flex items-center gap-3 justify-end lg:justify-start self-end lg:self-auto">
           <FilterTabs items={VIEW_MODE_ITEMS} value={view} onChange={setView} ariaLabel="View" />
-          <p className="text-xs text-gray-500">{openCount} open</p>
+          <p className="text-xs text-ink-muted">{openCount} open</p>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ export default function ProjectActionItems() {
                   className="min-w-0 flex-1 text-left"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-gray-900">
+                    <p className="truncate text-sm font-semibold text-ink">
                       {item.title}
                     </p>
                     <Badge
@@ -202,16 +202,16 @@ export default function ProjectActionItems() {
                       {item.priority}
                     </Badge>
                     {item.recurrenceUnit && (
-                      <span className="rounded-md bg-[#EEF2FF] px-2 py-0.5 text-xs font-semibold text-[#004DE7]">
+                      <Badge tone="info" size="sm">
                         Repeats{" "}
                         {recurrenceLabel(
                           item.recurrenceUnit,
                           item.recurrenceInterval,
                         )}
-                      </span>
+                      </Badge>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                     {item.assigneeName && <span>{item.assigneeName}</span>}
                     {formatDue(item.dueDate) && (
                       <span>Due {formatDue(item.dueDate)}</span>
@@ -225,21 +225,23 @@ export default function ProjectActionItems() {
                   </div>
                 </button>
                 {canManage && (
-                  <div className="flex items-center gap-3">
-                    <button
+                  <div className="flex items-center gap-1">
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setEditItem(item)}
-                      className="text-xs font-medium text-gray-500 hover:text-gray-900"
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="danger"
+                      size="sm"
                       onClick={() => setDeleteId(item.id)}
-                      className="text-xs font-medium text-red-500 hover:text-red-600"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 )}
               </Card>

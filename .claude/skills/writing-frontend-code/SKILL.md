@@ -289,8 +289,18 @@ const remove = useDeleteThing(id)
 
 ### Styling
 
-Tailwind utility classes with the theme palette (`primary` scale `#004DE7`,
-Plus Jakarta Sans). Match neighbouring files' tokens; use `cn()` from
+Tailwind utility classes with the theme tokens in `src/styles/index.css` — the
+design system is a transplant of Ernest's (see `docs/ernest-design-system.md`):
+Inter, a px type scale (`text-sm` 14/22, `text-2xl` 24/32, `text-3xl` 26/34),
+8px `rounded-lg` as the default corner, hairline `shadow-card`, neutral roles
+`text-ink` / `text-ink-muted` / `text-ink-disabled`, `border-line` (containers)
+/ `border-line-hair` (grid lines, cards), `bg-surface-alt` (table header, app
+bar, hover wash), status `success` / `warning` / `negative` / `accent`, and
+BuildPanda blue as `primary-*`. Chrome metrics: buttons `md` 38px (toolbars)
+and `lg` 46px (forms), inputs 46px outlined (`INPUT_CLASS` for raw selects and
+textareas), table rows 61px, drawers with `DrawerSection` / `DrawerField`. A
+page's title goes through `PageHeader` and renders in the 64px app bar.
+Match neighbouring files' tokens; use `cn()` from
 `lib/utils.ts` for conditional classes. No CSS-in-JS, no new style systems, no
 raw hex that drifts from the theme.
 

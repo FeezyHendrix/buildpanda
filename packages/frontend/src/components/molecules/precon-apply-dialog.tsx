@@ -31,7 +31,7 @@ function PreviewRow({ item }: { item: ApplyPreviewItem }) {
   return (
     <li className="flex items-center justify-between gap-3 py-1.5 text-xs">
       <span className="min-w-0 truncate text-gray-800">{item.description}</span>
-      <span className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-gray-600">
+      <span className="flex shrink-0 items-center gap-2 font-mono text-xs text-gray-600">
         {item.previous && item.change === "changed" ? (
           <span className="text-gray-400 line-through">
             {qty.format(item.previous.qty)} {item.previous.unit}
@@ -133,7 +133,7 @@ export function PreconApplyDialog({ open, onOpenChange, sessionId, proposalId }:
           {visible.length === 0 ? (
             <p className="rounded-lg bg-gray-50 px-3 py-4 text-center text-sm text-gray-500">The estimate already matches this take-off.</p>
           ) : (
-            <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 px-3">
+            <ul className="max-h-72 divide-y divide-line-hair overflow-y-auto rounded-lg border border-line px-3">
               {visible.map((item) => (
                 <PreviewRow key={`${item.boqItemId ?? item.description}-${item.change}`} item={item} />
               ))}

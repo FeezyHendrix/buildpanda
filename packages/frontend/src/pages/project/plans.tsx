@@ -43,7 +43,7 @@ export default function ProjectPlans() {
               variant="primary"
               size="md"
               onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
             >
               <ReactSVG src={icons.upload} />
               Upload plan

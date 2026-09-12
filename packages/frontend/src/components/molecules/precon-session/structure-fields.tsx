@@ -6,13 +6,15 @@ import { useRedraftPreconBill, useUpdatePreconStructure } from "@/hooks/use-prec
 import { getApiErrorMessage } from "@/lib/api-error";
 import { FOUNDATION_TYPE_OPTIONS, STRUCTURAL_SYSTEM_OPTIONS, STRUCTURE_CLASS_OPTIONS } from "@/lib/precon-meta";
 import { toast } from "@/lib/toast";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface Props {
   session: PreconSession;
   onClose: () => void;
 }
 
-const FIELD = "mt-0.5 h-8 w-full rounded-lg border-0 bg-[#F6F6F6] px-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = cn(INPUT_SM_CLASS, "mt-0.5");
 
 /**
  * The engine's reading of what the building is, editable. It steers the bill
@@ -54,11 +56,11 @@ export function StructureFields({ session, onClose }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className="rounded-lg border border-line bg-white p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-gray-900">Structure reading</p>
-          <p className="text-[11px] text-gray-500">
+          <p className="text-xs text-gray-500">
             {ctx ? (
               <>
                 {ctx.confidence === "high" ? "Confirmed" : "Read by Panda AI, low confidence"}
@@ -118,7 +120,7 @@ export function StructureFields({ session, onClose }: Props) {
         </label>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line-hair pt-3">
         <Button size="sm" loading={update.isPending} onClick={save}>
           Save reading
         </Button>

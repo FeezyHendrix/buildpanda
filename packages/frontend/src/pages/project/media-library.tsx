@@ -85,7 +85,7 @@ export default function ProjectMediaLibrary() {
               variant="primary"
               size="md"
               onClick={() => uploader.handleOpenChange(true)}
-              className="h-[32px] cursor-pointer hover:bg-primary text-[13px] font-semibold px-[20px] py-[12px]"
+              className="h-[32px] cursor-pointer hover:bg-primary text-sm font-semibold px-[20px] py-[12px]"
             >
               <ReactSVG src={icons.upload} />
               Upload media
@@ -207,7 +207,7 @@ function FilterChip({
         "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
         active
           ? "border-primary-600 bg-primary-50 text-primary-700"
-          : "border-[#EDEDED] bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900",
+          : "border-line-hair bg-white text-gray-600 hover:border-line-hover hover:text-gray-900",
       )}
     >
       {label}
@@ -236,7 +236,7 @@ function MediaTile({
   const isVideo = VIDEO_EXTS.has(ext);
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-[#EDEDED] bg-white">
+    <div className="group relative overflow-hidden rounded-lg border border-line-hair bg-white">
       <button
         type="button"
         onClick={onView}
@@ -244,7 +244,7 @@ function MediaTile({
         aria-label={`View ${doc.fileName}`}
         className="block w-full cursor-pointer disabled:cursor-default"
       >
-        <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-[#F6F6F6]">
+        <div className="flex aspect-square w-full items-center justify-center overflow-hidden bg-surface-alt">
           {isImage ? (
             <img
               src={url}
@@ -266,7 +266,7 @@ function MediaTile({
 
       <div className="px-3 py-2.5">
         <p className="truncate text-xs font-medium text-gray-900">{doc.fileName}</p>
-        <p className="truncate text-[11px] text-gray-500">
+        <p className="truncate text-xs text-gray-500">
           {doc.category} · {formatShortDate(doc.uploadedAt) || doc.uploadedAt}
         </p>
       </div>

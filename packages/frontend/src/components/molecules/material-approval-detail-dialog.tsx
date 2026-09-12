@@ -11,6 +11,7 @@ import { MATERIAL_APPROVAL_STATUS_META } from "./material-approval-card";
 import { formatShortDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { MaterialApprovalDetail } from "@/api/material-approvals";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 function formatWhen(value: string): string {
   return formatShortDate(value) || value;
@@ -71,7 +72,7 @@ function MaterialApprovalDetailDialog({
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(580px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line bg-white shadow-card outline-none",
           )}
         >
           {isPending || !approval || !meta ? (
@@ -97,11 +98,11 @@ function MaterialApprovalDetailDialog({
                 </Dialog.Title>
               </header>
 
-              <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
+              <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                   {buildSpecFacts(approval).map((fact) => (
                     <div key={fact.label}>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <dt className="text-xs font-medium uppercase text-ink-muted">
                         {fact.label}
                       </dt>
                       <dd className="mt-0.5 text-sm text-gray-900">{fact.value}</dd>
@@ -111,7 +112,7 @@ function MaterialApprovalDetailDialog({
 
                 {approval.specification ? (
                   <div className="mt-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <p className="text-xs font-medium uppercase text-ink-muted">
                       Specification
                     </p>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
@@ -122,7 +123,7 @@ function MaterialApprovalDetailDialog({
 
                 {approval.description ? (
                   <div className="mt-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <p className="text-xs font-medium uppercase text-ink-muted">
                       Notes
                     </p>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
@@ -133,10 +134,10 @@ function MaterialApprovalDetailDialog({
 
                 {approval.response ? (
                   <div className="mt-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    <p className="text-xs font-medium uppercase text-ink-muted">
                       Decision · {meta.label}
                     </p>
-                    <div className="mt-2 rounded-xl bg-[#FAFAFA] p-3">
+                    <div className="mt-2 rounded-lg bg-surface-alt p-3">
                       <p className="whitespace-pre-wrap text-sm text-gray-900">
                         {approval.response}
                       </p>
@@ -150,7 +151,7 @@ function MaterialApprovalDetailDialog({
                   </div>
                 ) : null}
 
-                <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <p className="mt-5 text-xs font-medium uppercase text-ink-muted">
                   Discussion ({approval.comments.length})
                 </p>
                 {approval.comments.length === 0 ? (
@@ -158,7 +159,7 @@ function MaterialApprovalDetailDialog({
                 ) : (
                   <ul className="mt-2 flex flex-col gap-3">
                     {approval.comments.map((c) => (
-                      <li key={c.id} className="rounded-xl bg-[#FAFAFA] p-3">
+                      <li key={c.id} className="rounded-lg bg-surface-alt p-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
                           <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
@@ -170,7 +171,7 @@ function MaterialApprovalDetailDialog({
                 )}
               </div>
 
-              <footer className="flex items-center gap-2 border-t border-[#F0F0F0] px-6 py-4">
+              <footer className="flex items-center gap-2 border-t border-line-hair px-6 py-4">
                 {canComment ? (
                   <>
                     <textarea
@@ -178,13 +179,12 @@ function MaterialApprovalDetailDialog({
                       onChange={(e) => setComment(e.target.value)}
                       rows={1}
                       placeholder="Add a comment…"
-                      className="min-h-[40px] flex-1 rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                      className={cn(INPUT_CLASS, "h-auto py-3 min-h-[40px] flex-1")}
                     />
                     <Button
                       type="button"
                       variant="primary"
-                      size="sm"
-                      className="h-9 px-4 text-sm"
+                      size="md"
                       disabled={!comment.trim()}
                       loading={addComment.isPending}
                       onClick={submitComment}
@@ -197,7 +197,7 @@ function MaterialApprovalDetailDialog({
                 )}
                 <Dialog.Close
                   render={
-                    <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                    <Button type="button" variant="secondary" size="md">
                       Close
                     </Button>
                   }

@@ -3,6 +3,7 @@ import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
 import { cn } from "@/lib/utils";
 import type { Person, UpdateCategory } from "@/lib/project-types";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
 
 export type CategoryFilter = "All" | UpdateCategory;
 
@@ -36,17 +37,17 @@ export interface FiltersPanelProps {
 
 export function FiltersPanel({ filters, contractors, onChange }: FiltersPanelProps) {
   return (
-    <aside className="h-fit lg:sticky lg:top-24 rounded-[16px] bg-[#F8F8F8] flex flex-col">
+    <aside className="h-fit lg:sticky lg:top-24 rounded-[16px] bg-surface-alt flex flex-col">
       <div className="flex items-center justify-between py-3 px-5">
         <div className="flex gap-2 items-center">
           <ReactSVG src={icons.filter} />
-          <h3 className="text-[13px] font-semibold text-black-300">Filter Menu</h3>
+          <h3 className="text-sm font-semibold text-black-300">Filter Menu</h3>
         </div>
       </div>
 
       <div className="bg-white rounded-[12px] h-full m-1 p-6 flex flex-col gap-4">
         <div>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             By Categories
           </h3>
           <div className="flex flex-wrap gap-4">
@@ -56,8 +57,8 @@ export function FiltersPanel({ filters, contractors, onChange }: FiltersPanelPro
                 type="button"
                 onClick={() => onChange("category", c)}
                 className={cn(
-                  "flex items-center justify-between rounded-[15px] px-[10px] py-[4px] text-[13px] h-[24px] bg-[#F6F6F6] transition-colors",
-                  "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 cursor-pointer",
+                  "flex items-center justify-between rounded-[15px] px-[10px] py-[4px] text-sm h-[24px] bg-surface-alt transition-colors",
+                  "outline-none focus-visible:shadow-focus cursor-pointer",
                   filters.category === c
                     ? "bg-primary-50 font-semibold text-primary"
                     : "text-black-300 hover:bg-primary-50 hover:text-primary",
@@ -69,8 +70,8 @@ export function FiltersPanel({ filters, contractors, onChange }: FiltersPanelPro
           </div>
         </div>
 
-        <div className='border-t border-[#F6F6F6] pt-6'>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className='border-t border-line-hair pt-6'>
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             By Contractors
           </h3>
           <div className="flex flex-col gap-1">
@@ -86,8 +87,8 @@ export function FiltersPanel({ filters, contractors, onChange }: FiltersPanelPro
           </div>
         </div>
 
-        <div className='border-t border-[#F6F6F6] pt-6'>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className='border-t border-line-hair pt-6'>
+          <h3 className="mb-3 text-xs font-medium uppercase text-ink-muted">
             By Date Range
           </h3>
           <div className="flex flex-row justify-between items-center">
@@ -119,8 +120,8 @@ function RadioRow({ label, img, sublabel, checked, onChange }: RadioRowProps) {
   return (
     <label
       className={cn(
-        "flex justify-between cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-[#F6F6F6]",
-        checked && "bg-[#F6F6F6]",
+        "flex justify-between cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-surface-alt",
+        checked && "bg-surface-alt",
       )}
     >
       <div className='flex gap-2'>
@@ -131,11 +132,11 @@ function RadioRow({ label, img, sublabel, checked, onChange }: RadioRowProps) {
           className={cn("h-[34px] w-[34px] rounded-[8px]")}
         />
         <span className="min-w-0">
-          <span className="block truncate text-[13px] text-[#131B2E]">
+          <span className="block truncate text-sm text-ink">
             {label}
           </span>
           {sublabel && (
-            <span className="block truncate text-[11px] text-black-300">
+            <span className="block truncate text-xs text-black-300">
               {sublabel}
             </span>
           )}
@@ -144,10 +145,10 @@ function RadioRow({ label, img, sublabel, checked, onChange }: RadioRowProps) {
       <span
         className={cn(
           "flex size-4 shrink-0 items-center justify-center rounded-full border",
-          checked ? "border-[#004DE7]" : "border-gray-300",
+          checked ? "border-primary-500" : "border-gray-300",
         )}
       >
-        {checked && <span className="size-2 rounded-full bg-[#004DE7]" />}
+        {checked && <span className="size-2 rounded-full bg-primary-500" />}
       </span>
       <input
         type="radio"
@@ -175,10 +176,7 @@ function DateField({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "h-10 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900",
-          "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
-        )}
+        className={INPUT_SM_CLASS}
       />
     </label>
   );

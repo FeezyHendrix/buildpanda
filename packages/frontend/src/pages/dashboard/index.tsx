@@ -72,13 +72,13 @@ export default function Dashboard() {
         <div className="mx-auto w-full lg:w-fit flex flex-col gap-4">
           <div className='flex flex-col !mb-6'>
             <Greeting className='self-start !mb-2' name={session?.user.name ?? ""} />
-            <p className="text-[13px] font-medium text-black-300">Here’s what’s happening with your projects today</p>
+            <p className="text-sm font-medium text-ink-muted">Here’s what’s happening with your projects today</p>
           </div>
 
           <div className="flex flex-col lg:flex-row w-full items-start lg:items-center justify-between !mb-0 lg:gap-0 gap-4">
             <div className="flex items-center gap-1">
               <ReactSVG src={icons.folder} />
-              <h2 className="text-[13px] font-medium text-black-300">Projects</h2>
+              <h2 className="text-sm font-medium text-ink-muted">Projects</h2>
             </div>
           </div>
 
@@ -92,7 +92,7 @@ export default function Dashboard() {
 
       {/* Desktop fixed footer */}
       {canCreateProject && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-[#F0F0F0] bg-white px-4 py-4 lg:block lg:px-6">
+        <div className="fixed bottom-0 left-0 right-0 z-10 hidden border-t border-line-hair bg-white px-4 py-4 lg:block lg:px-6">
           <div className="mx-auto flex w-full max-w-fit gap-4 lg:max-w-4xl lg:px-3">
             <NewProjectCard />
             <ImportProgrammeCard />
@@ -106,8 +106,7 @@ export default function Dashboard() {
           type="button"
           onClick={() => setFabOpen(true)}
           aria-label="Create or import project"
-          className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full shadow-xl transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
-          style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
+          className={`fixed bottom-6 left-1/2 z-20 flex size-14 -translate-x-1/2 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg transition-transform active:scale-95 lg:hidden ${fabOpen ? "hidden" : ""}`}
         >
           <PlusIcon className="size-7 text-white" />
         </button>
@@ -135,7 +134,7 @@ export default function Dashboard() {
                 : "fab-sheet-in 250ms cubic-bezier(0.32, 0.72, 0, 1)",
             }}
           >
-            <div className="flex w-full flex-col gap-4 bg-white rounded-2xl p-4">
+            <div className="flex w-full flex-col gap-4 bg-white rounded-lg p-4">
               <NewProjectCard onNavigate={closeFab} />
               <ImportProgrammeCard onNavigate={closeFab} />
             </div>
@@ -143,7 +142,7 @@ export default function Dashboard() {
               type="button"
               onClick={closeFab}
               aria-label="Close"
-              className="mt-1 flex size-12 items-center justify-center rounded-full bg-white/90 text-gray-500 shadow-md text-xl font-light"
+              className="mt-1 flex size-12 items-center justify-center rounded-full bg-white/90 text-ink-muted shadow-md text-xl font-light"
             >
               ✕
             </button>
@@ -164,9 +163,9 @@ function LoadingSpinner() {
 
 function Greeting({ name, className }: { name: string, className?: string }) {
   return (
-    <h1 className={`sm:text-[28px] mb-6 text-[25px] font-semibold  text-black-300 ${className}`}>
-      <span className="text-gray-500">Good {timeOfDay()}, </span>
-      <span className="text-gray-900">{firstName(name)}.</span>
+    <h1 className={`sm:text-3xl mb-6 text-2xl font-semibold  text-ink-muted ${className}`}>
+      <span className="text-ink-muted">Good {timeOfDay()}, </span>
+      <span className="text-ink">{firstName(name)}.</span>
     </h1>
   );
 }
@@ -237,13 +236,13 @@ function ProjectCard({ project }: { project: Project }) {
   return (
     <Card
       padding="md"
-      className="relative flex flex-col gap-6 justify-between border-[0.5px] border-grey-100 transition-shadow hover:shadow-md rounded-[16px] p-8 lg:w-[334.82px] w-full"
+      className="relative flex flex-col gap-6 justify-between transition-shadow hover:shadow-lg p-8 lg:w-[334.82px] w-full"
     >
       <button
         type="button"
         aria-label={`Delete ${project.name}`}
         onClick={() => setConfirmOpen(true)}
-        className="absolute right-3 top-3 z-20 inline-flex size-8 items-center justify-center rounded-lg text-gray-400 outline-none transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-red-500/30"
+        className="absolute right-3 top-3 z-20 inline-flex size-8 items-center justify-center rounded-lg text-ink-muted outline-none transition-colors hover:bg-negative-50 hover:text-negative-500 focus-visible:shadow-focus"
       >
         <TrashIcon className="size-4" />
       </button>
@@ -256,23 +255,23 @@ function ProjectCard({ project }: { project: Project }) {
         /> */}
         <ReactSVG src={icons.coloredFolder} />
         <div className='text'>
-         <p className='text-[#0F172A] font-semibold'>{project.name}</p>
-         <p className='text-[13px] text-black-300'>{project.address}</p>   
+         <p className='text-ink font-semibold'>{project.name}</p>
+         <p className='text-sm text-ink-muted'>{project.address}</p>   
         </div>
         {/* <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-gray-900">
+          <p className="truncate text-base font-semibold text-ink">
             {project.name}
           </p>
-          <p className="line-clamp-2 text-xs text-gray-500">
+          <p className="line-clamp-2 text-xs text-ink-muted">
             {project.address}
           </p>
         </div> */}
       </div>
 
       {/* <div className='flex flex-col gap-2'>
-        <div className="mb-1.5 flex items-center justify-between text-xs text-gray-500">
+        <div className="mb-1.5 flex items-center justify-between text-xs text-ink-muted">
           <span>Completion</span>
-          <span className="font-semibold tabular-nums text-gray-900">
+          <span className="font-semibold tabular-nums text-ink">
             {progress}%
           </span>
         </div>
@@ -281,17 +280,17 @@ function ProjectCard({ project }: { project: Project }) {
 
       <div className='flex flex-col gap-2'>
         <div className="flex justify-between">
-          <p className='text-black-300 text-[11px]'>Completion</p>
-          <p className="text-[13px] text-black-500 font-semibold">{progress}%</p>
+          <p className='text-ink-muted text-xs'>Completion</p>
+          <p className="text-sm text-black-500 font-semibold">{progress}%</p>
         </div>
         <ProgressBar value={progress} tone="success" size="sm" className='h-[7px]' />
       </div>
 
       <div>
-        <p className="text-black-300 text-[11px]">Budget Usage</p>
-        <p className="text-[13px] font-semibold text-black-500">
+        <p className="text-ink-muted text-xs">Budget Usage</p>
+        <p className="text-sm font-semibold text-black-500">
           {formatCurrency(project.budgetUsed, project.currency)}
-          <span className="text-black-300">
+          <span className="text-ink-muted">
             {" "}
             / {formatCurrency(project.budgetTotal, project.currency)}
           </span>
@@ -301,32 +300,32 @@ function ProjectCard({ project }: { project: Project }) {
       {/* {activePhase && (
         <Link
           to={`/project/${project.id}/project-chart`}
-          className="relative z-10 rounded-xl border border-[#EDEDED] bg-[#FAFAFA] p-3 outline-none transition-colors hover:bg-[#F4F7FF] focus-visible:ring-2 focus-visible:ring-[#004DE7]/20"
+          className="relative z-10 rounded-lg border border-line-hair bg-surface-alt p-3 outline-none transition-colors hover:bg-primary-50 focus-visible:shadow-focus"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-900">
-                <CalendarIcon className="size-3.5 text-[#004DE7]" />
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                <CalendarIcon className="size-3.5 text-primary-500" />
                 Project schedule
               </p>
-              <p className="mt-1 truncate text-xs text-gray-500">
+              <p className="mt-1 truncate text-xs text-ink-muted">
                 {activePhase.name}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-medium text-gray-500 ring-1 ring-[#EDEDED]">
+            <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-medium text-ink-muted border border-line-hair">
               {activePhase.dateRange || "Timeline"}
             </span>
           </div>
         </Link>
       )} */}
 
-      <div className="flex items-center justify-between border-t border-[#F0F0F0] pt-3">
-        <p className="text-xs text-gray-500">
+      <div className="flex items-center justify-between border-t border-line-hair pt-3">
+        <p className="text-xs text-ink-muted">
           Last updated {formatTimeAgo(project.updatedAt)}
         </p>
         <Link
           to={`/project/${project.id}/overview`}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#004DE7] outline-none hover:underline after:absolute after:inset-0 after:z-[1] after:rounded-2xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-[#004DE7]/20"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-primary-500 outline-none hover:underline after:absolute after:inset-0 after:z-[1] after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-primary-500/20"
         >
           Open
           <ExternalLinkIcon className="size-3.5" />
@@ -351,15 +350,14 @@ function NewProjectCard({ onNavigate }: { onNavigate?: () => void }) {
     <Link
       to="/project/create"
       onClick={onNavigate}
-      className="flex flex-1 items-center gap-4 rounded-2xl p-4 transition-opacity hover:opacity-90"
-      style={{ background: "linear-gradient(to bottom, #3121C1, #004DE7)" }}
+      className="flex flex-1 items-center gap-4 rounded-lg border border-line-hair bg-white p-4 transition-colors hover:bg-surface-alt"
     >
       <div className="shrink-0">
-        <ReactSVG src={icons.folderWhite} />
+        <ReactSVG src={icons.addFolder} className="text-ink-muted" />
       </div>
       <div>
-        <p className="text-[16px] font-semibold text-white">New project</p>
-        <p className="text-[11px] text-white/75">
+        <p className="text-base font-semibold text-ink">New project</p>
+        <p className="text-xs text-ink-muted">
           Spin up a new construction project from scratch.
         </p>
       </div>
@@ -373,14 +371,14 @@ function ImportProgrammeCard({ onNavigate }: { onNavigate?: () => void }) {
     <button
       type="button"
       onClick={() => { onNavigate?.(); navigate("/import"); }}
-      className="flex flex-1 items-center gap-4 rounded-2xl border border-primary bg-white p-4 transition-colors hover:bg-gray-50"
+      className="flex flex-1 items-center gap-4 rounded-lg border border-primary bg-white p-4 transition-colors hover:bg-surface-alt"
     >
       <div className="shrink-0">
         <ReactSVG src={icons.folderArrow} />
       </div>
       <div className="text-left">
-        <p className="text-[16px] font-semibold text-primary">Set up a project</p>
-        <p className="text-[11px] text-black-300">
+        <p className="text-base font-semibold text-primary">Set up a project</p>
+        <p className="text-xs text-ink-muted">
           Import a programme, BoQ, drawings or BIM models and we'll build the project for you.
         </p>
       </div>

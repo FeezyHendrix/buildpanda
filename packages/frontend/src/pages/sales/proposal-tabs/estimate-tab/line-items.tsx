@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_SM_CLASS } from "@/components/atoms/input";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { proposalsApi } from "@/api/proposals";
 import type { Estimate } from "@/api/proposals";
@@ -141,9 +141,9 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
   );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div className="rounded-lg border border-line bg-white overflow-hidden">
+      <div className="border-b border-line-hair bg-gray-50 px-4 py-3">
+        <h3 className="text-xs font-medium uppercase text-ink-muted">
           Line items
         </h3>
       </div>
@@ -162,21 +162,21 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
           {items.map((item, i) => (
             <div key={i} className={rowClass}>
               <Input
-                className="h-9 text-xs"
+                inputSize="sm"
                 value={item.groupLabel}
                 onChange={(e) => updateItem(i, "groupLabel", e.target.value)}
                 placeholder="Group"
                 disabled={!isDraft}
               />
               <Input
-                className="h-9 text-xs"
+                inputSize="sm"
                 value={item.description}
                 onChange={(e) => updateItem(i, "description", e.target.value)}
                 placeholder="Description"
                 disabled={!isDraft}
               />
               <Input
-                className="h-9 text-xs"
+                inputSize="sm"
                 type="number"
                 min="0"
                 step="any"
@@ -189,7 +189,7 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 value={item.unit}
                 onChange={(v) => updateItem(i, "unit", v)}
                 disabled={!isDraft}
-                className="h-9 w-full rounded-lg bg-[#F6F6F6] px-2.5 text-xs text-gray-900 border-0 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50"
+                className={INPUT_SM_CLASS}
               />
               <MoneyInput
                 className="h-9 text-xs"
@@ -205,7 +205,7 @@ export function EstimateLineItems({ proposalId, estimate, isDraft, canUpdate, sy
                 <button
                   type="button"
                   onClick={() => removeItem(i)}
-                  className="flex h-9 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  className="flex h-9 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-negative-50 hover:text-negative-500"
                   aria-label="Remove item"
                 >
                   ×

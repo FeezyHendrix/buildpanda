@@ -19,7 +19,7 @@ export default function AuthLayout() {
   return (
     <div className="flex h-dvh p-2 sm:p-4">
       {/* The v2 welcome panel: illustration, white logo, product line and the pitch. */}
-      <div className="relative hidden w-1/2 shrink-0 overflow-hidden rounded-2xl bg-[#0B1A3A] lg:flex">
+      <div className="relative hidden w-1/2 shrink-0 overflow-hidden rounded-lg bg-[#0B1A3A] lg:flex">
         {/* the same animation as a video: a 20 MB GIF made every visitor wait */}
         <video
           className="absolute inset-0 size-full object-cover"
@@ -60,7 +60,7 @@ export default function AuthLayout() {
             {header.text}{" "}
             <Link
               to={header.to}
-              className="font-semibold text-[#004DE7] hover:underline"
+              className="font-semibold text-primary-500 hover:underline"
             >
               {header.linkText}
             </Link>

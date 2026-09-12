@@ -8,11 +8,11 @@ function MapPlaceholder({ className }: MapPlaceholderProps) {
   return (
     <div
       className={cn(
-        "flex h-[200px] items-center justify-center rounded-xl bg-[#F6F6F6]",
+        "flex h-[200px] items-center justify-center rounded-lg bg-surface-alt",
         className,
       )}
     >
-      <div className="flex flex-col items-center gap-2 text-gray-400">
+      <div className="flex flex-col items-center gap-2 text-ink-muted">
         <svg
           width="24"
           height="24"

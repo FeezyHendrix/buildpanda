@@ -9,15 +9,15 @@ import type { Currency, LedgerType, PaymentLedgerEntry } from "@/lib/project-typ
 import { cn } from "@/lib/utils";
 
 const AMOUNT_CLASS: Record<LedgerType, string> = {
-  Release: "text-emerald-600",
-  Hold: "text-amber-600",
-  Deposit: "text-gray-900",
+  Release: "text-success-600",
+  Hold: "text-warning-600",
+  Deposit: "text-ink",
 };
 
 function LedgerRow({ entry, currency }: { entry: PaymentLedgerEntry; currency: Currency }) {
   return (
     <TableRow>
-      <TableCell className="whitespace-nowrap text-gray-600">{formatShortDate(entry.date)}</TableCell>
+      <TableCell className="whitespace-nowrap text-ink-subtle">{formatShortDate(entry.date)}</TableCell>
       <TableCell>
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="sm">
           {entry.type}
@@ -47,8 +47,8 @@ export function PaymentLedgerTable({
   return (
     <Card padding="lg" className="mt-6">
       <div className="mb-4">
-        <h3 className="text-[13px] font-semibold text-black-300">Payment ledger</h3>
-        <p className="mt-1 text-xs text-gray-500">
+        <h3 className="text-sm font-semibold text-ink-muted">Payment ledger</h3>
+        <p className="mt-1 text-xs text-ink-muted">
           Chronological trail of every release, deposit and hold logged against this project.
         </p>
       </div>

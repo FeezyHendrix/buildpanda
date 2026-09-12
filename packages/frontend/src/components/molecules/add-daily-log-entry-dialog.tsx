@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu } from "@base-ui/react/menu";
+import { Button } from "@/components/atoms/button";
 import { FormDialog } from "@/components/molecules/form-dialog";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import type { RichTextEditorHandle } from "@/components/molecules/rich-text-editor";
@@ -69,13 +70,8 @@ export function AddDailyLogEntryDialog({
       />
 
       <Menu.Root>
-        <Menu.Trigger
-          className={cn(
-            "inline-flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700",
-            "outline-none transition-colors hover:bg-gray-50 focus-visible:ring-2 focus-visible:ring-gray-900/10",
-          )}
-        >
-          <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Menu.Trigger render={<Button type="button" variant="secondary" size="md" className="w-fit" />}>
+          <svg className="size-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="9" cy="9" r="2" />
             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -84,15 +80,15 @@ export function AddDailyLogEntryDialog({
         </Menu.Trigger>
         <Menu.Portal>
           <Menu.Positioner side="top" align="start" sideOffset={6} className="z-[60]">
-            <Menu.Popup className="min-w-48 rounded-xl border border-gray-100 bg-white p-1 shadow-lg outline-none">
+            <Menu.Popup className="min-w-48 rounded-lg border border-line bg-white p-1 shadow-card outline-none">
               <Menu.Item
                 className={cn(
-                  "flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700",
-                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                  "flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink",
+                  "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-ink",
                 )}
                 onClick={() => cameraInputRef.current?.click()}
               >
-                <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <svg className="size-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
                   <circle cx="12" cy="13" r="3" />
                 </svg>
@@ -100,12 +96,12 @@ export function AddDailyLogEntryDialog({
               </Menu.Item>
               <Menu.Item
                 className={cn(
-                  "flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-gray-700",
-                  "outline-none data-[highlighted]:bg-[#F6F6F6] data-[highlighted]:text-gray-900",
+                  "flex cursor-default select-none items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-ink",
+                  "outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-ink",
                 )}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <svg className="size-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <svg className="size-4 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                 </svg>
                 Choose file

@@ -75,10 +75,10 @@ export function LedgerList({
 
   return (
     <Card padding="none" className="overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-[#F0F0F0] p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-line-hair p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-black-500">Ledger</h2>
-          <p className="mt-0.5 text-[13px] text-gray-500">
+          <p className="mt-0.5 text-sm text-gray-500">
             Append-only record of every movement — {entryCount(visible.length)}
             {filter === "all" ? "" : ` of ${entries.length}`} shown.
           </p>
@@ -112,15 +112,15 @@ export function LedgerList({
       ) : (
         groups.map((group) => (
           <section key={group.key}>
-            <div className="flex items-center justify-between border-b border-[#F0F0F0] bg-[#FAFAFA] px-4 py-2 sm:px-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <div className="flex items-center justify-between border-b border-line-hair bg-surface-alt px-4 py-2 sm:px-5">
+              <h3 className="text-xs font-medium uppercase text-ink-muted">
                 {group.label}
               </h3>
               <p className="text-xs text-gray-400">
                 {entryCount(group.entries.length)}
               </p>
             </div>
-            <div className="divide-y divide-[#F0F0F0]">
+            <div className="divide-y divide-line-hair">
               {group.entries.map((entry) => (
                 <LedgerRow
                   key={entry.id}

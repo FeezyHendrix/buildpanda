@@ -31,7 +31,7 @@ function AssemblyRow({ assembly, canManage, onEdit, onDelete }: { assembly: Asse
     <TableRow>
       <TableCell>
         {assembly.name}
-        <span className="ml-2 text-[11px] text-gray-400">{assembly.elementGroup}</span>
+        <span className="ml-2 text-xs text-gray-400">{assembly.elementGroup}</span>
       </TableCell>
       <TableCell className="text-xs text-gray-500">per {assembly.unit}</TableCell>
       <TableCell className="text-xs text-gray-500">
@@ -88,7 +88,7 @@ export function AssembliesPanel({ cards, canManage }: Props) {
       ) : assemblies.length === 0 ? (
         <EmptyState variant="inline" title="No assemblies yet" description="Create one above, then pick it from the composer in the sheet viewer so one drawn shape makes all of its lines." />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-line bg-white">
           <Table>
             <TableHead>
               <tr>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { formatShortDate } from "@/lib/formatters";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { useActionItem, useAddActionComment } from "@/hooks/use-action-items";
 import { cn } from "@/lib/utils";
 import type { ActionPriority, ActionStatus } from "@/lib/project-types";
@@ -58,11 +59,11 @@ function ActionItemDetailDialog({ open, onOpenChange, projectId, itemId }: Props
         <Dialog.Popup
           className={cn(
             "fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col",
-            "overflow-hidden rounded-2xl bg-white shadow-xl outline-none",
+            "overflow-hidden rounded-lg border border-line-hair bg-white shadow-lg outline-none",
           )}
         >
           {isLoading || !item ? (
-            <div className="p-8 text-center text-sm text-gray-500">Loading…</div>
+            <div className="p-8 text-center text-sm text-ink-muted">Loading…</div>
           ) : (
             <>
               <header className="px-6 pt-6">
@@ -74,52 +75,52 @@ function ActionItemDetailDialog({ open, onOpenChange, projectId, itemId }: Props
                     {item.priority}
                   </Badge>
                   {item.dueDate && (
-                    <span className="text-xs text-gray-500">Due {formatWhen(item.dueDate)}</span>
+                    <span className="text-xs text-ink-muted">Due {formatWhen(item.dueDate)}</span>
                   )}
                 </div>
-                <Dialog.Title className="mt-2 text-lg font-semibold text-gray-900">
+                <Dialog.Title className="mt-2 text-lg font-semibold text-ink">
                   {item.title}
                 </Dialog.Title>
                 {item.description && (
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-gray-600">
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">
                     {item.description}
                   </p>
                 )}
               </header>
 
-              <div className="mt-4 flex-1 overflow-y-auto border-t border-[#F0F0F0] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="mt-4 flex-1 overflow-y-auto border-t border-line-hair px-6 py-4">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   Comments ({item.comments.length})
                 </p>
                 {item.comments.length === 0 ? (
-                  <p className="py-4 text-sm text-gray-500">No comments yet.</p>
+                  <p className="py-4 text-sm text-ink-muted">No comments yet.</p>
                 ) : (
                   <ul className="mt-3 flex flex-col gap-3">
                     {item.comments.map((c) => (
-                      <li key={c.id} className="rounded-xl bg-[#FAFAFA] p-3">
+                      <li key={c.id} className="rounded-lg bg-surface-alt p-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">{c.authorName}</span>
-                          <span className="text-xs text-gray-400">{formatWhen(c.createdAt)}</span>
+                          <span className="text-sm font-medium text-ink">{c.authorName}</span>
+                          <span className="text-xs text-ink-muted">{formatWhen(c.createdAt)}</span>
                         </div>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{c.body}</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{c.body}</p>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
 
-              <footer className="flex flex-col gap-2 border-t border-[#F0F0F0] px-6 py-4">
+              <footer className="flex flex-col gap-2 border-t border-line-hair px-6 py-4">
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={2}
                   placeholder="Add a comment…"
-                  className="w-full rounded-lg bg-[#F6F6F6] px-3 py-2.5 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+                  className={cn(INPUT_CLASS, "min-h-24 py-3")}
                 />
                 <div className="flex items-center justify-end gap-2">
                   <Dialog.Close
                     render={
-                      <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
+                      <Button type="button" variant="secondary" size="md">
                         Close
                       </Button>
                     }
@@ -127,8 +128,7 @@ function ActionItemDetailDialog({ open, onOpenChange, projectId, itemId }: Props
                   <Button
                     type="button"
                     variant="primary"
-                    size="sm"
-                    className="h-9 px-4 text-sm"
+                    size="md"
                     loading={addComment.isPending}
                     disabled={!comment.trim()}
                     onClick={submitComment}

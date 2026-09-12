@@ -149,12 +149,12 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex w-[min(820px,100vw)] flex-col bg-[#FBFBFB] shadow-xl outline-none",
+            "fixed inset-y-0 right-0 z-50 flex w-[min(820px,100vw)] flex-col border-l border-line-hair bg-surface-alt shadow-drawer outline-none",
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
           )}
         >
-          <header className="flex items-start justify-between gap-4 border-b border-[#F0F0F0] bg-white px-6 py-5">
+          <header className="flex items-start justify-between gap-4 border-b border-line-hair bg-white px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-gray-900">
                 {period ? `Progress invoice · ${formatPeriodLabel(period)}` : "New invoice"}
@@ -170,7 +170,7 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
                 <button
                   type="button"
                   aria-label="Close"
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-black/5 hover:text-ink"
                 >
                   <XIcon className="size-4" />
                 </button>
@@ -183,7 +183,7 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
             <InvoiceForm form={form} money={money} />
           </div>
 
-          <footer className="border-t border-[#F0F0F0] bg-white px-6 py-4">
+          <footer className="border-t border-line-hair bg-white px-6 py-4">
             {form.isValid && !recipientValid && (
               <p className="mb-2 text-xs text-gray-500">
                 Add a client email to send, or save it as a draft for now.
@@ -191,10 +191,10 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan,
             )}
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                <p className="text-xs font-medium uppercase text-ink-muted">
                   Net payable
                 </p>
-                <p className="truncate text-lg font-bold tabular-nums text-primary-700">
+                <p className="truncate text-lg font-medium tabular-nums text-primary-700">
                   {money(form.totals.netPayable)}
                 </p>
               </div>

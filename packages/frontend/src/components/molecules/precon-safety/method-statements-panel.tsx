@@ -36,8 +36,8 @@ export function MethodStatementsPanel({ proposalId, programmeTasks }: Props) {
   const fail = (fallback: string) => (err: unknown) => toast(getApiErrorMessage(err, fallback), "error");
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+    <section className="rounded-lg border border-line bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-hair px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-gray-900">Method statements</p>
           <p className="text-xs text-gray-500">One per high-risk activity in the programme. Hazards, steps, controls and PPE, all editable.</p>
@@ -84,14 +84,14 @@ export function MethodStatementsPanel({ proposalId, programmeTasks }: Props) {
         </p>
       ) : (
         <div className="grid gap-0 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <ul className="divide-y divide-gray-100 border-b border-gray-100 lg:border-b-0 lg:border-r">
+          <ul className="divide-y divide-line-hair border-b border-line-hair lg:border-b-0 lg:border-r">
             {statements.map((statement) => (
               <li key={statement.id}>
                 <button
                   type="button"
                   onClick={() => setSelectedId(statement.id)}
                   className={cn(
-                    "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
+                    "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm outline-none focus-visible:shadow-focus",
                     selected?.id === statement.id ? "bg-primary-50 text-primary-800" : "text-gray-800 hover:bg-gray-50",
                   )}
                 >

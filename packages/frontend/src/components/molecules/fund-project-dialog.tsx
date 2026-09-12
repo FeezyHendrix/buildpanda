@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { formatCurrency, currencySymbol } from "@/lib/formatters";
 
@@ -64,7 +65,7 @@ function FundProjectDialog({
         autoFocus
       />
       {preview && (
-        <p className="text-xs tabular-nums text-gray-500">{preview}</p>
+        <p className="text-xs tabular-nums text-ink-muted">{preview}</p>
       )}
     </div>
     
@@ -77,7 +78,7 @@ function FundProjectDialog({
         onChange={(e) => setDescription(e.target.value)}
         placeholder="e.g. Top-up funding for MEP phase"
         maxLength={200}
-        className="h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10"
+        className={INPUT_CLASS}
       />
     </div></FormDrawer>
   );

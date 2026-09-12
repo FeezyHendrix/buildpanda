@@ -81,7 +81,7 @@ export function ScheduleBar({
       </div>
 
       {showLegend ? (
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-black-300">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
           <LegendKey swatchClassName="bg-primary-500" label="Billed" />
           <LegendKey
             swatchClassName={pendingClass}

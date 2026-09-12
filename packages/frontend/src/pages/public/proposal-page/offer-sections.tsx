@@ -1,6 +1,7 @@
 import type { BuyingListLine, Estimate, PackSection, PublicCompany } from "@/api/proposals";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
+import { Badge } from "@/components/atoms/badge";
 
 const SECTION_TITLE: Partial<Record<PackSection["kind"], string>> = {
   scope: "Scope of works",
@@ -12,7 +13,7 @@ const SECTION_TITLE: Partial<Record<PackSection["kind"], string>> = {
 };
 
 export function SectionHeading({ children }: { children: string }) {
-  return <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{children}</h2>;
+  return <h2 className="mb-3 text-xs font-medium uppercase text-ink-muted">{children}</h2>;
 }
 SectionHeading.displayName = "SectionHeading";
 
@@ -71,7 +72,7 @@ ProseSections.displayName = "ProseSections";
 
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-gray-100 py-2 text-sm last:border-0">
+    <div className="flex justify-between gap-4 border-b border-line-hair py-2 text-sm last:border-0">
       <span className={strong ? "font-semibold text-gray-900" : "text-gray-500"}>{label}</span>
       <span className={strong ? "font-semibold text-gray-900" : "text-right font-medium text-gray-900"}>{value}</span>
     </div>
@@ -85,7 +86,7 @@ export function PriceSection({ estimate, currency }: { estimate: Estimate; curre
     <div>
       <SectionHeading>Price</SectionHeading>
       {estimate.items.length > 0 ? (
-        <div className="mb-4 overflow-hidden rounded-xl border border-gray-200">
+        <div className="mb-4 overflow-hidden rounded-lg border border-line">
           <Table>
             <TableHead>
               <tr>
@@ -111,15 +112,15 @@ export function PriceSection({ estimate, currency }: { estimate: Estimate; curre
           </Table>
         </div>
       ) : null}
-      <div className="rounded-xl bg-gray-50 p-4">
+      <div className="rounded-lg bg-gray-50 p-4">
         <Row label="Subtotal" value={fmt(estimate.subtotal, currency)} />
         {estimate.contingencyPct > 0 ? (
           <Row label={`Contingency (${estimate.contingencyPct}%)`} value={fmt((estimate.subtotal * estimate.contingencyPct) / 100, currency)} />
         ) : null}
         <Row label={`${estimate.taxLabel} (${estimate.taxPct}%)`} value={fmt(estimate.taxAmount, currency)} />
-        <div className="mt-1 flex justify-between gap-4 border-t border-gray-200 pt-3">
+        <div className="mt-1 flex justify-between gap-4 border-t border-line pt-3">
           <span className="font-semibold text-gray-900">Total</span>
-          <span className="text-xl font-bold text-primary-600">{fmt(estimate.total, currency)}</span>
+          <span className="text-xl font-medium text-primary-600">{fmt(estimate.total, currency)}</span>
         </div>
       </div>
     </div>
@@ -138,11 +139,11 @@ export function StagesSection({ estimate, currency }: { estimate: Estimate; curr
       <SectionHeading>Pay as you go</SectionHeading>
       <div className="flex flex-col gap-2">
         {estimate.schedule.map((s) => (
-          <div key={s.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm">
+          <div key={s.id} className="flex items-center justify-between rounded-lg border border-line-hair bg-gray-50 px-4 py-3 text-sm">
             <div>
               <p className="font-medium text-gray-800">
                 {s.label}
-                {s.kind === "advance" ? <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-700">On signing</span> : null}
+                {s.kind === "advance" ? <Badge tone="info" className="ml-2">On signing</Badge> : null}
               </p>
               {s.description ? <p className="text-xs text-gray-400">{s.description}</p> : null}
             </div>
@@ -165,7 +166,7 @@ export function BuyingListSection({ lines }: { lines: BuyingListLine[] }) {
     <div>
       <SectionHeading>Your buying list</SectionHeading>
       <p className="mb-3 text-sm text-gray-600">This is a labour-only job. You buy these materials; the quantities come from the measured drawings.</p>
-      <div className="overflow-hidden rounded-xl border border-gray-200">
+      <div className="overflow-hidden rounded-lg border border-line">
         <Table>
           <TableHead>
             <tr>

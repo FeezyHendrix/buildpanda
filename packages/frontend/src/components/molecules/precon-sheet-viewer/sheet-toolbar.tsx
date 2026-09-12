@@ -18,7 +18,7 @@ interface Props {
 /** Sheet tabs and the sheet-settings toggle above the canvas; tools live in the palette. */
 export function SheetToolbar({ sheets, activeSheet, onSelectSheet, settingsOpen, onToggleSettings }: Props) {
   return (
-    <div className="flex items-center gap-1 overflow-x-auto border-b border-gray-200 px-2 py-1.5">
+    <div className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5">
       {sheets.map((sheet) => (
         <button
           key={sheet.id}

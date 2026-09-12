@@ -19,7 +19,7 @@ interface AttentionItem {
 }
 
 const METRIC_DOT: Record<"brand" | "green" | "amber" | "purple", string> = {
-  brand: "bg-[#004DE7]",
+  brand: "bg-primary-500",
   green: "bg-emerald-500",
   amber: "bg-amber-500",
   purple: "bg-violet-500",
@@ -37,7 +37,7 @@ export function MetricCard({
   tone: "brand" | "green" | "amber" | "purple";
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-5">
       <div className="flex items-center gap-2">
         <span className={cn("size-2 rounded-full", METRIC_DOT[tone])} />
         <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
@@ -59,7 +59,7 @@ export function FunnelPanel({
 }) {
   const maxCount = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 lg:col-span-2">
+    <div className="flex flex-col gap-4 rounded-lg border border-line bg-white p-5 lg:col-span-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">
           Pipeline by status
@@ -79,7 +79,7 @@ export function FunnelPanel({
             </span>
             <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-[#004DE7]"
+                className="h-full rounded-full bg-primary-500"
                 style={{
                   width: `${Math.max(row.count === 0 ? 0 : 6, Math.round((row.count / maxCount) * 100))}%`,
                 }}
@@ -98,12 +98,12 @@ export function FunnelPanel({
 const ATTENTION_DOT: Record<AttentionTone, string> = {
   danger: "bg-red-500",
   warning: "bg-amber-500",
-  info: "bg-[#004DE7]",
+  info: "bg-primary-500",
 };
 
 export function AttentionPanel({ items }: { items: AttentionItem[] }) {
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="flex flex-col gap-4 rounded-lg border border-line bg-white p-5">
       <h2 className="text-sm font-semibold text-gray-900">Needs attention</h2>
       {items.length === 0 ? (
         <p className="py-6 text-center text-xs text-gray-400">
@@ -142,7 +142,7 @@ export function LeadsPanel({
 }) {
   const maxCount = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="flex flex-col gap-4 rounded-lg border border-line bg-white p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Leads by status</h2>
         <span className="text-xs text-gray-400">{total} total</span>
@@ -174,14 +174,14 @@ export function LeadsPanel({
 export function RecentProposals({ rows }: { rows: ProposalListItem[] }) {
   const navigate = useNavigate();
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white lg:col-span-2">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+    <div className="overflow-hidden rounded-lg border border-line bg-white lg:col-span-2">
+      <div className="flex items-center justify-between border-b border-line-hair px-5 py-4">
         <h2 className="text-sm font-semibold text-gray-900">
           Recent proposals
         </h2>
         <Link
           to="/sales/proposals"
-          className="text-xs font-medium text-[#004DE7] hover:underline"
+          className="text-xs font-medium text-primary-500 hover:underline"
         >
           View all
         </Link>

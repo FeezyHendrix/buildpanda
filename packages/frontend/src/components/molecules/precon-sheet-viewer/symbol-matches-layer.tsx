@@ -71,7 +71,7 @@ interface BannerProps {
 export function SymbolMatchesBanner({ matches, onConfirm, onDiscard }: BannerProps) {
   const kept = keptPoints(matches).length;
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-[11px] text-primary-800">
+    <div className="flex flex-wrap items-center gap-2 border-b border-primary-100 bg-primary-50 px-3 py-1.5 text-xs text-primary-800">
       <span>
         <span className="font-semibold">{kept}</span> of {matches.points.length} match{matches.points.length === 1 ? "" : "es"} of {matches.name ?? "the symbol"} kept — click a pin to drop it, Enter to name the count
       </span>

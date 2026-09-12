@@ -326,7 +326,7 @@ export interface Selection {
   updatedAt: string;
 }
 
-export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Rejected";
+export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Executed" | "Rejected";
 
 export interface ChangeRequest {
   id: string;
@@ -346,6 +346,8 @@ export interface ChangeRequest {
   assigneeName: string | null;
   decidedAt: string | null;
   commentCount: number;
+  /** Contract created when the change order was executed; null until then. */
+  contractId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -556,6 +558,16 @@ export interface Stage {
   progressPercent: number;
   value: number;
   sortOrder: number;
+  /** Contract (main or change order) that prices this phase; null until assigned. */
+  contractId?: string | null;
+  /** Estimated figures a PM types on the Phases tab; costs are read from expenses and POs. */
+  expectedCost?: number | null;
+  estimatedLaborHours?: number | null;
+  laborBudget?: number | null;
+  materialBudget?: number | null;
+  usedLaborHours?: number | null;
+  usedMaterialCost?: number | null;
+  totalCost?: number | null;
 }
 
 export interface Project {

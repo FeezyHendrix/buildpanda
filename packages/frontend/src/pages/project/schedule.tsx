@@ -91,8 +91,8 @@ export default function ProjectSchedule() {
   const hasSchedule = tasks.length > 0;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-[#FCFCFD] [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
-      <div className="shrink-0 border-b border-[#EDEDED] bg-white px-6 py-4 sm:px-8">
+    <div className="flex h-full min-h-0 w-full flex-col bg-surface-alt [&_.wx-willow-theme]:flex [&_.wx-willow-theme]:min-h-0 [&_.wx-willow-theme]:flex-1 [&_.wx-willow-theme]:flex-col">
+      <div className="shrink-0 border-b border-line-hair bg-white px-6 py-4 sm:px-8">
         <PageHeader
           title="Project chart"
           actions={
@@ -153,7 +153,7 @@ export default function ProjectSchedule() {
           <ScheduleReportPanel report={report} currency={project.currency} />
           <div className="bp-gantt flex min-h-0 w-full flex-1 flex-col overflow-hidden">
             {canEdit && (
-              <div className="flex items-center gap-2 border-b border-[#F0F0F0] px-4 py-2">
+              <div className="flex items-center gap-2 border-b border-line-hair px-4 py-2">
                 <span className="text-xs text-gray-500">
                   Drag bars to reschedule. Changes save automatically.
                 </span>

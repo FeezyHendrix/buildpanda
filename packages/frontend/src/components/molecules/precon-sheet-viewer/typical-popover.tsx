@@ -6,6 +6,8 @@ import { isVersionConflict, useSetTypical } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { formatQty, unitLabel } from "./measure-maths";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 
 interface Props {
   sessionId: string;
@@ -13,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-const FIELD = "mt-1 h-9 w-full rounded-lg border-0 bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-100";
+const FIELD = cn(INPUT_SM_CLASS, "mt-1");
 
 /**
  * Typical ×N: the selected line is the same on N floors or areas. The backend
@@ -44,7 +46,7 @@ export function TypicalPopover({ sessionId, row, onClose }: Props) {
 
   return (
     <form
-      className="absolute right-3 top-3 z-20 flex w-72 flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
+      className="absolute right-3 top-3 z-20 flex w-72 flex-col gap-3 rounded-lg border border-line bg-white p-4 shadow-lg"
       onSubmit={(e) => {
         e.preventDefault();
         apply();

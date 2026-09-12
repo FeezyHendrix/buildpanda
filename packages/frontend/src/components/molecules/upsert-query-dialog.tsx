@@ -4,6 +4,7 @@ import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
 import type { QueryStatus } from "@/lib/project-types";
+import { INPUT_CLASS } from "@/components/atoms/input";
 
 export interface UpsertQueryValues {
   subject: string;
@@ -37,8 +38,7 @@ const STATUS: { value: QueryStatus; label: string }[] = [
   { value: "Closed", label: "Closed" },
 ];
 
-const field =
-  "h-11 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10";
+const field = INPUT_CLASS;
 
 function UpsertQueryDialog({
   open,

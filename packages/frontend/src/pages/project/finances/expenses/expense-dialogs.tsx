@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
@@ -8,6 +9,7 @@ import { useStages } from "@/hooks/use-stages";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/use-transactions";
 import { useUploadFile, resolveFileUrl } from "@/hooks/use-files";
 import { currencySymbol } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import type {
   CreateTransactionInput,
   Stage,
@@ -15,10 +17,8 @@ import type {
   TransactionCategoryInfo,
 } from "@/lib/project-types";
 
-export const expenseInputClass =
-  "flex h-11 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900 border-0 outline-none ring-0 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50";
-const textareaClass =
-  "flex w-full rounded-lg bg-[#F6F6F6] p-4 font-sans text-base lg:text-sm text-gray-900 border-0 outline-none ring-0 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] resize-y";
+export const expenseInputClass = INPUT_CLASS;
+const textareaClass = cn(INPUT_CLASS, "h-auto min-h-24 resize-y py-3");
 
 interface TransactionFormValues {
   title: string;
@@ -267,7 +267,7 @@ export function UpsertTransactionDialog({
         <div className="space-y-2">
           <Label>Receipt</Label>
           {values.receiptFileId && receiptUrl ? (
-            <div className="relative inline-block border rounded-lg overflow-hidden border-gray-200">
+            <div className="relative inline-block border rounded-lg overflow-hidden border-line-hair">
               <img src={receiptUrl} alt="Receipt preview" className="h-24 w-auto object-cover bg-gray-50" />
               <button
                 type="button"
@@ -281,7 +281,7 @@ export function UpsertTransactionDialog({
               </button>
             </div>
           ) : uploadProgress !== null ? (
-            <div className="flex items-center gap-3 h-11 px-4 rounded-lg bg-[#F6F6F6] text-sm text-gray-500">
+            <div className="flex items-center gap-3 h-[46px] px-4 rounded-lg border border-line bg-surface-alt text-sm text-ink-muted">
               <Spinner size="xs" />
               Uploading... {uploadProgress}%
             </div>
@@ -289,7 +289,7 @@ export function UpsertTransactionDialog({
             <input
               type="file"
               accept="image/*,application/pdf"
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+              className="block w-full text-sm text-ink-muted file:mr-4 file:h-8 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:text-xs file:font-semibold file:text-ink hover:file:border-primary-500 hover:file:bg-primary-50 hover:file:text-primary-600"
               onChange={handleFile}
             />
           )}

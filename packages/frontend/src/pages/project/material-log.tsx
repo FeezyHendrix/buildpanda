@@ -152,7 +152,7 @@ export default function ProjectMaterialLog() {
           <h2 className="text-base font-semibold text-black-500">
             Stock by material
           </h2>
-          <p className="mt-0.5 text-[13px] text-gray-500">
+          <p className="mt-0.5 text-sm text-gray-500">
             Received minus used. Anything negative or below its reorder level is
             flagged and listed first.
           </p>

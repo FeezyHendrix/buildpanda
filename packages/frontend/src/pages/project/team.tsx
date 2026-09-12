@@ -97,7 +97,7 @@ export default function ProjectTeam() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-[#EBEBEB]">
+        <div className="overflow-hidden rounded-lg border border-line-hair">
           {participants.map((p, idx) => (
             <ParticipantRow
               key={p.id}
@@ -112,10 +112,10 @@ export default function ProjectTeam() {
             onClick={openInvite}
             className="group flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-primary-50"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 transition-colors group-hover:border-[#004DE7]">
-              <PlusIcon className="size-3.5 text-gray-400 transition-colors group-hover:text-[#004DE7]" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 transition-colors group-hover:border-primary-500">
+              <PlusIcon className="size-3.5 text-gray-400 transition-colors group-hover:text-primary-500" />
             </div>
-            <span className="text-sm text-gray-400 transition-colors group-hover:text-[#004DE7]">Invite someone…</span>
+            <span className="text-sm text-gray-400 transition-colors group-hover:text-primary-500">Invite someone…</span>
           </button>
         </div>
       </section>
@@ -132,7 +132,7 @@ export default function ProjectTeam() {
       />
 
       {/* Contacts */}
-      <section className="mt-10 border-t border-gray-200 pt-8">
+      <section className="mt-10 border-t border-line pt-8">
         <div className="mb-4 flex lg:flex-row lg:gap-0 gap-2 flex-col items-center justify-between">
           <div className="order-2 lg:order-1">
             <h2 className="text-base font-semibold text-gray-900">Contacts</h2>
@@ -203,7 +203,7 @@ function ParticipantRow({
     <div
       className={cn(
         "flex items-center gap-3 px-4 py-3.5",
-        showDivider && "border-b border-[#F0F0F0]",
+        showDivider && "border-b border-line-hair",
       )}
     >
       <Avatar
@@ -331,7 +331,7 @@ function TeamMemberCard({
       )}
 
       {(member.email || member.phone) && (
-        <div className="flex flex-col gap-1 border-t border-[#F0F0F0] pt-3 text-xs">
+        <div className="flex flex-col gap-1 border-t border-line-hair pt-3 text-xs">
           {member.email && (
             <a
               href={`mailto:${member.email}`}
@@ -351,7 +351,7 @@ function TeamMemberCard({
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-3 border-t border-[#F0F0F0] pt-3">
+      <div className="flex items-center justify-end gap-3 border-t border-line-hair pt-3">
         <button
           type="button"
           onClick={() => setEditOpen(true)}

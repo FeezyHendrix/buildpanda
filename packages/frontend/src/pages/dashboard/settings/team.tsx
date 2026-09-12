@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { INPUT_SM_CLASS } from "@/components/atoms/input";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
 import { InviteMemberDialog } from "@/components/molecules/invite-member-dialog";
@@ -126,14 +128,14 @@ export default function TeamSettings() {
         }
       />
 
-      <div className="mb-8 mt-6 rounded-xl border border-gray-200 p-5">
-        <Label htmlFor="org-name" className="text-sm font-semibold text-gray-900">Workspace name</Label>
+      <div className="mb-8 mt-6 rounded-lg border border-line-hair p-5">
+        <Label htmlFor="org-name" className="text-sm font-semibold text-ink">Workspace name</Label>
         <div className="mt-2 flex gap-3">
           <input
             id="org-name"
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
-            className="h-10 flex-1 rounded-lg bg-[#F6F6F6] px-3 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+            className={cn(INPUT_SM_CLASS, "flex-1")}
           />
           <Button
             size="sm"

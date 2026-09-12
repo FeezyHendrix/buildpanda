@@ -23,20 +23,20 @@ function MediaNote({ comment, mediaKind }: { comment: DrawingMarkupComment; medi
   const { label, Icon } = MEDIA_META[mediaKind];
   return (
     <div className="mt-1">
-      <p className="flex items-center gap-1 text-[11px] font-medium text-gray-500">
+      <p className="flex items-center gap-1 text-xs font-medium text-gray-500">
         <Icon size={11} aria-hidden="true" /> {label}
         {comment.mediaDurationSeconds !== null ? (
           <span className="font-mono text-gray-400">· {formatDuration(comment.mediaDurationSeconds)}</span>
         ) : null}
       </p>
       {!comment.fileId ? (
-        <p className="mt-1 text-[11px] text-amber-700">The recording has not finished uploading from the field.</p>
+        <p className="mt-1 text-xs text-amber-700">The recording has not finished uploading from the field.</p>
       ) : url.isPending ? (
-        <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
+        <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
           <Spinner size="xs" /> Loading recording…
         </div>
       ) : url.isError || !url.data ? (
-        <p className="mt-1 text-[11px] text-red-700">Could not load the recording.</p>
+        <p className="mt-1 text-xs text-red-700">Could not load the recording.</p>
       ) : (
         <MediaNotePlayer url={url.data} mode={mediaKind} />
       )}
@@ -53,8 +53,8 @@ MediaNote.displayName = "MediaNote";
 export function MarkupCommentItem({ comment }: { comment: DrawingMarkupComment }) {
   const body = comment.body.trim();
   return (
-    <li className="rounded-lg bg-[#F6F6F6] px-2.5 py-2">
-      <p className="flex items-baseline gap-2 text-[11px] text-gray-500">
+    <li className="rounded-lg bg-surface-alt px-2.5 py-2">
+      <p className="flex items-baseline gap-2 text-xs text-gray-500">
         <span className="font-medium text-gray-800">{comment.authorName ?? "Someone"}</span>
         <time dateTime={comment.createdAt}>{formatTimeAgo(comment.createdAt)}</time>
       </p>
@@ -68,7 +68,7 @@ export function MarkupCommentItem({ comment }: { comment: DrawingMarkupComment }
       ) : null}
       {comment.mediaKind ? <MediaNote comment={comment} mediaKind={comment.mediaKind} /> : null}
       {comment.assigneeName ? (
-        <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-primary-700">
+        <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-primary-700">
           <UserRound size={11} aria-hidden="true" /> Assigned to {comment.assigneeName}
         </p>
       ) : null}

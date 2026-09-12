@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_SM_CLASS } from "@/components/atoms/input";
 import { type Estimate, type PaymentScheduleItem, type ScheduleKind } from "@/api/proposals";
 import { usePreconProgramme, usePreconSessions } from "@/hooks/use-precon";
 import { useReplacePaymentSchedule } from "@/hooks/use-proposals";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { formatWholeCurrency as fmt } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/atoms/badge";
 
 interface StageDraft {
   key: string;
@@ -96,16 +96,16 @@ export function PaymentSchedulePanel({ proposalId, estimate, currency, isDraft, 
     );
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
+    <div className="rounded-lg border border-line bg-white p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Payment stages</h3>
+          <h3 className="text-xs font-medium uppercase text-ink-muted">Payment stages</h3>
           <p className="mt-1 text-sm text-gray-500">Percent of the total due at each stage. Must total 100 before sending.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", complete ? "bg-success-50 text-success-700" : "bg-amber-50 text-amber-700")}>
+          <Badge tone={complete ? "success" : "warning"} dot>
             {total} %{complete ? "" : ` · ${Math.round((100 - total) * 100) / 100} % to allocate`}
-          </span>
+          </Badge>
           {editable && stages.length === 0 ? (
             <Button size="sm" variant="secondary" onClick={() => setStages(LAGOS_DEFAULT.map(withKey))}>
               Use the standard stages
@@ -124,7 +124,7 @@ export function PaymentSchedulePanel({ proposalId, estimate, currency, isDraft, 
           No payment stages yet. {editable ? "Start from the standard Lagos residential set or add stages by hand." : ""}
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-line-hair">
           {stages.map((stage, index) => {
             const amount = (estimate.total * (parseFloat(stage.percent) || 0)) / 100;
             return (
@@ -132,7 +132,7 @@ export function PaymentSchedulePanel({ proposalId, estimate, currency, isDraft, 
                 <div className="flex items-center gap-2">
                   <select
                     aria-label="Stage kind"
-                    className="h-9 rounded-lg border-0 bg-[#F6F6F6] px-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-primary-100"
+                    className={INPUT_SM_CLASS}
                     value={stage.kind}
                     disabled={!editable}
                     onChange={(e) => update(stage.key, { kind: e.target.value as ScheduleKind })}
@@ -145,7 +145,7 @@ export function PaymentSchedulePanel({ proposalId, estimate, currency, isDraft, 
                 <Input type="number" min="0" max="100" step="0.5" value={stage.percent} disabled={!editable} onChange={(e) => update(stage.key, { percent: e.target.value })} className="text-right" aria-label="Percent" />
                 <select
                   aria-label="Bind to programme milestone"
-                  className="h-9 w-full rounded-lg border-0 bg-[#F6F6F6] px-2 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-primary-100 disabled:opacity-60"
+                  className={INPUT_SM_CLASS}
                   value={stage.programmeTaskId ?? ""}
                   disabled={!editable || milestones.length === 0}
                   onChange={(e) => update(stage.key, { programmeTaskId: e.target.value || null })}

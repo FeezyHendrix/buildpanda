@@ -43,7 +43,7 @@ function MediaGallery({
             onClick={() => setLightboxIndex(idx)}
             aria-label={item.type === "video" ? "Play video" : "View image"}
             className={cn(
-              "group relative overflow-hidden rounded-[4px] bg-[#F6F6F6] w-[215.33px] shrink-0 snap-start outline-none",
+              "group relative overflow-hidden rounded-[4px] bg-surface-alt w-[215.33px] shrink-0 snap-start outline-none",
               ASPECT[aspectRatio],
             )}
           >
@@ -55,7 +55,7 @@ function MediaGallery({
             />
             {item.type === "video" && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                <div className="flex size-10 items-center justify-center rounded-full bg-white/95 text-[#004DE7]">
+                <div className="flex size-10 items-center justify-center rounded-full bg-white/95 text-primary-500">
                   <PlayIcon className="size-5" />
                 </div>
               </div>

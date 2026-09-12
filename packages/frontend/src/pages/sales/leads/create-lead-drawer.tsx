@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Input } from "@/components/atoms/input";
+import { Input, INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { useCreateLead } from "@/hooks/use-leads";
+import { cn } from "@/lib/utils";
 
 export function CreateLeadDrawer({
   open,
@@ -89,7 +90,7 @@ export function CreateLeadDrawer({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Anything you want to remember about this prospect…"
-          className="w-full resize-none rounded-lg bg-[#F6F6F6] px-3 py-2 text-sm text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10"
+          className={cn(INPUT_CLASS, "h-auto min-h-24 py-3 resize-none")}
         />
       </div>
     </FormDrawer>

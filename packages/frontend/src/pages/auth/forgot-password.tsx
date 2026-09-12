@@ -34,10 +34,10 @@ export default function ForgotPasswordForm() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-gray-900 text-balance">
+          <h1 className="text-2xl font-medium text-ink text-balance">
             Check your email
           </h1>
-          <p className="text-sm text-gray-500 text-pretty">
+          <p className="text-sm text-ink-muted text-pretty">
             We sent a password reset link to <strong>{email}</strong>. Check
             your inbox and follow the instructions.
           </p>
@@ -55,17 +55,17 @@ export default function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900 text-balance">
+        <h1 className="text-2xl font-medium text-ink text-balance">
           Reset your password
         </h1>
-        <p className="text-sm text-gray-500 text-pretty">
+        <p className="text-sm text-ink-muted text-pretty">
           Enter the email address linked to your account and we'll send you a
           reset link.
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p className="rounded-lg bg-negative-50 px-4 py-3 text-sm text-negative-600">
           {error}
         </p>
       )}
