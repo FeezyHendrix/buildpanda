@@ -1,13 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { stagesRepository } from "../stages/repository.ts";
 import { purchaseOrdersRepository } from "./repository.ts";
+import { purchaseOrdersService } from "./service.ts";
 import {
-  purchaseOrdersService,
+  PURCHASE_ORDER_STATUSES,
   type CreatePurchaseOrderInput,
   type EditPurchaseOrderInput,
-} from "./service.ts";
-import { PURCHASE_ORDER_STATUSES } from "./types.ts";
+} from "./types.ts";
 
 const purchaseOrderParams = {
   type: "object",
@@ -46,6 +47,7 @@ const createPurchaseOrderBody = {
     orderDate: { type: "string", maxLength: 30 },
     expectedDate: { type: "string", maxLength: 30 },
     notes: { type: "string", maxLength: 2000 },
+    stageId: { type: ["string", "null"], maxLength: 200 },
     items: { type: "array", minItems: 1, items: lineItemSchema },
   },
 } as const;
@@ -62,7 +64,11 @@ function requiresFinanceApproval(status: string | undefined | null): boolean {
 }
 
 const purchaseOrderRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = purchaseOrdersService(purchaseOrdersRepository(fastify.db));
+  const stages = stagesRepository(fastify.db);
+  const service = purchaseOrdersService(purchaseOrdersRepository(fastify.db), {
+    stageBelongsToProject: async (projectId, stageId) =>
+      (await stages.findById(stageId))?.project_id === projectId,
+  });
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/purchase-orders",

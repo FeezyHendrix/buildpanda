@@ -24,6 +24,8 @@ export interface PurchaseOrder {
   orderDate: string | null;
   expectedDate: string | null;
   notes: string | null;
+  stageId: string | null;
+  stageName: string | null;
   total: number;
   items: PurchaseOrderItem[];
 }
@@ -41,6 +43,7 @@ export interface PurchaseOrderInput {
   orderDate?: string;
   expectedDate?: string;
   notes?: string;
+  stageId?: string | null;
   items: PurchaseOrderItemInput[];
 }
 

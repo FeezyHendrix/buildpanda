@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   financesApi,
+  type StageCostsResponse,
   type AddCashFlowVariables,
   type DepositVariables,
   type UpsertMilestoneInput,
@@ -19,6 +20,24 @@ export function useProjectFinances(projectId: string | undefined) {
       ? financeKeys.summary(projectId)
       : financeKeys.summary("__none__"),
     queryFn: () => financesApi.summary(projectId!),
+    enabled: Boolean(projectId),
+  });
+}
+
+export type StageCostMap = Record<string, { committed: number; actual: number }>;
+
+function toStageCostMap(response: StageCostsResponse): StageCostMap {
+  const map: StageCostMap = {};
+  for (const s of response.stages) map[s.stageId] = { committed: s.committed, actual: s.actual };
+  return map;
+}
+
+/** Cost-to-stage keyed by stage id; a stage with nothing attributed is absent. */
+export function useStageCosts(projectId: string | undefined) {
+  return useQuery({
+    queryKey: financeKeys.stageCosts(projectId ?? "__none__"),
+    queryFn: () => financesApi.stageCosts(projectId!),
+    select: toStageCostMap,
     enabled: Boolean(projectId),
   });
 }

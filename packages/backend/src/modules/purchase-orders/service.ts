@@ -5,37 +5,24 @@ import type {
   PurchaseOrdersRepository,
 } from "./repository.ts";
 import type {
+  CreatePurchaseOrderInput,
+  EditPurchaseOrderInput,
   PurchaseOrder,
   PurchaseOrderItem,
+  PurchaseOrderItemInput,
   PurchaseOrderItemRow,
   PurchaseOrderRow,
+  PurchaseOrderRowWithStage,
   PurchaseOrderStatus,
 } from "./types.ts";
 
-export interface PurchaseOrderItemInput {
-  description: string;
-  quantity?: number;
-  unitPrice?: number;
-}
+// Request-body shapes live in types.ts; re-exported so existing importers keep working.
+export type { CreatePurchaseOrderInput, EditPurchaseOrderInput, PurchaseOrderItemInput };
 
-export interface CreatePurchaseOrderInput {
-  poNumber: string;
-  vendorName: string;
-  status?: PurchaseOrderStatus;
-  orderDate?: string;
-  expectedDate?: string;
-  notes?: string;
-  items: PurchaseOrderItemInput[];
-}
-
-export interface EditPurchaseOrderInput {
-  poNumber?: string;
-  vendorName?: string;
-  status?: PurchaseOrderStatus;
-  orderDate?: string;
-  expectedDate?: string;
-  notes?: string;
-  items: PurchaseOrderItemInput[];
+export interface PurchaseOrdersDeps {
+  // Wired by the route plugin from the stages module so this service never
+  // touches project_phases directly.
+  stageBelongsToProject?: (projectId: string, stageId: string) => Promise<boolean>;
 }
 
 function num(value: string): number {
@@ -65,7 +52,7 @@ function toItem(row: PurchaseOrderItemRow): PurchaseOrderItem {
 }
 
 function toPurchaseOrder(
-  row: PurchaseOrderRow,
+  row: PurchaseOrderRowWithStage,
   itemRows: PurchaseOrderItemRow[],
 ): PurchaseOrder {
   const items = itemRows.map(toItem);
@@ -78,6 +65,8 @@ function toPurchaseOrder(
     orderDate: row.order_date,
     expectedDate: row.expected_date,
     notes: row.notes,
+    stageId: row.stage_id ?? null,
+    stageName: row.stage_name ?? null,
     total,
     items,
   };
@@ -109,10 +98,29 @@ function itemRecords(
   }));
 }
 
-export function purchaseOrdersService(repository: PurchaseOrdersRepository) {
+export function purchaseOrdersService(
+  repository: PurchaseOrdersRepository,
+  deps: PurchaseOrdersDeps = {},
+) {
+  // Re-read after a write so the DTO carries the joined stage name.
   async function buildPurchaseOrder(row: PurchaseOrderRow): Promise<PurchaseOrder> {
-    const items = await repository.listItemsForPurchaseOrders([row.id]);
-    return toPurchaseOrder(row, items);
+    const [withStage, items] = await Promise.all([
+      repository.findById(row.id),
+      repository.listItemsForPurchaseOrders([row.id]),
+    ]);
+    return toPurchaseOrder(withStage ?? { ...row, stage_name: null }, items);
+  }
+
+  async function resolveStageId(
+    projectId: string,
+    stageId: string | null | undefined,
+  ): Promise<string | null> {
+    const trimmed = optional(stageId ?? undefined) ?? null;
+    if (!trimmed) return null;
+    if (deps.stageBelongsToProject && !(await deps.stageBelongsToProject(projectId, trimmed))) {
+      throw new BadRequestError("Stage does not belong to this project");
+    }
+    return trimmed;
   }
 
   // Forward-only, mirroring material orders: money committed to a supplier
@@ -170,6 +178,7 @@ export function purchaseOrdersService(repository: PurchaseOrdersRepository) {
           order_date: optional(input.orderDate) ?? null,
           expected_date: optional(input.expectedDate) ?? null,
           notes: optional(input.notes) ?? null,
+          stage_id: await resolveStageId(projectId, input.stageId),
         },
         itemRecords(id, input.items),
       );
@@ -191,6 +200,7 @@ export function purchaseOrdersService(repository: PurchaseOrdersRepository) {
       if (input.orderDate !== undefined) patch.order_date = optional(input.orderDate) ?? null;
       if (input.expectedDate !== undefined) patch.expected_date = optional(input.expectedDate) ?? null;
       if (input.notes !== undefined) patch.notes = optional(input.notes) ?? null;
+      if (input.stageId !== undefined) patch.stage_id = await resolveStageId(projectId, input.stageId);
 
       const row = await repository.update(
         purchaseOrderId,

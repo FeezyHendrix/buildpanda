@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "../invoices/invoice-card";
 import { InvoiceComposer } from "../invoices/invoice-composer";
+import { PERIOD_PATTERN } from "./contract/billing-sheet-model";
 import { TabActions } from "./finance-tabs";
 
 /** Invoices — what's been billed, held back and paid. Sending records an invoice; it never charges. */
@@ -23,18 +24,23 @@ export function InvoicesTab() {
   const [scanOpen, setScanOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [scanResult, setScanResult] = useState<InvoiceScanResult | null>(null);
+  const [composePeriod, setComposePeriod] = useState<string | null>(null);
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
   const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
 
   // The retired /invoices/new route (and any deep link) opens the composer via
-  // ?compose=1; consume the flag so a refresh doesn't reopen it.
+  // ?compose=1; the billing sheet adds &period=YYYY-MM to seed a progress
+  // invoice for that month. Consume both so a refresh doesn't reopen it.
   useEffect(() => {
     if (canManage && searchParams.get("compose") === "1") {
+      const period = searchParams.get("period");
       setScanResult(null);
+      setComposePeriod(period && PERIOD_PATTERN.test(period) ? period : null);
       setComposerOpen(true);
       searchParams.delete("compose");
+      searchParams.delete("period");
       setSearchParams(searchParams, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,6 +61,7 @@ export function InvoicesTab() {
 
   function openComposer(): void {
     setScanResult(null);
+    setComposePeriod(null);
     setComposerOpen(true);
   }
 
@@ -140,6 +147,7 @@ export function InvoicesTab() {
           open={composerOpen}
           onOpenChange={setComposerOpen}
           scan={scanResult}
+          period={composePeriod}
         />
       ) : null}
     </section>

@@ -24,7 +24,7 @@ export type {
   PayApplicationSummary,
   PayApplicationLineInput,
 } from "@/api/invoices";
-import { invoiceKeys } from "./query-keys";
+import { invoiceKeys, stageKeys } from "./query-keys";
 
 export function useProjectInvoices(projectId: string | undefined) {
   return useQuery({
@@ -202,16 +202,20 @@ export function useSetPayApplication() {
       projectId,
       invoiceId,
       lines,
+      period,
     }: {
       projectId: string;
       invoiceId: string;
       lines: PayApplicationLineInput[];
-    }) => invoicesApi.setPayApplication(projectId, invoiceId, lines),
-    onSuccess: (_data, { projectId, invoiceId }) => {
+      /** Billing-sheet month this application invoices; flags it billed. */
+      period?: string;
+    }) => invoicesApi.setPayApplication(projectId, invoiceId, lines, period),
+    onSuccess: (_data, { projectId, invoiceId, period }) => {
       queryClient.invalidateQueries({
         queryKey: invoiceKeys.payApplication(projectId, invoiceId),
       });
       queryClient.invalidateQueries({ queryKey: invoiceKeys.list(projectId) });
+      if (period) queryClient.invalidateQueries({ queryKey: stageKeys.all(projectId) });
     },
   });
 }

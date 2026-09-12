@@ -57,6 +57,7 @@ export function PurchaseOrdersTab() {
       </TabActions>
 
       <UpsertPurchaseOrderDialog
+        projectId={project.id}
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"

@@ -32,6 +32,7 @@ function ExpenseRow({
       <TableCell>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
       </TableCell>
+      <TableCell className="text-gray-600">{tx.stageName || "—"}</TableCell>
       <TableCell>{tx.vendor || "—"}</TableCell>
       <TableCell align="right" className="font-medium text-gray-900 tabular-nums">
         {formatCurrency(tx.amount, currency)}
@@ -98,6 +99,7 @@ export function ExpenseTable({
               <TableHeaderCell>Date</TableHeaderCell>
               <TableHeaderCell>Details</TableHeaderCell>
               <TableHeaderCell>Category</TableHeaderCell>
+              <TableHeaderCell>Stage</TableHeaderCell>
               <TableHeaderCell>Vendor</TableHeaderCell>
               <TableHeaderCell align="right">Amount</TableHeaderCell>
               <TableHeaderCell>Logged by</TableHeaderCell>

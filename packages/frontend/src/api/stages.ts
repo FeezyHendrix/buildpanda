@@ -15,10 +15,23 @@ export interface StageScheduleOfValue {
   id: string;
   stageId: string;
   period: string;
+  /** Planned share of the stage value for this month. */
   percent: number;
   amount: number;
   billed: boolean;
   sortOrder: number;
+  /** Cumulative % complete recorded for the month; null until recorded. */
+  percentComplete: number | null;
+  /** This month's movement, priced by the backend off the cumulative figures. */
+  periodPercent: number;
+  periodAmount: number;
+  toDateAmount: number;
+}
+
+export interface UpdateScheduleProgressInput {
+  stageId: string;
+  period: string;
+  percentComplete: number | null;
 }
 
 export interface ScheduleOfValueLineInput {
@@ -51,6 +64,15 @@ export const stagesApi = {
   projectScheduleOfValues: (projectId: string) =>
     api
       .get<StageScheduleOfValue[]>(`/projects/${projectId}/schedule-of-values`)
+      .then((r) => r.data),
+
+  /** One billing-sheet cell: cumulative % complete for a stage-month. */
+  updateScheduleProgress: (projectId: string, input: UpdateScheduleProgressInput) =>
+    api
+      .patch<StageScheduleOfValue[]>(
+        `/projects/${projectId}/stages/${input.stageId}/schedule-of-values/${input.period}`,
+        { percentComplete: input.percentComplete },
+      )
       .then((r) => r.data),
 
   replaceScheduleOfValues: (

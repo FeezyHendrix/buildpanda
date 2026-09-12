@@ -1,22 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
 import { FormDrawer } from "@/components/molecules/form-drawer";
-import {
-  useCreateTransaction,
-  useCreateTransactionCategory,
-  useDeleteTransactionCategory,
-  useUpdateTransaction,
-} from "@/hooks/use-transactions";
+import { useStages } from "@/hooks/use-stages";
+import { useCreateTransaction, useUpdateTransaction } from "@/hooks/use-transactions";
 import { useUploadFile, resolveFileUrl } from "@/hooks/use-files";
 import { currencySymbol } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 import type {
   CreateTransactionInput,
+  Stage,
   Transaction,
   TransactionCategoryInfo,
 } from "@/lib/project-types";
@@ -25,11 +19,6 @@ export const expenseInputClass =
   "flex h-11 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900 border-0 outline-none ring-0 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50";
 const textareaClass =
   "flex w-full rounded-lg bg-[#F6F6F6] p-4 font-sans text-base lg:text-sm text-gray-900 border-0 outline-none ring-0 placeholder:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] resize-y";
-
-const SWATCHES = [
-  "#10B981", "#3B82F6", "#6366F1", "#8B5CF6",
-  "#EC4899", "#F43F5E", "#F59E0B", "#F97316",
-];
 
 interface TransactionFormValues {
   title: string;
@@ -40,7 +29,10 @@ interface TransactionFormValues {
   vendor: string;
   reference: string;
   receiptFileId: string;
+  stageId: string;
 }
+
+const NO_STAGE = "__none__";
 
 const EMPTY_FORM: TransactionFormValues = {
   title: "",
@@ -51,6 +43,7 @@ const EMPTY_FORM: TransactionFormValues = {
   vendor: "",
   reference: "",
   receiptFileId: "",
+  stageId: "",
 };
 
 export function CategoryBadge({ categoryLabel, categoryColor }: { categoryLabel: string; categoryColor: string | null }) {
@@ -66,6 +59,13 @@ export function CategoryBadge({ categoryLabel, categoryColor }: { categoryLabel:
 }
 
 CategoryBadge.displayName = "CategoryBadge";
+
+export function toStageItems(stages: Stage[]): ComboItem[] {
+  return [
+    { id: NO_STAGE, label: "No stage" },
+    ...stages.map((s) => ({ id: s.id, label: s.name })),
+  ];
+}
 
 export function toCategoryItems(categories: TransactionCategoryInfo[]): ComboItem[] {
   return categories.map((c) => ({
@@ -102,6 +102,7 @@ export function UpsertTransactionDialog({
       vendor: initial.vendor ?? "",
       reference: initial.reference ?? "",
       receiptFileId: initial.receiptFileId ?? "",
+      stageId: initial.stageId ?? "",
     };
   });
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
@@ -110,6 +111,8 @@ export function UpsertTransactionDialog({
   const create = useCreateTransaction(projectId);
   const update = useUpdateTransaction(projectId);
   const uploadFile = useUploadFile();
+  const { data: stages = [] } = useStages(projectId);
+  const stageItems = useMemo(() => toStageItems(stages), [stages]);
   const mutation = isEdit ? update : create;
 
   useEffect(() => {
@@ -150,6 +153,7 @@ export function UpsertTransactionDialog({
       vendor: values.vendor || null,
       reference: values.reference || null,
       receiptFileId: values.receiptFileId || null,
+      stageId: values.stageId || null,
     };
 
     if (isEdit && initial) {
@@ -216,6 +220,16 @@ export function UpsertTransactionDialog({
               }
             }}
             placeholder="Select category"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Stage</Label>
+          <ComboSelect
+            items={stageItems}
+            value={values.stageId || NO_STAGE}
+            onChange={(val) => setValues({ ...values, stageId: val && val !== NO_STAGE ? val : "" })}
+            placeholder="Attribute to a build stage"
           />
         </div>
 
@@ -286,96 +300,3 @@ export function UpsertTransactionDialog({
 }
 
 UpsertTransactionDialog.displayName = "UpsertTransactionDialog";
-
-export function ManageCategoriesDialog({
-  projectId,
-  categories,
-  onClose,
-}: {
-  projectId: string;
-  categories: TransactionCategoryInfo[];
-  onClose: () => void;
-}) {
-  const [newLabel, setNewLabel] = useState("");
-  const [newColor, setNewColor] = useState(SWATCHES[0]!);
-  const [deleteTarget, setDeleteTarget] = useState<TransactionCategoryInfo | null>(null);
-
-  const create = useCreateTransactionCategory(projectId);
-  const remove = useDeleteTransactionCategory(projectId);
-
-  function handleCreate() {
-    if (!newLabel.trim()) return;
-    create.mutate({ label: newLabel, color: newColor }, { onSuccess: () => setNewLabel("") });
-  }
-
-  return (
-    <>
-      <FormDrawer
-        open
-        onOpenChange={(open) => !open && onClose()}
-        title="Manage Categories"
-        submitLabel="Done"
-        onSubmit={onClose}
-      >
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-900">Custom Categories</h4>
-            <div className="flex gap-2 items-center">
-              <input
-                className={cn(expenseInputClass, "flex-1")}
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="Category name"
-              />
-              <input
-                type="color"
-                value={newColor}
-                onChange={(e) => setNewColor(e.target.value)}
-                className="h-11 w-11 p-1 rounded bg-[#F6F6F6] border-0 cursor-pointer"
-              />
-              <Button onClick={handleCreate} disabled={!newLabel.trim() || create.isPending}>
-                Add
-              </Button>
-            </div>
-          </div>
-
-          <ul className="divide-y divide-gray-100 border-t border-gray-100">
-            {categories.map((c) => (
-              <li key={c.key} className="flex items-center justify-between py-3">
-                <CategoryBadge categoryLabel={c.label} categoryColor={c.color} />
-                {c.type === "custom" ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setDeleteTarget(c)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-1"
-                  >
-                    Delete
-                  </Button>
-                ) : (
-                  <span className="text-xs text-gray-400">Preset</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </FormDrawer>
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Category"
-        description="Are you sure? Transactions in this category will lose this association."
-        variant="danger"
-        confirmLabel="Delete"
-        loading={remove.isPending}
-        onConfirm={() => {
-          if (deleteTarget?.categoryId) {
-            remove.mutate(deleteTarget.categoryId, { onSuccess: () => setDeleteTarget(null) });
-          }
-        }}
-      />
-    </>
-  );
-}
-
-ManageCategoriesDialog.displayName = "ManageCategoriesDialog";

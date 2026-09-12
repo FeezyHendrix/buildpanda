@@ -64,6 +64,7 @@ export function PurchaseOrderCard({
             {purchaseOrder.poNumber}
             {purchaseOrder.orderDate ? ` · Ordered ${purchaseOrder.orderDate}` : ""}
             {purchaseOrder.expectedDate ? ` · Expected ${purchaseOrder.expectedDate}` : ""}
+            {purchaseOrder.stageName ? ` · Stage: ${purchaseOrder.stageName}` : ""}
           </p>
         </div>
         {canManage ? (
@@ -90,6 +91,7 @@ export function PurchaseOrderCard({
       </div>
 
       <UpsertPurchaseOrderDialog
+        projectId={projectId}
         open={editOpen}
         onOpenChange={setEditOpen}
         mode="edit"

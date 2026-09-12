@@ -335,3 +335,17 @@ export interface NewFinanceEventRecord {
   amount?: number | null;
   entity_id?: string | null;
 }
+
+// Cost-to-stage: what a build stage has cost so far, derived from the money
+// records attributed to it. Committed = issued purchase orders; actual =
+// logged expenses. Nothing here is a transaction the system performs.
+export interface StageCost {
+  stageId: string;
+  committed: number;
+  actual: number;
+  currency: Currency;
+}
+
+export interface StageCostsResponse {
+  stages: StageCost[];
+}

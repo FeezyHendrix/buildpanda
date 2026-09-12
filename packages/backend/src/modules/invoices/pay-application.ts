@@ -1,6 +1,7 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { Money } from "../../lib/money.ts";
+import type { PeriodBillingLine } from "../stages/types.ts";
 import type { NewInvoiceStageLineRecord } from "./repository.ts";
 import type {
   InvoiceStageLineRow,
@@ -13,6 +14,9 @@ export interface StageInfo {
   name: string;
   value: number;
 }
+
+/** Per stage, the months' billing derived from the sheet's cumulative % complete. */
+export type ProgressByStage = Map<string, PeriodBillingLine[]>;
 
 export interface PayApplicationRepository {
   findById(id: string): Promise<{ project_id: string } | undefined>;
@@ -30,6 +34,10 @@ export interface PayApplicationRepository {
 export function payApplicationService(
   repository: PayApplicationRepository,
   stagesForProject: (projectId: string) => Promise<Map<string, StageInfo>>,
+  // Both wired to the stages service by the route plugin, so this module never
+  // reads or writes the schedule-of-values table itself.
+  progressForProject: (projectId: string) => Promise<ProgressByStage> = async () => new Map(),
+  markPeriodBilled: (projectId: string, period: string, stageIds: string[]) => Promise<void> = async () => {},
 ) {
   async function ownedInvoice(projectId: string, invoiceId: string): Promise<void> {
     const invoice = await repository.findById(invoiceId);
@@ -103,11 +111,49 @@ export function payApplicationService(
     };
   }
 
+  // An application that has no lines yet starts from the billing sheet: every
+  // stage that moved in `period` comes in with that month's period amount as
+  // its "this period" figure. Unsaved — the user still confirms by saving.
+  async function seedFromSheet(
+    projectId: string,
+    invoiceId: string,
+    period: string,
+    stages: Map<string, StageInfo>,
+  ): Promise<InvoiceStageLineRow[]> {
+    const progress = await progressForProject(projectId);
+    const seeded: InvoiceStageLineRow[] = [];
+    for (const [stageId, months] of progress) {
+      const stage = stages.get(stageId);
+      const month = months.find((line) => line.period === period);
+      if (!stage || !month || month.periodAmount <= 0) continue;
+      seeded.push({
+        id: "",
+        project_id: projectId,
+        invoice_id: invoiceId,
+        stage_id: stageId,
+        scheduled_value: Money.of(stage.value).toFixed(2),
+        this_period: Money.of(month.periodAmount).toFixed(2),
+        stored_materials: "0.00",
+        retained: "0.00",
+        sort_order: seeded.length,
+        created_at: "",
+        updated_at: "",
+      });
+    }
+    return seeded;
+  }
+
   return {
-    async get(projectId: string, invoiceId: string): Promise<PayApplicationSummary> {
+    async get(
+      projectId: string,
+      invoiceId: string,
+      period?: string,
+    ): Promise<PayApplicationSummary> {
       await ownedInvoice(projectId, invoiceId);
-      const lines = await repository.listStageLines(invoiceId);
       const stages = await stagesForProject(projectId);
+      const saved = await repository.listStageLines(invoiceId);
+      const lines =
+        saved.length === 0 && period ? await seedFromSheet(projectId, invoiceId, period, stages) : saved;
       const prior = await priorByStage(
         projectId,
         invoiceId,
@@ -120,6 +166,7 @@ export function payApplicationService(
       projectId: string,
       invoiceId: string,
       inputs: PayApplicationLineInput[],
+      period?: string,
     ): Promise<PayApplicationSummary> {
       await ownedInvoice(projectId, invoiceId);
       const stages = await stagesForProject(projectId);
@@ -153,6 +200,9 @@ export function payApplicationService(
       });
 
       await repository.replaceStageLines(invoiceId, records);
+      if (period) {
+        await markPeriodBilled(projectId, period, records.map((record) => record.stage_id));
+      }
       const lines = await repository.listStageLines(invoiceId);
       return summarize(lines, stages, prior);
     },

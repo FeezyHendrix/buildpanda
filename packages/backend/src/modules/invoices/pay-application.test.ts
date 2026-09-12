@@ -122,3 +122,43 @@ test("pay-app: get() returns persisted lines with derived prior", async () => {
   assert.equal(summary.lines[0]?.thisPeriod, 40000);
   assert.equal(summary.currentPaymentDue, 36000);
 });
+
+test("pay-app: a new application for a sheet month seeds each stage's period amount", async () => {
+  const svc = payApplicationService(fakeRepo([]), stages, async () =>
+    new Map([
+      [
+        "stage_1",
+        [
+          { period: "2026-01", cumulativePct: 40, periodPct: 40, periodAmount: 40000, toDateAmount: 40000 },
+          { period: "2026-02", cumulativePct: 70, periodPct: 30, periodAmount: 30000, toDateAmount: 70000 },
+        ],
+      ],
+      ["stage_2", [{ period: "2026-02", cumulativePct: 0, periodPct: 0, periodAmount: 0, toDateAmount: 0 }]],
+    ]),
+  );
+  const summary = await svc.get("proj_1", "inv_1", "2026-02");
+  assert.equal(summary.lines.length, 1);
+  assert.equal(summary.lines[0]?.stageId, "stage_1");
+  assert.equal(summary.lines[0]?.thisPeriod, 30000);
+  assert.equal(summary.thisPeriodTotal, 30000);
+});
+
+test("pay-app: saved lines win over the sheet seed, and saving with a period flags it billed", async () => {
+  const billed: string[] = [];
+  const svc = payApplicationService(
+    fakeRepo([]),
+    stages,
+    async () =>
+      new Map([
+        ["stage_1", [{ period: "2026-02", cumulativePct: 70, periodPct: 30, periodAmount: 30000, toDateAmount: 70000 }]],
+      ]),
+    async (_projectId, period, stageIds) => {
+      billed.push(`${period}:${stageIds.join(",")}`);
+    },
+  );
+  await svc.set("proj_1", "inv_1", [{ stageId: "stage_2", thisPeriod: 5000 }], "2026-02");
+  assert.deepEqual(billed, ["2026-02:stage_2"]);
+  const summary = await svc.get("proj_1", "inv_1", "2026-02");
+  assert.equal(summary.lines[0]?.stageId, "stage_2");
+  assert.equal(summary.lines[0]?.thisPeriod, 5000);
+});

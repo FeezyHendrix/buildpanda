@@ -2,7 +2,10 @@ import type { FastifyPluginAsync } from "fastify";
 import { assertProjectPermission } from "../../lib/authorization.ts";
 import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
+import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
+import { transactionsRepository } from "../transactions/repository.ts";
 import { financesRepository } from "./repository.ts";
+import { stageCostsService } from "./stage-costs.ts";
 import {
   financesService,
   type CashFlowInput,
@@ -127,9 +130,37 @@ const contractTermsBody = {
   },
 } as const;
 
+const stageCostsResponse = {
+  200: {
+    type: "object",
+    required: ["stages"],
+    properties: {
+      stages: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["stageId", "committed", "actual", "currency"],
+          properties: {
+            stageId: { type: "string" },
+            committed: { type: "number" },
+            actual: { type: "number" },
+            currency: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 const financeRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = financesService(financesRepository(fastify.db), {
+  const repository = financesRepository(fastify.db);
+  const service = financesService(repository, {
     notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+  });
+  const stageCosts = stageCostsService({
+    finances: repository,
+    transactions: transactionsRepository(fastify.db),
+    purchaseOrders: purchaseOrdersRepository(fastify.db),
   });
 
   fastify.get<{ Params: { id: string } }>(
@@ -138,6 +169,15 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "view");
       return service.getByProject(project.id);
+    },
+  );
+
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/finances/stage-costs",
+    { schema: { params: projectIdParams, response: stageCostsResponse } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
+      return stageCosts.byProject(project.id);
     },
   );
 

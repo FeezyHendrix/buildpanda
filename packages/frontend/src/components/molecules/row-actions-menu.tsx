@@ -1,13 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { cn } from "@/lib/utils";
+
+const NOOP = () => {};
+
+interface RowActionItem {
+  label: string;
+  onSelect: () => void;
+  tone?: "default" | "danger";
+}
 
 interface RowActionsMenuProps {
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   ariaLabel?: string;
   editLabel?: string;
   deleteLabel?: string;
+  /** Custom entries; when given they replace the default edit/delete pair. */
+  items?: RowActionItem[];
 }
+
+const ITEM_TONE: Record<NonNullable<RowActionItem["tone"]>, string> = {
+  default: "text-gray-700",
+  danger: "text-red-600 hover:bg-red-50 hover:text-red-700",
+};
 
 /**
  * The ⋮ edit/delete menu on a table row or card. One implementation instead of
@@ -19,9 +35,14 @@ function RowActionsMenu({
   ariaLabel = "Actions",
   editLabel = "Edit",
   deleteLabel = "Delete",
+  items,
 }: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const entries: RowActionItem[] = items ?? [
+    { label: editLabel, onSelect: onEdit ?? NOOP },
+    { label: deleteLabel, onSelect: onDelete ?? NOOP, tone: "danger" },
+  ];
 
   useEffect(() => {
     if (!open) return;
@@ -53,32 +74,22 @@ function RowActionsMenu({
 
       {open ? (
         <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex min-w-[120px] flex-col rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-black/5">
-          <Button
-            type="button"
-            role="menuitem"
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start font-normal text-gray-700"
-            onClick={() => {
-              setOpen(false);
-              onEdit();
-            }}
-          >
-            {editLabel}
-          </Button>
-          <Button
-            type="button"
-            role="menuitem"
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start font-normal text-red-600 hover:bg-red-50 hover:text-red-700"
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-          >
-            {deleteLabel}
-          </Button>
+          {entries.map((entry) => (
+            <Button
+              key={entry.label}
+              type="button"
+              role="menuitem"
+              variant="ghost"
+              size="sm"
+              className={cn("w-full justify-start whitespace-nowrap font-normal", ITEM_TONE[entry.tone ?? "default"])}
+              onClick={() => {
+                setOpen(false);
+                entry.onSelect();
+              }}
+            >
+              {entry.label}
+            </Button>
+          ))}
         </div>
       ) : null}
     </div>
@@ -87,4 +98,4 @@ function RowActionsMenu({
 
 RowActionsMenu.displayName = "RowActionsMenu";
 
-export { RowActionsMenu, type RowActionsMenuProps };
+export { RowActionsMenu, type RowActionsMenuProps, type RowActionItem };

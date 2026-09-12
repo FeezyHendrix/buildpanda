@@ -16,11 +16,11 @@ import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { Transaction, TransactionListFilters } from "@/lib/project-types";
 import {
-  ManageCategoriesDialog,
   UpsertTransactionDialog,
   expenseInputClass,
   toCategoryItems,
 } from "./expenses/expense-dialogs";
+import { ManageCategoriesDialog } from "./expenses/manage-categories-dialog";
 import { ExpenseCharts } from "./expenses/expense-charts";
 import { ExpenseTable } from "./expenses/expense-table";
 import { TabActions } from "./finance-tabs";

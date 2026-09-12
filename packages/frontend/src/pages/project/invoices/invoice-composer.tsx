@@ -5,6 +5,8 @@ import { XIcon } from "@/components/atoms/chat-icons";
 import {
   useCreateInvoice,
   useSendInvoice,
+  useSetPayApplication,
+  type Invoice,
   type InvoiceScanResult,
 } from "@/hooks/use-invoices";
 import { useOrgProfile } from "@/hooks/use-org-profile";
@@ -12,9 +14,11 @@ import { formatCurrency } from "@/lib/formatters";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { EMPTY_INVOICE, draftToInvoiceValues, sanitizeInvoice } from "./invoice-form-model";
+import { formatPeriodLabel } from "../finances/schedule-of-values-line";
+import { draftToInvoiceValues, sanitizeInvoice } from "./invoice-form-model";
 import { toInput } from "./invoice-utils";
 import { useInvoiceForm } from "./use-invoice-form";
+import { useProgressInvoiceSeed } from "./use-progress-invoice-seed";
 import { InvoiceForm } from "./invoice-form";
 import { ScannedDetailsBanner } from "./scanned-details-banner";
 
@@ -25,6 +29,8 @@ interface InvoiceComposerProps {
   onOpenChange: (open: boolean) => void;
   /** When set, the form is pre-filled from a scanned document. */
   scan?: InvoiceScanResult | null;
+  /** When set (YYYY-MM), a progress invoice is seeded from the billing sheet's month. */
+  period?: string | null;
 }
 
 const EMAIL_RE = /\S+@\S+\.\S+/;
@@ -35,33 +41,41 @@ const EMAIL_RE = /\S+@\S+\.\S+/;
  * create-only fallback. Opens over the Invoices list (context preserved) and
  * pre-fills from a scan in memory — no router-state handoff.
  */
-export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan }: InvoiceComposerProps) {
+export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan, period }: InvoiceComposerProps) {
   const form = useInvoiceForm();
   const create = useCreateInvoice();
   const send = useSendInvoice();
+  const setPayApplication = useSetPayApplication();
   const { data: orgProfile } = useOrgProfile();
+  const seed = useProgressInvoiceSeed(projectId, open ? period : null, currency);
 
   const [busy, setBusy] = useState<"idle" | "draft" | "send">("idle");
   const sourceFileId = scan?.sourceFileId;
 
-  // Seed the form once per open, from the scan draft or an empty invoice.
+  // Seed the form once per open: from the scan draft, the billing-sheet month
+  // (once its data is in), or an empty invoice.
   const seededRef = useRef(false);
   const prefilledInstructions = useRef(false);
   useEffect(() => {
-    if (open && !seededRef.current) {
+    if (open && !seededRef.current && seed.ready) {
       seededRef.current = true;
       prefilledInstructions.current = false;
-      form.reset(
-        scan
-          ? draftToInvoiceValues(scan.draft, currency)
-          : { ...EMPTY_INVOICE, currency },
-      );
+      form.reset(scan ? draftToInvoiceValues(scan.draft, currency) : seed.values);
     } else if (!open) {
       seededRef.current = false;
       setBusy("idle");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, scan]);
+  }, [open, scan, seed.ready]);
+
+  // A sheet-seeded invoice also carries its pay application, so the month is
+  // flagged as billed and the stage lines are on record from the start.
+  function attachPayApplication(created: Invoice): Promise<unknown> {
+    if (!period || seed.payLines.length === 0) return Promise.resolve();
+    return setPayApplication
+      .mutateAsync({ projectId, invoiceId: created.id, lines: seed.payLines, period })
+      .catch((e) => toast(`Invoice saved, but the pay application was not: ${getApiErrorMessage(e)}`, "error"));
+  }
 
   // Prefill payment instructions from the org default once it loads (stays editable).
   const orgInstructions = orgProfile?.paymentInstructions ?? "";
@@ -85,7 +99,8 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan 
     create.mutate(
       { projectId, ...toInput(sanitizeInvoice(form.values)), sourceFileId },
       {
-        onSuccess: () => {
+        onSuccess: async (created) => {
+          await attachPayApplication(created);
           toast("Draft saved", "success");
           onOpenChange(false);
         },
@@ -101,7 +116,8 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan 
     create.mutate(
       { projectId, ...toInput(sanitizeInvoice(form.values)), sourceFileId },
       {
-        onSuccess: (created) => {
+        onSuccess: async (created) => {
+          await attachPayApplication(created);
           send.mutate(
             { projectId, invoiceId: created.id, recipientEmail: recipient },
             {
@@ -141,10 +157,12 @@ export function InvoiceComposer({ projectId, currency, open, onOpenChange, scan 
           <header className="flex items-start justify-between gap-4 border-b border-[#F0F0F0] bg-white px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold text-gray-900">
-                New invoice
+                {period ? `Progress invoice · ${formatPeriodLabel(period)}` : "New invoice"}
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm text-gray-500 text-pretty">
-                Add who it's for and the line items — totals update as you type.
+                {period
+                  ? "Seeded from the billing sheet: each line is what a stage billed this month. Add who it's for, then send or save."
+                  : "Add who it's for and the line items — totals update as you type."}
               </Dialog.Description>
             </div>
             <Dialog.Close

@@ -18,6 +18,10 @@ import { rfisRepository } from "../../rfis/repository.ts";
 import { rfisService } from "../../rfis/service.ts";
 import { notificationsRepository } from "../../notifications/repository.ts";
 import { notificationsService } from "../../notifications/service.ts";
+import { financesRepository } from "../../finances/repository.ts";
+import { stageCostsService } from "../../finances/stage-costs.ts";
+import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
+import { transactionsRepository } from "../../transactions/repository.ts";
 import { agentRepository } from "./repository.ts";
 
 export interface ToolResult {
@@ -210,9 +214,19 @@ export function buildTools(): AgentTool[] {
       return { output: risks.map((r) => ({ title: r.title, description: r.description, severity: r.severity })) };
     }),
 
-    tool(fn("get_finances", "Get the project budget, spend, escrow and milestone payments. Use for questions about money, budget, cashflow or payments."), async (ctx) => {
+    tool(fn("get_finances", "Get the project budget, spend, escrow, milestone payments and cost-to-stage (what each build stage has cost: committed = issued purchase orders, actual = logged expenses). Use for questions about money, budget, cashflow, payments, or what a stage has cost."), async (ctx) => {
       const repo = agentRepository(ctx.db);
-      const [fin, milestones] = await Promise.all([repo.finances(ctx.projectId), repo.milestonePayments(ctx.projectId)]);
+      const [fin, milestones, stageCosts, stages] = await Promise.all([
+        repo.finances(ctx.projectId),
+        repo.milestonePayments(ctx.projectId),
+        stageCostsService({
+          finances: financesRepository(ctx.db),
+          transactions: transactionsRepository(ctx.db),
+          purchaseOrders: purchaseOrdersRepository(ctx.db),
+        }).byProject(ctx.projectId).catch(() => ({ stages: [] })),
+        repo.stageNames(ctx.projectId),
+      ]);
+      const stageName = new Map(stages.map((s) => [s.id, s.name]));
       return {
         output: {
           finances: fin ?? null,
@@ -222,6 +236,12 @@ export function buildTools(): AgentTool[] {
             percentComplete: Number(m.percent_complete ?? 0),
             amount: Number(m.amount ?? 0),
             verified: Boolean(m.proof_verified),
+          })),
+          costToStage: stageCosts.stages.map((c) => ({
+            stage: stageName.get(c.stageId) ?? c.stageId,
+            committed: c.committed,
+            actual: c.actual,
+            currency: c.currency,
           })),
         },
       };
