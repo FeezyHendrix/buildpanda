@@ -17,7 +17,6 @@ import {
 } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { TabHeader } from "./finance-tabs";
 import {
   ADVANCE_MODE_LABELS,
   CONTRACT_TYPE_LABELS,
@@ -92,12 +91,7 @@ export function ContractTermsTab() {
   const isPercentRecovery = form.advanceRecoveryMode === "percentage";
 
   return (
-    <section aria-label="Contract terms">
-      <TabHeader
-        heading="Terms"
-        description="The agreed contract sum and the terms that govern retention, advances and payment."
-      />
-
+    <section aria-label="Contract terms" className="[&>*:first-child]:mt-0">
       <TermsSection
         title="Contract amount"
         description="The base amount agreed with the contractor before changes. Revised contract = contract amount + changes."

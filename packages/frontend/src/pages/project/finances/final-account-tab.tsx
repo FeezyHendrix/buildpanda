@@ -8,7 +8,7 @@ import { useProjectFinances } from "@/hooks/use-finances";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { useProjectContext } from "@/layouts/project-layout";
 import { formatCurrency } from "@/lib/formatters";
-import { TabHeader } from "./finance-tabs";
+import { TabActions } from "./finance-tabs";
 import { ClosingChecklist } from "./final-account/closing-checklist";
 import { PaymentLedgerTable } from "./final-account/payment-ledger-table";
 import { SettlementStatement, computeSettlement } from "./settlement-statement";
@@ -45,22 +45,18 @@ export function FinalAccountTab() {
 
   return (
     <section aria-label="Final account">
-      <TabHeader
-        heading="Final account"
-        description="How the outstanding balance is computed at closing."
-        actions={
-          settlement.isSettled ? (
-            <Badge tone="success" size="md" className="gap-1.5">
-              <span aria-hidden="true">✓</span>
-              Settled
-            </Badge>
-          ) : undefined
-        }
-      />
+      <TabActions>
+        {settlement.isSettled ? (
+          <Badge tone="success" size="md" className="gap-1.5">
+            <span aria-hidden="true">✓</span>
+            Settled
+          </Badge>
+        ) : null}
+      </TabActions>
 
       <section
         aria-label="Final account summary"
-        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <KpiCard label="Adjusted contract" value={formatCurrency(finances.adjustedContract, currency)} />
         <KpiCard label="Amount paid" value={formatCurrency(finances.amountPaidToDate, currency)} />

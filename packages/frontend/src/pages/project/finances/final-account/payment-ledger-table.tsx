@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import { LEDGER_TYPE_TONE } from "@/lib/project-meta";
@@ -15,18 +16,18 @@ const AMOUNT_CLASS: Record<LedgerType, string> = {
 
 function LedgerRow({ entry, currency }: { entry: PaymentLedgerEntry; currency: Currency }) {
   return (
-    <tr className="border-b border-gray-50 last:border-b-0">
-      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{formatShortDate(entry.date)}</td>
-      <td className="px-4 py-3">
+    <TableRow>
+      <TableCell className="whitespace-nowrap text-gray-600">{formatShortDate(entry.date)}</TableCell>
+      <TableCell>
         <Badge tone={LEDGER_TYPE_TONE[entry.type]} size="sm">
           {entry.type}
         </Badge>
-      </td>
-      <td className="px-4 py-3 text-gray-900">{entry.description}</td>
-      <td className={cn("px-4 py-3 text-right font-medium tabular-nums", AMOUNT_CLASS[entry.type])}>
+      </TableCell>
+      <TableCell>{entry.description}</TableCell>
+      <TableCell align="right" className={cn("font-medium tabular-nums", AMOUNT_CLASS[entry.type])}>
         {formatCurrency(entry.amount, currency)}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -59,23 +60,21 @@ export function PaymentLedgerTable({
           description="Deposits, releases and retention holds will appear here as they are recorded."
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-left text-[11px] uppercase tracking-wide text-gray-500">
-                <th className="px-4 py-2 font-medium">Date</th>
-                <th className="px-4 py-2 font-medium">Type</th>
-                <th className="px-4 py-2 font-medium">Description</th>
-                <th className="px-4 py-2 text-right font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((entry) => (
-                <LedgerRow key={entry.id} entry={entry} currency={currency} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeaderCell>Date</TableHeaderCell>
+              <TableHeaderCell>Type</TableHeaderCell>
+              <TableHeaderCell>Description</TableHeaderCell>
+              <TableHeaderCell align="right">Amount</TableHeaderCell>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {sorted.map((entry) => (
+              <LedgerRow key={entry.id} entry={entry} currency={currency} />
+            ))}
+          </TableBody>
+        </Table>
       )}
     </Card>
   );

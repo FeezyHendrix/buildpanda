@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { FormDrawer } from "@/components/molecules/form-drawer";
@@ -27,28 +28,25 @@ import { PageHeader } from "@/components";
 function ProposalRow({ row }: { row: ProposalListItem }) {
   const navigate = useNavigate();
   return (
-    <tr
-      className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
-      onClick={() => navigate(`/sales/proposals/${row.id}`)}
-    >
-      <td className="px-4 py-3">
+    <TableRow onClick={() => navigate(`/sales/proposals/${row.id}`)}>
+      <TableCell>
         <span className="font-mono text-xs font-medium text-gray-500">{row.numberLabel}</span>
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <p className="font-medium text-gray-900">{row.title}</p>
         <p className="text-xs text-gray-500">{row.clientName}</p>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{row.location ?? "-"}</td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell className="text-gray-600">{row.location ?? "-"}</TableCell>
+      <TableCell>
         <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>
           {LABEL_MAP[row.status] ?? row.status}
         </Badge>
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-700">
+      </TableCell>
+      <TableCell className="text-gray-700">
         {row.estimateTotal != null ? formatWholeCurrency(row.estimateTotal, row.currency) : "-"}
-      </td>
-      <td className="px-4 py-3 text-xs text-gray-400">{formatShortDate(row.createdAt)}</td>
-    </tr>
+      </TableCell>
+      <TableCell className="text-xs text-gray-400">{formatShortDate(row.createdAt)}</TableCell>
+    </TableRow>
   );
 }
 
@@ -334,35 +332,23 @@ export default function ProposalsPage() {
       ) : (
         <>
           <div className="overflow-hidden rounded-xl border border-gray-200">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50">
+            <Table>
+              <TableHead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    #
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Project
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Location
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Estimate
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Created
-                  </th>
+                  <TableHeaderCell>#</TableHeaderCell>
+                  <TableHeaderCell>Project</TableHeaderCell>
+                  <TableHeaderCell>Location</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Estimate</TableHeaderCell>
+                  <TableHeaderCell>Created</TableHeaderCell>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHead>
+              <TableBody>
                 {rows.map((row) => (
                   <ProposalRow key={row.id} row={row} />
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           {(hasPrev || hasNext) && (

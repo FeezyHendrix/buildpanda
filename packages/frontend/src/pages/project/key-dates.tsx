@@ -5,6 +5,15 @@ import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
@@ -55,8 +64,6 @@ const DATE_VIEW_OPTIONS: DropdownOption<DateView>[] = [
   { value: "target", label: "Target dates" },
   { value: "actual", label: "Actual dates" },
 ];
-
-const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
 
 function keyDateFor(kd: KeyDate, view: DateView): string | null {
   return view === "target" ? kd.targetDate : kd.actualDate;
@@ -182,54 +189,48 @@ export default function ProjectKeyDates() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-left">
-            <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
-              <tr>
-                <th className={cn("w-10", HEAD_CELL)} />
-                <th className={HEAD_CELL}>Milestone</th>
-                <th className={HEAD_CELL}>Status</th>
-                <th className={cn(HEAD_CELL, dateView === "target" && "text-black-500")}>Target date</th>
-                <th className={cn(HEAD_CELL, dateView === "actual" && "text-black-500")}>Actual date</th>
-                <th className="w-10 px-3 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#F0F0F0]">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-4">
-                    <div className="flex justify-center py-10">
-                      <Spinner size="md" />
-                    </div>
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4">
-                    <EmptyState
-                      variant="inline"
-                      icon={<CalendarIcon />}
-                      title={keyDates.length === 0 ? "No key dates yet" : "No key dates match your filters"}
-                      description={keyDates.length === 0 ? "Add the milestones you want to track." : "Try clearing the search or status filter."}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((kd, idx) => (
-                  <KeyDateRow
-                    key={kd.id}
-                    kd={kd}
-                    index={idx}
-                    dateView={dateView}
-                    canManage={canManage}
-                    onEdit={() => setEditKd(kd)}
-                    onDelete={() => setDeleteId(kd.id)}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table className="min-w-[600px]">
+          <TableHead>
+            <tr>
+              <TableHeaderCell className="w-10" />
+              <TableHeaderCell>Milestone</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell className={cn(dateView === "target" && "text-black-500")}>Target date</TableHeaderCell>
+              <TableHeaderCell className={cn(dateView === "actual" && "text-black-500")}>Actual date</TableHeaderCell>
+              <TableHeaderCell className="w-10" />
+            </tr>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableEmptyRow colSpan={6}>
+                <div className="flex justify-center py-10">
+                  <Spinner size="md" />
+                </div>
+              </TableEmptyRow>
+            ) : filtered.length === 0 ? (
+              <TableEmptyRow colSpan={6}>
+                <EmptyState
+                  variant="inline"
+                  icon={<CalendarIcon />}
+                  title={keyDates.length === 0 ? "No key dates yet" : "No key dates match your filters"}
+                  description={keyDates.length === 0 ? "Add the milestones you want to track." : "Try clearing the search or status filter."}
+                />
+              </TableEmptyRow>
+            ) : (
+              filtered.map((kd, idx) => (
+                <KeyDateRow
+                  key={kd.id}
+                  kd={kd}
+                  index={idx}
+                  dateView={dateView}
+                  canManage={canManage}
+                  onEdit={() => setEditKd(kd)}
+                  onDelete={() => setDeleteId(kd.id)}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <UpsertKeyDateDialog
@@ -282,31 +283,25 @@ function KeyDateRow({
   onDelete: () => void;
 }) {
   return (
-    <tr className="hover:bg-[#FAFAFA]">
-      <td className="px-4 py-3">
+    <TableRow className="hover:bg-[#FAFAFA]">
+      <TableCell>
         <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
           {index + 1}
         </span>
-      </td>
-      <td className="px-4 py-3 text-[13px] font-medium text-gray-900">{kd.label}</td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell className="font-medium text-gray-900">{kd.label}</TableCell>
+      <TableCell>
         <StatusCell status={kd.status} />
-      </td>
-      <td className={cn(
-        "whitespace-nowrap px-4 py-3 text-[13px]",
-        dateView === "target" ? "font-medium text-gray-900" : "text-gray-400",
-      )}>
+      </TableCell>
+      <TableCell className={cn("whitespace-nowrap", dateView === "target" ? "font-medium text-gray-900" : "text-gray-400")}>
         {fmt(kd.targetDate)}
-      </td>
-      <td className={cn(
-        "whitespace-nowrap px-4 py-3 text-[13px]",
-        dateView === "actual" ? "font-medium text-gray-900" : "text-gray-400",
-      )}>
+      </TableCell>
+      <TableCell className={cn("whitespace-nowrap", dateView === "actual" ? "font-medium text-gray-900" : "text-gray-400")}>
         {fmt(kd.actualDate)}
-      </td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell className="px-3">
         {canManage ? <RowActionsMenu onEdit={onEdit} onDelete={onDelete} /> : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

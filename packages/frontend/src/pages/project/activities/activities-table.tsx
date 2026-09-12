@@ -2,6 +2,15 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { CalendarIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import { formatCurrency } from "@/lib/formatters";
@@ -10,7 +19,6 @@ import type { Activity } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { activitySchedule, formatDateSpan, formatVariance } from "./activity-helpers";
 
-const HEAD_CELL = "px-4 py-3 text-[11px] font-semibold text-black-300 capitalize";
 const COLUMN_COUNT = 9;
 
 interface ActivitiesTableProps {
@@ -34,61 +42,55 @@ export function ActivitiesTable({
 }: ActivitiesTableProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-left">
-          <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
-            <tr>
-              <th className={cn("w-10", HEAD_CELL)} />
-              <th className={HEAD_CELL}>Activity</th>
-              <th className={HEAD_CELL}>Status</th>
-              <th className={HEAD_CELL}>Planned</th>
-              <th className={HEAD_CELL}>Actual</th>
-              <th className={HEAD_CELL}>Variance</th>
-              <th className={HEAD_CELL}>Delay cost</th>
-              <th className={HEAD_CELL}>Progress</th>
-              <th className="w-10 px-3 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#F0F0F0]">
-            {isPending ? (
-              <tr>
-                <td colSpan={COLUMN_COUNT} className="px-4">
-                  <div className="flex justify-center py-10">
-                    <Spinner size="md" />
-                  </div>
-                </td>
-              </tr>
-            ) : activities.length === 0 ? (
-              <tr>
-                <td colSpan={COLUMN_COUNT} className="px-4">
-                  <EmptyState
-                    variant="inline"
-                    icon={<CalendarIcon />}
-                    title={totalCount === 0 ? "No activities yet" : "No activities match these filters"}
-                    description={
-                      totalCount === 0
-                        ? "Track field work to capture planned vs actual progress and delay causes."
-                        : "Try clearing the search or status filter."
-                    }
-                  />
-                </td>
-              </tr>
-            ) : (
-              activities.map((activity, idx) => (
-                <ActivityRow
-                  key={activity.id}
-                  activity={activity}
-                  index={idx}
-                  canManage={canManage}
-                  onEdit={() => onEdit(activity)}
-                  onRaiseDelay={() => onRaiseDelay(activity)}
-                  onDelete={() => onDelete(activity)}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table className="min-w-[960px]">
+        <TableHead>
+          <tr>
+            <TableHeaderCell className="w-10" />
+            <TableHeaderCell>Activity</TableHeaderCell>
+            <TableHeaderCell>Status</TableHeaderCell>
+            <TableHeaderCell>Planned</TableHeaderCell>
+            <TableHeaderCell>Actual</TableHeaderCell>
+            <TableHeaderCell>Variance</TableHeaderCell>
+            <TableHeaderCell>Delay cost</TableHeaderCell>
+            <TableHeaderCell>Progress</TableHeaderCell>
+            <TableHeaderCell className="w-10" />
+          </tr>
+        </TableHead>
+        <TableBody>
+          {isPending ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT}>
+              <div className="flex justify-center py-10">
+                <Spinner size="md" />
+              </div>
+            </TableEmptyRow>
+          ) : activities.length === 0 ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT}>
+              <EmptyState
+                variant="inline"
+                icon={<CalendarIcon />}
+                title={totalCount === 0 ? "No activities yet" : "No activities match these filters"}
+                description={
+                  totalCount === 0
+                    ? "Track field work to capture planned vs actual progress and delay causes."
+                    : "Try clearing the search or status filter."
+                }
+              />
+            </TableEmptyRow>
+          ) : (
+            activities.map((activity, idx) => (
+              <ActivityRow
+                key={activity.id}
+                activity={activity}
+                index={idx}
+                canManage={canManage}
+                onEdit={() => onEdit(activity)}
+                onRaiseDelay={() => onRaiseDelay(activity)}
+                onDelete={() => onDelete(activity)}
+              />
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -121,15 +123,15 @@ function ActivityRow({
     .join(" · ");
 
   return (
-    <tr className="border-b border-[#F0F0F0] hover:bg-[#FAFAFA]">
-      <td className="px-4 py-3">
+    <TableRow className="hover:bg-[#FAFAFA]">
+      <TableCell>
         <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-[#000000]">
           {index + 1}
         </span>
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium text-gray-900">
+          <span className="font-medium text-gray-900">
             {titlePrefix}
             {activity.name}
           </span>
@@ -140,39 +142,36 @@ function ActivityRow({
           ) : null}
         </div>
         {subLine ? <p className="mt-0.5 text-[12px] text-gray-400">{subLine}</p> : null}
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <Badge tone={ACTIVITY_STATUS_TONE[activity.status]} size="sm">
           {ACTIVITY_STATUS_LABEL[activity.status]}
         </Badge>
-      </td>
-      <td className="whitespace-nowrap px-4 py-3 text-[13px] text-gray-900">
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
         {formatDateSpan(activity.plannedStartAt, activity.plannedEndAt)}
         <p className="mt-0.5 text-[12px] text-gray-400">{schedule.plannedDays} days</p>
-      </td>
-      <td className="whitespace-nowrap px-4 py-3 text-[13px] text-gray-900">
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
         {formatDateSpan(activity.actualStartAt, activity.actualEndAt)}
         {schedule.actualDays !== null ? (
           <p className="mt-0.5 text-[12px] text-gray-400">{schedule.actualDays} days</p>
         ) : null}
-      </td>
-      <td
+      </TableCell>
+      <TableCell
         className={cn(
-          "whitespace-nowrap px-4 py-3 text-[13px]",
+          "whitespace-nowrap",
           schedule.variance === null
-            ? "text-gray-900"
+            ? undefined
             : schedule.variance > 0
               ? "text-red-600"
               : "text-[#1B8E45]",
         )}
       >
         {formatVariance(schedule.variance)}
-      </td>
-      <td
-        className={cn(
-          "whitespace-nowrap px-4 py-3 text-[13px]",
-          schedule.totalDelayCost > 0 ? "text-[#C26A00]" : "text-gray-900",
-        )}
+      </TableCell>
+      <TableCell
+        className={cn("whitespace-nowrap", schedule.totalDelayCost > 0 ? "text-[#C26A00]" : undefined)}
       >
         {schedule.totalDelayCost > 0
           ? formatCurrency(schedule.totalDelayCost, schedule.delayCurrency)
@@ -180,11 +179,9 @@ function ActivityRow({
         {schedule.openDelays > 0 ? (
           <p className="mt-0.5 text-[12px] text-gray-400">{schedule.openDelays} open</p>
         ) : null}
-      </td>
-      <td className="whitespace-nowrap px-4 py-3 text-[13px] tabular-nums text-gray-900">
-        {activity.percentComplete}%
-      </td>
-      <td className="px-3 py-3">
+      </TableCell>
+      <TableCell className="whitespace-nowrap tabular-nums">{activity.percentComplete}%</TableCell>
+      <TableCell className="px-3">
         {canManage ? (
           <div className="flex items-center justify-end gap-1">
             <Button type="button" variant="secondary" size="sm" className="whitespace-nowrap" onClick={onRaiseDelay}>
@@ -193,7 +190,7 @@ function ActivityRow({
             <RowActionsMenu ariaLabel="Activity actions" onEdit={onEdit} onDelete={onDelete} />
           </div>
         ) : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

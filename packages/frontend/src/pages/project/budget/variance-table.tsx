@@ -1,4 +1,5 @@
 import { Card } from "@/components/atoms/card";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import type { BudgetPhase, ProjectFinances } from "@/lib/project-types";
@@ -48,31 +49,26 @@ export function VarianceTable({
   noCard = false,
 }: VarianceTableProps) {
   const table = (
-    <table className="w-full text-left text-sm">
-      <thead className="border-b border-[#EDEDED] bg-[#F6F6F6] text-[11px] uppercase tracking-wider text-gray-500">
+    <Table wrapperClassName={noCard ? className : undefined}>
+      <TableHead>
         <tr>
-          <th className="px-6 py-3 font-semibold">Phase</th>
-          <th className="px-6 py-3 font-semibold capitalize">Planned</th>
-          <th className="px-6 py-3 font-semibold capitalize">Actual Spent</th>
-          <th className="px-6 py-3 font-semibold capitalize">Variance</th>
-          <th className="px-6 py-3 font-semibold capitalize">Status</th>
+          <TableHeaderCell>Phase</TableHeaderCell>
+          <TableHeaderCell>Planned</TableHeaderCell>
+          <TableHeaderCell>Actual Spent</TableHeaderCell>
+          <TableHeaderCell>Variance</TableHeaderCell>
+          <TableHeaderCell>Status</TableHeaderCell>
         </tr>
-      </thead>
-      <tbody>
-        {allocation.map((phase, idx) => (
-          <VarianceRow
-            key={phase.id}
-            phase={phase}
-            currency={currency}
-            isLast={idx === allocation.length - 1}
-          />
+      </TableHead>
+      <TableBody>
+        {allocation.map((phase) => (
+          <VarianceRow key={phase.id} phase={phase} currency={currency} />
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 
   if (noCard) {
-    return <div className={cn("overflow-x-auto", className)}>{table}</div>;
+    return table;
   }
 
   return (
@@ -90,11 +86,9 @@ export function VarianceTable({
 function VarianceRow({
   phase,
   currency,
-  isLast,
 }: {
   phase: BudgetPhase;
   currency: ProjectFinances["currency"];
-  isLast: boolean;
 }) {
   const hasActual = phase.actual > 0;
   const variance  = phase.actual - phase.planned;
@@ -102,25 +96,23 @@ function VarianceRow({
   const status    = getPhaseStatus(phase);
 
   return (
-    <tr className={isLast ? undefined : "border-b border-[#F0F0F0]"}>
-      <td className="px-6 py-3 font-medium text-black-500">{phase.name}</td>
-      <td className="px-6 py-3 tabular-nums text-[#131B2E]">
-        {formatCurrency(phase.planned, currency)}
-      </td>
-      <td className="px-6 py-3 tabular-nums text-gray-700">
+    <TableRow>
+      <TableCell className="font-medium text-black-500">{phase.name}</TableCell>
+      <TableCell className="tabular-nums">{formatCurrency(phase.planned, currency)}</TableCell>
+      <TableCell className="tabular-nums text-gray-700">
         {hasActual ? formatCurrency(phase.actual, currency) : "-"}
-      </td>
-      <td
+      </TableCell>
+      <TableCell
         className={cn(
-          "px-6 py-3 font-medium tabular-nums",
+          "font-medium tabular-nums",
           !hasActual ? "text-gray-400" : isOver ? "text-[#BA1A1A]" : "text-[#0039B1]",
         )}
       >
         {!hasActual
           ? "-"
           : `${isOver ? "+" : "−"}${formatCurrency(Math.abs(variance), currency)}`}
-      </td>
-      <td className="px-6 py-3">
+      </TableCell>
+      <TableCell>
         <span
           className={cn(
             "text-[11px] font-semibold",
@@ -130,7 +122,7 @@ function VarianceRow({
         >
           {status.label}
         </span>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }

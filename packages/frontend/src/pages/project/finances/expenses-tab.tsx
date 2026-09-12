@@ -23,7 +23,7 @@ import {
 } from "./expenses/expense-dialogs";
 import { ExpenseCharts } from "./expenses/expense-charts";
 import { ExpenseTable } from "./expenses/expense-table";
-import { TabHeader } from "./finance-tabs";
+import { TabActions } from "./finance-tabs";
 
 /** Expenses — site spend logged with its receipt. A record of money spent off-platform. */
 export function ExpensesTab() {
@@ -59,27 +59,21 @@ export function ExpensesTab() {
 
   return (
     <section aria-label="Expenses">
-      <TabHeader
-        heading="Expenses"
-        description="Site spend and receipts, logged as they happen."
-        actions={
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => exportCsv.mutate({ projectId, filters })}
-              loading={exportCsv.isPending}
-            >
-              Export CSV
-            </Button>
-            <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
-              Manage categories
-            </Button>
-            <Button onClick={() => setUpsertTarget("new")}>Record expense</Button>
-          </div>
-        }
-      />
+      <TabActions>
+        <Button
+          variant="secondary"
+          onClick={() => exportCsv.mutate({ projectId, filters })}
+          loading={exportCsv.isPending}
+        >
+          Export CSV
+        </Button>
+        <Button variant="secondary" onClick={() => setManageCategoriesOpen(true)}>
+          Manage categories
+        </Button>
+        <Button onClick={() => setUpsertTarget("new")}>Record expense</Button>
+      </TabActions>
 
-      <div className="mt-6 space-y-6">
+      <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <KpiCard label="Total spend" value={formatCurrency(analytics?.totalAmount || 0, currency)} />
           <KpiCard label="Expenses recorded" value={(analytics?.count || 0).toString()} />

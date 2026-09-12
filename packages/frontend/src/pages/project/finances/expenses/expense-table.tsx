@@ -1,13 +1,12 @@
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { formatCurrency, formatDayMonth } from "@/lib/formatters";
 import type { Transaction } from "@/lib/project-types";
 import { CategoryBadge } from "./expense-dialogs";
-
-const HEAD_CELL = "px-4 py-3 font-medium";
 
 function ExpenseRow({
   tx,
@@ -21,24 +20,24 @@ function ExpenseRow({
   onDelete: (tx: Transaction) => void;
 }) {
   return (
-    <tr className="group hover:bg-gray-50/50 cursor-pointer" onClick={() => onOpen(tx)}>
-      <td className="px-4 py-4 whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</td>
-      <td className="px-4 py-4">
+    <TableRow className="group" onClick={() => onOpen(tx)}>
+      <TableCell className="whitespace-nowrap">{formatDayMonth(tx.transactedAt)}</TableCell>
+      <TableCell>
         <div className="font-medium text-gray-900">{tx.title}</div>
         {tx.description ? (
           <div className="text-xs text-gray-500 line-clamp-1 max-w-[200px] mt-0.5">{tx.description}</div>
         ) : null}
         {tx.reference ? <div className="text-xs text-gray-400 mt-0.5">Ref: {tx.reference}</div> : null}
-      </td>
-      <td className="px-4 py-4">
+      </TableCell>
+      <TableCell>
         <CategoryBadge categoryLabel={tx.categoryLabel} categoryColor={tx.categoryColor} />
-      </td>
-      <td className="px-4 py-4">{tx.vendor || "—"}</td>
-      <td className="px-4 py-4 text-right font-medium text-gray-900 tabular-nums">
+      </TableCell>
+      <TableCell>{tx.vendor || "—"}</TableCell>
+      <TableCell align="right" className="font-medium text-gray-900 tabular-nums">
         {formatCurrency(tx.amount, currency)}
-      </td>
-      <td className="px-4 py-4 text-xs">{tx.createdByName || "Unknown"}</td>
-      <td className="px-4 py-4 text-right">
+      </TableCell>
+      <TableCell className="text-xs">{tx.createdByName || "Unknown"}</TableCell>
+      <TableCell align="right">
         <Button
           variant="ghost"
           className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-600 px-2"
@@ -49,8 +48,8 @@ function ExpenseRow({
         >
           Delete
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -93,26 +92,24 @@ export function ExpenseTable({
           action={{ label: "Clear filters", onClick: onClearFilters }}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="border-b border-gray-100 bg-gray-50/50 text-gray-500">
-              <tr>
-                <th className={HEAD_CELL}>Date</th>
-                <th className={HEAD_CELL}>Details</th>
-                <th className={HEAD_CELL}>Category</th>
-                <th className={HEAD_CELL}>Vendor</th>
-                <th className={`${HEAD_CELL} text-right`}>Amount</th>
-                <th className={HEAD_CELL}>Logged by</th>
-                <th className={`${HEAD_CELL} w-[100px]`} />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {transactions.map((tx) => (
-                <ExpenseRow key={tx.id} tx={tx} currency={currency} onOpen={onOpen} onDelete={onDelete} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeaderCell>Date</TableHeaderCell>
+              <TableHeaderCell>Details</TableHeaderCell>
+              <TableHeaderCell>Category</TableHeaderCell>
+              <TableHeaderCell>Vendor</TableHeaderCell>
+              <TableHeaderCell align="right">Amount</TableHeaderCell>
+              <TableHeaderCell>Logged by</TableHeaderCell>
+              <TableHeaderCell className="w-[100px]" />
+            </tr>
+          </TableHead>
+          <TableBody>
+            {transactions.map((tx) => (
+              <ExpenseRow key={tx.id} tx={tx} currency={currency} onOpen={onOpen} onDelete={onDelete} />
+            ))}
+          </TableBody>
+        </Table>
       )}
     </Card>
   );

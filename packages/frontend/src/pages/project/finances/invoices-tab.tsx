@@ -14,7 +14,7 @@ import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { InvoiceCard } from "../invoices/invoice-card";
 import { InvoiceComposer } from "../invoices/invoice-composer";
-import { TabHeader } from "./finance-tabs";
+import { TabActions } from "./finance-tabs";
 
 /** Invoices — what's been billed, held back and paid. Sending records an invoice; it never charges. */
 export function InvoicesTab() {
@@ -72,15 +72,11 @@ export function InvoicesTab() {
 
   return (
     <section aria-label="Invoices">
-      <TabHeader
-        heading="Invoices"
-        description="Invoices sent and bills recorded against this project."
-        actions={actions}
-      />
+      <TabActions>{actions}</TabActions>
 
       <section
         aria-label="Invoice summary"
-        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <KpiCard label="Total invoiced" value={formatCurrency(summary.billed, currency)} />
         <KpiCard label="Held back" value={formatCurrency(summary.retainage, currency)} />

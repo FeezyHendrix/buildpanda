@@ -3,6 +3,7 @@ import { useStartBoqImport, useBoqImportJob, useBulkCreateMaterials } from "@/ho
 import { useAttachSessionDocument } from "@/hooks/use-import-session";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 
@@ -139,24 +140,24 @@ export function BoqStep({ sessionId, projectId, onNext }: BoqStepProps) {
           </div>
           
           <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 sticky top-0">
+            <Table>
+              <TableHead className="sticky top-0">
                 <tr>
-                  <th className="p-3 font-medium text-gray-600">Name</th>
-                  <th className="p-3 font-medium text-gray-600 text-right">Qty</th>
-                  <th className="p-3 font-medium text-gray-600">Unit</th>
+                  <TableHeaderCell>Name</TableHeaderCell>
+                  <TableHeaderCell align="right">Qty</TableHeaderCell>
+                  <TableHeaderCell>Unit</TableHeaderCell>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              </TableHead>
+              <TableBody className="bg-white">
                 {job.materials.slice(0, 50).map((m, i) => (
-                  <tr key={i}>
-                    <td className="p-3 text-gray-900 font-medium">{m.materialName}</td>
-                    <td className="p-3 text-gray-600 text-right">{m.quantity}</td>
-                    <td className="p-3 text-gray-600">{m.unit}</td>
-                  </tr>
+                  <TableRow key={i}>
+                    <TableCell className="font-medium">{m.materialName}</TableCell>
+                    <TableCell align="right" className="text-gray-600">{m.quantity}</TableCell>
+                    <TableCell className="text-gray-600">{m.unit}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             {job.materials.length > 50 && (
               <div className="p-3 text-center text-xs text-gray-500 bg-gray-50">
                 Showing first 50 items...

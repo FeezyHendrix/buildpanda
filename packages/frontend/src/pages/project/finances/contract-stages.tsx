@@ -4,6 +4,15 @@ import { Button } from "@/components/atoms/button";
 import { ProgressBar } from "@/components/atoms/progress-bar";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -23,7 +32,6 @@ import {
 import { cn } from "@/lib/utils";
 import { ScheduleOfValuesDrawer } from "./schedule-of-values-drawer";
 import { StageValueDrawer } from "./stage-value-drawer";
-import { TabHeader } from "./finance-tabs";
 import {
   ScheduleBar,
   formatPercent,
@@ -46,9 +54,6 @@ const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string }> = {
   InProgress: { tone: "info", label: "In progress" },
   Done: { tone: "success", label: "Completed" },
 };
-
-const HEAD_CELL =
-  "px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-black-200";
 
 interface StageRowProps {
   stage: Stage;
@@ -97,22 +102,20 @@ function StageRow({
   );
 
   return (
-    <tr className="hover:bg-[#FAFAFA]">
-      <td className="px-4 py-3">
+    <TableRow className="hover:bg-[#FAFAFA]">
+      <TableCell>
         <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-[#F6F6F6] text-[12px] font-medium text-black-500">
           {index + 1}
         </span>
-      </td>
+      </TableCell>
 
-      <td className="px-4 py-3 text-[13px] font-medium text-black-500">
-        {stage.name}
-      </td>
+      <TableCell className="font-medium text-black-500">{stage.name}</TableCell>
 
-      <td className="px-4 py-3">
+      <TableCell>
         <Badge tone={status.tone}>{status.label}</Badge>
-      </td>
+      </TableCell>
 
-      <td className="px-4 py-3">
+      <TableCell>
         <div className="flex items-center gap-2">
           <ProgressBar
             tone={stage.status === "Done" ? "success" : "brand"}
@@ -123,17 +126,17 @@ function StageRow({
             {stage.progressPercent}%
           </span>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="whitespace-nowrap px-4 py-3 text-right text-[13px] font-semibold tabular-nums text-black-500">
+      <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums text-black-500">
         {stage.value > 0 ? (
           formatCurrency(stage.value, currency)
         ) : (
           <span className="font-normal text-black-200">Not priced</span>
         )}
-      </td>
+      </TableCell>
 
-      <td className="w-[240px] px-4 py-3">
+      <TableCell className="w-[240px]">
         {isPending ? (
           <Spinner size="xs" />
         ) : summary.count === 0 ? (
@@ -166,9 +169,9 @@ function StageRow({
             ) : null}
           </div>
         )}
-      </td>
+      </TableCell>
 
-      <td className="px-4 py-3">
+      <TableCell>
         <div className="flex items-center justify-end gap-1.5">
           {canManage ? (
             <Button variant="ghost" size="sm" onClick={handleEditValue}>
@@ -179,8 +182,8 @@ function StageRow({
             {canManage ? "Schedule" : "View schedule"}
           </Button>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -241,14 +244,9 @@ export function ContractStagesTab() {
 
   return (
     <section aria-label="Stages and billing">
-      <TabHeader
-        heading="Stages & billing"
-        description="Each stage's slice of the contract and the months it gets billed in."
-      />
-
       <section
         aria-label="Contract summary"
-        className="mt-6 grid gap-4 sm:grid-cols-2"
+        className="grid gap-4 sm:grid-cols-2"
       >
         <KpiCard
           label="Scheduled contract value"
@@ -276,76 +274,58 @@ export function ContractStagesTab() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-grey-50 bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left">
-            <thead className="border-b border-grey-50 bg-[#FAFAFA]">
-              <tr>
-                <th scope="col" className={cn(HEAD_CELL, "w-14")} />
-                <th scope="col" className={HEAD_CELL}>
-                  Stage
-                </th>
-                <th scope="col" className={HEAD_CELL}>
-                  Status
-                </th>
-                <th scope="col" className={HEAD_CELL}>
-                  Build progress
-                </th>
-                <th scope="col" className={cn(HEAD_CELL, "text-right")}>
-                  Scheduled value
-                </th>
-                <th scope="col" className={HEAD_CELL}>
-                  Schedule of values
-                </th>
-                <th scope="col" className={cn(HEAD_CELL, "text-right")}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-grey-50">
-              {isPending ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12">
-                    <div className="flex items-center justify-center">
-                      <Spinner size="md" />
-                    </div>
-                  </td>
-                </tr>
-              ) : visible.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4">
-                    <EmptyState
-                      variant="inline"
-                      title={
-                        stages.length === 0
-                          ? "No stages on this build yet"
-                          : "No stages match that search"
-                      }
-                      description={
-                        stages.length === 0
-                          ? "Stages come from the build plan, and once they exist you can price them and schedule how each one gets billed."
-                          : "Try a different stage name."
-                      }
-                    />
-                  </td>
-                </tr>
-              ) : (
-                visible.map((stage) => (
-                  <StageRow
-                    key={stage.id}
-                    stage={stage}
-                    index={positionById.get(stage.id) ?? 0}
-                    lines={linesByStage.get(stage.id) ?? NO_LINES}
-                    isPending={linesPending}
-                    currency={project.currency}
-                    canManage={canManage}
-                    onEditValue={setValueTarget}
-                    onOpenSchedule={setScheduleTarget}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table className="min-w-[900px]">
+          <TableHead>
+            <tr>
+              <TableHeaderCell scope="col" className="w-14" />
+              <TableHeaderCell scope="col">Stage</TableHeaderCell>
+              <TableHeaderCell scope="col">Status</TableHeaderCell>
+              <TableHeaderCell scope="col">Build progress</TableHeaderCell>
+              <TableHeaderCell scope="col" align="right">Scheduled value</TableHeaderCell>
+              <TableHeaderCell scope="col">Schedule of values</TableHeaderCell>
+              <TableHeaderCell scope="col" align="right">Actions</TableHeaderCell>
+            </tr>
+          </TableHead>
+          <TableBody>
+            {isPending ? (
+              <TableEmptyRow colSpan={7} className="py-12">
+                <div className="flex items-center justify-center">
+                  <Spinner size="md" />
+                </div>
+              </TableEmptyRow>
+            ) : visible.length === 0 ? (
+              <TableEmptyRow colSpan={7}>
+                <EmptyState
+                  variant="inline"
+                  title={
+                    stages.length === 0
+                      ? "No stages on this build yet"
+                      : "No stages match that search"
+                  }
+                  description={
+                    stages.length === 0
+                      ? "Stages come from the build plan, and once they exist you can price them and schedule how each one gets billed."
+                      : "Try a different stage name."
+                  }
+                />
+              </TableEmptyRow>
+            ) : (
+              visible.map((stage) => (
+                <StageRow
+                  key={stage.id}
+                  stage={stage}
+                  index={positionById.get(stage.id) ?? 0}
+                  lines={linesByStage.get(stage.id) ?? NO_LINES}
+                  isPending={linesPending}
+                  currency={project.currency}
+                  canManage={canManage}
+                  onEditValue={setValueTarget}
+                  onOpenSchedule={setScheduleTarget}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <p className="mt-3 text-[12px] text-black-200">

@@ -3,6 +3,7 @@ import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { Input } from "@/components/atoms/input";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import type { Rate, RateCard } from "@/api/rate-library";
 import { useAddRate, useDeleteRate, useDeleteRateCard, useUpdateRateCard } from "@/hooks/use-rate-library";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -18,18 +19,18 @@ interface Props {
 function RateRow({ card, rate, canManage, onBuildUp }: { card: RateCard; rate: Rate; canManage: boolean; onBuildUp: (rate: Rate) => void }) {
   const remove = useDeleteRate();
   return (
-    <tr className="border-t border-gray-100">
-      <td className="px-3 py-2 text-sm text-gray-900">
+    <TableRow>
+      <TableCell>
         {rate.label ?? rate.descriptionPattern ?? "Unlabelled rate"}
         {rate.codePrefix ? <span className="ml-2 font-mono text-[11px] text-gray-400">{rate.codePrefix}</span> : null}
-      </td>
-      <td className="px-3 py-2 text-xs text-gray-500">{rate.unit}</td>
-      <td className="px-3 py-2 text-right text-sm tabular-nums text-gray-900">{formatWholeCurrency(rate.rate, card.currency)}</td>
-      <td className="px-3 py-2 text-xs text-gray-500">
+      </TableCell>
+      <TableCell className="text-xs text-gray-500">{rate.unit}</TableCell>
+      <TableCell align="right" className="tabular-nums">{formatWholeCurrency(rate.rate, card.currency)}</TableCell>
+      <TableCell className="text-xs text-gray-500">
         {rate.buildups.length > 0 ? `${rate.buildups.length}-line build-up` : "Bare figure"}
         {rate.quoteCount > 0 ? ` · ${rate.quoteCount} quote${rate.quoteCount === 1 ? "" : "s"}` : ""}
-      </td>
-      <td className="px-3 py-2 text-right">
+      </TableCell>
+      <TableCell align="right">
         {canManage ? (
           <span className="inline-flex gap-1">
             <Button size="sm" variant="ghost" onClick={() => onBuildUp(rate)}>Build up</Button>
@@ -48,8 +49,8 @@ function RateRow({ card, rate, canManage, onBuildUp }: { card: RateCard; rate: R
             </Button>
           </span>
         ) : null}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 RateRow.displayName = "RateRow";
@@ -117,18 +118,22 @@ export function RateCardPanel({ card, canManage, onBuildUp }: Props) {
       {card.rates.length === 0 ? (
         <p className="px-4 py-6 text-sm text-gray-500">No rates yet. Add one below; the take-off and estimate match lines against it by unit and description.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="text-[11px] uppercase tracking-wide text-gray-400">
-              <tr><th className="px-3 py-2 font-medium">Rate</th><th className="px-3 py-2 font-medium">Unit</th><th className="px-3 py-2 text-right font-medium">Figure</th><th className="px-3 py-2 font-medium">Basis</th><th /></tr>
-            </thead>
-            <tbody>
-              {card.rates.map((rate) => (
-                <RateRow key={rate.id} card={card} rate={rate} canManage={canManage} onBuildUp={onBuildUp} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHead>
+            <tr>
+              <TableHeaderCell>Rate</TableHeaderCell>
+              <TableHeaderCell>Unit</TableHeaderCell>
+              <TableHeaderCell align="right">Figure</TableHeaderCell>
+              <TableHeaderCell>Basis</TableHeaderCell>
+              <TableHeaderCell />
+            </tr>
+          </TableHead>
+          <TableBody>
+            {card.rates.map((rate) => (
+              <RateRow key={rate.id} card={card} rate={rate} canManage={canManage} onBuildUp={onBuildUp} />
+            ))}
+          </TableBody>
+        </Table>
       )}
       {canManage ? <AddRateForm cardId={card.id} /> : null}
       <ConfirmDialog

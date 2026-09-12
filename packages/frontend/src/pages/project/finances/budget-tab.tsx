@@ -28,7 +28,7 @@ import { BudgetAllocationSection } from "../budget/budget-allocation-section";
 import { CategoryCard } from "../budget/category-card";
 import { PeriodCard } from "../budget/period-card";
 import { toCategoryInput, toPeriodInput } from "../budget/budget-helpers";
-import { TabHeader } from "./finance-tabs";
+import { TabActions } from "./finance-tabs";
 
 function percentOfPlanned(amount: number, planned: number): number {
   return planned > 0 ? Math.round((amount / planned) * 100) : 0;
@@ -80,17 +80,13 @@ export function BudgetTab() {
 
   return (
     <section aria-label="Budget">
-      <TabHeader
-        heading="Budget"
-        description="Planned, committed and actual cost by category."
-        actions={
-          canManage ? (
-            <Button variant="primary" size="md" onClick={() => setCreateCategoryOpen(true)}>
-              <PlusIcon className="h-4 w-4" /> Add category
-            </Button>
-          ) : undefined
-        }
-      />
+      <TabActions>
+        {canManage ? (
+          <Button variant="primary" size="md" onClick={() => setCreateCategoryOpen(true)}>
+            <PlusIcon className="h-4 w-4" /> Add category
+          </Button>
+        ) : null}
+      </TabActions>
 
       <UpsertBudgetCategoryDialog
         open={createCategoryOpen}
@@ -103,7 +99,7 @@ export function BudgetTab() {
       />
 
       {summary ? (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <KpiCard label="Total planned" value={formatCurrency(effectiveTotalPlanned, currency)} />
           <KpiCard
             label="Committed"
@@ -152,7 +148,7 @@ export function BudgetTab() {
       </FeatureGate>
 
       <section className="mt-12">
-        <h2 className="mb-4 text-xl font-semibold tracking-tight text-gray-900">Cost categories</h2>
+        <h2 className="mb-4 text-base font-semibold text-gray-900">Cost categories</h2>
         {categories.length === 0 ? (
           <EmptyState
             variant="inline"
@@ -178,7 +174,7 @@ export function BudgetTab() {
 
       <section className="mt-16">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold tracking-tight text-gray-900">Monthly cash flow</h2>
+          <h2 className="text-base font-semibold text-gray-900">Monthly cash flow</h2>
           {canManage ? (
             <Button variant="secondary" size="sm" onClick={() => setCreatePeriodOpen(true)}>
               Add month

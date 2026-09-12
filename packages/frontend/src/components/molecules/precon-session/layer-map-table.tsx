@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { Table, TableBody, TableCell, TableRow } from "@/components/atoms/table";
 import { LAYER_ELEMENTS, type LayerElement, type LayerMap } from "@/api/precon";
 import { usePreconSnapshot, useUpdatePreconLayerMap } from "@/hooks/use-precon";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -62,14 +63,14 @@ export function LayerMapTable({ sessionId }: Props) {
         <p className="text-[11px] text-gray-500">{layers.length} layers</p>
       </div>
       <div className="max-h-48 overflow-y-auto rounded-md border border-gray-100">
-        <table className="w-full text-xs">
-          <tbody>
+        <Table className="text-xs">
+          <TableBody>
             {layers.map((layer) => (
-              <tr key={layer} className="border-b border-gray-50 last:border-0">
-                <td className="max-w-28 truncate px-2 py-1 font-mono text-[11px] text-gray-700" title={layer}>
+              <TableRow key={layer}>
+                <TableCell className="max-w-28 truncate px-2 py-1 font-mono text-[11px] text-gray-700" title={layer}>
                   {layer}
-                </td>
-                <td className="px-1 py-1">
+                </TableCell>
+                <TableCell className="px-1 py-1">
                   <select
                     className={FIELD}
                     aria-label={`Element on layer ${layer}`}
@@ -83,11 +84,11 @@ export function LayerMapTable({ sessionId }: Props) {
                       </option>
                     ))}
                   </select>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <div className="flex items-center gap-2">
         <Button size="sm" loading={update.isPending} disabled={!dirty || generating} onClick={save}>

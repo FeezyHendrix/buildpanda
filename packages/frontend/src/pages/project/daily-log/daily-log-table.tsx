@@ -2,6 +2,15 @@ import { Menu } from "@base-ui/react/menu";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/atoms/table";
 import { CalendarIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { cn } from "@/lib/utils";
@@ -32,8 +41,6 @@ interface DailyLogTableProps {
   actions: DailyLogRowActions;
 }
 
-const HEAD_CELL = "h-11 px-4 py-0 text-[11px] font-semibold text-black-300 capitalize whitespace-nowrap";
-const CELL = "px-4 py-2 align-middle";
 const CLAMP = "line-clamp-2 [overflow-wrap:anywhere]";
 const STICKY = "sticky right-0 z-[1]";
 const COLUMN_COUNT = 8;
@@ -44,65 +51,59 @@ const MENU_ITEM =
 function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerateReport, actions }: DailyLogTableProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-2xl border border-[#F0F0F0] bg-white">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] text-left text-sm">
-          <thead className="border-b border-[#EDEDED] bg-[#FAFAFA]">
-            <tr>
-              <th className={HEAD_CELL}>Date</th>
-              <th className={HEAD_CELL}>Logged by</th>
-              <th className={HEAD_CELL}>Crew</th>
-              <th className={HEAD_CELL}>Hours</th>
-              <th className={HEAD_CELL}>Weather</th>
-              <th className={HEAD_CELL}>Activities</th>
-              <th className={HEAD_CELL}>Entries</th>
-              <th className={cn(HEAD_CELL, STICKY, "w-28 bg-[#FAFAFA] text-right")}>
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {isPending ? (
-              <tr>
-                <td colSpan={COLUMN_COUNT} className="px-4">
-                  <div className="flex justify-center py-16">
-                    <Spinner size="md" />
-                  </div>
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={COLUMN_COUNT} className="px-4">
-                  <EmptyState
-                    variant="inline"
-                    icon={<CalendarIcon />}
-                    title={hasAnyDays ? "No days match these filters" : "No daily logs yet"}
-                    description={
-                      hasAnyDays
-                        ? "Adjust the search, filter or date range to see more days."
-                        : "Add your first log to start the project diary, which anyone on the team can contribute to."
-                    }
-                    action={
-                      !hasAnyDays && canCreateEntry
-                        ? { label: "Add my log", onClick: () => actions.onAddLog(""), icon: <PlusIcon /> }
-                        : undefined
-                    }
-                  />
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <DailyLogTableRow
-                  key={row.logDate}
-                  row={row}
-                  canCreateEntry={canCreateEntry}
-                  canGenerateReport={canGenerateReport}
-                  actions={actions}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <Table className="min-w-[960px]">
+        <TableHead>
+          <tr>
+            <TableHeaderCell className="whitespace-nowrap">Date</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Logged by</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Crew</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Hours</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Weather</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Activities</TableHeaderCell>
+            <TableHeaderCell className="whitespace-nowrap">Entries</TableHeaderCell>
+            <TableHeaderCell align="right" className={cn(STICKY, "w-28 bg-[#F6F6F6]")}>
+              <span className="sr-only">Actions</span>
+            </TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {isPending ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT}>
+              <div className="flex justify-center py-16">
+                <Spinner size="md" />
+              </div>
+            </TableEmptyRow>
+          ) : rows.length === 0 ? (
+            <TableEmptyRow colSpan={COLUMN_COUNT}>
+              <EmptyState
+                variant="inline"
+                icon={<CalendarIcon />}
+                title={hasAnyDays ? "No days match these filters" : "No daily logs yet"}
+                description={
+                  hasAnyDays
+                    ? "Adjust the search, filter or date range to see more days."
+                    : "Add your first log to start the project diary, which anyone on the team can contribute to."
+                }
+                action={
+                  !hasAnyDays && canCreateEntry
+                    ? { label: "Add my log", onClick: () => actions.onAddLog(""), icon: <PlusIcon /> }
+                    : undefined
+                }
+              />
+            </TableEmptyRow>
+          ) : (
+            rows.map((row) => (
+              <DailyLogTableRow
+                key={row.logDate}
+                row={row}
+                canCreateEntry={canCreateEntry}
+                canGenerateReport={canGenerateReport}
+                actions={actions}
+              />
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -118,19 +119,20 @@ interface RowProps {
 
 function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: RowProps) {
   const { day, missed, voided } = row;
-  const rowTone = missed ? "bg-error-50 text-error-700" : voided ? "bg-white text-black-200" : "bg-white text-black-500";
+  const tone = missed ? "danger" : voided ? "muted" : "default";
   const stickyBg = missed ? "bg-error-50" : "bg-white";
 
   return (
-    <tr
-      className={cn("h-[61px] border-b border-[#F0F0F0] transition-colors", rowTone, !missed && "cursor-pointer hover:bg-[#FAFAFA]")}
+    <TableRow
+      tone={tone}
+      className={cn("h-[61px] transition-colors", !missed && "bg-white hover:bg-[#FAFAFA]")}
       onClick={missed ? undefined : () => actions.onView(row.logDate)}
     >
-      <td className={CELL}>
+      <TableCell className="py-2">
         <p className="whitespace-nowrap font-medium">{formatDayDate(row.logDate)}</p>
         <p className={cn("text-[12px]", missed ? "text-error-600" : "text-black-300")}>{formatWeekday(row.logDate)}</p>
-      </td>
-      <td className={CELL}>
+      </TableCell>
+      <TableCell className="py-2">
         {missed ? (
           <span className="font-semibold text-error-600">Missed report</span>
         ) : (
@@ -141,10 +143,10 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
             ) : null}
           </div>
         )}
-      </td>
-      <td className={cn(CELL, "tabular-nums")}>{day ? `${day.workersPresent}/${day.workersExpected}` : "—"}</td>
-      <td className={cn(CELL, "tabular-nums")}>{day ? formatHours(day.totalHours) : "—"}</td>
-      <td className={CELL}>
+      </TableCell>
+      <TableCell className="py-2 tabular-nums">{day ? `${day.workersPresent}/${day.workersExpected}` : "—"}</TableCell>
+      <TableCell className="py-2 tabular-nums">{day ? formatHours(day.totalHours) : "—"}</TableCell>
+      <TableCell className="py-2">
         {day?.weatherCondition ? (
           <Badge tone={WEATHER_TONE[day.weatherCondition]} size="sm">
             {WEATHER_LABEL[day.weatherCondition]}
@@ -153,8 +155,8 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
         ) : (
           "—"
         )}
-      </td>
-      <td className={cn(CELL, "tabular-nums")}>
+      </TableCell>
+      <TableCell className="py-2 tabular-nums">
         {day ? (
           <>
             <p>{day.activities.length}</p>
@@ -163,9 +165,9 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
         ) : (
           "—"
         )}
-      </td>
-      <td className={cn(CELL, "tabular-nums")}>{day ? day.entries.length : "—"}</td>
-      <td className={cn(CELL, STICKY, stickyBg, "text-right")} onClick={(e) => e.stopPropagation()}>
+      </TableCell>
+      <TableCell className="py-2 tabular-nums">{day ? day.entries.length : "—"}</TableCell>
+      <TableCell align="right" className={cn("py-2", STICKY, stickyBg)} onClick={(e) => e.stopPropagation()}>
         {missed ? (
           canCreateEntry ? (
             <Button type="button" variant="ghost" size="sm" className="whitespace-nowrap text-error-700 hover:bg-error-100" onClick={() => actions.onAddLog(row.logDate)}>
@@ -176,8 +178,8 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
         ) : (
           <DailyLogRowMenu logDate={row.logDate} canCreateEntry={canCreateEntry} canGenerateReport={canGenerateReport} actions={actions} />
         )}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 

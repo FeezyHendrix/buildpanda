@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { FileUpload } from "@/components/atoms/file-upload";
 import { Spinner } from "@/components/atoms/spinner";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/atoms/table";
 import {
   useBoqImportJob,
   useBulkCreateMaterials,
@@ -143,27 +144,27 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[#EDEDED]">
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-[#FAFAFA] text-xs font-semibold text-gray-500">
+            <Table>
+              <TableHead className="sticky top-0">
                 <tr>
-                  <th className="px-3 py-2">Material</th>
-                  <th className="w-20 px-2 py-2">Qty</th>
-                  <th className="w-24 px-2 py-2">Unit</th>
-                  <th className="w-40 px-2 py-2">Est. cost ({currency})</th>
-                  <th className="w-8 px-2 py-2" />
+                  <TableHeaderCell className="px-3 py-2">Material</TableHeaderCell>
+                  <TableHeaderCell className="w-20 px-2 py-2">Qty</TableHeaderCell>
+                  <TableHeaderCell className="w-24 px-2 py-2">Unit</TableHeaderCell>
+                  <TableHeaderCell className="w-40 px-2 py-2">Est. cost ({currency})</TableHeaderCell>
+                  <TableHeaderCell className="w-8 px-2 py-2" />
                 </tr>
-              </thead>
-              <tbody>
+              </TableHead>
+              <TableBody>
                 {rows.map((row, i) => (
-                  <tr key={i} className="border-t border-[#F0F0F0]">
-                    <td className="px-3 py-1.5">
+                  <TableRow key={i}>
+                    <TableCell className="px-3 py-1.5">
                       <input
                         value={row.materialName}
                         onChange={(e) => updateRow(i, { materialName: e.target.value })}
                         className={CELL}
                       />
-                    </td>
-                    <td className="px-2 py-1.5">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <input
                         type="number"
                         min={0}
@@ -173,11 +174,11 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                         onChange={(e) => updateRow(i, { quantity: Number(e.target.value) || 0 })}
                         className={CELL}
                       />
-                    </td>
-                    <td className="px-2 py-1.5">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <UnitInput value={row.unit} onChange={(v) => updateRow(i, { unit: v })} className={CELL} />
-                    </td>
-                    <td className="px-2 py-1.5">
+                    </TableCell>
+                    <TableCell className="px-2 py-1.5">
                       <div className="flex items-center rounded-md bg-[#F6F6F6] focus-within:ring-2 focus-within:ring-gray-900/10">
                         <span className="pl-2 text-sm text-gray-400">{symbol}</span>
                         <input
@@ -187,8 +188,8 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                           className="h-9 w-full bg-transparent px-1.5 text-sm tabular-nums text-gray-900 outline-none"
                         />
                       </div>
-                    </td>
-                    <td className="px-2 py-1.5 text-center">
+                    </TableCell>
+                    <TableCell align="center" className="px-2 py-1.5">
                       <button
                         type="button"
                         onClick={() => removeRow(i)}
@@ -197,11 +198,11 @@ function ImportBoqDialog({ open, onOpenChange, projectId, currency, onImported }
                       >
                         ×
                       </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
           <button
