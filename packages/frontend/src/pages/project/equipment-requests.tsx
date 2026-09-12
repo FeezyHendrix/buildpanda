@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { Card } from "@/components/atoms/card";
@@ -15,6 +15,8 @@ import {
 import { EmptyState } from "@/components/molecules/empty-state";
 import { Spinner } from "@/components/atoms/spinner";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { KpiCard } from "@/components/molecules/kpi-card";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -25,7 +27,6 @@ import {
   type EquipmentRequestInput,
 } from "@/hooks/use-materials-equipment";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { cn } from "@/lib/utils";
 import type {
   EquipmentBucket,
   EquipmentRequest,
@@ -45,6 +46,8 @@ const BUCKETS: Array<{
   { bucket: "on-hire", label: "On hire", helper: "Mobilized to site" },
   { bucket: "returns", label: "Returns", helper: "Closed or cancelled" },
 ];
+
+const BUCKET_TABS = BUCKETS.map((item) => ({ value: item.bucket, label: item.label }));
 
 const DEFAULT_BUCKET_META = BUCKETS[0]!;
 
@@ -105,6 +108,7 @@ export default function ProjectEquipmentRequests() {
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
   const params = useParams<{ bucket?: EquipmentBucket }>();
+  const navigate = useNavigate();
   const activeBucket = BUCKETS.some((item) => item.bucket === params.bucket)
     ? params.bucket
     : "requests";
@@ -170,41 +174,30 @@ export default function ProjectEquipmentRequests() {
         }
       />
 
-      <nav
-        className="mt-8 grid gap-3 md:grid-cols-5"
-        aria-label="Equipment request routes"
-      >
-        {BUCKETS.map((item) => (
-          <Link
-            key={item.bucket}
-            to={`/project/${project.id}/equipment-requests/${item.bucket}`}
-            className={cn(
-              "rounded-2xl border p-4 transition-colors",
-              activeBucket === item.bucket
-                ? "border-[#004DE7] bg-[#E6EFFE]"
-                : "border-[#EDEDED] bg-white hover:bg-gray-50",
-            )}
-          >
-            <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-            <p className="mt-1 text-xs text-gray-500">{item.helper}</p>
-          </Link>
-        ))}
-      </nav>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          items={BUCKET_TABS}
+          value={activeBucket ?? "requests"}
+          onChange={(bucket) => navigate(`/project/${project.id}/equipment-requests/${bucket}`)}
+          ariaLabel="Equipment request stages"
+        />
+        <span className="text-sm text-gray-500">{activeMeta.helper}</span>
+      </div>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <Metric
+      <section className="mt-6 grid gap-4 sm:grid-cols-3">
+        <KpiCard
           label="Visible requests"
           value={requests.length.toString()}
           helper={activeMeta.helper}
         />
-        <Metric
+        <KpiCard
           label="Booked cost"
           value={formatCurrency(bookedCost, project.currency, {
             compact: true,
           })}
           helper="Estimated hire spend"
         />
-        <Metric
+        <KpiCard
           label="Lifecycle stage"
           value={activeMeta.label}
           helper="Derived from status"
@@ -295,25 +288,6 @@ export default function ProjectEquipmentRequests() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <Card padding="md" className="bg-[#F8F8F8] rounded-[1px] border-none p-5">
-      <p className="text-[12px] font-medium text-black-300">{label}</p>
-      <p className="mt-2 text-[20px] font-semibold tabular-nums text-black-500">
-        {value}
-      </p>
-      <p className="mt-1 text-[13px] font-medium text-black-300">{helper}</p>
-    </Card>
-  );
-}
 
 function EquipmentRow({
   request,
