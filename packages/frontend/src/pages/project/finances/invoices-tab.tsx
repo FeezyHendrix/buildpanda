@@ -1,23 +1,23 @@
-import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
-import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
-
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Spinner } from "@/components/atoms/spinner";
 import { Button } from "@/components/atoms/button";
 import { FinancesIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { PageHeader } from "@/components/molecules/page-header";
+import { KpiCard } from "@/components/molecules/kpi-card";
+import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
+import { InvoiceAgingBar } from "@/components/organisms/charts/invoice-aging-bar";
 import { useProjectContext } from "@/layouts/project-layout";
 import { useProjectInvoices, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
-import { InvoiceCard } from "./invoices/invoice-card";
-import { KpiCard } from "@/components/molecules/kpi-card";
-import { InvoiceComposer } from "./invoices/invoice-composer";
-import { ScanInvoiceDialog } from "@/components/molecules/scan-invoice-dialog";
+import { InvoiceCard } from "../invoices/invoice-card";
+import { InvoiceComposer } from "../invoices/invoice-composer";
+import { TabHeader } from "./finance-tabs";
 
-export default function ProjectInvoices() {
+/** Invoices — what's been billed, held back and paid. Sending records an invoice; it never charges. */
+export function InvoicesTab() {
   const { project, access } = useProjectContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scanOpen, setScanOpen] = useState(false);
@@ -26,9 +26,7 @@ export default function ProjectInvoices() {
   const canManage = canResourceAction(access, "finances", "manage");
   const currency = project.currency;
   const { data: invoices = [], isPending } = useProjectInvoices(project.id);
-  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(
-    project.id,
-  );
+  const { data: snapshot, isLoading: isSnapshotLoading } = useReportingSnapshot(project.id);
 
   // The retired /invoices/new route (and any deep link) opens the composer via
   // ?compose=1; consume the flag so a refresh doesn't reopen it.
@@ -73,15 +71,16 @@ export default function ProjectInvoices() {
   ) : undefined;
 
   return (
-    <div className="w-full px-4 lg:px-6 pt-4 pb-8 sm:px-10">
-      <PageHeader
-        title="Invoices"
+    <section aria-label="Invoices">
+      <TabHeader
+        heading="Invoices"
+        description="Invoices sent and bills recorded against this project."
         actions={actions}
       />
 
       <section
         aria-label="Invoice summary"
-        className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <KpiCard label="Total invoiced" value={formatCurrency(summary.billed, currency)} />
         <KpiCard label="Held back" value={formatCurrency(summary.retainage, currency)} />
@@ -89,7 +88,7 @@ export default function ProjectInvoices() {
         <KpiCard label="Outstanding" value={formatCurrency(summary.balance, currency)} />
       </section>
 
-      {snapshot && (
+      {snapshot ? (
         <section className="mt-6">
           <div className="lg:w-1/2">
             <InvoiceAgingBar
@@ -99,7 +98,7 @@ export default function ProjectInvoices() {
             />
           </div>
         </section>
-      )}
+      ) : null}
 
       <section className="mt-6">
         {isPending ? (
@@ -138,7 +137,7 @@ export default function ProjectInvoices() {
         }}
       />
 
-      {canManage && (
+      {canManage ? (
         <InvoiceComposer
           projectId={project.id}
           currency={currency}
@@ -146,7 +145,9 @@ export default function ProjectInvoices() {
           onOpenChange={setComposerOpen}
           scan={scanResult}
         />
-      )}
-    </div>
+      ) : null}
+    </section>
   );
 }
+
+InvoicesTab.displayName = "InvoicesTab";

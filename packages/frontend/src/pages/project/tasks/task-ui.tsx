@@ -89,8 +89,8 @@ export const ENTITY_META: Record<TaskEntityType, { label: string; route: string 
   rfi: { label: "RFI", route: "rfis" },
   change_request: { label: "Change request", route: "change-requests" },
   material: { label: "Material", route: "materials" },
-  invoice: { label: "Invoice", route: "finances/invoices" },
-  milestone_payment: { label: "Stage payment", route: "finances/payments" },
+  invoice: { label: "Invoice", route: "finances/billing?tab=invoices" },
+  milestone_payment: { label: "Stage payment", route: "finances/billing?tab=stage-payments" },
 };
 
 export const ENTITY_ORDER: TaskEntityType[] = [
