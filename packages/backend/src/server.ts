@@ -62,7 +62,6 @@ import selectionRoutes from "./modules/selections/routes.ts";
 import changeRequestRoutes from "./modules/change-requests/routes.ts";
 import permitRoutes from "./modules/permits/index.ts";
 import keyDateRoutes from "./modules/key-dates/index.ts";
-import extensionOfTimeRoutes from "./modules/extensions-of-time/routes.ts";
 import insightsRoutes from "./modules/insights/index.ts";
 import reportingRoutes from "./modules/reporting/routes.ts";
 import weatherRoutes from "./modules/weather/routes.ts";
@@ -210,7 +209,6 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(changeRequestRoutes);
   await app.register(permitRoutes);
   await app.register(keyDateRoutes);
-  await app.register(extensionOfTimeRoutes);
   await app.register(insightsRoutes);
   await app.register(reportingRoutes);
   await app.register(weatherRoutes);

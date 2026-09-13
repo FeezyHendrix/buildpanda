@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/atoms/button";
+import { AwardDaysDialog } from "@/components/molecules/award-days-dialog";
 import { ReasonDialog } from "@/components/molecules/reason-dialog";
 import { useChangeRequestAction } from "@/hooks/use-change-requests";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -67,15 +68,19 @@ interface ChangeRequestActionsProps {
 export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProps) {
   const run = useChangeRequestAction();
   const [reasonFor, setReasonFor] = useState<ChangeAction | null>(null);
+  const [awarding, setAwarding] = useState(false);
 
   const available = NEXT_ACTIONS[cr.status];
+  // Approving a time claim is an award of days, not a yes/no — it asks how many.
+  const isTimeClaim = cr.type === "eot_only";
 
-  function perform(action: ChangeAction, reason?: string): void {
+  function perform(action: ChangeAction, extra: { reason?: string; daysAwarded?: number } = {}): void {
     run.mutate(
-      { projectId, changeId: cr.id, action, ...(reason ? { reason } : {}) },
+      { projectId, changeId: cr.id, action, ...extra },
       {
         onSuccess: () => {
           setReasonFor(null);
+          setAwarding(false);
           toast(`Change ${ACTION_META[action].label.toLowerCase()}`, "success");
         },
         // 409s land here: "you cannot approve your own change request",
@@ -88,8 +93,7 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
   if (available.length === 0) {
     return (
       <p className="text-xs text-ink-muted">
-        This change is executed — the contract, the stage dates and any extension of time have
-        already moved with it.
+        This change is executed — the contract and the stage dates have already moved with it.
       </p>
     );
   }
@@ -108,10 +112,14 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
               variant={meta.variant}
               size="md"
               className={meta.danger ? "text-negative-500" : undefined}
-              loading={run.isPending && reasonFor === null}
-              onClick={() => (meta.reason ? setReasonFor(action) : perform(action))}
+              loading={run.isPending && reasonFor === null && !awarding}
+              onClick={() => {
+                if (meta.reason) setReasonFor(action);
+                else if (action === "approve" && isTimeClaim) setAwarding(true);
+                else perform(action);
+              }}
             >
-              {meta.label}
+              {action === "approve" && isTimeClaim ? "Approve and award days" : meta.label}
             </Button>
           );
         })}
@@ -131,10 +139,19 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
           isSubmitting={run.isPending}
           error={run.error ? getApiErrorMessage(run.error) : null}
           onSubmit={(reason) => {
-            if (reasonFor) perform(reasonFor, reason);
+            if (reasonFor) perform(reasonFor, { reason });
           }}
         />
       ) : null}
+
+      <AwardDaysDialog
+        open={awarding}
+        onOpenChange={setAwarding}
+        daysClaimed={cr.timeImpactDays}
+        isSubmitting={run.isPending}
+        error={run.error ? getApiErrorMessage(run.error) : null}
+        onSubmit={(daysAwarded) => perform("approve", { daysAwarded })}
+      />
     </>
   );
 }

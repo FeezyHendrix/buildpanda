@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@/components/atoms/badge";
-import type { Culpability, DelayReason } from "./project-types";
+import type { Activity, ActivityDelay, Culpability, DelayReason } from "./project-types";
 
 /**
  * Who carries the time risk, said in the words a contract uses. Tone is paired
@@ -63,4 +63,30 @@ export function isFutureDay(localInput: string): boolean {
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
   return picked.getTime() > endOfToday.getTime();
+}
+
+/** One delay a time claim may cite, with the activity it stopped. */
+export interface ClaimableDelay {
+  delay: ActivityDelay;
+  activityName: string;
+}
+
+/**
+ * Only a client-culpable or neutral delay buys time back; the server rejects a
+ * claim that cites a contractor's own breakdown, naming it. Offering only the
+ * claimable ones is what stops a PM writing a claim that cannot be argued.
+ */
+export function claimableDelays(activities: Activity[]): ClaimableDelay[] {
+  return activities.flatMap((activity) =>
+    activity.delays
+      .filter((delay) => delay.eotClaimable)
+      .map((delay) => ({ delay, activityName: activity.name })),
+  );
+}
+
+export function totalDaysLost(
+  delays: ClaimableDelay[],
+  selectedIds: ReadonlySet<string>,
+): number {
+  return delays.reduce((sum, d) => (selectedIds.has(d.delay.id) ? sum + d.delay.daysLost : sum), 0);
 }

@@ -305,6 +305,21 @@ export interface ChangeRevision {
   at: string;
 }
 
+/**
+ * One delay a time claim is argued from. A contractor-culpable delay is never
+ * claimable, so the server refuses a claim citing one and names it.
+ */
+export interface ChangeDelay {
+  id: string;
+  activityId: string;
+  activityName: string;
+  reasonCode: string;
+  daysLost: number;
+  culpability: Culpability | string;
+  eotClaimable: boolean;
+  startedAt: string;
+}
+
 export interface ChangeRequest {
   id: string;
   projectId: string;
@@ -330,8 +345,13 @@ export interface ChangeRequest {
   stageId: string | null;
   /** The RFI this change came out of, when it did. */
   rfiId: string | null;
-  /** The extension-of-time claim carrying its days, for a time claim. */
-  eotClaimId: string | null;
+  /**
+   * Days actually granted on a time claim; null until it is decided. An award
+   * is usually fewer days than were claimed, and the gap is the negotiation.
+   */
+  daysAwarded: number | null;
+  /** The delay events a time claim is argued from. */
+  delays: ChangeDelay[];
   rejectedReason: string | null;
   submittedAt: string | null;
   revisions: ChangeRevision[];

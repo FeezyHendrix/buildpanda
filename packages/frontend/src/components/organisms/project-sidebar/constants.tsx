@@ -138,14 +138,6 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Rolling look-ahead planning",
     flag: "projects.schedule",
   },
-  {
-    label: "Extensions of time",
-    slug: "extensions-of-time",
-    resource: "schedule",
-    Icon: CalendarIcon,
-    helper: "EOT claims & revised completion",
-    flag: "projects.schedule",
-  },
 ] as const;
 
 export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [

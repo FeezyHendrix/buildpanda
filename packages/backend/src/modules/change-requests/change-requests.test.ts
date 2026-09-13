@@ -4,7 +4,8 @@ import { changeActions } from "./change-actions.ts";
 import { changeRequestsService, type ChangeOrderContracts } from "./service.ts";
 import type { ChangeRequestsRepository } from "./repository.ts";
 import { parseRevisions } from "./transitions.ts";
-import type { ChangeRequestRow, ChangeStatus } from "./types.ts";
+import { isAppError } from "../../lib/errors.ts";
+import type { ChangeDelayRow, ChangeRequestRow, ChangeStatus } from "./types.ts";
 
 const SUBMITTER = { id: "usr_1", name: "Site QS", holdsApproval: false };
 const ENGINEER = { id: "usr_2", name: "Resident Engineer", holdsApproval: true };
@@ -25,7 +26,7 @@ function row(over: Partial<ChangeRequestRow> = {}): ChangeRequestRow {
     currency: "NGN",
     stage_id: null,
     rfi_id: null,
-    eot_claim_id: null,
+    days_awarded: null,
     rejected_reason: null,
     submitted_at: null,
     revisions: null,
@@ -42,7 +43,26 @@ function row(over: Partial<ChangeRequestRow> = {}): ChangeRequestRow {
   };
 }
 
-function fakeRepo(seed: ChangeRequestRow, counts: Array<{ status: ChangeStatus; count: string }> = []) {
+function delayRow(over: Partial<ChangeDelayRow> = {}): ChangeDelayRow {
+  return {
+    id: "delay_client",
+    change_request_id: "chg_1",
+    activity_id: "act_1",
+    activity_name: "TMP approval & signage",
+    reason_code: "APPROVAL_CLIENT",
+    days_lost: 7,
+    culpability: "client",
+    eot_claimable: true,
+    started_at: "2026-09-18T08:00:00.000Z",
+    ...over,
+  };
+}
+
+function fakeRepo(
+  seed: ChangeRequestRow,
+  counts: Array<{ status: ChangeStatus; count: string }> = [],
+  delays: ChangeDelayRow[] = [],
+) {
   let stored = seed;
   const repo = {
     projectEstimateId: async () => null,
@@ -57,6 +77,11 @@ function fakeRepo(seed: ChangeRequestRow, counts: Array<{ status: ChangeStatus; 
     },
     remove: async () => {},
     countReferencingRfis: async () => 0,
+    delaysForChanges: async (ids: string[]) =>
+      delays.filter((d) => ids.includes(d.change_request_id)),
+    delaysByIds: async (_projectId: string, ids: string[]) =>
+      delays.filter((d) => ids.includes(d.id)),
+    replaceDelayLinks: async () => {},
     listComments: async () => [],
     addComment: async () => { throw new Error("unused"); },
     listBudgetLinks: async () => [],
@@ -78,8 +103,12 @@ function fakeContracts(status: "Pending" | "Signed" | null = null) {
   return { contracts, generated };
 }
 
-function harness(seed: ChangeRequestRow, contractStatus: "Pending" | "Signed" | null = null) {
-  const { repo, current } = fakeRepo(seed);
+function harness(
+  seed: ChangeRequestRow,
+  contractStatus: "Pending" | "Signed" | null = null,
+  delays: ChangeDelayRow[] = [],
+) {
+  const { repo, current } = fakeRepo(seed, [], delays);
   const { contracts, generated } = fakeContracts(contractStatus);
   const service = changeRequestsService(repo, { contracts });
   const shifted: Array<{ stageId: string; days: number }> = [];
@@ -90,13 +119,13 @@ function harness(seed: ChangeRequestRow, contractStatus: "Pending" | "Signed" | 
     shiftStageEnd: async (_projectId, stageId, days) => {
       shifted.push({ stageId, days });
     },
-    applyApprovedEot: async (_projectId, days) => {
+    applyTimeAward: async (_projectId, days) => {
       eot.push({ days });
     },
     onApproved: (r, actor) => service.onApproved(r, { id: actor.id, name: actor.name }),
     onDecided: (_r, action, reason) => decided.push({ action, reason }),
   });
-  return { service, actions, current, generated, shifted, eot, decided };
+  return { service, actions, current, generated, shifted, eot, decided, repo };
 }
 
 test("status cannot be walked by editing — only the actions move it", async () => {
@@ -203,18 +232,127 @@ test("executing applies the time impact to the stage it was claimed against", as
   await actions.run("prj_1", "chg_1", "execute", {}, ENGINEER);
   assert.equal(current().status, "Executed");
   assert.deepEqual(shifted, [{ stageId: "stg_6", days: 6 }]);
-  // A money variation is not an extension of time on its own.
+  // Executing is a programme move; the contract date only moves on a decision.
   assert.deepEqual(eot, []);
 });
 
-test("a time-only change awards its days through the extension-of-time module", async () => {
-  const { actions, eot, shifted } = harness(
-    row({ status: "Approved", type: "eot_only", cost_impact: "0.00", time_impact_days: 14, stage_id: "stg_6" }),
-    "Signed",
-  );
-  await actions.run("prj_1", "chg_1", "execute", {}, ENGINEER);
+/** The claim a QS raises for time and no money. */
+function timeClaim(over: Partial<ChangeRequestRow> = {}): ChangeRequestRow {
+  return row({
+    type: "eot_only",
+    cost_impact: "0.00",
+    time_impact_days: 14,
+    title: "Late Ministry approval of the TMP",
+    ...over,
+  });
+}
+
+test("approving a time claim awards the days named, not the days claimed", async () => {
+  const { actions, eot, current } = harness(timeClaim());
+  await actions.run("prj_1", "chg_1", "approve", { daysAwarded: 9 }, ENGINEER);
+  assert.equal(current().status, "Approved");
+  assert.equal(current().days_awarded, 9);
+  // An award of 9 against a claim of 14 moves the contract by 9, not 14.
+  assert.deepEqual(eot, [{ days: 9 }]);
+});
+
+test("approving a time claim with no figure awards what was claimed", async () => {
+  const { actions, eot, current } = harness(timeClaim());
+  await actions.run("prj_1", "chg_1", "approve", {}, ENGINEER);
+  assert.equal(current().days_awarded, 14);
   assert.deepEqual(eot, [{ days: 14 }]);
-  assert.deepEqual(shifted, [{ stageId: "stg_6", days: 14 }]);
+});
+
+test("awarding nothing on a time claim moves no dates", async () => {
+  const { actions, eot, current } = harness(timeClaim());
+  await actions.run("prj_1", "chg_1", "approve", { daysAwarded: 0 }, ENGINEER);
+  assert.equal(current().days_awarded, 0);
+  assert.deepEqual(eot, []);
+});
+
+test("rejecting a time claim awards no time and can be resubmitted", async () => {
+  const { actions, eot, current } = harness(timeClaim());
+  await actions.run("prj_1", "chg_1", "reject", { reason: "Concurrent contractor delay" }, ENGINEER);
+  assert.equal(current().status, "Rejected");
+  assert.equal(current().days_awarded, null);
+  assert.deepEqual(eot, []);
+
+  await actions.run("prj_1", "chg_1", "resubmit", { timeImpactDays: 9, reason: "Re-argued at 9 days" }, SUBMITTER);
+  assert.equal(current().status, "Submitted");
+  assert.equal(current().time_impact_days, 9);
+  assert.equal(current().rejected_reason, null);
+  const revisions = parseRevisions(current().revisions);
+  assert.equal(revisions.at(-1)?.timeImpactDays, 9);
+});
+
+test("a time claim citing a contractor-culpable delay is refused and names it", async () => {
+  const { actions } = harness(timeClaim({ status: "Draft" }), null, [
+    delayRow(),
+    delayRow({
+      id: "delay_supplier",
+      activity_name: "Import laterite & spread",
+      reason_code: "EQUIPMENT_BREAKDOWN",
+      culpability: "contractor",
+      eot_claimable: false,
+    }),
+  ]);
+  await assert.rejects(actions.run("prj_1", "chg_1", "submit", {}, SUBMITTER), (error: unknown) => {
+    assert.ok(isAppError(error));
+    assert.equal(error.statusCode, 400);
+    assert.match(error.message, /Import laterite & spread/);
+    assert.match(error.message, /contractor/);
+    return true;
+  });
+});
+
+test("the delays are re-checked at the decision, not only at submission", async () => {
+  const { actions } = harness(timeClaim(), null, [
+    delayRow({ culpability: "contractor", eot_claimable: false }),
+  ]);
+  await assert.rejects(
+    actions.run("prj_1", "chg_1", "approve", { daysAwarded: 14 }, ENGINEER),
+    /not claimable as an extension of time/,
+  );
+});
+
+test("a time claim citing only claimable delays submits", async () => {
+  const { actions, current } = harness(timeClaim({ status: "Draft" }), null, [delayRow()]);
+  await actions.run("prj_1", "chg_1", "submit", {}, SUBMITTER);
+  assert.equal(current().status, "Submitted");
+});
+
+test("a time claim with no days claimed cannot be submitted", async () => {
+  const { actions } = harness(timeClaim({ status: "Draft", time_impact_days: 0 }));
+  await assert.rejects(
+    actions.run("prj_1", "chg_1", "submit", {}, SUBMITTER),
+    /State the days claimed/,
+  );
+});
+
+test("a money variation awards no time however many days it carries", async () => {
+  const { actions, eot, current } = harness(row({ time_impact_days: 6 }));
+  await actions.run("prj_1", "chg_1", "approve", {}, ENGINEER);
+  assert.deepEqual(eot, []);
+  assert.equal(current().days_awarded, null);
+});
+
+test("a raised claim exposes the delays it is argued from", async () => {
+  const { service } = harness(timeClaim(), null, [delayRow()]);
+  const detail = await service.get("prj_1", "chg_1");
+  assert.equal(detail.daysAwarded, null);
+  assert.equal(detail.delays.length, 1);
+  assert.equal(detail.delays[0]?.activityName, "TMP approval & signage");
+  assert.equal(detail.delays[0]?.eotClaimable, true);
+});
+
+test("creating a claim that cites a contractor-culpable delay never reaches the register", async () => {
+  const { service } = harness(timeClaim(), null, [
+    delayRow({ id: "delay_own", culpability: "contractor", eot_claimable: false }),
+  ]);
+  await assert.rejects(
+    service.create("prj_1", { title: "EOT", type: "eot_only", delayIds: ["delay_own"] }, "usr_1"),
+    /not claimable as an extension of time/,
+  );
 });
 
 test("a change an RFI was converted into cannot be deleted out from under it", async () => {

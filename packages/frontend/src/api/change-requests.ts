@@ -25,14 +25,20 @@ export interface ChangeRequestInput {
   type?: ChangeType;
   stageId?: string | null;
   rfiId?: string | null;
-  eotClaimId?: string | null;
+  /** The delays a time claim is argued from; every one must be EOT-claimable. */
+  delayIds?: string[];
 }
 
-/** Rejecting and resubmitting both carry a reason; approving and executing need none. */
+/**
+ * Rejecting and resubmitting both carry a reason; executing needs none.
+ * Approving a time claim carries `daysAwarded` — the decision that buys time,
+ * and usually fewer days than were claimed.
+ */
 export interface ChangeActionInput {
   reason?: string;
   costImpact?: number;
   timeImpactDays?: number;
+  daysAwarded?: number;
 }
 
 /** Status counts for the cards on the Change orders page; `grossProfit` is null until costs are recorded. */

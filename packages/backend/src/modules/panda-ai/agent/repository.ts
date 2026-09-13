@@ -135,11 +135,12 @@ export function agentRepository(db: Knex) {
         );
     },
 
+    /** Time claims — change requests of type eot_only, days claimed vs awarded. */
     eotClaims(projectId: string) {
-      return db("extension_of_time_claims")
-        .where({ project_id: projectId })
-        .orderBy("number", "asc")
-        .select("number", "title", "status", "days_claimed", "days_awarded", "decided_at");
+      return db("change_requests")
+        .where({ project_id: projectId, type: "eot_only" })
+        .orderBy("created_at", "asc")
+        .select("id", "title", "status", "time_impact_days", "days_awarded", "decided_at");
     },
 
     /** How far the projected finish has moved from the baseline programme. */

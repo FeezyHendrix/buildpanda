@@ -59,7 +59,7 @@ const SYSTEM_PROMPT = [
   "When the user wants to go to a part of the app, or when it helps to point them somewhere, call the navigate tool.",
   "When asked about a document's contents, first call list_documents, then analyze_document with the right id.",
   "For what is outstanding on the drawings, what was redlined or flagged on a sheet, or whether comments are sitting on a superseded revision, use get_drawing_markups. An item whose onCurrentRevision is false was raised against a drawing revision that has since been superseded — call that out, because it may no longer apply or may have been missed in the reissue.",
-  "For where the job stands against the contract programme — the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and pending, how far the finish has shifted from the baseline, and each delay with its days lost, culpability (contractor / client / neutral) and EOT eligibility — use get_schedule_position. A contractor-culpable delay is never claimable as an extension of time; say so rather than implying relief is available.",
+  "For where the job stands against the contract programme — the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and pending (a time claim is a change request of type eot_only, not a separate register), how far the finish has shifted from the baseline, and each delay with its days lost, culpability (contractor / client / neutral) and EOT eligibility — use get_schedule_position. A contractor-culpable delay is never claimable as an extension of time; say so rather than implying relief is available.",
   "If a tool returns no data, say so plainly rather than guessing.",
 ].join(" ");
 

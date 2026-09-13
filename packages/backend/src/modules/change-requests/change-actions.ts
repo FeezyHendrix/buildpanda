@@ -1,6 +1,11 @@
 import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import type { ChangeRequestsRepository, ChangeRequestUpdatePatch } from "./repository.ts";
 import {
+  assertAttachedClaimable,
+  claimsTime,
+  daysToAward,
+} from "./time-claims.ts";
+import {
   appendRevision,
   assertNotSelfDecision,
   assertReason,
@@ -16,18 +21,18 @@ export interface ChangeActionActor {
   holdsApproval: boolean;
 }
 
-/** What executing an approved change does to the programme and the contract. */
+/** What deciding and executing a change does to the programme and the contract. */
 export interface ChangeExecutionDeps {
   /** Refuses execution until the change-order contract is signed. */
   assertExecutable: (row: ChangeRequestRow) => Promise<void>;
   /** Moves the stage's end date by the agreed days. From the stages module. */
   shiftStageEnd?: (projectId: string, stageId: string, days: number) => Promise<void>;
   /**
-   * Awards the days as an extension of time. Wired to the extensions-of-time
-   * module's `applyApprovedEot`, which owns the revised completion date and the
+   * Awards the days against the contract. Wired to the projects module's
+   * `applyTimeAward`, which owns the revised completion date and the
    * contractual key dates that move with it.
    */
-  applyApprovedEot?: (projectId: string, days: number) => Promise<void>;
+  applyTimeAward?: (projectId: string, days: number) => Promise<void>;
   /** Generates the change-order contract and records the variation on approval. */
   onApproved?: (row: ChangeRequestRow, actor: ChangeActionActor) => Promise<void>;
   /** Tells the project the change moved. */
@@ -37,11 +42,12 @@ export interface ChangeExecutionDeps {
 /**
  * The change-request actions.
  *
- * Time impact stops being a number that goes nowhere: on Execute the agreed
- * days actually move the stage they were claimed against, and a time claim
- * (`eot_only`, or one already tied to an EOT claim) awards those days through
- * the extension-of-time module so the revised completion date and the
- * contractual key dates move once, in one place.
+ * Time impact stops being a number that goes nowhere. A time claim (`eot_only`)
+ * is decided, not executed: approving it awards `days_awarded` against the
+ * contract, so the revised completion date and the contractual key dates move
+ * at the moment someone with the approval grant says yes — the same moment the
+ * retired EOT register used to move them. Executing any change still shifts the
+ * stage it was claimed against, which is a programme move, not a contract one.
  */
 export function changeActions(repository: ChangeRequestsRepository, deps: ChangeExecutionDeps) {
   async function owned(projectId: string, id: string): Promise<ChangeRequestRow> {
@@ -50,16 +56,10 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
     return row;
   }
 
-  async function applyTimeImpact(row: ChangeRequestRow): Promise<void> {
+  async function shiftStage(row: ChangeRequestRow): Promise<void> {
     const days = row.time_impact_days;
-    if (days === 0) return;
-    if (row.stage_id && deps.shiftStageEnd) {
-      await deps.shiftStageEnd(row.project_id, row.stage_id, days);
-    }
-    const claimsTime = row.type === "eot_only" || row.eot_claim_id !== null;
-    if (claimsTime && deps.applyApprovedEot) {
-      await deps.applyApprovedEot(row.project_id, days);
-    }
+    if (days === 0 || !row.stage_id || !deps.shiftStageEnd) return;
+    await deps.shiftStageEnd(row.project_id, row.stage_id, days);
   }
 
   return {
@@ -99,6 +99,12 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
             reason,
           }),
         );
+        // A claim is only arguable if every delay behind it is claimable, and
+        // a delay can be re-attributed after it was attached.
+        await assertAttachedClaimable(repository, row);
+        if (claimsTime(row) && Number(patch.time_impact_days ?? row.time_impact_days) <= 0) {
+          throw new BadRequestError("State the days claimed before submitting a time claim");
+        }
       }
 
       if (action === "approve" || action === "reject") {
@@ -107,6 +113,16 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
       }
       if (action === "reject") patch.rejected_reason = reason;
 
+      // The decision that actually buys time. The delays are re-checked here
+      // because approving is the moment the days leave the register and land on
+      // the contract completion date.
+      let award = 0;
+      if (action === "approve" && claimsTime(row)) {
+        await assertAttachedClaimable(repository, row);
+        award = daysToAward(row, input.daysAwarded);
+        patch.days_awarded = award;
+      }
+
       if (action === "execute") {
         await deps.assertExecutable(row);
       }
@@ -114,8 +130,13 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
 
-      if (action === "approve") await deps.onApproved?.(updated, actor);
-      if (action === "execute") await applyTimeImpact(updated);
+      if (action === "approve") {
+        await deps.onApproved?.(updated, actor);
+        if (award !== 0 && deps.applyTimeAward) {
+          await deps.applyTimeAward(updated.project_id, award);
+        }
+      }
+      if (action === "execute") await shiftStage(updated);
       deps.onDecided?.(updated, action, reason, actor);
 
       return updated;

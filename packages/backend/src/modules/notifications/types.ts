@@ -38,8 +38,6 @@ export const NOTIFICATION_TYPES = [
   { type: "change_request_submitted", label: "A change request was submitted for decision", group: "Tasks" },
   { type: "change_request_approved", label: "A change request was approved", group: "Tasks" },
   { type: "change_request_rejected", label: "A change request was rejected", group: "Tasks" },
-  { type: "eot_submitted", label: "An extension-of-time claim was submitted", group: "Project" },
-  { type: "eot_decided", label: "An extension-of-time claim was decided", group: "Project" },
   { type: "permit_expiring", label: "A permit is expiring soon", group: "Project" },
   { type: "permit_expired", label: "A permit has expired", group: "Project" },
   { type: "compliance_doc_expiring", label: "A compliance document is expiring soon", group: "Project" },

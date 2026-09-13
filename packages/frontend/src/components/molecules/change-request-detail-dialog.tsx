@@ -12,6 +12,7 @@ import {
 } from "@/hooks/use-change-requests";
 import { ChangeRequestActions } from "@/components/molecules/change-request-actions";
 import {
+  ChangeClaimDelays,
   ChangeRequestLinks,
   ChangeRequestRevisions,
   ChangeTypeBadge,
@@ -185,8 +186,25 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                     {CHANGE_STATUS_META[cr.status].label}
                   </Badge>
                   <ChangeTypeBadge type={cr.type} />
-                  <span className="text-xs font-medium text-ink">{money(cr.costImpact, cr.currency)}</span>
-                  {cr.timeImpactDays > 0 && <span className="text-xs text-ink-muted">+{cr.timeImpactDays} days</span>}
+                  {cr.type === "eot_only" ? (
+                    <>
+                      <span className="text-xs font-medium text-ink tabular-nums">
+                        {cr.timeImpactDays} {cr.timeImpactDays === 1 ? "day" : "days"} claimed
+                      </span>
+                      <span className="text-xs text-ink-muted tabular-nums">
+                        {cr.daysAwarded === null
+                          ? "Not yet awarded"
+                          : `${cr.daysAwarded} ${cr.daysAwarded === 1 ? "day" : "days"} awarded`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-medium text-ink">{money(cr.costImpact, cr.currency)}</span>
+                      {cr.timeImpactDays > 0 ? (
+                        <span className="text-xs text-ink-muted">+{cr.timeImpactDays} days</span>
+                      ) : null}
+                    </>
+                  )}
                 </div>
                 <Dialog.Title className="mt-2 text-lg font-semibold text-ink">{cr.title}</Dialog.Title>
                 {cr.description && <p className="mt-1.5 whitespace-pre-wrap text-sm text-ink-muted">{cr.description}</p>}
@@ -216,6 +234,7 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
                 <ChangeRequestActions projectId={projectId} cr={cr} />
 
                 <ChangeRequestLinks projectId={projectId} cr={cr} />
+                <ChangeClaimDelays cr={cr} />
                 <ChangeRequestRevisions cr={cr} />
 
                 {cr.costImpact > 0 && <CRBudgetAllocations projectId={projectId} cr={cr} />}

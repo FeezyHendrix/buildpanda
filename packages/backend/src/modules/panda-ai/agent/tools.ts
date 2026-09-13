@@ -176,7 +176,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_schedule_position", "Get the project's contractual schedule position: the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and still pending, how far the projected finish has shifted from the baseline programme, and every delay with its days lost, culpability (contractor / client / neutral) and whether it is claimable as an EOT. Use for 'are we late', 'when do we finish now', 'what is our EOT position', 'what are liquidated damages exposure', 'who is at fault for the delays', or any question about completion, time risk or extensions of time. Liquidated-damages exposure is only reported once the contract carries an LD rate."), async (ctx) => {
+    tool(fn("get_schedule_position", "Get the project's contractual schedule position: the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and still pending (time claims are change requests of type eot_only), how far the projected finish has shifted from the baseline programme, and every delay with its days lost, culpability (contractor / client / neutral) and whether it is claimable as an EOT. Use for 'are we late', 'when do we finish now', 'what is our EOT position', 'what are liquidated damages exposure', 'who is at fault for the delays', or any question about completion, time risk or extensions of time. Liquidated-damages exposure is only reported once the contract carries an LD rate."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const [dates, delays, claims, shift] = await Promise.all([
         repo.scheduleDates(ctx.projectId),
@@ -187,8 +187,11 @@ export function buildTools(): AgentTool[] {
       let eotDaysApproved = 0;
       let eotDaysPending = 0;
       for (const claim of claims) {
-        if (claim.status === "Approved") eotDaysApproved += Number(claim.days_awarded ?? 0);
-        else if (claim.status === "Submitted") eotDaysPending += Number(claim.days_claimed ?? 0);
+        if (claim.status === "Approved" || claim.status === "Executed") {
+          eotDaysApproved += Number(claim.days_awarded ?? 0);
+        } else if (claim.status === "Submitted") {
+          eotDaysPending += Number(claim.time_impact_days ?? 0);
+        }
       }
       const openDelays = delays.filter((d) => d.resolved_at === null);
       return {
@@ -204,10 +207,9 @@ export function buildTools(): AgentTool[] {
           openDelayCount: openDelays.length,
           daysLostOpen: openDelays.reduce((sum, d) => sum + Number(d.days_lost ?? 0), 0),
           claims: claims.map((c) => ({
-            reference: `EOT-${String(c.number).padStart(3, "0")}`,
             title: c.title,
             status: c.status,
-            daysClaimed: Number(c.days_claimed ?? 0),
+            daysClaimed: Number(c.time_impact_days ?? 0),
             daysAwarded: c.days_awarded === null ? null : Number(c.days_awarded),
             decidedAt: c.decided_at,
           })),
