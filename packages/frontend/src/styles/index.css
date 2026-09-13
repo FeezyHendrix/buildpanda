@@ -2,65 +2,9 @@
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 @theme {
-  /* Type: Ernest ships Matter (licensed). Inter is the closest free grotesque. */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 
-  /* Type scale (size / line-height) — Ernest's body-3 / body-2 / body-1 / subtitle-1 / h4 / h3 / h2 / h1 */
-  --text-xs: 12px;   --text-xs--line-height: 20px;
-  --text-sm: 14px;   --text-sm--line-height: 22px;
-  --text-base: 16px; --text-base--line-height: 24px;
-  --text-lg: 18px;   --text-lg--line-height: 26px;
-  --text-xl: 20px;   --text-xl--line-height: 28px;
-  --text-2xl: 24px;  --text-2xl--line-height: 32px;
-  --text-3xl: 26px;  --text-3xl--line-height: 34px;
-  --text-4xl: 36px;  --text-4xl--line-height: 44px;
-
-  /* Radii: 4 / 6 / 8 / 12 — `rounded-lg` (8px) is the default for controls, cards, menus, pills */
-  --radius: 0.5rem;
-
-  /* Shadows: borders do the structural work; shadows are hairlines */
-  --shadow-card: 0px 1px 2px 0.5px rgb(0 0 0 / 0.15);
-  --shadow-sm: 0px 1px 2px 0.5px rgb(0 0 0 / 0.15);
-  --shadow-md: 0px 1px 2px 0.5px rgb(0 0 0 / 0.15);
-  --shadow-lg: 0px 4px 4px 0px rgb(0 0 0 / 0.25);
-  --shadow-xl: 0px 4px 4px 0px rgb(0 0 0 / 0.25);
-  --shadow-drawer: -5px 0px 5px 1px rgb(0 0 0 / 0.25);
-  --shadow-focus: 0px 0px 0px 4px #E6EDFD;
-
-  /* ── Neutral roles (Ernest's warm grey ramp) ─────────────────────────── */
-  --color-ink: #24242E;            /* text.primary */
-  --color-ink-hover: #0037A4;      /* text.primary.hover — link hover, in brand blue */
-  --color-ink-inverted: #FBFBFA;   /* text on dark surfaces */
-  --color-ink-muted: #747581;      /* text.secondary, placeholders, default icon colour */
-  --color-ink-subtle: #5D5E69;     /* third text level */
-  --color-ink-disabled: #DADADD;
-
-  --color-line: #CFCFE4;           /* containers, form rules, drawer/section dividers */
-  --color-line-hover: #C5C4DD;
-  --color-line-hair: #EBEBF4;      /* grid lines, card borders */
-  --color-line-disabled: #EFEFF0;
-  --color-line-dark: #24242E;      /* active tab underline */
-
-  --color-surface: #FFFFFF;        /* page canvas, cards, grid */
-  --color-surface-alt: #FBFBFA;    /* app bar, table header, row hover, secondary-grey buttons */
-  --color-surface-track: #EFEFF0;  /* segmented-control track */
-  --color-surface-info: #F1F7F9;   /* info tint */
-  --color-surface-brand: #EBEBF4;  /* violet tint (counter badges) */
-  --color-sidebar-flyout: #303438;
-
-  /* gray-* is Tailwind's default ramp name used across the app; re-pointed to the warm ramp */
-  --color-gray-50: #FBFBFA;
-  --color-gray-100: #EFEFF0;
-  --color-gray-200: #E4E4EA;
-  --color-gray-300: #DADADD;
-  --color-gray-400: #9C9CA6;
-  --color-gray-500: #747581;
-  --color-gray-600: #5D5E69;
-  --color-gray-700: #3B3C3F;
-  --color-gray-800: #2B2B33;
-  --color-gray-900: #24242E;
-
-  /* primary — BuildPanda blue stays the action colour */
+  /* primary */
   --color-primary-50:  #E6EDFD;
   --color-primary-100: #B0C8F8;
   --color-primary-200: #8BACF1;
@@ -75,86 +19,102 @@
   /* brand — alias of primary-500 (BuildPanda blue) */
   --color-brand: #004DE7;
 
-  /* ── Status vocabulary: success / pending(warning) / negative(error) / other / neutral ── */
-  --color-success-50:  #E7F3E5;
-  --color-success-100: #CDE6C9;
-  --color-success-200: #A9D3A3;
-  --color-success-300: #85BF7C;
-  --color-success-400: #6BAB61;
-  --color-success-500: #58994E;
-  --color-success-600: #447D3D;
-  --color-success-700: #366431;
-  --color-success-800: #284B25;
-  --color-success-900: #1B3319;
+  /* success */
+  --color-success-50:  #E8FCF4;
+  --color-success-100: #B8F7DD;
+  --color-success-200: #96F3CD;
+  --color-success-300: #66EEB6;
+  --color-success-400: #48EAA8;
+  --color-success-500: #1AE592;
+  --color-success-600: #18D085;
+  --color-success-700: #13A368;
+  --color-success-800: #0E7E50;
+  --color-success-900: #0B603D;
 
-  --color-error-50:  #FDF3F3;
-  --color-error-100: #F8D6D4;
-  --color-error-200: #F2B5B2;
-  --color-error-300: #EA8F8A;
-  --color-error-400: #E37670;
-  --color-error-500: #DB5E58;
-  --color-error-600: #C43F39;
-  --color-error-700: #9E322D;
-  --color-error-800: #782622;
-  --color-error-900: #511A17;
-  --color-negative-50: #FDF3F3;
-  --color-negative-500: #DB5E58;
-  --color-negative-600: #C43F39;
+  /* error */
+  --color-error-50:  #FDEAE8;
+  --color-error-100: #F8BFB9;
+  --color-error-200: #F5A097;
+  --color-error-300: #F07467;
+  --color-error-400: #ED5949;
+  --color-error-500: #E9301C;
+  --color-error-600: #D42C19;
+  --color-error-700: #A52214;
+  --color-error-800: #801A0F;
+  --color-error-900: #62140C;
 
-  --color-warning-50:  #FBEBDA;
-  --color-warning-100: #F7D5B5;
-  --color-warning-200: #F1BB8C;
-  --color-warning-300: #EA9E60;
-  --color-warning-400: #E48843;
-  --color-warning-500: #DE732C;
-  --color-warning-600: #D05E26;
-  --color-warning-700: #A84B1E;
-  --color-warning-800: #803917;
-  --color-warning-900: #58270F;
-  --color-pending-50: #FBEBDA;
-  --color-pending-500: #DE732C;
-  --color-pending-600: #D05E26;
+  /* black */
+  --color-black-50:  #E7E7E7;
+  --color-black-100: #B5B5B5;
+  --color-black-200: #929292;
+  --color-black-300: #606060;
+  --color-black-400: #414141;
+  --color-black-500: #111111;
+  --color-black-600: #0F0F0F;
+  --color-black-700: #0C0C0C;
+  --color-black-800: #090909;
+  --color-black-900: #070707;
 
-  --color-other-50: #F1F7F9;
-  --color-other-500: #4A89A7;
-  --color-other-600: #386580;
+  /* grey */
+  --color-grey-50:  #EDEDED;
+  --color-grey-100: #C8C8C8;
+  --color-grey-200: #ADADAD;
+  --color-grey-300: #888888;
+  --color-grey-400: #717171;
+  --color-grey-500: #4D4D4D;
+  --color-grey-600: #464646;
+  --color-grey-700: #373737;
+  --color-grey-800: #2A2A2A;
+  --color-grey-900: #202020;
 
-  --color-neutral-50: #EFEFF0;
-  --color-neutral-500: #747581;
-  --color-neutral-600: #5D5E69;
+  /* semantic roles used across pages — mapped onto the existing palette */
+  --color-ink: #131B2E;
+  --color-ink-hover: #004DE7;
+  --color-ink-inverted: #FFFFFF;
+  --color-ink-muted: #606060;
+  --color-ink-subtle: #414141;
+  --color-ink-disabled: #B5B5B5;
+  --color-line: #EDEDED;
+  --color-line-hover: #C8C8C8;
+  --color-line-hair: #F0F0F0;
+  --color-line-disabled: #EDEDED;
+  --color-line-dark: #111111;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F6F6F6;
+  --color-surface-track: #F6F6F6;
+  --color-surface-info: #E6EDFD;
+  --color-surface-brand: #EDE7FF;
+  --color-sidebar-flyout: #111111;
+  --color-negative-50: #FDECEC;
+  --color-negative-500: #C72525;
+  --color-negative-600: #A52214;
+  --color-pending-50: #FFF3E0;
+  --color-pending-500: #C26A00;
+  --color-pending-600: #A85A00;
+  --color-other-50: #E6EDFD;
+  --color-other-500: #004DE7;
+  --color-other-600: #0046D2;
+  --color-neutral-50: #F6F6F6;
+  --color-neutral-500: #606060;
+  --color-neutral-600: #414141;
+  --color-accent-50: #EDE7FF;
+  --color-accent-500: #5A3DD0;
+  --color-accent-600: #4A30B0;
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-drawer: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-focus: 0 0 0 2px rgb(17 24 39 / 0.1);
 
-  --color-accent-50: #EBEBF4;
-  --color-accent-500: #8A7EAD;
-  --color-accent-600: #776C96;
-
-  /* black — legacy ramp used as text greys (black-300 = muted, black-500 = ink) */
-  --color-black-50:  #EFEFF0;
-  --color-black-100: #DADADD;
-  --color-black-200: #9C9CA6;
-  --color-black-300: #747581;
-  --color-black-400: #3B3C3F;
-  --color-black-500: #24242E;
-  --color-black-600: #1E1E26;
-  --color-black-700: #18181E;
-  --color-black-800: #121216;
-  --color-black-900: #0C0C0E;
-
-  /* grey — legacy ramp */
-  --color-grey-50:  #EFEFF0;
-  --color-grey-100: #DADADD;
-  --color-grey-200: #9C9CA6;
-  --color-grey-300: #747581;
-  --color-grey-400: #5D5E69;
-  --color-grey-500: #3B3C3F;
-  --color-grey-600: #33343A;
-  --color-grey-700: #2B2B33;
-  --color-grey-800: #24242E;
-  --color-grey-900: #1E1E26;
-}
-
-/* Ernest's sidebar gradient — a utility because gradients have no @theme namespace. */
-@utility bg-sidebar-gradient {
-  background: linear-gradient(175deg, #131619 0%, #22282E 100%);
+  /* warning */
+  --color-warning-50:  #FAFFE6;
+  --color-warning-100: #EEFFB0;
+  --color-warning-200: #E6FF8A;
+  --color-warning-300: #D8FF54;
+  --color-warning-400: #D3FF33;
+  --color-warning-500: #C8FF00;
+  --color-warning-600: #B6E800;
+  --color-warning-700: #8EB500;
+  --color-warning-800: #6E8C00;
+  --color-warning-900: #546B00;
 }
 
 button:not(:disabled),
@@ -172,7 +132,7 @@ button:disabled,
 /* Written outside @layer so @tailwindcss/vite emits them in both dev + build. */
 :root {
   --background: oklch(1 0 0);
-  --foreground: #24242E;
+  --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -182,20 +142,20 @@ button:disabled,
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: #747581;
+  --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: #E9301C;
   --destructive-foreground: oklch(0.985 0 0);
-  --border: #EBEBF4;
-  --input: #CFCFE4;
-  --ring: #E6EDFD;
+  --border: oklch(92.191% 0.0001 271.152 / 0.618);
+  --input: oklch(0.922 0 0);
+  --ring: #3371EE;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.067);
-  --radius: 0.5rem;
+  --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: #004DE7;
@@ -281,13 +241,6 @@ button:disabled,
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-body {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-size: var(--text-sm);
-  line-height: var(--text-sm--line-height);
-}
-
 input:not([type="checkbox"]):not([type="radio"]) {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -300,9 +253,15 @@ input[type="radio"] {
   accent-color: var(--color-brand);
 }
 
-:focus,
 :focus-visible {
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Or if you're using plain focus */
+:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 
@@ -315,6 +274,12 @@ input[type="radio"] {
   display: none;
 }
 
+/* Desktop density: rem-based 90% scaling. CSS `zoom` is NOT an option here —
+   Floating UI positions anchored popups (comboboxes, menus, tooltips) in
+   coordinates that html zoom re-scales, shifting every popup by ~10%. */
+@media (min-width: 768px) and (pointer: fine) {
+  html { font-size: 90%; }
+}
 
 .bp-gantt .wx-willow-theme {
   --wx-gantt-task-color: var(--color-primary-500);

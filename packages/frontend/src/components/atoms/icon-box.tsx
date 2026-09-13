@@ -19,19 +19,19 @@ interface IconBoxProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const toneStyles: Record<IconBoxTone, string> = {
-  brand: "bg-primary-50 text-primary-500",
+  brand: "bg-[#E6EFFE] text-[#004DE7]",
   orange: "bg-[#FFEFD9] text-[#D8741F]",
-  green: "bg-success-50 text-success-500",
-  purple: "bg-accent-50 text-accent-500",
-  amber: "bg-warning-50 text-warning-500",
-  red: "bg-negative-50 text-negative-500",
-  gray: "bg-surface-alt text-gray-700",
+  green: "bg-[#E8F7EE] text-[#1B8E45]",
+  purple: "bg-[#EDE7FF] text-[#5A3DD0]",
+  amber: "bg-[#FFF3E0] text-[#C26A00]",
+  red: "bg-[#FDECEC] text-[#C72525]",
+  gray: "bg-[#F6F6F6] text-gray-700",
 };
 
 const sizeStyles: Record<IconBoxSize, string> = {
   sm: "size-9 rounded-lg [&_svg]:size-4 [&_img]:size-4",
-  md: "size-11 rounded-lg [&_svg]:size-5 [&_img]:size-5",
-  lg: "size-14 rounded-lg [&_svg]:size-6 [&_img]:size-6",
+  md: "size-11 rounded-xl [&_svg]:size-5 [&_img]:size-5",
+  lg: "size-14 rounded-2xl [&_svg]:size-6 [&_img]:size-6",
 };
 
 const IconBox = forwardRef<HTMLDivElement, IconBoxProps>(

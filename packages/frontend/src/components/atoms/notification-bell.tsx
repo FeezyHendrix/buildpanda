@@ -28,8 +28,8 @@ const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellProps>(
       type="button"
       aria-label={count > 0 ? `${count} notifications` : "Notifications"}
       className={cn(
-        "relative inline-flex size-8 items-center justify-center rounded-full text-ink-muted transition-colors",
-        "outline-none hover:bg-black/5 hover:text-ink focus-visible:shadow-focus",
+        "relative inline-flex size-9 items-center justify-center rounded-full bg-white text-gray-600",
+        "outline-none hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-900/10",
         className,
       )}
       {...props}
@@ -38,7 +38,7 @@ const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellProps>(
       {count > 0 && (
         <span
           className={cn(
-            "absolute right-0 top-0 flex items-center justify-center rounded-full bg-negative-500 font-semibold leading-none text-white tabular-nums",
+            "absolute right-0 top-0 flex items-center justify-center rounded-full bg-red-500 font-semibold leading-none text-white tabular-nums",
             count > 9
               ? "h-4 min-w-4 px-1 text-[8px]"
               : "size-4 text-[10px]",

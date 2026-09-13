@@ -1,13 +1,12 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/atoms/button";
-import { DrawerCloseButton } from "@/components/molecules/drawer-chrome";
 import { cn } from "@/lib/utils";
 
 type FormDrawerWidth = "md" | "lg" | "xl";
 
 const WIDTH_CLASS: Record<FormDrawerWidth, string> = {
-  md: "w-[min(520px,100vw)]",
+  md: "w-[min(480px,100vw)]",
   lg: "w-[min(640px,100vw)]",
   xl: "w-[min(750px,100vw)]",
 };
@@ -28,10 +27,6 @@ interface FormDrawerProps {
   className?: string;
 }
 
-/**
- * The right-hand form drawer: 24/32 header with a close X, 40px-rhythm body,
- * [Cancel · text][Submit · primary] footer pinned to the bottom right.
- */
 function FormDrawer({
   open,
   onOpenChange,
@@ -58,48 +53,45 @@ function FormDrawer({
       <Dialog.Portal>
         <Dialog.Backdrop
           className={cn(
-            "fixed inset-0 z-50 bg-black/30 transition-opacity duration-300",
+            "fixed inset-0 z-50 bg-black/30 backdrop-blur-sm transition-opacity duration-300",
             "data-[starting-style]:opacity-0 data-[ending-style]:opacity-0",
           )}
         />
         <Dialog.Popup
           className={cn(
-            "fixed inset-y-0 right-0 z-50 flex flex-col border-l border-line-hair bg-white shadow-drawer outline-none",
+            "fixed inset-y-0 right-0 z-50 flex flex-col bg-white shadow-xl outline-none",
+            WIDTH_CLASS[width],
             "transition-transform duration-300 ease-out",
             "data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full",
-            WIDTH_CLASS[width],
             className,
           )}
         >
           <form onSubmit={handleSubmit} className="flex h-full flex-col">
-            <header className="flex items-start justify-between gap-8 border-b border-line px-8 py-6">
-              <div className="min-w-0 flex-1">
-                <Dialog.Title className="text-2xl font-medium text-ink">
-                  {title}
-                </Dialog.Title>
-                {description && (
-                  <Dialog.Description className="mt-1 text-sm text-ink-muted text-pretty">
-                    {description}
-                  </Dialog.Description>
-                )}
-              </div>
-              <DrawerCloseButton />
+            <header className="border-b border-[#F0F0F0] px-6 py-5">
+              <Dialog.Title className="text-lg font-semibold text-gray-900">
+                {title}
+              </Dialog.Title>
+              {description && (
+                <Dialog.Description className="mt-1.5 text-sm text-gray-500 text-pretty">
+                  {description}
+                </Dialog.Description>
+              )}
             </header>
 
-            <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-8 py-8">
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
               {children}
             </div>
 
             {error && (
-              <p className="mx-8 mb-3 rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">
+              <p className="mx-6 mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
                 {error}
               </p>
             )}
 
-            <footer className="flex items-center justify-end gap-4 px-8 pb-8 pt-6">
+            <footer className="flex items-center justify-end gap-2 border-t border-[#F0F0F0] px-6 py-4">
               <Dialog.Close
                 render={
-                  <Button type="button" variant="ghost" size="md">
+                  <Button type="button" variant="secondary" size="sm" className="h-9 px-4 text-sm">
                     {cancelLabel}
                   </Button>
                 }
@@ -107,11 +99,11 @@ function FormDrawer({
               <Button
                 type="submit"
                 variant="primary"
-                size="md"
-                loading={submitting}
+                size="sm"
                 disabled={submitting || submitDisabled}
+                className="h-9 px-4 text-sm"
               >
-                {submitLabel}
+                {submitting ? "Submitting…" : submitLabel}
               </Button>
             </footer>
           </form>

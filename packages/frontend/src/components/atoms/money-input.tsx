@@ -1,5 +1,4 @@
 import { useCallback, useMemo, type InputHTMLAttributes } from "react";
-import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 interface MoneyInputProps
@@ -44,7 +43,7 @@ export function MoneyInput({
   return (
     <div className="relative">
       {currencySymbol && (
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-ink-muted">
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-medium text-gray-500">
           {currencySymbol}
         </span>
       )}
@@ -54,7 +53,11 @@ export function MoneyInput({
         value={displayValue}
         onChange={handleChange}
         className={cn(
-          INPUT_CLASS,
+          "flex h-11 w-full rounded-lg bg-[#F6F6F6] px-4 font-sans text-base lg:text-sm text-gray-900",
+          "border-0 outline-none ring-0",
+          "placeholder:text-gray-400",
+          "focus-visible:ring-2 focus-visible:ring-gray-900/10",
+          "disabled:cursor-not-allowed disabled:opacity-50",
           "text-right tabular-nums",
           currencySymbol && "pl-9",
           className,

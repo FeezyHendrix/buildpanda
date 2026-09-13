@@ -6,7 +6,7 @@ import {
   useOutletContext,
   useParams,
 } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Spinner } from "@/components/atoms/spinner";
 import { ErrorBoundary } from "@/components/atoms/error-boundary";
 import { Breadcrumbs } from "@/components/molecules/breadcrumbs";
@@ -21,7 +21,6 @@ import { useProject } from "@/hooks/use-projects";
 import { useProjectAccess } from "@/hooks/use-participants";
 import { useFeatureFlag, useFeatureFlags } from "@/hooks/use-feature-flags";
 import { BuildingScopeProvider } from "@/contexts/building-scope-context";
-import { AppBarTitleProvider, type AppBarTitleApi } from "@/contexts/app-bar-title-context";
 import { useProjectBreadcrumbs } from "./use-project-breadcrumbs";
 import type { Session } from "@/stores/auth";
 import type { Project, ProjectAccess } from "@/lib/project-types";
@@ -43,8 +42,6 @@ export default function ProjectLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pageTitle, setPageTitle] = useState<string | null>(null);
-  const titleApi = useMemo<AppBarTitleApi>(() => ({ setTitle: setPageTitle }), []);
   const { data: featureFlags } = useFeatureFlags();
   const pandaAiChatEnabled =
     featureFlags?.flags.some((flag) => flag.key === "ai.chatAgent" && flag.enabled) ?? false;
@@ -68,8 +65,7 @@ export default function ProjectLayout() {
 
   if (!project) {
     return (
-      <div className="flex h-dvh flex-col">
-        <AppBar session={session} onLogout={logout} title="Project" />
+      <AppShell session={session} onLogout={logout}>
         <main className="flex flex-1 items-center justify-center px-6">
           <EmptyState
             title="Project not found"
@@ -77,67 +73,42 @@ export default function ProjectLayout() {
             action={{ label: "Back to home", onClick: () => navigate("/") }}
           />
         </main>
-      </div>
+      </AppShell>
     );
   }
 
-  const user = { name: session.user.name, email: session.user.email, avatarUrl: session.user.image };
-
   return (
     <BuildingScopeProvider projectId={project.id}>
-      <AppBarTitleProvider value={titleApi}>
-        <div className="flex h-dvh overflow-hidden">
-          <ProjectSidebar
-            project={project}
-            access={access}
-            user={user}
-            onLogout={logout}
-            open={sidebarOpen}
-            onClose={() => setSidebarOpen(false)}
-            onOpen={() => setSidebarOpen(true)}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <ProjectAppBar project={project} access={access} session={session} onLogout={logout} pageTitle={pageTitle} />
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-surface no-scrollbar">
-                <ProjectBreadcrumbs project={project} access={access} />
-                <div className="relative flex min-h-0 flex-1 flex-col">
-                  <ErrorBoundary>
-                    <Outlet context={{ project, access } satisfies ProjectOutletContext} />
-                  </ErrorBoundary>
-                </div>
-              </main>
-              {pandaAiChatEnabled && !location.pathname.endsWith("/chat") && (
-                <PandaAiPane projectId={project.id} />
-              )}
-              {access &&
-                access.relationship !== "none" &&
-                access.capabilities.canComment &&
-                !location.pathname.endsWith("/chat") && (
-                  <QuickCapture projectId={project.id} />
-                )}
-            </div>
+    <AppShell session={session} onLogout={logout}>
+      <div className="flex flex-1 overflow-hidden no-scrollbar">
+        <ProjectSidebar
+          project={project}
+          access={access}
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onOpen={() => setSidebarOpen(true)}
+        />
+        <main className="flex flex-1 flex-col overflow-y-auto no-scrollbar">
+          <ProjectBreadcrumbs project={project} access={access} />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <ErrorBoundary>
+              <Outlet context={{ project, access } satisfies ProjectOutletContext} />
+            </ErrorBoundary>
           </div>
-        </div>
-      </AppBarTitleProvider>
+        </main>
+        {pandaAiChatEnabled && !location.pathname.endsWith("/chat") && (
+          <PandaAiPane projectId={project.id} />
+        )}
+        {access &&
+          access.relationship !== "none" &&
+          access.capabilities.canComment &&
+          !location.pathname.endsWith("/chat") && (
+            <QuickCapture projectId={project.id} />
+          )}
+      </div>
+    </AppShell>
     </BuildingScopeProvider>
   );
-}
-
-interface ProjectAppBarProps {
-  project: Project;
-  access: ProjectAccess | undefined;
-  session: Session;
-  onLogout: () => void;
-  /** Title registered by the page's `PageHeader`; falls back to the last breadcrumb. */
-  pageTitle: string | null;
-}
-
-/** The 64px app bar: page title on the left, search, notifications and the user on the right. */
-function ProjectAppBar({ project, access, session, onLogout, pageTitle }: ProjectAppBarProps) {
-  const items = useProjectBreadcrumbs(project, access?.relationship !== "company");
-  const title = pageTitle ?? items[items.length - 1]?.label ?? project.name;
-  return <AppBar session={session} onLogout={onLogout} title={title} />;
 }
 
 interface ProjectBreadcrumbsProps {
@@ -148,33 +119,37 @@ interface ProjectBreadcrumbsProps {
 function ProjectBreadcrumbs({ project, access }: ProjectBreadcrumbsProps) {
   const items = useProjectBreadcrumbs(project, access?.relationship !== "company");
   return (
-    <div className="shrink-0 px-6 pt-6">
+    <div className="shrink-0 px-4 pt-6 sm:px-10 lg:px-6">
       <Breadcrumbs items={items} />
     </div>
   );
 }
 
-interface AppBarProps {
+interface AppShellProps {
   session: Session;
   onLogout: () => void;
-  title: string;
+  children: ReactNode;
 }
 
-function AppBar({ session, onLogout, title }: AppBarProps) {
+function AppShell({ session, onLogout, children }: AppShellProps) {
   const notificationsEnabled = useFeatureFlag("collaboration.notifications");
   return (
-    <Navbar
-      title={title}
-      showNotifications={notificationsEnabled}
-      userSlot={
-        <UserMenu
-          name={session.user.name}
-          email={session.user.email}
-          avatarUrl={session.user.image}
-          onLogout={onLogout}
-        />
-      }
-    />
+    <div className="flex h-dvh flex-col">
+      <Navbar
+        showLogo
+        sticky
+        showNotifications={notificationsEnabled}
+        userSlot={
+          <UserMenu
+            name={session.user.name}
+            email={session.user.email}
+            avatarUrl={session.user.image}
+            onLogout={onLogout}
+          />
+        }
+      />
+      {children}
+    </div>
   );
 }
 

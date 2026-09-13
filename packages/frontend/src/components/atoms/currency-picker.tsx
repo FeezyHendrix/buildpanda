@@ -21,11 +21,11 @@ function CurrencyPicker({
           type="button"
           onClick={() => onChange(curr)}
           className={cn(
-            "h-[38px] rounded-lg border px-3 text-sm font-medium transition-colors",
-            "outline-none focus-visible:shadow-focus",
+            "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+            "outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10",
             value === curr
-              ? "border-primary-500 bg-primary-50 text-primary-600"
-              : "border-line bg-white text-ink hover:bg-surface-alt",
+              ? "bg-[#F0F4FF] text-[#004DE7]"
+              : "bg-[#F6F6F6] text-gray-600 hover:bg-gray-200",
           )}
         >
           {curr}

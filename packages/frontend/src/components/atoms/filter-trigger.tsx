@@ -3,27 +3,27 @@ import { cn } from "@/lib/utils";
 
 /**
  * The one look for every control that opens a filter popover — dropdowns, the
- * date range, the category select in a filter row. Outlined and neutral at
- * rest, brand-tinted on hover and while open; the label says what is applied.
+ * date range, the category select in a filter row. Neutral at rest; the label
+ * says what is applied, so the trigger never changes colour to say so.
  */
 export const FILTER_TRIGGER_CLASS =
-  "inline-flex h-[38px] items-center gap-1 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink transition-colors hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 aria-expanded:border-primary-500 aria-expanded:bg-primary-50 aria-expanded:text-primary-600 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:shadow-focus disabled:cursor-not-allowed disabled:border-line-disabled disabled:bg-surface-alt disabled:text-ink-disabled";
+  "inline-flex h-9 items-center gap-2 rounded-lg border border-[#F0F0F0] bg-white px-3 text-[13px] font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/10 disabled:cursor-not-allowed disabled:opacity-50";
 
 export function FilterChevron() {
   return (
     <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="shrink-0 text-ink-muted"
+      className="shrink-0 text-gray-400"
     >
-      <path d="m4 6 4 4 4-4" />
+      <path d="m3 4.5 3 3 3-3" />
     </svg>
   );
 }
@@ -31,7 +31,7 @@ export function FilterChevron() {
 interface FilterTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Optional leading icon (e.g. a calendar for a date range). */
   icon?: ReactNode;
-  /** Number of applied values; renders the small brand counter. */
+  /** Number of applied values; renders a small counter. */
   count?: number;
   children: ReactNode;
 }
@@ -39,10 +39,10 @@ interface FilterTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const FilterTrigger = forwardRef<HTMLButtonElement, FilterTriggerProps>(
   ({ icon, count, children, className, type = "button", ...props }, ref) => (
     <button ref={ref} type={type} className={cn(FILTER_TRIGGER_CLASS, className)} {...props}>
-      {icon ? <span className="flex shrink-0 text-ink-muted [&>svg]:size-4">{icon}</span> : null}
+      {icon ? <span className="flex shrink-0 text-gray-400 [&>svg]:size-3.5">{icon}</span> : null}
       <span className="truncate">{children}</span>
       {count ? (
-        <span className="flex size-[18px] shrink-0 items-center justify-center rounded-sm bg-primary-500 text-[10px] font-medium leading-none text-white">
+        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[#004DE7] px-1 text-[10px] font-semibold leading-none text-white">
           {count}
         </span>
       ) : null}

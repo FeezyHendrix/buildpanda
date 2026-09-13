@@ -21,8 +21,6 @@ type NavbarProps = {
   sticky?: boolean;
   searchPlaceholder?: string;
   leadingSlot?: ReactNode;
-  /** Page title shown on the left (Ernest's app bar). When set the logo is not shown — the sidebar carries it. */
-  title?: string;
   // Either is optional: a slim topbar (e.g. when the user lives in a sidebar)
   // can render with neither, leaving just search + notifications.
   userSlot?: ReactNode;
@@ -38,7 +36,6 @@ function Navbar({
   sticky = false,
   searchPlaceholder = "Search Build Panda",
   leadingSlot,
-  title,
   userSlot,
   className,
 }: NavbarProps) {
@@ -64,17 +61,14 @@ function Navbar({
   return (
     <nav
       className={cn(
-        "flex h-16 shrink-0 items-center justify-between gap-4 border-b border-line-hair bg-surface-alt px-4",
-        title ? "lg:px-6" : "lg:grid lg:grid-cols-3 lg:px-8",
+        "flex h-16 items-center justify-between border-b border-[#F6F6F6] bg-white px-4 py-3",
+        "lg:grid lg:grid-cols-3 lg:px-8",
         sticky && "sticky top-0 z-40",
         className,
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        {title ? (
-          <h1 className="truncate text-2xl font-medium text-ink">{title}</h1>
-        ) : null}
-        {showLogo && !title && (
+        {showLogo && (
           <Link to="/" className="shrink-0">
             <img src={logo} alt="BuildPanda" className="h-8 lg:h-9" />
           </Link>
@@ -87,16 +81,13 @@ function Navbar({
         )}
       </div>
 
-      {/* Search — hidden on mobile to avoid overflow; centred in the 3-column (logo) layout */}
-      {title ? null : (
-        <div className="hidden lg:flex lg:justify-center">
-          <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
-        </div>
-      )}
+      {/* Search — hidden on mobile to avoid overflow, centered on desktop */}
+      <div className="hidden lg:flex lg:justify-center">
+        <GlobalSearch className="w-72" placeholder={searchPlaceholder} />
+      </div>
 
-      <div className="flex min-w-0 items-center justify-end gap-4">
-        {title ? <GlobalSearch className="hidden w-[300px] lg:block" placeholder={searchPlaceholder} /> : null}
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-2 rounded-full bg-[#F6F6F6] p-1.5">
           {showNotifications && (
             <div ref={notificationsRef} className="relative">
               <NotificationBell
@@ -105,10 +96,10 @@ function Navbar({
                 aria-expanded={notificationsOpen}
               />
               {notificationsOpen && (
-                <div className="absolute -right-15 lg:-right-10 top-full z-50 mt-2 w-80 overflow-hidden rounded-lg border border-line bg-white shadow-card">
-                  <div className="flex items-center justify-between border-b border-line-hair px-4 py-3">
+                <div className="absolute -right-15 lg:-right-10 top-full z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                  <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium text-ink">Notifications</p>
+                      <p className="text-sm font-semibold text-gray-900">Notifications</p>
                       <p className="text-xs text-gray-500">{resolvedNotificationCount} unread</p>
                     </div>
                     {resolvedNotificationCount > 0 && (
@@ -135,7 +126,7 @@ function Navbar({
                             navigate(notificationHref(notification));
                           }}
                           className={cn(
-                            "flex w-full gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-black/5",
+                            "flex w-full gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-gray-50",
                             !notification.readAt && "bg-primary-50/60",
                           )}
                         >

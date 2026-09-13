@@ -7,25 +7,21 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
   padding?: CardPadding;
   bordered?: boolean;
   interactive?: boolean;
-  /** Drop the hairline shadow (nested cards, tiles inside a drawer). */
-  flat?: boolean;
 }
 
 const paddingStyles: Record<CardPadding, string> = {
   none: "p-0",
   sm: "p-4",
-  md: "p-6",
-  lg: "p-8",
+  md: "p-5",
+  lg: "p-6",
 };
 
-/** White, 8px corners, hairline border and an almost invisible shadow — the borders do the work. */
 const Card = forwardRef<HTMLDivElement, CardProps>(
   (
     {
       padding = "md",
       bordered = true,
       interactive = false,
-      flat = false,
       className,
       ...props
     },
@@ -34,11 +30,10 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-lg bg-white",
-        bordered && "border border-line-hair",
-        !flat && "shadow-card",
+        "rounded-2xl bg-white",
+        bordered && "border border-[#EDEDED]",
         interactive &&
-          "cursor-pointer transition-colors hover:bg-surface-alt focus-visible:shadow-focus",
+          "cursor-pointer transition-shadow hover:shadow-sm focus-visible:ring-2 focus-visible:ring-gray-900/10",
         paddingStyles[padding],
         className,
       )}
