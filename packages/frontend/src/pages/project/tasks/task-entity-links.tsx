@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
 import { Label } from "@/components/atoms/label";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
-import { useActionItems } from "@/hooks/use-action-items";
 import { useProjectRfis } from "@/hooks/use-rfis";
 import { useChangeRequests } from "@/hooks/use-change-requests";
 import { useMaterialOrders } from "@/hooks/use-materials-equipment";
@@ -31,10 +30,9 @@ export function TaskEntityLinks({
   const addEntityLink = useAddEntityLink(projectId, taskId);
   const deleteEntityLink = useDeleteEntityLink(projectId, taskId);
 
-  const [entityType, setEntityType] = useState<TaskEntityType>("action_item");
+  const [entityType, setEntityType] = useState<TaskEntityType>("rfi");
   const [entityTarget, setEntityTarget] = useState<string | null>(null);
 
-  const actionItems = useActionItems(projectId);
   const rfis = useProjectRfis(projectId);
   const changeRequests = useChangeRequests(projectId);
   const materialOrders = useMaterialOrders(projectId);
@@ -43,7 +41,6 @@ export function TaskEntityLinks({
 
   const candidatesByType = useMemo<Record<TaskEntityType, ComboItem[]>>(
     () => ({
-      action_item: (actionItems.data ?? []).map((i) => ({ id: i.id, label: i.title })),
       rfi: (rfis.data ?? []).map((i) => ({ id: i.id, label: i.subject })),
       change_request: (changeRequests.data ?? []).map((i) => ({ id: i.id, label: i.title })),
       material: (materialOrders.data ?? []).map((i) => ({ id: i.id, label: i.materialName })),
@@ -53,7 +50,7 @@ export function TaskEntityLinks({
       })),
       milestone_payment: (finances.data?.milestones ?? []).map((i) => ({ id: i.id, label: i.name })),
     }),
-    [actionItems.data, rfis.data, changeRequests.data, materialOrders.data, invoices.data, finances.data],
+    [rfis.data, changeRequests.data, materialOrders.data, invoices.data, finances.data],
   );
 
   const linkedIds = useMemo(() => new Set(entityLinks.map((l) => `${l.entityType}:${l.entityId}`)), [entityLinks]);

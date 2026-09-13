@@ -11,22 +11,3 @@ export function useProjectInsights(projectId: string | undefined) {
     enabled: Boolean(projectId),
   });
 }
-
-export function useGlobalWhatsNext(days = 14) {
-  return useQuery({
-    queryKey: ["whats-next", "global", days],
-    queryFn: async () => {
-      return insightsApi.getGlobalWhatsNext(days);
-    },
-  });
-}
-
-export function useWhatsNext(projectId: string | undefined, days = 14) {
-  return useQuery({
-    queryKey: [...insightKeys.whatsNext(projectId ?? "__none__"), days],
-    queryFn: async () => {
-      return insightsApi.getWhatsNext(projectId!, days);
-    },
-    enabled: Boolean(projectId),
-  });
-}

@@ -32,7 +32,7 @@ export interface MessagingDeps {
   realtime?: RealtimeHub;
   references?: ReferenceResolver;
   enqueueChatEmail?: (reminder: ChatEmailReminder) => Promise<void>;
-  createActionItem?: (
+  createTask?: (
     projectId: string,
     input: { title: string; description?: string | null },
     userId: string,
@@ -656,8 +656,8 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       return toMessage(row);
     },
 
-    async forwardToActionItem(messageId: string, userId: string): Promise<{ id: string }> {
-      if (!deps.createActionItem) throw new ForbiddenError("Action items are unavailable");
+    async forwardToTask(messageId: string, userId: string): Promise<{ id: string }> {
+      if (!deps.createTask) throw new ForbiddenError("Tasks are unavailable");
       const row = await repository.findMessageById(messageId);
       if (!row || row.deleted_at) throw new NotFoundError("Message");
       await requireMembership(row.channel_id, userId);
@@ -666,7 +666,7 @@ export function messagingService(repository: MessagingRepository, deps: Messagin
       const text = (row.body ?? "").trim();
       const title = text.length > 0 ? text.slice(0, 120) : "Message from chat";
       const description = `Forwarded from chat${row.author_name ? ` (${row.author_name})` : ""}: ${text}`;
-      return deps.createActionItem(channel.project_id, { title, description }, userId);
+      return deps.createTask(channel.project_id, { title, description }, userId);
     },
   };
 }

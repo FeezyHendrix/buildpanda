@@ -195,7 +195,7 @@ const createEntityLinkBody = {
   properties: {
     entityType: {
       type: "string",
-      enum: ["action_item", "rfi", "change_request", "material", "invoice", "milestone_payment"],
+      enum: ["rfi", "change_request", "material", "invoice", "milestone_payment"],
     },
     entityId: { type: "string", minLength: 1, maxLength: 100 },
   },

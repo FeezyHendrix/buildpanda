@@ -35,6 +35,16 @@ export const adminKeys = {
     list: (args: ListArgs) => [...adminKeys.importJobs.all(), "list", args] as const,
     detail: (id: string) => [...adminKeys.importJobs.all(), "detail", id] as const,
   },
+  inspectionCategories: {
+    all: () => [...adminKeys.all, "inspection-categories"] as const,
+    list: (includeArchived: boolean) =>
+      [...adminKeys.inspectionCategories.all(), { includeArchived }] as const,
+  },
+  inspectionRequests: {
+    all: () => [...adminKeys.all, "inspection-requests"] as const,
+    list: (args: Record<string, unknown>) =>
+      [...adminKeys.inspectionRequests.all(), "list", args] as const,
+  },
   settings: {
     all: () => [...adminKeys.all, "settings"] as const,
     maintenance: () => [...adminKeys.settings.all(), "maintenance"] as const,

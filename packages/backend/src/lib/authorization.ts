@@ -130,8 +130,8 @@ function canModify(project: ProjectScope, ctx: AccessContext): boolean {
 }
 
 /**
- * Actions that belong to the homeowner: deciding approvals, raising queries,
- * commenting. Allowed for company staff with write access OR an active "client"
+ * Actions that belong to the homeowner: deciding approvals, deciding
+ * selections, commenting. Allowed for company staff with write access OR an active "client"
  * participant. Company viewers and unrelated users are rejected.
  */
 export function assertCanActAsClient(project: ProjectScope, ctx: AccessContext): void {

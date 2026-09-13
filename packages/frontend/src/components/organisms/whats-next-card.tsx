@@ -96,7 +96,7 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
       case "Finance":
         return `/project/${projectId}/finances`;
       case "Schedule":
-        return `/project/${projectId}/whats-next`;
+        return `/project/${projectId}/schedules/stages`;
       default:
         return `/project/${projectId}/panda-ai`;
     }
@@ -166,16 +166,6 @@ export function WhatsNextCard({ projectId }: WhatsNextCardProps) {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="border-t border-[#EDEDED] px-7 py-3.5">
-        <Link
-          to={`/project/${projectId}/whats-next`}
-          className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:gap-1.5"
-        >
-          View all recommendations
-          <ChevronRightIcon className="size-3.5" />
-        </Link>
       </div>
     </Card>
   );

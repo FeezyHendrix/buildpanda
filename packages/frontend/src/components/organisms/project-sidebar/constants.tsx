@@ -12,7 +12,6 @@ import {
   FinancesIcon,
   InspectionsIcon,
   MaterialsIcon,
-  MessagesIcon,
   OverviewIcon,
   TrendingUpIcon,
   UpdatesIcon,
@@ -210,13 +209,6 @@ export const CLIENT_ENTRIES: readonly NavEntry[] = [
     resource: "schedule",
     Icon: CalendarIcon,
     flag: "projects.schedule",
-  },
-  {
-    label: "Queries",
-    slug: "queries",
-    resource: "queries",
-    Icon: MessagesIcon,
-    flag: "workflow.queries",
   },
   {
     label: "Selections",

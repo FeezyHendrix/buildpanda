@@ -11,8 +11,6 @@ import type { PermissionMap } from "../../../lib/permissions.ts";
 import type { QueueManager } from "../../../lib/queue/index.ts";
 import { tasksRepository } from "../../tasks/repository.ts";
 import { tasksService } from "../../tasks/service.ts";
-import { queriesRepository } from "../../queries/repository.ts";
-import { queriesService } from "../../queries/service.ts";
 import { rfisRepository } from "../../rfis/repository.ts";
 import { rfisService } from "../../rfis/service.ts";
 import { notificationsRepository } from "../../notifications/repository.ts";
@@ -81,10 +79,7 @@ const NAV_TARGETS: Record<string, string> = {
   "key-dates": "key-dates",
   milestones: "milestones",
   stages: "stages",
-  "whats-next": "whats-next",
   inspections: "inspections",
-  "action-items": "action-items",
-  queries: "queries",
   approvals: "approvals",
   "change-requests": "change-requests",
   permits: "permits",
@@ -780,7 +775,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_task_links", "Get cross-references between tasks and other project records (action items, RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
+    tool(fn("get_task_links", "Get cross-references between tasks and other project records (RFIs, change requests, materials, invoices, milestone payments). Use when asked what a task is linked or related to, or what work connects to a specific RFI, change request, invoice or milestone."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const rows = await repo.taskEntityLinks(ctx.projectId);
       const byTask = new Map<string, { entityType: string; label: string }[]>();
@@ -813,23 +808,19 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals, material approval requests, action items and site queries — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
+    tool(fn("get_open_items", "Get the open items needing attention across RFIs, client approvals and material approval requests — anything unresolved with a status, owner and due date. Use for 'what needs my attention', 'what is blocking us', 'what is open or overdue', 'what is pending sign-off', or 'which materials are awaiting approval'."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const now = Date.now();
       const overdue = (d: unknown): boolean => Boolean(d) && new Date(d as string).getTime() < now;
-      const [rfis, approvals, actionItems, queries] = await Promise.all([
+      const [rfis, approvals] = await Promise.all([
         repo.rfisOpen(ctx.projectId),
         repo.approvalsOpen(ctx.projectId),
-        repo.actionItemsOpen(ctx.projectId),
-        repo.queriesOpen(ctx.projectId),
       ]);
       return {
         output: {
           rfis: rfis.map((r) => ({ title: r.title, status: r.status, priority: r.priority, dueDate: r.due_date, overdue: overdue(r.due_date) })),
           approvals: approvals.filter((a) => a.kind !== "material").map((a) => ({ title: a.title, category: a.category, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
           materialApprovals: approvals.filter((a) => a.kind === "material").map((a) => ({ title: a.title, material: a.materialName, quantity: a.materialQuantity, unit: a.materialUnit, supplier: a.materialSupplier, neededBy: a.materialNeededBy, status: a.status, submittedBy: a.submittedBy, dueDate: a.due_date, overdue: overdue(a.due_date) })),
-          actionItems: actionItems.map((a) => ({ title: a.title, status: a.status, priority: a.priority, assignee: a.assignee, dueDate: a.due_date, overdue: overdue(a.due_date) })),
-          queries: queries.map((q) => ({ title: q.title, status: q.status, assignee: q.assignee, dueDate: q.due_date, overdue: overdue(q.due_date) })),
         },
       };
     }),
@@ -1026,34 +1017,6 @@ export function buildTools(): AgentTool[] {
           assignee: task.assigneeName,
           dueDate: task.dueDate,
           page: `/project/${ctx.projectId}/tasks`,
-        },
-      };
-    }),
-
-    tool(fn("raise_query", "Raise a site query on the project on behalf of the user. ONLY call this when the user explicitly asks to raise/log a query, and confirm the subject and question with them first — never invent content. Returns the created query's id.", {
-      subject: { type: "string", description: "Short query subject (required)" },
-      question: { type: "string", description: "The question body (required)" },
-    }, ["subject", "question"]), async (ctx, args) => {
-      // Same check as POST /projects/:id/queries (queries:raise).
-      assertProjectPermission(ctx.caller.project, callerAccessContext(ctx), "queries", "raise");
-      const service = queriesService(queriesRepository(ctx.db), {
-        notifications: notificationsService(notificationsRepository(ctx.db), ctx.queue),
-      });
-      const query = await service.create(
-        ctx.projectId,
-        {
-          subject: requiredString(args.subject, 200, "subject"),
-          question: requiredString(args.question, 4000, "question"),
-        },
-        ctx.caller.user.id,
-      );
-      return {
-        output: {
-          created: true,
-          id: query.id,
-          subject: query.subject,
-          status: query.status,
-          page: `/project/${ctx.projectId}/queries`,
         },
       };
     }),

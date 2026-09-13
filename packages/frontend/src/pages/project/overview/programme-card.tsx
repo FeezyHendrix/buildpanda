@@ -88,7 +88,7 @@ export function ProgrammeCard({ project, className }: { project: Project; classN
           <h3 className="text-[13px] font-semibold text-black-300">Programme</h3>
         </div>
         <Link
-          to={`/project/${project.id}/project-chart`}
+          to={`/project/${project.id}/schedules/project-chart`}
           className="text-xs font-semibold text-[#004DE7] hover:underline"
         >
           View Detailed Gantt

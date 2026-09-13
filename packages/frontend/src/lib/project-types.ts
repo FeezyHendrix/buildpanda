@@ -74,89 +74,13 @@ export type NotificationType =
   | "inspection_scheduled"
   | "milestone_released"
   | "milestone_disputed"
-  | "document_uploaded"
-  | "action_item_due"
-  | "action_item_assigned";
+  | "document_uploaded";
 
 export interface ProjectPhase {
   id: string;
   name: string;
   status: PhaseStatus;
   dateRange: string;
-}
-
-export type ActionStatus = "Open" | "InProgress" | "Blocked" | "Resolved";
-export type ActionPriority = "Low" | "Medium" | "High" | "Urgent";
-export type RecurrenceUnit = "day" | "week" | "month";
-
-export interface ActionItem {
-  id: string;
-  projectId: string;
-  title: string;
-  description: string | null;
-  descriptionHtml: string | null;
-  status: ActionStatus;
-  priority: ActionPriority;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  dueDate: string | null;
-  resolvedAt: string | null;
-  recurrenceUnit: RecurrenceUnit | null;
-  recurrenceInterval: number | null;
-  recurrenceUntil: string | null;
-  recurrenceParentId: string | null;
-  commentCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ActionComment {
-  id: string;
-  actionItemId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface ActionItemDetail extends ActionItem {
-  comments: ActionComment[];
-}
-
-export type QueryStatus = "Open" | "Answered" | "Closed";
-
-export interface SiteQuery {
-  id: string;
-  projectId: string;
-  subject: string;
-  question: string;
-  questionHtml: string | null;
-  status: QueryStatus;
-  answer: string | null;
-  answerHtml: string | null;
-  dueDate: string | null;
-  askedById: string | null;
-  answeredById: string | null;
-  answeredByName: string | null;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  answeredAt: string | null;
-  commentCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SiteQueryComment {
-  id: string;
-  queryId: string;
-  authorId: string;
-  authorName: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface SiteQueryDetail extends SiteQuery {
-  comments: SiteQueryComment[];
 }
 
 export type RfiStatus = "Draft" | "Open" | "InReview" | "Answered" | "Closed" | "Void";
@@ -414,39 +338,9 @@ export interface KeyDate {
 
 export interface ProjectInsights {
   progress: { stagesTotal: number; stagesComplete: number; overallPercent: number };
-  openItems: { actionItems: number; blocked: number; queries: number; awaitingApproval: number };
+  openItems: { awaitingApproval: number };
   budget: { currency: string; total: number; released: number; remaining: number; approvedChangeCost: number };
-  scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number; blockedItems: number };
-}
-
-export interface GlobalWhatsNextItem {
-  id: string;
-  project_id: string;
-  projectName: string;
-}
-
-export interface GlobalWhatsNext {
-  windowDays: number;
-  from: string;
-  to: string;
-  dueActionItems: (GlobalWhatsNextItem & { title: string; priority: string; due_date: string; status: string })[];
-  dueQueries: (GlobalWhatsNextItem & { subject: string; due_date: string })[];
-  dueApprovals: (GlobalWhatsNextItem & { title: string; due_date: string; status: string })[];
-  upcomingKeyDates: (GlobalWhatsNextItem & { label: string; target_date: string })[];
-  expiringPermits: (GlobalWhatsNextItem & { title: string; expiry_date: string })[];
-}
-
-export interface WhatsNext {
-  windowDays: number;
-  from: string;
-  to: string;
-  stagesInProgress: Array<{ id: string; name: string; progress_percent: number; date_range: string | null }>;
-  upcomingStages: Array<{ id: string; name: string; start_date: string }>;
-  dueActionItems: Array<{ id: string; title: string; priority: string; due_date: string; status: string }>;
-  dueQueries: Array<{ id: string; subject: string; due_date: string }>;
-  dueApprovals: Array<{ id: string; title: string; due_date: string; status: string }>;
-  upcomingKeyDates: Array<{ id: string; label: string; target_date: string }>;
-  expiringPermits: Array<{ id: string; title: string; expiry_date: string }>;
+  scheduleRisk: { approvedChangeDays: number; permitsAtRisk: number; missedKeyDates: number };
 }
 
 export type StageStatus = PhaseStatus;
@@ -503,7 +397,6 @@ export interface ProjectAccess {
     canManageParticipants: boolean;
     canDecideApprovals: boolean;
     canDecideSelections: boolean;
-    canRaiseQueries: boolean;
     canComment: boolean;
   };
 }
@@ -1390,7 +1283,6 @@ export interface TaskLink {
 }
 
 export const TASK_ENTITY_TYPES = [
-  "action_item",
   "rfi",
   "change_request",
   "material",

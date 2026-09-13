@@ -97,7 +97,6 @@ export const LINK_TYPE_TONE: Record<TaskLinkType, string> = {
 };
 
 export const ENTITY_META: Record<TaskEntityType, { label: string; route: string }> = {
-  action_item: { label: "Action item", route: "action-items" },
   rfi: { label: "RFI", route: "rfis" },
   change_request: { label: "Change request", route: "change-requests" },
   material: { label: "Material", route: "materials" },
@@ -106,7 +105,6 @@ export const ENTITY_META: Record<TaskEntityType, { label: string; route: string 
 };
 
 export const ENTITY_ORDER: TaskEntityType[] = [
-  "action_item",
   "rfi",
   "change_request",
   "material",

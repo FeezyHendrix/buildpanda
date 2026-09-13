@@ -65,7 +65,7 @@ const GROUPS = [
   { name: "Project", keys: ["project", "tasks", "schedule", "documents", "bim", "stages"] },
   { name: "Quality & risk", keys: ["inspections", "dailyLog", "risks"] },
   { name: "Commercial", keys: ["finances", "materials"] },
-  { name: "Workflow", keys: ["rfis", "queries", "approvals", "selections", "change-requests", "action-items"] },
+  { name: "Workflow", keys: ["rfis", "approvals", "selections", "change-requests"] },
   { name: "Compliance", keys: ["permits", "key-dates"] },
   { name: "Collaboration", keys: ["updates", "messages", "comments", "contractors", "participants"] },
 ];

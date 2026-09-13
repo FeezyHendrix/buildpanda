@@ -70,25 +70,6 @@ export function analyzeMetrics(metrics: ProjectMetrics): AiInsightResult {
     });
   }
 
-  if (metrics.blockedActionItemCount > 0) {
-    score -= clamp(metrics.blockedActionItemCount * 4, 0, 12);
-    suggestions.push({
-      title: `${metrics.blockedActionItemCount} action item${metrics.blockedActionItemCount === 1 ? " is" : "s are"} blocked`,
-      detail: `Blocked action items stall site work until someone clears the blocker. Review ${metrics.blockedActionItemCount === 1 ? "it" : "them"}, assign an owner, and unblock or escalate.`,
-      priority: "high",
-      category: "Site",
-    });
-  } else if (metrics.dueActionItemCount > 3) {
-    score -= clamp(metrics.dueActionItemCount, 0, 8);
-    suggestions.push({
-      title: `${metrics.dueActionItemCount} open action items are piling up`,
-      detail:
-        "A growing action-item backlog is an early sign of site coordination slipping. Triage the list and close or reassign stale items.",
-      priority: "medium",
-      category: "Site",
-    });
-  }
-
   if (metrics.expiringPermitCount > 0) {
     score -= clamp(metrics.expiringPermitCount * 5, 0, 15);
     suggestions.push({

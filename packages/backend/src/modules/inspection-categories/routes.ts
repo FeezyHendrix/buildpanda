@@ -51,7 +51,7 @@ const categoryResponse = {
   properties: {
     id: { type: "string" },
     name: { type: "string" },
-    scope: { type: "string", enum: ["organization", "project"] },
+    scope: { type: "string", enum: ["global", "organization", "project"] },
     sortOrder: { type: "integer" },
     active: { type: "boolean" },
     usageCount: { type: "integer" },
@@ -59,8 +59,10 @@ const categoryResponse = {
 } as const;
 
 /**
- * The list a project inspects against. Anyone who can see inspections reads it;
- * only a workspace admin changes it.
+ * The list a project inspects against: BuildPanda's global service catalogue
+ * plus its own workspace's additions. Anyone who can see inspections reads it;
+ * a workspace admin adds to it; only BuildPanda changes the catalogue itself
+ * (see admin-routes.ts).
  */
 const inspectionCategoryRoutes: FastifyPluginAsync = async (fastify) => {
   const service = inspectionCategoriesService(inspectionCategoriesRepository(fastify.db));

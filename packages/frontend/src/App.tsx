@@ -109,9 +109,7 @@ const ProjectSchedule = lazy(() => import("@/pages/project/schedule"));
 const ProjectDailyLog = lazy(() => import("@/pages/project/daily-log"));
 const ProjectStages = lazy(() => import("@/pages/project/stages"));
 const ProjectBuildings = lazy(() => import("@/pages/project/buildings"));
-const ProjectActionItems = lazy(() => import("@/pages/project/action-items"));
 const ProjectTasks = lazy(() => import("@/pages/project/tasks"));
-const ProjectQueries = lazy(() => import("@/pages/project/queries"));
 const ProjectRfis = lazy(() => import("@/pages/project/rfis"));
 const ProjectBim = lazy(() => import("@/pages/project/bim"));
 const ProjectApprovals = lazy(() => import("@/pages/project/approvals"));
@@ -119,7 +117,6 @@ const ProjectSelections = lazy(() => import("@/pages/project/selections"));
 const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests"));
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
-const ProjectWhatsNext = lazy(() => import("@/pages/project/whats-next"));
 const ProjectRisks = lazy(() => import("@/pages/project/risks"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
@@ -144,6 +141,18 @@ function LegacyFinanceRedirect({ tail }: { tail: string }) {
   const { search } = useLocation();
   const { projectId } = useParams();
   return <Navigate to={`/project/${projectId}/${resolveLegacyFinancePath(tail, search)}`} replace />;
+}
+
+/**
+ * The flat `/project/:id/stages`-style paths predate the `schedules/` section the
+ * sidebar links to. They redirect instead of mounting the page a second time, so
+ * one page has one URL. `:activityId` and any query/hash ride along.
+ */
+function LegacySchedulesRedirect({ tail }: { tail: string }) {
+  const { projectId, activityId } = useParams();
+  const { search, hash } = useLocation();
+  const resolved = tail.replace(":activityId", activityId ?? "");
+  return <Navigate to={`/project/${projectId}/schedules/${resolved}${search}${hash}`} replace />;
 }
 
 const legacyFinanceRoutes = LEGACY_FINANCE_PATHS.map((tail) => ({
@@ -331,21 +340,18 @@ export const router = createBrowserRouter([
       { path: "media-library", element: pf("projects.documents", <ProjectMediaLibrary />) },
       { path: "team", element: pf("project.team", <ProjectTeam />) },
       { path: "inspections", element: pf("quality.inspections", <ProjectInspections />) },
-      { path: "daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
+      { path: "daily-log", element: <LegacySchedulesRedirect tail="daily-log" /> },
       { path: "look-aheads", element: pf("projects.schedule", <ProjectLookAheads />) },
       { path: "bim", element: pf("projects.bim", <ProjectBim />) },
 
-      { path: "action-items", element: pf("workflow.actionItems", <ProjectActionItems />) },
       { path: "tasks", element: pf("projects.schedule", <ProjectTasks />) },
-      { path: "queries", element: pf("workflow.queries", <ProjectQueries />) },
       { path: "rfis", element: pf("workflow.rfis", <ProjectRfis />) },
       { path: "approvals", element: pf("workflow.approvals", <ProjectApprovals />) },
       { path: "selections", element: pf("projects.selections", <ProjectSelections />) },
       { path: "change-requests", element: pf("workflow.changeRequests", <ProjectChangeRequests />) },
       { path: "permits", element: pf("compliance.permits", <ProjectPermits />) },
       { path: "risks", element: <ProjectRisks /> },
-      { path: "key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
-      { path: "whats-next", element: <ProjectWhatsNext /> },
+      { path: "key-dates", element: <LegacySchedulesRedirect tail="key-dates" /> },
 
       // Finance: an overview plus three tabbed pages (Contract, Billing, Costs). Every
       // retired path below redirects to the tab that now owns it.
@@ -370,18 +376,18 @@ export const router = createBrowserRouter([
       { path: "schedules/project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
-      { path: "schedules/whats-next", element: <ProjectWhatsNext /> },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
 
       { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
       { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },
 
-      // legacy flat routes kept for deep-link compatibility
-      { path: "activities", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "activities/:activityId", element: pf("projects.schedule", <ProjectActivities />) },
-      { path: "project-chart", element: pf("projects.schedule", <ProjectSchedule />) },
-      { path: "schedule", element: pf("projects.schedule", <ProjectSchedule />) },
-      { path: "stages", element: pf("projects.schedule", <ProjectStages />) },
+      // Legacy flat paths kept for deep links: they redirect to the `schedules/`
+      // route the sidebar uses, rather than mounting a second copy of the page.
+      { path: "activities", element: <LegacySchedulesRedirect tail="activities" /> },
+      { path: "activities/:activityId", element: <LegacySchedulesRedirect tail="activities/:activityId" /> },
+      { path: "project-chart", element: <LegacySchedulesRedirect tail="project-chart" /> },
+      { path: "schedule", element: <LegacySchedulesRedirect tail="project-chart" /> },
+      { path: "stages", element: <LegacySchedulesRedirect tail="stages" /> },
 
       // A mistyped project URL is a 404 inside the project shell, never the
       // crash boundary (finding F19).

@@ -8,8 +8,8 @@ import { messagingRepository } from "./repository.ts";
 import { messagingService } from "./service.ts";
 import { referenceResolver, referenceableTypes } from "./references.ts";
 import { CHAT_EMAIL_QUEUE, CHAT_EMAIL_DELAY_MS } from "./chat-email-job.ts";
-import { actionItemsRepository } from "../action-items/repository.ts";
-import { actionItemsService } from "../action-items/service.ts";
+import { tasksRepository } from "../tasks/repository.ts";
+import { tasksService } from "../tasks/service.ts";
 import type { ReferenceContext } from "./references.ts";
 import type { MessageAttachment, MessageMention, MessageReference } from "./types.ts";
 
@@ -148,9 +148,11 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
         delayMs: CHAT_EMAIL_DELAY_MS,
         jobId: `${reminder.channelId}:${reminder.userId}`,
       }),
-    createActionItem: async (projectId, input, userId) => {
-      const actionItems = actionItemsService(actionItemsRepository(fastify.db));
-      const created = await actionItems.create(projectId, { title: input.title, description: input.description }, userId);
+    createTask: async (projectId, input, userId) => {
+      const tasks = tasksService(tasksRepository(fastify.db), {
+        notifications: notificationsService(notificationsRepository(fastify.db), fastify.queue),
+      });
+      const created = await tasks.createTask(projectId, { title: input.title, description: input.description }, userId);
       return { id: created.id };
     },
   });
@@ -395,11 +397,11 @@ const messagingRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   fastify.post<{ Params: { id: string } }>(
-    "/messages/:id/forward-to-action-item",
+    "/messages/:id/forward-to-task",
     { schema: { params: messageIdParams } },
     async (request, reply) => {
       const user = request.requireAuth();
-      const result = await service.forwardToActionItem(request.params.id, user.id);
+      const result = await service.forwardToTask(request.params.id, user.id);
       return reply.status(201).send(result);
     },
   );

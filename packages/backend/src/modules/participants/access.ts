@@ -72,7 +72,6 @@ export function computeAccess(
       canManageParticipants: isCompanyManager || allows("participants", "manage"),
       canDecideApprovals: isCompanyManager || isClient || allows("approvals", "decide"),
       canDecideSelections: isCompanyManager || isClient || allows("selections", "decide"),
-      canRaiseQueries: isCompanyManager || isClient || allows("queries", "raise"),
       // The cost position is the contractor's own; a client-side participant
       // sees the contract they are party to and never the costs behind it.
       canViewCosts: isCompanyManager || allows("finances", "viewCosts"),

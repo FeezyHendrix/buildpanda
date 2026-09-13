@@ -23,7 +23,7 @@ export interface DecisionChasingJobData {
   _tick: number;
 }
 
-type DecisionKind = "approval" | "selection" | "query";
+type DecisionKind = "approval" | "selection";
 
 interface PendingDecisionRow {
   id: string;
@@ -156,7 +156,7 @@ const PENDING_COLUMNS = [
 
 /** One batched query per decision-bearing domain; only still-pending items. */
 async function loadPendingDecisions(db: Knex): Promise<PendingDecision[]> {
-  const [approvals, selections, queries] = await Promise.all([
+  const [approvals, selections] = await Promise.all([
     db("approvals")
       .where({ status: "Pending", kind: "client" })
       .where((b) => b.whereNull("reminder_level").orWhere("reminder_level", "<", 3))
@@ -165,31 +165,11 @@ async function loadPendingDecisions(db: Knex): Promise<PendingDecision[]> {
       .where({ status: "open" })
       .where((b) => b.whereNull("reminder_level").orWhere("reminder_level", "<", 3))
       .select<PendingDecisionRow[]>(...PENDING_COLUMNS, "title"),
-    // Queries are only a *client* decision when the responder (assignee) is an
-    // active client participant — chase those, leave internal queries alone.
-    db("queries as q")
-      .where("q.status", "Open")
-      .where((b) => b.whereNull("q.reminder_level").orWhere("q.reminder_level", "<", 3))
-      .whereExists(
-        db("project_participants as pp")
-          .whereRaw("pp.project_id = q.project_id")
-          .whereRaw("pp.user_id = q.assignee_id")
-          .where({ "pp.role": "client", "pp.status": "active" }),
-      )
-      .select<PendingDecisionRow[]>(
-        "q.id",
-        "q.project_id",
-        "q.subject as title",
-        "q.due_date",
-        "q.created_at",
-        "q.reminder_level",
-      ),
   ]);
 
   return [
     ...approvals.map((r) => ({ ...r, kind: "approval" as const, table: "approvals" })),
     ...selections.map((r) => ({ ...r, kind: "selection" as const, table: "project_selections" })),
-    ...queries.map((r) => ({ ...r, kind: "query" as const, table: "queries" })),
   ];
 }
 
