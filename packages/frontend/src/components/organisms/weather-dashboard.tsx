@@ -1,39 +1,29 @@
-import { Badge, type BadgeTone } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/atoms/table";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { ReactSVG } from "react-svg";
+import { icons } from "@/assets/icons/icons";
 import {
   useWeatherAnalysis,
   useWeatherForecast,
-  type WeatherAnalysis,
-  type WeatherForecast,
   type WeatherForecastDay,
 } from "@/hooks/use-weather";
 import type { WeatherCondition } from "@/lib/project-types";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "../molecules";
 
-const FORECAST_DAYS = 5;
-
-const CONDITION_LABEL: Record<WeatherCondition, string> = {
-  Sunny: "Sunny",
-  Cloudy: "Cloudy",
-  Rain: "Rain",
-  Storm: "Storm",
-  Fog: "Fog",
-  ExtremeHeat: "Extreme heat",
+const CONDITION_GLYPH: Record<WeatherCondition, string> = {
+  Sunny: "☀️",
+  Cloudy: "⛅",
+  Rain: "🌧️",
+  Storm: "⛈️",
+  Fog: "🌫️",
+  ExtremeHeat: "🔥",
 };
 
-const RISK_META: Record<NonNullable<WeatherAnalysis["riskLevel"]>, { label: string; tone: BadgeTone }> = {
-  low: { label: "Low risk", tone: "success" },
-  medium: { label: "Medium risk", tone: "warning" },
-  high: { label: "High risk", tone: "danger" },
+const RISK_STYLE: Record<"low" | "medium" | "high", string> = {
+  low: "bg-success-50 text-success-700",
+  medium: "bg-amber-50 text-amber-700",
+  high: "bg-red-50 text-red-700",
 };
 
 function dayLabel(date: string, index: number): string {
@@ -43,170 +33,237 @@ function dayLabel(date: string, index: number): string {
   return parsed.toLocaleDateString("en-US", { weekday: "short" });
 }
 
-function LoadingCard() {
+function ForecastRow({
+  day,
+  index,
+}: {
+  day: WeatherForecastDay;
+  index: number;
+}) {
+  const isToday = index === 0;
   return (
-    <Card className="flex min-h-64 items-center justify-center">
-      <Spinner size="md" />
-    </Card>
-  );
-}
-
-LoadingCard.displayName = "LoadingCard";
-
-/** Current conditions as a figure, then the next days as a plain table. */
-function ForecastCard({ forecast }: { forecast: WeatherForecast }) {
-  const current = forecast.current;
-  const days = forecast.forecast.slice(0, FORECAST_DAYS);
-
-  return (
-    <Card className="flex flex-col gap-1">
-      <p className="text-sm font-medium text-ink-muted">
-        {forecast.locationName ? `Weather · ${forecast.locationName}` : "Weather"}
-      </p>
-      {current ? (
-        <>
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="text-3xl font-medium tabular-nums text-ink">{Math.round(current.temperatureC)}°C</p>
-            <p className="text-base font-medium text-ink-muted">{CONDITION_LABEL[current.condition]}</p>
-          </div>
-          <p className="text-sm text-ink-muted">
-            Wind {current.windKph} km/h · Rain {current.precipitationMm} mm
-          </p>
-        </>
-      ) : null}
-
-      <Table bleed wrapperClassName="mt-4">
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Day</TableHeaderCell>
-            <TableHeaderCell>Conditions</TableHeaderCell>
-            <TableHeaderCell align="right">Rain</TableHeaderCell>
-            <TableHeaderCell align="right">High</TableHeaderCell>
-            <TableHeaderCell align="right">Low</TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          {days.map((day, index) => (
-            <ForecastRow key={day.date} day={day} index={index} />
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  );
-}
-
-ForecastCard.displayName = "ForecastCard";
-
-function ForecastRow({ day, index }: { day: WeatherForecastDay; index: number }) {
-  return (
-    <TableRow>
-      <TableCell className="whitespace-nowrap font-medium">{dayLabel(day.date, index)}</TableCell>
-      <TableCell className="text-ink-muted">{day.conditionLabel || CONDITION_LABEL[day.condition]}</TableCell>
-      <TableCell align="right" className="text-ink-muted">
-        {day.precipitationMm > 0 ? `${day.precipitationMm} mm` : "—"}
-      </TableCell>
-      <TableCell align="right">{Math.round(day.temperatureMaxC)}°</TableCell>
-      <TableCell align="right" className="text-ink-muted">
-        {Math.round(day.temperatureMinC)}°
-      </TableCell>
-    </TableRow>
-  );
-}
-
-ForecastRow.displayName = "ForecastRow";
-
-function ImpactField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="text-xs font-medium uppercase text-ink-muted">{label}</p>
-      <p className="text-sm text-ink">{value}</p>
+    <div
+      className={cn(
+        "flex items-center justify-between rounded-[10px] px-3 py-2",
+        isToday ? "bg-[#F6F6F6]" : "",
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <span className="text-[18px] leading-none">
+          {CONDITION_GLYPH[day.condition]}
+        </span>
+        <span
+          className={cn(
+            "text-[12px]",
+            isToday ? "font-semibold text-black-500" : "text-black-400",
+          )}
+        >
+          {dayLabel(day.date, index)}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 tabular-nums">
+        {day.precipitationMm > 0 && (
+          <span className="text-[10px] font-medium text-black-300">
+            {day.precipitationMm}mm
+          </span>
+        )}
+        <span className="text-[12px] font-bold text-black-500">
+          {Math.round(day.temperatureMaxC)}°
+        </span>
+        <span className="text-[11px] text-black-300">
+          {Math.round(day.temperatureMinC)}°
+        </span>
+      </div>
     </div>
   );
 }
-
-ImpactField.displayName = "ImpactField";
-
-/** Panda AI's reading of the forecast against the programme. */
-function AnalysisCard({ analysis }: { analysis: WeatherAnalysis }) {
-  const risk = analysis.riskLevel ? RISK_META[analysis.riskLevel] : null;
-
-  if (!analysis.available) {
-    return (
-      <Card>
-        <p className="text-sm font-medium text-ink-muted">Panda AI weather impact</p>
-        <EmptyState
-          variant="inline"
-          title="No weather-affected activities today"
-          description="Weather analysis is unavailable right now."
-        />
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium text-ink-muted">Panda AI weather impact</p>
-        {risk ? (
-          <Badge tone={risk.tone} dot>
-            {risk.label}
-          </Badge>
-        ) : null}
-      </div>
-
-      {analysis.headline ? <p className="text-base font-medium text-ink">{analysis.headline}</p> : null}
-      {analysis.impact ? <p className="text-sm text-ink-muted">{analysis.impact}</p> : null}
-
-      {analysis.scheduleImpact || analysis.costImpact ? (
-        <div className="grid grid-cols-1 gap-4 border-t border-line-hair pt-4 sm:grid-cols-2">
-          {analysis.scheduleImpact ? <ImpactField label="Schedule impact" value={analysis.scheduleImpact} /> : null}
-          {analysis.costImpact ? <ImpactField label="Cost impact" value={analysis.costImpact} /> : null}
-        </div>
-      ) : null}
-
-      {analysis.recommendations.length > 0 ? (
-        <div className="flex flex-col gap-2 border-t border-line-hair pt-4">
-          <p className="text-xs font-medium uppercase text-ink-muted">Recommended actions</p>
-          <ol className="flex flex-col gap-2">
-            {analysis.recommendations.map((rec, index) => (
-              <li key={rec} className="flex gap-3 text-sm text-ink">
-                <span className="w-5 shrink-0 tabular-nums text-ink-muted">{index + 1}.</span>
-                <span>{rec}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-    </Card>
-  );
-}
-
-AnalysisCard.displayName = "AnalysisCard";
 
 export function WeatherDashboard({ projectId }: { projectId: string }) {
   const forecast = useWeatherForecast(projectId);
   const analysis = useWeatherAnalysis(projectId);
 
-  const hasWeather = Boolean(forecast.data?.current) && (forecast.data?.forecast.length ?? 0) > 0;
+  const current = forecast.data?.current;
+  const days = forecast.data?.forecast ?? [];
+  const hasWeather = Boolean(current) && days.length > 0;
 
-  if (!forecast.isLoading && !hasWeather) {
-    return (
-      <Card>
-        <EmptyState
-          variant="inline"
-          title="No weather data"
-          description="Set the project address to see the forecast and Panda AI's weather impact."
-        />
-      </Card>
-    );
-  }
+  if (!forecast.isLoading && !hasWeather) return null;
 
   return (
-    <section aria-label="Weather" className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
-      {forecast.isLoading || !forecast.data ? <LoadingCard /> : <ForecastCard forecast={forecast.data} />}
-      {analysis.isLoading || !analysis.data ? <LoadingCard /> : <AnalysisCard analysis={analysis.data} />}
+    <section
+      aria-label="Weather"
+      className="grid grid-cols-1 gap-4 lg:grid-cols-4"
+    >
+      <Card
+        padding="md"
+        className="overflow-hidden rounded-[16px] p-5 lg:col-span-1"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-black-300">
+              Weather
+            </p>
+            {forecast.data?.locationName && (
+              <p className="mt-0.5 text-[14px] font-semibold text-black-500">
+                {forecast.data.locationName}
+              </p>
+            )}
+          </div>
+          {current && (
+            <span className="text-[36px] leading-none">
+              {CONDITION_GLYPH[current.condition]}
+            </span>
+          )}
+        </div>
+
+        {current && (
+          <div className="mt-2">
+            <p className="text-[40px] font-bold leading-none tabular-nums text-black-500">
+              {Math.round(current.temperatureC)}°
+            </p>
+            <p className="mt-1 text-[12px] text-black-300">
+              {current.condition}
+            </p>
+            <div className="mt-2 flex gap-4 text-[11px] text-black-300">
+              <span>
+                Wind{" "}
+                <span className="font-semibold text-black-500">
+                  {current.windKph} km/h
+                </span>
+              </span>
+              <span>
+                Rain{" "}
+                <span className="font-semibold text-black-500">
+                  {current.precipitationMm} mm
+                </span>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {forecast.isLoading ? (
+          <div className="flex min-h-[260px] items-center justify-center">
+            <Spinner size="sm" />
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-col gap-0.5 border-t border-[#F0F0F0] pt-3">
+            {days.slice(0, 5).map((day, index) => (
+              <ForecastRow key={day.date} day={day} index={index} />
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card
+        padding="md"
+        className="rounded-[16px] p-5 flex flex-col px-0 py-0 lg:col-span-3"
+      >
+        <div className="flex items-center justify-between py-3 px-5">
+          <div className="flex gap-2 items-center">
+            <ReactSVG src={icons.globe} />
+            <h3 className="text-[13px] font-semibold text-black-300">
+              Panda AI Weather Impact
+            </h3>
+          </div>
+          {analysis.data?.riskLevel && (
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+                RISK_STYLE[analysis.data.riskLevel],
+              )}
+            >
+              {analysis.data.riskLevel} risk
+            </span>
+          )}
+        </div>
+        <div className="h-full p-6 flex items-center">
+          {analysis.isLoading ? (
+            <div className="flex min-h-[200px] items-center justify-center w-full">
+              <Spinner size="sm" />
+            </div>
+          ) : analysis.data?.available ? (
+            <div className="mt-4 flex flex-col gap-4 justify-center w-full">
+              <div className="text-center">
+                {analysis.data.headline && (
+                  <p className="text-[16px] font-semibold leading-snug text-black-500">
+                    {analysis.data.headline}
+                  </p>
+                )}
+                {analysis.data.impact && (
+                  <p className="mt-1.5 mx-auto max-w-3xl text-[13px] leading-relaxed text-black-300">
+                    {analysis.data.impact}
+                  </p>
+                )}
+              </div>
+
+              {(analysis.data.scheduleImpact || analysis.data.costImpact) && (
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {analysis.data.scheduleImpact && (
+                    <div className="flex flex-col gap-4 rounded-tl-[16px] rounded-bl-[16px] border border-[#F6F6F6] p-6">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <ReactSVG
+                          src={icons.calendarSearch}
+                          className="[&_svg]:size-3.5 [&_svg]:opacity-60"
+                        />
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-black-300">
+                          Schedule impact
+                        </p>
+                      </div>
+                      <p className="text-[13px] leading-snug text-black-500">
+                        {analysis.data.scheduleImpact}
+                      </p>
+                    </div>
+                  )}
+                  {analysis.data.costImpact && (
+                    <div className="flex flex-col gap-4 rounded-tr-[16px] rounded-br-[16px] border border-[#F6F6F6] p-6">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <ReactSVG
+                          src={icons.wallet}
+                          className="[&_svg]:size-3.5 [&_svg]:opacity-60"
+                        />
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-black-300">
+                          Cost impact
+                        </p>
+                      </div>
+                      <p className="text-[13px] leading-snug text-black-500">
+                        {analysis.data.costImpact}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {analysis.data.recommendations.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-black-300">
+                    Recommended actions
+                  </p>
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 text-wrap">
+                    {analysis.data.recommendations.map((rec, idx) => (
+                      <div
+                        key={rec}
+                        className="flex items-center gap-3 rounded-[16px] bg-[#F6F6F6] py-1 px-1"
+                      >
+                        <span className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-white text-[13px] font-semibold text-primary">
+                          {idx + 1}
+                        </span>
+                        <p className="text-[13px] leading-snug text-black-500">
+                          {rec}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <EmptyState
+              title="No weather-affected activities today"
+              description="Weather analysis is unavailable right now."
+              variant="inline"
+            />
+          )}
+        </div>
+      </Card>
     </section>
   );
 }
-
-WeatherDashboard.displayName = "WeatherDashboard";
