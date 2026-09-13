@@ -1,12 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
-import type { Supplier } from "@/lib/project-types";
+import { Switcher } from "@/components/atoms/switcher";
+import type { Supplier, SupplierScope } from "@/lib/project-types";
 import type { SupplierInput } from "@/hooks/use-suppliers";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
 const FIELD = INPUT_CLASS;
+
+const SCOPE_OPTIONS: readonly { value: SupplierScope; label: string; helper: string }[] = [
+  {
+    value: "organization",
+    label: "Workspace",
+    helper: "A company account you buy from on every job.",
+  },
+  {
+    value: "project",
+    label: "This project",
+    helper: "A supplier raised for this job alone.",
+  },
+] as const;
 
 interface UpsertSupplierDialogProps {
   open: boolean;
@@ -15,6 +29,41 @@ interface UpsertSupplierDialogProps {
   onSubmit: (values: SupplierInput) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  /** Rendered above the fields — the duplicate warning lives here. */
+  banner?: ReactNode;
+  /** Sent as `force` so a flagged duplicate can be saved deliberately. */
+  force?: boolean;
+  className?: string;
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={FIELD}
+      />
+    </div>
+  );
 }
 
 function UpsertSupplierDialog({
@@ -24,12 +73,20 @@ function UpsertSupplierDialog({
   onSubmit,
   isSubmitting = false,
   error,
+  banner,
+  force = false,
+  className,
 }: UpsertSupplierDialogProps) {
   const [name, setName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [trade, setTrade] = useState("");
+  const [approved, setApproved] = useState(false);
+  const [leadTimeDays, setLeadTimeDays] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [scope, setScope] = useState<SupplierScope>("organization");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -39,10 +96,16 @@ function UpsertSupplierDialog({
     setEmail(initial?.email ?? "");
     setPhone(initial?.phone ?? "");
     setAddress(initial?.address ?? "");
+    setTrade(initial?.trade ?? "");
+    setApproved(initial?.approved ?? false);
+    setLeadTimeDays(initial?.leadTimeDays === null || initial?.leadTimeDays === undefined ? "" : String(initial.leadTimeDays));
+    setPaymentTerms(initial?.paymentTerms ?? "");
+    setScope(initial?.scope ?? "organization");
     setNotes(initial?.notes ?? "");
   }, [open, initial]);
 
   const isValid = name.trim().length > 0;
+  const leadTime = leadTimeDays.trim() === "" ? null : Number(leadTimeDays);
 
   function handleSubmit(): void {
     if (!isValid) return;
@@ -52,7 +115,14 @@ function UpsertSupplierDialog({
       email: email.trim() || null,
       phone: phone.trim() || null,
       address: address.trim() || null,
+      trade: trade.trim() || null,
+      approved,
+      leadTimeDays: leadTime !== null && Number.isFinite(leadTime) ? Math.round(leadTime) : null,
+      paymentTerms: paymentTerms.trim() || null,
       notes: notes.trim() || null,
+      // Scope is fixed at creation — a shared account cannot become a local one.
+      ...(initial ? {} : { scope }),
+      ...(force ? { force: true } : {}),
     });
   }
 
@@ -61,64 +131,96 @@ function UpsertSupplierDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={initial ? "Edit supplier" : "Add supplier"}
-      submitLabel={initial ? "Save changes" : "Add supplier"}
+      description="The register is what orders point at, so the trade and terms belong here rather than in a note."
+      submitLabel={force ? "Add anyway" : initial ? "Save changes" : "Add supplier"}
       submitDisabled={!isValid}
       submitting={isSubmitting}
       error={error ?? null}
       onSubmit={handleSubmit}
+      className={className}
     >
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-name">Supplier name</Label>
-        <input
-          id="supplier-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Lagos Cement Supplies"
-          className={FIELD}
-        />
-      </div>
+      {banner}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-contact">Contact person</Label>
-        <input
+      <Field
+        id="supplier-name"
+        label="Supplier name"
+        value={name}
+        onChange={setName}
+        placeholder="e.g. Ogun Quarries Ltd"
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field
+          id="supplier-trade"
+          label="Trade"
+          value={trade}
+          onChange={setTrade}
+          placeholder="Aggregates, cement, steel, fuel…"
+        />
+        <Field
           id="supplier-contact"
+          label="Contact person"
           value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-          className={FIELD}
+          onChange={setContactName}
         />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="supplier-email">Email</Label>
-          <input
-            id="supplier-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={FIELD}
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="supplier-phone">Phone</Label>
-          <input
-            id="supplier-phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className={FIELD}
-          />
-        </div>
+        <Field id="supplier-email" label="Email" type="email" value={email} onChange={setEmail} />
+        <Field id="supplier-phone" label="Phone" value={phone} onChange={setPhone} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field
+          id="supplier-lead-time"
+          label="Lead time (days)"
+          type="number"
+          value={leadTimeDays}
+          onChange={setLeadTimeDays}
+          placeholder="e.g. 14"
+        />
+        <Field
+          id="supplier-terms"
+          label="Payment terms"
+          value={paymentTerms}
+          onChange={setPaymentTerms}
+          placeholder="30 days net, on delivery…"
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="supplier-address">Address</Label>
-        <input
-          id="supplier-address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className={FIELD}
+        <Label htmlFor="supplier-approved">On the approved-supplier list</Label>
+        <Switcher
+          value={approved ? "yes" : "no"}
+          onChange={(next) => setApproved(next === "yes")}
         />
+        <p className="text-xs text-ink-muted">
+          Approved suppliers sort to the top of every order picker.
+        </p>
       </div>
+
+      {initial ? null : (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="supplier-scope">Scope</Label>
+          <select
+            id="supplier-scope"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as SupplierScope)}
+            className={FIELD}
+          >
+            {SCOPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">
+            {SCOPE_OPTIONS.find((option) => option.value === scope)?.helper}
+          </p>
+        </div>
+      )}
+
+      <Field id="supplier-address" label="Address" value={address} onChange={setAddress} />
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="supplier-notes">Notes</Label>
@@ -133,5 +235,7 @@ function UpsertSupplierDialog({
     </FormDrawer>
   );
 }
+
+UpsertSupplierDialog.displayName = "UpsertSupplierDialog";
 
 export { UpsertSupplierDialog };

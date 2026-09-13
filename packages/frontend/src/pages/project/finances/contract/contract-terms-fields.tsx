@@ -123,3 +123,85 @@ export function UnitNumberField({
 }
 
 UnitNumberField.displayName = "UnitNumberField";
+
+/** A plain text or date field with the same label + hint shape as the others. */
+export function TermsTextField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+  hint,
+  placeholder,
+  type = "text",
+  maxLength,
+}: {
+  id: string;
+  label: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  hint: ReactNode;
+  placeholder?: string;
+  type?: "text" | "date";
+  maxLength?: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className={INPUT_CLASS}
+      />
+      <p className="text-xs text-ink-muted">{hint}</p>
+    </div>
+  );
+}
+
+TermsTextField.displayName = "TermsTextField";
+
+export function TermsSelectField<T extends string>({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+  hint,
+  options,
+}: {
+  id: string;
+  label: ReactNode;
+  value: T | "";
+  onChange: (value: T | "") => void;
+  disabled: boolean;
+  hint: ReactNode;
+  options: readonly { value: T | ""; label: string }[];
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value as T | "")}
+        disabled={disabled}
+        className={INPUT_CLASS}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <p className="text-xs text-ink-muted">{hint}</p>
+    </div>
+  );
+}
+
+TermsSelectField.displayName = "TermsSelectField";

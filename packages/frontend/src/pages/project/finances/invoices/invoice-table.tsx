@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Badge } from "@/components/atoms/badge";
 import { FinancesIcon } from "@/components/atoms/project-nav-icons";
 import { Spinner } from "@/components/atoms/spinner";
 import {
@@ -16,12 +17,21 @@ import type { Invoice } from "@/hooks/use-invoices";
 import { formatCurrency } from "@/lib/formatters";
 import type { Currency } from "@/lib/project-types";
 import type { InvoiceAction } from "./invoice-action-dialogs";
-import { budgetMonthLabel, invoicePeriodLabel } from "./invoice-model";
+import {
+  budgetMonthLabel,
+  counterpartyLabel,
+  counterpartyName,
+  invoicePeriodLabel,
+  isVoided,
+} from "./invoice-model";
 import { InvoiceStatusSelect } from "./invoice-status-select";
 
 /**
  * The invoice register: one row per invoice with an inline status control.
  * Every figure is a recorded amount; a row never charges or pays anything.
+ *
+ * A certificate with a receipt on it is an accounting record — the row offers
+ * Void (with a reason), never Delete.
  */
 
 const COLUMN_COUNT = 9;
@@ -63,7 +73,7 @@ export function InvoiceTable({
           <tr>
             <TableHeaderCell>Invoice #</TableHeaderCell>
             <TableHeaderCell>Budget month</TableHeaderCell>
-            <TableHeaderCell>Trade / Vendor</TableHeaderCell>
+            <TableHeaderCell>Party</TableHeaderCell>
             <TableHeaderCell>Period</TableHeaderCell>
             <TableHeaderCell align="right">Amount</TableHeaderCell>
             <TableHeaderCell>Status</TableHeaderCell>
@@ -122,6 +132,27 @@ export function InvoiceTable({
 
 InvoiceTable.displayName = "InvoiceTable";
 
+/** Late paid, or still running late — the figure the API computed, never a date sum done here. */
+function LatenessBadge({ invoice }: { invoice: Invoice }) {
+  if (invoice.paidLateDays && invoice.paidLateDays > 0) {
+    return (
+      <Badge tone="warning" size="sm" dot>
+        Paid {invoice.paidLateDays}d late
+      </Badge>
+    );
+  }
+  if (invoice.overdueDays && invoice.overdueDays > 0) {
+    return (
+      <Badge tone="danger" size="sm" dot>
+        {invoice.overdueDays}d overdue
+      </Badge>
+    );
+  }
+  return null;
+}
+
+LatenessBadge.displayName = "LatenessBadge";
+
 interface InvoiceRowProps extends InvoiceRowHandlers {
   projectId: string;
   currency: Currency;
@@ -131,37 +162,50 @@ interface InvoiceRowProps extends InvoiceRowHandlers {
 
 function InvoiceRow({ projectId, currency, invoice, canManage, onView, onAction, onDownloadPdf }: InvoiceRowProps) {
   const money = (value: number) => formatCurrency(value, invoice.currency || currency);
+  const voided = isVoided(invoice);
+  const hasPayments = invoice.payments.length > 0;
 
   const actions = useMemo<RowActionItem[]>(
     () => [
       { label: "View", onSelect: () => onView(invoice) },
-      ...(canManage ? [{ label: "Edit", onSelect: () => onAction(invoice, "edit") }] : []),
+      ...(canManage && !voided ? [{ label: "Edit", onSelect: () => onAction(invoice, "edit") }] : []),
       { label: "PDF", onSelect: () => onDownloadPdf(invoice) },
       ...(invoice.invoiceType === "progress"
         ? [{ label: "Pay application", onSelect: () => onAction(invoice, "pay-application") }]
         : []),
-      ...(canManage ? [{ label: "Send", onSelect: () => onAction(invoice, "send") }] : []),
-      ...(canManage
+      ...(canManage && !voided ? [{ label: "Send", onSelect: () => onAction(invoice, "send") }] : []),
+      ...(canManage && !voided ? [{ label: "Query", onSelect: () => onAction(invoice, "query") }] : []),
+      // A certificate with money recorded against it is voided, never deleted.
+      ...(canManage && !voided && hasPayments
+        ? [{ label: "Void", tone: "danger" as const, onSelect: () => onAction(invoice, "void") }]
+        : []),
+      ...(canManage && !voided && !hasPayments
         ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onAction(invoice, "delete") }]
         : []),
     ],
-    [invoice, canManage, onView, onAction, onDownloadPdf],
+    [invoice, canManage, voided, hasPayments, onView, onAction, onDownloadPdf],
   );
 
   return (
-    <TableRow onClick={() => onView(invoice)}>
+    <TableRow tone={voided ? "muted" : "default"} onClick={() => onView(invoice)}>
       <TableCell className="whitespace-nowrap font-medium text-ink">{invoice.number ?? "—"}</TableCell>
       <TableCell className="whitespace-nowrap">{budgetMonthLabel(invoice)}</TableCell>
       <TableCell>
-        <p className="font-medium text-ink">{invoice.vendorName}</p>
-        <p className="text-xs text-ink-muted">{invoice.trade}</p>
+        <p className="font-medium text-ink">{counterpartyName(invoice)}</p>
+        <p className="text-xs text-ink-muted">
+          {counterpartyLabel(invoice)}
+          {invoice.trade ? ` · ${invoice.trade}` : ""}
+        </p>
       </TableCell>
       <TableCell className="whitespace-nowrap text-gray-600">{invoicePeriodLabel(invoice)}</TableCell>
       <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums">
         {money(invoice.totalInvoiced)}
       </TableCell>
       <TableCell>
-        <InvoiceStatusSelect projectId={projectId} invoice={invoice} disabled={!canManage} />
+        <div className="flex flex-wrap items-center gap-2">
+          <InvoiceStatusSelect projectId={projectId} invoice={invoice} disabled={!canManage || voided} />
+          <LatenessBadge invoice={invoice} />
+        </div>
       </TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(invoice.amountPaid)}</TableCell>
       <TableCell align="right" className="whitespace-nowrap font-medium tabular-nums text-primary-500">
@@ -169,7 +213,7 @@ function InvoiceRow({ projectId, currency, invoice, canManage, onView, onAction,
       </TableCell>
       <TableCell align="right" onClick={(event) => event.stopPropagation()}>
         <div className="flex justify-end">
-          <RowActionsMenu ariaLabel={`Actions for ${invoice.vendorName}`} items={actions} />
+          <RowActionsMenu ariaLabel={`Actions for ${counterpartyName(invoice)}`} items={actions} />
         </div>
       </TableCell>
     </TableRow>

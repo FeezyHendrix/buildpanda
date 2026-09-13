@@ -7,6 +7,10 @@ export interface KeyDateInput {
   actualDate?: string | null;
   status?: KeyDateStatus;
   notes?: string | null;
+  /** The activity that delivers this date; the programme cascade then carries it. */
+  linkedActivityId?: string | null;
+  /** Contract dates move only through an approved extension of time. */
+  isContractual?: boolean;
 }
 
 export const keyDatesApi = {

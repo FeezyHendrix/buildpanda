@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { SearchInput } from "@/components/atoms/search-input";
 import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
@@ -9,34 +8,37 @@ import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
+import { errorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
-import {
-  useCreateMaterialOrder,
-  useDeleteMaterialOrder,
-  useMaterialOrders,
-  useUpdateMaterialOrder,
-  type MaterialOrderInput,
-} from "@/hooks/use-materials-equipment";
+import { useUpdateMaterialOrder } from "@/hooks/use-materials-equipment";
 import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
+import { useMaterialOrders } from "@/hooks/use-materials-equipment";
 import { MaterialsTable } from "./materials/materials-table";
-import { MaterialOrderDialog } from "./materials/material-order-dialog";
+import { MaterialOrderDialogs, type OrderDialog } from "./materials/material-order-dialogs";
 import {
   ALL_SUPPLIERS,
   LATE_FILTER_OPTIONS,
   STATUS_FILTER_ITEMS,
+  isClosed,
   matchesOrderSearch,
   supplierLabel,
   supplierOptions,
   type LateFilter,
 } from "./materials/shared";
 
+/** Cancelled and rejected orders are on file, not on the books. */
+function isLive(order: MaterialOrder): boolean {
+  return order.status !== "Cancelled" && order.status !== "Rejected";
+}
+
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
+  const canRaisePurchaseOrder = canResourceAction(access, "finances", "manage");
   // The whole register is fetched once; status, supplier, late and search all
   // narrow it here so the KPI strip and the "x of y" count stay stable.
   const { data: orders = [], isLoading } = useMaterialOrders(project.id);
@@ -46,17 +48,16 @@ export default function ProjectMaterials() {
   const [supplier, setSupplier] = useState<string>(ALL_SUPPLIERS);
   const [lateFilter, setLateFilter] = useState<LateFilter>("all");
 
-  const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<MaterialOrder | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<MaterialOrder | null>(null);
-  const createOrder = useCreateMaterialOrder();
-  const updateOrder = useUpdateMaterialOrder();
-  const deleteOrder = useDeleteMaterialOrder();
+  const [dialog, setDialog] = useState<OrderDialog>(null);
+  const advanceOrder = useUpdateMaterialOrder();
 
-  const committed = orders.reduce((sum, order) => sum + order.estimatedCost, 0);
+  const committed = orders
+    .filter(isLive)
+    .reduce((sum, order) => sum + order.estimatedCost, 0);
+  const open = orders.filter((order) => isLive(order) && !isClosed(order.status)).length;
   const received = orders.filter((order) => order.status === "Delivered").length;
-  const critical = orders.filter((order) => order.priority === "Critical").length;
+  const critical = orders.filter((order) => isLive(order) && order.priority === "Critical").length;
   const lateCount = orders.filter((order) => order.late).length;
 
   const suppliers = useMemo(() => supplierOptions(orders), [orders]);
@@ -76,17 +77,22 @@ export default function ProjectMaterials() {
     setSearch("");
   }
 
-  function upsert(values: MaterialOrderInput): void {
-    if (editTarget) {
-      updateOrder.mutate(
-        { projectId: project.id, orderId: editTarget.id, ...values },
-        { onSuccess: () => setEditTarget(null) },
-      );
-      return;
-    }
-    createOrder.mutate(
-      { projectId: project.id, ...values },
-      { onSuccess: () => setCreateOpen(false) },
+  /**
+   * Moving to Ordered is refused when the material's approval is not in hand.
+   * That 409 is not an error to shout about — it is the "order anyway" prompt.
+   */
+  function advance(order: MaterialOrder, next: MaterialOrderStatus): void {
+    advanceOrder.mutate(
+      { projectId: project.id, orderId: order.id, status: next },
+      {
+        onError: (error) => {
+          if (getApiErrorStatus(error) === 409) {
+            setDialog({ kind: "force", order, message: errorMessage(error) });
+            return;
+          }
+          toast(errorMessage(error));
+        },
+      },
     );
   }
 
@@ -109,7 +115,7 @@ export default function ProjectMaterials() {
               </Button>
             ) : null}
             {canRequest ? (
-              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
+              <Button variant="primary" size="md" onClick={() => setDialog({ kind: "create" })}>
                 <PlusIcon className="size-4" />
                 New material order
               </Button>
@@ -121,13 +127,13 @@ export default function ProjectMaterials() {
       <section aria-label="Material summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Open material orders"
-          value={orders.length.toString()}
-          helper={lateCount > 0 ? `${lateCount} running late` : "Requests through delivery"}
+          value={open.toString()}
+          helper={lateCount > 0 ? `${lateCount} running late` : "Requested through ordered"}
         />
         <KpiCard
           label="Committed material cost"
           value={formatCurrency(committed, project.currency, { compact: true })}
-          helper="Estimated against finance"
+          helper="Live orders only — cancelled ones are excluded"
         />
         <KpiCard
           label="Lifecycle health"
@@ -174,12 +180,16 @@ export default function ProjectMaterials() {
         isLoading={isLoading}
         canRequest={canRequest}
         canApprove={canApprove}
-        onEdit={setEditTarget}
-        onDelete={setDeleteTarget}
-        onAdvance={(order, next) =>
-          updateOrder.mutate({ projectId: project.id, orderId: order.id, status: next })
-        }
-        onCreate={() => setCreateOpen(true)}
+        canRaisePurchaseOrder={canRaisePurchaseOrder}
+        onOpen={(order) => setDialog({ kind: "detail", order })}
+        onEdit={(order) => setDialog({ kind: "edit", order })}
+        onDelete={(order) => setDialog({ kind: "delete", order })}
+        onCancel={(order) => setDialog({ kind: "close", order, status: "Cancelled" })}
+        onReject={(order) => setDialog({ kind: "close", order, status: "Rejected" })}
+        onRecordDelivery={(order) => setDialog({ kind: "delivery", order })}
+        onRaisePurchaseOrder={(order) => setDialog({ kind: "purchase-order", order })}
+        onAdvance={advance}
+        onCreate={() => setDialog({ kind: "create" })}
         onClearFilters={clearFilters}
       />
 
@@ -193,42 +203,11 @@ export default function ProjectMaterials() {
         }
       />
 
-      <MaterialOrderDialog
-        open={createOpen || editTarget !== null}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setCreateOpen(false);
-            setEditTarget(null);
-          }
-        }}
+      <MaterialOrderDialogs
         projectId={project.id}
-        initial={editTarget}
-        onSubmit={upsert}
-        isSubmitting={createOrder.isPending || updateOrder.isPending}
-        error={
-          editTarget
-            ? ((updateOrder.error as Error | null)?.message ?? null)
-            : ((createOrder.error as Error | null)?.message ?? null)
-        }
         currency={project.currency}
-      />
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        title="Delete material order?"
-        description="This removes the material request from the lifecycle board. Delivered finance receipts remain in finance history."
-        confirmLabel="Delete"
-        loading={deleteOrder.isPending}
-        onConfirm={() => {
-          if (deleteTarget) {
-            deleteOrder.mutate(
-              { projectId: project.id, orderId: deleteTarget.id },
-              { onSuccess: () => setDeleteTarget(null) },
-            );
-          }
-        }}
+        dialog={dialog}
+        onClose={() => setDialog(null)}
       />
     </div>
   );

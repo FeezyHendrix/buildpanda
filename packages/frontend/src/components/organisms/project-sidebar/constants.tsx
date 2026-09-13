@@ -26,6 +26,12 @@ export interface NavEntry {
   flag?: FeatureFlagKey;
   /** Permission resource from the backend `statement`; shown only with `<resource>:view`. */
   resource?: string;
+  /**
+   * The action the entry needs on that resource; `view` when omitted. Cost
+   * pages ask for `viewCosts` — the contractor's internal position, which a
+   * client-side role holds `finances:view` without.
+   */
+  action?: string;
 }
 
 export interface ProjectNavItem extends NavEntry {
@@ -132,6 +138,14 @@ export const SCHEDULE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     helper: "Rolling look-ahead planning",
     flag: "projects.schedule",
   },
+  {
+    label: "Extensions of time",
+    slug: "extensions-of-time",
+    resource: "schedule",
+    Icon: CalendarIcon,
+    helper: "EOT claims & revised completion",
+    flag: "projects.schedule",
+  },
 ] as const;
 
 export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
@@ -172,6 +186,7 @@ export const FINANCE_ENTRIES: readonly (NavEntry & { helper: string })[] = [
     label: "Expenses",
     slug: "finances/expenses",
     resource: "finances",
+    action: "viewCosts",
     Icon: FinancesIcon,
     helper: "Site spend & purchase orders",
     flag: "commercial.finances",

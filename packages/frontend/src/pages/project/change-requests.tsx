@@ -27,14 +27,18 @@ import {
 import { useProjectContext } from "@/layouts/project-layout";
 import { useParticipants } from "@/hooks/use-participants";
 import {
+  useChangeRequestAction,
   useChangeRequests,
   useChangeRequestSummary,
   useCreateChangeRequest,
   useDeleteChangeRequest,
   useUpdateChangeRequest,
 } from "@/hooks/use-change-requests";
+import { ChangeTypeBadge } from "@/components/molecules/change-request-context";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import { canResourceAction } from "@/lib/project-types";
-import type { ChangeRequest, ChangeStatus } from "@/lib/project-types";
+import type { ChangeAction, ChangeRequest, ChangeStatus } from "@/lib/project-types";
 import { formatWholeCurrency } from "@/lib/formatters";
 
 const FILTERS: { value: ChangeStatus | "all"; label: string }[] = [
@@ -50,6 +54,16 @@ function money(amount: number, currency: string): string {
   return formatWholeCurrency(amount, currency);
 }
 
+/**
+ * The action that lands a change in each board column. Rejected is absent on
+ * purpose: a rejection carries a reason, which a drag cannot give it.
+ */
+const BOARD_ACTION: Partial<Record<ChangeStatus, ChangeAction>> = {
+  Submitted: "submit",
+  Approved: "approve",
+  Executed: "execute",
+};
+
 export default function ProjectChangeRequests() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "change-requests", "manage");
@@ -62,6 +76,7 @@ export default function ProjectChangeRequests() {
   const { data: summary } = useChangeRequestSummary(project.id);
   const createCr = useCreateChangeRequest();
   const updateCr = useUpdateChangeRequest();
+  const runAction = useChangeRequestAction();
   const deleteCr = useDeleteChangeRequest();
 
   const { data: participants = [] } = useParticipants(project.id);
@@ -78,9 +93,23 @@ export default function ProjectChangeRequests() {
     .filter((i) => i.status === "Approved" || i.status === "Executed")
     .reduce((s, i) => s + i.costImpact, 0);
 
+  /**
+   * A board drag is still a contractual decision, so it runs the action that
+   * reaches that column rather than writing a status. Rejecting needs a reason,
+   * which a drag cannot supply — that one opens the card instead.
+   */
   function handleMove(cr: ChangeRequest, status: ChangeStatus): void {
     if (cr.status === status) return;
-    updateCr.mutate({ projectId: project.id, changeId: cr.id, status });
+    const action = BOARD_ACTION[status];
+    if (!action) {
+      setDetailId(cr.id);
+      toast("Rejecting a change needs a reason — open it to record one.");
+      return;
+    }
+    runAction.mutate(
+      { projectId: project.id, changeId: cr.id, action },
+      { onError: (error) => toast(getApiErrorMessage(error), "error") },
+    );
   }
 
   function handleAssign(cr: ChangeRequest, assigneeId: string | null): void {
@@ -193,6 +222,7 @@ export default function ProjectChangeRequests() {
                     <Badge tone={CHANGE_STATUS_META[cr.status].tone} size="sm">
                       {CHANGE_STATUS_META[cr.status].label}
                     </Badge>
+                    <ChangeTypeBadge type={cr.type} />
                     {cr.contractId ? <ContractChip projectId={project.id} contractId={cr.contractId} /> : null}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
@@ -259,11 +289,13 @@ export default function ProjectChangeRequests() {
                 description: editItem.description,
                 reason: editItem.reason,
                 reasonHtml: editItem.reasonHtml,
-                status: editItem.status,
                 costImpact: editItem.costImpact,
                 timeImpactDays: editItem.timeImpactDays,
                 currency: editItem.currency,
                 assigneeId: editItem.assigneeId,
+                type: editItem.type,
+                stageId: editItem.stageId,
+                rfiId: editItem.rfiId,
               }
             : undefined
         }

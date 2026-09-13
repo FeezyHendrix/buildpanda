@@ -4,6 +4,7 @@ import {
   type ScheduleOfValueLineInput,
   type StageInput,
   type StageScheduleOfValue,
+  type StageValueSummary,
   type UpdateScheduleProgressInput,
 } from "@/api/stages";
 import { stageKeys } from "./query-keys";
@@ -12,6 +13,7 @@ export type {
   StageInput,
   ScheduleOfValueLineInput,
   StageScheduleOfValue,
+  StageValueSummary,
   UpdateScheduleProgressInput,
 };
 
@@ -19,6 +21,15 @@ export function useStages(projectId: string | undefined, buildingId?: string) {
   return useQuery({
     queryKey: stageKeys.list(projectId ?? "__none__", buildingId),
     queryFn: () => stagesApi.list(projectId!, buildingId),
+    enabled: Boolean(projectId),
+  });
+}
+
+/** Stage values against the contract sum — what is allocated and what is left. */
+export function useStageValueSummary(projectId: string | undefined) {
+  return useQuery({
+    queryKey: stageKeys.valueSummary(projectId ?? "__none__"),
+    queryFn: () => stagesApi.valueSummary(projectId!),
     enabled: Boolean(projectId),
   });
 }

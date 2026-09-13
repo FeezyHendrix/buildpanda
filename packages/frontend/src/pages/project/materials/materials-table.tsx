@@ -17,6 +17,10 @@ import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
 import {
   STATUS_META,
+  approvalMeta,
+  canCancel,
+  canDelete,
+  canRecordDelivery,
   deliveryProgress,
   formatDate,
   formatQty,
@@ -33,23 +37,28 @@ import {
 const COLUMN_COUNT = 8;
 
 /** Advancing into these mirrors the backend's approval guard. */
-const APPROVAL_TIER: readonly MaterialOrderStatus[] = [
-  "Approved",
-  "Ordered",
-  "PartiallyDelivered",
-  "Delivered",
-];
+const APPROVAL_TIER: readonly MaterialOrderStatus[] = ["Approved", "Ordered"];
 
-interface MaterialsTableProps {
+export interface MaterialRowHandlers {
+  onOpen: (order: MaterialOrder) => void;
+  onEdit: (order: MaterialOrder) => void;
+  onDelete: (order: MaterialOrder) => void;
+  onCancel: (order: MaterialOrder) => void;
+  onReject: (order: MaterialOrder) => void;
+  onRecordDelivery: (order: MaterialOrder) => void;
+  onRaisePurchaseOrder: (order: MaterialOrder) => void;
+  onAdvance: (order: MaterialOrder, status: MaterialOrderStatus) => void;
+}
+
+interface MaterialsTableProps extends MaterialRowHandlers {
   orders: MaterialOrder[];
   /** True when the project has orders but the filters hide them all. */
   isFiltered: boolean;
   isLoading: boolean;
   canRequest: boolean;
   canApprove: boolean;
-  onEdit: (order: MaterialOrder) => void;
-  onDelete: (order: MaterialOrder) => void;
-  onAdvance: (order: MaterialOrder, status: MaterialOrderStatus) => void;
+  /** Raising a PO is a finance act, not a materials one. */
+  canRaisePurchaseOrder: boolean;
   onCreate: () => void;
   onClearFilters: () => void;
 }
@@ -60,11 +69,10 @@ export function MaterialsTable({
   isLoading,
   canRequest,
   canApprove,
-  onEdit,
-  onDelete,
-  onAdvance,
+  canRaisePurchaseOrder,
   onCreate,
   onClearFilters,
+  ...handlers
 }: MaterialsTableProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
@@ -116,9 +124,8 @@ export function MaterialsTable({
                 order={order}
                 canRequest={canRequest}
                 canApprove={canApprove}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onAdvance={onAdvance}
+                canRaisePurchaseOrder={canRaisePurchaseOrder}
+                {...handlers}
               />
             ))
           )}
@@ -130,44 +137,82 @@ export function MaterialsTable({
 
 MaterialsTable.displayName = "MaterialsTable";
 
-interface RowProps {
+interface RowProps extends MaterialRowHandlers {
   order: MaterialOrder;
   canRequest: boolean;
   canApprove: boolean;
-  onEdit: (order: MaterialOrder) => void;
-  onDelete: (order: MaterialOrder) => void;
-  onAdvance: (order: MaterialOrder, status: MaterialOrderStatus) => void;
+  canRaisePurchaseOrder: boolean;
 }
 
 function MaterialOrderTableRow({
   order,
   canRequest,
   canApprove,
+  canRaisePurchaseOrder,
+  onOpen,
   onEdit,
   onDelete,
+  onCancel,
+  onReject,
+  onRecordDelivery,
+  onRaisePurchaseOrder,
   onAdvance,
 }: RowProps) {
   const status = STATUS_META[order.status];
-  const supplier = supplierLabel(order);
+  const approval = approvalMeta(order.approvalStatus);
   const next = nextStatus(order.status);
   const canAdvance = next !== null && (APPROVAL_TIER.includes(next) ? canApprove : canRequest);
-  const subLine = [supplier, order.phaseName, order.activityName].filter(Boolean).join(" · ");
+  const subLine = [supplierLabel(order), order.phaseName, order.activityName]
+    .filter(Boolean)
+    .join(" · ");
+  const closedReason = order.cancelReason ?? order.rejectedReason;
 
   const actions = useMemo<RowActionItem[]>(
     () => [
+      { label: "View deliveries", onSelect: () => onOpen(order) },
       ...(next && canAdvance
         ? [{ label: `Move to ${STATUS_META[next].label}`, onSelect: () => onAdvance(order, next) }]
         : []),
+      ...(canApprove && canRecordDelivery(order.status)
+        ? [{ label: "Record delivery", onSelect: () => onRecordDelivery(order) }]
+        : []),
+      ...(canRaisePurchaseOrder && (order.status === "Approved" || order.status === "Ordered")
+        ? [{ label: "Raise a purchase order", onSelect: () => onRaisePurchaseOrder(order) }]
+        : []),
       ...(canRequest ? [{ label: "Edit", onSelect: () => onEdit(order) }] : []),
-      ...(canApprove
+      ...(canApprove && canCancel(order.status)
+        ? [
+            { label: "Cancel order", onSelect: () => onCancel(order) },
+            { label: "Reject", tone: "danger" as const, onSelect: () => onReject(order) },
+          ]
+        : []),
+      ...(canApprove && canDelete(order.status)
         ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onDelete(order) }]
         : []),
     ],
-    [order, next, canAdvance, canRequest, canApprove, onAdvance, onEdit, onDelete],
+    [
+      order,
+      next,
+      canAdvance,
+      canRequest,
+      canApprove,
+      canRaisePurchaseOrder,
+      onOpen,
+      onAdvance,
+      onEdit,
+      onDelete,
+      onCancel,
+      onReject,
+      onRecordDelivery,
+      onRaisePurchaseOrder,
+    ],
   );
 
   return (
-    <TableRow tone={order.status === "Cancelled" || order.status === "Rejected" ? "muted" : "default"}>
+    <TableRow
+      tone={order.status === "Cancelled" || order.status === "Rejected" ? "muted" : "default"}
+      onClick={() => onOpen(order)}
+    >
       <TableCell>
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="font-medium text-ink">{order.materialName}</span>
@@ -176,6 +221,9 @@ function MaterialOrderTableRow({
           ) : null}
         </div>
         {subLine ? <p className="mt-0.5 text-xs text-ink-muted">{subLine}</p> : null}
+        {closedReason ? (
+          <p className="mt-0.5 text-xs text-negative-500 text-pretty">{closedReason}</p>
+        ) : null}
       </TableCell>
       <TableCell align="right" className="whitespace-nowrap tabular-nums">
         <p className="font-medium">
@@ -203,9 +251,14 @@ function MaterialOrderTableRow({
               Late
             </Badge>
           ) : null}
+          {approval ? (
+            <Badge tone={approval.tone} size="sm" variant="outline">
+              {approval.label}
+            </Badge>
+          ) : null}
         </div>
       </TableCell>
-      <TableCell align="right">
+      <TableCell align="right" onClick={(event) => event.stopPropagation()}>
         {actions.length > 0 ? (
           <div className="flex justify-end">
             <RowActionsMenu ariaLabel={`Actions for ${order.materialName}`} items={actions} />

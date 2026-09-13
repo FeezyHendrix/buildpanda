@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Supplier } from "@/lib/project-types";
+import type { Supplier, SupplierScope } from "@/lib/project-types";
 
 export interface SupplierInput {
   name: string;
@@ -8,7 +8,20 @@ export interface SupplierInput {
   phone?: string | null;
   address?: string | null;
   notes?: string | null;
+  /** The trade a QS keeps the approved-supplier list by (aggregates, cement…). */
+  trade?: string | null;
+  approved?: boolean;
+  leadTimeDays?: number | null;
+  paymentTerms?: string | null;
+  /** Only honoured on create: a workspace supplier is reusable on every job. */
+  scope?: SupplierScope;
+  /** Save anyway when the server has flagged an existing supplier as a match. */
+  force?: boolean;
 }
+
+export type SupplierEditInput = Partial<Omit<SupplierInput, "scope" | "force">> & {
+  active?: boolean;
+};
 
 export const suppliersApi = {
   list: (projectId: string, includeInactive?: boolean) =>
@@ -21,7 +34,8 @@ export const suppliersApi = {
   create: (projectId: string, body: SupplierInput) =>
     api.post<Supplier>(`/projects/${projectId}/suppliers`, body).then((r) => r.data),
 
-  update: (projectId: string, supplierId: string, body: Partial<SupplierInput> & { active?: boolean }) =>
+  /** The server's PATCH body takes no `scope`/`force` — a supplier cannot change side. */
+  update: (projectId: string, supplierId: string, body: SupplierEditInput) =>
     api.put<Supplier>(`/projects/${projectId}/suppliers/${supplierId}`, body).then((r) => r.data),
 
   remove: (projectId: string, supplierId: string) =>

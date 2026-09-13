@@ -12,12 +12,14 @@ export const ACTIVITY_STATUS_FILTERS: { value: ActivityStatusFilter; label: stri
 ];
 
 export interface ActivitySchedule {
+  /** Planned duration counted on the project's working calendar (server-computed). */
   plannedDays: number;
   actualDays: number | null;
   /** Actual minus planned duration in days; null until the activity has both actual dates. */
   variance: number | null;
   openDelays: number;
   totalDelayCost: number;
+  totalDaysLost: number;
   delayCurrency: string;
 }
 
@@ -27,8 +29,14 @@ export function daysBetween(startIso: string, endIso: string): number {
   return Math.max(0, Math.round((end - start) / (24 * 3600 * 1000)));
 }
 
+/**
+ * Durations are the project's working days, not a calendar subtraction: a
+ * Mon–Fri week is 5 days to a PM, and the backend counts it on the project
+ * calendar (finding #33, F27). Only "actual" still falls back to elapsed days,
+ * because the server does not compute one.
+ */
 export function activitySchedule(activity: Activity): ActivitySchedule {
-  const plannedDays = daysBetween(activity.plannedStartAt, activity.plannedEndAt);
+  const plannedDays = activity.durationWorkingDays;
   const actualDays =
     activity.actualStartAt && activity.actualEndAt
       ? daysBetween(activity.actualStartAt, activity.actualEndAt)
@@ -39,6 +47,7 @@ export function activitySchedule(activity: Activity): ActivitySchedule {
     variance: actualDays !== null ? actualDays - plannedDays : null,
     openDelays: activity.delays.filter((d) => d.resolvedAt === null).length,
     totalDelayCost: activity.delays.reduce((sum, d) => sum + d.costImpact, 0),
+    totalDaysLost: activity.delays.reduce((sum, d) => sum + d.daysLost, 0),
     delayCurrency: activity.delays[0]?.currency ?? "NGN",
   };
 }

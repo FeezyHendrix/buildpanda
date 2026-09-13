@@ -2,10 +2,12 @@ import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { KpiCard, type KpiCardProps } from "@/components/molecules/kpi-card";
 import { useChangeRequestSummary } from "@/hooks/use-change-requests";
+import { useFinancePosition } from "@/hooks/use-finances";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { useProjectRfis } from "@/hooks/use-rfis";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatWholeCurrency } from "@/lib/formatters";
+import { useProjectContext } from "@/layouts/project-layout";
 import type { Activity, Project, ProjectPhase } from "@/lib/project-types";
 import { isRfiOverdue } from "@/lib/rfi-meta";
 
@@ -115,10 +117,16 @@ function Kpi({ pending, ...props }: KpiCardProps & { pending?: boolean }) {
 }
 
 export function OverviewKpis({ project }: { project: Project }) {
+  const { access } = useProjectContext();
   const snapshot = useReportingSnapshot(project.id);
   const activities = useProjectActivities(project.id);
   const rfis = useProjectRfis(project.id);
   const changes = useChangeRequestSummary(project.id);
+  // The one money model: this card and the finance overview read the same
+  // figures, so the two pages can never give different answers to "how much
+  // have we certified and been paid".
+  const position = useFinancePosition(project.id);
+  const canViewCosts = access?.capabilities?.canViewCosts ?? false;
   const currency = project.currency;
 
   const phases = project.timeline;
@@ -131,7 +139,7 @@ export function OverviewKpis({ project }: { project: Project }) {
   const spendAhead = usedPct !== null && usedPct - project.progressPercent >= SPEND_AHEAD_PTS;
 
   const budget = snapshot.data?.finance.budget;
-  const invoices = snapshot.data?.finance.invoices;
+  const money = position.data;
   const pendingChangeValue = snapshot.data?.finance.changeRequests.pendingCostImpact ?? 0;
 
   const openRfiList = (rfis.data ?? []).filter((r) => OPEN_RFI_STATUSES.has(r.status));
@@ -165,46 +173,45 @@ export function OverviewKpis({ project }: { project: Project }) {
         helper={gap.gapPts === null ? "No programme yet" : scheduleHelper(gap)}
         tone={scheduleDanger ? "danger" : "default"}
       />
-      <div data-tour="construction-budget">
-        <KpiCard
-          label="Budget used"
-          value={formatWholeCurrency(project.budgetUsed, currency)}
+      {canViewCosts ? (
+        <div data-tour="construction-budget">
+          <KpiCard
+            label="Budget used"
+            value={formatWholeCurrency(project.budgetUsed, currency)}
+            helper={
+              usedPct === null
+                ? "No budget set"
+                : spendAhead
+                  ? `${usedPct}% used · spending ahead of ${project.progressPercent}% progress`
+                  : `${usedPct}% of ${formatWholeCurrency(project.budgetTotal, currency)}`
+            }
+            tone={spendAhead ? "danger" : "default"}
+          />
+        </div>
+      ) : null}
+      {canViewCosts ? (
+        <Kpi
+          pending={snapshot.isPending}
+          label="Cost variance"
+          value={budget ? formatWholeCurrency(budget.totalVariance, currency) : "—"}
           helper={
-            usedPct === null
-              ? "No budget set"
-              : spendAhead
-                ? `${usedPct}% used · spending ahead of ${project.progressPercent}% progress`
-                : `${usedPct}% of ${formatWholeCurrency(project.budgetTotal, currency)}`
+            budget
+              ? pluralise(budget.overBudgetCount, "category over budget", "categories over budget")
+              : "Budget not available"
           }
-          tone={spendAhead ? "danger" : "default"}
+          tone={budget && budget.totalVariance < 0 ? "danger" : "default"}
         />
-      </div>
+      ) : null}
       <Kpi
-        pending={snapshot.isPending}
-        label="Cost variance"
-        value={budget ? formatWholeCurrency(budget.totalVariance, currency) : "—"}
-        helper={
-          budget
-            ? pluralise(budget.overBudgetCount, "category over budget", "categories over budget")
-            : "Budget not available"
-        }
-        tone={budget && budget.totalVariance < 0 ? "danger" : "default"}
-      />
-      <Kpi
-        pending={snapshot.isPending}
+        pending={position.isPending}
         label="Cash"
-        value={invoices ? formatWholeCurrency(invoices.outstanding, currency) : "—"}
+        value={money ? formatWholeCurrency(money.unpaidCertified, currency) : "—"}
         helper={
-          invoices
-            ? [
-                `invoiced ${formatWholeCurrency(invoices.invoicedTotal, currency)} · paid ${formatWholeCurrency(invoices.paidTotal, currency)}`,
-                invoices.overdueCount > 0 ? `${invoices.overdueCount} overdue` : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")
-            : "Invoices not available"
+          money
+            ? `certified ${formatWholeCurrency(money.certifiedGrossToDate, currency)} · paid ${formatWholeCurrency(money.amountPaidToDate, currency)}`
+            : "Contract position not available"
         }
-        tone={invoices && invoices.overdueCount > 0 ? "danger" : "default"}
+        tone={money && money.unpaidCertified > 0 ? "danger" : "default"}
       />
       <div data-tour="construction-approvals">
         <Kpi

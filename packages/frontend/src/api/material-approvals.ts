@@ -81,6 +81,14 @@ export interface MaterialApprovalUpdateInput {
   requestedReviewerId?: string | null;
 }
 
+/**
+ * A decided request is read-only, so "raise it again" clones it into a fresh
+ * Pending request linked back to the old one rather than editing the record.
+ */
+export type MaterialApprovalResubmitInput = Omit<MaterialApprovalCreateInput, "title"> & {
+  title?: string;
+};
+
 export const materialApprovalsApi = {
   list: (projectId: string, args?: { status?: ApprovalStatus }) =>
     api
@@ -100,6 +108,14 @@ export const materialApprovalsApi = {
   update: (projectId: string, approvalId: string, body: MaterialApprovalUpdateInput) =>
     api
       .patch<MaterialApproval>(`/projects/${projectId}/material-approvals/${approvalId}`, body)
+      .then((r) => r.data),
+
+  resubmit: (projectId: string, approvalId: string, body: MaterialApprovalResubmitInput) =>
+    api
+      .post<MaterialApproval>(
+        `/projects/${projectId}/material-approvals/${approvalId}/resubmit`,
+        body,
+      )
       .then((r) => r.data),
 
   delete: (projectId: string, approvalId: string) =>

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
 import { MaterialsIcon } from "@/components/atoms/project-nav-icons";
@@ -12,11 +13,15 @@ import {
   TableRow,
 } from "@/components/atoms/table";
 import { EmptyState } from "@/components/molecules/empty-state";
-import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
+import { RowActionsMenu, type RowActionItem } from "@/components/molecules/row-actions-menu";
 import { formatCurrency } from "@/lib/formatters";
 import type { EquipmentRequest, EquipmentRequestStatus } from "@/lib/project-types";
 import {
   canAdvanceTo,
+  canCancelEquipment,
+  canDeleteEquipment,
+  canExtendHire,
+  canReturnHire,
   EQUIPMENT_STATUS_META,
   equipmentSubLine,
   formatEquipmentSpan,
@@ -28,6 +33,9 @@ const COLUMN_COUNT = 7;
 export interface EquipmentRowHandlers {
   onEdit: (request: EquipmentRequest) => void;
   onDelete: (request: EquipmentRequest) => void;
+  onCancel: (request: EquipmentRequest) => void;
+  onExtend: (request: EquipmentRequest) => void;
+  onReturn: (request: EquipmentRequest) => void;
   onAdvance: (request: EquipmentRequest, status: EquipmentRequestStatus) => void;
 }
 
@@ -55,9 +63,7 @@ export function EquipmentRequestsTable({
   canApprove,
   onAdd,
   onClearFilters,
-  onEdit,
-  onDelete,
-  onAdvance,
+  ...handlers
 }: EquipmentRequestsTableProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
@@ -108,9 +114,7 @@ export function EquipmentRequestsTable({
                 request={request}
                 canRequest={canRequest}
                 canApprove={canApprove}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onAdvance={onAdvance}
+                {...handlers}
               />
             ))
           )}
@@ -134,16 +138,42 @@ function EquipmentRequestRow({
   canApprove,
   onEdit,
   onDelete,
+  onCancel,
+  onExtend,
+  onReturn,
   onAdvance,
 }: EquipmentRequestRowProps) {
   const status = EQUIPMENT_STATUS_META[request.status];
   const next = nextEquipmentStatus(request.status);
   const showAdvance = next !== null && canAdvanceTo(next, canRequest, canApprove);
   const subLine = equipmentSubLine(request);
+  const closedReason = request.cancelReason ?? request.rejectedReason;
   const money = (value: number) => formatCurrency(value, request.currency);
 
+  const actions = useMemo<RowActionItem[]>(
+    () => [
+      ...(canApprove && canExtendHire(request.status)
+        ? [{ label: "Extend hire", onSelect: () => onExtend(request) }]
+        : []),
+      ...(canApprove && canReturnHire(request.status)
+        ? [{ label: "Return plant", onSelect: () => onReturn(request) }]
+        : []),
+      ...(canRequest ? [{ label: "Edit", onSelect: () => onEdit(request) }] : []),
+      ...(canApprove && canCancelEquipment(request.status)
+        ? [{ label: "Cancel hire", tone: "danger" as const, onSelect: () => onCancel(request) }]
+        : []),
+      ...(canApprove && canDeleteEquipment(request.status)
+        ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onDelete(request) }]
+        : []),
+    ],
+    [request, canRequest, canApprove, onEdit, onDelete, onCancel, onExtend, onReturn],
+  );
+
   return (
-    <TableRow onClick={canRequest ? () => onEdit(request) : undefined}>
+    <TableRow
+      tone={request.status === "Cancelled" ? "muted" : "default"}
+      onClick={canRequest ? () => onEdit(request) : undefined}
+    >
       <TableCell>
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-ink">
@@ -156,6 +186,9 @@ function EquipmentRequestRow({
           ) : null}
         </div>
         {subLine ? <p className="mt-0.5 text-xs text-ink-muted">{subLine}</p> : null}
+        {closedReason ? (
+          <p className="mt-0.5 text-xs text-negative-500 text-pretty">{closedReason}</p>
+        ) : null}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         {formatEquipmentSpan(request.neededFrom, request.neededUntil)}
@@ -165,6 +198,9 @@ function EquipmentRequestRow({
         {request.hireDays !== null ? (
           <p className="mt-0.5 text-xs text-ink-muted">
             {request.hireDays} day{request.hireDays === 1 ? "" : "s"} hire
+            {request.extensions.length > 0
+              ? ` · extended ${request.extensions.length}×`
+              : ""}
           </p>
         ) : null}
       </TableCell>
@@ -199,15 +235,10 @@ function EquipmentRequestRow({
               Move to {EQUIPMENT_STATUS_META[next].label}
             </Button>
           ) : null}
-          {canRequest || canApprove ? (
+          {actions.length > 0 ? (
             <RowActionsMenu
               ariaLabel={`Actions for ${request.equipmentName}`}
-              items={[
-                ...(canRequest ? [{ label: "Edit", onSelect: () => onEdit(request) }] : []),
-                ...(canApprove
-                  ? [{ label: "Delete", tone: "danger" as const, onSelect: () => onDelete(request) }]
-                  : []),
-              ]}
+              items={actions}
             />
           ) : null}
         </div>

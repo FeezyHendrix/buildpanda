@@ -55,8 +55,9 @@ export type WeatherCondition =
   | "Storm"
   | "Fog"
   | "ExtremeHeat";
-// The category list itself is owned by its own workstream (it is becoming
-// database-driven and admin-managed); this stays as it is.
+// BuildPanda's seeded service catalogue. It is no longer the list the UI
+// renders — that comes from `GET /projects/:id/inspection-categories`, which
+// adds each workspace's own categories on top. Kept only as the seed names.
 export const INSPECTION_CATEGORIES = [
   "Structural",
   "Quantity Survey",
@@ -68,6 +69,24 @@ export type InspectionCategory = "All Reports" | (typeof INSPECTION_CATEGORIES)[
 
 export const INSPECTION_OUTCOMES = ["pass", "fail"] as const;
 export type InspectionOutcome = (typeof INSPECTION_OUTCOMES)[number];
+
+/**
+ * Where the service order has got to. An inspection is a job BuildPanda is
+ * asked to do, not a note the builder writes about its own work: the client
+ * requests it, BuildPanda schedules it by assigning an inspector, the
+ * inspector attends, and the report is issued.
+ */
+export const SERVICE_STATUSES = [
+  "Requested",
+  "Scheduled",
+  "Attended",
+  "Reported",
+  "Cancelled",
+] as const;
+export type ServiceStatus = (typeof SERVICE_STATUSES)[number];
+
+/** Which side of the contract asked for the inspection. Recorded, not claimed. */
+export type RequesterSide = "client" | "contractor";
 export type NotificationType =
   | "update_posted"
   | "update_action_required"
@@ -258,6 +277,34 @@ export interface Selection {
 
 export type ChangeStatus = "Draft" | "Submitted" | "Approved" | "Executed" | "Rejected";
 
+/**
+ * What kind of change this is. A variation adds work, an omission removes it,
+ * an EOT-only claim asks for time and no money, and a provisional-sum
+ * adjustment converts a sum already in the contract into measured work.
+ */
+export const CHANGE_TYPES = ["variation", "omission", "eot_only", "provisional_sum"] as const;
+export type ChangeType = (typeof CHANGE_TYPES)[number];
+
+/** The actions that move a change request. Status is never set by hand. */
+export const CHANGE_ACTIONS = ["submit", "approve", "reject", "resubmit", "execute"] as const;
+export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
+
+/**
+ * One submitted version of the change. "v1 ₦4.8m rejected → v2 ₦4.2m approved"
+ * is the negotiation, and a list that silently shows ₦4.2m as if it had always
+ * been that is not a record of it.
+ */
+export interface ChangeRevision {
+  version: number;
+  costImpact: number;
+  timeImpactDays: number;
+  reason: string | null;
+  status: ChangeStatus;
+  actorId: string | null;
+  actorName: string;
+  at: string;
+}
+
 export interface ChangeRequest {
   id: string;
   projectId: string;
@@ -278,6 +325,16 @@ export interface ChangeRequest {
   commentCount: number;
   /** Contract created when the change order was executed; null until then. */
   contractId?: string | null;
+  type: ChangeType;
+  /** The build stage the change moves; its end date shifts on Execute. */
+  stageId: string | null;
+  /** The RFI this change came out of, when it did. */
+  rfiId: string | null;
+  /** The extension-of-time claim carrying its days, for a time claim. */
+  eotClaimId: string | null;
+  rejectedReason: string | null;
+  submittedAt: string | null;
+  revisions: ChangeRevision[];
   createdAt: string;
   updatedAt: string;
 }
@@ -331,6 +388,12 @@ export interface KeyDate {
   actualDate: string | null;
   status: KeyDateStatus;
   notes: string | null;
+  /** The activity that delivers this date; the cascade moves it when that activity slips. */
+  linkedActivityId: string | null;
+  /** A contract date with LD consequences — only an approved EOT moves it. */
+  isContractual: boolean;
+  /** Server-stamped once, with the originally programmed target, the first time the date moves. */
+  revisedFrom: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -397,6 +460,12 @@ export interface ProjectAccess {
     canManageParticipants: boolean;
     canDecideApprovals: boolean;
     canDecideSelections: boolean;
+    /**
+     * The cost position is the contractor's own — expenses, purchase orders,
+     * budget vs actual, cost variance. A client-side participant sees the
+     * contract they are party to and never the costs behind it.
+     */
+    canViewCosts: boolean;
     canComment: boolean;
   };
 }
@@ -413,8 +482,12 @@ export function canViewSection(
   access: ProjectAccess | undefined,
   _sectionKey: string | undefined,
   resource?: string,
+  /** The action the section needs; `view` when omitted (cost pages pass `viewCosts`). */
+  action?: string,
 ): boolean {
-  return canViewResource(access, resource);
+  if (!resource || !access) return true;
+  if (!action || action === "view") return canViewResource(access, resource);
+  return canResourceAction(access, resource, action);
 }
 
 /**
@@ -603,10 +676,14 @@ export interface InspectionReport {
   id: string;
   projectId: string;
   inspector: Person;
+  /** The BuildPanda inspector's user id — null until BuildPanda assigns one. */
+  inspectorUserId: string | null;
   title: string;
-  category: InspectionCategory;
+  /** A name from the project's category list, not a fixed union. */
+  category: string;
   description: string;
   status: InspectionStatus;
+  serviceStatus: ServiceStatus;
   riskLevel: RiskLevel;
   scheduledAt: string;
   activityId: string | null;
@@ -617,6 +694,14 @@ export interface InspectionReport {
   reinspectionDate: string | null;
   inspectedAt: string | null;
   inspectedByName: string | null;
+  requestedById: string | null;
+  requestedBySide: RequesterSide;
+  /** The party being inspected. The contractor is the subject, never the author. */
+  contractorName: string | null;
+  reportIssuedAt: string | null;
+  /** Recorded, never charged — money is logged, not transacted. */
+  feeAmount: number | null;
+  feeCurrency: string | null;
   media: MediaItem[];
   reportUrl?: string;
 }
@@ -938,6 +1023,10 @@ export interface RiskFactor {
   updatedAt: string;
 }
 
+/** Who carries the time risk. A contractor-culpable delay can never be EOT-claimable. */
+export const CULPABILITIES = ["contractor", "client", "neutral"] as const;
+export type Culpability = (typeof CULPABILITIES)[number];
+
 export interface ActivityDelay {
   id: string;
   activityId: string;
@@ -945,12 +1034,37 @@ export interface ActivityDelay {
   reasonName: string;
   reasonCategory: string;
   description: string | null;
+  descriptionHtml?: string | null;
   startedAt: string;
+  /** When work resumed; null while the delay is still running. */
+  endedAt: string | null;
+  /** Measured lost time, in working days on the project calendar. */
+  daysLost: number;
+  culpability: Culpability;
+  eotClaimable: boolean;
+  linkedRfiId: string | null;
+  linkedChangeRequestId: string | null;
+  linkedMaterialOrderId: string | null;
+  /** Working days this delay has already pushed the chain by — the cascade's ledger. */
+  appliedShiftDays: number;
   resolvedAt: string | null;
+  resolvedById: string | null;
   costImpact: number;
   currency: Currency;
   preventionNotes: string | null;
   recordedBy: { id: string; name: string | null } | null;
+  createdAt: string;
+}
+
+/** One line of the programme audit trail: who moved what, by how many days, and why. */
+export interface ActivityEvent {
+  id: string;
+  activityId: string;
+  kind: string;
+  summary: string;
+  daysDelta: number;
+  delayId: string | null;
+  actorId: string | null;
   createdAt: string;
 }
 
@@ -991,17 +1105,22 @@ export interface Activity {
   baselineEndAt: string | null;
   isMilestone: boolean;
   source: string;
+  /** Planned duration on the project's working calendar, both ends inclusive. */
+  durationWorkingDays: number;
   delays: ActivityDelay[];
   createdAt: string;
   updatedAt: string;
 }
 
+/** `GET /delay-reasons` answers with the raw rows, so these stay snake_case. */
 export interface DelayReason {
   code: string;
   category: string;
   name: string;
   description: string;
   is_active?: boolean;
+  default_culpability?: Culpability;
+  default_eot_claimable?: boolean;
 }
 
 export interface DailyLogActivityLink {
@@ -1529,6 +1648,12 @@ export interface Transaction {
   receiptFileId: string | null;
   stageId: string | null;
   stageName: string | null;
+  /** A refund or credit note against this category, not an outlay. */
+  credit: boolean;
+  /** A refundable outlay — a plant-hire deposit, a bond — not final cost. */
+  recoverable: boolean;
+  /** Dated before the project started: legitimate, but not recoverable under the contract. */
+  preContract: boolean;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -1582,6 +1707,8 @@ export interface CreateTransactionInput {
   reference?: string | null;
   receiptFileId?: string | null;
   stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface UpdateTransactionInput {
@@ -1594,6 +1721,8 @@ export interface UpdateTransactionInput {
   reference?: string | null;
   receiptFileId?: string | null;
   stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface CreateCustomCategoryInput {
@@ -1621,15 +1750,43 @@ export type RetentionReleaseMode = (typeof RETENTION_RELEASE_MODES)[number];
 export const ADVANCE_RECOVERY_MODES = ["percentage", "fixed"] as const;
 export type AdvanceRecoveryMode = (typeof ADVANCE_RECOVERY_MODES)[number];
 
+export const CONTRACT_FORMS = ["fidic_red", "fidic_yellow", "jct", "nec", "bespoke"] as const;
+export type ContractForm = (typeof CONTRACT_FORMS)[number];
+
+export const VALUATION_FREQUENCIES = ["monthly", "milestone"] as const;
+export type ValuationFrequency = (typeof VALUATION_FREQUENCIES)[number];
+
+/**
+ * Every rate here is a FRACTION on the wire (0.05 = 5%) — the UI shows a
+ * percentage and converts at the form boundary, so a consumer never has to
+ * guess which of two neighbouring fields is which.
+ * `liquidatedDamagesRate` is the one money-per-day figure.
+ */
 export interface ContractTerms {
   contractType: ContractType;
   retentionRate: number;
   retentionReleaseMode: RetentionReleaseMode;
+  /** Retention stops accruing at this share of the contract. 0 = uncapped. */
+  retentionCapPercent: number;
   advancePercentage: number;
   advanceRecoveryMode: AdvanceRecoveryMode;
   advanceRecoveryRate: number;
+  /** Recovery of the advance starts on this certificate number (IPC 2 by default). */
+  advanceRecoveryFromCertificate: number;
   paymentTermsDays: number;
   defectsLiabilityDays: number;
+  defectsPeriodMonths: number;
+  vatRate: number;
+  /** Money per calendar day late — not a fraction. */
+  liquidatedDamagesRate: number;
+  /** LDs stop accruing at this share of the adjusted contract. 0 = uncapped. */
+  liquidatedDamagesCapPercent: number;
+  commencementDate: string | null;
+  completionDate: string | null;
+  employerName: string | null;
+  contractorName: string | null;
+  contractForm: ContractForm | null;
+  valuationFrequency: ValuationFrequency;
   contractNotes: string | null;
 }
 
@@ -1638,11 +1795,23 @@ export interface UpdateContractTermsInput {
   contractType?: ContractType;
   retentionRate?: number;
   retentionReleaseMode?: RetentionReleaseMode;
+  retentionCapPercent?: number;
   advancePercentage?: number;
   advanceRecoveryMode?: AdvanceRecoveryMode;
   advanceRecoveryRate?: number;
+  advanceRecoveryFromCertificate?: number;
   paymentTermsDays?: number;
   defectsLiabilityDays?: number;
+  defectsPeriodMonths?: number;
+  vatRate?: number;
+  liquidatedDamagesRate?: number;
+  liquidatedDamagesCapPercent?: number;
+  commencementDate?: string | null;
+  completionDate?: string | null;
+  employerName?: string | null;
+  contractorName?: string | null;
+  contractForm?: ContractForm | null;
+  valuationFrequency?: ValuationFrequency;
   contractNotes?: string | null;
 }
 

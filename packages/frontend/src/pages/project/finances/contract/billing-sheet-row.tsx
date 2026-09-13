@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/formatters";
 import type { Currency, MilestoneClaimState, Stage, StageStatus } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { BillingMonthCell } from "./billing-month-cell";
-import { formatCumulative, stageVariance, type SheetRow } from "./billing-sheet-model";
+import { formatCumulative, isForecastPeriod, stageVariance, type SheetRow } from "./billing-sheet-model";
 
 const STATUS_META: Record<StageStatus, { tone: BadgeTone; label: string }> = {
   Pending: { tone: "neutral", label: "Not started" },
@@ -27,6 +27,11 @@ export const STICKY_INDEX = "sticky left-0 z-10 w-14";
 export const STICKY_STAGE = "sticky left-14 z-10 min-w-[220px]";
 export const UNPRICED_REASON = "Price the stage first";
 
+/** Why a month's cells are closed. The correction goes on the next certificate. */
+export function certifiedReason(period: string): string {
+  return `${period} is certified on an issued certificate — raise the correction on the next one`;
+}
+
 const DASH = <span className="text-ink-muted">—</span>;
 
 function money(value: number | undefined, currency: Currency) {
@@ -40,6 +45,10 @@ interface BillingSheetRowProps {
   currency: Currency;
   canManage: boolean;
   canBill: boolean;
+  /** Months already certified on an invoice; their cells are closed. */
+  certified: Set<string>;
+  /** Contractor cost columns; hidden without `finances:viewCosts`. */
+  showCosts: boolean;
   onEditValue: (stage: Stage) => void;
   onOpenSchedule: (stage: Stage) => void;
 }
@@ -51,6 +60,8 @@ export function BillingSheetRow({
   currency,
   canManage,
   canBill,
+  certified,
+  showCosts,
   onEditValue,
   onOpenSchedule,
 }: BillingSheetRowProps) {
@@ -87,14 +98,18 @@ export function BillingSheetRow({
       <TableCell align="right" className="whitespace-nowrap font-semibold tabular-nums text-ink">
         {priced ? formatCurrency(stage.value, currency) : <span className="font-normal text-ink-muted">Not priced</span>}
       </TableCell>
-      <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.committed, currency)}</TableCell>
-      <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.actual, currency)}</TableCell>
-      <TableCell
-        align="right"
-        className={cn("whitespace-nowrap tabular-nums", variance !== undefined && variance < 0 && "text-negative-600")}
-      >
-        {money(variance, currency)}
-      </TableCell>
+      {showCosts ? (
+        <>
+          <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.committed, currency)}</TableCell>
+          <TableCell align="right" className="whitespace-nowrap tabular-nums">{money(cost?.actual, currency)}</TableCell>
+          <TableCell
+            align="right"
+            className={cn("whitespace-nowrap tabular-nums", variance !== undefined && variance < 0 && "text-negative-600")}
+          >
+            {money(variance, currency)}
+          </TableCell>
+        </>
+      ) : null}
       {periods.map((period) => (
         <TableCell key={period} align="right" className="px-3">
           <BillingMonthCell
@@ -104,7 +119,10 @@ export function BillingSheetRow({
             line={row.cells.get(period)}
             currency={currency}
             editable={canBill}
-            disabledReason={priced ? undefined : UNPRICED_REASON}
+            forecast={isForecastPeriod(period)}
+            disabledReason={
+              !priced ? UNPRICED_REASON : certified.has(period) ? certifiedReason(period) : undefined
+            }
           />
         </TableCell>
       ))}

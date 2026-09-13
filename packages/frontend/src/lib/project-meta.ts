@@ -70,6 +70,8 @@ export const INVOICE_STATUS_TONE: Record<InvoiceStatus, BadgeTone> = {
   PartiallyPaid: "warning",
   Paid: "success",
   Overdue: "danger",
+  /** A voided certificate stays on file but no longer counts — it recedes. */
+  Void: "neutral",
 };
 
 export const ACTIVITY_STATUS_TONE: Record<ActivityStatus, BadgeTone> = {

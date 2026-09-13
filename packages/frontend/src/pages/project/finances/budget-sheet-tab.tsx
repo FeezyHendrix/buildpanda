@@ -22,6 +22,8 @@ export function BudgetSheetTab() {
   const { project, access } = useProjectContext();
   const canManage = canResourceAction(access, "stages", "manage");
   const canBill = canResourceAction(access, "finances", "manage");
+  // Cost columns are the contractor's internal position, never the client's.
+  const showCosts = access?.capabilities?.canViewCosts ?? false;
   const { data: stages = [] } = useStages(project.id);
 
   const [valueTarget, setValueTarget] = useState<Stage | null>(null);
@@ -67,6 +69,7 @@ export function BudgetSheetTab() {
         currency={project.currency}
         canManage={canManage}
         canBill={canBill}
+        showCosts={showCosts}
         onEditValue={setValueTarget}
         onOpenSchedule={setScheduleTarget}
       />

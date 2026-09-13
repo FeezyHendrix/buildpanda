@@ -178,6 +178,25 @@ export function sheetTotals(rows: SheetRow[], periods: string[]): SheetTotals {
   };
 }
 
+/** The month a date falls in, as YYYY-MM. */
+export function periodOf(date = new Date()): string {
+  return date.toISOString().slice(0, 7);
+}
+
+/**
+ * A month later than the current one has not been worked yet. A valuation is a
+ * measurement of work done TO A DATE, so such a month can only be a forecast —
+ * the QS's projection — and is never claimable.
+ */
+export function isForecastPeriod(period: string, today = periodOf()): boolean {
+  return period > today;
+}
+
+/** Months already certified on an invoice, whose cells are closed. */
+export function certifiedPeriods(lines: StageScheduleOfValue[] | undefined): Set<string> {
+  return invoicedPeriods(lines);
+}
+
 /** "2026-03" -> "Mar 2026". */
 export function formatPeriodHeading(period: string): string {
   if (!PERIOD_PATTERN.test(period)) return period;

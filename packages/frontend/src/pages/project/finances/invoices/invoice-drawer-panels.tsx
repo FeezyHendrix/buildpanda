@@ -9,7 +9,13 @@ import { formatCurrency } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
 import { InvoiceBudgetAllocations } from "../../invoices/invoice-budget-allocations";
 import { AddPaymentDrawer } from "../payments/add-payment-drawer";
-import { budgetMonthLabel, invoicePeriodLabel } from "./invoice-model";
+import {
+  budgetMonthLabel,
+  canRecordPaymentOn,
+  counterpartyLabel,
+  counterpartyName,
+  invoicePeriodLabel,
+} from "./invoice-model";
 
 /** The three panels of the invoice drawer. Amounts are recorded figures. */
 
@@ -27,12 +33,22 @@ export function InvoiceDetailsPanel({ projectId, invoice, currency, canManage }:
       <section>
         <DrawerSectionTitle>Details</DrawerSectionTitle>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <DrawerMetric label="Vendor" value={invoice.vendorName} />
+          <DrawerMetric label={counterpartyLabel(invoice)} value={counterpartyName(invoice)} />
           <DrawerMetric label="Trade" value={invoice.trade} />
           <DrawerMetric label="Type" value={invoice.invoiceType} />
+          <DrawerMetric
+            label="Direction"
+            value={invoice.direction === "payable" ? "Payable — we owe it" : "Receivable — owed to us"}
+          />
           <DrawerMetric label="Budget month" value={budgetMonthLabel(invoice)} />
           <DrawerMetric label="Period" value={invoicePeriodLabel(invoice)} />
           <DrawerMetric label="Contract ref." value={invoice.contractReference ?? "—"} />
+          {invoice.paidLateDays && invoice.paidLateDays > 0 ? (
+            <DrawerMetric label="Paid late by" value={`${invoice.paidLateDays} days`} />
+          ) : null}
+          {invoice.overdueDays && invoice.overdueDays > 0 ? (
+            <DrawerMetric label="Overdue by" value={`${invoice.overdueDays} days`} />
+          ) : null}
         </div>
       </section>
 
@@ -43,6 +59,9 @@ export function InvoiceDetailsPanel({ projectId, invoice, currency, canManage }:
           <DrawerMetric label={`VAT (${invoice.vatRate}%)`} value={money(invoice.vatAmount)} />
           <DrawerMetric label={`Retention (${invoice.retentionRate}%)`} value={money(invoice.retentionAmount)} />
           <DrawerMetric label={`WHT (${invoice.whtRate}%)`} value={money(invoice.whtAmount)} />
+          {invoice.advanceRecovery && invoice.advanceRecovery > 0 ? (
+            <DrawerMetric label="Advance recovery" value={money(invoice.advanceRecovery)} />
+          ) : null}
           <DrawerMetric label="Total invoiced" value={money(invoice.totalInvoiced)} />
           <DrawerMetric label="Net payable" value={money(invoice.netPayable)} />
           <DrawerMetric label="Paid" value={money(invoice.amountPaid)} />
@@ -120,6 +139,9 @@ export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }
   const [removeId, setRemoveId] = useState<string | null>(null);
   const removePayment = useDeleteInvoicePayment();
   const fixedInvoice = useMemo(() => [invoice], [invoice]);
+  // An unissued or uncertified invoice has no sum owing, so nothing can be
+  // received against it — the API refuses it and the button says why first.
+  const payable = canRecordPaymentOn(invoice);
 
   function handleRemove(): void {
     if (!removeId) return;
@@ -138,7 +160,13 @@ export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }
         <DrawerSectionTitle
           actions={
             canManage ? (
-              <Button variant="secondary" size="sm" onClick={() => setAddOpen(true)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!payable.allowed}
+                title={payable.reason ?? undefined}
+                onClick={() => setAddOpen(true)}
+              >
                 Add payment
               </Button>
             ) : undefined
@@ -146,6 +174,9 @@ export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }
         >
           Payments · {formatCurrency(invoice.amountPaid, currency)} of {formatCurrency(invoice.totalInvoiced, currency)}
         </DrawerSectionTitle>
+        {payable.reason ? (
+          <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">{payable.reason}</p>
+        ) : null}
         {invoice.payments.length === 0 ? (
           <p className="mt-3 rounded-lg bg-surface-alt p-4 text-sm text-ink-muted">No payments recorded yet.</p>
         ) : (
@@ -165,7 +196,12 @@ export function InvoicePaymentsPanel({ projectId, invoice, currency, canManage }
                   <TableRow key={payment.id}>
                     <TableCell className="whitespace-nowrap px-4">{payment.paidAt ?? "—"}</TableCell>
                     <TableCell align="right" className="px-4 font-medium tabular-nums">{formatCurrency(payment.amount, currency)}</TableCell>
-                    <TableCell className="px-4">{payment.method}</TableCell>
+                    <TableCell className="px-4">
+                      {payment.method}
+                      {payment.credit ? (
+                        <span className="ml-2 text-xs text-warning-500">Overpayment credit</span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="px-4 text-gray-600">{payment.note ?? "—"}</TableCell>
                     {canManage ? (
                       <TableCell align="right" className="px-4">

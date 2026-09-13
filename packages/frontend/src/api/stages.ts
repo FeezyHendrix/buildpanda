@@ -31,18 +31,33 @@ export interface StageScheduleOfValue {
   periodPercent: number;
   periodAmount: number;
   toDateAmount: number;
+  /** A month later than the current one: the QS's projection, never a claim. */
+  forecast?: boolean;
+  /** False for a forecast month and for one already certified on an invoice. */
+  claimable?: boolean;
 }
 
 export interface UpdateScheduleProgressInput {
   stageId: string;
   period: string;
   percentComplete: number | null;
+  /** Required to value a month that has not happened yet; it is stored as a forecast. */
+  forecast?: boolean;
 }
 
 export interface ScheduleOfValueLineInput {
   period: string;
   percent: number;
   billed?: boolean;
+}
+
+/** Stage values against the contract sum — "₦850m of ₦850m allocated". */
+export interface StageValueSummary {
+  valueTotal: number;
+  contractSum: number;
+  /** `contractSum - valueTotal`; negative when the stages are over-allocated. */
+  unallocated: number;
+  allocatedPercent: number;
 }
 
 export const stagesApi = {
@@ -54,6 +69,11 @@ export const stagesApi = {
 
   update: (projectId: string, stageId: string, body: Partial<StageInput>) =>
     api.patch<Stage>(`/projects/${projectId}/stages/${stageId}`, body).then((r) => r.data),
+
+  valueSummary: (projectId: string) =>
+    api
+      .get<StageValueSummary>(`/projects/${projectId}/stages/value-summary`)
+      .then((r) => r.data),
 
   remove: (projectId: string, stageId: string) =>
     api.delete(`/projects/${projectId}/stages/${stageId}`).then((r) => r.data),
@@ -76,7 +96,9 @@ export const stagesApi = {
     api
       .patch<StageScheduleOfValue[]>(
         `/projects/${projectId}/stages/${input.stageId}/schedule-of-values/${input.period}`,
-        { percentComplete: input.percentComplete },
+        input.forecast
+          ? { percentComplete: input.percentComplete, forecast: true }
+          : { percentComplete: input.percentComplete },
       )
       .then((r) => r.data),
 

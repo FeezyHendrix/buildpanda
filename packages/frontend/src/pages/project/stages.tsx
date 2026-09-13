@@ -1,67 +1,40 @@
 import { useState } from "react";
-import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { ProgressBar } from "@/components/atoms/progress-bar";
 import { BlocksIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import {
   Table,
   TableBody,
-  TableCell,
   TableEmptyRow,
   TableHead,
   TableHeaderCell,
-  TableRow,
 } from "@/components/atoms/table";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { KpiCard } from "@/components/molecules/kpi-card";
-import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import {
   UpsertStageDialog,
   type UpsertStageValues,
 } from "@/components/molecules/upsert-stage-dialog";
+import { StageRow } from "./stages/stage-row";
+import { StageValueSummaryBar } from "./stages/stage-value-summary-bar";
 import { useParams } from "react-router-dom";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
   useCreateStage,
   useDeleteStage,
   useReorderStages,
+  useStageValueSummary,
   useStages,
   useUpdateStage,
 } from "@/hooks/use-stages";
-import { canResourceAction, type Stage, type StageStatus } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
+import { canResourceAction } from "@/lib/project-types";
 import { icons } from "@/assets/icons/icons";
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function StatusCell({ status }: { status: StageStatus }) {
-  if (status === "InProgress")
-    return (
-      <Badge tone="info" size="sm">
-        In progress
-      </Badge>
-    );
-  if (status === "Done")
-    return (
-      <Badge tone="success" size="sm">
-        Completed
-      </Badge>
-    );
-  return <span className="text-sm text-gray-400">Not started</span>;
-}
+const COLUMN_COUNT = 9;
 
 type FilterTab = "all" | "in-progress" | "completed";
 
@@ -76,6 +49,7 @@ export default function ProjectStages() {
   const canManage = Boolean(access && canResourceAction(access, "schedule", "manage"));
   const { buildingId } = useParams<{ buildingId?: string }>();
   const { data: stages = [], isLoading } = useStages(project.id, buildingId);
+  const { data: valueSummary } = useStageValueSummary(project.id);
   const createStage = useCreateStage();
   const updateStage = useUpdateStage();
   const deleteStage = useDeleteStage();
@@ -84,15 +58,15 @@ export default function ProjectStages() {
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
+  const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
 
+  const currency = project.currency ?? "NGN";
   const complete = stages.filter((s) => s.status === "Done").length;
   const inProgress = stages.filter((s) => s.status === "InProgress").length;
   const overall =
     stages.length === 0
       ? 0
-      : Math.round(
-          stages.reduce((sum, s) => sum + s.progressPercent, 0) / stages.length,
-        );
+      : Math.round(stages.reduce((sum, s) => sum + s.progressPercent, 0) / stages.length);
 
   const filtered = stages
     .filter(
@@ -101,9 +75,7 @@ export default function ProjectStages() {
         (filter === "in-progress" && s.status === "InProgress") ||
         (filter === "completed" && s.status === "Done"),
     )
-    .filter(
-      (s) => !search || s.name.toLowerCase().includes(search.toLowerCase()),
-    );
+    .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()));
 
   function handleCreate(values: UpsertStageValues): void {
     createStage.mutate(
@@ -121,10 +93,12 @@ export default function ProjectStages() {
     if (!current || !swap) return;
     next[index] = swap;
     next[target] = current;
-    reorderStages.mutate({
-      projectId: project.id,
-      stageIds: next.map((s) => s.id),
-    });
+    reorderStages.mutate({ projectId: project.id, stageIds: next.map((s) => s.id) });
+  }
+
+  function handleDelete(stageId: string, close: () => void): void {
+    setDeletingStageId(stageId);
+    deleteStage.mutate({ projectId: project.id, stageId }, { onSuccess: close });
   }
 
   return (
@@ -133,11 +107,7 @@ export default function ProjectStages() {
         title="Build stages"
         actions={
           canManage ? (
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => setCreateOpen(true)}
-            >
+            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
               <PlusIcon className="size-4" />
               Add stage
             </Button>
@@ -159,6 +129,8 @@ export default function ProjectStages() {
         </section>
       ) : null}
 
+      <StageValueSummaryBar summary={valueSummary} currency={currency} />
+
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1 rounded-lg border border-line-hair bg-white lg:max-w-md">
           <SearchInput
@@ -172,13 +144,14 @@ export default function ProjectStages() {
       </div>
 
       <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
-        <Table className="min-w-[700px]">
+        <Table className="min-w-[820px]">
           <TableHead>
             <tr>
               <TableHeaderCell className="w-10 px-3" />
               <TableHeaderCell />
               <TableHeaderCell>Build stage</TableHeaderCell>
               <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell align="right">Value</TableHeaderCell>
               <TableHeaderCell>Start date</TableHeaderCell>
               <TableHeaderCell>End date</TableHeaderCell>
               <TableHeaderCell>Progress</TableHeaderCell>
@@ -187,47 +160,53 @@ export default function ProjectStages() {
           </TableHead>
           <TableBody>
             {isLoading ? (
-              <TableEmptyRow colSpan={8}>
+              <TableEmptyRow colSpan={COLUMN_COUNT}>
                 <div className="flex justify-center py-10">
                   <Spinner size="md" />
                 </div>
               </TableEmptyRow>
             ) : filtered.length === 0 ? (
-              <TableEmptyRow colSpan={8}>
+              <TableEmptyRow colSpan={COLUMN_COUNT}>
                 <EmptyState
                   variant="inline"
                   icon={<BlocksIcon />}
                   title={stages.length === 0 ? "No stages yet" : "No stages match your search"}
-                  description={stages.length === 0 ? "Add your first stage to start tracking the build." : "Try a different search term."}
+                  description={
+                    stages.length === 0
+                      ? "Add your first stage to start tracking the build."
+                      : "Try a different search term."
+                  }
                 />
               </TableEmptyRow>
             ) : (
-              filtered.map((stage) => {
-                const originalIndex = stages.indexOf(stage);
-                return (
-                  <StageRow
-                    key={stage.id}
-                    stage={stage}
-                    index={originalIndex}
-                    total={stages.length}
-                    canManage={canManage}
-                    onMove={move}
-                    onUpdate={(values) =>
-                      updateStage.mutate({
-                        projectId: project.id,
-                        stageId: stage.id,
-                        ...values,
-                      })
+              filtered.map((stage) => (
+                <StageRow
+                  key={stage.id}
+                  stage={stage}
+                  index={stages.indexOf(stage)}
+                  total={stages.length}
+                  canManage={canManage}
+                  currency={currency}
+                  unallocated={valueSummary?.unallocated}
+                  deleteError={
+                    deletingStageId === stage.id && deleteStage.error
+                      ? errorMessage(deleteStage.error)
+                      : null
+                  }
+                  isDeleting={deletingStageId === stage.id && deleteStage.isPending}
+                  onMove={move}
+                  onUpdate={(values) =>
+                    updateStage.mutate({ projectId: project.id, stageId: stage.id, ...values })
+                  }
+                  onDelete={(close) => handleDelete(stage.id, close)}
+                  onDeleteDialogChange={(open) => {
+                    if (open) {
+                      deleteStage.reset();
+                      setDeletingStageId(stage.id);
                     }
-                    onDelete={() =>
-                      deleteStage.mutate({
-                        projectId: project.id,
-                        stageId: stage.id,
-                      })
-                    }
-                  />
-                );
-              })
+                  }}
+                />
+              ))
             )}
           </TableBody>
         </Table>
@@ -237,121 +216,12 @@ export default function ProjectStages() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
+        currency={currency}
+        unallocated={valueSummary?.unallocated}
         onSubmit={handleCreate}
         isSubmitting={createStage.isPending}
-        error={(createStage.error as Error | undefined)?.message ?? null}
+        error={createStage.error ? errorMessage(createStage.error) : null}
       />
     </div>
-  );
-}
-
-function StageRow({
-  stage,
-  index,
-  total,
-  canManage,
-  onMove,
-  onUpdate,
-  onDelete,
-}: {
-  stage: Stage;
-  index: number;
-  total: number;
-  canManage: boolean;
-  onMove: (index: number, dir: -1 | 1) => void;
-  onUpdate: (values: UpsertStageValues) => void;
-  onDelete: () => void;
-}) {
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  return (
-    <>
-      <TableRow className="group hover:bg-surface-alt">
-        <TableCell className="px-3">
-          <div className="flex flex-col items-center">
-            <button
-              type="button"
-              aria-label="Move up"
-              disabled={index === 0}
-              onClick={() => onMove(index, -1)}
-              className="p-0 leading-none text-gray-400 hover:text-gray-900 disabled:opacity-30"
-            >
-              ▲
-            </button>
-            <button
-              type="button"
-              aria-label="Move down"
-              disabled={index === total - 1}
-              onClick={() => onMove(index, 1)}
-              className="p-0 leading-none text-gray-400 hover:text-gray-900 disabled:opacity-30"
-            >
-              ▼
-            </button>
-          </div>
-        </TableCell>
-
-        <TableCell>
-          <span className="inline-flex size-[30px] items-center justify-center rounded-full bg-surface-alt text-[12px] font-medium text-ink">
-            {index + 1}
-          </span>
-        </TableCell>
-
-        <TableCell className="font-medium">{stage.name}</TableCell>
-
-        <TableCell>
-          <StatusCell status={stage.status} />
-        </TableCell>
-
-        <TableCell className="whitespace-nowrap">{formatDate(stage.startDate)}</TableCell>
-
-        <TableCell className="whitespace-nowrap">{formatDate(stage.endDate)}</TableCell>
-
-        <TableCell>
-          <div className="flex items-center gap-2">
-            <ProgressBar tone="success" value={stage.progressPercent} size="md" />
-            <span className="w-8 text-right text-[12px] tabular-nums text-ink">
-              {stage.progressPercent}%
-            </span>
-          </div>
-        </TableCell>
-
-        <TableCell className="px-3">
-          {canManage ? (
-            <RowActionsMenu
-              onEdit={() => setEditOpen(true)}
-              onDelete={() => setDeleteOpen(true)}
-            />
-          ) : null}
-        </TableCell>
-      </TableRow>
-
-      <UpsertStageDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mode="edit"
-        initial={{
-          name: stage.name,
-          status: stage.status,
-          startDate: stage.startDate,
-          endDate: stage.endDate,
-          progressPercent: stage.progressPercent,
-        }}
-        onSubmit={(values) => {
-          onUpdate(values);
-          setEditOpen(false);
-        }}
-      />
-
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        onConfirm={onDelete}
-        title="Delete stage"
-        description="This removes the stage from the build plan. This action cannot be undone."
-        confirmLabel="Delete"
-        variant="danger"
-      />
-    </>
   );
 }

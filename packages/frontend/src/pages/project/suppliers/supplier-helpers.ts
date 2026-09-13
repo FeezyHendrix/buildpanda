@@ -1,5 +1,19 @@
 import type { BadgeTone } from "@/components/atoms/badge";
+import { errorDetails, errorMessage, getApiErrorStatus } from "@/lib/api-error";
 import type { Supplier, SupplierScope } from "@/lib/project-types";
+
+/** The 409 the register answers with when the email or phone already exists. */
+export interface DuplicateSupplier {
+  existingId: string;
+  message: string;
+}
+
+export function readDuplicate(error: unknown): DuplicateSupplier | null {
+  if (getApiErrorStatus(error) !== 409) return null;
+  const details = errorDetails<{ existingId?: string }>(error);
+  if (!details?.existingId) return null;
+  return { existingId: details.existingId, message: errorMessage(error) };
+}
 
 export type SupplierScopeFilter = "all" | SupplierScope;
 export type SupplierApprovalFilter = "all" | "approved" | "unapproved";

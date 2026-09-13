@@ -3,6 +3,7 @@ import { materialApprovalKeys } from "./query-keys";
 import {
   materialApprovalsApi,
   type MaterialApprovalCreateInput,
+  type MaterialApprovalResubmitInput,
   type MaterialApprovalUpdateInput,
 } from "@/api/material-approvals";
 import type { ApprovalStatus } from "@/lib/project-types";
@@ -48,6 +49,24 @@ export function useUpdateMaterialApproval() {
       ...body
     }: MaterialApprovalUpdateInput & { projectId: string; approvalId: string }) =>
       materialApprovalsApi.update(projectId, approvalId, body),
+    onSuccess: (_d, { projectId }) =>
+      qc.invalidateQueries({ queryKey: materialApprovalKeys.all(projectId) }),
+  });
+}
+
+/**
+ * A decided request is read-only; resubmitting clones it into a fresh Pending
+ * request that links back, so the rejection and its replacement both stand.
+ */
+export function useResubmitMaterialApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      approvalId,
+      ...body
+    }: MaterialApprovalResubmitInput & { projectId: string; approvalId: string }) =>
+      materialApprovalsApi.resubmit(projectId, approvalId, body),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: materialApprovalKeys.all(projectId) }),
   });

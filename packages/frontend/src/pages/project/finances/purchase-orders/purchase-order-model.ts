@@ -5,31 +5,52 @@ import type {
   PurchaseOrderStatus,
 } from "@/hooks/use-purchase-orders";
 
-export const PO_STATUSES: readonly PurchaseOrderStatus[] = [
-  "Draft",
-  "Issued",
-  "PartiallyReceived",
-  "Received",
-  "Closed",
-  "Cancelled",
-];
-
-export const PO_STATUS_TONE: Record<PurchaseOrderStatus, BadgeTone> = {
-  Draft: "neutral",
-  Issued: "info",
-  PartiallyReceived: "warning",
-  Received: "accent",
-  Closed: "success",
-  Cancelled: "danger",
+/**
+ * The status is never typed. A PO is born Draft and moves only through the four
+ * actions the server exposes, so this map is for reading a status, not setting
+ * one — and the labels are spaced properly rather than "PartiallyReceived".
+ */
+export const PO_STATUS_META: Record<PurchaseOrderStatus, { label: string; tone: BadgeTone }> = {
+  Draft: { label: "Draft", tone: "neutral" },
+  Issued: { label: "Issued", tone: "info" },
+  PartiallyReceived: { label: "Partially received", tone: "warning" },
+  Received: { label: "Received", tone: "accent" },
+  Closed: { label: "Closed", tone: "success" },
+  Cancelled: { label: "Cancelled", tone: "danger" },
 };
 
-/** A PO counts as committed spend once it has been issued to the vendor. */
-export const COMMITTED_PO_STATUSES: readonly PurchaseOrderStatus[] = [
-  "Issued",
-  "PartiallyReceived",
-  "Received",
-  "Closed",
-];
+export type PurchaseOrderAction = "issue" | "receive" | "cancel" | "close";
+
+const ACTIONS: Record<PurchaseOrderStatus, readonly PurchaseOrderAction[]> = {
+  Draft: ["issue", "cancel"],
+  Issued: ["receive", "cancel"],
+  PartiallyReceived: ["receive", "cancel"],
+  Received: ["close"],
+  Closed: [],
+  Cancelled: [],
+};
+
+export const PO_ACTION_LABEL: Record<PurchaseOrderAction, string> = {
+  issue: "Issue to vendor",
+  receive: "Receive goods",
+  cancel: "Cancel",
+  close: "Close",
+};
+
+/** What the server will actually accept next, so the UI offers nothing else. */
+export function availableActions(status: PurchaseOrderStatus): readonly PurchaseOrderAction[] {
+  return ACTIONS[status];
+}
+
+/** A received PO's lines are read-only — the server 409s on an edit. */
+export function canEditLines(status: PurchaseOrderStatus): boolean {
+  return status === "Draft" || status === "Issued" || status === "PartiallyReceived";
+}
+
+/** Only an untouched draft can be deleted; anything issued is cancelled instead. */
+export function canDeletePurchaseOrder(status: PurchaseOrderStatus): boolean {
+  return status === "Draft";
+}
 
 export interface LineItemValues {
   description: string;
@@ -40,7 +61,7 @@ export interface LineItemValues {
 export interface UpsertPurchaseOrderValues {
   poNumber: string;
   vendorName: string;
-  status: PurchaseOrderStatus;
+  supplierId: string | null;
   orderDate: string;
   expectedDate: string;
   notes: string;
@@ -51,7 +72,7 @@ export interface UpsertPurchaseOrderValues {
 export const EMPTY_PO: UpsertPurchaseOrderValues = {
   poNumber: "",
   vendorName: "",
-  status: "Draft",
+  supplierId: null,
   orderDate: "",
   expectedDate: "",
   notes: "",
@@ -80,9 +101,10 @@ export function isLineValid(item: LineItemValues): boolean {
 
 export function toInput(values: UpsertPurchaseOrderValues): PurchaseOrderInput {
   return {
-    poNumber: values.poNumber,
+    // Left blank the server sequences it as PO-<n> for this project.
+    poNumber: values.poNumber.trim() || undefined,
     vendorName: values.vendorName,
-    status: values.status,
+    supplierId: values.supplierId,
     orderDate: values.orderDate || undefined,
     expectedDate: values.expectedDate || undefined,
     notes: values.notes || undefined,
@@ -99,7 +121,7 @@ export function toValues(purchaseOrder: PurchaseOrder): UpsertPurchaseOrderValue
   return {
     poNumber: purchaseOrder.poNumber,
     vendorName: purchaseOrder.vendorName,
-    status: purchaseOrder.status,
+    supplierId: purchaseOrder.supplierId,
     orderDate: purchaseOrder.orderDate ?? "",
     expectedDate: purchaseOrder.expectedDate ?? "",
     notes: purchaseOrder.notes ?? "",
@@ -110,4 +132,19 @@ export function toValues(purchaseOrder: PurchaseOrder): UpsertPurchaseOrderValue
       unitPrice: String(item.unitPrice),
     })),
   };
+}
+
+/**
+ * The committed figure is the server's: each PO carries the flag, so the page
+ * sums what the API already decided rather than re-deriving the rule.
+ */
+export function committedTotal(purchaseOrders: readonly PurchaseOrder[]): number {
+  return purchaseOrders.reduce(
+    (sum, purchaseOrder) => (purchaseOrder.committed ? sum + purchaseOrder.total : sum),
+    0,
+  );
+}
+
+export function receivedTotal(purchaseOrders: readonly PurchaseOrder[]): number {
+  return purchaseOrders.reduce((sum, purchaseOrder) => sum + purchaseOrder.receivedTotal, 0);
 }

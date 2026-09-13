@@ -44,7 +44,11 @@ export const EQUIPMENT_STATUS_META: Record<
   Cancelled: { label: "Cancelled", tone: "danger" },
 };
 
-/** The stage the record moves to next, or null once it is closed. */
+/**
+ * The stage the record moves to next, or null once it is closed. Returning is
+ * deliberately absent: a return needs an off-hire date, so it goes through its
+ * own dialog rather than a one-click move.
+ */
 export function nextEquipmentStatus(
   status: EquipmentRequestStatus,
 ): EquipmentRequestStatus | null {
@@ -58,11 +62,37 @@ export function nextEquipmentStatus(
     case "Scheduled":
       return "OnHire";
     case "OnHire":
-      return "Returned";
     case "Returned":
     case "Cancelled":
       return null;
   }
+}
+
+/** Inclusive calendar days on hire — how plant is invoiced. */
+export function hireDaysBetween(from: string | null, to: string | null): number | null {
+  if (!from || !to) return null;
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return null;
+  return Math.round((end - start) / 86_400_000) + 1;
+}
+
+/** Only plant that is actually out can be returned or extended. */
+export function canExtendHire(status: EquipmentRequestStatus): boolean {
+  return status === "Scheduled" || status === "OnHire";
+}
+
+export function canReturnHire(status: EquipmentRequestStatus): boolean {
+  return status === "OnHire";
+}
+
+/** Past Draft a hire order is cancelled with a reason, never deleted. */
+export function canDeleteEquipment(status: EquipmentRequestStatus): boolean {
+  return status === "Draft";
+}
+
+export function canCancelEquipment(status: EquipmentRequestStatus): boolean {
+  return status !== "Draft" && status !== "Cancelled" && status !== "Returned";
 }
 
 /** Transitions from Approved onward mirror the backend's approval guard. */

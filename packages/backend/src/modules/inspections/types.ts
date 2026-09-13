@@ -42,7 +42,7 @@ export interface InspectionReport {
   /** The BuildPanda inspector's user id — null until one is assigned. */
   inspectorUserId: string | null;
   title: string;
-  category: InspectionCategory;
+  category: string;
   description: string;
   descriptionHtml: string | null;
   status: InspectionStatus;
@@ -79,7 +79,9 @@ export interface InspectionRow {
   inspector_avatar_url: string | null;
   inspector_user_id: string | null;
   title: string;
-  category: InspectionCategory;
+  category: string;
+  category_id: string | null;
+  cancellation_reason: string | null;
   description: string;
   description_html: string | null;
   status: InspectionStatus;
@@ -134,7 +136,9 @@ export interface InspectionActor {
 
 export interface RequestInspectionInput {
   title: string;
-  category: InspectionCategory;
+  /** The catalogue row picked, when the caller has one. */
+  categoryId?: string;
+  category: string;
   description: string;
   descriptionHtml?: string | null;
   scheduledAt: string;
@@ -149,7 +153,8 @@ export interface RequestInspectionInput {
 
 export interface EditInspectionInput {
   title?: string;
-  category?: InspectionCategory;
+  category?: string;
+  categoryId?: string;
   description?: string;
   descriptionHtml?: string | null;
   scheduledAt?: string;

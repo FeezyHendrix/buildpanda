@@ -46,10 +46,18 @@ export const inspectionKeys = {
     [...inspectionKeys.all(projectId), "list"] as const,
 };
 
+export const inspectionCategoryKeys = {
+  all: (projectId: string) => ["projects", projectId, "inspection-categories"] as const,
+  list: (projectId: string) => [...inspectionCategoryKeys.all(projectId), "list"] as const,
+};
+
 export const financeKeys = {
   all: (projectId: string) => ["projects", projectId, "finances"] as const,
   summary: (projectId: string) =>
     [...financeKeys.all(projectId), "summary"] as const,
+  /** The one money model: GET /finances/summary. */
+  position: (projectId: string) =>
+    [...financeKeys.all(projectId), "position"] as const,
   events: (projectId: string) =>
     [...financeKeys.all(projectId), "events"] as const,
   stageCosts: (projectId: string) =>
@@ -78,6 +86,8 @@ export const materialKeys = {
   orders: (projectId: string, status?: string) =>
     [...materialKeys.all(projectId), "orders", status ?? "all"] as const,
   boqMaterials: (projectId: string) => [...materialKeys.all(projectId), "boq-materials"] as const,
+  deliveries: (projectId: string, orderId: string) =>
+    [...materialKeys.all(projectId), "orders", orderId, "deliveries"] as const,
 };
 
 export const equipmentRequestKeys = {
@@ -110,6 +120,10 @@ export const invoiceKeys = {
   payApplication: (projectId: string, invoiceId: string) =>
     [...invoiceKeys.all(projectId), "pay-application", invoiceId] as const,
   payments: (projectId: string) => [...invoiceKeys.all(projectId), "payments"] as const,
+  certificate: (projectId: string, invoiceId: string) =>
+    [...invoiceKeys.all(projectId), "certificate", invoiceId] as const,
+  history: (projectId: string, invoiceId: string) =>
+    [...invoiceKeys.all(projectId), "history", invoiceId] as const,
 };
 
 export const paymentClaimKeys = {
@@ -145,6 +159,15 @@ export const activityKeys = {
     [...activityKeys.all(projectId), "detail", activityId] as const,
   references: (projectId: string, activityId: string) =>
     [...activityKeys.all(projectId), "references", activityId] as const,
+  delays: (projectId: string, activityId: string) =>
+    [...activityKeys.all(projectId), "delays", activityId] as const,
+  events: (projectId: string, activityId: string) =>
+    [...activityKeys.all(projectId), "events", activityId] as const,
+};
+
+export const eotKeys = {
+  all: (projectId: string) => ["projects", projectId, "extensions-of-time"] as const,
+  list: (projectId: string) => [...eotKeys.all(projectId), "list"] as const,
 };
 
 export const stageKeys = {
@@ -154,6 +177,8 @@ export const stageKeys = {
     [...stageKeys.all(projectId), "schedule-of-values", stageId ?? "__none__"] as const,
   // Its own key: sharing one with a disabled per-stage query let that query's
   // fn (stage "undefined") answer a project-wide refetch with an empty list.
+  valueSummary: (projectId: string) =>
+    [...stageKeys.all(projectId), "value-summary"] as const,
   projectScheduleOfValues: (projectId: string) =>
     [...stageKeys.all(projectId), "schedule-of-values", "project"] as const,
 };

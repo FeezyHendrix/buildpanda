@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
+import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
 import { SearchInput } from "@/components/atoms/search-input";
 import { Spinner } from "@/components/atoms/spinner";
 import { Table, TableBody, TableEmptyRow, TableHead } from "@/components/atoms/table";
@@ -21,6 +22,10 @@ import {
   type StageCosts,
 } from "./billing-sheet-model";
 import { BillingSheetRow } from "./billing-sheet-row";
+import { useRemoveBillingMonth } from "./use-remove-billing-month";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
+import { formatPeriodHeading } from "./billing-sheet-model";
 
 /**
  * The billing sheet: phases down, billing months across, cumulative % complete
@@ -33,18 +38,27 @@ interface BillingSheetProps {
   currency: Currency;
   canManage: boolean;
   canBill: boolean;
+  /**
+   * Committed / actual / variance are the contractor's own cost position, so
+   * they need `finances:viewCosts`; without it the columns are not rendered and
+   * the costs request is never fired.
+   */
+  showCosts: boolean;
   onEditValue: (stage: Stage) => void;
   onOpenSchedule: (stage: Stage) => void;
 }
 
 /** Columns before the month columns, plus To date and Actions. */
 const FIXED_COLUMNS = 9;
+/** Committed, actual and variance drop out when costs are not shared. */
+const COST_COLUMNS = 3;
 
 export function BillingSheet({
   projectId,
   currency,
   canManage,
   canBill,
+  showCosts,
   onEditValue,
   onOpenSchedule,
 }: BillingSheetProps) {
@@ -54,11 +68,13 @@ export function BillingSheet({
   const { data: contracts = [] } = useContracts(projectId);
   // Committed / actual per stage arrive from the costs side; the columns show
   // "—" until they do.
-  const costs = useStageCosts(projectId).data as StageCosts | undefined;
+  const costs = useStageCosts(showCosts ? projectId : undefined).data as StageCosts | undefined;
 
   const [search, setSearch] = useState("");
   const [addedPeriods, setAddedPeriods] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState<Set<SheetGroupId>>(() => new Set());
+  const [removing, setRemoving] = useState<string | null>(null);
+  const removeMonth = useRemoveBillingMonth(projectId);
 
   const periods = useMemo(() => sheetPeriods(lines, addedPeriods), [lines, addedPeriods]);
   const invoiced = useMemo(() => invoicedPeriods(lines), [lines]);
@@ -88,6 +104,26 @@ export function BillingSheet({
   const addPeriod = useCallback((period: string) => {
     setAddedPeriods((current) => (current.includes(period) ? current : [...current, period]));
   }, []);
+  const confirmRemove = useCallback(() => {
+    if (!removing) return;
+    // A column only added on screen has nothing saved against it yet.
+    if (!(lines ?? []).some((line) => line.period === removing)) {
+      setAddedPeriods((current) => current.filter((period) => period !== removing));
+      setRemoving(null);
+      return;
+    }
+    removeMonth.mutate(
+      { period: removing, lines: lines ?? [] },
+      {
+        onSuccess: () => {
+          setAddedPeriods((current) => current.filter((period) => period !== removing));
+          setRemoving(null);
+        },
+        onError: (error) => toast(getApiErrorMessage(error), "error"),
+      },
+    );
+  }, [removing, lines, removeMonth]);
+
   const toggleGroup = useCallback((id: SheetGroupId) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -97,7 +133,7 @@ export function BillingSheet({
     });
   }, []);
 
-  const columnCount = FIXED_COLUMNS + periods.length;
+  const columnCount = FIXED_COLUMNS + periods.length - (showCosts ? 0 : COST_COLUMNS);
 
   return (
     <>
@@ -116,7 +152,14 @@ export function BillingSheet({
       <div className="mt-4 overflow-hidden rounded-lg border border-grey-50 bg-white">
         <Table className="min-w-[1100px]">
           <TableHead>
-            <BillingSheetHeader projectId={projectId} periods={periods} invoiced={invoiced} canBill={canBill} />
+            <BillingSheetHeader
+              projectId={projectId}
+              periods={periods}
+              invoiced={invoiced}
+              canBill={canBill}
+              showCosts={showCosts}
+              onRemovePeriod={canBill ? setRemoving : undefined}
+            />
           </TableHead>
           <TableBody>
             {isPending ? (
@@ -152,6 +195,8 @@ export function BillingSheet({
                       currency={currency}
                       canManage={canManage}
                       canBill={canBill}
+                      certified={invoiced}
+                      showCosts={showCosts}
                       hasCosts={costs !== undefined}
                       columnCount={columnCount}
                       onEditValue={onEditValue}
@@ -159,12 +204,25 @@ export function BillingSheet({
                     />
                   );
                 })}
-                <BillingSheetTotals totals={totals} periods={periods} currency={currency} hasCosts={costs !== undefined} />
+                <BillingSheetTotals totals={totals} periods={periods} currency={currency} hasCosts={costs !== undefined} showCosts={showCosts} />
               </>
             )}
           </TableBody>
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={removing !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoving(null);
+        }}
+        title={removing ? `Remove ${formatPeriodHeading(removing)} from the sheet?` : "Remove month"}
+        description="The month's column and everything recorded in it are dropped. A month already certified on an invoice cannot be removed — the figure lives on that certificate."
+        confirmLabel="Remove month"
+        variant="danger"
+        loading={removeMonth.isPending}
+        onConfirm={confirmRemove}
+      />
     </>
   );
 }
@@ -180,6 +238,8 @@ interface GroupRowsProps {
   currency: Currency;
   canManage: boolean;
   canBill: boolean;
+  certified: Set<string>;
+  showCosts: boolean;
   hasCosts: boolean;
   columnCount: number;
   onEditValue: (stage: Stage) => void;
@@ -195,6 +255,8 @@ function GroupRows({
   currency,
   canManage,
   canBill,
+  certified,
+  showCosts,
   hasCosts,
   columnCount,
   onEditValue,
@@ -222,13 +284,15 @@ function GroupRows({
               currency={currency}
               canManage={canManage}
               canBill={canBill}
+              certified={certified}
+              showCosts={showCosts}
               onEditValue={onEditValue}
               onOpenSchedule={onOpenSchedule}
             />
           ))
         : null}
       {open && group.rows.length > 0 ? (
-        <BillingSheetTotals label="Subtotal" totals={group.totals} periods={periods} currency={currency} hasCosts={hasCosts} />
+        <BillingSheetTotals label="Subtotal" totals={group.totals} periods={periods} currency={currency} hasCosts={hasCosts} showCosts={showCosts} />
       ) : null}
     </>
   );

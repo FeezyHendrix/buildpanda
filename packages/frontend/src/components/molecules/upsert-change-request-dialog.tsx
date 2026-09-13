@@ -5,20 +5,31 @@ import { currencySymbol } from "@/lib/formatters";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
 import { FormDrawer } from "./form-drawer";
-import type { ChangeStatus } from "@/lib/project-types";
+import { useProjectRfis } from "@/hooks/use-rfis";
+import { useStages } from "@/hooks/use-stages";
+import { CHANGE_TYPES, type ChangeType } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
 
+/**
+ * A change request is a contractual proposal, not a status someone types. The
+ * form captures what is being changed, what kind of change it is and what it
+ * hangs off — the stage whose dates move, the RFI it came out of, the EOT
+ * claim carrying its days. The ladder itself (submit → approve / reject →
+ * resubmit → execute) is walked from the detail dialog's actions.
+ */
 export interface UpsertChangeValues {
   title: string;
   description: string | null;
   reason: string | null;
   reasonHtml: string | null;
-  status: ChangeStatus;
   costImpact: number;
   timeImpactDays: number;
   currency: "NGN" | "USD";
   assigneeId: string | null;
+  type: ChangeType;
+  stageId: string | null;
+  rfiId: string | null;
 }
 
 export interface AssigneeOption {
@@ -38,13 +49,15 @@ interface Props {
   error?: string | null;
 }
 
-const STATUS: { value: ChangeStatus; label: string }[] = [
-  { value: "Draft", label: "Draft" },
-  { value: "Submitted", label: "Submitted" },
-  { value: "Approved", label: "Approved" },
-  { value: "Executed", label: "Executed" },
-  { value: "Rejected", label: "Rejected" },
-];
+export const CHANGE_TYPE_LABELS: Record<ChangeType, { label: string; hint: string }> = {
+  variation: { label: "Variation", hint: "Additional work instructed against the contract." },
+  omission: { label: "Omission", hint: "Work removed from the contract; the cost impact is negative." },
+  eot_only: { label: "Extension of time only", hint: "A claim for time with no money attached." },
+  provisional_sum: {
+    label: "Provisional sum adjustment",
+    hint: "Converts a sum already in the contract into measured work.",
+  },
+};
 
 const field = INPUT_CLASS;
 
@@ -53,13 +66,17 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
   const [description, setDescription] = useState("");
   const [reason, setReason] = useState("");
   const [reasonHtml, setReasonHtml] = useState("");
-  const [status, setStatus] = useState<ChangeStatus>("Draft");
   const [cost, setCost] = useState("0");
   const [days, setDays] = useState("0");
   const [currency, setCurrency] = useState<"NGN" | "USD">("NGN");
   const [assigneeId, setAssigneeId] = useState("");
+  const [type, setType] = useState<ChangeType>("variation");
+  const [stageId, setStageId] = useState("");
+  const [rfiId, setRfiId] = useState("");
 
   const symbol = currencySymbol(currency);
+  const { data: stages = [] } = useStages(open ? projectId : undefined);
+  const { data: rfis = [] } = useProjectRfis(open ? projectId : undefined);
 
   useEffect(() => {
     if (open) {
@@ -67,11 +84,13 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       setDescription(initial?.description ?? "");
       setReason(initial?.reason ?? "");
       setReasonHtml(initial?.reasonHtml ?? htmlFromPlainText(initial?.reason ?? ""));
-      setStatus(initial?.status ?? "Draft");
       setCost(String(initial?.costImpact ?? 0));
       setDays(String(initial?.timeImpactDays ?? 0));
       setCurrency(initial?.currency ?? "NGN");
       setAssigneeId(initial?.assigneeId ?? "");
+      setType(initial?.type ?? "variation");
+      setStageId(initial?.stageId ?? "");
+      setRfiId(initial?.rfiId ?? "");
     }
   }, [open, initial]);
 
@@ -82,11 +101,13 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       description: description.trim() || null,
       reason: reason.trim() || null,
       reasonHtml: reasonHtml || null,
-      status,
       costImpact: Number(cost) || 0,
       timeImpactDays: Math.round(Number(days) || 0),
       currency,
       assigneeId: assigneeId || null,
+      type,
+      stageId: stageId || null,
+      rfiId: rfiId || null,
     });
   }
 
@@ -104,7 +125,7 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
     >
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-title">Title</Label>
-        <input id="cr-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Upgrade to imported floor tiles" className={field} />
+        <input id="cr-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Additional 120 m lined drain at ch. 2+400" className={field} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-desc">Details</Label>
@@ -135,18 +156,44 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
           <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
         </div>
       </div>
-      {mode === "edit" && (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="cr-type">Type</Label>
+        <select id="cr-type" value={type} onChange={(e) => setType(e.target.value as ChangeType)} className={field}>
+          {CHANGE_TYPES.map((value) => (
+            <option key={value} value={value}>
+              {CHANGE_TYPE_LABELS[value].label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-ink-muted">{CHANGE_TYPE_LABELS[type].hint}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-status">Status</Label>
-          <select id="cr-status" value={status} onChange={(e) => setStatus(e.target.value as ChangeStatus)} className={field}>
-            {STATUS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
+          <Label htmlFor="cr-stage">Stage affected</Label>
+          <select id="cr-stage" value={stageId} onChange={(e) => setStageId(e.target.value)} className={field}>
+            <option value="">No stage</option>
+            {stages.map((stage) => (
+              <option key={stage.id} value={stage.id}>
+                {stage.name}
               </option>
             ))}
           </select>
+          <p className="text-xs text-ink-muted">Its end date shifts by the time impact when the change is executed.</p>
         </div>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="cr-rfi">Originating RFI</Label>
+          <select id="cr-rfi" value={rfiId} onChange={(e) => setRfiId(e.target.value)} className={field}>
+            <option value="">Not from an RFI</option>
+            {rfis.map((rfi) => (
+              <option key={rfi.id} value={rfi.id}>
+                RFI-{rfi.number} · {rfi.subject}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">Links the change back to the query that caused it.</p>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-assignee">Assignee</Label>

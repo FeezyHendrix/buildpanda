@@ -1,23 +1,23 @@
 import { Card } from "@/components/atoms/card";
 import { cn } from "@/lib/utils";
-import type { Settlement } from "../settlement-statement";
+import type { FinanceSummary } from "@/hooks/use-finances";
 
 interface Step {
   title: string;
   detail: string;
-  done: (s: Settlement) => boolean;
+  done: (s: FinanceSummary) => boolean;
 }
 
 const STEPS: readonly Step[] = [
   {
     title: "Certify remaining work",
     detail: "Value the last activities and record them against the adjusted contract sum.",
-    done: (s) => s.remainingToCertify === 0,
+    done: (s) => s.outstanding === 0,
   },
   {
-    title: "Log the final release",
-    detail: "Record the outstanding balance as released once the contractor is paid off-platform.",
-    done: (s) => s.outstanding === 0,
+    title: "Record the final receipt",
+    detail: "Log the last payment against the certificates once the employer has paid off-platform.",
+    done: (s) => s.unpaidCertified === 0,
   },
   {
     title: "Release retention",
@@ -46,7 +46,7 @@ function ChecklistItem({ step, index, done }: { step: Step; index: number; done:
 }
 
 /** Bookkeeping-only checklist for closing the contract; BuildPanda logs these, it does not move money. */
-export function ClosingChecklist({ settlement }: { settlement: Settlement }) {
+export function ClosingChecklist({ summary }: { summary: FinanceSummary }) {
   return (
     <Card padding="lg" className="lg:col-span-2">
       <div className="mb-4">
@@ -58,7 +58,7 @@ export function ClosingChecklist({ settlement }: { settlement: Settlement }) {
       </div>
       <ul className="space-y-3 text-sm text-ink">
         {STEPS.map((step, index) => (
-          <ChecklistItem key={step.title} step={step} index={index} done={step.done(settlement)} />
+          <ChecklistItem key={step.title} step={step} index={index} done={step.done(summary)} />
         ))}
       </ul>
     </Card>

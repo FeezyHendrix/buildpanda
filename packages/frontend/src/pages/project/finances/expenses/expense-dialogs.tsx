@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { Label } from "@/components/atoms/label";
 import { MoneyInput } from "@/components/atoms/money-input";
-import { Spinner } from "@/components/atoms/spinner";
 import { ComboSelect, type ComboItem } from "@/components/molecules/combo-select";
+import { ExpenseFlagFields, ExpenseReceiptField } from "./expense-form-fields";
 import { FormDrawer } from "@/components/molecules/form-drawer";
 import { useStages } from "@/hooks/use-stages";
 import { useCreateTransaction, useUpdateTransaction } from "@/hooks/use-transactions";
@@ -31,6 +31,8 @@ interface TransactionFormValues {
   reference: string;
   receiptFileId: string;
   stageId: string;
+  credit: boolean;
+  recoverable: boolean;
 }
 
 const NO_STAGE = "__none__";
@@ -45,6 +47,8 @@ const EMPTY_FORM: TransactionFormValues = {
   reference: "",
   receiptFileId: "",
   stageId: "",
+  credit: false,
+  recoverable: false,
 };
 
 export function CategoryBadge({ categoryLabel, categoryColor }: { categoryLabel: string; categoryColor: string | null }) {
@@ -104,6 +108,8 @@ export function UpsertTransactionDialog({
       reference: initial.reference ?? "",
       receiptFileId: initial.receiptFileId ?? "",
       stageId: initial.stageId ?? "",
+      credit: initial.credit,
+      recoverable: initial.recoverable,
     };
   });
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
@@ -155,6 +161,8 @@ export function UpsertTransactionDialog({
       reference: values.reference || null,
       receiptFileId: values.receiptFileId || null,
       stageId: values.stageId || null,
+      credit: values.credit,
+      recoverable: values.recoverable,
     };
 
     if (isEdit && initial) {
@@ -164,7 +172,19 @@ export function UpsertTransactionDialog({
     }
   }
 
-  const isValid = values.title && values.category && values.amount && values.transactedAt;
+  // An expense is an outlay, so a negative figure is never what the user
+  // means — money coming back is a credit, which is a flag on the record, not
+  // a minus sign the mask would swallow anyway. The API refuses it too.
+  const amountValue = Number(values.amount);
+  const isNegative = values.amount.trim().startsWith("-") || amountValue < 0;
+  const isValid = Boolean(
+    values.title && values.category && values.amount && values.transactedAt && !isNegative,
+  );
+  const formError = isNegative
+    ? "An expense cannot be negative — record a refund or credit note instead by turning on Credit / refund."
+    : mutation.error
+      ? errorMessage(mutation.error)
+      : null;
 
   return (
     <FormDrawer
@@ -174,7 +194,7 @@ export function UpsertTransactionDialog({
       submitLabel={isEdit ? "Save changes" : "Save entry"}
       submitting={mutation.isPending || uploadProgress !== null}
       submitDisabled={!isValid || uploadProgress !== null}
-      error={mutation.error ? errorMessage(mutation.error) : null}
+      error={formError}
       onSubmit={handleSubmit}
     >
       <div className="space-y-5">
@@ -265,36 +285,23 @@ export function UpsertTransactionDialog({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Receipt</Label>
-          {values.receiptFileId && receiptUrl ? (
-            <div className="relative inline-block border rounded-lg overflow-hidden border-line-hair">
-              <img src={receiptUrl} alt="Receipt preview" className="h-24 w-auto object-cover bg-gray-50" />
-              <button
-                type="button"
-                className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 text-xs hover:bg-black/70"
-                onClick={() => {
-                  setValues({ ...values, receiptFileId: "" });
-                  setReceiptUrl(null);
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ) : uploadProgress !== null ? (
-            <div className="flex items-center gap-3 h-[46px] px-4 rounded-lg border border-line bg-surface-alt text-sm text-ink-muted">
-              <Spinner size="xs" />
-              Uploading... {uploadProgress}%
-            </div>
-          ) : (
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="block w-full text-sm text-ink-muted file:mr-4 file:h-8 file:rounded-lg file:border file:border-line file:bg-white file:px-3 file:text-xs file:font-semibold file:text-ink hover:file:border-primary-500 hover:file:bg-primary-50 hover:file:text-primary-600"
-              onChange={handleFile}
-            />
-          )}
-        </div>
+        <ExpenseFlagFields
+          credit={values.credit}
+          recoverable={values.recoverable}
+          onCreditChange={(next) => setValues({ ...values, credit: next })}
+          onRecoverableChange={(next) => setValues({ ...values, recoverable: next })}
+        />
+
+        <ExpenseReceiptField
+          receiptUrl={receiptUrl}
+          hasReceipt={Boolean(values.receiptFileId)}
+          uploadProgress={uploadProgress}
+          onClear={() => {
+            setValues({ ...values, receiptFileId: "" });
+            setReceiptUrl(null);
+          }}
+          onPick={handleFile}
+        />
       </div>
     </FormDrawer>
   );

@@ -4,7 +4,6 @@ import { generateId } from "../../lib/ids.ts";
 import type {
   AdminInspectionListParams,
   AdminInspectionRow,
-  InspectionCategory,
   InspectionMediaRow,
   InspectionOutcome,
   InspectionRow,
@@ -16,6 +15,7 @@ import type {
 import type { RiskLevel, Tone } from "../projects/types.ts";
 
 export interface NewInspectionRecord {
+  category_id?: string | null;
   id: string;
   project_id: string;
   inspector_id: string;
@@ -24,7 +24,7 @@ export interface NewInspectionRecord {
   inspector_initials_tone: Tone;
   inspector_user_id: string | null;
   title: string;
-  category: InspectionCategory;
+  category: string;
   description: string;
   description_html: string | null;
   status: InspectionStatus;
@@ -42,12 +42,14 @@ export interface NewInspectionRecord {
 }
 
 export interface InspectionUpdatePatch {
+  category_id?: string | null;
+  cancellation_reason?: string | null;
   inspector_id?: string;
   inspector_name?: string;
   inspector_role?: string;
   inspector_user_id?: string | null;
   title?: string;
-  category?: InspectionCategory;
+  category?: string;
   description?: string;
   description_html?: string | null;
   status?: InspectionStatus;

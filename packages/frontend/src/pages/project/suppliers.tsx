@@ -16,15 +16,19 @@ import {
 } from "@/hooks/use-suppliers";
 import { canResourceAction } from "@/lib/project-types";
 import type { Supplier } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 import { toast } from "@/lib/toast";
+import { DuplicateSupplierNotice } from "./suppliers/duplicate-supplier-notice";
 import { SuppliersTable } from "./suppliers/suppliers-table";
 import {
   EMPTY_SUPPLIER_FILTERS,
   filterSuppliers,
   isFiltering,
+  readDuplicate,
   supplierTrades,
   SUPPLIER_APPROVAL_OPTIONS,
   SUPPLIER_SCOPE_OPTIONS,
+  type DuplicateSupplier,
   type SupplierApprovalFilter,
   type SupplierFilters,
   type SupplierScopeFilter,
@@ -44,6 +48,8 @@ export default function ProjectSuppliers() {
   const [editTarget, setEditTarget] = useState<Supplier | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Supplier | null>(null);
 
+  const [duplicate, setDuplicate] = useState<DuplicateSupplier | null>(null);
+
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const deleteSupplier = useDeleteSupplier();
@@ -56,11 +62,13 @@ export default function ProjectSuppliers() {
 
   function openCreate(): void {
     setEditTarget(null);
+    setDuplicate(null);
     setFormOpen(true);
   }
 
   function openEdit(supplier: Supplier): void {
     setEditTarget(supplier);
+    setDuplicate(null);
     setFormOpen(true);
   }
 
@@ -74,7 +82,6 @@ export default function ProjectSuppliers() {
             setEditTarget(null);
             toast("Supplier updated", "success");
           },
-          onError: () => toast("Could not update supplier"),
         },
       );
       return;
@@ -84,11 +91,22 @@ export default function ProjectSuppliers() {
       {
         onSuccess: () => {
           setFormOpen(false);
+          setDuplicate(null);
           toast("Supplier added", "success");
         },
-        onError: () => toast("Could not add supplier"),
+        // The server answers a same-email/phone match with the row it matched;
+        // naming it beats a bare 409 and lets the user open it instead.
+        onError: (error) => setDuplicate(readDuplicate(error)),
       },
     );
+  }
+
+  /** Jump to the supplier the server says already covers this account. */
+  function openDuplicate(): void {
+    const existing = suppliers.find((supplier) => supplier.id === duplicate?.existingId);
+    if (!existing) return;
+    setDuplicate(null);
+    openEdit(existing);
   }
 
   return (
@@ -158,16 +176,32 @@ export default function ProjectSuppliers() {
         open={formOpen}
         onOpenChange={(next) => {
           setFormOpen(next);
-          if (!next) setEditTarget(null);
+          if (!next) {
+            setEditTarget(null);
+            setDuplicate(null);
+          }
         }}
         initial={editTarget}
         isSubmitting={createSupplier.isPending || updateSupplier.isPending}
         error={
-          createSupplier.error
-            ? (createSupplier.error as Error).message
-            : updateSupplier.error
-              ? (updateSupplier.error as Error).message
-              : null
+          duplicate
+            ? null
+            : createSupplier.error
+              ? errorMessage(createSupplier.error)
+              : updateSupplier.error
+                ? errorMessage(updateSupplier.error)
+                : null
+        }
+        force={duplicate !== null}
+        banner={
+          duplicate ? (
+            <DuplicateSupplierNotice
+              message={duplicate.message}
+              canOpen={suppliers.some((supplier) => supplier.id === duplicate.existingId)}
+              onOpen={openDuplicate}
+              onDismiss={() => setDuplicate(null)}
+            />
+          ) : null
         }
         onSubmit={handleSubmit}
       />
@@ -191,7 +225,7 @@ export default function ProjectSuppliers() {
                 setDeleteTarget(null);
                 toast("Supplier deleted", "success");
               },
-              onError: () => toast("Could not delete supplier"),
+              onError: (error) => toast(errorMessage(error)),
             },
           );
         }}
