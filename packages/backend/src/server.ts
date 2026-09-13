@@ -28,6 +28,7 @@ import projectRoutes from "./modules/projects/routes.ts";
 import updateRoutes from "./modules/updates/routes.ts";
 import documentRoutes from "./modules/documents/routes.ts";
 import drawingMarkupRoutes from "./modules/drawing-markup/routes.ts";
+import inspectionCategoryRoutes from "./modules/inspection-categories/routes.ts";
 import inspectionRoutes from "./modules/inspections/routes.ts";
 import financeRoutes from "./modules/finances/routes.ts";
 import riskRoutes from "./modules/risks/routes.ts";
@@ -175,6 +176,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(updateRoutes);
   await app.register(documentRoutes);
   await app.register(drawingMarkupRoutes);
+  await app.register(inspectionCategoryRoutes);
   await app.register(inspectionRoutes);
   await app.register(financeRoutes);
   await app.register(riskRoutes);

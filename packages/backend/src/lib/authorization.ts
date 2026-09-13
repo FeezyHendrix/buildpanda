@@ -92,6 +92,20 @@ export function assertCanDeleteProject(project: ProjectScope, ctx: AccessContext
   throw new ForbiddenError("You do not have permission to delete this project");
 }
 
+/**
+ * Reference data an organisation defines once and every project draws from —
+ * inspection categories, and anything like them. Editing the list is an admin
+ * act: a site agent picks from it, the company decides what is on it.
+ */
+export function assertCanManageOrgReference(project: ProjectScope, ctx: AccessContext): void {
+  if (project.ownerId === ctx.userId) return;
+  if (project.organizationId !== null) {
+    const role = ctx.orgRoles.get(project.organizationId);
+    if (role !== undefined && DELETE_ROLES.has(role)) return;
+  }
+  throw new ForbiddenError("Only a workspace admin can change this list");
+}
+
 function canModify(project: ProjectScope, ctx: AccessContext): boolean {
   try {
     assertCanModifyProject(project, ctx);
