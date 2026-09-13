@@ -4,7 +4,7 @@ import { site } from "@/lib/site";
 
 export function FinalCta() {
   return (
-    <section className="bg-ink py-20 sm:py-24">
+    <section className="bg-ink py-16 sm:py-20">
       <Container className="flex flex-col items-center gap-6 text-center">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">
           Prove the work. Defend the payment.

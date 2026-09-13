@@ -27,8 +27,8 @@ const doors = [
 
 export function TwoDoors() {
   return (
-    <section className="bg-surface-muted py-24 sm:py-32 2xl:py-40">
-      <Container className="flex flex-col gap-14 2xl:gap-20">
+    <section className="bg-surface-muted py-16 sm:py-24 2xl:py-28">
+      <Container className="flex flex-col gap-10 2xl:gap-14">
         <SectionHeading
           eyebrow="Two ways to work with us"
           title="One standard of proof. Two ways to get it."

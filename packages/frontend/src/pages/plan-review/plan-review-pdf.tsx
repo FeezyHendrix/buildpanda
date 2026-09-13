@@ -15,6 +15,11 @@ export interface PdfRenderState {
   detectedScale: DetectedScale | null;
 }
 
+/** pdf.js signals a cancelled render with this name rather than a typed error. */
+function isRenderCancelled(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { name?: string }).name === "RenderingCancelledException";
+}
+
 /**
  * Renders a PDF page to a canvas with pdfjs, the same path the takeoff engine
  * uses. Canvas rendering (rather than an iframe) keeps the sheet inside the
@@ -35,6 +40,12 @@ export function PdfSheetCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const docRef = useRef<{ url: string; doc: PdfDocumentProxy } | null>(null);
+  // pdf.js refuses to render two pages onto one canvas at the same time, and a
+  // plain "cancelled" flag does not stop the render already running. Flipping
+  // pages quickly therefore threw "Cannot use the same canvas during multiple
+  // render() operations" and left the sheet blank until reload. The task is
+  // held so it can actually be cancelled and waited on.
+  const renderTaskRef = useRef<{ cancel: () => void; promise: Promise<unknown> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +76,18 @@ export function PdfSheetCanvas({
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+      const previous = renderTaskRef.current;
+      if (previous) {
+        previous.cancel();
+        await previous.promise.catch(() => {});
+      }
+      if (cancelled) return;
+
+      const task = page.render({ canvasContext: ctx, viewport, canvas });
+      renderTaskRef.current = task;
+      await task.promise;
+      renderTaskRef.current = null;
       if (cancelled) return;
 
       const sheetText = await pageText(page);
@@ -80,13 +102,16 @@ export function PdfSheetCanvas({
         detectedScale: parseSheetScale(sheetText, unscaledWidthPt),
       });
     })().catch((err: unknown) => {
-      if (cancelled) return;
+      // Cancelling the previous page is the normal path when someone pages
+      // through a drawing, not a failure to show them.
+      if (cancelled || isRenderCancelled(err)) return;
       setLoading(false);
       setError(err instanceof Error ? err.message : "Could not render this PDF");
     });
 
     return () => {
       cancelled = true;
+      renderTaskRef.current?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, pageNumber]);

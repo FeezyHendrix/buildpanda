@@ -19,6 +19,42 @@ const shots = [
   },
   {
     number: "02",
+    eyebrow: "Drawings",
+    title: "Mark up the sheet, measure off it",
+    body: "Pan, measure, pen, cloud and comment on the drawing itself. The sheet scale is read off the title block, so a measurement comes back in millimetres rather than pixels.",
+    proof: ["Scale read from the sheet", "Revisions compared", "Markups pinned to a revision"],
+    src: "/product/plans.jpg",
+    alt: "A roof plan open in the review workspace with the markup toolbar, the scale detected as 1:120 from the sheet, and a review notes panel beside it",
+  },
+  {
+    number: "03",
+    eyebrow: "Work it out together",
+    title: "The question and the answer live on the record",
+    body: "An RFI carries who asked, what was asked, the drawing it is against, when it is due and who has answered. Nothing important stays in somebody's inbox.",
+    proof: ["Overdue flagged", "Responses counted", "Raised against a drawing"],
+    src: "/product/rfis.jpg",
+    alt: "The RFI register: each request with its number, status, due date, the drawing it refers to, and how many responses it has",
+  },
+  {
+    number: "04",
+    eyebrow: "Site updates",
+    title: "The day gets written down while it is still the day",
+    body: "Weather, crew against crew expected, hours, and which activities those hours went on. It works on a phone on site and becomes the week's report without anyone retyping it.",
+    proof: ["Crew and hours", "Weather", "Hours against activities"],
+    src: "/product/daily-log.jpg",
+    alt: "The daily log: days logged, missed days, total hours and average crew above a table of days with weather, crew, hours and activities",
+  },
+  {
+    number: "05",
+    eyebrow: "Verify progress",
+    title: "An inspection you can request",
+    body: "One side requests it, BuildPanda assigns the inspector, and the report cannot be changed by the contractor it covers. A hold point stops the next operation until it clears.",
+    proof: ["Hold points", "Pass or fail", "Named inspector"],
+    src: "/product/inspections.jpg",
+    alt: "The inspection register: each inspection with the contractor inspected, where it holds, its hold point, service status, inspector and outcome",
+  },
+  {
+    number: "06",
     eyebrow: "Control the money",
     title: "One contract position, not four spreadsheets",
     body: "Original sum, variations, certified to date, still to certify, paid, unpaid certified and retention held, each read from the certificates behind it.",
@@ -26,21 +62,12 @@ const shots = [
     src: "/product/finance.jpg",
     alt: "The finance overview: original contract sum through variations to certified, still to certify, amount paid, unpaid certified and retention held",
   },
-  {
-    number: "03",
-    eyebrow: "Verify progress",
-    title: "An inspection you can request",
-    body: "Requested, scheduled, attended, reported, with the outcome on the row. A hold point stops the next operation until it clears.",
-    proof: ["Hold points", "Pass or fail", "Named inspector"],
-    src: "/product/inspections.jpg",
-    alt: "The inspection register: each inspection with the contractor inspected, where it holds, its hold point, service status, inspector and outcome",
-  },
 ];
 
 export function ProductShots() {
   return (
-    <section className="bg-surface py-24 sm:py-32 2xl:py-40">
-      <Container className="flex flex-col gap-16 2xl:gap-24">
+    <section className="bg-surface py-16 sm:py-24 2xl:py-28">
+      <Container className="flex flex-col gap-12 2xl:gap-16">
         <SectionHeading
           eyebrow="Inside the software"
           title="What running a job on it actually looks like."
@@ -50,7 +77,7 @@ export function ProductShots() {
           {shots.map((shot, index) => (
             <div
               key={shot.title}
-              className="grid items-center gap-10 border-b border-hairline py-14 lg:grid-cols-2 lg:gap-16 2xl:gap-24 2xl:py-20"
+              className="grid items-center gap-10 border-b border-hairline py-14 lg:grid-cols-2 lg:gap-12 2xl:gap-16 2xl:py-20"
             >
               <div
                 className={`flex flex-col gap-5 ${index % 2 === 1 ? "lg:order-2" : ""}`}
