@@ -37,44 +37,36 @@ const days = [
 
 export function GoLive() {
   return (
-    <section className="bg-surface-faint py-20 sm:py-24">
-      <Container className="flex flex-col gap-12">
+    <section className="bg-surface py-24 sm:py-32 2xl:py-40">
+      <Container className="flex flex-col gap-14 2xl:gap-20">
         <SectionHeading
           eyebrow="Go-live, day by day"
           title="Running a live job by Friday."
           description="Bring one project. Not the portfolio, not the archive. One."
+          action={
+            <ButtonLink href={site.appUrl} variant="ink" size="md">
+              Start free
+            </ButtonLink>
+          }
         />
-        <ol className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-          {days.map((day) => (
+        <ol className="flex flex-col border-t border-hairline">
+          {days.map((day, index) => (
             <li
               key={day.when}
-              className="grid gap-1 rounded-2xl border border-line bg-white p-5 sm:grid-cols-[92px_minmax(0,1fr)] sm:gap-4"
+              className="grid gap-3 border-b border-hairline py-7 sm:grid-cols-[4rem_14rem_minmax(0,1fr)] sm:items-baseline sm:gap-8 2xl:py-9"
             >
-              <span className="text-sm font-bold uppercase tracking-wide text-brand">
-                {day.when}
+              <span className="text-base font-medium tabular-nums text-muted">
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <span>
-                <span className="block text-base font-semibold text-ink">
-                  {day.title}
-                </span>
-                <span className="mt-1 block text-sm leading-relaxed text-muted">
-                  {day.body}
-                </span>
+              <span className="text-lg font-medium text-ink 2xl:text-xl">
+                {day.title}
+              </span>
+              <span className="max-w-2xl text-sm leading-relaxed text-muted 2xl:text-base">
+                {day.body}
               </span>
             </li>
           ))}
         </ol>
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href={site.appUrl} size="md">
-              Start free
-              <ArrowRightIcon className="h-5 w-5" />
-            </ButtonLink>
-            <ButtonLink href="/talk-to-us/" variant="outline" size="md">
-              Talk to us about your first project
-            </ButtonLink>
-          </div>
-        </div>
       </Container>
     </section>
   );

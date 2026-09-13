@@ -22,7 +22,17 @@
   --color-surface: #ffffff;
   --color-surface-muted: #f6f6f6;
   --color-surface-faint: #fafafa;
-  --color-line: #ededed;
+  --color-line: #e3e6ea;
+  --color-hairline: #d7dce2;
+
+  /* Flat tint fills for the stacked rows. Every one is a tint of a colour the
+     product already owns — brand blue, success, warning — so the page reads as
+     BuildPanda rather than as a borrowed pastel set. */
+  --color-tint-brand: #c9dcff;
+  --color-tint-sky: #cfe9fb;
+  --color-tint-indigo: #d9dbff;
+  --color-tint-mint: #ccecd8;
+  --color-tint-amber: #ffe3bd;
 }
 
 html {
@@ -30,7 +40,7 @@ html {
 }
 
 body {
-  background-color: #ffffff;
+  background-color: #f4f6f8;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -70,4 +80,14 @@ body {
 
 @media (min-width: 2600px) {
   .site-container { max-width: 2040px; }
+}
+
+/* The reference sets its headlines large and light rather than small and bold.
+   Plus Jakarta Sans at 400-500 holds up at display sizes and is what gives the
+   page its air. */
+.display {
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  text-wrap: balance;
 }

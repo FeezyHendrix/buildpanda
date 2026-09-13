@@ -25,7 +25,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-white/85 backdrop-blur">
+    <header className="relative z-50 bg-transparent">
       <nav className="site-container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="BuildPanda home">
           <Image

@@ -33,36 +33,38 @@ const columns = [
 
 export function Verification() {
   return (
-    <section className="bg-surface-faint py-20 sm:py-24">
-      <Container className="flex flex-col gap-12">
+    <section className="bg-surface-muted py-24 sm:py-32 2xl:py-40">
+      <Container className="flex flex-col gap-14 2xl:gap-20">
         <SectionHeading
           eyebrow="Verification"
           title="Someone attends the site, and the record follows what they find."
         />
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid border-t border-hairline md:grid-cols-2">
           {columns.map((column) => (
             <div
               key={column.title}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 sm:p-8"
+              className="flex flex-col gap-5 border-b border-hairline py-10 pr-10 md:border-l md:pl-10 md:first:border-l-0 md:first:pl-0"
             >
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft text-brand">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-tint-brand text-brand">
                 {column.icon}
               </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
                 {column.label}
               </span>
-              <h3 className="text-xl font-bold leading-tight text-ink">
+              <h3 className="display max-w-sm text-2xl text-ink 2xl:text-3xl">
                 {column.title}
               </h3>
-              <p className="text-sm leading-relaxed text-muted">{column.body}</p>
+              <p className="max-w-md text-sm leading-relaxed text-muted 2xl:text-base">
+                {column.body}
+              </p>
             </div>
           ))}
         </div>
 
-        <p className="text-pretty text-center text-base leading-relaxed text-ink sm:text-lg">
-          BuildPanda records money, it never holds or moves it. The record is
-          added to, never rewritten — including when the contractor is us.
+        <p className="max-w-2xl text-pretty text-base leading-relaxed text-muted 2xl:text-lg">
+          &rarr; BuildPanda records money, it never holds or moves it. The record
+          is added to, never rewritten &mdash; including when the contractor is us.
         </p>
       </Container>
     </section>

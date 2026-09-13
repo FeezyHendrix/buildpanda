@@ -39,29 +39,29 @@ const objections = [
 
 export function Objections() {
   return (
-    <section className="py-20 sm:py-24 2xl:py-32">
-      <Container className="flex flex-col gap-12 2xl:gap-16">
+    <section className="bg-surface py-24 sm:py-32 2xl:py-40">
+      <Container className="flex flex-col gap-14 2xl:gap-20">
         <SectionHeading
           eyebrow="The problem"
           title="The work was done. Proving it is the hard part."
         />
-        {/* Six columns so five items resolve as three then two, instead of
-            leaving an orphan card in a three-up grid. No card fill here: the
-            section either side of it is already cards. */}
-        <div className="grid gap-x-10 gap-y-10 md:grid-cols-2 lg:grid-cols-6">
+        {/* A divided grid rather than five floating cards: the hairlines do the
+            separating, so nothing needs a border, a radius and a shadow each. */}
+        <div className="grid border-t border-hairline sm:grid-cols-2 lg:grid-cols-6">
           {objections.map((item, index) => (
             <div
               key={item.quote}
               className={twMerge(
-                "flex flex-col gap-3 border-l-2 border-brand/25 pl-5",
+                "flex flex-col gap-4 border-b border-hairline py-9 pr-8 sm:pl-8 sm:[&:nth-child(odd)]:pl-0 lg:pl-8 lg:[&:nth-child(odd)]:pl-8 lg:[&:first-child]:pl-0 lg:[&:nth-child(4)]:pl-0",
+                "sm:border-l-0 lg:border-l lg:first:border-l-0 lg:[&:nth-child(4)]:border-l-0",
                 index < 3 ? "lg:col-span-2" : "lg:col-span-3",
               )}
             >
-              <p className="text-pretty text-lg font-semibold leading-snug text-ink 2xl:text-xl">
+              <p className="max-w-sm text-pretty text-xl leading-snug text-ink 2xl:text-2xl">
                 &ldquo;{item.quote}&rdquo;
               </p>
-              <p className="text-sm leading-relaxed text-muted 2xl:text-base">
-                {item.answer}
+              <p className="max-w-md text-sm leading-relaxed text-muted 2xl:text-base">
+                &rarr; {item.answer}
               </p>
             </div>
           ))}
