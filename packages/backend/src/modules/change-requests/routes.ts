@@ -9,8 +9,8 @@ import { notificationsRepository } from "../notifications/repository.ts";
 import { notificationsService } from "../notifications/service.ts";
 import { stagesRepository } from "../stages/repository.ts";
 import { stagesService } from "../stages/service.ts";
+import { applyTimeAward } from "../projects/time-award.ts";
 import { changeActions } from "./change-actions.ts";
-import { applyApprovedEot } from "../extensions-of-time/service.ts";
 import { changeRequestsRepository } from "./repository.ts";
 import { changeRequestsService } from "./service.ts";
 import {
@@ -48,6 +48,12 @@ const listQuery = {
   properties: { status: { type: "string", enum: STATUS } },
 } as const;
 
+const delayIdsField = {
+  type: "array",
+  maxItems: 200,
+  items: { type: "string", minLength: 1, maxLength: 100 },
+} as const;
+
 const createBody = {
   type: "object",
   required: ["title"],
@@ -65,7 +71,7 @@ const createBody = {
     type: { type: "string", enum: CHANGE_TYPES },
     stageId: { type: ["string", "null"], maxLength: 100 },
     rfiId: { type: ["string", "null"], maxLength: 100 },
-    eotClaimId: { type: ["string", "null"], maxLength: 100 },
+    delayIds: delayIdsField,
   },
 } as const;
 
@@ -107,7 +113,7 @@ const updateBody = {
     type: { type: "string", enum: CHANGE_TYPES },
     stageId: { type: ["string", "null"], maxLength: 100 },
     rfiId: { type: ["string", "null"], maxLength: 100 },
-    eotClaimId: { type: ["string", "null"], maxLength: 100 },
+    delayIds: delayIdsField,
   },
 } as const;
 
@@ -130,6 +136,8 @@ const actionBody = {
     reason: { type: "string", minLength: 1, maxLength: 2000 },
     costImpact: { type: "number" },
     timeImpactDays: { type: "integer" },
+    /** Days granted when approving a time claim; defaults to the days claimed. */
+    daysAwarded: { type: "integer", minimum: 0, maximum: 3650 },
   },
 } as const;
 
@@ -196,10 +204,10 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
-   * Executing an approved change actually moves the programme: the stage it was
-   * claimed against shifts by the agreed days, and a time claim awards those
-   * days through the extensions-of-time module, which owns the revised
-   * completion date and the contractual key dates that follow it.
+   * A decision on a time claim moves the contract: approving an `eot_only`
+   * change awards the days through the projects module, which owns the revised
+   * completion date and the contractual key dates that follow it. Executing any
+   * change shifts the stage it was claimed against, which is a programme move.
    */
   const actions = changeActions(repository, {
     assertExecutable: (row) => service.assertExecutable(row),
@@ -210,8 +218,8 @@ const changeRequestRoutes: FastifyPluginAsync = async (fastify) => {
       moved.setUTCDate(moved.getUTCDate() + days);
       await stages.update(projectId, stageId, { endDate: moved.toISOString().slice(0, 10) });
     },
-    applyApprovedEot: async (projectId, days) => {
-      await applyApprovedEot(projectId, days, fastify.db);
+    applyTimeAward: async (projectId, days) => {
+      await fastify.db.transaction((trx) => applyTimeAward(projectId, days, trx));
     },
     onApproved: (row, actor) => service.onApproved(row, { id: actor.id, name: actor.name }),
     onDecided: (row, action, reason, actor) => {

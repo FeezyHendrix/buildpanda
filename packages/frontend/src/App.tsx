@@ -118,7 +118,6 @@ const ProjectChangeRequests = lazy(() => import("@/pages/project/change-requests
 const ProjectPermits = lazy(() => import("@/pages/project/permits"));
 const ProjectKeyDates = lazy(() => import("@/pages/project/key-dates"));
 const ProjectRisks = lazy(() => import("@/pages/project/risks"));
-const ProjectExtensionsOfTime = lazy(() => import("@/pages/project/extensions-of-time"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const MyBuild = lazy(() => import("@/pages/my-build"));
 const AcceptProjectInvite = lazy(() => import("@/pages/accept-project-invite"));
@@ -378,7 +377,6 @@ export const router = createBrowserRouter([
       { path: "schedules/stages", element: pf("projects.schedule", <ProjectStages />) },
       { path: "schedules/key-dates", element: pf("compliance.keyDates", <ProjectKeyDates />) },
       { path: "schedules/daily-log", element: pf("quality.dailyLogs", <ProjectDailyLog />) },
-      { path: "extensions-of-time", element: pf("projects.schedule", <ProjectExtensionsOfTime />) },
 
       { path: "buildings", element: pfr("projects.multiBuilding", "buildings", <ProjectBuildings />) },
       { path: "buildings/:buildingId/stages", element: pf("projects.multiBuilding", <ProjectStages />) },

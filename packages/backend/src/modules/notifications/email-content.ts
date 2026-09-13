@@ -70,8 +70,6 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   change_request_submitted: { eyebrow: "Change submitted", accent: "brand", ctaLabel: "View Change" },
   change_request_approved: { eyebrow: "Change approved", accent: "success", ctaLabel: "View Change" },
   change_request_rejected: { eyebrow: "Change rejected", accent: "danger", ctaLabel: "View Change" },
-  eot_submitted: { eyebrow: "EOT claim submitted", accent: "brand", ctaLabel: "View Claim" },
-  eot_decided: { eyebrow: "EOT claim decided", accent: "brand", ctaLabel: "View Claim" },
 };
 
 const GENERIC: TypePresentation = {

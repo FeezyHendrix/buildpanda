@@ -32,6 +32,35 @@ export interface ChangeRevision {
 }
 export type Currency = CurrencyCode;
 
+/**
+ * One delay a time claim cites, with the attribution that decides whether it
+ * buys time back. A contractor-culpable delay is never claimable, so a claim
+ * that cites one is refused and names it.
+ */
+export interface ChangeDelay {
+  id: string;
+  activityId: string;
+  activityName: string;
+  reasonCode: string;
+  daysLost: number;
+  culpability: string;
+  eotClaimable: boolean;
+  startedAt: string;
+}
+
+/** A delay row joined to its activity, as a claim needs to see it. */
+export interface ChangeDelayRow {
+  id: string;
+  change_request_id: string;
+  activity_id: string;
+  activity_name: string;
+  reason_code: string;
+  days_lost: number;
+  culpability: string;
+  eot_claimable: boolean;
+  started_at: Date | string;
+}
+
 export interface ChangeRequest {
   id: string;
   projectId: string;
@@ -49,8 +78,14 @@ export interface ChangeRequest {
   stageId: string | null;
   /** The RFI this change came out of, when it did. */
   rfiId: string | null;
-  /** The extension-of-time claim carrying its days, for a time claim. */
-  eotClaimId: string | null;
+  /**
+   * Days actually granted on a time claim. Null until the claim is decided —
+   * an award is usually fewer days than were claimed, and the difference
+   * between `timeImpactDays` and this is the negotiation.
+   */
+  daysAwarded: number | null;
+  /** The delay events a time claim is argued from. */
+  delays: ChangeDelay[];
   rejectedReason: string | null;
   submittedAt: string | null;
   revisions: ChangeRevision[];
@@ -121,7 +156,7 @@ export interface ChangeRequestRow {
   currency: Currency;
   stage_id: string | null;
   rfi_id: string | null;
-  eot_claim_id: string | null;
+  days_awarded: number | null;
   rejected_reason: string | null;
   submitted_at: string | null;
   revisions: ChangeRevision[] | string | null;
@@ -158,7 +193,8 @@ export interface CreateChangeRequestInput {
   type?: ChangeType;
   stageId?: string | null;
   rfiId?: string | null;
-  eotClaimId?: string | null;
+  /** The delays a time claim is argued from; every one must be claimable. */
+  delayIds?: string[];
 }
 
 /** Editing the content of a change. Status never appears here — actions move it. */
@@ -175,12 +211,17 @@ export interface UpdateChangeRequestInput {
   type?: ChangeType;
   stageId?: string | null;
   rfiId?: string | null;
-  eotClaimId?: string | null;
+  delayIds?: string[];
 }
 
-/** Rejecting and resubmitting both carry a reason; approving and executing need none. */
+/**
+ * Rejecting and resubmitting both carry a reason; executing needs none.
+ * Approving a time claim carries `daysAwarded` — the decision that actually
+ * buys time, and usually fewer days than were claimed.
+ */
 export interface ChangeActionInput {
   reason?: string;
   costImpact?: number;
   timeImpactDays?: number;
+  daysAwarded?: number;
 }

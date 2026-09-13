@@ -115,6 +115,12 @@ export interface ProjectRow {
   updated_at: Date | string;
 }
 
+/** The two dates an extension of time moves, read on their own. */
+export interface ProjectDatesRow {
+  completion_date: string | null;
+  revised_completion_date: string | null;
+}
+
 export interface ProjectPhaseRow {
   id: string;
   project_id: string;

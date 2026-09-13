@@ -151,7 +151,7 @@ export interface LdExposure {
   againstDate: string;
 }
 
-/** Approved and pending extension-of-time days, when the EOT module is present. */
+/** Approved and pending extension-of-time days, off the change requests that claim time. */
 export interface EotPosition {
   daysApproved: number;
   daysPending: number;

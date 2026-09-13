@@ -62,8 +62,6 @@ test("every new finance notification type is registered in the catalogue", () =>
     "change_request_submitted",
     "change_request_approved",
     "change_request_rejected",
-    "eot_submitted",
-    "eot_decided",
   ]) {
     assert.ok(registered.has(type as never), `${type} is not in the notification catalogue`);
   }

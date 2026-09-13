@@ -7,16 +7,11 @@ import type { CertifiedTotalsRow, EotDaysRow, ProjectDatesRow } from "./types.ts
  * and a voided certificate contributes nothing, which is what makes voiding a
  * safe alternative to deleting a paid record.
  *
- * The EOT and revised-completion reads are guarded: the extension-of-time
- * table and the project date columns are created by a parallel workstream, so
- * this module degrades to null rather than failing when they are absent.
+ * The EOT and revised-completion reads are guarded: the award column on change
+ * requests and the project date columns are created by a parallel workstream,
+ * so this module degrades to null rather than failing when they are absent.
  */
 export function financeSummaryRepository(db: Knex) {
-  async function hasTable(name: string): Promise<boolean> {
-    const result = await db.raw("select to_regclass(?) as t", [name]);
-    return Boolean(result.rows?.[0]?.t);
-  }
-
   return {
     /**
      * Gross certified is the VALUE OF WORK certified (ex-VAT), so it compares
@@ -66,14 +61,21 @@ export function financeSummaryRepository(db: Knex) {
       return row ?? { completion_date: null, revised_completion_date: null };
     },
 
-    /** Approved and still-pending extension-of-time days. Null while the module is absent. */
+    /**
+     * Approved and still-pending extension-of-time days, counted off the change
+     * requests that claim time. Null until the column carrying the award exists.
+     */
     async eotDays(projectId: string): Promise<EotDaysRow | null> {
-      if (!(await hasTable("extension_of_time_claims"))) return null;
-      const row = await db("extension_of_time_claims")
-        .where({ project_id: projectId })
+      if (!(await db.schema.hasColumn("change_requests", "days_awarded"))) return null;
+      const row = await db("change_requests")
+        .where({ project_id: projectId, type: "eot_only" })
         .select(
-          db.raw("COALESCE(SUM(CASE WHEN status = 'Approved' THEN days_awarded ELSE 0 END), 0)::text as approved"),
-          db.raw("COALESCE(SUM(CASE WHEN status = 'Submitted' THEN days_claimed ELSE 0 END), 0)::text as pending"),
+          db.raw(
+            "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Executed') THEN days_awarded ELSE 0 END), 0)::text as approved",
+          ),
+          db.raw(
+            "COALESCE(SUM(CASE WHEN status = 'Submitted' THEN time_impact_days ELSE 0 END), 0)::text as pending",
+          ),
         )
         .first<EotDaysRow>();
       return row ?? { approved: "0", pending: "0" };

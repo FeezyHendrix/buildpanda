@@ -255,11 +255,13 @@ export function reportingService(db: Knex) {
         .where({ id: projectId })
         .select("completion_date", "revised_completion_date")
         .first<{ completion_date: string | null; revised_completion_date: string | null } | undefined>(),
-      db("extension_of_time_claims")
-        .where({ project_id: projectId })
-        .select<Array<{ status: string; days_claimed: number; days_awarded: number | null }>>(
+      // A time claim is a change request of type eot_only; the retired EOT
+      // register is no longer read.
+      db("change_requests")
+        .where({ project_id: projectId, type: "eot_only" })
+        .select<Array<{ status: string; time_impact_days: number; days_awarded: number | null }>>(
           "status",
-          "days_claimed",
+          "time_impact_days",
           "days_awarded",
         ),
       // Activities carrying an OPEN delay, with the time booked against them —
@@ -421,10 +423,15 @@ export function reportingService(db: Knex) {
     const latestUpdateAt = (latestUpdate as { last: string | null } | undefined)
       ?.last;
 
+    // Awarded days survive execution, so an executed claim still counts as time
+    // won; only a claim still awaiting a decision counts as pending.
     const eotDays = { approved: 0, pending: 0 };
     for (const claim of eotPosition) {
-      if (claim.status === "Approved") eotDays.approved += toNumber(claim.days_awarded);
-      else if (claim.status === "Submitted") eotDays.pending += toNumber(claim.days_claimed);
+      if (claim.status === "Approved" || claim.status === "Executed") {
+        eotDays.approved += toNumber(claim.days_awarded);
+      } else if (claim.status === "Submitted") {
+        eotDays.pending += toNumber(claim.time_impact_days);
+      }
     }
 
     const insight = latestInsight ? toInsight(latestInsight) : null;

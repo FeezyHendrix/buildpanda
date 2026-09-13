@@ -1,6 +1,8 @@
 import type { Knex } from "knex";
+import { generateId } from "../../lib/ids.ts";
 import type {
   ChangeCommentRow,
+  ChangeDelayRow,
   ChangeRequestRow,
   ChangeStatus,
   ChangeStatusCountRow,
@@ -25,7 +27,6 @@ export interface NewChangeRequestRecord {
   assignee_id?: string | null;
   stage_id?: string | null;
   rfi_id?: string | null;
-  eot_claim_id?: string | null;
 }
 
 export interface ChangeRequestUpdatePatch {
@@ -45,7 +46,7 @@ export interface ChangeRequestUpdatePatch {
   type?: ChangeType;
   stage_id?: string | null;
   rfi_id?: string | null;
-  eot_claim_id?: string | null;
+  days_awarded?: number | null;
   rejected_reason?: string | null;
   submitted_at?: string | null;
   revisions?: string;
@@ -64,7 +65,7 @@ const SELECT = [
   "c.type",
   "c.stage_id",
   "c.rfi_id",
-  "c.eot_claim_id",
+  "c.days_awarded",
   "c.rejected_reason",
   "c.submitted_at",
   "c.revisions",
@@ -149,6 +150,65 @@ export function changeRequestsRepository(db: Knex) {
         .where({ change_request_id: changeRequestId })
         .count<{ count: string }[]>("id as count");
       return Number(rows[0]?.count ?? 0);
+    },
+
+    /**
+     * The delays every one of these claims cites, in one query. Joined to the
+     * activity because a delay id on its own tells a reader nothing.
+     */
+    delaysForChanges(changeRequestIds: string[]): Promise<ChangeDelayRow[]> {
+      if (changeRequestIds.length === 0) return Promise.resolve([]);
+      return db("change_request_delays as l")
+        .join("activity_delays as d", "d.id", "l.delay_id")
+        .join("activities as a", "a.id", "d.activity_id")
+        .whereIn("l.change_request_id", changeRequestIds)
+        .orderBy("d.started_at", "asc")
+        .select<ChangeDelayRow[]>(
+          "d.id",
+          "l.change_request_id",
+          "d.activity_id",
+          "a.name as activity_name",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+        );
+    },
+
+    /** The cited delays on this project, with the culpability that qualifies them. */
+    delaysByIds(projectId: string, ids: string[]): Promise<ChangeDelayRow[]> {
+      if (ids.length === 0) return Promise.resolve([]);
+      return db("activity_delays as d")
+        .join("activities as a", "a.id", "d.activity_id")
+        .where("a.project_id", projectId)
+        .whereIn("d.id", ids)
+        .select<ChangeDelayRow[]>(
+          "d.id",
+          db.raw("NULL as change_request_id"),
+          "d.activity_id",
+          "a.name as activity_name",
+          "d.reason_code",
+          "d.days_lost",
+          "d.culpability",
+          "d.eot_claimable",
+          "d.started_at",
+        );
+    },
+
+    async replaceDelayLinks(changeRequestId: string, delayIds: string[]): Promise<void> {
+      await db.transaction(async (trx) => {
+        await trx("change_request_delays").where({ change_request_id: changeRequestId }).delete();
+        if (delayIds.length > 0) {
+          await trx("change_request_delays").insert(
+            delayIds.map((delayId) => ({
+              id: generateId("crd"),
+              change_request_id: changeRequestId,
+              delay_id: delayId,
+            })),
+          );
+        }
+      });
     },
 
     listComments(changeRequestId: string): Promise<ChangeCommentRow[]> {

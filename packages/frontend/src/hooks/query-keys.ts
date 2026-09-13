@@ -165,11 +165,6 @@ export const activityKeys = {
     [...activityKeys.all(projectId), "events", activityId] as const,
 };
 
-export const eotKeys = {
-  all: (projectId: string) => ["projects", projectId, "extensions-of-time"] as const,
-  list: (projectId: string) => [...eotKeys.all(projectId), "list"] as const,
-};
-
 export const stageKeys = {
   all: (projectId: string) => ["projects", projectId, "stages"] as const,
   list: (projectId: string, buildingId?: string) => [...stageKeys.all(projectId), "list", buildingId ?? "all"] as const,

@@ -4,9 +4,12 @@ import { MoneyInput } from "@/components/atoms/money-input";
 import { currencySymbol } from "@/lib/formatters";
 import { RichTextField } from "@/components/molecules/rich-text-field";
 import { htmlFromPlainText } from "@/lib/rich-text";
+import { ClaimableDelayPicker } from "./claimable-delay-picker";
 import { FormDrawer } from "./form-drawer";
+import { useProjectActivities } from "@/hooks/use-activities";
 import { useProjectRfis } from "@/hooks/use-rfis";
 import { useStages } from "@/hooks/use-stages";
+import { claimableDelays } from "@/lib/delay-meta";
 import { CHANGE_TYPES, type ChangeType } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import { cn } from "@/lib/utils";
@@ -14,9 +17,12 @@ import { cn } from "@/lib/utils";
 /**
  * A change request is a contractual proposal, not a status someone types. The
  * form captures what is being changed, what kind of change it is and what it
- * hangs off — the stage whose dates move, the RFI it came out of, the EOT
- * claim carrying its days. The ladder itself (submit → approve / reject →
- * resubmit → execute) is walked from the detail dialog's actions.
+ * hangs off — the stage whose dates move, the RFI it came out of, and for a
+ * time claim the delays it is argued from. The ladder itself (submit → approve
+ * / reject → resubmit → execute) is walked from the detail dialog's actions.
+ *
+ * A time claim asks for days and no money, so choosing that type drops the cost
+ * field entirely rather than leaving a zero a reader has to interpret.
  */
 export interface UpsertChangeValues {
   title: string;
@@ -30,6 +36,7 @@ export interface UpsertChangeValues {
   type: ChangeType;
   stageId: string | null;
   rfiId: string | null;
+  delayIds: string[];
 }
 
 export interface AssigneeOption {
@@ -73,10 +80,16 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
   const [type, setType] = useState<ChangeType>("variation");
   const [stageId, setStageId] = useState("");
   const [rfiId, setRfiId] = useState("");
+  const [delayIds, setDelayIds] = useState<Set<string>>(new Set());
 
+  const isTimeClaim = type === "eot_only";
   const symbol = currencySymbol(currency);
   const { data: stages = [] } = useStages(open ? projectId : undefined);
   const { data: rfis = [] } = useProjectRfis(open ? projectId : undefined);
+  const { data: activities = [] } = useProjectActivities(
+    open && isTimeClaim ? projectId : undefined,
+  );
+  const delays = claimableDelays(activities);
 
   useEffect(() => {
     if (open) {
@@ -91,8 +104,18 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       setType(initial?.type ?? "variation");
       setStageId(initial?.stageId ?? "");
       setRfiId(initial?.rfiId ?? "");
+      setDelayIds(new Set(initial?.delayIds ?? []));
     }
   }, [open, initial]);
+
+  function toggleDelay(delayId: string): void {
+    setDelayIds((curr) => {
+      const next = new Set(curr);
+      if (next.has(delayId)) next.delete(delayId);
+      else next.add(delayId);
+      return next;
+    });
+  }
 
   function handleSubmit(): void {
     if (!title.trim()) return;
@@ -101,13 +124,16 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
       description: description.trim() || null,
       reason: reason.trim() || null,
       reasonHtml: reasonHtml || null,
-      costImpact: Number(cost) || 0,
+      // A time claim asks for days and no money — never a stale cost figure
+      // left behind by switching the type.
+      costImpact: isTimeClaim ? 0 : Number(cost) || 0,
       timeImpactDays: Math.round(Number(days) || 0),
       currency,
       assigneeId: assigneeId || null,
       type,
       stageId: stageId || null,
       rfiId: rfiId || null,
+      delayIds: isTimeClaim ? [...delayIds] : [],
     });
   }
 
@@ -139,23 +165,6 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
         projectId={projectId}
         placeholder="Why is it needed?"
       />
-      <div className="grid grid-cols-3 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-currency">Currency</Label>
-          <select id="cr-currency" value={currency} onChange={(e) => setCurrency(e.target.value as "NGN" | "USD")} className={field}>
-            <option value="NGN">NGN</option>
-            <option value="USD">USD</option>
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-cost">Cost impact</Label>
-          <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="cr-days">Time (days)</Label>
-          <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
-        </div>
-      </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="cr-type">Type</Label>
         <select id="cr-type" value={type} onChange={(e) => setType(e.target.value as ChangeType)} className={field}>
@@ -167,6 +176,39 @@ function UpsertChangeRequestDialog({ open, onOpenChange, projectId, mode, initia
         </select>
         <p className="text-xs text-ink-muted">{CHANGE_TYPE_LABELS[type].hint}</p>
       </div>
+
+      {isTimeClaim ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="cr-days">Days claimed (calendar days)</Label>
+          <input id="cr-days" type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} className={field} />
+          <p className="text-xs text-ink-muted">
+            An award moves the revised completion date and every contractual key date by that many
+            calendar days. The decision may grant fewer.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-currency">Currency</Label>
+            <select id="cr-currency" value={currency} onChange={(e) => setCurrency(e.target.value as "NGN" | "USD")} className={field}>
+              <option value="NGN">NGN</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-cost">Cost impact</Label>
+            <MoneyInput id="cr-cost" value={cost} onChange={setCost} currencySymbol={symbol} placeholder="0.00" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="cr-days">Time (days)</Label>
+            <input id="cr-days" type="number" value={days} onChange={(e) => setDays(e.target.value)} className={field} />
+          </div>
+        </div>
+      )}
+
+      {isTimeClaim ? (
+        <ClaimableDelayPicker delays={delays} selected={delayIds} onToggle={toggleDelay} />
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">

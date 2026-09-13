@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type { CurrencyCode } from "../../lib/currencies.ts";
 import type {
   AiUpdateCadence,
+  ProjectDatesRow,
   ProjectPhaseRow,
   ProjectRow,
   ProjectSetup,
@@ -157,6 +158,20 @@ export function projectsRepository(db: Knex) {
 
     findById(id: string): Promise<ProjectRow | undefined> {
       return db<ProjectRow>("projects").where({ id }).first();
+    },
+
+    /** The contract completion date and where an awarded extension moved it to. */
+    dates(projectId: string): Promise<ProjectDatesRow | undefined> {
+      return db("projects")
+        .where({ id: projectId })
+        .select<ProjectDatesRow>("completion_date", "revised_completion_date")
+        .first();
+    },
+
+    async setRevisedCompletion(projectId: string, date: string | null): Promise<void> {
+      await db("projects")
+        .where({ id: projectId })
+        .update({ revised_completion_date: date, updated_at: new Date().toISOString() });
     },
 
     async update(id: string, patch: ProjectUpdatePatch): Promise<void> {
