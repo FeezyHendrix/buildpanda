@@ -20,40 +20,44 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   dot?: boolean;
 }
 
+/**
+ * Tones come from the status tokens, so a badge, a table cell and a chart
+ * series all say "at risk" in exactly the same amber.
+ */
 const softStyles: Record<BadgeTone, string> = {
-  neutral: "bg-[#F6F6F6] text-gray-700",
-  success: "bg-[#E8F7EE] text-[#1B8E45]",
-  warning: "bg-[#FFF3E0] text-[#C26A00]",
-  danger: "bg-[#FDECEC] text-[#C72525]",
-  info: "bg-[#E6EFFE] text-[#004DE7]",
-  accent: "bg-[#EDE7FF] text-[#5A3DD0]",
+  neutral: "bg-gray-50 text-gray-700",
+  success: "bg-success-50 text-success-500",
+  warning: "bg-warning-50 text-warning-500",
+  danger: "bg-negative-50 text-negative-500",
+  info: "bg-primary-50 text-primary-500",
+  accent: "bg-accent-50 text-accent-500",
 };
 
 const solidStyles: Record<BadgeTone, string> = {
   neutral: "bg-gray-700 text-white",
-  success: "bg-[#1B8E45] text-white",
-  warning: "bg-[#C26A00] text-white",
-  danger: "bg-[#C72525] text-white",
-  info: "bg-[#004DE7] text-white",
-  accent: "bg-[#5A3DD0] text-white",
+  success: "bg-success-500 text-white",
+  warning: "bg-warning-500 text-white",
+  danger: "bg-negative-500 text-white",
+  info: "bg-primary-500 text-white",
+  accent: "bg-accent-500 text-white",
 };
 
 const outlineStyles: Record<BadgeTone, string> = {
   neutral: "border border-gray-300 text-gray-700",
-  success: "border border-[#1B8E45]/40 text-[#1B8E45]",
-  warning: "border border-[#C26A00]/40 text-[#C26A00]",
-  danger: "border border-[#C72525]/40 text-[#C72525]",
-  info: "border border-[#004DE7]/40 text-[#004DE7]",
-  accent: "border border-[#5A3DD0]/40 text-[#5A3DD0]",
+  success: "border border-success-500/40 text-success-500",
+  warning: "border border-warning-500/40 text-warning-500",
+  danger: "border border-negative-500/40 text-negative-500",
+  info: "border border-primary-500/40 text-primary-500",
+  accent: "border border-accent-500/40 text-accent-500",
 };
 
 const dotStyles: Record<BadgeTone, string> = {
   neutral: "bg-gray-500",
   success: "bg-success-500",
-  warning: "bg-[#C26A00]",
-  danger: "bg-[#C72525]",
-  info: "bg-[#004DE7]",
-  accent: "bg-[#5A3DD0]",
+  warning: "bg-warning-500",
+  danger: "bg-negative-500",
+  info: "bg-primary-500",
+  accent: "bg-accent-500",
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
