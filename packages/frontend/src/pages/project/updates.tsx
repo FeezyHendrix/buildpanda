@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-updates";
 import { canResourceAction, type Person, type ProjectUpdate } from "@/lib/project-types";
 
+import { errorMessage } from "@/lib/api-error";
 import { UpdateCard } from "./updates/update-card";
 import {
   FiltersPanel,
@@ -134,7 +135,7 @@ export default function ProjectUpdates() {
         projectId={project.id}
         onSubmit={handleCreate}
         isSubmitting={createUpdate.isPending}
-        error={(createUpdate.error as Error | undefined)?.message ?? null}
+        error={createUpdate.error ? errorMessage(createUpdate.error) : null}
       />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 relative mt-4">

@@ -16,6 +16,7 @@ import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useScheduleEditor } from "./use-schedule-editor";
 import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { useProjectFinances } from "@/hooks/use-finances";
+import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import { useFeatureFlag } from "@/hooks/use-feature-flags";
@@ -39,6 +40,8 @@ export default function ProjectSchedule() {
   const { data: keyDates = [], isPending: isKeyDatesPending } = useKeyDates(canViewKeyDates ? project.id : undefined, selectedBuildingId);
   const { data: dailyLogs = [] } = useProjectDailyLogs(project.id);
   const { data: finances } = useProjectFinances(project.id);
+  // The completion position is the project's, not the chart's — same source as the overview.
+  const { data: snapshot } = useReportingSnapshot(project.id);
   const milestones = finances?.milestones ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const canEdit = Boolean(access && canResourceAction(access, "schedule", "manage"));
@@ -150,7 +153,14 @@ export default function ProjectSchedule() {
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col bg-white">
-          <ScheduleReportPanel report={report} currency={project.currency} />
+          <ScheduleReportPanel
+            report={report}
+            currency={project.currency}
+            timelineShiftDays={snapshot?.schedule.timelineShiftDays ?? null}
+            revisedCompletionDate={
+              snapshot?.schedule.revisedCompletionDate ?? snapshot?.schedule.completionDate ?? null
+            }
+          />
           <div className="bp-gantt flex min-h-0 w-full flex-1 flex-col overflow-hidden">
             {canEdit && (
               <div className="flex items-center gap-2 border-b border-line-hair px-4 py-2">

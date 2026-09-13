@@ -35,6 +35,8 @@ import {
 } from "@/hooks/use-activities";
 import { useDelayReasons } from "@/hooks/use-delay-reasons";
 import { useProjectInspections } from "@/hooks/use-inspections";
+import { useProjectProfile } from "@/hooks/use-projects";
+import { defaultLibraryForProjectType } from "@/lib/work-items";
 import { openHoldPointsByActivity } from "@/lib/hold-points";
 import { icons } from "@/assets/icons/icons";
 import { errorMessage } from "@/lib/api-error";
@@ -51,6 +53,10 @@ export default function ProjectActivities() {
   // page the person about to build the thing never opens.
   const { data: inspections = [] } = useProjectInspections(project.id);
   const holdPoints = openHoldPointsByActivity(inspections);
+  // A road job is offered road work items, not NRM2 building sections — every
+  // civil activity was being typed from blank otherwise (finding F70).
+  const { data: profile } = useProjectProfile(project.id);
+  const workItemLibraryId = defaultLibraryForProjectType(profile?.projectType);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -178,6 +184,7 @@ export default function ProjectActivities() {
       <ActivityTemplateDialog
         open={templateOpen}
         onOpenChange={setTemplateOpen}
+        defaultLibraryId={workItemLibraryId}
         onPick={(item) => {
           setPrefill({ name: item.name, activityType: item.type });
           setTemplateOpen(false);

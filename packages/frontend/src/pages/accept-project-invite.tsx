@@ -7,6 +7,7 @@ import { useAcceptProjectInvite, useProjectInvite } from "@/hooks/use-participan
 import { PENDING_PROJECT_INVITE_KEY } from "@/lib/route-guards";
 import { authClient } from "@/lib/auth-client";
 import logo from "@/assets/images/logo.svg";
+import { errorMessage } from "@/lib/api-error";
 
 function getInitials(name: string): string {
   return name
@@ -98,7 +99,7 @@ export default function AcceptProjectInvite() {
                   </Button>
                   {accept.isError && (
                     <p className="text-sm text-negative-600">
-                      {(accept.error as Error).message ?? "Could not accept the invitation."}
+                      {errorMessage(accept.error, "Could not accept the invitation.")}
                     </p>
                   )}
                 </>

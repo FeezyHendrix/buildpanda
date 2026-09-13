@@ -3,12 +3,12 @@ import { Card } from "@/components/atoms/card";
 import { Spinner } from "@/components/atoms/spinner";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { CrewTrendChart, type CrewTrendPoint } from "@/components/organisms/charts/crew-trend-chart";
-import { useProjectDailyLogs } from "@/hooks/use-daily-logs";
+import { useDailyLogCoverage, useProjectDailyLogs } from "@/hooks/use-daily-logs";
 import { cn } from "@/lib/utils";
+import { describeWorkingWeek } from "@/lib/working-calendar";
 import type { DailyLogDay } from "@/lib/project-types";
 
 const WINDOW_DAYS = 14;
-const SUNDAY = 0;
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -27,19 +27,21 @@ function windowDates(today: Date): string[] {
 
 interface FieldFigures {
   daysLogged: number;
-  daysMissed: number;
   averageCrew: number | null;
   points: CrewTrendPoint[];
 }
 
-/** Site crews work Monday to Saturday; a missed day is a working day with no live log. */
+/**
+ * The crew trend over the window. Missed days are deliberately NOT counted here
+ * — that figure belongs to the project's own working calendar, not to a
+ * fortnight and a guess at which days are weekends, so it is read from
+ * /daily-logs/coverage, the same source the daily-log page uses.
+ */
 function deriveFieldFigures(logs: DailyLogDay[], dates: string[]): FieldFigures {
   const live = new Map(logs.filter((l) => !l.voidedAt).map((l) => [l.logDate.slice(0, 10), l]));
-  let daysMissed = 0;
   let crewTotal = 0;
   const points: CrewTrendPoint[] = dates.map((date) => {
     const log = live.get(date);
-    if (!log && new Date(`${date}T00:00:00`).getDay() !== SUNDAY) daysMissed += 1;
     if (log) crewTotal += log.workersPresent;
     return {
       date,
@@ -50,19 +52,29 @@ function deriveFieldFigures(logs: DailyLogDay[], dates: string[]): FieldFigures 
   const daysLogged = dates.filter((d) => live.has(d)).length;
   return {
     daysLogged,
-    daysMissed,
     averageCrew: daysLogged > 0 ? Math.round(crewTotal / daysLogged) : null,
     points,
   };
 }
 
-function Figure({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function Figure({
+  label,
+  value,
+  helper,
+  danger,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+  danger?: boolean;
+}) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <p className="text-[12px] text-black-300">{label}</p>
       <p className={cn("text-[22px] font-bold leading-tight tabular-nums", danger ? "text-error-600" : "text-black-500")}>
         {value}
       </p>
+      {helper ? <p className="text-[11px] leading-tight text-black-300">{helper}</p> : null}
     </div>
   );
 }
@@ -72,7 +84,9 @@ export function FieldActivityCard({ projectId, className }: { projectId: string;
   const dates = windowDates(today);
   const range = { from: dates[0]!, to: dates[dates.length - 1]! };
   const logs = useProjectDailyLogs(projectId, range);
+  const { data: coverage } = useDailyLogCoverage(projectId);
   const figures = deriveFieldFigures(logs.data ?? [], dates);
+  const workingWeek = describeWorkingWeek(coverage?.calendar.workingDays);
 
   return (
     <Card className={className}>
@@ -97,9 +111,18 @@ export function FieldActivityCard({ projectId, className }: { projectId: string;
         ) : (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-4">
-              <Figure label="Days logged" value={`${figures.daysLogged} of ${WINDOW_DAYS}`} />
-              <Figure label="Working days missed" value={String(figures.daysMissed)} danger={figures.daysMissed > 0} />
-              <Figure label="Average crew" value={figures.averageCrew === null ? "—" : String(figures.averageCrew)} />
+              <Figure label="Days logged" value={`${figures.daysLogged} of ${WINDOW_DAYS}`} helper="last 14 days" />
+              <Figure
+                label="Working days missed"
+                value={coverage ? String(coverage.daysMissed) : "—"}
+                helper={workingWeek ? `${workingWeek}, since work started` : "since work started"}
+                danger={Boolean(coverage && coverage.daysMissed > 0)}
+              />
+              <Figure
+                label="Average crew"
+                value={figures.averageCrew === null ? "—" : String(figures.averageCrew)}
+                helper="per logged day"
+              />
             </div>
             <CrewTrendChart points={figures.points} />
           </div>

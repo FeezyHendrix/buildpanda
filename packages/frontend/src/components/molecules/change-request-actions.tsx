@@ -99,6 +99,12 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
   }
 
   const pendingReason = reasonFor ? ACTION_META[reasonFor].reason : undefined;
+  // A refusal on a direct action — "Sign the change order contract before
+  // executing it" — has no dialog of its own to land in, and a toast fired from
+  // inside a modal is easy to miss. It is stated here, against the button that
+  // caused it, until the action succeeds.
+  const inlineError =
+    run.isError && reasonFor === null && !awarding ? getApiErrorMessage(run.error) : null;
 
   return (
     <>
@@ -124,6 +130,15 @@ export function ChangeRequestActions({ projectId, cr }: ChangeRequestActionsProp
           );
         })}
       </div>
+
+      {inlineError ? (
+        <p
+          role="alert"
+          className="mt-2 rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600"
+        >
+          {inlineError}
+        </p>
+      ) : null}
 
       {pendingReason ? (
         <ReasonDialog

@@ -172,6 +172,22 @@ export function transactionsRepository(db: Knex) {
       >;
     },
 
+    /**
+     * Actual cost by calendar month, for the cash-flow curve. Same rules as
+     * `sumByStage`: every surviving row counts and a credit subtracts, so the
+     * curve reconciles to the stage figures rather than telling a second story.
+     */
+    async sumByMonth(projectId: string): Promise<Array<{ month: string; total: string }>> {
+      return db<TransactionRow>("project_transactions")
+        .select(db.raw("to_char(transacted_at, 'YYYY-MM') as month"))
+        .sum({ total: db.raw("CASE WHEN credit THEN -amount ELSE amount END") })
+        .where("project_transactions.project_id", projectId)
+        .groupByRaw("to_char(transacted_at, 'YYYY-MM')")
+        .orderByRaw("to_char(transacted_at, 'YYYY-MM') asc") as unknown as Promise<
+        Array<{ month: string; total: string }>
+      >;
+    },
+
     // Actual cost attributed to each stage. Expenses have no void state: a
     // wrong entry is deleted, so every row still present counts. A credit is a
     // refund against the stage, so it subtracts rather than adds.

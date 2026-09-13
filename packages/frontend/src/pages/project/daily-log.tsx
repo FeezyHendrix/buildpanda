@@ -13,6 +13,7 @@ import { useProjectContext } from "@/layouts/project-layout";
 import { useBuildingScope } from "@/contexts/building-scope-context";
 import { useSession } from "@/stores/auth";
 import {
+  useDailyLogCoverage,
   useDownloadDailyReport,
   useEmailDailyReport,
   useProjectDailyLog,
@@ -24,6 +25,7 @@ import { canResourceAction } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
 import { VoidDailyLogDialog } from "@/components/molecules/void-daily-log-dialog";
 import { errorMessage } from "@/lib/api-error";
+import { describeCoverageBasis } from "@/lib/working-calendar";
 import { DailyLogDrawer } from "./daily-log/daily-log-drawer";
 import { PickLogDateDialog } from "./daily-log/pick-log-date-dialog";
 import { DailyLogTable, type DailyLogRowActions } from "./daily-log/daily-log-table";
@@ -83,6 +85,9 @@ export default function ProjectDailyLog() {
   const allRows = useMemo(() => buildRows(days, today, range.to), [days, today, range.to]);
   const rows = useMemo(() => filterRows(allRows, filter, query), [allRows, filter, query]);
   const kpis = useMemo(() => computeKpis(allRows), [allRows]);
+  // Missed days is a project fact counted on the project's own calendar, so it
+  // comes from the server — the same figure the overview reads.
+  const { data: coverage } = useDailyLogCoverage(project.id, selectedBuildingId);
   const dateRangeLabel = formatDateRangeLabel(range.from, range.to, []);
 
   function syncDateParam(logDate: string | null): void {
@@ -146,9 +151,9 @@ export default function ProjectDailyLog() {
         <KpiCard label="Days logged" value={kpis.daysLogged} />
         <KpiCard
           label="Missed days"
-          value={kpis.missedDays}
-          tone={kpis.missedDays > 0 ? "danger" : "default"}
-          helper="days between the first log and today with no log — today and non-working days included"
+          value={coverage ? coverage.daysMissed : "—"}
+          tone={coverage && coverage.daysMissed > 0 ? "danger" : "default"}
+          helper={describeCoverageBasis(coverage?.calendar.workingDays, coverage?.calendar.holidays)}
         />
         <KpiCard label="Total hours" value={formatHours(kpis.totalHours)} />
         <KpiCard label="Average crew" value={kpis.averageCrew ?? "—"} helper="workers present per logged day" />

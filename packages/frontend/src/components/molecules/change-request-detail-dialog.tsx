@@ -18,6 +18,8 @@ import {
   ChangeTypeBadge,
 } from "@/components/molecules/change-request-context";
 import { useProjectBudget } from "@/hooks/use-budget";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { currencySymbol, formatCurrency, formatShortDate, formatWholeCurrency } from "@/lib/formatters";
 import type { ChangeStatus, ChangeRequestDetail } from "@/lib/project-types";
@@ -67,13 +69,16 @@ function CRBudgetAllocations({ projectId, cr }: { projectId: string; cr: ChangeR
   const isOver = totalAllocated > cr.costImpact;
 
   function handleSave() {
-    setLinks.mutate({
-      projectId,
-      changeId: cr.id,
-      links: allocations
-        .filter(a => a.categoryId && Number(a.amount) > 0)
-        .map(a => ({ budgetCategoryId: a.categoryId, amount: Number(a.amount) }))
-    });
+    setLinks.mutate(
+      {
+        projectId,
+        changeId: cr.id,
+        links: allocations
+          .filter((a) => a.categoryId && Number(a.amount) > 0)
+          .map((a) => ({ budgetCategoryId: a.categoryId, amount: Number(a.amount) })),
+      },
+      { onError: (error) => toast(getApiErrorMessage(error), "error") },
+    );
   }
 
   function addRow() {
@@ -163,7 +168,13 @@ function ChangeRequestDetailDialog({ open, onOpenChange, projectId, changeId }: 
 
   function submitComment(): void {
     if (!changeId || !comment.trim()) return;
-    addComment.mutate({ projectId, changeId, body: { content: comment.trim() } }, { onSuccess: () => setComment("") });
+    addComment.mutate(
+      { projectId, changeId, body: { content: comment.trim() } },
+      {
+        onSuccess: () => setComment(""),
+        onError: (error) => toast(getApiErrorMessage(error), "error"),
+      },
+    );
   }
 
   return (

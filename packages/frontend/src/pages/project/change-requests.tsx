@@ -129,7 +129,10 @@ export default function ProjectChangeRequests() {
   }
 
   function handleAssign(cr: ChangeRequest, assigneeId: string | null): void {
-    updateCr.mutate({ projectId: project.id, changeId: cr.id, assigneeId });
+    updateCr.mutate(
+      { projectId: project.id, changeId: cr.id, assigneeId },
+      { onError: (error) => toast(getApiErrorMessage(error), "error") },
+    );
   }
 
   function handleCreate(values: UpsertChangeValues): void {
@@ -320,7 +323,12 @@ export default function ProjectChangeRequests() {
           if (!deleteId) return;
           deleteCr.mutate(
             { projectId: project.id, changeId: deleteId },
-            { onSuccess: () => setDeleteId(null) },
+            {
+              onSuccess: () => setDeleteId(null),
+              // A change order with a signed contract or an executed award
+              // refuses deletion with a reason; the dialog stays open on it.
+              onError: (error) => toast(getApiErrorMessage(error), "error"),
+            },
           );
         }}
         title="Delete change order"

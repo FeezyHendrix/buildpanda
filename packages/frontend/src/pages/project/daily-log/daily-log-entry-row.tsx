@@ -7,6 +7,7 @@ import type { DailyLogEntry } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { formatTime } from "./daily-log-helpers";
+import { errorMessage } from "@/lib/api-error";
 
 interface DailyLogEntryRowProps {
   projectId: string;
@@ -107,7 +108,7 @@ function DailyLogEntryRow({ projectId, logDate, entry, userId, canVoidEntry }: D
         onOpenChange={setVoidOpen}
         authorName={entry.authorName}
         submitting={voidEntry.isPending}
-        error={voidEntry.error ? (voidEntry.error as Error).message : null}
+        error={voidEntry.error ? errorMessage(voidEntry.error) : null}
         onConfirm={(reason) =>
           voidEntry.mutate(
             { projectId, logDate, entryId: entry.id, reason },

@@ -37,6 +37,9 @@ const SYSTEM_PROMPT = [
   "You have tools to read this project's live data: buildings (blocks/structures, each with its own programme but sharing the project's funding), schedule/Gantt, delays, risks, finances, invoices, budget categories, purchase orders, payment claims, daily logs, key dates, inspections, Bill of Quantities (BoQ) line items, planned material orders, on-hand material stock, the supplier directory, tasks, open items (RFIs, approvals), change requests, homeowner selections & allowances, permits, documents, and unresolved drawing markup (redlines and pinned comments raised on drawing revisions).",
   "Inspections are an INDEPENDENT service, not the contractor's own QA: the client requests one, a BuildPanda inspector attends and reports on whoever is building. Only the assigned inspector records the outcome; the contractor is the subject of the report, never its author. Use get_inspections for the service status, the assigned inspector and the pass/fail outcome.",
   "Always ground your answers in the data from the tools — never invent numbers, dates, or names.",
+  "You may call SEVERAL tools in one turn, and you should. Each tool reads one domain, so one tool almost never holds the whole answer. Reach for the set of tools that could carry the answer, not the first plausible one.",
+  "When the question names a PIECE OF WORK rather than a domain — a structure, an element, a location or a chainage such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'the asphalt' — start with find_work_records. It sweeps the records that describe work: activities and the delays logged against them, RFIs, change requests, risks, inspections and material orders. 'What changed on X', 'what happened with X', 'what is outstanding on X' are questions about those records. They are NOT questions about drawing markup: get_drawing_markups holds only redlines drawn on a drawing sheet, most projects have none, and an empty result there says nothing about whether the project knows about X.",
+  "An empty tool result is a fact about THAT tool, not about the project. If the first tool you call comes back empty, widen the search — call find_work_records with a shorter term, and call the other record tools (get_schedule, get_delays, get_open_items, get_change_requests, get_risks, get_inspections, get_materials) — before you conclude anything. Only say you could not find information once you have actually looked in the records that would hold it, and then say which ones you checked.",
   "For 'what is outstanding on the contract', 'how much are we owed', 'what has been paid', 'are we exposed to liquidated damages', or any question about the contract position as a whole, use get_finance_position FIRST. It is the single money model: adjusted contract, gross certified from approved receivable certificates, amount paid from the receipts recorded on them, retention held, advance recovered, outstanding (still to certify), certified awaiting payment, late and overdue certificates, LD exposure and EOT days. Quote those figures — do not answer an 'outstanding' question by listing contracts or phases.",
   "Funding deposits and stage-payment milestone releases are a SEPARATE ledger from the contract waterfall. Never add a deposit to 'amount paid' on the contract, and never describe a milestone release as a certificate.",
   "For money questions, pick the right level: get_finances is the high-level budget/contract/milestone-payment summary and includes cost-to-stage (committed issued-PO spend and actual logged expenses per build stage); get_budget is the per-category budget breakdown (allocated vs committed vs spent); get_invoices is individual invoices with paid/outstanding/overdue detail; get_purchase_orders is committed vendor orders; get_payment_claims is progress claims and their approval state; get_finance_events is the funding trail / audit log of who recorded which funding action and when.",
@@ -59,8 +62,22 @@ const SYSTEM_PROMPT = [
   "When the user wants to go to a part of the app, or when it helps to point them somewhere, call the navigate tool.",
   "When asked about a document's contents, first call list_documents, then analyze_document with the right id.",
   "For what is outstanding on the drawings, what was redlined or flagged on a sheet, or whether comments are sitting on a superseded revision, use get_drawing_markups. An item whose onCurrentRevision is false was raised against a drawing revision that has since been superseded — call that out, because it may no longer apply or may have been missed in the reissue.",
+  "For the site diary use get_daily_logs. Report what WORK was done — each day's activities and the hours logged against them — not only the weather and the headcount. A day flagged isFuture is dated after today: call it out as a future-dated entry and leave it out of the week's totals; the tool's `totals` already exclude it.",
   "For where the job stands against the contract programme — the contract completion date, the revised completion date after awarded extensions of time, EOT days approved and pending (a time claim is a change request of type eot_only, not a separate register), how far the finish has shifted from the baseline, and each delay with its days lost, culpability (contractor / client / neutral) and EOT eligibility — use get_schedule_position. A contractor-culpable delay is never claimable as an extension of time; say so rather than implying relief is available.",
   "If a tool returns no data, say so plainly rather than guessing.",
+].join(" ");
+
+/**
+ * Injected when a round of tool calls all came back empty. An empty tool is a
+ * fact about that tool, not about the project, so the turn widens instead of
+ * ending in a false "there is no information".
+ */
+const WIDEN_DIRECTIVE = [
+  "SEARCH AGAIN: every tool you called in that round returned no data. That tells you about those tools, not about the project.",
+  "Do not answer yet, and do not tell the user the information does not exist.",
+  "If the user named a piece of work, a structure, a location or a chainage, call find_work_records with that name (and with a shorter form of it, e.g. 'culvert' for 'culvert 1').",
+  "Also call the other record tools that could hold it — get_schedule, get_delays, get_open_items, get_change_requests, get_risks, get_inspections, get_materials — several in the same round.",
+  "Only if those also come back empty may you say you could not find it, and then name the records you checked.",
 ].join(" ");
 
 export interface ChatTurnInput {
@@ -110,6 +127,7 @@ export function agentService(db: Knex, queue?: QueueManager) {
       let navigatePath: string | null = null;
       let madeToolCalls = false;
       let hadSubstantiveData = false;
+      let widened = false;
 
       try {
         for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -158,6 +176,15 @@ export function agentService(db: Knex, queue?: QueueManager) {
               tool_call_id: call.id,
               content: JSON.stringify(result).slice(0, 24_000),
             });
+          }
+
+          // An empty first tool used to end the turn in "I could not find any
+          // information" (finding F60). One empty round buys one widening
+          // round instead, so the search reaches the records that hold the
+          // answer before the model gives up.
+          if (!hadSubstantiveData && !widened && round < MAX_TOOL_ROUNDS - 1) {
+            widened = true;
+            conversation.push({ role: "system", content: WIDEN_DIRECTIVE });
           }
         }
 

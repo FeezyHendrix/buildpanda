@@ -157,6 +157,8 @@ export interface ChangeRequestRow {
   stage_id: string | null;
   rfi_id: string | null;
   days_awarded: number | null;
+  /** How many days this claim has already moved the completion date by. */
+  days_applied: number;
   rejected_reason: string | null;
   submitted_at: string | null;
   revisions: ChangeRevision[] | string | null;

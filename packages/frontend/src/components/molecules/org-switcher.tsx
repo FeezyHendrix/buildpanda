@@ -9,6 +9,7 @@ import {
 import { useState, useEffect } from "react";
 import { INPUT_SM_CLASS } from "@/components/atoms/input";
 import { Button } from "@/components/atoms/button";
+import { errorMessage } from "@/lib/api-error";
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(false);
@@ -160,7 +161,7 @@ function OrgSwitcher() {
               </div>
               {createOrganization.error && (
                 <p className="mt-1 text-xs text-red-600">
-                  {(createOrganization.error as Error).message}
+                  {errorMessage(createOrganization.error)}
                 </p>
               )}
             </form>

@@ -263,6 +263,8 @@ export const dailyLogKeys = {
       : ([...dailyLogKeys.all(projectId), "list", buildingId ?? "all"] as const),
   detail: (projectId: string, date: string) =>
     [...dailyLogKeys.all(projectId), "detail", date] as const,
+  coverage: (projectId: string, buildingId?: string) =>
+    [...dailyLogKeys.all(projectId), "coverage", buildingId ?? "all"] as const,
 };
 
 export const notificationKeys = {

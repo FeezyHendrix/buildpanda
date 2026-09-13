@@ -24,6 +24,7 @@ import type {
 import { canResourceAction } from "@/lib/project-types";
 import { TabActions } from "../finances/finance-tabs";
 import { StagePaymentDialogs } from "./stage-payment-dialogs";
+import { errorMessage } from "@/lib/api-error";
 
 /**
  * Stage payments: the milestone cost gates plus the payment record.
@@ -137,7 +138,7 @@ export function StagePaymentsSection() {
         phases={project.timeline}
         initial={editingTarget}
         isSubmitting={upsertMilestone.isPending}
-        error={upsertMilestone.error ? (upsertMilestone.error as Error).message : null}
+        error={upsertMilestone.error ? errorMessage(upsertMilestone.error) : null}
         onSubmit={(values) => {
           upsertMilestone.mutate(
             { projectId: project.id, milestoneId: editingTarget?.id, ...values },

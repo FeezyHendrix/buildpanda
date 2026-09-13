@@ -21,7 +21,9 @@ import { purchaseOrdersRepository } from "../../purchase-orders/repository.ts";
 import { transactionsRepository } from "../../transactions/repository.ts";
 import { financeTools } from "./finance-tools.ts";
 import { agentRepository } from "./repository.ts";
+import { workRecordsRepository } from "./work-records.ts";
 import { fn, round2, tool, type AgentTool } from "./tool-helpers.ts";
+import { diaryDates, shapeDiary } from "./diary.ts";
 
 export interface ToolResult {
   output: unknown;
@@ -119,7 +121,29 @@ function requiredString(value: unknown, maxLength: number, field: string): strin
 
 export function buildTools(): AgentTool[] {
   return [
-    tool(fn("get_schedule", "Get the project schedule: phases and activities with dates, % complete, milestones and dependency counts. Use for any question about the timeline, Gantt, what's on schedule, or what is late."), async (ctx) => {
+    tool(fn("find_work_records", "Find every record on the project whose text names a particular piece of work — a structure, a location, a chainage or an element such as 'culvert 1', 'ch 0+420', 'the retaining wall', 'kerbing'. It sweeps the records that DESCRIBE WORK in one call: activities, the delays logged against them, RFIs, change requests, risks, inspections and material orders, returning each match with its status, dates and notes. ALWAYS use this FIRST for 'what changed on X', 'what is the story on X', 'what happened with X', 'is there anything open on X', or any question that names a piece of work rather than a whole domain. Drawing markups are NOT where the history of a piece of work lives — do not answer these questions from get_drawing_markups. If this returns nothing, try a shorter or differently spelled term before telling the user there is no information.", {
+      term: { type: "string", description: "The thing the user named, e.g. 'culvert 1', 'ch 0+420', 'asphalt', 'retaining wall'." },
+    }, ["term"]), async (ctx, args) => {
+      const repo = workRecordsRepository(ctx.db);
+      const term = requiredString(args.term, 120, "term");
+      // The phrase first, so "culvert 1" beats a loose word match; only if the
+      // phrase finds nothing do the words go in separately.
+      let hits = await repo.workRecords(ctx.projectId, [term]);
+      const words = term.split(/\s+/).filter((w) => w.length > 0);
+      if (hits.length === 0 && words.length > 1) {
+        hits = await repo.workRecords(ctx.projectId, words);
+      }
+      return {
+        output: {
+          term,
+          matchCount: hits.length,
+          searched: ["activities", "delays", "rfis", "change requests", "risks", "inspections", "material orders"],
+          records: hits,
+        },
+      };
+    }),
+
+    tool(fn("get_schedule","Get the project schedule: phases and activities with dates, % complete, milestones and dependency counts. Activities are named after the work they cover ('Excavate & blind culvert 1 ch 0+420'), so this is where a named piece of work appears on the programme. Use for any question about the timeline, Gantt, what is on schedule, or what is late."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const [phases, activities] = await Promise.all([repo.phases(ctx.projectId), repo.activities(ctx.projectId)]);
       const now = Date.now();
@@ -161,7 +185,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_delays", "Get all logged delays for the project with their cost impact and resolution status. Use for questions about delays, lost time, or schedule slippage."), async (ctx) => {
+    tool(fn("get_delays", "Get all logged delays for the project with their cost impact and resolution status, each tied to the activity it stopped. Use for questions about delays, lost time, or schedule slippage — and to find out what has held up a particular piece of work."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const delays = await repo.delays(ctx.projectId);
       return {
@@ -227,7 +251,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_risks", "Get the project risk register (risk factors by severity). Use for questions about risks or what could go wrong."), async (ctx) => {
+    tool(fn("get_risks", "Get the project risk register (risk factors by severity, status and mitigation). Risks are usually written against a specific location or structure, so use this for questions about risks, what could go wrong, and what is threatening a named piece of work."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const risks = await repo.risks(ctx.projectId);
       return { output: risks.map((r) => ({ title: r.title, description: r.description, severity: r.severity })) };
@@ -568,20 +592,17 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_daily_logs", "Get recent daily site logs (weather, workers present, hours, summary). Use for questions about site activity, what happened on site, or recent progress.", { limit: { type: "number", description: "How many recent logs (default 10)" } }), async (ctx, args) => {
+    tool(fn("get_daily_logs", "Get the site diary day by day: the weather and temperature, workers present against workers expected, hours worked, the written diary entries for the day, and — the point of a diary — WHICH ACTIVITIES the hours went on, with the hours logged against each. Use for 'summarise the site diary', 'what happened on site', 'what work was done this week', or recent progress. Always say what work was done from each day's `activities`, not only headcounts and weather. A day whose `isFuture` is true is dated AFTER today: it is a plan somebody wrote ahead, not a record of work done — report it separately as future-dated and never fold it into a week's totals. `totals` is already computed over recorded (non-future, non-voided) days only; quote it rather than adding the rows up yourself.", { limit: { type: "number", description: "How many recent logs (default 10)" } }), async (ctx, args) => {
       const repo = agentRepository(ctx.db);
       const limit = Math.min(Math.max(Number(args.limit ?? 10), 1), 30);
+      const today = new Date().toISOString().slice(0, 10);
       const logs = await repo.dailyLogs(ctx.projectId, limit);
-      return {
-        output: logs.map((l) => ({
-          date: l.log_date,
-          weather: l.weather_condition,
-          temperatureC: l.temperature_c,
-          workers: `${l.workers_present ?? "?"}/${l.workers_expected ?? "?"}`,
-          hours: l.total_hours,
-          summary: l.summary,
-        })),
-      };
+      const dates = diaryDates(logs);
+      const [hours, entries] = await Promise.all([
+        repo.dailyLogActivityHours(ctx.projectId, dates),
+        repo.dailyLogEntries(ctx.projectId, dates),
+      ]);
+      return { output: shapeDiary(logs, hours, entries, today) };
     }),
 
     tool(fn("get_key_dates", "Get project key dates and milestones with their status (upcoming/met/missed)."), async (ctx) => {
@@ -827,7 +848,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_drawing_markups", "Get unresolved markup raised on the project's drawings — redlines, revision clouds and pinned comments, with the sheet and revision they were raised against and whether that revision has since been superseded. Use for 'what is outstanding on the drawings', 'what did the architect flag', 'which comments are on a superseded revision', or 'which RFIs came off a drawing'."), async (ctx) => {
+    tool(fn("get_drawing_markups", "Get unresolved markup raised on the project's DRAWING SHEETS — redlines, revision clouds and pinned comments, with the sheet and revision they were raised against and whether that revision has since been superseded. Use ONLY when the question is about the drawings themselves: 'what is outstanding on the drawings', 'what did the architect flag', 'which comments are on a superseded revision', 'which RFIs came off a drawing'. This tool holds no activities, delays, RFIs, risks, inspections, changes or orders, so it is the WRONG tool for 'what changed on culvert 1' or any question naming a piece of work — use find_work_records for those. Most projects have no markup at all; an empty result here means nothing was redlined, never that the project has no information about the thing asked about."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const markups = await repo.drawingMarkupsOpen(ctx.projectId);
       return {
@@ -846,7 +867,7 @@ export function buildTools(): AgentTool[] {
       };
     }),
 
-    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. Use for questions about changes, variations, scope changes, or why the budget or timeline is moving."), async (ctx) => {
+    tool(fn("get_change_requests", "Get the project's change requests with their cost and schedule impact and decision status. A change request is the record of a design or scope change to a specific piece of work, so use this for questions about changes, variations, scope changes, what was varied on a named element, or why the budget or timeline is moving."), async (ctx) => {
       const repo = agentRepository(ctx.db);
       const changes = await repo.changeRequests(ctx.projectId);
       return {

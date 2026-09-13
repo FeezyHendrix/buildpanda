@@ -73,7 +73,7 @@ export function RiskFactorsPanel({
         mode="create"
         onSubmit={handleCreate}
         isSubmitting={createRisk.isPending}
-        error={(createRisk.error as Error | undefined)?.message ?? null}
+        error={createRisk.error ? errorMessage(createRisk.error) : null}
       />
     </Card>
   );
