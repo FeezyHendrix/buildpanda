@@ -13,10 +13,10 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
   const lip = tone === "dark" ? "bg-white/10" : "bg-ink/90";
 
   return (
-    <div className="relative mx-auto w-full max-w-5xl 2xl:max-w-6xl">
+    <div className="relative mx-auto w-full max-w-6xl 2xl:max-w-7xl">
       {/* Laptop, furthest back and widest. A thin bezel: the frame is there to
           say "this is a screen", not to take up room. */}
-      <div className="mx-auto w-[88%]">
+      <div className="mx-auto w-[94%]">
         <div
           className={`rounded-t-lg border border-b-0 ${bezel} p-1 shadow-[0_40px_90px_-40px_rgba(4,20,60,0.55)] sm:rounded-t-xl sm:p-1.5`}
         >
@@ -27,7 +27,7 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
               width={2468}
               height={1542}
               priority
-              sizes="(max-width: 1024px) 88vw, 900px"
+              sizes="(max-width: 1024px) 94vw, 1050px"
               className="block w-full"
             />
           </div>
@@ -40,7 +40,7 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
       </div>
 
       {/* Tablet, front right. */}
-      <div className="absolute -bottom-5 right-0 w-[36%] sm:-bottom-9 sm:right-[1%] sm:w-[34%]">
+      <div className="absolute -bottom-7 right-0 w-[46%] sm:-bottom-12 sm:right-[-3%] sm:w-[44%]">
         <div
           className={`rounded-lg border ${bezel} p-1 shadow-[0_30px_70px_-30px_rgba(4,20,60,0.55)] sm:rounded-xl sm:p-1.5`}
         >
@@ -50,7 +50,7 @@ export function DeviceCluster({ tone = "light" }: { tone?: "light" | "dark" }) {
               alt="The same project's overview on a tablet: progress, schedule, budget used, cost variance and cash, with what needs attention beside them"
               width={2008}
               height={1506}
-              sizes="(max-width: 1024px) 36vw, 360px"
+              sizes="(max-width: 1024px) 46vw, 500px"
               className="block w-full"
             />
           </div>
