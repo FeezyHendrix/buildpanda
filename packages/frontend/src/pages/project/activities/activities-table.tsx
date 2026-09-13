@@ -16,7 +16,6 @@ import { RowActionsMenu } from "@/components/molecules/row-actions-menu";
 import { formatCurrency } from "@/lib/formatters";
 import { ACTIVITY_STATUS_LABEL, ACTIVITY_STATUS_TONE } from "@/lib/project-meta";
 import type { Activity } from "@/lib/project-types";
-import { cn } from "@/lib/utils";
 import { activitySchedule, formatDateSpan, formatVariance } from "./activity-helpers";
 
 const COLUMN_COUNT = 9;
@@ -158,26 +157,25 @@ function ActivityRow({
           <p className="mt-0.5 text-xs text-ink-muted">{schedule.actualDays} days</p>
         ) : null}
       </TableCell>
-      <TableCell
-        className={cn(
-          "whitespace-nowrap",
-          schedule.variance === null
-            ? undefined
-            : schedule.variance > 0
-              ? "text-negative-500"
-              : "text-success-500",
+      <TableCell className="whitespace-nowrap">
+        {schedule.variance === null ? (
+          "—"
+        ) : (
+          // Status reads as a pill with a dot, the same way every other status
+          // on the page does; the sign says late or early, the tone confirms it.
+          <Badge dot tone={schedule.variance > 0 ? "danger" : schedule.variance < 0 ? "success" : "neutral"}>
+            {formatVariance(schedule.variance)}
+          </Badge>
         )}
-      >
-        {formatVariance(schedule.variance)}
       </TableCell>
-      <TableCell
-        className={cn("whitespace-nowrap", schedule.totalDelayCost > 0 ? "text-warning-500" : undefined)}
-      >
+      <TableCell className="whitespace-nowrap tabular-nums">
         {schedule.totalDelayCost > 0
           ? formatCurrency(schedule.totalDelayCost, schedule.delayCurrency)
           : "—"}
         {schedule.openDelays > 0 ? (
-          <p className="mt-0.5 text-xs text-ink-muted">{schedule.openDelays} open</p>
+          <div className="mt-1">
+            <Badge dot tone="warning">{schedule.openDelays} open</Badge>
+          </div>
         ) : null}
       </TableCell>
       <TableCell className="whitespace-nowrap tabular-nums">{activity.percentComplete}%</TableCell>
