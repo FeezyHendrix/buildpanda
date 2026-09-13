@@ -1,10 +1,23 @@
 import type { Knex } from "knex";
 import type { Currency } from "../projects/types.ts";
 import { budgetRepository } from "../budget/repository.ts";
+import { financesRepository } from "../finances/repository.ts";
+import { stageBudgetLines } from "../finances/finance-summary.ts";
+import { stageCostsService } from "../finances/stage-costs.ts";
+import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
+import { stagesRepository } from "../stages/repository.ts";
+import { stagesService } from "../stages/service.ts";
+import { transactionsRepository } from "../transactions/repository.ts";
 import { invoicesRepository } from "../invoices/repository.ts";
 import { invoicesService } from "../invoices/service.ts";
 import { pandaAiRepository } from "../panda-ai/repository.ts";
 import { toInsight } from "../panda-ai/types.ts";
+import {
+  cashFlowCurve,
+  hasStageFigures,
+  stageBudgetPoints,
+  sumByPeriod,
+} from "./finance-position.ts";
 import type {
   BudgetCategoryPoint,
   CashFlowPoint,
@@ -79,6 +92,18 @@ export function reportingService(db: Knex) {
   const invoiceRepo = invoicesRepository(db);
   const invoices = invoicesService(invoiceRepo);
   const pandaAi = pandaAiRepository(db);
+  const stagesRepo = stagesRepository(db);
+  // Only the priced billing-sheet months are wanted here, which is all this
+  // narrow wiring of the stages service can answer.
+  const stages = stagesService(stagesRepo, async () => undefined);
+  const transactionsRepo = transactionsRepository(db);
+  // The overview must answer with the same money the finance pages publish, so
+  // it reads the stage cost model rather than the hand-kept budget sheet.
+  const stageCosts = stageCostsService({
+    finances: financesRepository(db),
+    transactions: transactionsRepo,
+    purchaseOrders: purchaseOrdersRepository(db),
+  });
 
   async function buildSnapshot(
     projectId: string,
@@ -125,6 +150,10 @@ export function reportingService(db: Knex) {
       overdueTasks,
       expiredPermits,
       expiringSoonPermits,
+      stageRows,
+      stageCostRows,
+      monthlyActual,
+      sovLines,
     ] = await Promise.all([
       db<ProjectInfoRow>("projects")
         .select("name", "status", "currency", "progress_percent")
@@ -320,6 +349,10 @@ export function reportingService(db: Knex) {
         .where("expiry_date", "<=", db.raw("CURRENT_DATE + 30"))
         .count<{ count: string }[]>("id as count")
         .first(),
+      stagesRepo.listByProject(projectId),
+      stageCosts.byProject(projectId).catch(() => ({ stages: [] })),
+      transactionsRepo.sumByMonth(projectId),
+      stages.listScheduleOfValues(projectId).catch(() => []),
     ]);
 
     if (!project) {
@@ -329,7 +362,7 @@ export function reportingService(db: Knex) {
     const deltaByCategory = new Map(
       budgetDeltas.map((d) => [d.budget_category_id, d]),
     );
-    const categoryPoints: BudgetCategoryPoint[] = categories.map((c) => {
+    const sheetPoints: BudgetCategoryPoint[] = categories.map((c) => {
       const delta = deltaByCategory.get(c.id);
       const planned = round2(
         toNumber(c.planned) + (delta?.approved_change ?? 0),
@@ -348,6 +381,51 @@ export function reportingService(db: Knex) {
         variance: round2(planned - actual),
       };
     });
+
+    // Cost is recorded against stages, so the stage lines are the real budget
+    // position. The hand-kept budget sheet is only the fallback, for a project
+    // that keeps its costs there and has no stage figures at all.
+    const stagePoints = stageBudgetPoints(
+      stageBudgetLines(
+        stageRows.map((row) => ({
+          stageId: row.id,
+          name: row.name,
+          scheduledValue: toNumber(row.value),
+          expectedCost: toNumber(row.expected_cost ?? 0),
+        })),
+        new Map(
+          stageCostRows.stages.map((c) => [
+            c.stageId,
+            { committed: c.committed, actual: c.actual },
+          ]),
+        ),
+      ),
+    );
+    const categoryPoints = hasStageFigures(stagePoints) ? stagePoints : sheetPoints;
+
+    /*
+     * The S-curve: what the job is meant to bill each month against what it has
+     * actually cost. Planned comes from the billing sheet the QS keeps (the
+     * priced schedule of values), falling back to the programme's cost phasing
+     * and then to the hand-entered cash-flow periods. Actual is the expense
+     * ledger by month, on the same credit rules as the stage figures — both are
+     * records of money moved off-platform, never movements made here.
+     */
+    const plannedMonths = sumByPeriod(
+      sovLines.length > 0
+        ? sovLines.map((line) => ({ period: line.period, amount: toNumber(line.periodAmount) }))
+        : programmePhasing.length > 0
+          ? programmePhasing.map((p) => ({ period: p.period, amount: toNumber(p.planned_cost) }))
+          : periods.map((row) => ({ period: row.period, amount: toNumber(row.planned) })),
+    );
+    const actualMonths = sumByPeriod([
+      ...monthlyActual.map((row) => ({ period: row.month, amount: toNumber(row.total) })),
+      // A project that keeps its cash flow by hand still gets its actuals drawn.
+      ...(monthlyActual.length === 0
+        ? periods.map((row) => ({ period: row.period, amount: toNumber(row.actual) }))
+        : []),
+    ]);
+    const cashFlow = cashFlowCurve(plannedMonths, actualMonths);
 
     const totalPlanned = round2(
       categoryPoints.reduce((sum, c) => sum + c.planned, 0),
@@ -462,7 +540,7 @@ export function reportingService(db: Knex) {
             .length,
           categories: categoryPoints,
         },
-        cashFlow: { points: toCashFlowCurve(periods) },
+        cashFlow: { points: cashFlow },
         invoices: {
           count: invoiceList.length,
           invoicedTotal,

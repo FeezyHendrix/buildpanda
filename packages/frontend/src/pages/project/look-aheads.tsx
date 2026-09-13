@@ -30,6 +30,7 @@ import { useProjectActivities } from "@/hooks/use-activities";
 import { useProjectInspections } from "@/hooks/use-inspections";
 import { openHoldPointsByActivity } from "@/lib/hold-points";
 import { ApproveLookAheadDialog } from "./look-aheads/approve-look-ahead-dialog";
+import { RevokeLookAheadDialog } from "./look-aheads/revoke-look-ahead-dialog";
 import { delayedActivityIds } from "./look-aheads/look-ahead-helpers";
 import { LookAheadDetailDrawer } from "./look-aheads/look-ahead-detail-drawer";
 import { LookAheadsTable } from "./look-aheads/look-aheads-table";
@@ -63,6 +64,7 @@ export default function ProjectLookAheads() {
   const [viewTarget, setViewTarget] = useState<LookAhead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LookAhead | null>(null);
   const [approveTarget, setApproveTarget] = useState<LookAhead | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<LookAhead | null>(null);
 
   const createLookAhead = useCreateLookAhead();
   const updateLookAhead = useUpdateLookAhead();
@@ -97,7 +99,6 @@ export default function ProjectLookAheads() {
           lookAheadId: editTarget.id,
           name: values.name,
           description: values.description,
-          status: values.status,
           startDate: values.startDate,
           endDate: values.endDate,
           totalWorkers: values.totalWorkers,
@@ -207,6 +208,7 @@ export default function ProjectLookAheads() {
             activityCoverage={activityCoverage}
             delayedActivityIds={delayedIds}
             onApprove={setApproveTarget}
+            onRevoke={setRevokeTarget}
             onCreate={() => {
               setEditTarget(null);
               setFormOpen(true);
@@ -245,6 +247,10 @@ export default function ProjectLookAheads() {
           setViewTarget(null);
           setApproveTarget(lookAhead);
         }}
+        onRevoke={(lookAhead) => {
+          setViewTarget(null);
+          setRevokeTarget(lookAhead);
+        }}
         onOpenChange={(next) => {
           if (!next) setViewTarget(null);
         }}
@@ -262,6 +268,15 @@ export default function ProjectLookAheads() {
         }}
         projectId={project.id}
         lookAhead={approveTarget}
+      />
+
+      <RevokeLookAheadDialog
+        open={revokeTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setRevokeTarget(null);
+        }}
+        projectId={project.id}
+        lookAhead={revokeTarget}
       />
 
       <ConfirmDialog

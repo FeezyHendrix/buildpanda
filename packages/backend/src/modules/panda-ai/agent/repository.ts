@@ -235,7 +235,32 @@ export function agentRepository(db: Knex) {
           "workers_expected",
           "total_hours",
           "summary",
+          "voided_at",
         );
+    },
+
+    /**
+     * The work behind the headcount: which activity each day's hours went on.
+     * A diary that reports only weather and crew size never says what was built.
+     */
+    dailyLogActivityHours(projectId: string, logDates: string[]) {
+      return db("daily_log_activities as dla")
+        .join("activities as a", "a.id", "dla.activity_id")
+        .where("dla.project_id", projectId)
+        .whereIn("dla.log_date", logDates)
+        .orderBy("dla.log_date", "desc")
+        .select("dla.log_date", "a.name as activity_name", "dla.hours_logged");
+    },
+
+    /** The written diary for each day, voided entries left out. */
+    dailyLogEntries(projectId: string, logDates: string[]) {
+      return db("daily_log_entries as e")
+        .leftJoin("daily_log_entry_voids as v", "v.entry_id", "e.id")
+        .where("e.project_id", projectId)
+        .whereIn("e.log_date", logDates)
+        .whereNull("v.id")
+        .orderBy("e.created_at", "asc")
+        .select("e.log_date", "e.author_name", "e.author_role", "e.body_text");
     },
 
     keyDates(projectId: string) {
@@ -795,6 +820,14 @@ export function agentRepository(db: Knex) {
           ),
         );
     },
+
+    /**
+     * Everything on the project whose text names a piece of work — "culvert 1",
+     * "ch 0+420", "the box culvert". A PM asking "what changed on X" means the
+     * records that describe work, so one query sweeps activities and their
+     * delays, RFIs, change requests, risks, inspections and material orders
+     * rather than leaving the model to guess a single domain tool.
+     */
   };
 }
 

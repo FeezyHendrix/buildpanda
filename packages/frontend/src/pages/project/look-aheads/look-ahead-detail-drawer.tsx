@@ -16,6 +16,7 @@ interface LookAheadDetailDrawerProps {
   onOpenChange: (open: boolean) => void;
   onEdit: (lookAhead: LookAhead) => void;
   onApprove: (lookAhead: LookAhead) => void;
+  onRevoke: (lookAhead: LookAhead) => void;
 }
 
 export function LookAheadDetailDrawer({
@@ -27,6 +28,7 @@ export function LookAheadDetailDrawer({
   onOpenChange,
   onEdit,
   onApprove,
+  onRevoke,
 }: LookAheadDetailDrawerProps) {
   if (!lookAhead) return null;
   const status = LOOK_AHEAD_STATUS_META[lookAhead.status];
@@ -63,7 +65,9 @@ export function LookAheadDetailDrawer({
                 {lookAhead.approvedAt ? ` · ${new Date(lookAhead.approvedAt).toLocaleString()}` : ""}
                 {lookAhead.approvalNote ? ` — ${lookAhead.approvalNote}` : ""}
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">Not approved — no sign-off recorded against this plan.</p>
+            )}
           </header>
 
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
@@ -121,6 +125,11 @@ export function LookAheadDetailDrawer({
             {canManage && lookAhead.status !== "Approved" ? (
               <Button type="button" variant="secondary" size="sm" onClick={() => onApprove(lookAhead)}>
                 Approve
+              </Button>
+            ) : null}
+            {canManage && lookAhead.status === "Approved" ? (
+              <Button type="button" variant="secondary" size="sm" onClick={() => onRevoke(lookAhead)}>
+                Revoke approval
               </Button>
             ) : null}
             {canManage && (

@@ -7,6 +7,7 @@ import {
   toCalendar,
   type WorkingCalendar,
 } from "../../lib/working-days.ts";
+import { isContractualLabel } from "./contractual-labels.ts";
 import type { KeyDatesRepository } from "./repository.ts";
 import type {
   KeyDate,
@@ -79,7 +80,10 @@ export function keyDatesService(
         status: input.status ?? "Upcoming",
         notes: input.notes ?? null,
         linked_activity_id: input.linkedActivityId ?? null,
-        is_contractual: input.isContractual ?? false,
+        // A date the contract plainly owns is contractual unless the operator
+        // says otherwise — the flag defaulting to false is how "Defects
+        // liability ends" was left behind by an award.
+        is_contractual: input.isContractual ?? isContractualLabel(input.label),
       });
       return toKeyDate(row);
     },

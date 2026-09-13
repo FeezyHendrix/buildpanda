@@ -26,6 +26,18 @@ import { ENTRY_TYPE_META, signedMeasure } from "./shared";
 
 const COLUMN_COUNT = 8;
 
+/**
+ * `reason` carries whatever explains the movement, so the label has to match
+ * the movement rather than assume the worst: only a voided entry is explained
+ * by a void reason. A live receipt's free text is a note, and it is never the
+ * delivery note — that has a column and a label of its own.
+ */
+function reasonLabel(entry: LedgerEntry): string {
+  if (entry.entryType === "VOID") return "Reversal reason";
+  if (entry.status === "Voided") return "Void reason";
+  return "Note";
+}
+
 interface LedgerTableProps {
   entries: LedgerEntry[];
   /** True when the ledger has entries but the filters hide them all. */
@@ -146,9 +158,7 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
         {entry.stageName ? <p className="mt-0.5 text-xs text-ink-muted">{entry.stageName}</p> : null}
         {entry.reason ? (
           <p className="mt-0.5 text-xs text-ink-muted">
-            <span className="font-medium text-gray-700">
-              {isReversal ? "Reversal reason" : "Void reason"}:
-            </span>{" "}
+            <span className="font-medium text-gray-700">{reasonLabel(entry)}:</span>{" "}
             {entry.reason}
           </p>
         ) : null}
@@ -168,7 +178,9 @@ function LedgerTableRow({ entry, canManage, approving, onVoid, onApprove }: RowP
       <TableCell>
         <p>{entry.supplier ?? "—"}</p>
         {entry.deliveryNote ? (
-          <p className="mt-0.5 text-xs text-ink-muted">DN {entry.deliveryNote}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            <span className="font-medium text-gray-700">Delivery note:</span> {entry.deliveryNote}
+          </p>
         ) : null}
       </TableCell>
       <TableCell className="whitespace-nowrap">{entry.loggedByName ?? "Unknown user"}</TableCell>

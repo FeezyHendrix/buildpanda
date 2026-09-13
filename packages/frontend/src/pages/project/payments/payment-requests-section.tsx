@@ -32,6 +32,7 @@ import {
 } from "./payment-request-model";
 import { UpsertRequestDialog } from "./upsert-request-dialog";
 import { TabActions } from "../finances/finance-tabs";
+import { errorMessage } from "@/lib/api-error";
 
 /**
  * Payment requests: contractor progress requests linked to stage payments.
@@ -158,7 +159,7 @@ function RequestCard({
         initial={toValues(claim)}
         onSubmit={handleEdit}
         isSubmitting={updateClaim.isPending}
-        error={(updateClaim.error as Error | undefined)?.message ?? null}
+        error={updateClaim.error ? errorMessage(updateClaim.error) : null}
         currency={currency}
         milestones={milestones}
       />
@@ -169,7 +170,7 @@ function RequestCard({
         currency={currency}
         milestoneName={milestoneName}
         submitting={recordInvoice.isPending}
-        error={(recordInvoice.error as Error | undefined)?.message ?? null}
+        error={recordInvoice.error ? errorMessage(recordInvoice.error) : null}
         onSubmit={(invoiceNumber) =>
           recordInvoice.mutate(
             { projectId, claimId: claim.id, invoiceNumber },
@@ -242,7 +243,7 @@ export function PaymentRequestsSection() {
         mode="create"
         onSubmit={handleCreate}
         isSubmitting={createClaim.isPending}
-        error={(createClaim.error as Error | undefined)?.message ?? null}
+        error={createClaim.error ? errorMessage(createClaim.error) : null}
         currency={currency}
         milestones={finances?.milestones ?? []}
       />

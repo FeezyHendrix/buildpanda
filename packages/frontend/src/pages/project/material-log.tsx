@@ -28,6 +28,7 @@ import { toast } from "@/lib/toast";
 import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { KpiCard } from "@/components/molecules/kpi-card";
+import { errorMessage } from "@/lib/api-error";
 import { StackIcon } from "./material-log/icons";
 import { LedgerTable } from "./material-log/ledger-table";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
@@ -315,7 +316,7 @@ export default function ProjectMaterialLog() {
         projectId={project.id}
         material={policyMaterial}
         isSubmitting={updatePolicy.isPending}
-        error={updatePolicy.error ? (updatePolicy.error as Error).message : null}
+        error={updatePolicy.error ? errorMessage(updatePolicy.error) : null}
         onSubmit={(values) => {
           if (!policyMaterialId) return;
           updatePolicy.mutate(

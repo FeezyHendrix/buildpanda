@@ -116,12 +116,19 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
       // The decision that actually buys time. The delays are re-checked here
       // because approving is the moment the days leave the register and land on
       // the contract completion date.
+      // Only the difference is ever applied: a claim remembers how many days it
+      // has already moved the completion date by, so re-deciding it corrects
+      // the date rather than stacking a second award on top of the first.
       let award = 0;
+      const alreadyApplied = Number(row.days_applied ?? 0);
       if (action === "approve" && claimsTime(row)) {
         await assertAttachedClaimable(repository, row);
-        award = daysToAward(row, input.daysAwarded);
-        patch.days_awarded = award;
+        const decided = daysToAward(row, input.daysAwarded);
+        patch.days_awarded = decided;
+        award = decided - alreadyApplied;
+        patch.days_applied = decided;
       }
+
 
       if (action === "execute") {
         await deps.assertExecutable(row);
@@ -130,11 +137,9 @@ export function changeActions(repository: ChangeRequestsRepository, deps: Change
       const updated = await repository.update(id, patch);
       if (!updated) throw new NotFoundError("Change request");
 
-      if (action === "approve") {
-        await deps.onApproved?.(updated, actor);
-        if (award !== 0 && deps.applyTimeAward) {
-          await deps.applyTimeAward(updated.project_id, award);
-        }
+      if (action === "approve") await deps.onApproved?.(updated, actor);
+      if (award !== 0 && deps.applyTimeAward) {
+        await deps.applyTimeAward(updated.project_id, award);
       }
       if (action === "execute") await shiftStage(updated);
       deps.onDecided?.(updated, action, reason, actor);

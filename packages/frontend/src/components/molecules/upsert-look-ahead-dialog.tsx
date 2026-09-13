@@ -5,23 +5,19 @@ import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
 import { Badge } from "@/components/atoms/badge";
 import { Button } from "@/components/atoms/button";
-import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
-import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
+import type { LookAhead } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
-import { delayedActivityIds, overlapsWindow } from "@/pages/project/look-aheads/look-ahead-helpers";
+import {
+  delayedActivityIds,
+  LOOK_AHEAD_STATUS_META,
+  overlapsWindow,
+} from "@/pages/project/look-aheads/look-ahead-helpers";
 
 const FIELD = INPUT_CLASS;
-
-const STATUS_LABEL: Record<LookAheadStatus, string> = {
-  Draft: "Draft",
-  UnderReview: "Under Review",
-  Approved: "Approved",
-};
 
 export interface LookAheadFormValues {
   name: string;
   description: string | null;
-  status: LookAheadStatus;
   startDate: string;
   endDate: string;
   totalWorkers: number | null;
@@ -58,7 +54,6 @@ function UpsertLookAheadDialog({
   const { data: activities = [] } = useProjectActivities(projectId);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<LookAheadStatus>("Draft");
   const [startDate, setStartDate] = useState(today());
   const [endDate, setEndDate] = useState(nextWeek());
   const [totalWorkers, setTotalWorkers] = useState("");
@@ -69,7 +64,6 @@ function UpsertLookAheadDialog({
     if (!open) return;
     setName(initial?.name ?? "");
     setDescription(initial?.description ?? "");
-    setStatus(initial?.status ?? "Draft");
     setStartDate(initial?.startDate ?? today());
     setEndDate(initial?.endDate ?? nextWeek());
     setTotalWorkers(initial?.totalWorkers != null ? String(initial.totalWorkers) : "");
@@ -116,7 +110,6 @@ function UpsertLookAheadDialog({
     onSubmit({
       name: name.trim(),
       description: description.trim() || null,
-      status,
       startDate,
       endDate,
       totalWorkers: totalWorkers.trim() ? Number(totalWorkers) : null,
@@ -183,19 +176,19 @@ function UpsertLookAheadDialog({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="la-status">Status</Label>
-          <select
-            id="la-status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as LookAheadStatus)}
-            className={FIELD}
-          >
-            {LOOK_AHEAD_STATUSES.filter((s) => s !== "Approved" || initial?.status === "Approved").map((s) => (
-              <option key={s} value={s} disabled={s === "Approved"}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
+          <Label>Status</Label>
+          {/* Approval is a sign-off with a name and a time against it, so it is
+              its own action — never a value this form can set (finding F29). */}
+          <div className="flex h-11 items-center gap-2 rounded-lg border border-line-hair bg-surface-alt px-3">
+            <Badge tone={LOOK_AHEAD_STATUS_META[initial?.status ?? "Draft"].tone} size="sm">
+              {LOOK_AHEAD_STATUS_META[initial?.status ?? "Draft"].label}
+            </Badge>
+          </div>
+          <p className="text-xs text-ink-muted">
+            {initial?.approvedByName
+              ? `Approved by ${initial.approvedByName}. Revoke it from the look-ahead to edit the sign-off.`
+              : "Approve from the look-ahead itself — it records who approved it and when."}
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="la-workers">Total workers planned</Label>

@@ -25,6 +25,7 @@ import {
 import { formatWholeCurrency } from "@/lib/formatters";
 import { canResourceAction } from "@/lib/project-types";
 import type { Selection, SelectionOption, SelectionStatus } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 const FILTERS: { value: SelectionStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -171,7 +172,7 @@ export default function ProjectSelections() {
         currency={project.currency}
         onSubmit={handleCreate}
         isSubmitting={createSelection.isPending}
-        error={(createSelection.error as Error | undefined)?.message ?? null}
+        error={createSelection.error ? errorMessage(createSelection.error) : null}
       />
 
       <UpsertSelectionDialog
@@ -197,7 +198,7 @@ export default function ProjectSelections() {
         }
         onSubmit={handleEdit}
         isSubmitting={updateSelection.isPending}
-        error={(updateSelection.error as Error | undefined)?.message ?? null}
+        error={updateSelection.error ? errorMessage(updateSelection.error) : null}
       />
 
       <ConfirmDialog

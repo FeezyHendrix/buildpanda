@@ -45,6 +45,7 @@ interface LookAheadsTableProps {
   onEdit: (lookAhead: LookAhead) => void;
   onDelete: (lookAhead: LookAhead) => void;
   onApprove: (lookAhead: LookAhead) => void;
+  onRevoke: (lookAhead: LookAhead) => void;
 }
 
 export function LookAheadsTable({
@@ -57,6 +58,7 @@ export function LookAheadsTable({
   onEdit,
   onDelete,
   onApprove,
+  onRevoke,
 }: LookAheadsTableProps) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -145,6 +147,7 @@ export function LookAheadsTable({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onApprove={onApprove}
+                  onRevoke={onRevoke}
                 />
               ))}
             </TableBody>
@@ -164,6 +167,7 @@ function LookAheadRow({
   onEdit,
   onDelete,
   onApprove,
+  onRevoke,
 }: Omit<LookAheadsTableProps, "lookAheads" | "onCreate"> & { lookAhead: LookAhead }) {
   const status = LOOK_AHEAD_STATUS_META[lookAhead.status];
   const material = materialState(lookAhead, activityCoverage);
@@ -180,7 +184,10 @@ function LookAheadRow({
       <TableCell>
         <Badge tone={status.tone} size="sm">{status.label}</Badge>
         {lookAhead.approvedByName ? (
-          <span className="mt-0.5 block text-xs text-gray-500">by {lookAhead.approvedByName}</span>
+          <span className="mt-0.5 block text-xs text-gray-500">
+            by {lookAhead.approvedByName}
+            {lookAhead.approvedAt ? ` · ${formatLookAheadDate(lookAhead.approvedAt.slice(0, 10))}` : ""}
+          </span>
         ) : null}
       </TableCell>
       <TableCell className="tabular-nums">{lookAhead.totalWorkers ?? "-"}</TableCell>
@@ -200,6 +207,9 @@ function LookAheadRow({
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(lookAhead)}>View</Button>
           {canManage && lookAhead.status !== "Approved" ? (
             <Button type="button" variant="ghost" size="sm" onClick={() => onApprove(lookAhead)}>Approve</Button>
+          ) : null}
+          {canManage && lookAhead.status === "Approved" ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => onRevoke(lookAhead)}>Revoke</Button>
           ) : null}
           {canManage ? <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button> : null}
           {canManage ? <Button type="button" variant="danger" size="sm" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}

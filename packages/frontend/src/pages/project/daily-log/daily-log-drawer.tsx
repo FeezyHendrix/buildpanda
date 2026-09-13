@@ -19,6 +19,7 @@ import { DailyLogEntryRow } from "./daily-log-entry-row";
 import { AddActivityHours } from "./add-activity-hours";
 import { VoidDayAction } from "./void-day-action";
 import { formatDayDate, formatHours, formatWeekday, WEATHER_LABEL, WEATHER_TONE } from "./daily-log-helpers";
+import { errorMessage } from "@/lib/api-error";
 
 interface DailyLogDrawerProps {
   open: boolean;
@@ -325,7 +326,7 @@ function EntryComposer({ projectId, logDate, autoFocus }: { projectId: string; l
         placeholder="e.g. Completed the level 3 slab pour, inspected rebar, flagged a delivery delay…"
       />
       {addEntry.error ? (
-        <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">{(addEntry.error as Error).message}</p>
+        <p className="rounded-lg bg-negative-50 px-3 py-2 text-xs text-negative-600">{errorMessage(addEntry.error)}</p>
       ) : null}
       <div className="flex justify-end">
         <Button type="button" variant="primary" size="sm" disabled={!hasContent} loading={addEntry.isPending} onClick={submit}>

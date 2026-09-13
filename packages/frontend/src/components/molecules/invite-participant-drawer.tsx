@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FormDrawer } from "@/components/molecules/form-drawer";
+import { errorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
 import { INPUT_CLASS } from "@/components/atoms/input";
 import {
@@ -198,7 +199,7 @@ export function InviteParticipantDrawer({
       submitLabel={isEdit ? "Save changes" : "Send invite"}
       submitting={mutation.isPending}
       submitDisabled={!isEdit && email.trim().length < 3}
-      error={(mutation.error as Error | undefined)?.message ?? null}
+      error={mutation.error ? errorMessage(mutation.error) : null}
       onSubmit={handleSubmit}
     >
       {/* Phase 1 — contact info */}

@@ -3,6 +3,7 @@ import { RaiseDisputeDialog } from "@/components/molecules/raise-dispute-dialog"
 import { useRaiseDispute, useReleaseMilestone } from "@/hooks/use-finances";
 import { formatCurrency } from "@/lib/formatters";
 import type { Currency, MilestonePayment } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 interface StagePaymentDialogsProps {
   projectId: string;
@@ -59,7 +60,7 @@ export function StagePaymentDialogs({
         }}
         milestoneName={disputeTarget?.name ?? ""}
         isSubmitting={raiseDispute.isPending}
-        error={raiseDispute.error ? (raiseDispute.error as Error).message : null}
+        error={raiseDispute.error ? errorMessage(raiseDispute.error) : null}
         onSubmit={({ reason }) => {
           if (!disputeTarget) return;
           raiseDispute.mutate(

@@ -135,10 +135,16 @@ export function OverviewKpis({ project }: { project: Project }) {
   const gap = deriveScheduleGap(activities.data ?? [], phases, project.progressPercent);
   const scheduleDanger = (gap.gapPts !== null && gap.gapPts < -BEHIND_DANGER_PTS) || gap.delayedCount > 0;
 
-  const usedPct = project.budgetTotal > 0 ? Math.round((project.budgetUsed / project.budgetTotal) * 100) : null;
+  const budget = snapshot.data?.finance.budget;
+  // Spend is what the cost ledger holds, not `projects.budget_used` — a column
+  // written once at creation and never again, which is why this read ₦0 against
+  // a billing sheet showing millions. The budget it is measured against is the
+  // same stage budget the finance summary uses.
+  const budgetUsed = budget?.totalActual ?? 0;
+  const budgetTotal = budget?.totalPlanned ?? project.budgetTotal;
+  const usedPct = budgetTotal > 0 ? Math.round((budgetUsed / budgetTotal) * 100) : null;
   const spendAhead = usedPct !== null && usedPct - project.progressPercent >= SPEND_AHEAD_PTS;
 
-  const budget = snapshot.data?.finance.budget;
   const money = position.data;
   const pendingChangeValue = snapshot.data?.finance.changeRequests.pendingCostImpact ?? 0;
 
@@ -177,13 +183,13 @@ export function OverviewKpis({ project }: { project: Project }) {
         <div data-tour="construction-budget">
           <KpiCard
             label="Budget used"
-            value={formatWholeCurrency(project.budgetUsed, currency)}
+            value={budget ? formatWholeCurrency(budgetUsed, currency) : "—"}
             helper={
               usedPct === null
                 ? "No budget set"
                 : spendAhead
                   ? `${usedPct}% used · spending ahead of ${project.progressPercent}% progress`
-                  : `${usedPct}% of ${formatWholeCurrency(project.budgetTotal, currency)}`
+                  : `${usedPct}% of ${formatWholeCurrency(budgetTotal, currency)}`
             }
             tone={spendAhead ? "danger" : "default"}
           />

@@ -27,6 +27,7 @@ function row(over: Partial<ChangeRequestRow> = {}): ChangeRequestRow {
     stage_id: null,
     rfi_id: null,
     days_awarded: null,
+    days_applied: 0,
     rejected_reason: null,
     submitted_at: null,
     revisions: null,
@@ -388,4 +389,14 @@ test("list resolves contract ids in one batched lookup and tolerates no contract
   assert.equal(withContracts[0]?.contractId, "con_co");
   const without = await changeRequestsService(repo).list("prj_1");
   assert.equal(without[0]?.contractId, null);
+});
+
+test("re-deciding a time claim corrects the completion date instead of stacking a second award", async () => {
+  // The engineer first awards 14 days, then reconsiders at 9. Only the
+  // difference may move the contract date.
+  const { actions, eot } = harness(
+    row({ type: "eot_only", status: "Submitted", time_impact_days: 14, days_awarded: 14, days_applied: 14 }),
+  );
+  await actions.run("prj_1", "chg_1", "approve", { daysAwarded: 9 }, ENGINEER);
+  assert.deepEqual(eot, [{ days: -5 }]);
 });

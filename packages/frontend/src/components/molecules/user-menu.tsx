@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-organization";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
+import { errorMessage } from "@/lib/api-error";
 
 interface UserMenuProps {
   name: string;
@@ -260,7 +261,7 @@ function UserMenu({
           </button>
         </div>
         {createOrg.error && (
-          <p className="mt-1 text-xs text-red-600">{(createOrg.error as Error).message}</p>
+          <p className="mt-1 text-xs text-red-600">{errorMessage(createOrg.error)}</p>
         )}
       </form>
     </>

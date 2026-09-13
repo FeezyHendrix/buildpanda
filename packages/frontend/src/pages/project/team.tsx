@@ -29,6 +29,7 @@ import {
 } from "@/hooks/use-participants";
 import { cn } from "@/lib/utils";
 import type { ProjectParticipant } from "@/lib/project-types";
+import { errorMessage } from "@/lib/api-error";
 
 const SIDE_LABEL: Record<NonNullable<ProjectParticipant["side"]>, string> = {
   client: "Client side",
@@ -164,7 +165,7 @@ export default function ProjectTeam() {
           mode="create"
           onSubmit={handleCreate}
           isSubmitting={createMember.isPending}
-          error={(createMember.error as Error | undefined)?.message ?? null}
+          error={createMember.error ? errorMessage(createMember.error) : null}
         />
 
         {members.length === 0 ? (
@@ -395,7 +396,7 @@ function TeamMemberCard({
         }}
         onSubmit={handleEdit}
         isSubmitting={editMember.isPending}
-        error={(editMember.error as Error | undefined)?.message ?? null}
+        error={editMember.error ? errorMessage(editMember.error) : null}
       />
 
       <ConfirmDialog

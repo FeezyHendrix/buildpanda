@@ -7,6 +7,7 @@ import { FormDrawer } from "./form-drawer";
 import { cn } from "@/lib/utils";
 import { useUploadFile } from "@/hooks/use-files";
 import { useScanInvoice, type InvoiceScanResult } from "@/hooks/use-invoices";
+import { errorMessage } from "@/lib/api-error";
 
 interface ScanInvoiceDialogProps {
   projectId: string;
@@ -43,7 +44,7 @@ export function ScanInvoiceDialog({
       ? "Finalizing…"
       : `Uploading… ${uploadProgress ?? 0}%`;
 
-  const error = (uploadFile.error as Error | undefined)?.message ?? (scanInvoice.error as Error | undefined)?.message ?? null;
+  const error = errorMessage(uploadFile.error) ?? scanInvoice.error ? errorMessage(scanInvoice.error) : null;
 
   useEffect(() => {
     if (!open) {

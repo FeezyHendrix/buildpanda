@@ -13,6 +13,7 @@ import { useUploadFile } from "@/hooks/use-files";
 import { cn } from "@/lib/utils";
 import type { DocumentVersion, ProjectDocument } from "@/lib/project-types";
 import { FileViewerDialog } from "./file-viewer-dialog";
+import { errorMessage } from "@/lib/api-error";
 
 interface DocumentVersionsDialogProps {
   open: boolean;
@@ -44,8 +45,8 @@ function DocumentVersionsDialog({
 
   const busy = uploadFile.isPending || addVersion.isPending;
   const error =
-    (uploadFile.error as Error | undefined)?.message ??
-    (addVersion.error as Error | undefined)?.message ??
+    errorMessage(uploadFile.error) ??
+    errorMessage(addVersion.error) ??
     null;
 
   function handlePick(file: File | null): void {

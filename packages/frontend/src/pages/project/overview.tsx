@@ -12,9 +12,7 @@ import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { useTour } from "@/hooks/use-tour";
 import { CONSTRUCTION_TOUR_KEY, CONSTRUCTION_TOUR_STEPS } from "@/lib/tour-steps";
 import { useProjectRiskFactors } from "@/hooks/use-risks";
-import { ReactSVG } from "react-svg";
-import { icons } from "@/assets/icons/icons";
-import { cn } from "@/lib/utils";
+import { ProjectRiskBadge } from "./overview/project-risk-badge";
 
 import { WhatsNextCard } from "@/components/organisms/whats-next-card";
 import { WeatherDashboard } from "@/components/organisms/weather-dashboard";
@@ -104,12 +102,7 @@ export default function ProjectOverview() {
         title={`Welcome back, ${firstName}`}
         badges={
           <div className="flex items-center gap-2 order-1 lg:order-2 self-end lg:self-auto">
-            <Badge size="md" className={cn('bg-[#F6F6F6] flex items-center gap-2 h-[21px]')}>
-              <div className='flex items-center justify-center rounded-full bg-white h-[17px] w-[17px]'>
-                <ReactSVG src={icons.shield} />
-            </div>
-              <p className='text-[13px] font-semibold text-black-200'>{project.risk}</p>
-            </Badge>
+            <ProjectRiskBadge projectId={project.id} />
           </div>
         }
       />

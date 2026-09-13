@@ -1,22 +1,30 @@
 import { KpiCard } from "@/components/molecules/kpi-card";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatShortDate } from "@/lib/formatters";
 import type { ScheduleReport } from "./schedule-utils";
-import { formatDate, DAY_MS } from "./schedule-utils";
 
+/**
+ * The chart's own KPI strip.
+ *
+ * The completion position is a fact about the project, not something the chart
+ * may work out for itself: the timeline shift and the revised completion date
+ * come from the same reporting snapshot the overview reads, so the two pages
+ * can never give a PM two answers to the same question.
+ */
 export function ScheduleReportPanel({
   report,
   currency,
+  timelineShiftDays,
+  revisedCompletionDate,
 }: {
   report: ScheduleReport;
   currency: string;
+  /** Signed working-day shift off the baseline programme; null until loaded. */
+  timelineShiftDays: number | null;
+  revisedCompletionDate: string | null;
 }) {
-  const movedDays =
-    report.plannedEnd && report.projectedEnd
-      ? Math.max(
-          0,
-          Math.ceil((report.projectedEnd.getTime() - report.plannedEnd.getTime()) / DAY_MS),
-        )
-      : 0;
+  const shift = timelineShiftDays ?? 0;
+  const shiftLabel =
+    timelineShiftDays === null ? "—" : `${shift > 0 ? "+" : ""}${shift} d`;
 
   return (
     <section
@@ -31,8 +39,19 @@ export function ScheduleReportPanel({
         value={formatCurrency(report.delayCost, currency, { compact: true })}
         tone={report.delayCost > 0 ? "danger" : undefined}
       />
-      <KpiCard label="Timeline shift" value={`${movedDays} d`} tone={movedDays > 0 ? "danger" : undefined} />
-      <KpiCard label="Projected end" value={formatDate(report.projectedEnd)} />
+      <KpiCard
+        label="Timeline shift"
+        value={shiftLabel}
+        helper="against the baseline programme"
+        tone={shift > 0 ? "danger" : undefined}
+      />
+      <KpiCard
+        label="Revised completion"
+        value={revisedCompletionDate ? formatShortDate(revisedCompletionDate) : "—"}
+        helper="after approved extensions of time"
+      />
     </section>
   );
 }
+
+ScheduleReportPanel.displayName = "ScheduleReportPanel";

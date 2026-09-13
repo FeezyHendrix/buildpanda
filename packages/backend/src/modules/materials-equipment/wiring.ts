@@ -60,7 +60,9 @@ export function buildMaterialsServices(app: FastifyInstance) {
           supplier,
           deliveryNote,
           approvalStatus: "Approved",
-          reason: deliveryNote ? `Delivery note ${deliveryNote}` : null,
+          // The delivery note is a column of its own on the entry; repeating it
+          // in `reason` only gave the ledger something to mislabel.
+          reason: null,
         },
         actorId,
       );

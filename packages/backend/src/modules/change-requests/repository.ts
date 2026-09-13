@@ -47,6 +47,7 @@ export interface ChangeRequestUpdatePatch {
   stage_id?: string | null;
   rfi_id?: string | null;
   days_awarded?: number | null;
+  days_applied?: number;
   rejected_reason?: string | null;
   submitted_at?: string | null;
   revisions?: string;

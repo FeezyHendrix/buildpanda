@@ -29,6 +29,7 @@ import {
 } from "@/lib/project-types";
 import { ReactSVG } from "react-svg";
 import { icons } from "@/assets/icons/icons";
+import { errorMessage } from "@/lib/api-error";
 
 // const CATEGORY_TARGET_STATUS: Record<UpdateCategory, Exclude<UpdateStatus, "Open">> = {
 //   Progress: "Approved",
@@ -275,7 +276,7 @@ export function UpdateCard({
         }}
         onSubmit={handleEdit}
         isSubmitting={editUpdate.isPending}
-        error={(editUpdate.error as Error | undefined)?.message ?? null}
+        error={editUpdate.error ? errorMessage(editUpdate.error) : null}
       />
 
       <ConfirmDialog
