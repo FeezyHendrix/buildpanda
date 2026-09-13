@@ -1,18 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
-import { Spinner } from "@/components/atoms/spinner";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import {
-  ChevronRightIcon,
-  MaterialsIcon,
-  PlusIcon,
-} from "@/components/atoms/project-nav-icons";
-import { EmptyState } from "@/components/molecules/empty-state";
+import { SearchInput } from "@/components/atoms/search-input";
+import { ChevronRightIcon, PlusIcon } from "@/components/atoms/project-nav-icons";
 import { ImportBoqDialog } from "@/components/molecules/import-boq-dialog";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { KpiCard } from "@/components/molecules/kpi-card";
+import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { toast } from "@/lib/toast";
 import { useProjectContext } from "@/layouts/project-layout";
 import {
@@ -25,21 +21,31 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import type { MaterialOrder, MaterialOrderStatus } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
-import { KpiCard } from "@/components/molecules/kpi-card";
-import { MaterialOrderRow } from "./materials/material-order-row";
-import { LifecyclePanel } from "./materials/lifecycle-panel";
+import { MaterialsTable } from "./materials/materials-table";
 import { MaterialOrderDialog } from "./materials/material-order-dialog";
-import { STATUS_FILTER_ITEMS } from "./materials/shared";
+import {
+  ALL_SUPPLIERS,
+  LATE_FILTER_OPTIONS,
+  STATUS_FILTER_ITEMS,
+  matchesOrderSearch,
+  supplierLabel,
+  supplierOptions,
+  type LateFilter,
+} from "./materials/shared";
 
 export default function ProjectMaterials() {
   const { project, access } = useProjectContext();
   const canRequest = canResourceAction(access, "materials", "request");
   const canApprove = canResourceAction(access, "materials", "approve");
-  const [filter, setFilter] = useState<MaterialOrderStatus | "all">("all");
-  const { data: orders = [], isLoading } = useMaterialOrders(
-    project.id,
-    filter === "all" ? undefined : filter,
-  );
+  // The whole register is fetched once; status, supplier, late and search all
+  // narrow it here so the KPI strip and the "x of y" count stay stable.
+  const { data: orders = [], isLoading } = useMaterialOrders(project.id);
+
+  const [status, setStatus] = useState<MaterialOrderStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [supplier, setSupplier] = useState<string>(ALL_SUPPLIERS);
+  const [lateFilter, setLateFilter] = useState<LateFilter>("all");
+
   const [createOpen, setCreateOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MaterialOrder | null>(null);
@@ -49,12 +55,26 @@ export default function ProjectMaterials() {
   const deleteOrder = useDeleteMaterialOrder();
 
   const committed = orders.reduce((sum, order) => sum + order.estimatedCost, 0);
-  const received = orders.filter(
-    (order) => order.status === "Delivered",
-  ).length;
-  const critical = orders.filter(
-    (order) => order.priority === "Critical",
-  ).length;
+  const received = orders.filter((order) => order.status === "Delivered").length;
+  const critical = orders.filter((order) => order.priority === "Critical").length;
+  const lateCount = orders.filter((order) => order.late).length;
+
+  const suppliers = useMemo(() => supplierOptions(orders), [orders]);
+  const filtered = orders
+    .filter((order) => status === "all" || order.status === status)
+    .filter((order) => supplier === ALL_SUPPLIERS || supplierLabel(order) === supplier)
+    .filter((order) => lateFilter === "all" || order.late)
+    .filter((order) => matchesOrderSearch(order, search));
+
+  const isFiltered =
+    status !== "all" || supplier !== ALL_SUPPLIERS || lateFilter !== "all" || search.trim() !== "";
+
+  function clearFilters(): void {
+    setStatus("all");
+    setSupplier(ALL_SUPPLIERS);
+    setLateFilter("all");
+    setSearch("");
+  }
 
   function upsert(values: MaterialOrderInput): void {
     if (editTarget) {
@@ -83,59 +103,26 @@ export default function ProjectMaterials() {
               Equipment requests
               <ChevronRightIcon className="size-4" />
             </Link>
-            {canRequest && (
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => setImportOpen(true)}
-              >
+            {canRequest ? (
+              <Button variant="secondary" size="md" onClick={() => setImportOpen(true)}>
                 Import from BoQ
               </Button>
-            )}
-            {canRequest && (
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => setCreateOpen(true)}
-              >
+            ) : null}
+            {canRequest ? (
+              <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
                 <PlusIcon className="size-4" />
                 New material order
               </Button>
-            )}
+            ) : null}
           </div>
         }
       />
 
-      <ImportBoqDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        projectId={project.id}
-        currency={project.currency}
-        onImported={(count) =>
-          toast(
-            `Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`,
-            "success",
-          )
-        }
-      />
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <FilterTabs
-          items={STATUS_FILTER_ITEMS}
-          value={filter}
-          onChange={setFilter}
-          ariaLabel="Filter material orders by status"
-        />
-        <span className="text-sm text-gray-500">
-          {orders.length} order{orders.length === 1 ? "" : "s"}
-        </span>
-      </div>
-
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-label="Material summary" className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard
           label="Open material orders"
           value={orders.length.toString()}
-          helper="Requests through delivery"
+          helper={lateCount > 0 ? `${lateCount} running late` : "Requests through delivery"}
         />
         <KpiCard
           label="Committed material cost"
@@ -145,60 +132,66 @@ export default function ProjectMaterials() {
         <KpiCard
           label="Lifecycle health"
           value={`${received} delivered`}
-          helper={
-            critical ? `${critical} critical priority` : "No critical orders"
-          }
+          helper={critical ? `${critical} critical priority` : "No critical orders"}
         />
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Card padding="lg" className="min-w-0">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-gray-900">
-              Material orders & requests
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Every row carries schedule, activity, document, and finance
-              context.
-            </p>
-          </div>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by material or supplier"
+            aria-label="Search material orders"
+          />
+        </div>
+        <FilterTabs
+          items={STATUS_FILTER_ITEMS}
+          value={status}
+          onChange={setStatus}
+          ariaLabel="Filter material orders by status"
+        />
+        <SimpleDropdown
+          options={suppliers}
+          value={supplier}
+          onChange={setSupplier}
+          ariaLabel="Filter by supplier"
+        />
+        <SimpleDropdown
+          options={LATE_FILTER_OPTIONS}
+          value={lateFilter}
+          onChange={setLateFilter}
+          ariaLabel="Filter late orders"
+        />
+        <span className="ml-auto text-sm text-ink-muted">
+          {filtered.length} of {orders.length} order{orders.length === 1 ? "" : "s"}
+        </span>
+      </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner size="md" />
-            </div>
-          ) : orders.length === 0 ? (
-            <EmptyState
-              icon={<MaterialsIcon />}
-              title="No material orders yet"
-              description="Create the first request and tie it to the phase and site activity it unlocks."
-              action={canRequest ? { label: "Create order", onClick: () => setCreateOpen(true) } : undefined}
-            />
-          ) : (
-            <div className="flex flex-col divide-y divide-line-hair">
-              {orders.map((order) => (
-                <MaterialOrderRow
-                  key={order.id}
-                  order={order}
-                  canRequest={canRequest}
-                  canApprove={canApprove}
-                  onEdit={() => setEditTarget(order)}
-                  onDelete={() => setDeleteTarget(order)}
-                  onAdvance={(status) =>
-                    updateOrder.mutate({
-                      projectId: project.id,
-                      orderId: order.id,
-                      status,
-                    })
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </Card>
+      <MaterialsTable
+        orders={filtered}
+        isFiltered={isFiltered}
+        isLoading={isLoading}
+        canRequest={canRequest}
+        canApprove={canApprove}
+        onEdit={setEditTarget}
+        onDelete={setDeleteTarget}
+        onAdvance={(order, next) =>
+          updateOrder.mutate({ projectId: project.id, orderId: order.id, status: next })
+        }
+        onCreate={() => setCreateOpen(true)}
+        onClearFilters={clearFilters}
+      />
 
-        <LifecyclePanel projectId={project.id} orders={orders} />
-      </section>
+      <ImportBoqDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        projectId={project.id}
+        currency={project.currency}
+        onImported={(count) =>
+          toast(`Added ${count} material${count === 1 ? "" : "s"} from the BoQ.`, "success")
+        }
+      />
 
       <MaterialOrderDialog
         open={createOpen || editTarget !== null}
@@ -227,6 +220,7 @@ export default function ProjectMaterials() {
         title="Delete material order?"
         description="This removes the material request from the lifecycle board. Delivered finance receipts remain in finance history."
         confirmLabel="Delete"
+        loading={deleteOrder.isPending}
         onConfirm={() => {
           if (deleteTarget) {
             deleteOrder.mutate(

@@ -102,6 +102,45 @@ export function matchesLedgerFilter(
   }
 }
 
+export type LedgerApprovalFilter = "all" | "pending" | "approved";
+
+export const LEDGER_APPROVAL_OPTIONS: readonly {
+  value: LedgerApprovalFilter;
+  label: string;
+}[] = [
+  { value: "all", label: "All entries" },
+  { value: "pending", label: "Awaiting approval" },
+  { value: "approved", label: "Approved" },
+] as const;
+
+export function matchesApprovalFilter(
+  entry: LedgerEntry,
+  filter: LedgerApprovalFilter,
+): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "pending":
+      return entry.approvalStatus === "Pending";
+    case "approved":
+      return entry.approvalStatus !== "Pending";
+  }
+}
+
+export function matchesLedgerSearch(entry: LedgerEntry, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return [entry.materialName, entry.supplier, entry.deliveryNote, entry.loggedByName].some(
+    (field) => field?.toLowerCase().includes(q),
+  );
+}
+
+/** The movement as it reads on a ledger: "+ 120 bags" in, "− 40 bags" out. */
+export function signedMeasure(entry: LedgerEntry): string {
+  const sign = entry.entryType === "USED" ? "−" : "+";
+  return `${sign}${formatMeasure(entry.quantity, entry.unit)}`;
+}
+
 /**
  * A stock line only earns a badge when something is wrong. Healthy materials
  * stay quiet so the exceptions are the thing your eye lands on.

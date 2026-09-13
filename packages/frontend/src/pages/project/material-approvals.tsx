@@ -1,12 +1,9 @@
-import { useState } from "react";
-import { Badge } from "@/components/atoms/badge";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
-import { Card } from "@/components/atoms/card";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import { Spinner } from "@/components/atoms/spinner";
+import { SearchInput } from "@/components/atoms/search-input";
 import { PageHeader } from "@/components/molecules/page-header";
 import { FilterTabs } from "@/components/molecules/filter-tabs";
-import { MaterialApprovalCard } from "@/components/molecules/material-approval-card";
 import { MaterialApprovalDetailDialog } from "@/components/molecules/material-approval-detail-dialog";
 import {
   MaterialApprovalDecisionDialog,
@@ -26,20 +23,16 @@ import {
 } from "@/hooks/use-material-approvals";
 import { useSession } from "@/stores/auth";
 import { canResourceAction } from "@/lib/project-types";
-import type { ApprovalStatus } from "@/lib/project-types";
 import type { MaterialApproval } from "@/api/material-approvals";
-import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-
-type StatusFilter = ApprovalStatus | "all";
-
-const FILTERS: readonly { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "Pending", label: "Pending" },
-  { value: "Resubmit", label: "Resubmit" },
-  { value: "Approved", label: "Approved" },
-  { value: "Rejected", label: "Rejected" },
-] as const;
+import { errorMessage } from "@/lib/api-error";
+import { ApprovalsTable } from "./material-approvals/approvals-table";
+import {
+  APPROVAL_STATUS_FILTERS,
+  isAwaitingDecision,
+  matchesApprovalSearch,
+  type ApprovalStatusFilter,
+} from "./material-approvals/approval-helpers";
 
 const DECISION_TOAST: Record<MaterialDecision, string> = {
   Approved: "Material approved",
@@ -61,11 +54,12 @@ export default function ProjectMaterialApprovals() {
   const currentUserId = session?.user?.id ?? "";
   const { data: reviewerOptions = [] } = useAssignableUsers(project.id);
 
-  const [filter, setFilter] = useState<StatusFilter>("all");
-  const { data: approvals = [], isPending } = useMaterialApprovals(
-    project.id,
-    filter === "all" ? undefined : filter,
-  );
+  // One fetch for the whole register; the status tabs narrow it here so the
+  // counts on the tabs stay true whichever tab is open.
+  const { data: approvals = [], isPending } = useMaterialApprovals(project.id);
+
+  const [filter, setFilter] = useState<ApprovalStatusFilter>("all");
+  const [search, setSearch] = useState("");
 
   const createApproval = useCreateMaterialApproval();
   const updateApproval = useUpdateMaterialApproval();
@@ -76,6 +70,11 @@ export default function ProjectMaterialApprovals() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
+
+  const nameById = useMemo(
+    () => new Map(reviewerOptions.map((option) => [option.id, option.name])),
+    [reviewerOptions],
+  );
 
   /**
    * Mirrors the backend guard: holding materials:approve is not a licence to
@@ -121,100 +120,75 @@ export default function ProjectMaterialApprovals() {
     );
   }
 
-  const awaiting = approvals.filter((a) => a.status === "Pending");
-  const resubmit = approvals.filter((a) => a.status === "Resubmit");
-  const decided = approvals.filter((a) => a.status === "Approved" || a.status === "Rejected");
+  const awaitingCount = approvals.filter(isAwaitingDecision).length;
+  const statusItems = APPROVAL_STATUS_FILTERS.map((item) => ({
+    ...item,
+    count:
+      item.value === "all"
+        ? approvals.length
+        : approvals.filter((a) => a.status === item.value).length,
+  }));
 
-  const sections: readonly {
-    key: string;
-    title: string;
-    tone: "neutral" | "warning";
-    items: MaterialApproval[];
-    muted: boolean;
-  }[] = [
-    { key: "awaiting", title: "Awaiting decision", tone: "neutral", items: awaiting, muted: false },
-    { key: "resubmit", title: "Resubmit requested", tone: "warning", items: resubmit, muted: false },
-    { key: "decided", title: "Decided", tone: "neutral", items: decided, muted: true },
-  ];
+  const filtered = approvals
+    .filter((approval) => filter === "all" || approval.status === filter)
+    .filter((approval) => matchesApprovalSearch(approval, search));
+  const isFiltered = filter !== "all" || search.trim() !== "";
 
-  const createButton = canRequest ? (
-    <Button variant="primary" onClick={() => setCreateOpen(true)}>
-      Request approval
-    </Button>
-  ) : null;
+  function clearFilters(): void {
+    setFilter("all");
+    setSearch("");
+  }
 
   return (
     <div className="w-full px-4 pt-4 pb-8 sm:px-10 lg:px-6">
       <PageHeader
         title="Material Approvals"
-        actions={createButton}
-      />
-
-      <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
-        <FilterTabs items={FILTERS} value={filter} onChange={setFilter} ariaLabel="Filter material approvals" />
-        {awaiting.length > 0 ? (
-          <span className="text-sm text-gray-500">{awaiting.length} awaiting decision</span>
-        ) : null}
-      </div>
-
-      {isPending ? (
-        <div className="flex justify-center py-16">
-          <Spinner size="md" />
-        </div>
-      ) : approvals.length === 0 ? (
-        <Card className="mt-8 p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900">
-            {filter === "all" ? "No material approval requests" : `No ${filter.toLowerCase()} requests`}
-          </h3>
-          <p className="mt-2 text-gray-500">
-            Raise a request to get a material and its specification signed off.
-          </p>
-          {canRequest ? (
-            <Button variant="primary" className="mt-4" onClick={() => setCreateOpen(true)}>
+        actions={
+          canRequest ? (
+            <Button variant="primary" size="md" onClick={() => setCreateOpen(true)}>
               Request approval
             </Button>
-          ) : null}
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-8">
-          {sections.map((section) =>
-            section.items.length > 0 ? (
-              <section key={section.key}>
-                <h3
-                  className={cn(
-                    "mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900",
-                    section.muted && "opacity-70",
-                  )}
-                >
-                  {section.title}
-                  <Badge tone={section.tone}>{section.items.length}</Badge>
-                </h3>
-                <div
-                  className={cn(
-                    "flex flex-col gap-3",
-                    section.muted && "opacity-80 transition-opacity hover:opacity-100",
-                  )}
-                >
-                  {section.items.map((approval) => (
-                    <MaterialApprovalCard
-                      key={approval.id}
-                      approval={approval}
-                      canManage={canRequest}
-                      canDecide={!section.muted && mayDecide(approval)}
-                      onOpen={() => setDetailId(approval.id)}
-                      onEdit={() => setEditApproval(approval)}
-                      onDelete={() => setDeleteId(approval.id)}
-                      onDecide={(target, decision) =>
-                        setPendingDecision({ approval: target, decision })
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null,
-          )}
+          ) : undefined
+        }
+      />
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
+          <SearchInput
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by material or supplier"
+            aria-label="Search material approvals"
+          />
         </div>
-      )}
+        <FilterTabs
+          items={statusItems}
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Filter material approvals"
+        />
+        <span className="ml-auto text-sm text-ink-muted">
+          {filtered.length} of {approvals.length} request{approvals.length === 1 ? "" : "s"}
+          {awaitingCount > 0 ? ` · ${awaitingCount} awaiting decision` : ""}
+        </span>
+      </div>
+
+      <ApprovalsTable
+        approvals={filtered}
+        isPending={isPending}
+        isFiltered={isFiltered}
+        canManage={canRequest}
+        mayDecide={mayDecide}
+        requesterName={(approval) =>
+          approval.submittedById ? (nameById.get(approval.submittedById) ?? null) : null
+        }
+        onCreate={() => setCreateOpen(true)}
+        onClearFilters={clearFilters}
+        onOpen={(approval) => setDetailId(approval.id)}
+        onEdit={setEditApproval}
+        onDelete={(approval) => setDeleteId(approval.id)}
+        onDecide={(approval, decision) => setPendingDecision({ approval, decision })}
+      />
 
       {createOpen ? (
         <UpsertMaterialApprovalDialog
@@ -224,7 +198,7 @@ export default function ProjectMaterialApprovals() {
           reviewerOptions={reviewerOptions}
           onSubmit={handleCreate}
           isSubmitting={createApproval.isPending}
-          error={createApproval.error?.message}
+          error={createApproval.error ? errorMessage(createApproval.error) : null}
         />
       ) : null}
 
@@ -237,7 +211,7 @@ export default function ProjectMaterialApprovals() {
           reviewerOptions={reviewerOptions}
           onSubmit={handleEdit}
           isSubmitting={updateApproval.isPending}
-          error={updateApproval.error?.message}
+          error={updateApproval.error ? errorMessage(updateApproval.error) : null}
         />
       ) : null}
 
@@ -249,7 +223,7 @@ export default function ProjectMaterialApprovals() {
           materialName={pendingDecision.approval.materialName}
           onSubmit={handleDecision}
           isSubmitting={updateApproval.isPending}
-          error={updateApproval.error?.message}
+          error={updateApproval.error ? errorMessage(updateApproval.error) : null}
         />
       ) : null}
 
