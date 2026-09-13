@@ -15,6 +15,11 @@ export function Navbar() {
     setOpen(false);
   }, [pathname]);
 
+  // The homepage hero is a dark panel and the nav sits on it, so on that one
+  // route the bar overlays the panel and switches to light type. Everywhere
+  // else it stays in flow, dark on the page ground.
+  const onDark = pathname === "/";
+
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
@@ -25,7 +30,13 @@ export function Navbar() {
   }
 
   return (
-    <header className="relative z-50 bg-transparent">
+    <header
+      className={
+        onDark
+          ? "absolute inset-x-0 top-0 z-50 bg-transparent"
+          : "relative z-50 bg-transparent"
+      }
+    >
       <nav className="site-container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="BuildPanda home">
           <Image
@@ -34,7 +45,7 @@ export function Navbar() {
             width={132}
             height={36}
             priority
-            className="h-8 w-auto"
+            className={`h-8 w-auto ${onDark ? "brightness-0 invert" : ""}`}
           />
         </Link>
 
@@ -46,15 +57,18 @@ export function Navbar() {
                 item={item}
                 active={isChildActive(item)}
                 isActive={isActive}
+                onDark={onDark}
               />
             ) : (
               <li key={item.label}>
                 <Link
                   href={item.href ?? "/"}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                    isActive(item.href ?? "/")
-                      ? "text-brand"
-                      : "text-muted hover:text-ink"
+                    onDark
+                      ? "text-white/75 hover:text-white"
+                      : isActive(item.href ?? "/")
+                        ? "text-brand"
+                        : "text-muted hover:text-ink"
                   }`}
                 >
                   {item.label}
@@ -65,10 +79,20 @@ export function Navbar() {
         </ul>
 
         <div className="hidden items-center gap-3 md:flex">
-          <ButtonLink href={site.appUrl} variant="ghost" size="md" className="h-10 px-4">
+          <ButtonLink
+            href={site.appUrl}
+            variant="ghost"
+            size="md"
+            className={`h-10 px-4 ${onDark ? "text-white/75 hover:bg-white/10 hover:text-white" : ""}`}
+          >
             Log in
           </ButtonLink>
-          <ButtonLink href={site.appUrl} size="md" className="h-10 px-4">
+          <ButtonLink
+            href={site.appUrl}
+            variant={onDark ? "white" : "primary"}
+            size="md"
+            className="h-10 px-4"
+          >
             Start free
           </ButtonLink>
         </div>
@@ -76,7 +100,9 @@ export function Navbar() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line text-ink md:hidden"
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-lg md:hidden ${
+            onDark ? "border border-white/25 text-white" : "border border-line text-ink"
+          }`}
           aria-label="Toggle menu"
           aria-expanded={open}
         >
@@ -145,10 +171,12 @@ function NavDropdown({
   item,
   active,
   isActive,
+  onDark,
 }: {
   item: NavItem;
   active: boolean;
   isActive: (href: string) => boolean;
+  onDark: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,7 +229,11 @@ function NavDropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         className={`inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-          active || open ? "text-brand" : "text-muted hover:text-ink"
+          onDark
+            ? "text-white/75 hover:text-white"
+            : active || open
+              ? "text-brand"
+              : "text-muted hover:text-ink"
         }`}
       >
         {item.label}
