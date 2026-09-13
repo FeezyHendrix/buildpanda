@@ -5,24 +5,20 @@ import { site } from "@/lib/site";
 // door is first in the DOM so it is first on a phone, per the deck.
 const doors = [
   {
-    label: "Product one · software",
     title: "You run the build",
-    body: "Your team, your subcontractors, your programme. BuildPanda is the system you run it on: estimates and proposals, programme and delays, certificates and variations, the site diary, and the client's view.",
-    who: "For contractors, developers and project managers running one to fifty jobs.",
+    body: "Estimates and proposals, programme and delays, certificates and variations, the site diary, and the client's view.",
+    who: "For contractors, developers and project managers.",
     cta: { label: "Start free", href: site.appUrl, variant: "primary" as const },
-    note: "No card required.",
   },
   {
-    label: "Product two · build service",
     title: "We run the build",
-    body: "We scope the work, set the budget and programme, appoint and manage the trades, and report progress and spend to you as it happens. You get the same record a contractor would keep, without having to keep it.",
-    who: "For owners and investors who do not want to run a site, including from abroad.",
+    body: "We scope the work, set the budget and programme, appoint and manage the trades, and report progress and spend as it happens.",
+    who: "For owners and investors, including from abroad.",
     cta: {
       label: "Talk to us about building",
       href: "/talk-to-us/",
       variant: "outline" as const,
     },
-    note: "We will tell you on the call whether your job is one we can take.",
   },
 ];
 
@@ -33,7 +29,7 @@ export function TwoDoors() {
         <SectionHeading
           eyebrow="Two ways to work with us"
           title="One standard of proof. Two ways to get it."
-          description="Some contractors want the system. Some clients want the job done. We do both, and the evidence is the same either way."
+          description="Some want the system. Some want the job done."
         />
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -42,9 +38,6 @@ export function TwoDoors() {
               key={door.title}
               className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 sm:p-8"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-                {door.label}
-              </span>
               <h3 className="text-2xl font-bold leading-tight text-ink">
                 {door.title}
               </h3>
@@ -59,7 +52,6 @@ export function TwoDoors() {
                 >
                   {door.cta.label}
                 </ButtonLink>
-                <p className="text-sm text-muted">{door.note}</p>
               </div>
             </div>
           ))}
@@ -67,13 +59,8 @@ export function TwoDoors() {
 
         <div className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-6 sm:p-8">
           <p className="text-pretty text-base leading-relaxed text-ink sm:text-lg">
-            Both come with the same thing: an inspector who attends the site and
-            writes the report, a record that is added to rather than rewritten,
-            and payment certificates that trace to work that was signed off.
-          </p>
-          <p className="text-sm leading-relaxed text-muted">
-            Not sure which you need? Start free and tell us about the job. If it
-            is one we should build, we will say so.
+            Both come with the same thing: an inspector who attends the site,
+            and certificates that trace to work that was signed off.
           </p>
         </div>
       </Container>

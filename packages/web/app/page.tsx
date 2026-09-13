@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { faqJsonLd, softwareJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import { Hero } from "@/components/home/hero";
 import { TwoDoors } from "@/components/home/two-doors";
 import { Objections } from "@/components/home/objections";
 import { Verification } from "@/components/home/verification";
-import { SoftwareJobs } from "@/components/home/software-jobs";
+import { ProductShots } from "@/components/home/product-shots";
 import { WhereYouWork } from "@/components/home/where-you-work";
 import { Roles } from "@/components/home/roles";
 import { GoLive } from "@/components/home/go-live";
@@ -11,26 +14,26 @@ import { Faq } from "@/components/home/faq";
 import { FinalCta } from "@/components/home/final-cta";
 import { StickyCta } from "@/components/home/sticky-cta";
 
-const title = "BuildPanda: verified construction delivery";
-const description =
-  "Run your own build on BuildPanda, or have us build it. Inspections on site, a record that carries who decided what and when, and payment certificates that trace to work that was signed off. For contractors, developers and owners.";
-
-export const metadata: Metadata = {
-  title,
-  description,
-  alternates: { canonical: "https://buildpanda.io" },
-  openGraph: { title, description },
-  twitter: { title, description },
-};
+export const metadata: Metadata = pageMetadata({
+  path: "",
+  // Nobody searches "verified construction delivery"; that positioning line
+  // carries the badge, the description and the social card. The tab and the
+  // search result get the term buyers actually type.
+  title: "Construction management software",
+  description:
+    "BuildPanda is the software contractors, developers and project managers run their builds on: estimates, programme and delays, inspections, and payment certificates that trace to work that was signed off. Or have us run the build. Start free, no card.",
+  socialTitle: "Run every project from estimate to handover, on one system",
+});
 
 export default function HomePage() {
   return (
     <>
+      <JsonLd data={[softwareJsonLd, faqJsonLd]} />
       <Hero />
       <TwoDoors />
       <Objections />
       <Verification />
-      <SoftwareJobs />
+      <ProductShots />
       <WhereYouWork />
       <Roles />
       <GoLive />

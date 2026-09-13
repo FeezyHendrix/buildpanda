@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import {
   Container,
   ButtonLink,
@@ -20,12 +23,13 @@ import {
   DocumentIcon,
 } from "@/components/icons";
 
-export const metadata: Metadata = {
-  title: "BuildPanda for Contractors & Builders",
+export const metadata: Metadata = pageMetadata({
+  path: "for-contractors",
+  title: "Construction management software for contractors",
   description:
-    "Win more work and deliver it without the chaos. BuildPanda gives contractors the tools to capture leads, estimate accurately, and manage delivery from a single OS.",
-  alternates: { canonical: "https://buildpanda.io/for-contractors" },
-};
+    "Run your own builds on BuildPanda: estimates and proposals, programme and delay records, site diaries, inspections, variations, and payment applications that trace to work that was signed off. Start free, no card.",
+  socialTitle: "Contractors: run the build and keep the record that proves it",
+});
 
 const winWorkFeatures = [
   {
@@ -78,6 +82,7 @@ const deliveryFeatures = [
 export default function ForContractorsPage() {
   return (
     <>
+    <JsonLd data={breadcrumbJsonLd([{ name: "For contractors", path: "for-contractors" }])} />
       <section className="bg-white py-16 sm:py-20 lg:py-24">
         <Container className="flex flex-col items-center text-center gap-6">
           <Badge>FOR CONTRACTORS & BUILDERS</Badge>

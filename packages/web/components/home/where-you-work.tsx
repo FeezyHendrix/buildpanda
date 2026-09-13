@@ -16,22 +16,22 @@ const rows = [
   {
     icon: <GlobeIcon className="h-6 w-6" />,
     title: "Your currency",
-    body: "Price, certify and report in the project's own currency. A job reports in the money its contract is written in, not in a converted figure.",
+    body: "Price, certify and report in the money the contract is written in, not a converted figure.",
   },
   {
     icon: <MilestoneIcon className="h-6 w-6" />,
     title: "Your working calendar",
-    body: "Set the working week per project. A Gulf job runs Sunday to Thursday; a Nigerian road job runs Monday to Saturday. Public holidays are part of the project's own calendar, so “days late” means what it should.",
+    body: "Set the working week and holidays per project, so “days late” means what it should.",
   },
   {
     icon: <WalletIcon className="h-6 w-6" />,
     title: "Payment applications your contract recognises",
-    body: "Interim applications structured the way FIDIC contracts expect: what was previously certified, what is claimed on this certificate, the cumulative total, retention and advance recovery. Variations and time claims are decided on the record.",
+    body: "Interim applications structured the way FIDIC contracts expect, with retention and advance recovery.",
   },
   {
     icon: <LayersIcon className="h-6 w-6" />,
     title: "Work libraries for what you actually build",
-    body: "A work library for building, and one for roads and civils — earthworks, sub-base, surfacing, kerbs, culverts and road furniture. A road job is offered the road library by default.",
+    body: "One library for building, one for roads and civils. A road job is offered the road library by default.",
   },
 ];
 
@@ -68,10 +68,6 @@ export function WhereYouWork() {
           ))}
         </div>
 
-        <p className="text-center text-sm leading-relaxed text-white/60">
-          Tell us the contract form and the standard your bill is written in, and
-          we will tell you plainly whether we support it yet.
-        </p>
       </Container>
     </section>
   );

@@ -6,32 +6,32 @@ const days = [
   {
     when: "Day 1",
     title: "Set the contract up.",
-    body: "Sum, dates, retention, advance, the working week. Thirty minutes with someone from our side on the call.",
+    body: "Sum, dates, retention, advance, the working week. Thirty minutes, with us on the call.",
   },
   {
     when: "Day 2",
     title: "Load the programme.",
-    body: "Import your schedule or build the stages from the work library for your trade. We check the dependencies with you, because a programme without them cannot move.",
+    body: "Import your schedule or build it from the work library. We check the dependencies with you.",
   },
   {
     when: "Day 3",
     title: "Price it.",
-    body: "Stage values against the contract sum, so the sheet totals to the number in the contract.",
+    body: "Stage values against the contract sum, so it totals to the number in the contract.",
   },
   {
     when: "Day 4",
     title: "Put the team on.",
-    body: "Site agent, quantity surveyor, engineer, the client's representative. Each sees what their role should see.",
+    body: "Site agent, QS, engineer, the client's rep. Each sees what their role should see.",
   },
   {
     when: "Day 5",
     title: "Run a day for real.",
-    body: "A diary, a delay, an RFI, one inspection booked. By the end of the day the record has something in it.",
+    body: "A diary, a delay, an RFI, one inspection booked.",
   },
   {
     when: "Week 2",
     title: "First application.",
-    body: "Raise it from measured progress and send it. This is the point people stop going back to the spreadsheet.",
+    body: "Raise it from measured progress and send it. This is where the spreadsheet stops.",
   },
 ];
 
@@ -74,9 +74,6 @@ export function GoLive() {
               Talk to us about your first project
             </ButtonLink>
           </div>
-          <p className="text-sm text-muted">
-            Setup help is included while we are early. No implementation fee.
-          </p>
         </div>
       </Container>
     </section>

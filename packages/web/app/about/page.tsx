@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
+import { JsonLd } from "@/components/json-ld";
 import { Container, ButtonLink, Badge, SectionHeading } from "@/components/ui";
 import { ConsultationForm } from "@/components/consultation-form";
 import { site } from "@/lib/site";
@@ -12,12 +15,13 @@ import {
   PhoneIcon,
 } from "@/components/icons";
 
-export const metadata: Metadata = {
-  title: "About Us",
+export const metadata: Metadata = pageMetadata({
+  path: "about",
+  title: "About us",
   description:
-    "BuildPanda is a construction and software company helping Nigerians at home and in the diaspora build with confidence. Learn about our mission, our values and how to reach us.",
-  alternates: { canonical: "https://buildpanda.io/about" },
-};
+    "BuildPanda builds construction software and runs construction projects in Nigeria. Why we started, what we believe a construction record should do, and how to reach us.",
+  socialTitle: "Why BuildPanda sells software and runs builds",
+});
 
 const values = [
   {
@@ -45,6 +49,7 @@ const values = [
 export default function AboutPage() {
   return (
     <>
+    <JsonLd data={breadcrumbJsonLd([{ name: "About", path: "about" }])} />
       <section className="bg-white">
         <Container className="flex flex-col items-center gap-6 py-16 text-center sm:py-20 lg:py-24">
           <Badge>About BuildPanda</Badge>
