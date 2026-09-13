@@ -1,152 +1,157 @@
 import { useState } from "react";
-import { Badge, type BadgeTone } from "@/components/atoms/badge";
-import { Button } from "@/components/atoms/button";
+import { ReactSVG } from "react-svg";
+import { icons } from "@/assets/icons/icons";
+import { Card } from "@/components/atoms/card";
+import { Badge } from "@/components/atoms/badge";
 import { ConfirmDialog } from "@/components/atoms/confirm-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableEmptyRow,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/atoms/table";
+import { IconBox } from "@/components/atoms/icon-box";
+import { AlertIcon } from "@/components/atoms/project-nav-icons";
 import { EmptyState } from "@/components/molecules/empty-state";
 import { UpsertRiskDialog, type UpsertRiskValues } from "@/components/molecules/upsert-risk-dialog";
 import { useCreateRiskFactor, useDeleteRiskFactor, useEditRiskFactor } from "@/hooks/use-risks";
 import type { RiskFactor } from "@/lib/project-types";
 
-const COLUMN_COUNT = 3;
-
-const RISK_SEVERITY_TONE: Record<RiskFactor["severity"], BadgeTone> = {
+const RISK_SEVERITY_TONE: Record<
+  RiskFactor["severity"],
+  "success" | "warning" | "danger"
+> = {
   Low: "success",
   Medium: "warning",
   High: "danger",
 };
 
-interface RiskFactorsPanelProps {
+export function RiskFactorsPanel({
+  projectId,
+  risks,
+  className,
+}: {
   projectId: string;
   risks: RiskFactor[];
-  /** The page opens the create dialog from the tab-bar action. */
-  createOpen: boolean;
-  onCreateOpenChange: (open: boolean) => void;
-}
-
-/** The identified risk factors as a table: title and description, a severity pill, row actions. */
-export function RiskFactorsPanel({ projectId, risks, createOpen, onCreateOpenChange }: RiskFactorsPanelProps) {
+  className?: string;
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
   const createRisk = useCreateRiskFactor();
 
   function handleCreate(values: UpsertRiskValues): void {
-    createRisk.mutate({ projectId, ...values }, { onSuccess: () => onCreateOpenChange(false) });
+    createRisk.mutate(
+      { projectId, ...values },
+      { onSuccess: () => setCreateOpen(false) },
+    );
   }
 
   return (
-    <>
-      <Table bleed>
-        <TableHead>
-          <tr>
-            <TableHeaderCell>Risk</TableHeaderCell>
-            <TableHeaderCell>Severity</TableHeaderCell>
-            <TableHeaderCell align="right">
-              <span className="sr-only">Actions</span>
-            </TableHeaderCell>
-          </tr>
-        </TableHead>
-        <TableBody>
-          {risks.length === 0 ? (
-            <TableEmptyRow colSpan={COLUMN_COUNT}>
-              <EmptyState
-                variant="inline"
-                title="No active risks yet"
-                description="Add a risk factor to track and mitigate issues on this project."
-                action={{ label: "Add risk", onClick: () => onCreateOpenChange(true) }}
-              />
-            </TableEmptyRow>
-          ) : (
-            risks.map((risk) => <RiskFactorRow key={risk.id} projectId={projectId} risk={risk} />)
-          )}
-        </TableBody>
-      </Table>
+    <Card className={className}>
+      <div className="flex items-center justify-between py-3 px-5">
+        <div className="flex gap-2 items-center">
+          <h3 className="text-[13px] font-semibold text-black-300">
+            Identified Risk Factors
+          </h3>
+        </div>
+      </div>
+      <div className="h-full px-5 pb-5">
+        {risks.length === 0 ? (
+          <EmptyState
+            variant="inline"
+            title="No active risks yet"
+            icon={<ReactSVG src={icons.riskShield} />}
+            description="Add a risk factor to track and mitigate issues on this project."
+          />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {risks.map((risk) => (
+              <RiskFactorRow key={risk.id} projectId={projectId} risk={risk} />
+            ))}
+          </ul>
+        )}
+
+      </div>
 
       <UpsertRiskDialog
         open={createOpen}
-        onOpenChange={onCreateOpenChange}
+        onOpenChange={setCreateOpen}
         mode="create"
         onSubmit={handleCreate}
         isSubmitting={createRisk.isPending}
         error={(createRisk.error as Error | undefined)?.message ?? null}
       />
-    </>
+    </Card>
   );
 }
 
-RiskFactorsPanel.displayName = "RiskFactorsPanel";
-
-function RiskFactorRow({ projectId, risk }: { projectId: string; risk: RiskFactor }) {
+function RiskFactorRow({
+  projectId,
+  risk,
+}: {
+  projectId: string;
+  risk: RiskFactor;
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const editRisk = useEditRiskFactor();
   const deleteRisk = useDeleteRiskFactor();
 
   function handleEdit(values: UpsertRiskValues): void {
-    editRisk.mutate({ projectId, riskId: risk.id, ...values }, { onSuccess: () => setEditOpen(false) });
+    editRisk.mutate(
+      { projectId, riskId: risk.id, ...values },
+      { onSuccess: () => setEditOpen(false) },
+    );
   }
 
   function handleDelete(): void {
-    deleteRisk.mutate({ projectId, riskId: risk.id }, { onSettled: () => setDeleteOpen(false) });
+    deleteRisk.mutate({ projectId, riskId: risk.id });
   }
 
   return (
-    <TableRow>
-      <TableCell className="max-w-xl">
-        <p className="font-medium">{risk.title}</p>
-        {risk.description ? (
-          <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">{risk.description}</p>
-        ) : null}
-      </TableCell>
-      <TableCell>
-        <Badge tone={RISK_SEVERITY_TONE[risk.severity]} dot>
-          {risk.severity}
-        </Badge>
-      </TableCell>
-      <TableCell align="right">
-        <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
+    <li className="flex items-start gap-3 rounded-xl border border-[#FDECEC] bg-[#FFF7F7] p-3">
+      <IconBox tone="red" size="sm" icon={<AlertIcon className="size-4" />} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900">{risk.title}</p>
+        <p className="mt-1 text-xs text-gray-500">{risk.description}</p>
+        <div className="mt-2 flex items-center gap-3">
+          <Badge tone={RISK_SEVERITY_TONE[risk.severity]} size="sm">
+            {risk.severity}
+          </Badge>
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-900"
+          >
             Edit
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => setDeleteOpen(true)}>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="text-xs font-medium text-red-500 hover:text-red-600"
+          >
             Delete
-          </Button>
+          </button>
         </div>
+      </div>
 
-        <UpsertRiskDialog
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          mode="edit"
-          initial={{
-            title: risk.title,
-            description: risk.description,
-            descriptionHtml: risk.descriptionHtml,
-            severity: risk.severity,
-          }}
-          onSubmit={handleEdit}
-          isSubmitting={editRisk.isPending}
-          error={(editRisk.error as Error | undefined)?.message ?? null}
-        />
+      <UpsertRiskDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        mode="edit"
+        initial={{
+          title: risk.title,
+          description: risk.description,
+          descriptionHtml: risk.descriptionHtml,
+          severity: risk.severity,
+        }}
+        onSubmit={handleEdit}
+        isSubmitting={editRisk.isPending}
+        error={(editRisk.error as Error | undefined)?.message ?? null}
+      />
 
-        <ConfirmDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          onConfirm={handleDelete}
-          loading={deleteRisk.isPending}
-          title="Delete risk factor"
-          description="This permanently removes the risk factor. This action cannot be undone."
-          confirmLabel="Delete"
-          variant="danger"
-        />
-      </TableCell>
-    </TableRow>
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={handleDelete}
+        title="Delete risk factor"
+        description="This permanently removes the risk factor. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+      />
+    </li>
   );
 }
-
-RiskFactorRow.displayName = "RiskFactorRow";
