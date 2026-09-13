@@ -11,7 +11,7 @@ import { ConsultationSection } from "@/components/consultation-section";
 import { OnboardingTimeline } from "@/components/onboarding-timeline";
 import {
   ShieldCheckIcon,
-  DroneIcon,
+  ClipboardIcon,
   MilestoneIcon,
   WalletIcon,
   ChartIcon,
@@ -22,22 +22,27 @@ import {
 export const metadata: Metadata = {
   title: "BuildPanda for Project Owners",
   description:
-    "Build with total visibility and control, even from thousands of miles away. Get real-time progress, independent inspections, and milestone-based payments.",
+    "The software side of BuildPanda, for the client on a construction contract. Follow progress, request inspections, and see a payment record that traces back to work that was signed off.",
   alternates: { canonical: "https://buildpanda.io/for-owners" },
 };
 
 const visibilityFeatures = [
   {
-    icon: <DroneIcon className="h-6 w-6" />,
-    title: "On-site & drone monitoring",
+    icon: <ClipboardIcon className="h-6 w-6" />,
+    title: "On-site monitoring",
     description:
-      "Photos, daily logs, and high-resolution drone surveys bring the site directly to your screen.",
+      "Site photos and daily logs bring the site directly to your screen.",
   },
   {
     icon: <ShieldCheckIcon className="h-6 w-6" />,
-    title: "Independent inspections",
+    // DECISION NEEDED: whether BuildPanda's inspection service can be called
+    // "independent" while BuildPanda also runs builds as the contractor on
+    // /construction. Until that is decided this copy states only what the
+    // product does: the client requests, BuildPanda assigns the inspector, and
+    // the contractor being inspected cannot edit the report.
+    title: "Inspections",
     description:
-      "Third-party quality checks at each stage give you an honest, professional view of the work on the ground.",
+      "Request an inspection and a BuildPanda inspector attends and writes the report. The contractor being inspected can read it and cannot change it.",
   },
   {
     icon: <MilestoneIcon className="h-6 w-6" />,
@@ -50,9 +55,9 @@ const visibilityFeatures = [
 const financialFeatures = [
   {
     icon: <WalletIcon className="h-6 w-6" />,
-    title: "Milestone payments",
+    title: "Payment records",
     description:
-      "Money is released against verified progress, not promises. Your funds stay tied to work that has actually been done.",
+      "You pay against verified progress, and the record shows what it was paid for. The money moves through your own bank.",
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
@@ -78,9 +83,10 @@ export default function ForOwnersPage() {
             Build with total visibility and control, even from afar.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            Whether you live around the corner or thousands of miles away,
-            BuildPanda gives you a live window into your project and ensures
-            your money only moves when verified work is complete.
+            This is the BuildPanda software, for the client on a construction
+            contract. Whether you live around the corner or thousands of miles
+            away, you see what has been built, what has been certified and what
+            has been paid.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">
@@ -113,7 +119,7 @@ export default function ForOwnersPage() {
         <Container className="flex flex-col gap-12">
           <SectionHeading
             title="Financial control"
-            description="Protect your funds. Pay only for verified progress, with full transparency into every expense."
+            description="See every expense, and pay against work that has been signed off. BuildPanda records what was certified and what was paid."
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {financialFeatures.map((feature) => (
@@ -127,7 +133,7 @@ export default function ForOwnersPage() {
         <Container className="flex flex-col gap-12">
           <SectionHeading
             eyebrow="How it works"
-            title="From Inquiry to Project Delivery"
+            title="From enquiry to project delivery"
             description="A simple, structured journey from your first conversation to a successfully completed build."
           />
           <OnboardingTimeline />

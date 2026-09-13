@@ -17,7 +17,7 @@ import {
 export const metadata: Metadata = {
   title: "Construction",
   description:
-    "BuildPanda is the delivery side of the Construction OS: we run your build on the ground in Nigeria with verified milestone payments, independent inspections and real-time visibility, from groundbreaking to handover, on time and on budget.",
+    "BuildPanda's managed construction service: we run your build on the ground in Nigeria, and you follow it in the software. Payment records that trace back to signed-off work, inspections you can request, and daily site reporting.",
   alternates: { canonical: "https://buildpanda.io/construction" },
 };
 
@@ -28,7 +28,7 @@ const serviceJsonLd = {
   provider: { "@type": "Organization", name: site.name, url: site.url },
   areaServed: { "@type": "Country", name: "Nigeria" },
   description:
-    "Construction delivery managed on the ground with the BuildPanda Construction OS, from groundbreaking to handover, including planning, vetted contractors, verified milestone payments, independent inspections and real-time on-site monitoring.",
+    "A construction service managed on the ground in Nigeria and run on the BuildPanda software, covering planning, day-to-day site management, inspections you can request, daily site reporting, and a payment record that traces back to work that was signed off.",
 };
 
 const phases = [
@@ -36,33 +36,32 @@ const phases = [
     icon: <CompassIcon className="h-6 w-6" />,
     name: "Inception & planning",
     text: "We help you scope the project, set a realistic budget and schedule, and assemble the right professionals before work begins.",
-    items: ["Scope, budget and timeline", "Design and documentation review", "Contractor selection and vetting"],
+    items: ["Scope, budget and timeline", "Design and documentation review", "Contractor selection"],
   },
   {
     icon: <ChartIcon className="h-6 w-6" />,
     name: "Construction & monitoring",
-    text: "Your build is managed day to day, with progress, costs and quality tracked openly and reported back to you in real time.",
-    items: ["Day-to-day site management", "Milestone payments against verified work", "Daily logs, photos and drone monitoring"],
+    text: "Your build is managed day to day, with progress, costs and quality tracked openly and reported back to you.",
+    items: ["Day-to-day site management", "Payment certificates against signed-off work", "Daily logs and site photos"],
   },
   {
     icon: <ShieldCheckIcon className="h-6 w-6" />,
-    name: "Quality assurance",
-    text: "Independent, third-party inspectors check the work at every stage, so quality is confirmed by professionals, not assumed.",
-    items: ["Third-party inspections per stage", "Issues flagged and resolved early", "Honest, documented reporting"],
+    name: "Inspections",
+    text: "An inspection is a job you ask for. A BuildPanda inspector attends and writes the report. The contractor being inspected can read that report and cannot change it.",
+    items: ["Inspections you request, at the stages you choose", "A pass or fail outcome with findings and photos", "A re-inspection date when work has to be redone"],
   },
   {
     icon: <KeyIcon className="h-6 w-6" />,
-    name: "Completion & handover",
-    text: "We close out the project, confirm everything is done to standard, settle final payments and hand over your finished home.",
-    items: ["Final sign-off and snagging", "Closeout of payments and documents", "Keys and handover pack"],
+    name: "Completion",
+    text: "We close the project out with you. The final work is signed off and you keep the full record of what was built, certified and paid.",
+    items: ["Client sign-off on the final work", "The full certification and payment record", "Every drawing and document handed over"],
   },
 ];
 
 const promises = [
   "A single point of accountability for your project",
-  "Vetted, qualified contractors and professionals",
-  "Independent inspections at every stage",
-  "Payments released only against verified progress",
+  "Inspections you can request at any stage",
+  "A payment record that traces back to work that was signed off",
   "A live dashboard you can follow from anywhere",
   "Clear, honest reporting with no hidden costs",
 ];
@@ -78,15 +77,15 @@ export default function ConstructionPage() {
 
       <section className="bg-white">
         <Container className="flex flex-col items-center gap-6 py-16 text-center sm:py-20 lg:py-24">
-          <Badge>Construction, managed and verified</Badge>
+          <Badge>Our managed construction service</Badge>
           <h1 className="max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-ink sm:text-5xl">
-            A true partner on the ground, from groundbreaking to handover.
+            A true partner on the ground, from groundbreaking to completion.
           </h1>
           <p className="max-w-2xl text-pretty text-lg leading-relaxed text-muted">
-            BuildPanda runs your build in Nigeria and streams every milestone,
-            payment and inspection to your screen. A real partner on site, with
-            the Construction OS keeping the work on time, on budget and verified
-            at every stage.
+            This is our managed construction service. BuildPanda runs your build
+            in Nigeria, and every stage, payment certificate and inspection
+            report goes on the record where you can read it. If you would rather
+            run your own build, that is the software.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/talk-to-us/" size="lg">
@@ -105,18 +104,25 @@ export default function ConstructionPage() {
           <SectionHeading
             eyebrow="A true partner on the ground"
             title="We run the build. You see everything."
-            description="BuildPanda pairs hands-on construction management with the Construction OS, so your project moves on time, on budget and in full view."
+            description="BuildPanda pairs hands-on construction management with the software, so your project moves on time, on budget and in full view."
           />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* DECISION NEEDED: BuildPanda runs the build on this page and also
+                assigns the inspector on an inspection request. Until the founder
+                decides whether the inspection service is a separate,
+                separately-branded business, this copy must not call an
+                inspection "independent" or "third-party". It says only what is
+                true of the product: the client's request engages the inspector,
+                and the contractor being inspected cannot change the report. */}
             <FeatureCard
               icon={<WalletIcon className="h-6 w-6" />}
-              title="Payments tied to verified work"
-              description="Funds are released milestone by milestone, only after independent inspectors sign the work off. Every naira stays tied to progress you can see."
+              title="Payments tied to signed-off work"
+              description="Every payment certificate traces back to work that was signed off. We record what was certified and what was paid. The money moves through your own bank."
             />
             <FeatureCard
               icon={<ChartIcon className="h-6 w-6" />}
               title="Tech-enabled site management"
-              description="The Construction OS keeps every phase, contractor and milestone on track, with costs and schedule updated as the work actually happens."
+              description="The software keeps every phase, contractor and key date on track, with costs and schedule updated as the work actually happens."
             />
             <FeatureCard
               icon={<GlobeIcon className="h-6 w-6" />}
@@ -132,7 +138,7 @@ export default function ConstructionPage() {
           <SectionHeading
             eyebrow="How we manage it"
             title="A clear, accountable process at every phase"
-            description="From a signed proposal to the final handover, every phase is managed, costed and inspected, so your build stays on time and on budget."
+            description="From a signed proposal to the final sign-off, every phase is managed, costed and inspected, so your build stays on time and on budget."
           />
           <div className="grid gap-6 lg:grid-cols-2">
             {phases.map((phase, index) => (

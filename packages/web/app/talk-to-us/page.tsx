@@ -6,14 +6,14 @@ import { CalendlyWidget } from "@/components/calendly-widget";
 export const metadata: Metadata = {
   title: "Talk to us — BuildPanda",
   description:
-    "Book a free consultation with a BuildPanda advisor. Tell us about your build and we will walk you through how we manage your project from inception to handover.",
+    "Book a free consultation with the BuildPanda team. Tell us about your build and we will walk you through how we manage your project from inception to handover.",
   alternates: { canonical: "https://buildpanda.io/talk-to-us/" },
 };
 
 const assurances = [
-  "A dedicated advisor who understands building in Nigeria",
+  "A team that understands building in Nigeria",
   "A clear plan from land and design through to handover",
-  "Verified contractors and independent quality checks",
+  "Inspections you can request, with the report on the record",
   "One dashboard you can watch from anywhere in the world",
 ];
 
