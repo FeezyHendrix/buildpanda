@@ -14,7 +14,12 @@ export function Container({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8", className)}>
+    <div
+      className={cn(
+        "site-container",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -88,13 +93,13 @@ export function SectionHeading({
           {eyebrow}
         </span>
       ) : null}
-      <h2 className="max-w-2xl text-balance text-3xl font-bold leading-tight text-ink sm:text-4xl">
+      <h2 className="max-w-2xl text-balance text-3xl font-bold leading-tight text-ink sm:text-4xl 2xl:max-w-3xl 2xl:text-5xl">
         {title}
       </h2>
       {description ? (
         <p
           className={cn(
-            "max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg",
+            "max-w-2xl text-pretty text-base leading-relaxed text-muted sm:text-lg 2xl:max-w-3xl 2xl:text-xl",
           )}
         >
           {description}

@@ -39,30 +39,30 @@ export function Roles() {
           {roles.map((role) => (
             <div
               key={role.title}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6"
+              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 2xl:p-8"
             >
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
                 {role.label}
               </span>
-              <h3 className="text-xl font-bold leading-snug text-ink">
+              <h3 className="text-xl font-bold leading-snug text-ink 2xl:text-2xl">
                 {role.title}
               </h3>
-              <p className="text-sm leading-relaxed text-muted">{role.body}</p>
-              <div className="mt-auto flex flex-col gap-2 pt-2">
+              <p className="text-sm leading-relaxed text-muted 2xl:text-base">
+                {role.body}
+              </p>
+              <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-3 pt-4">
                 <ButtonLink
                   href={role.cta.href}
                   variant={role.cta.variant}
                   size="md"
-                  className="w-full"
                 >
                   {role.cta.label}
                 </ButtonLink>
                 {role.secondary ? (
                   <ButtonLink
                     href={role.secondary.href}
-                    variant="outline"
+                    variant="ghost"
                     size="md"
-                    className="w-full"
                   >
                     {role.secondary.label}
                   </ButtonLink>

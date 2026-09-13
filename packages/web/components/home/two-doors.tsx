@@ -36,12 +36,14 @@ export function TwoDoors() {
           {doors.map((door) => (
             <div
               key={door.title}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 sm:p-8"
+              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6 sm:p-8 2xl:p-10"
             >
-              <h3 className="text-2xl font-bold leading-tight text-ink">
+              <h3 className="text-2xl font-bold leading-tight text-ink 2xl:text-3xl">
                 {door.title}
               </h3>
-              <p className="text-base leading-relaxed text-muted">{door.body}</p>
+              <p className="max-w-xl text-base leading-relaxed text-muted 2xl:text-lg">
+                {door.body}
+              </p>
               <p className="text-sm leading-relaxed text-muted">{door.who}</p>
               <div className="mt-auto flex flex-col gap-3 pt-2">
                 <ButtonLink
@@ -57,8 +59,8 @@ export function TwoDoors() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-6 sm:p-8">
-          <p className="text-pretty text-base leading-relaxed text-ink sm:text-lg">
+        <div className="flex justify-center">
+          <p className="max-w-3xl text-pretty text-center text-base leading-relaxed text-muted sm:text-lg">
             Both come with the same thing: an inspector who attends the site,
             and certificates that trace to work that was signed off.
           </p>

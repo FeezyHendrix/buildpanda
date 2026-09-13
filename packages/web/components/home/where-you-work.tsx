@@ -55,15 +55,17 @@ export function WhereYouWork() {
           {rows.map((row) => (
             <div
               key={row.title}
-              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-6"
+              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-6 2xl:p-8"
             >
               <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-white">
                 {row.icon}
               </span>
-              <h3 className="text-lg font-semibold leading-snug text-white">
+              <h3 className="text-lg font-semibold leading-snug text-white 2xl:text-xl">
                 {row.title}
               </h3>
-              <p className="text-sm leading-relaxed text-white/70">{row.body}</p>
+              <p className="max-w-md text-sm leading-relaxed text-white/70 2xl:text-base">
+                {row.body}
+              </p>
             </div>
           ))}
         </div>
