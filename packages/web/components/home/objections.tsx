@@ -1,6 +1,5 @@
-import { Container, ButtonLink, SectionHeading } from "@/components/ui";
-import { ArrowRightIcon } from "@/components/icons";
-import { site } from "@/lib/site";
+import { Container, SectionHeading } from "@/components/ui";
+import { twMerge } from "tailwind-merge";
 
 const objections = [
   {
@@ -40,22 +39,30 @@ const objections = [
 
 export function Objections() {
   return (
-    <section className="py-20 sm:py-24">
-      <Container className="flex flex-col gap-12">
+    <section className="py-20 sm:py-24 2xl:py-32">
+      <Container className="flex flex-col gap-12 2xl:gap-16">
         <SectionHeading
           eyebrow="The problem"
           title="The work was done. Proving it is the hard part."
         />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {objections.map((item) => (
+        {/* Six columns so five items resolve as three then two, instead of
+            leaving an orphan card in a three-up grid. No card fill here: the
+            section either side of it is already cards. */}
+        <div className="grid gap-x-10 gap-y-10 md:grid-cols-2 lg:grid-cols-6">
+          {objections.map((item, index) => (
             <div
               key={item.quote}
-              className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-6"
+              className={twMerge(
+                "flex flex-col gap-3 border-l-2 border-brand/25 pl-5",
+                index < 3 ? "lg:col-span-2" : "lg:col-span-3",
+              )}
             >
-              <p className="text-pretty text-lg font-semibold italic leading-snug text-ink">
+              <p className="text-pretty text-lg font-semibold leading-snug text-ink 2xl:text-xl">
                 &ldquo;{item.quote}&rdquo;
               </p>
-              <p className="text-sm leading-relaxed text-muted">{item.answer}</p>
+              <p className="text-sm leading-relaxed text-muted 2xl:text-base">
+                {item.answer}
+              </p>
             </div>
           ))}
         </div>

@@ -13,13 +13,13 @@ import { HeroCertificate } from "@/components/home/hero-certificate";
 export function Hero() {
   return (
     <section className="relative overflow-hidden bg-white">
-      <Container className="grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
+      <Container className="grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:py-24 2xl:gap-24 2xl:py-32">
         <div className="flex flex-col items-start gap-6">
           <Badge>Verified construction delivery</Badge>
-          <h1 className="text-balance text-4xl font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[3.5rem]">
+          <h1 className="text-balance text-4xl font-extrabold leading-[1.06] tracking-tight text-ink sm:text-5xl lg:text-[3.5rem] 2xl:text-[4.5rem]">
             Run every project from estimate to handover, on one system.
           </h1>
-          <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted">
+          <p className="max-w-xl text-pretty text-lg leading-relaxed text-muted 2xl:max-w-2xl 2xl:text-xl">
             Run your entire construction project from proposal to completion
             with estimates, payments, milestones, inspections, and
             collaboration all in one place.

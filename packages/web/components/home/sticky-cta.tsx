@@ -43,7 +43,7 @@ export function StickyCta() {
       }`}
       aria-hidden={!visible}
     >
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="site-container flex items-center gap-3 py-2">
         <p className="hidden min-w-0 flex-1 truncate text-sm font-semibold text-ink sm:block">
           Progress you can verify. Payments you can defend.
         </p>
