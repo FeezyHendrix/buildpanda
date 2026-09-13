@@ -2,9 +2,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/atoms/button";
 import { Spinner } from "@/components/atoms/spinner";
 import { Card } from "@/components/atoms/card";
+import { SearchInput } from "@/components/atoms/search-input";
 import { VoidMaterialEntryDialog } from "@/components/molecules/void-material-entry-dialog";
 import { ReorderPolicyDialog } from "@/components/molecules/reorder-policy-dialog";
 import { EmptyState } from "@/components/molecules/empty-state";
+import { FilterTabs } from "@/components/molecules/filter-tabs";
+import { SimpleDropdown } from "@/components/molecules/simple-dropdown";
 import { PlusIcon } from "@/components/atoms/project-nav-icons";
 import { PageHeader } from "@/components/molecules/page-header";
 import { useProjectContext } from "@/layouts/project-layout";
@@ -26,10 +29,19 @@ import type { LedgerEntry } from "@/lib/project-types";
 import { canResourceAction } from "@/lib/project-types";
 import { KpiCard } from "@/components/molecules/kpi-card";
 import { StackIcon } from "./material-log/icons";
-import { LedgerList } from "./material-log/ledger-list";
+import { LedgerTable } from "./material-log/ledger-table";
 import { LogMaterialDrawer } from "./material-log/log-material-drawer";
 import { StockCard } from "./material-log/stock-card";
-import { sortStockByUrgency } from "./material-log/shared";
+import {
+  LEDGER_APPROVAL_OPTIONS,
+  LEDGER_FILTERS,
+  matchesApprovalFilter,
+  matchesLedgerFilter,
+  matchesLedgerSearch,
+  sortStockByUrgency,
+  type LedgerApprovalFilter,
+  type LedgerFilter,
+} from "./material-log/shared";
 
 export default function ProjectMaterialLog() {
   const { project, access } = useProjectContext();
@@ -48,6 +60,9 @@ export default function ProjectMaterialLog() {
 
   const [logOpen, setLogOpen] = useState(false);
   const [voiding, setVoiding] = useState<LedgerEntry | null>(null);
+  const [search, setSearch] = useState("");
+  const [ledgerFilter, setLedgerFilter] = useState<LedgerFilter>("all");
+  const [approvalFilter, setApprovalFilter] = useState<LedgerApprovalFilter>("all");
   const [policyMaterialId, setPolicyMaterialId] = useState<string | null>(null);
   const policyMaterial = catalog.find((c) => c.id === policyMaterialId) ?? null;
 
@@ -69,6 +84,19 @@ export default function ProjectMaterialLog() {
   const pendingCount = entries.filter(
     (e) => e.approvalStatus === "Pending" && e.status !== "Voided",
   ).length;
+
+  const visibleEntries = entries
+    .filter((entry) => matchesLedgerFilter(entry, ledgerFilter))
+    .filter((entry) => matchesApprovalFilter(entry, approvalFilter))
+    .filter((entry) => matchesLedgerSearch(entry, search));
+  const ledgerFiltered =
+    ledgerFilter !== "all" || approvalFilter !== "all" || search.trim() !== "";
+
+  function clearLedgerFilters(): void {
+    setLedgerFilter("all");
+    setApprovalFilter("all");
+    setSearch("");
+  }
 
   if (stockLoading || ledgerLoading) {
     return (
@@ -183,9 +211,46 @@ export default function ProjectMaterialLog() {
       </section>
 
       <section className="mt-8">
-        <LedgerList
-          entries={entries}
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-black-500">Ledger</h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Append-only record of every movement — nothing is ever removed, only reversed.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="w-full max-w-xs rounded-lg border border-line-hair bg-white">
+            <SearchInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by material, supplier or delivery note"
+              aria-label="Search ledger entries"
+            />
+          </div>
+          <FilterTabs
+            items={LEDGER_FILTERS}
+            value={ledgerFilter}
+            onChange={setLedgerFilter}
+            ariaLabel="Filter ledger entries"
+          />
+          <SimpleDropdown
+            options={LEDGER_APPROVAL_OPTIONS}
+            value={approvalFilter}
+            onChange={setApprovalFilter}
+            ariaLabel="Filter by approval state"
+          />
+          <span className="ml-auto text-sm text-ink-muted">
+            {visibleEntries.length} of {entries.length} entr
+            {entries.length === 1 ? "y" : "ies"}
+          </span>
+        </div>
+
+        <LedgerTable
+          entries={visibleEntries}
+          isFiltered={ledgerFiltered}
+          isLoading={ledgerLoading}
           canManage={canManage}
+          approvingId={approveEntry.isPending ? approveEntry.variables : null}
           onVoid={setVoiding}
           onApprove={(entry) =>
             approveEntry.mutate(entry.id, {
@@ -193,7 +258,7 @@ export default function ProjectMaterialLog() {
               onError: () => toast("Could not approve that entry"),
             })
           }
-          approvingId={approveEntry.isPending ? approveEntry.variables : null}
+          onClearFilters={clearLedgerFilters}
         />
       </section>
 
