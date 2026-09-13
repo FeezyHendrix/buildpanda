@@ -15,7 +15,47 @@ import {
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config/index.ts";
+import { ServiceUnavailableError } from "./errors.ts";
 import { generateId } from "./ids.ts";
+
+/**
+ * Codes the S3/MinIO client surfaces when the object store is simply not there.
+ * An AggregateError wraps them when the host resolves to several addresses.
+ */
+const OUTAGE_CODES = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EPIPE",
+]);
+
+export function isStorageOutage(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; errors?: unknown; cause?: unknown };
+  if (typeof candidate.code === "string" && OUTAGE_CODES.has(candidate.code)) return true;
+  if (Array.isArray(candidate.errors)) return candidate.errors.some(isStorageOutage);
+  if (candidate.cause) return isStorageOutage(candidate.cause);
+  return false;
+}
+
+/**
+ * The object store being down is a 503 the client can act on, not an unhandled
+ * 500. Reading a drawing goes through the same guard as writing one, so a
+ * viewer can say "this drawing could not be loaded" instead of showing a broken
+ * image (findings #1, F5, F47, F51).
+ */
+export async function throughStorage<T>(operation: () => Promise<T>, message: string): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isStorageOutage(error)) throw new ServiceUnavailableError(message, "storage_unavailable");
+    throw error;
+  }
+}
 
 export interface StoredFile {
   storagePath: string;
@@ -120,14 +160,16 @@ export async function saveStream(
 export async function openStoredFile(
   storagePath: string,
 ): Promise<NodeJS.ReadableStream> {
-  const client = await getClient();
-  const result = await client.send(
-    new GetObjectCommand({ Bucket: config.storage.bucket, Key: storagePath }),
-  );
-  if (!result.Body) {
-    throw new Error(`File body missing for ${storagePath}`);
-  }
-  return result.Body as NodeJS.ReadableStream;
+  return throughStorage(async () => {
+    const client = await getClient();
+    const result = await client.send(
+      new GetObjectCommand({ Bucket: config.storage.bucket, Key: storagePath }),
+    );
+    if (!result.Body) {
+      throw new Error(`File body missing for ${storagePath}`);
+    }
+    return result.Body as NodeJS.ReadableStream;
+  }, "File storage is unavailable right now, so this file could not be opened. Try again shortly.");
 }
 
 export async function deleteStoredFile(storagePath: string): Promise<void> {
