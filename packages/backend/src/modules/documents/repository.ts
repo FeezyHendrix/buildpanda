@@ -5,6 +5,7 @@ import type {
   DocumentRow,
   DocumentStatus,
   DocumentVersionRow,
+  DocumentVisibility,
 } from "./types.ts";
 
 export interface NewDocumentRecord {
@@ -17,6 +18,11 @@ export interface NewDocumentRecord {
   size_bytes: number | null;
   status: DocumentStatus;
   uploaded_at: string;
+  title: string | null;
+  revision: string | null;
+  supersedes_id: string | null;
+  visibility: DocumentVisibility;
+  document_date: string | null;
 }
 
 export interface DocumentUpdatePatch {
@@ -28,6 +34,11 @@ export interface DocumentUpdatePatch {
   size_bytes?: number | null;
   uploaded_at?: string;
   current_version_id?: string | null;
+  title?: string | null;
+  revision?: string | null;
+  supersedes_id?: string | null;
+  visibility?: DocumentVisibility;
+  document_date?: string | null;
 }
 
 export interface NewVersionRecord {

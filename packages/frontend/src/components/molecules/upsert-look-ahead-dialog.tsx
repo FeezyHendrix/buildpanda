@@ -3,9 +3,12 @@ import { FormDrawer } from "./form-drawer";
 import { Label } from "@/components/atoms/label";
 import { cn } from "@/lib/utils";
 import { useProjectActivities } from "@/hooks/use-activities";
+import { Badge } from "@/components/atoms/badge";
+import { Button } from "@/components/atoms/button";
 import { LOOK_AHEAD_STATUSES } from "@/lib/project-types";
 import type { LookAhead, LookAheadStatus } from "@/lib/project-types";
 import { INPUT_CLASS } from "@/components/atoms/input";
+import { delayedActivityIds, overlapsWindow } from "@/pages/project/look-aheads/look-ahead-helpers";
 
 const FIELD = INPUT_CLASS;
 
@@ -79,6 +82,23 @@ function UpsertLookAheadDialog({
     if (!term) return activities;
     return activities.filter((a) => a.name.toLowerCase().includes(term));
   }, [activities, activityFilter]);
+
+  // The window already knows which activities fall inside it — offer them
+  // instead of making the PM tick 32 boxes by hand (finding F28).
+  const inRange = useMemo(
+    () => activities.filter((activity) => overlapsWindow(activity, startDate, endDate)),
+    [activities, startDate, endDate],
+  );
+  const delayed = useMemo(() => delayedActivityIds(activities), [activities]);
+  const unselectedInRange = inRange.filter((activity) => !selectedActivityIds.has(activity.id)).length;
+
+  function selectAllInRange(): void {
+    setSelectedActivityIds((prev) => {
+      const next = new Set(prev);
+      for (const activity of inRange) next.add(activity.id);
+      return next;
+    });
+  }
 
   const isValid = name.trim().length > 0 && startDate.length > 0 && endDate.length > 0 && endDate >= startDate;
 
@@ -170,8 +190,8 @@ function UpsertLookAheadDialog({
             onChange={(e) => setStatus(e.target.value as LookAheadStatus)}
             className={FIELD}
           >
-            {LOOK_AHEAD_STATUSES.map((s) => (
-              <option key={s} value={s}>
+            {LOOK_AHEAD_STATUSES.filter((s) => s !== "Approved" || initial?.status === "Approved").map((s) => (
+              <option key={s} value={s} disabled={s === "Approved"}>
                 {STATUS_LABEL[s]}
               </option>
             ))}
@@ -192,8 +212,19 @@ function UpsertLookAheadDialog({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Label>Activities ({selectedActivityIds.size} selected)</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={unselectedInRange === 0}
+            onClick={selectAllInRange}
+          >
+            {inRange.length === 0
+              ? "Nothing planned in this window"
+              : `Select all in range (${inRange.length})`}
+          </Button>
         </div>
         <input
           value={activityFilter}
@@ -249,6 +280,9 @@ function UpsertLookAheadDialog({
                   >
                     {activity.name}
                   </span>
+                  {delayed.has(activity.id) ? (
+                    <Badge tone="danger" size="sm">⚠ Delayed</Badge>
+                  ) : null}
                   <span
                     className={cn(
                       "shrink-0 text-xs",

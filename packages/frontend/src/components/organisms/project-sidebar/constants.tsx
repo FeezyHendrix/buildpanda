@@ -141,6 +141,11 @@ export const SITE_TOOL_ENTRIES: readonly (NavEntry & { helper: string })[] = [
   { label: "Daily log", slug: "schedules/daily-log", resource: "dailyLog", Icon: ClipboardIcon, helper: "Field reports", flag: "quality.dailyLogs" },
   { label: "Plans", slug: "plans", resource: "documents", Icon: DocumentsIcon, helper: "Drawings & revisions", flag: "projects.documents" },
   { label: "Media library", slug: "media-library", resource: "documents", Icon: CameraIcon, helper: "Site photos & videos", flag: "projects.documents" },
+  // Discoverability: these pages existed but were reachable only by typing the
+  // URL, so a PM never found them (finding #5).
+  { label: "Inspections", slug: "inspections", resource: "inspections", Icon: InspectionsIcon, helper: "Hold points & quality checks", flag: "quality.inspections" },
+  { label: "Permits & compliance", slug: "permits", resource: "permits", Icon: AlertIcon, helper: "Approvals, expiry & renewals", flag: "compliance.permits" },
+  { label: "Risk register", slug: "risks", resource: "risks", Icon: AlertIcon, helper: "Exposures, owners & responses" },
 ] as const;
 
 export const DOCUMENT_TOOL_ENTRIES: readonly NavEntry[] = [

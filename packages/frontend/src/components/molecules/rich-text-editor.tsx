@@ -56,6 +56,16 @@ const FileImage = Image.extend({
   },
 });
 
+/** An empty tiptap doc serializes as "<p></p>", which is not "" — treat both as blank. */
+function isBlank(html: string): boolean {
+  return html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/g, "").trim().length === 0;
+}
+
+function isSameDoc(a: string, b: string): boolean {
+  if (a === b) return true;
+  return isBlank(a) && isBlank(b);
+}
+
 function ToolbarButton({
   active,
   onClick,
@@ -139,6 +149,17 @@ export function RichTextEditor({ value, onChange, onAttach, projectId, onReady, 
   useEffect(() => {
     if (editor) onReady?.({ insertImageFile: (file) => void insertImage(file) });
   }, [editor, onReady, insertImage]);
+
+  // tiptap only reads `content` when the view is created, so a dialog that
+  // stays mounted between creates kept the previous body (RFI-3 was saved with
+  // RFI-2's question) and an edit form opened empty over saved text. Mirror an
+  // *external* change of `value` into the editor; typing is ignored because
+  // onUpdate has already pushed the same HTML upwards.
+  useEffect(() => {
+    if (!editor) return;
+    if (isSameDoc(editor.getHTML(), value)) return;
+    editor.commands.setContent(value || "", { emitUpdate: false });
+  }, [editor, value]);
 
   // Refresh each embedded image's src from its stable data-file-id. Presigned
   // S3 URLs expire, so the stored HTML keeps only the id and we fetch a live

@@ -30,6 +30,7 @@ import { InvitationsSection } from "./team/invitations-section";
 import { RolesSection } from "./team/roles-section";
 import { formatRoleLabel } from "./team/utils";
 import type { Member, CustomRole } from "./team/types";
+import { errorMessage } from "@/lib/api-error";
 
 export default function TeamSettings() {
   const { data: session } = authClient.useSession();
@@ -194,7 +195,7 @@ export default function TeamSettings() {
           label: formatRoleLabel(role),
         }))}
         isSubmitting={inviteMember.isPending}
-        error={inviteMember.error?.message ?? null}
+        error={inviteMember.error ? errorMessage(inviteMember.error) : null}
         onSubmit={handleInvite}
       />
 
@@ -211,10 +212,7 @@ export default function TeamSettings() {
             : null
         }
         isSubmitting={roleToEdit ? updateRole.isPending : createRole.isPending}
-        error={
-          (roleToEdit ? updateRole.error?.message : createRole.error?.message) ??
-          null
-        }
+        error={errorMessage(roleToEdit ? updateRole.error : createRole.error, "") || null}
         onSubmit={handleSubmitRole}
       />
 

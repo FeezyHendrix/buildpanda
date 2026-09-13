@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Rfi, RfiDetail, RfiPriority, RfiStatus } from "@/lib/project-types";
+import type { Rfi, RfiDetail, RfiEvent, RfiPriority, RfiStatus } from "@/lib/project-types";
 
 export interface RfiCreateInput {
   subject: string;
@@ -65,6 +65,14 @@ export const rfisApi = {
   comment: (projectId: string, rfiId: string, body: string) =>
     api.post(`/projects/${projectId}/rfis/${rfiId}/comments`, { body }).then((r) => r.data),
 
-  convertToChange: (projectId: string, rfiId: string) =>
-    api.post<Rfi>(`/projects/${projectId}/rfis/${rfiId}/convert-to-change`).then((r) => r.data),
+  events: (projectId: string, rfiId: string) =>
+    api.get<RfiEvent[]>(`/projects/${projectId}/rfis/${rfiId}/events`).then((r) => r.data),
+
+  /** `changeRequestId` links an existing change request instead of raising a new one. */
+  convertToChange: (projectId: string, rfiId: string, changeRequestId?: string | null) =>
+    api
+      .post<Rfi>(`/projects/${projectId}/rfis/${rfiId}/convert-to-change`, {
+        changeRequestId: changeRequestId ?? null,
+      })
+      .then((r) => r.data),
 };

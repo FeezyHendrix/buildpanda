@@ -39,6 +39,8 @@ export interface MaterialApproval {
   phaseName: string | null;
   activityId: string | null;
   activityName: string | null;
+  /** The decided request this one replaces, when it is a resubmission. */
+  resubmittedFromId: string | null;
 }
 
 export interface MaterialApprovalDetail extends MaterialApproval {

@@ -1,127 +1,49 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/molecules/page-header";
-import { Button } from "@/components/atoms/button";
 import { AiUpdateCadenceSection } from "@/components/molecules/ai-update-cadence-section";
 import { EditBudgetDrawer } from "@/components/molecules/edit-budget-drawer";
 import { useProjectContext } from "@/layouts/project-layout";
-import { useUpdateProjectCurrency } from "@/hooks/use-projects";
-import { formatCurrency } from "@/lib/formatters";
-import { SUPPORTED_CURRENCIES, currencyLabel } from "@/lib/currency";
-import { toast } from "@/lib/toast";
-import { getApiErrorMessage } from "@/lib/api-error";
-import { INPUT_CLASS } from "@/components/atoms/input";
-import { cn } from "@/lib/utils";
+import { GeneralTab } from "./settings/general-tab";
+import { MoneyTab } from "./settings/money-tab";
+import { ProgrammeTab } from "./settings/programme-tab";
+import { SettingsTabBar, useSettingsTab } from "./settings/settings-tabs";
+import { useProfileDraft } from "./settings/use-profile-draft";
 
+/**
+ * Settings is a set of separate records — who the parties are, when the job
+ * runs, what it is worth, how Panda AI drafts — so it reads as tabs rather than
+ * one long stack of unrelated cards.
+ */
 export default function ProjectSettings() {
   const { project, access } = useProjectContext();
-  const [editOpen, setEditOpen] = useState(false);
   const canManage = access?.capabilities?.canManage ?? false;
-
-  const [currency, setCurrency] = useState<string>(project.currency);
-  useEffect(() => setCurrency(project.currency), [project.currency]);
-  const updateCurrency = useUpdateProjectCurrency(project.id);
-  const currencyDirty = currency !== project.currency;
-
-  const hasRange = project.budgetMin !== null && project.budgetMax !== null;
-  const rangeLabel = hasRange
-    ? `${formatCurrency(project.budgetMin!, project.currency, { compact: true })} – ${formatCurrency(project.budgetMax!, project.currency, { compact: true })}`
-    : formatCurrency(project.budgetTotal, project.currency, { compact: true });
+  const { tab, setTab } = useSettingsTab();
+  const [editBudgetOpen, setEditBudgetOpen] = useState(false);
+  // One draft shared by General and Programme; each tab saves only its own fields.
+  const profile = useProfileDraft(project.id);
 
   return (
-    <div className="flex w-full flex-col gap-5 lg:gap-4 px-6 py-8 sm:px-10">
-      <PageHeader
-        title="Settings"
-      />
+    <div className="w-full px-6 py-8 sm:px-10">
+      <PageHeader title="Settings" />
 
-      <section className="rounded-lg border border-line-hair bg-white p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Project budget</h2>
-            <p className="mt-1 text-sm text-gray-500 text-pretty">
-              The estimated budget range for this project. Used as the headline
-              budget across dashboards.
-            </p>
-          </div>
-          {canManage && (
-            <Button variant="ghost" size="sm" onClick={() => setEditOpen(true)}>
-              Edit
-            </Button>
-          )}
-        </div>
+      <SettingsTabBar value={tab} onChange={setTab} />
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg bg-surface-alt px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Budget range
-            </p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{rangeLabel}</p>
-          </div>
-          <div className="rounded-lg bg-surface-alt px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Total budget
-            </p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">
-              {formatCurrency(project.budgetTotal, project.currency, { compact: true })}
-            </p>
-          </div>
-        </div>
-      </section>
+      <div className="mt-6">
+        {tab === "general" ? <GeneralTab canManage={canManage} profile={profile} /> : null}
+        {tab === "programme" ? <ProgrammeTab canManage={canManage} profile={profile} /> : null}
+        {tab === "money" ? (
+          <MoneyTab
+            project={project}
+            canManage={canManage}
+            onEditBudget={() => setEditBudgetOpen(true)}
+          />
+        ) : null}
+        {tab === "panda-ai" ? (
+          <AiUpdateCadenceSection projectId={project.id} canManage={canManage} />
+        ) : null}
+      </div>
 
-      <section className="mt-6 rounded-lg border border-line-hair bg-white p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Currency</h2>
-            <p className="mt-1 text-sm text-gray-500 text-pretty">
-              The currency used for budgets, finances, materials and estimates on this
-              project. New projects inherit your organisation's default currency.
-            </p>
-          </div>
-        </div>
-
-        {canManage && (
-          <div className="mt-5 flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="project-currency" className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Project currency
-              </label>
-              <select
-                id="project-currency"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className={cn(INPUT_CLASS, "w-72")}
-              >
-                {SUPPORTED_CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {currencyLabel(c.code)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              variant="primary"
-              size="md"
-              loading={updateCurrency.isPending}
-              disabled={!currencyDirty}
-              onClick={() =>
-                updateCurrency.mutate(currency, {
-                  onSuccess: () => toast("Project currency updated.", "success"),
-                  onError: (e) => toast(getApiErrorMessage(e, "Could not update currency."), "error"),
-                })
-              }
-            >
-              Save currency
-            </Button>
-          </div>
-        )}
-      </section>
-
-      <AiUpdateCadenceSection projectId={project.id} canManage={canManage} />
-
-      <EditBudgetDrawer
-        project={project}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
+      <EditBudgetDrawer project={project} open={editBudgetOpen} onOpenChange={setEditBudgetOpen} />
     </div>
   );
 }

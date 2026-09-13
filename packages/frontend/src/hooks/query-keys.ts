@@ -3,6 +3,7 @@ export const projectKeys = {
   list: () => [...projectKeys.all, "list"] as const,
   detail: (id: string) => [...projectKeys.all, "detail", id] as const,
   settings: (id: string) => [...projectKeys.all, "settings", id] as const,
+  profile: (id: string) => [...projectKeys.all, "profile", id] as const,
 };
 
 export const projectTemplateKeys = {
@@ -142,6 +143,8 @@ export const activityKeys = {
     [...activityKeys.all(projectId), "list", buildingId ?? "all"] as const,
   detail: (projectId: string, activityId: string) =>
     [...activityKeys.all(projectId), "detail", activityId] as const,
+  references: (projectId: string, activityId: string) =>
+    [...activityKeys.all(projectId), "references", activityId] as const,
 };
 
 export const stageKeys = {
@@ -187,6 +190,8 @@ export const rfiKeys = {
     [...rfiKeys.all(projectId), "list", status ?? "all"] as const,
   detail: (projectId: string, rfiId: string) =>
     [...rfiKeys.all(projectId), "detail", rfiId] as const,
+  events: (projectId: string, rfiId: string) =>
+    [...rfiKeys.all(projectId), "events", rfiId] as const,
 };
 
 export const bimKeys = {

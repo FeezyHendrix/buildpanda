@@ -15,10 +15,20 @@ const sizeStyles: Record<AvatarSize, string> = {
   lg: "size-12 text-base",
 };
 
+/**
+ * "Engr. Bolanle Adeyemi (Resident Engineer, LSMW)" is a person named Bolanle
+ * Adeyemi. Taking the first and last whitespace-separated tokens gave "EL",
+ * and "Femi Balogun (Surveyor)" gave "F(" (finding #15).
+ */
 function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
+  const cleaned = name
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\b(?:mr|mrs|ms|miss|dr|engr|eng|arch|qs|sir|prof)\.?\s/gi, " ")
+    .replace(/[^\p{L}\s'-]/gu, " ")
+    .trim();
+  const parts = cleaned.split(/\s+/).filter((part) => part.length > 0);
   if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0]![0]?.toUpperCase() ?? "";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
   return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
 }
 

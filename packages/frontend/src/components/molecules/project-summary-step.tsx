@@ -48,36 +48,6 @@ function formatBudget(currency: string, range: [number, number]): string {
   return `${formatCurrency(range[0], currency, { whole: true })} – ${formatCurrency(range[1], currency, { whole: true })}`;
 }
 
-const PHASES = [
-  {
-    title: "Site Survey & Soil Testing",
-    duration: "Expected: 2 Weeks",
-    description: "Required for foundation integrity and structural design.",
-  },
-  {
-    title: "Permitting & Approvals",
-    duration: "Expected: 4–6 Weeks",
-    description:
-      "Includes LASBCA documentation and environmental clearance.",
-  },
-  {
-    title: "Foundation & Substructure",
-    duration: "Expected: 8 Weeks",
-    description: "Critical path milestone for structural stability.",
-  },
-  {
-    title: "Superstructure & Finishing",
-    duration: "Expected: 20–24 Weeks",
-    description: "Final architectural and utility installations.",
-  },
-];
-
-const DOCUMENTS = [
-  "Certificate of Ownership",
-  "Environmental Impact Assessment",
-  "Building Plan Approval (LASPPPA)",
-];
-
 const PDF_PAGE_HEIGHT = 842;
 
 function BlueprintPage({
@@ -109,7 +79,7 @@ function BlueprintPage({
               Your Project Blueprint
             </h2>
             <p className="mt-1 text-xs text-gray-500 text-pretty">
-              AI-powered analysis and strategic roadmap for
+              A summary of what you entered for
             </p>
             {(data.projectTitle || locationText) && (
               <p className="mt-0.5 text-xs">
@@ -139,43 +109,13 @@ function BlueprintPage({
           </div>
         </div>
 
-        <div className="border-b border-line py-6">
-          <h3 className="mb-3 text-sm font-medium text-gray-900">
-            Uploaded Documents
-          </h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-            {DOCUMENTS.map((doc) => (
-              <div key={doc} className="flex items-start gap-2">
-                <span className="mt-0.5 text-xs text-gray-400">•</span>
-                <span className="text-xs text-gray-700">{doc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-6">
-          <h3 className="mb-4 text-sm font-medium text-gray-900">
-            Project Roadmap
-          </h3>
-          <div className="space-y-4">
-            {PHASES.map((phase, idx) => (
-              <div key={phase.title} className="flex gap-4">
-                <p className="min-w-[50px] text-xs font-semibold text-gray-900">
-                  Phase {idx + 1}
-                </p>
-                <div className="flex-1">
-                  <h4 className="text-xs font-semibold text-gray-900">
-                    {phase.title}
-                  </h4>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {phase.duration}
-                  </p>
-                  <p className="text-xs text-gray-500">{phase.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/*
+          A record-of-truth system must not show documents that do not exist.
+          The review step used to list a Certificate of Ownership, an EIA and a
+          LASPPPA approval nobody had uploaded, beside a hard-coded house
+          roadmap labelled "AI-powered" (finding #11). Both are gone; the
+          summary below states only what was actually entered.
+        */}
       </div>
     );
   }

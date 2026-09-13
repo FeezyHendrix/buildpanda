@@ -9,6 +9,7 @@ import { useReportingSnapshot, type PhaseRef } from "@/hooks/use-reporting-snaps
 import { formatShortDate } from "@/lib/formatters";
 import type { KeyDate, Project } from "@/lib/project-types";
 import { TimelineStepper } from "./timeline-stepper";
+import { CompletionPosition } from "./completion-position";
 
 const UPCOMING_KEY_DATE_LIMIT = 3;
 const MS_PER_DAY = 86_400_000;
@@ -106,6 +107,11 @@ export function ProgrammeCard({ project, className }: { project: Project; classN
           </div>
         ) : (
           <>
+            <CompletionPosition
+              schedule={snapshot.data?.schedule}
+              currency={project.currency ?? "NGN"}
+            />
+
             {inProgress.length > 0 ? (
               <section className="flex flex-col gap-3">
                 <SectionTitle>In progress</SectionTitle>

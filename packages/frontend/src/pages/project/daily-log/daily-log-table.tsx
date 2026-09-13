@@ -29,6 +29,7 @@ export interface DailyLogRowActions {
   onAddLog: (logDate: string) => void;
   onDownload: (logDate: string) => void;
   onEmail: (logDate: string) => void;
+  onVoidDay: (logDate: string) => void;
 }
 
 interface DailyLogTableProps {
@@ -38,6 +39,7 @@ interface DailyLogTableProps {
   hasAnyDays: boolean;
   canCreateEntry: boolean;
   canGenerateReport: boolean;
+  canVoidEntry: boolean;
   actions: DailyLogRowActions;
 }
 
@@ -48,7 +50,7 @@ const COLUMN_COUNT = 8;
 const MENU_ITEM =
   "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-left text-sm text-gray-700 outline-none data-[highlighted]:bg-surface-alt data-[highlighted]:text-gray-900";
 
-function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerateReport, actions }: DailyLogTableProps) {
+function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerateReport, canVoidEntry, actions }: DailyLogTableProps) {
   return (
     <div className="mt-4 overflow-hidden rounded-lg border border-line-hair bg-white">
       <Table className="min-w-[960px]">
@@ -98,6 +100,7 @@ function DailyLogTable({ rows, isPending, hasAnyDays, canCreateEntry, canGenerat
                 row={row}
                 canCreateEntry={canCreateEntry}
                 canGenerateReport={canGenerateReport}
+                canVoidEntry={canVoidEntry}
                 actions={actions}
               />
             ))
@@ -114,10 +117,11 @@ interface RowProps {
   row: DailyLogRow;
   canCreateEntry: boolean;
   canGenerateReport: boolean;
+  canVoidEntry: boolean;
   actions: DailyLogRowActions;
 }
 
-function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: RowProps) {
+function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, canVoidEntry, actions }: RowProps) {
   const { day, missed, voided } = row;
   const tone = missed ? "danger" : voided ? "muted" : "default";
   const stickyBg = missed ? "bg-error-50" : "bg-white";
@@ -176,7 +180,13 @@ function DailyLogTableRow({ row, canCreateEntry, canGenerateReport, actions }: R
             </Button>
           ) : null
         ) : (
-          <DailyLogRowMenu logDate={row.logDate} canCreateEntry={canCreateEntry} canGenerateReport={canGenerateReport} actions={actions} />
+          <DailyLogRowMenu
+            logDate={row.logDate}
+            canCreateEntry={canCreateEntry}
+            canGenerateReport={canGenerateReport}
+            canVoidDay={canVoidEntry && !voided}
+            actions={actions}
+          />
         )}
       </TableCell>
     </TableRow>
@@ -187,11 +197,12 @@ interface MenuProps {
   logDate: string;
   canCreateEntry: boolean;
   canGenerateReport: boolean;
+  canVoidDay: boolean;
   actions: DailyLogRowActions;
 }
 
 /** The ⋮ menu on a logged row. Four actions, so the two-item RowActionsMenu is not enough. */
-function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, actions }: MenuProps) {
+function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, canVoidDay, actions }: MenuProps) {
   return (
     <Menu.Root>
       <Menu.Trigger
@@ -224,6 +235,14 @@ function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, actions }
             {canGenerateReport ? (
               <Menu.Item className={MENU_ITEM} onClick={() => actions.onEmail(logDate)}>
                 Email me
+              </Menu.Item>
+            ) : null}
+            {canVoidDay ? (
+              <Menu.Item
+                className={cn(MENU_ITEM, "text-negative-600 data-[highlighted]:text-negative-700")}
+                onClick={() => actions.onVoidDay(logDate)}
+              >
+                Void day…
               </Menu.Item>
             ) : null}
           </Menu.Popup>

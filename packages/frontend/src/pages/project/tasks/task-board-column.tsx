@@ -30,20 +30,24 @@ function writeCollapsedPref(columnId: string, collapsed: boolean) {
 
 export function BoardColumn({
   column,
+  columns,
   tasks,
   canManage,
   canAddCard,
   onAddCard,
   onOpenTask,
+  onMoveTask,
   onRename,
   onDelete,
 }: {
   column: TaskColumn;
+  columns: readonly TaskColumn[];
   tasks: Task[];
   canManage: boolean;
   canAddCard?: boolean;
   onAddCard: () => void;
   onOpenTask: (task: Task) => void;
+  onMoveTask: (task: Task, columnId: string) => void;
   onRename: (name: string) => void;
   onDelete: () => void;
 }) {
@@ -197,7 +201,14 @@ export function BoardColumn({
 
       <div className="flex flex-col gap-2">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} canManage={canManage} onOpen={() => onOpenTask(task)} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            canManage={canManage}
+            columns={columns}
+            onOpen={() => onOpenTask(task)}
+            onMove={(columnId) => onMoveTask(task, columnId)}
+          />
         ))}
         {tasks.length === 0 && (
           <div className="rounded-lg border border-dashed border-line py-6 text-center text-xs text-gray-400">

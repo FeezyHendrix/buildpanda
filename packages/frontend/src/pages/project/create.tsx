@@ -18,7 +18,11 @@ import {
   RISK_OPTIONS_CONFIG,
 } from "@/components/molecules/management-step";
 import { ProjectTemplateStep } from "@/components/molecules/project-template-step";
-import { ProjectTitleStep } from "@/components/molecules/project-title-step";
+import {
+  ProjectTitleStep,
+  type ProjectContractDetails,
+} from "@/components/molecules/project-title-step";
+import { projectsApi } from "@/api/projects";
 import { ProjectSummaryStep } from "@/components/molecules/project-summary-step";
 import { useCreateProject } from "@/hooks/use-projects";
 import { useUploadBimModel } from "@/hooks/use-bim";
@@ -123,6 +127,13 @@ export default function CreateProject() {
   }, [isReview, stepIndex, setStep]);
 
   const [projectTitle, setProjectTitle] = useState("");
+  // The contract frame. Creation does not take these yet, so they are applied
+  // to the new project's profile immediately after it exists (finding #8).
+  const [contract, setContract] = useState<ProjectContractDetails>({
+    clientName: "",
+    startDate: "",
+    completionDate: "",
+  });
 
   const handleRiskToggle = (id: string) => {
     setRiskOptions((prev) =>
@@ -142,6 +153,21 @@ export default function CreateProject() {
     if (step === 6) return !!projectTitle.trim();
     return false;
   };
+
+  /** Best effort: a failed profile PATCH must not lose the created project. */
+  async function applyContractDetails(projectId: string): Promise<void> {
+    const patch: Record<string, string | null> = {};
+    if (contract.clientName.trim()) patch["clientName"] = contract.clientName.trim();
+    if (contract.startDate) patch["startDate"] = contract.startDate;
+    if (contract.completionDate) patch["completionDate"] = contract.completionDate;
+    if (projectType === "civil") patch["projectType"] = "civil";
+    if (Object.keys(patch).length === 0) return;
+    try {
+      await projectsApi.updateProfile(projectId, patch);
+    } catch {
+      toast("The project was created, but its contract dates could not be saved. Set them in Settings.");
+    }
+  }
 
   async function seedBimModel(projectId: string, files: FileList): Promise<void> {
     const file = files[0];
@@ -192,6 +218,7 @@ export default function CreateProject() {
           riskOptions: riskOptions.filter((r) => r.enabled).map((r) => r.id),
         },
       });
+      await applyContractDetails(project.id);
       if (bimEnabled && bimFiles && bimFiles.length > 0) {
         await seedBimModel(project.id, bimFiles);
       }
@@ -284,7 +311,9 @@ export default function CreateProject() {
       {!isReview && step === 6 && (
         <ProjectTitleStep
           title={projectTitle}
+          contract={contract}
           onTitleChange={setProjectTitle}
+          onContractChange={setContract}
           onSubmit={() => setStep("review")}
         />
       )}

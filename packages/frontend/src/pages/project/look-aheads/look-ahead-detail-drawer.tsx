@@ -9,16 +9,20 @@ interface LookAheadDetailDrawerProps {
   open: boolean;
   lookAhead: LookAhead | null;
   canManage: boolean;
+  delayedActivityIds: ReadonlySet<string>;
   onOpenChange: (open: boolean) => void;
   onEdit: (lookAhead: LookAhead) => void;
+  onApprove: (lookAhead: LookAhead) => void;
 }
 
 export function LookAheadDetailDrawer({
   open,
   lookAhead,
   canManage,
+  delayedActivityIds,
   onOpenChange,
   onEdit,
+  onApprove,
 }: LookAheadDetailDrawerProps) {
   if (!lookAhead) return null;
   const status = LOOK_AHEAD_STATUS_META[lookAhead.status];
@@ -49,6 +53,13 @@ export function LookAheadDetailDrawer({
                 {formatLookAheadDate(lookAhead.startDate)} - {formatLookAheadDate(lookAhead.endDate)}
               </span>
             </div>
+            {lookAhead.approvedByName ? (
+              <p className="mt-2 text-xs text-gray-500">
+                Approved by {lookAhead.approvedByName}
+                {lookAhead.approvedAt ? ` · ${new Date(lookAhead.approvedAt).toLocaleString()}` : ""}
+                {lookAhead.approvalNote ? ` — ${lookAhead.approvalNote}` : ""}
+              </p>
+            ) : null}
           </header>
 
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-5">
@@ -79,7 +90,12 @@ export function LookAheadDetailDrawer({
                           {formatLookAheadDate(activity.plannedStartAt.slice(0, 10))} - {formatLookAheadDate(activity.plannedEndAt.slice(0, 10))}
                         </p>
                       </div>
-                      <Badge tone="neutral" size="sm">{activity.status}</Badge>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {delayedActivityIds.has(activity.activityId) ? (
+                          <Badge tone="danger" size="sm">⚠ Delayed</Badge>
+                        ) : null}
+                        <Badge tone="neutral" size="sm">{activity.status}</Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -89,6 +105,11 @@ export function LookAheadDetailDrawer({
 
           <footer className="flex items-center justify-end gap-2 border-t border-line-hair px-6 py-4">
             <Dialog.Close render={<Button type="button" variant="secondary" size="sm">Close</Button>} />
+            {canManage && lookAhead.status !== "Approved" ? (
+              <Button type="button" variant="secondary" size="sm" onClick={() => onApprove(lookAhead)}>
+                Approve
+              </Button>
+            ) : null}
             {canManage && (
               <Button type="button" size="sm" onClick={() => onEdit(lookAhead)}>
                 Edit look ahead

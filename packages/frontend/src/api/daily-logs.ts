@@ -40,6 +40,8 @@ export interface LinkDailyLogActivityInput {
   logDate: string;
   activityId: string;
   hoursLogged: number;
+  /** Opt-in: also post a client-facing "site work logged" update. */
+  postUpdate?: boolean;
 }
 
 export interface VoidDailyLogInput {
@@ -68,7 +70,11 @@ export const dailyLogsApi = {
   upsert: (projectId: string, logDate: string, body: Omit<UpsertDailyLogInput, "projectId" | "logDate">) =>
     api.put<DailyLog>(`/projects/${projectId}/daily-logs/${logDate}`, body).then((r) => r.data),
 
-  linkActivity: (projectId: string, logDate: string, body: { activityId: string; hoursLogged: number }) =>
+  linkActivity: (
+    projectId: string,
+    logDate: string,
+    body: { activityId: string; hoursLogged: number; postUpdate?: boolean },
+  ) =>
     api.post<{ projectId: string; logDate: string; activityId: string; hoursLogged: number }>(
       `/projects/${projectId}/daily-logs/${logDate}/activities`,
       body,

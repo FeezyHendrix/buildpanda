@@ -55,13 +55,19 @@ export type WeatherCondition =
   | "Storm"
   | "Fog"
   | "ExtremeHeat";
-export type InspectionCategory =
-  | "All Reports"
-  | "Structural"
-  | "Quantity Survey"
-  | "General Progress"
-  | "Electrical"
-  | "Plumbing";
+// The category list itself is owned by its own workstream (it is becoming
+// database-driven and admin-managed); this stays as it is.
+export const INSPECTION_CATEGORIES = [
+  "Structural",
+  "Quantity Survey",
+  "General Progress",
+  "Electrical",
+  "Plumbing",
+] as const;
+export type InspectionCategory = "All Reports" | (typeof INSPECTION_CATEGORIES)[number];
+
+export const INSPECTION_OUTCOMES = ["pass", "fail"] as const;
+export type InspectionOutcome = (typeof INSPECTION_OUTCOMES)[number];
 export type NotificationType =
   | "update_posted"
   | "update_action_required"
@@ -380,6 +386,11 @@ export interface Permit {
   approvedDate: string | null;
   expiryDate: string | null;
   notes: string | null;
+  documentId: string | null;
+  conditions: string | null;
+  responsiblePerson: string | null;
+  renewalSubmittedAt: string | null;
+  leadTimeDays: number | null;
   urgency: PermitUrgency;
   daysUntilExpiry: number | null;
   createdAt: string;
@@ -450,6 +461,14 @@ export type KnownParticipantRole =
   | "materials_approver";
 export type ParticipantRole = KnownParticipantRole | (string & {});
 export type ParticipantStatus = "invited" | "active" | "revoked";
+
+/**
+ * Which side of the contract a person sits on. It decides who can be
+ * ball-in-court on an RFI, who approves a valuation and who signs an
+ * inspection — a "Client" role label alone never said (finding #14).
+ */
+export const PARTICIPANT_SIDES = ["client", "contractor", "consultant"] as const;
+export type ParticipantSide = (typeof PARTICIPANT_SIDES)[number];
 export type SectionPermission = "hidden" | "view" | "edit";
 export type ParticipantPermissions = Record<string, SectionPermission>;
 
@@ -460,6 +479,7 @@ export interface ProjectParticipant {
   name: string | null;
   email: string;
   role: ParticipantRole | "owner";
+  side: ParticipantSide | null;
   status: ParticipantStatus;
   permissions: ParticipantPermissions;
   grants: Record<string, string[]> | null;
@@ -662,7 +682,16 @@ export interface ProjectDocument {
   versionNo: number;
   versionCount: number;
   currentVersionId: string | null;
+  title: string | null;
+  revision: string | null;
+  supersedesId: string | null;
+  visibility: DocumentVisibility;
+  documentDate: string | null;
 }
+
+/** Internal to the delivery team, or issued to the client. */
+export const DOCUMENT_VISIBILITIES = ["internal", "shared"] as const;
+export type DocumentVisibility = (typeof DOCUMENT_VISIBILITIES)[number];
 
 export interface DocumentVersion {
   id: string;
@@ -687,6 +716,14 @@ export interface InspectionReport {
   status: InspectionStatus;
   riskLevel: RiskLevel;
   scheduledAt: string;
+  activityId: string | null;
+  location: string | null;
+  holdPoint: boolean;
+  outcome: InspectionOutcome | null;
+  findings: string | null;
+  reinspectionDate: string | null;
+  inspectedAt: string | null;
+  inspectedByName: string | null;
   media: MediaItem[];
   reportUrl?: string;
 }
@@ -714,7 +751,8 @@ export type MaterialOrderStatus =
   | "Ordered"
   | "PartiallyDelivered"
   | "Delivered"
-  | "Cancelled";
+  | "Cancelled"
+  | "Rejected";
 export type EquipmentRequestStatus =
   | "Draft"
   | "Requested"
@@ -735,6 +773,23 @@ export interface LifecycleLinks {
   documentName: string | null;
 }
 
+/** One recorded drop against a material order — the goods actually arrived. */
+export interface MaterialDelivery {
+  id: string;
+  orderId: string;
+  deliveredQty: number;
+  deliveredAt: string;
+  deliveryNote: string | null;
+  receivedById: string | null;
+  receivedByName: string | null;
+  notes: string | null;
+  rejected: boolean;
+  rejectedReason: string | null;
+  ledgerEntryId: string | null;
+  transactionId: string | null;
+  createdAt: string;
+}
+
 export interface MaterialOrder extends LifecycleLinks {
   id: string;
   projectId: string;
@@ -742,22 +797,44 @@ export interface MaterialOrder extends LifecycleLinks {
   materialName: string;
   quantity: number;
   unit: string;
+  /** Free-text fallback kept for rows typed before the supplier register. */
   supplier: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
   status: MaterialOrderStatus;
   priority: RequestPriority;
   neededBy: string;
   orderedAt: string | null;
   expectedDeliveryAt: string | null;
   deliveredAt: string | null;
+  unitRate: number | null;
   estimatedCost: number;
   actualCost: number;
   currency: Currency;
   deliveryLocation: string | null;
   notes: string | null;
+  cancelReason: string | null;
+  rejectedReason: string | null;
   requestedById: string | null;
   procurementId: string | null;
+  /** Computed by the backend, never stored: past its needed-by, or promised after it. */
+  late: boolean;
+  deliveredQuantity: number;
+  outstandingQuantity: number;
+  deliveries: MaterialDelivery[];
+  /** Status of the material-approval request covering this material, if any. */
+  approvalStatus: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One recorded push of the off-hire date, kept as an append-only log. */
+export interface EquipmentHireExtension {
+  at: string;
+  from: string | null;
+  to: string;
+  reason: string | null;
+  actorId: string | null;
 }
 
 export interface EquipmentRequest extends LifecycleLinks {
@@ -768,6 +845,8 @@ export interface EquipmentRequest extends LifecycleLinks {
   equipmentType: string;
   quantity: number;
   supplier: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
   status: EquipmentRequestStatus;
   bucket: EquipmentBucket;
   priority: RequestPriority;
@@ -775,13 +854,23 @@ export interface EquipmentRequest extends LifecycleLinks {
   neededUntil: string;
   mobilizedAt: string | null;
   returnedAt: string | null;
+  onHireAt: string | null;
+  offHireAt: string | null;
+  plantRef: string | null;
+  dailyRate: number | null;
+  hireDays: number | null;
+  extensions: EquipmentHireExtension[];
   estimatedCost: number;
   actualCost: number;
   currency: Currency;
   deliveryLocation: string | null;
   operatorRequired: boolean;
   notes: string | null;
+  cancelReason: string | null;
+  rejectedReason: string | null;
   requestedById: string | null;
+  /** Computed server-side: wanted on site before today and not yet on hire. */
+  late: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -936,12 +1025,24 @@ export interface FinalAccount {
   createdAt: string;
 }
 
+export const RISK_STATUSES = ["open", "mitigated", "closed", "occurred"] as const;
+export type RiskStatus = (typeof RISK_STATUSES)[number];
+
 export interface RiskFactor {
   id: string;
   title: string;
   description: string;
   descriptionHtml: string | null;
   severity: RiskLevel;
+  status: RiskStatus;
+  ownerId: string | null;
+  ownerName: string | null;
+  mitigation: string | null;
+  reviewDate: string | null;
+  linkedActivityId: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ActivityDelay {
@@ -1391,6 +1492,12 @@ export interface LedgerEntry {
   reversalForEntryId: string | null;
   reason: string | null;
   notesHtml: string | null;
+  /** Who the goods came from, snapshotted on the receipt. */
+  supplier: string | null;
+  /** Delivery-note number the receipt was signed on. */
+  deliveryNote: string | null;
+  /** Approved by the same person who logged it — maker/checker breached. */
+  selfApproved: boolean;
   files: LedgerEntryFile[];
   createdAt: string;
 }
@@ -1407,15 +1514,24 @@ export interface StockLevel {
   lowStock: boolean;
 }
 
+/** "project" = raised on this job; "organization" = on the company register. */
+export type SupplierScope = "project" | "organization";
+
 export interface Supplier {
   id: string;
-  projectId: string;
+  projectId: string | null;
+  organizationId: string | null;
+  scope: SupplierScope;
   name: string;
   contactName: string | null;
   email: string | null;
   phone: string | null;
   address: string | null;
   notes: string | null;
+  trade: string | null;
+  approved: boolean;
+  leadTimeDays: number | null;
+  paymentTerms: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1474,6 +1590,10 @@ export interface LookAhead {
   endDate: string;
   totalWorkers: number | null;
   activities: LookAheadActivitySummary[];
+  approvedById: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
   createdAt: string;
   updatedAt: string;
 }

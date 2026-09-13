@@ -106,6 +106,20 @@ export function assertCanManageOrgReference(project: ProjectScope, ctx: AccessCo
   throw new ForbiddenError("Only a workspace admin can change this list");
 }
 
+/**
+ * Which side of the contract a caller is acting from, derived from their
+ * participant role — never from the self-declared accountType. A consultant
+ * (architect, resident engineer, materials engineer) acts FOR the employer, so
+ * they count as client-side; anybody with no participant role at all is
+ * workspace staff, i.e. the party doing the building.
+ *
+ * Used to record who asked for an independent inspection.
+ */
+export function contractSideOf(participantRole: string | undefined): "client" | "contractor" {
+  if (!participantRole) return "contractor";
+  return ROLE_PRESET_SIDES[participantRole] === "contractor" ? "contractor" : "client";
+}
+
 function canModify(project: ProjectScope, ctx: AccessContext): boolean {
   try {
     assertCanModifyProject(project, ctx);

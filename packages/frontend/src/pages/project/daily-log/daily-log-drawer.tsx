@@ -16,6 +16,8 @@ import type { DailyLogDay } from "@/lib/project-types";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { DailyLogEntryRow } from "./daily-log-entry-row";
+import { AddActivityHours } from "./add-activity-hours";
+import { VoidDayAction } from "./void-day-action";
 import { formatDayDate, formatHours, formatWeekday, WEATHER_LABEL, WEATHER_TONE } from "./daily-log-helpers";
 
 interface DailyLogDrawerProps {
@@ -76,12 +78,17 @@ function DailyLogDrawer({
                 {day?.voidedAt ? <Badge tone="danger" size="sm">Voided</Badge> : null}
               </div>
             </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {canVoidEntry && logDate && day && !day.voidedAt ? (
+                <VoidDayAction projectId={projectId} logDate={logDate} />
+              ) : null}
             <Dialog.Close
               aria-label="Close"
               className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
             >
               <X className="size-5" />
             </Dialog.Close>
+            </div>
           </header>
 
           {!day || !logDate ? (
@@ -95,7 +102,7 @@ function DailyLogDrawer({
           ) : (
             <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-5">
               <ConditionsSection day={day} canEdit={canCreateEntry} onEdit={() => onEditConditions(logDate)} />
-              <ActivitiesSection day={day} />
+              <ActivitiesSection day={day} projectId={projectId} canCreateEntry={canCreateEntry} />
               <EntriesSection
                 day={day}
                 projectId={projectId}
@@ -171,8 +178,21 @@ function ConditionsSection({ day, canEdit, onEdit }: { day: DailyLogDay; canEdit
   );
 }
 
-function ActivitiesSection({ day }: { day: DailyLogDay }) {
+function ActivitiesSection({
+  day,
+  projectId,
+  canCreateEntry,
+}: {
+  day: DailyLogDay;
+  projectId: string;
+  canCreateEntry: boolean;
+}) {
   const total = day.activities.reduce((sum, a) => sum + a.hoursLogged, 0);
+  const linkedIds = day.activities.map((a) => a.activityId);
+  const dayHours = day.totalHours;
+  // Day hours and activity hours are two independent records of the same shift;
+  // a PM needs to see when they disagree (finding F8).
+  const mismatch = dayHours > 0 && total > 0 && Math.abs(dayHours - total) >= 0.5;
   return (
     <Section title="Activities">
       {day.activities.length === 0 ? (
@@ -201,6 +221,15 @@ function ActivitiesSection({ day }: { day: DailyLogDay }) {
           </Table>
         </div>
       )}
+      {mismatch ? (
+        <p className="mt-2 rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-700">
+          ⚠ The day records {formatHours(dayHours)} but {formatHours(total)} are logged against
+          activities — one of the two is incomplete.
+        </p>
+      ) : null}
+      {canCreateEntry && !day.voidedAt ? (
+        <AddActivityHours projectId={projectId} logDate={day.logDate} linkedIds={linkedIds} />
+      ) : null}
     </Section>
   );
 }

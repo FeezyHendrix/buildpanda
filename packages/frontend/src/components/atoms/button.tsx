@@ -40,12 +40,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       loading = false,
       disabled,
       children,
+      // A bare <button> inside a <form> submits it. Every chip, toggle and
+      // row action in this app is a Button, so an unmarked one used to submit
+      // the drawer it sits in (weather chips, inspection category chips).
+      // Submitting is opt-in: FormDrawer/FormDialog pass type="submit".
+      type = "button",
       ...props
     },
     ref,
   ) => (
     <button
       ref={ref}
+      type={type}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       className={cn(

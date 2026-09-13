@@ -21,6 +21,14 @@ export function useProjectRfi(projectId: string | undefined, rfiId: string | und
   });
 }
 
+export function useRfiEvents(projectId: string | undefined, rfiId: string | undefined) {
+  return useQuery({
+    queryKey: rfiKeys.events(projectId ?? "__none__", rfiId ?? "__none__"),
+    queryFn: () => rfisApi.events(projectId!, rfiId!),
+    enabled: Boolean(projectId && rfiId),
+  });
+}
+
 export function useUpdateRfi() {
   const qc = useQueryClient();
   return useMutation({
@@ -93,8 +101,15 @@ export function useRfiComment() {
 export function useConvertRfiToChange() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, rfiId }: { projectId: string; rfiId: string }) =>
-      rfisApi.convertToChange(projectId, rfiId),
+    mutationFn: ({
+      projectId,
+      rfiId,
+      changeRequestId,
+    }: {
+      projectId: string;
+      rfiId: string;
+      changeRequestId?: string | null;
+    }) => rfisApi.convertToChange(projectId, rfiId, changeRequestId),
     onSuccess: (_d, { projectId }) =>
       qc.invalidateQueries({ queryKey: rfiKeys.all(projectId) }),
   });

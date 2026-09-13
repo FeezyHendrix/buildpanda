@@ -7,6 +7,7 @@ import { useProjectRfis } from "@/hooks/use-rfis";
 import { useReportingSnapshot } from "@/hooks/use-reporting-snapshot";
 import { formatWholeCurrency } from "@/lib/formatters";
 import type { Activity, Project, ProjectPhase } from "@/lib/project-types";
+import { isRfiOverdue } from "@/lib/rfi-meta";
 
 /** RFI statuses that still count as open work. */
 const OPEN_RFI_STATUSES = new Set(["Open", "InReview"]);
@@ -133,12 +134,17 @@ export function OverviewKpis({ project }: { project: Project }) {
   const invoices = snapshot.data?.finance.invoices;
   const pendingChangeValue = snapshot.data?.finance.changeRequests.pendingCostImpact ?? 0;
 
-  const openRfis = (rfis.data ?? []).filter((r) => OPEN_RFI_STATUSES.has(r.status)).length;
-  const pendingApprovals = snapshot.data?.operations.pendingApprovals ?? project.pendingApprovals;
+  const openRfiList = (rfis.data ?? []).filter((r) => OPEN_RFI_STATUSES.has(r.status));
+  const openRfis = openRfiList.length;
+  const overdueRfis = openRfiList.filter((r) => isRfiOverdue(r)).length;
+  // Material approvals are approvals too; they were invisible on this tile (#48).
+  const pendingApprovals =
+    (snapshot.data?.operations.pendingApprovals ?? project.pendingApprovals) +
+    (snapshot.data?.operations.pendingMaterialApprovals ?? 0);
   const submittedChanges = changes.data?.submitted ?? 0;
   const openItems = openRfis + pendingApprovals + submittedChanges;
   const openItemsHelper = [
-    `${openRfis} RFIs`,
+    overdueRfis > 0 ? `${openRfis} RFIs (${overdueRfis} overdue)` : `${openRfis} RFIs`,
     `${pendingApprovals} approvals`,
     pluralise(submittedChanges, "change order", "change orders"),
   ].join(" · ");

@@ -364,14 +364,19 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
         "dailyLog",
         "report",
       );
+      const user = request.requireAuth();
       const referenceDate = request.query.date ?? todayIso();
-      const report = await periodReports.build(project.id, request.query.period, referenceDate);
+      const report = await periodReports.build(project.id, request.query.period, referenceDate, {
+        id: user.id,
+        name: user.name ?? null,
+      });
       return reply
         .header(
           "content-type",
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
         .header("content-disposition", `attachment; filename="${report.fileName}"`)
+        .header("x-report-generated-at", report.generatedAt)
         .send(report.docx);
     },
   );

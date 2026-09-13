@@ -25,6 +25,10 @@ import { STATUS_META as ORDER_STATUS_META } from "./materials/shared";
 import { canResourceAction } from "@/lib/project-types";
 import type { AutoWindowActivity, LookAhead } from "@/lib/project-types";
 import { toast } from "@/lib/toast";
+import { errorMessage } from "@/lib/api-error";
+import { useProjectActivities } from "@/hooks/use-activities";
+import { ApproveLookAheadDialog } from "./look-aheads/approve-look-ahead-dialog";
+import { delayedActivityIds } from "./look-aheads/look-ahead-helpers";
 import { LookAheadDetailDrawer } from "./look-aheads/look-ahead-detail-drawer";
 import { LookAheadsTable } from "./look-aheads/look-aheads-table";
 
@@ -49,16 +53,22 @@ export default function ProjectLookAheads() {
   );
   const { data: autoWindow, isLoading: autoWindowLoading } = useAutoWindow(project.id, 4);
   const { data: stock = [] } = useMaterialStock(project.id);
+  const { data: activities = [] } = useProjectActivities(project.id);
   const lowStock = stock.filter((s) => s.lowStock);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<LookAhead | null>(null);
   const [viewTarget, setViewTarget] = useState<LookAhead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LookAhead | null>(null);
+  const [approveTarget, setApproveTarget] = useState<LookAhead | null>(null);
 
   const createLookAhead = useCreateLookAhead();
   const updateLookAhead = useUpdateLookAhead();
   const deleteLookAhead = useDeleteLookAhead();
+
+  // A look-ahead is exactly where a site agent wants "this one is already
+  // 7 days late" (finding F31), so the delay flag travels with the plan.
+  const delayedIds = useMemo(() => delayedActivityIds(activities), [activities]);
 
   const activityCoverage = useMemo(
     () => new Map((autoWindow?.activities ?? []).map((activity) => [activity.activityId, activity.hasMaterialCoverage])),
@@ -163,7 +173,11 @@ export default function ProjectLookAheads() {
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">
             {autoWindow.activities.slice(0, 4).map((activity) => (
-              <AutoWindowCard key={activity.activityId} activity={activity} />
+              <AutoWindowCard
+                key={activity.activityId}
+                activity={activity}
+                delayed={delayedIds.has(activity.activityId)}
+              />
             ))}
             {autoWindow.activities.length > 4 ? (
               <Card padding="md" className="flex items-center justify-center border-dashed text-sm text-gray-500">
@@ -184,6 +198,8 @@ export default function ProjectLookAheads() {
             lookAheads={lookAheads}
             canManage={canManage}
             activityCoverage={activityCoverage}
+            delayedActivityIds={delayedIds}
+            onApprove={setApproveTarget}
             onCreate={() => {
               setEditTarget(null);
               setFormOpen(true);
@@ -208,13 +224,7 @@ export default function ProjectLookAheads() {
         projectId={project.id}
         initial={editTarget}
         isSubmitting={createLookAhead.isPending || updateLookAhead.isPending}
-        error={
-          createLookAhead.error
-            ? (createLookAhead.error as Error).message
-            : updateLookAhead.error
-              ? (updateLookAhead.error as Error).message
-              : null
-        }
+        error={errorMessage(createLookAhead.error ?? updateLookAhead.error, "") || null}
         onSubmit={handleSubmit}
       />
 
@@ -222,6 +232,11 @@ export default function ProjectLookAheads() {
         open={viewTarget !== null}
         lookAhead={viewTarget}
         canManage={canManage}
+        delayedActivityIds={delayedIds}
+        onApprove={(lookAhead) => {
+          setViewTarget(null);
+          setApproveTarget(lookAhead);
+        }}
         onOpenChange={(next) => {
           if (!next) setViewTarget(null);
         }}
@@ -230,6 +245,15 @@ export default function ProjectLookAheads() {
           setEditTarget(lookAhead);
           setFormOpen(true);
         }}
+      />
+
+      <ApproveLookAheadDialog
+        open={approveTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setApproveTarget(null);
+        }}
+        projectId={project.id}
+        lookAhead={approveTarget}
       />
 
       <ConfirmDialog
@@ -260,7 +284,7 @@ export default function ProjectLookAheads() {
   );
 }
 
-function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
+function AutoWindowCard({ activity, delayed }: { activity: AutoWindowActivity; delayed: boolean }) {
   return (
     <Card padding="md">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -275,9 +299,12 @@ function AutoWindowCard({ activity }: { activity: AutoWindowActivity }) {
             {activity.workerCountPlanned}
           </p>
         </div>
-        {!activity.hasMaterialCoverage && (
-          <Badge tone="danger" size="sm">No materials ordered</Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {delayed ? <Badge tone="danger" size="sm">⚠ Delayed</Badge> : null}
+          {!activity.hasMaterialCoverage && (
+            <Badge tone="danger" size="sm">No materials ordered</Badge>
+          )}
+        </div>
       </header>
 
       {activity.materialOrders.length > 0 && (

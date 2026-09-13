@@ -100,10 +100,11 @@ function FormDrawer({
                 type="submit"
                 variant="primary"
                 size="sm"
+                loading={submitting}
                 disabled={submitting || submitDisabled}
                 className="h-9 px-4 text-sm"
               >
-                {submitting ? "Submitting…" : submitLabel}
+                {submitLabel}
               </Button>
             </footer>
           </form>

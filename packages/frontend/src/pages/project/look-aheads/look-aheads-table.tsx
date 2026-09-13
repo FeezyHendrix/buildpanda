@@ -38,20 +38,25 @@ interface LookAheadsTableProps {
   lookAheads: LookAhead[];
   canManage: boolean;
   activityCoverage: ReadonlyMap<string, boolean>;
+  /** Activity ids carrying an unresolved delay — flagged on the plan itself. */
+  delayedActivityIds: ReadonlySet<string>;
   onCreate: () => void;
   onView: (lookAhead: LookAhead) => void;
   onEdit: (lookAhead: LookAhead) => void;
   onDelete: (lookAhead: LookAhead) => void;
+  onApprove: (lookAhead: LookAhead) => void;
 }
 
 export function LookAheadsTable({
   lookAheads,
   canManage,
   activityCoverage,
+  delayedActivityIds,
   onCreate,
   onView,
   onEdit,
   onDelete,
+  onApprove,
 }: LookAheadsTableProps) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -123,6 +128,7 @@ export function LookAheadsTable({
                 <TableHeaderCell>Start date</TableHeaderCell>
                 <TableHeaderCell>End date</TableHeaderCell>
                 <TableHeaderCell>Activities</TableHeaderCell>
+                <TableHeaderCell>Delays</TableHeaderCell>
                 <TableHeaderCell>Materials</TableHeaderCell>
                 <TableHeaderCell align="right">Actions</TableHeaderCell>
               </tr>
@@ -134,9 +140,11 @@ export function LookAheadsTable({
                   lookAhead={lookAhead}
                   canManage={canManage}
                   activityCoverage={activityCoverage}
+                  delayedActivityIds={delayedActivityIds}
                   onView={onView}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onApprove={onApprove}
                 />
               ))}
             </TableBody>
@@ -151,12 +159,15 @@ function LookAheadRow({
   lookAhead,
   canManage,
   activityCoverage,
+  delayedActivityIds,
   onView,
   onEdit,
   onDelete,
+  onApprove,
 }: Omit<LookAheadsTableProps, "lookAheads" | "onCreate"> & { lookAhead: LookAhead }) {
   const status = LOOK_AHEAD_STATUS_META[lookAhead.status];
   const material = materialState(lookAhead, activityCoverage);
+  const delayed = lookAhead.activities.filter((a) => delayedActivityIds.has(a.activityId)).length;
 
   return (
     <TableRow className="bg-white align-middle transition-colors hover:bg-surface-alt">
@@ -166,15 +177,30 @@ function LookAheadRow({
           {lookAhead.description ? <span className="mt-1 line-clamp-1 text-xs text-gray-500">{lookAhead.description}</span> : null}
         </button>
       </TableCell>
-      <TableCell><Badge tone={status.tone} size="sm">{status.label}</Badge></TableCell>
+      <TableCell>
+        <Badge tone={status.tone} size="sm">{status.label}</Badge>
+        {lookAhead.approvedByName ? (
+          <span className="mt-0.5 block text-xs text-gray-500">by {lookAhead.approvedByName}</span>
+        ) : null}
+      </TableCell>
       <TableCell className="tabular-nums">{lookAhead.totalWorkers ?? "-"}</TableCell>
       <TableCell className="whitespace-nowrap">{formatLookAheadDate(lookAhead.startDate)}</TableCell>
       <TableCell className="whitespace-nowrap">{formatLookAheadDate(lookAhead.endDate)}</TableCell>
       <TableCell>{lookAhead.activities.length}</TableCell>
+      <TableCell>
+        {delayed > 0 ? (
+          <Badge tone="danger" size="sm">⚠ {delayed} delayed</Badge>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        )}
+      </TableCell>
       <TableCell><Badge tone={material.tone} size="sm">{material.label}</Badge></TableCell>
       <TableCell>
         <div className="flex justify-end gap-1.5">
           <Button type="button" variant="ghost" size="sm" onClick={() => onView(lookAhead)}>View</Button>
+          {canManage && lookAhead.status !== "Approved" ? (
+            <Button type="button" variant="ghost" size="sm" onClick={() => onApprove(lookAhead)}>Approve</Button>
+          ) : null}
           {canManage ? <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(lookAhead)}>Edit</Button> : null}
           {canManage ? <Button type="button" variant="danger" size="sm" onClick={() => onDelete(lookAhead)}>Delete</Button> : null}
         </div>
