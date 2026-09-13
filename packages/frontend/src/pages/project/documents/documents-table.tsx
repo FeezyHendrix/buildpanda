@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ReactSVG } from "react-svg";
 import { Badge } from "@/components/atoms/badge";
 import { Card } from "@/components/atoms/card";
@@ -31,7 +31,8 @@ import { DOCUMENT_STATUS_TONE } from "@/lib/project-meta";
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api-error";
 import { formatShortDate } from "@/lib/formatters";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { RowActionsMenu, type RowActionItem } from "@/components/molecules/row-actions-menu";
+
 import type {
   DocumentCategory,
   ProjectDocument,
@@ -304,88 +305,24 @@ function RowMenu({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const open = menuPos !== null;
-
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setMenuPos(null);
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (ref.current?.contains(target) || menuRef.current?.contains(target)) return;
-      close();
-    };
-    document.addEventListener("mousedown", handler);
-    // The menu is fixed-positioned, so any scroll would detach it from its row.
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [open]);
-
-  function toggleMenu(e: React.MouseEvent<HTMLButtonElement>): void {
-    if (open) {
-      setMenuPos(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-  }
-
-  const itemCls = "flex w-full cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-gray-700 outline-none hover:bg-surface-alt";
+  // A plan opens in the review workspace, a document in the viewer: one
+  // "View" either way, never a choice between two ways to look at the same file.
+  const view = onOpen ?? (doc.currentVersionId ? onView : null);
+  const items: RowActionItem[] = [
+    ...(view ? [{ label: "View", onSelect: view }] : []),
+    ...(doc.currentVersionId ? [{ label: shareCopied ? "Copied!" : "Share", onSelect: onShare }] : []),
+    { label: `Versions${doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}`, onSelect: onVersions },
+    ...(canManage
+      ? [
+          { label: "Edit", onSelect: onEdit },
+          { label: "Delete", onSelect: onDelete, tone: "danger" as const },
+        ]
+      : []),
+  ];
 
   return (
-    <div ref={ref} className="relative flex items-center justify-end">
-      <button
-        type="button"
-        onClick={toggleMenu}
-        className="flex items-center justify-center rounded-md p-1.5 text-ink-muted hover:bg-black/5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus"
-        aria-label="Actions"
-        aria-haspopup="true"
-        aria-expanded={open}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <circle cx="8" cy="3" r="1.5" />
-          <circle cx="8" cy="8" r="1.5" />
-          <circle cx="8" cy="13" r="1.5" />
-        </svg>
-      </button>
-
-      {open && (
-        <div
-          ref={menuRef}
-          style={{ top: menuPos.top, right: menuPos.right }}
-          className="fixed z-50 min-w-[160px] rounded-lg border border-line bg-white p-1.5 shadow-card"
-        >
-          {/* A plan opens in the review workspace, a document in the viewer:
-              one "View" either way, never a choice between two ways to look
-              at the same file. */}
-          {onOpen ? (
-            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onOpen(); }}>View</button>
-          ) : doc.currentVersionId ? (
-            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onView(); }}>View</button>
-          ) : null}
-          {doc.currentVersionId && (
-            <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onShare(); }}>
-              {shareCopied ? "Copied!" : "Share"}
-            </button>
-          )}
-          <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onVersions(); }}>
-            Versions{doc.versionCount > 1 ? ` (${doc.versionCount})` : ""}
-          </button>
-          {canManage && (
-            <>
-              <button type="button" className={itemCls} onClick={() => { setMenuPos(null); onEdit(); }}>Edit</button>
-              <button type="button" className={cn(itemCls, "text-negative-600 hover:bg-negative-50")} onClick={() => { setMenuPos(null); onDelete(); }}>Delete</button>
-            </>
-          )}
-        </div>
-      )}
+    <div className="flex items-center justify-end">
+      <RowActionsMenu ariaLabel="Actions" items={items} />
     </div>
   );
 }

@@ -196,6 +196,7 @@ function DailyLogRowMenu({ logDate, canCreateEntry, canGenerateReport, actions }
     <Menu.Root>
       <Menu.Trigger
         aria-label={`Actions for ${formatDayDate(logDate)}`}
+        onMouseDown={(event) => event.preventBaseUIHandler()}
         className="inline-flex size-8 items-center justify-center rounded-md text-ink-muted outline-none transition-colors hover:bg-black/5 hover:text-ink focus-visible:shadow-focus"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
