@@ -7,7 +7,6 @@ import { TwoDoors } from "@/components/home/two-doors";
 import { Objections } from "@/components/home/objections";
 import { ProductShots } from "@/components/home/product-shots";
 import { PandaAi } from "@/components/home/panda-ai";
-import { WhereYouWork } from "@/components/home/where-you-work";
 import { Faq } from "@/components/home/faq";
 import { FinalCta } from "@/components/home/final-cta";
 import { StickyCta } from "@/components/home/sticky-cta";
@@ -30,7 +29,6 @@ export default function HomePage() {
       <Objections />
       <ProductShots />
       <PandaAi />
-      <WhereYouWork />
       <Faq />
       <FinalCta />
       <StickyCta />

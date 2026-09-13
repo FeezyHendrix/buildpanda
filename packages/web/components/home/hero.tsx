@@ -14,7 +14,7 @@ export function Hero() {
     <section className="relative flex min-h-svh flex-col justify-center overflow-hidden bg-[linear-gradient(157deg,#0A2FA6_0%,#004DE7_34%,#0036AE_62%,#001A56_100%)] text-white">
       <HeroGlow />
 
-      <div className="site-container relative grid items-center gap-14 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16 lg:pb-28 lg:pt-40 2xl:gap-24">
+      <div className="site-container relative grid items-center gap-14 pb-20 pt-32 sm:pb-24 sm:pt-36 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.28fr)] lg:gap-16 lg:pb-28 lg:pt-40 2xl:gap-24">
         <div className="flex flex-col items-start gap-7 2xl:gap-9">
           <h1 className="display max-w-xl text-[2.5rem] text-white sm:text-5xl lg:text-6xl 2xl:max-w-2xl 2xl:text-7xl">
             Run every project from estimate to handover
