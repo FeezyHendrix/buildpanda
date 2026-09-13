@@ -69,7 +69,7 @@ export function Navbar() {
             Log in
           </ButtonLink>
           <ButtonLink href={site.appUrl} size="md" className="h-10 px-4">
-            Get started
+            Start free
           </ButtonLink>
         </div>
 
@@ -131,7 +131,7 @@ export function Navbar() {
             </li>
             <li className="mt-2">
               <ButtonLink href={site.appUrl} size="md" className="w-full">
-                Get started
+                Start free
               </ButtonLink>
             </li>
           </ul>

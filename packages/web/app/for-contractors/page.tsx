@@ -91,7 +91,7 @@ export default function ForContractorsPage() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row mt-4">
             {/* <ButtonLink href={site.appUrl} size="lg">
-              Get started
+              Start free
               <ArrowRightIcon className="h-5 w-5" />
             </ButtonLink> */}
             <ButtonLink href="/talk-to-us/" variant="outline" size="lg">
