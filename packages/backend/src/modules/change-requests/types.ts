@@ -2,6 +2,34 @@ import type { CurrencyCode } from "../../lib/currencies.ts";
 
 export const CHANGE_STATUSES = ["Draft", "Submitted", "Approved", "Executed", "Rejected"] as const;
 export type ChangeStatus = (typeof CHANGE_STATUSES)[number];
+
+/**
+ * What kind of change this is. A variation adds work, an omission removes it,
+ * an eot_only claim asks for time and no money, and a provisional_sum
+ * adjustment converts a sum already in the contract into measured work.
+ */
+export const CHANGE_TYPES = ["variation", "omission", "eot_only", "provisional_sum"] as const;
+export type ChangeType = (typeof CHANGE_TYPES)[number];
+
+/** The actions that move a change request. Status is never set by hand. */
+export const CHANGE_ACTIONS = ["submit", "approve", "reject", "resubmit", "execute"] as const;
+export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
+
+/**
+ * One submitted version of the change. "v1 ₦4.8m rejected → v2 ₦4.2m approved"
+ * is the negotiation, and a list that silently shows ₦4.2m as if it had always
+ * been that is not a record of it.
+ */
+export interface ChangeRevision {
+  version: number;
+  costImpact: number;
+  timeImpactDays: number;
+  reason: string | null;
+  status: ChangeStatus;
+  actorId: string | null;
+  actorName: string;
+  at: string;
+}
 export type Currency = CurrencyCode;
 
 export interface ChangeRequest {
@@ -13,9 +41,19 @@ export interface ChangeRequest {
   reason: string | null;
   reasonHtml: string | null;
   status: ChangeStatus;
+  type: ChangeType;
   costImpact: number;
   timeImpactDays: number;
   currency: Currency;
+  /** The build stage the change moves; its end date shifts on Execute. */
+  stageId: string | null;
+  /** The RFI this change came out of, when it did. */
+  rfiId: string | null;
+  /** The extension-of-time claim carrying its days, for a time claim. */
+  eotClaimId: string | null;
+  rejectedReason: string | null;
+  submittedAt: string | null;
+  revisions: ChangeRevision[];
   submittedById: string | null;
   decidedById: string | null;
   decidedByName: string | null;
@@ -77,9 +115,16 @@ export interface ChangeRequestRow {
   reason: string | null;
   reason_html: string | null;
   status: ChangeStatus;
+  type: ChangeType;
   cost_impact: string;
   time_impact_days: number;
   currency: Currency;
+  stage_id: string | null;
+  rfi_id: string | null;
+  eot_claim_id: string | null;
+  rejected_reason: string | null;
+  submitted_at: string | null;
+  revisions: ChangeRevision[] | string | null;
   submitted_by_id: string | null;
   decided_by_id: string | null;
   decided_by_name: string | null;
@@ -98,4 +143,44 @@ export interface ChangeCommentRow {
   author_name: string;
   body: string;
   created_at: string;
+}
+
+export interface CreateChangeRequestInput {
+  title: string;
+  description?: string | null;
+  descriptionHtml?: string | null;
+  reason?: string | null;
+  reasonHtml?: string | null;
+  costImpact?: number;
+  timeImpactDays?: number;
+  currency?: Currency;
+  assigneeId?: string | null;
+  type?: ChangeType;
+  stageId?: string | null;
+  rfiId?: string | null;
+  eotClaimId?: string | null;
+}
+
+/** Editing the content of a change. Status never appears here — actions move it. */
+export interface UpdateChangeRequestInput {
+  title?: string;
+  description?: string | null;
+  descriptionHtml?: string | null;
+  reason?: string | null;
+  reasonHtml?: string | null;
+  costImpact?: number;
+  timeImpactDays?: number;
+  currency?: Currency;
+  assigneeId?: string | null;
+  type?: ChangeType;
+  stageId?: string | null;
+  rfiId?: string | null;
+  eotClaimId?: string | null;
+}
+
+/** Rejecting and resubmitting both carry a reason; approving and executing need none. */
+export interface ChangeActionInput {
+  reason?: string;
+  costImpact?: number;
+  timeImpactDays?: number;
 }

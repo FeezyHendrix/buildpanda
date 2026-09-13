@@ -91,9 +91,19 @@ export function transactionsService(
     return existing;
   }
 
+  /**
+   * An expense is a positive figure. A negative one is a refund, and a refund
+   * is its own record against the same stage and category — not a minus sign
+   * that quietly nets off a cost nobody can then trace.
+   */
   function ensureAmount(amount: number): void {
-    if (!Number.isFinite(amount) || amount < 0) {
-      throw new BadRequestError("Amount must be a non-negative number");
+    if (!Number.isFinite(amount)) {
+      throw new BadRequestError("Amount must be a number");
+    }
+    if (amount < 0) {
+      throw new BadRequestError(
+        "An expense cannot be negative — record a refund or credit instead (tick 'credit')",
+      );
     }
   }
 
@@ -103,11 +113,12 @@ export function transactionsService(
       orgId: string,
       filters?: TransactionListFilters,
     ): Promise<Transaction[]> {
-      const [rows, customIndex] = await Promise.all([
+      const [rows, customIndex, startDate] = await Promise.all([
         transactions.listByProject(projectId, filters),
         customIndexFor(orgId),
+        transactions.projectStartDate(projectId),
       ]);
-      return rows.map((row) => toTransaction(row, customIndex));
+      return rows.map((row) => toTransaction(row, customIndex, startDate));
     },
 
     async get(
@@ -115,11 +126,12 @@ export function transactionsService(
       orgId: string,
       transactionId: string,
     ): Promise<Transaction> {
-      const [row, customIndex] = await Promise.all([
+      const [row, customIndex, startDate] = await Promise.all([
         getOwned(projectId, transactionId),
         customIndexFor(orgId),
+        transactions.projectStartDate(projectId),
       ]);
-      return toTransaction(row, customIndex);
+      return toTransaction(row, customIndex, startDate);
     },
 
     async create(
@@ -147,6 +159,8 @@ export function transactionsService(
         reference: trim(input.reference),
         receipt_file_id: trim(input.receiptFileId),
         stage_id: await resolveStageId(projectId, input.stageId),
+        credit: input.credit ?? false,
+        recoverable: input.recoverable ?? false,
         created_by_id: userId,
       });
       const enriched = (await transactions.findById(row.id)) ?? {
@@ -154,8 +168,11 @@ export function transactionsService(
         created_by_name: null,
         stage_name: null,
       };
-      const customIndex = await customIndexFor(orgId);
-      return toTransaction(enriched, customIndex);
+      const [customIndex, startDate] = await Promise.all([
+        customIndexFor(orgId),
+        transactions.projectStartDate(projectId),
+      ]);
+      return toTransaction(enriched, customIndex, startDate);
     },
 
     async edit(
@@ -173,6 +190,8 @@ export function transactionsService(
         patch.title = title;
       }
       if (input.description !== undefined) patch.description = trim(input.description);
+      if (input.credit !== undefined) patch.credit = input.credit;
+      if (input.recoverable !== undefined) patch.recoverable = input.recoverable;
       if (input.category !== undefined) {
         const resolved = await resolveCategory(orgId, input.category);
         patch.category = resolved.category;
@@ -201,8 +220,11 @@ export function transactionsService(
           created_by_name: null,
           stage_name: null,
         };
-      const customIndex = await customIndexFor(orgId);
-      return toTransaction(enriched, customIndex);
+      const [customIndex, startDate] = await Promise.all([
+        customIndexFor(orgId),
+        transactions.projectStartDate(projectId),
+      ]);
+      return toTransaction(enriched, customIndex, startDate);
     },
 
     async remove(projectId: string, transactionId: string): Promise<void> {

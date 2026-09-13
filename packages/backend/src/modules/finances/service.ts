@@ -2,33 +2,19 @@ import { BadRequestError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 import type { FinancesRepository } from "./repository.ts";
-import { isAdvanceMilestone } from "./claim-chain.ts";
+import { contractTermsPatch } from "./contract-terms.ts";
+import { milestoneService } from "./milestones.ts";
+import { toCashFlowEntry, toEvent, toFinances } from "./finance-mapper.ts";
 import {
-  ADVANCE_RECOVERY_MODES,
-  CONTRACT_TYPES,
-  RETENTION_RELEASE_MODES,
-  type AdvanceRecoveryMode,
-  type BudgetPhase,
-  type BudgetPhaseRow,
   type CashFlowCategory,
   type CashFlowEntry,
-  type CashFlowEntryRow,
-  type ContractType,
   type FinanceEvent,
-  type FinanceEventRow,
   type FinanceEventType,
-  type FinancesRow,
-  type MaterialProcurement,
-  type MaterialProcurementRow,
-  type MilestoneDispute,
-  type MilestoneDisputeRow,
-  type MilestonePayment,
-  type MilestonePaymentRow,
-  type PaymentLedgerEntry,
-  type PaymentLedgerRow,
   type ProjectFinances,
-  type RetentionReleaseMode,
+  type UpdateContractTermsInput,
 } from "./types.ts";
+
+export type { UpdateContractTermsInput };
 
 export interface FinanceActor {
   id: string;
@@ -84,170 +70,11 @@ export interface FinancesDeps {
   notifications?: NotificationsService;
 }
 
-function notifyMilestoneReleased(
-  deps: FinancesDeps,
-  recipientId: string | null | undefined,
-  projectId: string,
-  name: string,
-  actorId: string,
-): void {
-  if (!deps.notifications || !recipientId || recipientId === actorId) return;
-  void deps.notifications
-    .notify(recipientId, "milestone_released", {
-      title: "Milestone payment released",
-      body: name,
-      projectId,
-    })
-    .catch(() => undefined);
-}
-
-function notifyMilestoneDisputed(
-  deps: FinancesDeps,
-  recipientId: string | null | undefined,
-  projectId: string,
-  name: string,
-  reason: string,
-  actorId: string,
-): void {
-  if (!deps.notifications || !recipientId || recipientId === actorId) return;
-  void deps.notifications
-    .notify(recipientId, "milestone_disputed", {
-      title: "Milestone payment disputed",
-      body: `${name}: ${reason}`,
-      projectId,
-    })
-    .catch(() => undefined);
-}
-
-function toDispute(row: MilestoneDisputeRow): MilestoneDispute {
-  return {
-    id: row.id,
-    milestoneId: row.milestone_id,
-    raisedBy: { id: row.raised_by_id, name: row.raised_by_name },
-    reason: row.reason,
-    status: row.status,
-    createdAt: new Date(row.created_at).toISOString(),
-    resolvedAt: row.resolved_at ? new Date(row.resolved_at).toISOString() : null,
-  };
-}
-
-function num(value: string): number {
-  return Number(value);
-}
-
-function toBudgetPhase(row: BudgetPhaseRow): BudgetPhase {
-  return {
-    id: row.id,
-    name: row.name,
-    planned: num(row.planned),
-    actual: num(row.actual),
-  };
-}
-
-function toMaterial(row: MaterialProcurementRow): MaterialProcurement {
-  return {
-    id: row.id,
-    name: row.name,
-    purchasedAt: row.purchased_at,
-    receipt: row.receipt,
-    amount: num(row.amount),
-    thumbnailTone: row.thumbnail_tone,
-  };
-}
-
-function toMilestone(row: MilestonePaymentRow): MilestonePayment {
-  return {
-    id: row.id,
-    name: row.name,
-    phase: row.phase,
-    status: row.status,
-    percentComplete: row.percent_complete,
-    amount: num(row.amount),
-    proof: row.proof_file_name
-      ? { fileName: row.proof_file_name, verified: row.proof_verified }
-      : null,
-    inspectorSignOff: row.inspector_sign_off,
-    claimState: row.claim_state ?? "pending",
-  };
-}
-
-function toLedgerEntry(row: PaymentLedgerRow): PaymentLedgerEntry {
-  return {
-    id: row.id,
-    date: row.entry_date,
-    description: row.description,
-    descriptionHtml: row.description_html,
-    amount: num(row.amount),
-    type: row.type,
-  };
-}
-
-function toCashFlowEntry(row: CashFlowEntryRow): CashFlowEntry {
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    category: row.category,
-    amount: num(row.amount),
-    isCredit: row.is_credit,
-    description: row.description,
-    entryDate: row.entry_date,
-    createdBy: row.created_by_id
-      ? { id: row.created_by_id, name: row.created_by_name ?? "" }
-      : null,
-    createdAt: new Date(row.created_at).toISOString(),
-    retentionAccrued: num(row.retention_accrued),
-  };
-}
-
-function toEvent(row: FinanceEventRow): FinanceEvent {
-  return {
-    id: row.id,
-    type: row.type,
-    actor: { id: row.actor_id, name: row.actor_name },
-    summary: row.summary,
-    amount: row.amount === null ? null : num(row.amount),
-    entityId: row.entity_id,
-    createdAt: new Date(row.created_at).toISOString(),
-  };
-}
-
-function toFinances(
-  summary: FinancesRow,
-  budgetPhases: BudgetPhaseRow[],
-  materials: MaterialProcurementRow[],
-  milestones: MilestonePaymentRow[],
-  ledger: PaymentLedgerRow[],
-): ProjectFinances {
-  const contractSum = num(summary.contract_sum);
-  const variationsTotal = num(summary.variations_total);
-  return {
-    projectId: summary.project_id,
-    currency: summary.currency,
-    totalBudget: num(summary.total_budget),
-    contractSum,
-    variationsTotal,
-    adjustedContract: contractSum + variationsTotal,
-    certifiedGrossToDate: num(summary.certified_gross_to_date),
-    amountPaidToDate: num(summary.amount_paid_to_date),
-    contractTerms: {
-      contractType: summary.contract_type,
-      retentionRate: num(summary.retention_rate),
-      retentionReleaseMode: summary.retention_release_mode,
-      advancePercentage: num(summary.advance_percentage),
-      advanceRecoveryMode: summary.advance_recovery_mode,
-      advanceRecoveryRate: num(summary.advance_recovery_rate),
-      paymentTermsDays: summary.payment_terms_days,
-      defectsLiabilityDays: summary.defects_liability_days,
-      contractNotes: summary.contract_notes,
-    },
-    budgetAllocation: budgetPhases.map(toBudgetPhase),
-    materialsProcured: materials.map(toMaterial),
-    milestones: milestones.map(toMilestone),
-    ledger: ledger.map(toLedgerEntry),
-  };
-}
-
 export function financesService(repository: FinancesRepository, deps: FinancesDeps = {}) {
+  // Stage payments (milestones and their disputes) are the FUNDING ledger, not
+  // the contract waterfall; they live in their own file for that reason.
+  const milestones = milestoneService(repository, deps);
+
   // Best-effort audit trail: a logging failure must never break the finance
   // action that triggered it, so the insert is awaited-and-swallowed.
   async function recordEvent(
@@ -376,127 +203,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       return this.getByProject(projectId);
     },
 
-    async createMilestone(
-      projectId: string,
-      input: CreateMilestoneInput,
-      actor?: FinanceActor,
-    ): Promise<MilestonePayment> {
-      if (input.amount < 0) throw new BadRequestError("Milestone amount cannot be negative");
-      const row = await repository.createMilestone({
-        id: generateId("milestone"),
-        project_id: projectId,
-        name: input.name,
-        phase: input.phase,
-        status: input.status ?? "Pending",
-        percent_complete: input.percentComplete ?? 0,
-        amount: String(input.amount),
-        proof_file_name: null,
-        proof_verified: false,
-        inspector_sign_off: input.inspectorSignOff ?? "Pending",
-        // the advance is claimable the moment the contract exists
-        claim_state: isAdvanceMilestone(input.name) ? "claimable" : "pending",
-      });
-      await recordEvent(projectId, "milestone_created", actor ?? null, `Added milestone · ${row.name}`, input.amount, row.id);
-      return toMilestone(row);
-    },
-
-    async updateMilestone(
-      projectId: string,
-      milestoneId: string,
-      input: UpdateMilestoneInput,
-      actor?: FinanceActor,
-    ): Promise<MilestonePayment> {
-      if (input.amount !== undefined && input.amount < 0) {
-        throw new BadRequestError("Milestone amount cannot be negative");
-      }
-      const row = await repository.updateMilestone(projectId, milestoneId, {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.phase !== undefined ? { phase: input.phase } : {}),
-        ...(input.status !== undefined ? { status: input.status } : {}),
-        ...(input.percentComplete !== undefined
-          ? { percent_complete: input.percentComplete }
-          : {}),
-        ...(input.amount !== undefined ? { amount: String(input.amount) } : {}),
-        ...(input.inspectorSignOff !== undefined
-          ? { inspector_sign_off: input.inspectorSignOff }
-          : {}),
-      });
-      if (!row) throw new NotFoundError("Milestone");
-      await recordEvent(projectId, "milestone_updated", actor ?? null, `Updated milestone · ${row.name}`, num(row.amount), row.id);
-      return toMilestone(row);
-    },
-
-    async deleteMilestone(projectId: string, milestoneId: string, actor?: FinanceActor): Promise<void> {
-      const existing = await repository.findMilestone(milestoneId);
-      const deleted = await repository.deleteMilestone(projectId, milestoneId);
-      if (deleted === 0) throw new NotFoundError("Milestone");
-      await recordEvent(
-        projectId,
-        "milestone_deleted",
-        actor ?? null,
-        `Removed milestone · ${existing?.name ?? milestoneId}`,
-        existing ? num(existing.amount) : null,
-        milestoneId,
-      );
-    },
-
-    async releaseMilestone(
-      projectId: string,
-      milestoneId: string,
-      actor: FinanceActor,
-    ): Promise<MilestonePayment> {
-      const milestone = await repository.findMilestone(milestoneId);
-      if (!milestone) throw new NotFoundError("Milestone");
-      if (milestone.project_id !== projectId) {
-        throw new NotFoundError("Milestone");
-      }
-      const updated = await repository.releaseMilestone({
-        projectId,
-        milestoneId,
-        entryDate: new Date().toISOString().slice(0, 10),
-        description: `Release · ${milestone.name}`,
-        ledgerId: generateId("ledger"),
-      });
-      const projectOwnerId = await repository.projectOwnerId(projectId);
-      notifyMilestoneReleased(deps, projectOwnerId, projectId, updated.name, actor.id);
-      await recordEvent(projectId, "milestone_released", actor, `Released milestone from escrow · ${updated.name}`, num(updated.amount), milestoneId);
-      return toMilestone(updated);
-    },
-
-    async listDisputes(
-      projectId: string,
-      milestoneId: string,
-    ): Promise<MilestoneDispute[]> {
-      const milestone = await repository.findMilestone(milestoneId);
-      if (!milestone || milestone.project_id !== projectId) {
-        throw new NotFoundError("Milestone");
-      }
-      const rows = await repository.listDisputesForMilestone(milestoneId);
-      return rows.map(toDispute);
-    },
-
-    async raiseDispute(
-      projectId: string,
-      milestoneId: string,
-      input: RaiseDisputeInput,
-      actor: { id: string; name: string },
-    ): Promise<MilestoneDispute> {
-      const milestone = await repository.findMilestone(milestoneId);
-      if (!milestone || milestone.project_id !== projectId) {
-        throw new NotFoundError("Milestone");
-      }
-      const row = await repository.createDispute({
-        id: generateId("dispute"),
-        milestone_id: milestoneId,
-        raised_by_id: actor.id,
-        raised_by_name: actor.name,
-        reason: input.reason,
-      });
-      const projectOwnerId = await repository.projectOwnerId(projectId);
-      notifyMilestoneDisputed(deps, projectOwnerId, projectId, milestone.name, input.reason, actor.id);
-      await recordEvent(projectId, "dispute_raised", actor, `Raised dispute · ${milestone.name}`, num(milestone.amount), milestoneId);
-      return toDispute(row);
-    },
+    ...milestones,
 
     async updateContractSum(
       projectId: string,
@@ -543,62 +250,7 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
         await repository.updateContractSum(projectId, input.contractSum);
       }
 
-      const patch: Parameters<typeof repository.updateContractTerms>[1] = {};
-
-      if (input.contractType !== undefined) {
-        if (!(CONTRACT_TYPES as readonly string[]).includes(input.contractType)) {
-          throw new BadRequestError("Unknown contract type");
-        }
-        patch.contract_type = input.contractType;
-      }
-      if (input.retentionRate !== undefined) {
-        if (input.retentionRate < 0 || input.retentionRate > 1) {
-          throw new BadRequestError("Retention rate must be between 0 and 1");
-        }
-        patch.retention_rate = input.retentionRate;
-      }
-      if (input.retentionReleaseMode !== undefined) {
-        if (!(RETENTION_RELEASE_MODES as readonly string[]).includes(input.retentionReleaseMode)) {
-          throw new BadRequestError("Unknown retention release mode");
-        }
-        patch.retention_release_mode = input.retentionReleaseMode;
-      }
-      if (input.advancePercentage !== undefined) {
-        if (input.advancePercentage < 0 || input.advancePercentage > 1) {
-          throw new BadRequestError("Advance percentage must be between 0 and 1");
-        }
-        patch.advance_percentage = input.advancePercentage;
-      }
-      if (input.advanceRecoveryMode !== undefined) {
-        if (!(ADVANCE_RECOVERY_MODES as readonly string[]).includes(input.advanceRecoveryMode)) {
-          throw new BadRequestError("Unknown advance recovery mode");
-        }
-        patch.advance_recovery_mode = input.advanceRecoveryMode;
-      }
-      if (input.advanceRecoveryRate !== undefined) {
-        if (input.advanceRecoveryRate < 0) {
-          throw new BadRequestError("Advance recovery rate cannot be negative");
-        }
-        patch.advance_recovery_rate = input.advanceRecoveryRate;
-      }
-      if (input.paymentTermsDays !== undefined) {
-        if (input.paymentTermsDays < 0 || !Number.isInteger(input.paymentTermsDays)) {
-          throw new BadRequestError("Payment terms must be a non-negative integer");
-        }
-        patch.payment_terms_days = input.paymentTermsDays;
-      }
-      if (input.defectsLiabilityDays !== undefined) {
-        if (input.defectsLiabilityDays < 0 || !Number.isInteger(input.defectsLiabilityDays)) {
-          throw new BadRequestError("Defects liability must be a non-negative integer");
-        }
-        patch.defects_liability_days = input.defectsLiabilityDays;
-      }
-      if (input.contractNotes !== undefined) {
-        const trimmed = input.contractNotes?.trim();
-        patch.contract_notes = trimmed && trimmed.length > 0 ? trimmed : null;
-      }
-
-      await repository.updateContractTerms(projectId, patch);
+      await repository.updateContractTerms(projectId, contractTermsPatch(input));
       await recordEvent(
         projectId,
         "milestone_updated",
@@ -609,19 +261,6 @@ export function financesService(repository: FinancesRepository, deps: FinancesDe
       return this.getByProject(projectId);
     },
   };
-}
-
-export interface UpdateContractTermsInput {
-  contractSum?: number;
-  contractType?: ContractType;
-  retentionRate?: number;
-  retentionReleaseMode?: RetentionReleaseMode;
-  advancePercentage?: number;
-  advanceRecoveryMode?: AdvanceRecoveryMode;
-  advanceRecoveryRate?: number;
-  paymentTermsDays?: number;
-  defectsLiabilityDays?: number;
-  contractNotes?: string | null;
 }
 
 export type FinancesService = ReturnType<typeof financesService>;

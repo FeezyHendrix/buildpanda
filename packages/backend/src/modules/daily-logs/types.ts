@@ -78,6 +78,12 @@ export interface UpsertDailyLogInput {
 export interface LinkActivityInput {
   activityId: string;
   hoursLogged: number;
+  /**
+   * Off unless the site agent asks for it. The Updates feed is the client-facing
+   * channel; one week of diary auto-posted 13 "Site work logged" items before a
+   * single real update was written (finding F52).
+   */
+  postUpdate?: boolean;
 }
 
 export interface DailyLogEntryVoid {

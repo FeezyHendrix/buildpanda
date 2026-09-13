@@ -3,6 +3,7 @@ import { generateId } from "../../lib/ids.ts";
 import { toIso } from "../../lib/dates.ts";
 import type { LookAheadPatch, LookAheadsRepository } from "./repository.ts";
 import type {
+  ApproveLookAheadInput,
   CreateLookAheadInput,
   LookAhead,
   LookAheadActivityRow,
@@ -39,6 +40,10 @@ function toLookAhead(row: LookAheadRow, activities: LookAheadActivityRow[]): Loo
     endDate: row.end_date.slice(0, 10),
     totalWorkers: row.total_workers,
     activities: activities.filter((a) => a.look_ahead_id === row.id).map(toSummary),
+    approvedById: row.approved_by_id ?? null,
+    approvedByName: row.approved_by_name ?? null,
+    approvedAt: row.approved_at ? toIso(row.approved_at) : null,
+    approvalNote: row.approval_note ?? null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
@@ -145,7 +150,19 @@ export function lookAheadsService(
         patch.name = name;
       }
       if (input.description !== undefined) patch.description = input.description?.trim() || null;
-      if (input.status !== undefined) patch.status = input.status;
+      if (input.status !== undefined) {
+        // Approval is a sign-off recorded by its own action, never a value the
+        // edit drawer can set on your own plan (finding F29).
+        if (input.status === "Approved") {
+          throw new BadRequestError("Use the Approve action to approve a look ahead");
+        }
+        patch.status = input.status;
+        if (existing.status === "Approved") {
+          patch.approved_by_id = null;
+          patch.approved_by_name = null;
+          patch.approved_at = null;
+        }
+      }
       if (input.startDate !== undefined) {
         assertDate(input.startDate, "startDate");
         patch.start_date = input.startDate;
@@ -174,6 +191,51 @@ export function lookAheadsService(
       }
       if (input.unassignActivityIds?.length) await repository.unassignActivities(id, input.unassignActivityIds);
 
+      const activities = await repository.activitiesFor([id]);
+      return toLookAhead(row, activities);
+    },
+
+    /**
+     * Sign-off, with a name and a time against it. Approving is its own action
+     * so the status can never be flipped silently from the edit drawer.
+     */
+    async approve(
+      projectId: string,
+      id: string,
+      input: ApproveLookAheadInput,
+      actor: { id: string; name: string | null },
+    ): Promise<LookAhead> {
+      const existing = await repository.findById(id);
+      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Look ahead");
+      if (existing.status === "Approved") throw new BadRequestError("This look ahead is already approved");
+
+      const row = await repository.update(id, {
+        status: "Approved",
+        approved_by_id: actor.id,
+        approved_by_name: actor.name,
+        approved_at: new Date(),
+        approval_note: input.note?.trim() || null,
+      });
+      if (!row) throw new NotFoundError("Look ahead");
+      const activities = await repository.activitiesFor([id]);
+      return toLookAhead(row, activities);
+    },
+
+    /**
+     * Back to Draft. Used when an approved plan stops being true — the activity
+     * it covered was deleted or the window moved (finding F30).
+     */
+    async revokeApproval(projectId: string, id: string, reason: string | null): Promise<LookAhead> {
+      const existing = await repository.findById(id);
+      if (!existing || existing.project_id !== projectId) throw new NotFoundError("Look ahead");
+      const row = await repository.update(id, {
+        status: "Draft",
+        approved_by_id: null,
+        approved_by_name: null,
+        approved_at: null,
+        approval_note: reason?.trim() || null,
+      });
+      if (!row) throw new NotFoundError("Look ahead");
       const activities = await repository.activitiesFor([id]);
       return toLookAhead(row, activities);
     },

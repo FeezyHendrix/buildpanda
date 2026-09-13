@@ -17,11 +17,16 @@ import {
   type UpdateContractTermsInput,
   type UpdateMilestoneInput,
 } from "./service.ts";
+import financeSummaryRoutes from "./summary-routes.ts";
 import {
   ADVANCE_RECOVERY_MODES,
+  CONTRACT_FORMS,
   CONTRACT_TYPES,
   RETENTION_RELEASE_MODES,
+  VALUATION_FREQUENCIES,
 } from "./types.ts";
+
+const DATE_PATTERN = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 
 const projectIdParams = {
   type: "object",
@@ -123,9 +128,23 @@ const contractTermsBody = {
     retentionReleaseMode: { type: "string", enum: [...RETENTION_RELEASE_MODES] },
     advancePercentage: { type: "number", minimum: 0, maximum: 1 },
     advanceRecoveryMode: { type: "string", enum: [...ADVANCE_RECOVERY_MODES] },
-    advanceRecoveryRate: { type: "number", minimum: 0 },
+    // Every rate is a FRACTION (0.05 = 5%), including this one — it used to be
+    // stored as a percentage next to fractional neighbours.
+    advanceRecoveryRate: { type: "number", minimum: 0, maximum: 1 },
+    advanceRecoveryFromCertificate: { type: "integer", minimum: 1 },
+    retentionCapPercent: { type: "number", minimum: 0, maximum: 1 },
+    vatRate: { type: "number", minimum: 0, maximum: 1 },
+    liquidatedDamagesRate: { type: "number", minimum: 0 },
+    liquidatedDamagesCapPercent: { type: "number", minimum: 0, maximum: 1 },
+    commencementDate: { type: ["string", "null"], pattern: DATE_PATTERN },
+    completionDate: { type: ["string", "null"], pattern: DATE_PATTERN },
+    employerName: { type: ["string", "null"], maxLength: 200 },
+    contractorName: { type: ["string", "null"], maxLength: 200 },
+    contractForm: { type: ["string", "null"], enum: [...CONTRACT_FORMS, null] },
+    valuationFrequency: { type: "string", enum: [...VALUATION_FREQUENCIES] },
     paymentTermsDays: { type: "integer", minimum: 0 },
     defectsLiabilityDays: { type: "integer", minimum: 0 },
+    defectsPeriodMonths: { type: "integer", minimum: 0 },
     contractNotes: { type: ["string", "null"], maxLength: 2000 },
   },
 } as const;
@@ -162,7 +181,7 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     transactions: transactionsRepository(fastify.db),
     purchaseOrders: purchaseOrdersRepository(fastify.db),
   });
-
+  await fastify.register(financeSummaryRoutes);
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/finances",
     { schema: { params: projectIdParams } },
@@ -176,7 +195,9 @@ const financeRoutes: FastifyPluginAsync = async (fastify) => {
     "/projects/:id/finances/stage-costs",
     { schema: { params: projectIdParams, response: stageCostsResponse } },
     async (request) => {
-      const project = await request.requireProjectPermission(request.params.id, "finances", "view");
+      // What a stage has cost is the contractor's own position, not the
+      // client's — it takes viewCosts, not plain view.
+      const project = await request.requireProjectPermission(request.params.id, "finances", "viewCosts");
       return stageCosts.byProject(project.id);
     },
   );

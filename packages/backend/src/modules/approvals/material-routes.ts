@@ -7,6 +7,7 @@ import { materialApprovalsRepository } from "./material-repository.ts";
 import { materialApprovalsService } from "./material-service.ts";
 import type {
   CreateMaterialApprovalInput,
+  ResubmitMaterialApprovalInput,
   UpdateMaterialApprovalInput,
 } from "./material-types.ts";
 import { DECISION_STATUSES, type ApprovalStatus } from "./types.ts";
@@ -77,6 +78,19 @@ const updateBody = {
     status: { type: "string", enum: STATUS },
     response: { type: ["string", "null"], maxLength: 4000 },
     responseHtml: { type: ["string", "null"], maxLength: 200000 },
+    dueDate: { type: ["string", "null"], maxLength: 40 },
+    requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
+  },
+} as const;
+
+const resubmitBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    ...materialFields,
+    title: { type: "string", minLength: 1, maxLength: 200 },
+    description: { type: ["string", "null"], maxLength: 4000 },
+    descriptionHtml: { type: ["string", "null"], maxLength: 200000 },
     dueDate: { type: ["string", "null"], maxLength: 40 },
     requestedReviewerId: { type: ["string", "null"], maxLength: 100 },
   },
@@ -173,6 +187,28 @@ const materialApprovalRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
       return service.update(project.id, request.params.approvalId, request.body, user.id);
+    },
+  );
+
+  // The decided record stays as it is; this raises the replacement request and
+  // links it back, which is what "raise a new request" meant all along.
+  fastify.post<{ Params: { id: string; approvalId: string }; Body: ResubmitMaterialApprovalInput }>(
+    "/projects/:id/material-approvals/:approvalId/resubmit",
+    { schema: { params: approvalParams, body: resubmitBody } },
+    async (request, reply) => {
+      const project = await request.requireProjectPermission(
+        request.params.id,
+        "materials",
+        "request",
+      );
+      const user = request.requireAuth();
+      const created = await service.resubmit(
+        project.id,
+        request.params.approvalId,
+        request.body ?? {},
+        user.id,
+      );
+      return reply.status(201).send(created);
     },
   );
 

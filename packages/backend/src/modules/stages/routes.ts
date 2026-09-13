@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
+import { activitiesRepository } from "../activities/repository.ts";
 import { buildingsRepository } from "../buildings/repository.ts";
 import { contractsRepository } from "../contracts/repository.ts";
 import { contractsService } from "../contracts/service.ts";
@@ -8,6 +9,8 @@ import { claimChain } from "../finances/claim-chain.ts";
 import { financesRepository } from "../finances/repository.ts";
 import { purchaseOrdersRepository } from "../purchase-orders/repository.ts";
 import { transactionsRepository } from "../transactions/repository.ts";
+import { invoiceCertificateRepository } from "../invoices/certificate-repository.ts";
+import { periodLock, withForecastFlags } from "./period-lock.ts";
 import { phaseRollup } from "./phase-rollup.ts";
 import { stagesRepository } from "./repository.ts";
 import {
@@ -128,6 +131,8 @@ const scheduleProgressBody = {
   additionalProperties: false,
   properties: {
     percentComplete: { type: ["number", "null"], minimum: 0, maximum: 100 },
+    /** A month later than the current one is a projection, never a claim. */
+    forecast: { type: "boolean" },
   },
 } as const;
 
@@ -145,6 +150,8 @@ const scheduleOfValueSchema = {
     periodPercent: { type: "number" },
     periodAmount: { type: "number" },
     toDateAmount: { type: "number" },
+    forecast: { type: "boolean" },
+    claimable: { type: "boolean" },
   },
 } as const;
 
@@ -152,7 +159,23 @@ const scheduleOfValuesResponse = {
   200: { type: "array", items: scheduleOfValueSchema },
 } as const;
 
+const valueSummarySchema = {
+  type: "object",
+  properties: {
+    valueTotal: { type: "number" },
+    contractSum: { type: "number" },
+    unallocated: { type: "number" },
+    allocatedPercent: { type: "number" },
+  },
+} as const;
+
 const stageRoutes: FastifyPluginAsync = async (fastify) => {
+  const certificates = invoiceCertificateRepository(fastify.db);
+  // Once a month is certified its cells close; a future month is a forecast,
+  // not a claim. See stages/period-lock.ts.
+  const lock = periodLock({
+    certificateForPeriod: (projectId, period) => certificates.certificateForPeriod(projectId, period),
+  });
   const buildings = buildingsRepository(fastify.db);
   const finances = financesRepository(fastify.db);
   const stages = stagesRepository(fastify.db);
@@ -180,6 +203,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       }),
       contractBelongsToProject: (projectId, contractId) => contracts.belongsToProject(projectId, contractId),
     },
+    (stageId) => activitiesRepository(fastify.db).countByPhase(stageId),
   );
 
   fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
@@ -198,6 +222,16 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
       const stage = await service.create(project.id, request.body);
       return reply.status(201).send(stage);
+    },
+  );
+
+  // Sits before /stages/:stageId so "value-summary" is not read as a stage id.
+  fastify.get<{ Params: { id: string } }>(
+    "/projects/:id/stages/value-summary",
+    { schema: { params: projectIdParams, response: { 200: valueSummarySchema } } },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "stages", "view");
+      return service.valueSummary(project.id);
     },
   );
 
@@ -234,7 +268,7 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: projectIdParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.listScheduleOfValues(project.id);
+      return withForecastFlags(await service.listScheduleOfValues(project.id));
     },
   );
 
@@ -243,7 +277,9 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: stageParams } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "view");
-      return service.listScheduleOfValues(project.id, request.params.stageId);
+      return withForecastFlags(
+        await service.listScheduleOfValues(project.id, request.params.stageId),
+      );
     },
   );
 
@@ -255,10 +291,14 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: stageParams, body: scheduleOfValuesBody } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "stages", "manage");
-      return service.replaceScheduleOfValues(
-        project.id,
-        request.params.stageId,
-        request.body.lines,
+      // Dropping or re-planning a month is fine until it has been certified.
+      const existing = await service.listScheduleOfValues(project.id, request.params.stageId);
+      const kept = new Set(request.body.lines.map((line) => line.period));
+      for (const line of existing) {
+        if (!kept.has(line.period)) await lock.assertRemovable(project.id, line.period);
+      }
+      return withForecastFlags(
+        await service.replaceScheduleOfValues(project.id, request.params.stageId, request.body.lines),
       );
     },
   );
@@ -274,11 +314,15 @@ const stageRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: { params: periodParams, body: scheduleProgressBody, response: scheduleOfValuesResponse } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "finances", "manage");
-      return service.updateScheduleProgress(
-        project.id,
-        request.params.stageId,
-        request.params.period,
-        request.body.percentComplete,
+      await lock.assertEditable(project.id, request.params.period);
+      lock.assertClaimable(request.params.period, request.body.forecast ?? false);
+      return withForecastFlags(
+        await service.updateScheduleProgress(
+          project.id,
+          request.params.stageId,
+          request.params.period,
+          request.body.percentComplete,
+        ),
       );
     },
   );

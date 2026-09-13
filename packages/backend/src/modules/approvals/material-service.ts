@@ -10,6 +10,8 @@ import type {
   MaterialApprovalDetail,
   MaterialApprovalDetails,
   MaterialApprovalJoinedRow,
+  MaterialApprovalRow,
+  ResubmitMaterialApprovalInput,
   UpdateMaterialApprovalInput,
 } from "./material-types.ts";
 import {
@@ -23,8 +25,15 @@ import {
   type ApprovalStatus,
   type ApprovalComment,
   type ApprovalCommentRow,
-  type ApprovalRow,
 } from "./types.ts";
+
+/**
+ * A decision is a record of what somebody signed off, against the sample they
+ * saw. Editing it afterwards rewrites history — the rejection comment would
+ * still refer to the old specification. So a decided request is read-only and
+ * the way forward is a resubmission: a new request linked back to this one.
+ */
+const DECIDED_STATUSES: readonly ApprovalStatus[] = ["Approved", "Rejected"];
 
 const MISSING_DETAILS: MaterialApprovalDetails = {
   materialName: "",
@@ -56,7 +65,7 @@ function toDetails(row: MaterialApprovalJoinedRow | undefined): MaterialApproval
 }
 
 function toMaterialApproval(
-  row: ApprovalRow,
+  row: MaterialApprovalRow,
   details: MaterialApprovalJoinedRow | undefined,
   commentCount: number,
 ): MaterialApproval {
@@ -78,6 +87,7 @@ function toMaterialApproval(
     reviewedById: row.reviewed_by_id,
     reviewedByName: row.reviewed_by_name,
     reviewedAt: row.reviewed_at,
+    resubmittedFromId: row.resubmitted_from_id,
     commentCount,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -130,7 +140,7 @@ export function materialApprovalsService(
   repository: MaterialApprovalsRepository,
   deps: ApprovalsDeps = {},
 ) {
-  async function hydrate(rows: ApprovalRow[]): Promise<MaterialApproval[]> {
+  async function hydrate(rows: MaterialApprovalRow[]): Promise<MaterialApproval[]> {
     const ids = rows.map((r) => r.id);
     const [details, counts] = await Promise.all([
       repository.detailsFor(ids),
@@ -139,7 +149,7 @@ export function materialApprovalsService(
     return rows.map((r) => toMaterialApproval(r, details.get(r.id), counts.get(r.id) ?? 0));
   }
 
-  async function requireRow(projectId: string, approvalId: string): Promise<ApprovalRow> {
+  async function requireRow(projectId: string, approvalId: string): Promise<MaterialApprovalRow> {
     const row = await repository.findById(approvalId);
     if (!row || row.project_id !== projectId) throw new NotFoundError("Material approval");
     return row;
@@ -182,6 +192,7 @@ export function materialApprovalsService(
           document_id: input.documentId ?? null,
           document_version_id: input.documentVersionId ?? null,
           source_markup_id: input.sourceMarkupId ?? null,
+          resubmitted_from_id: null,
         },
         {
           approval_id: id,
@@ -208,6 +219,11 @@ export function materialApprovalsService(
       userId: string,
     ): Promise<MaterialApproval> {
       const existing = await requireRow(projectId, approvalId);
+      if (DECIDED_STATUSES.includes(existing.status)) {
+        throw new ConflictError(
+          `This request was ${existing.status.toLowerCase()} on the sample as submitted and cannot be changed. Resubmit it as a new request instead.`,
+        );
+      }
 
       const patch: ApprovalUpdatePatch = { updated_at: new Date().toISOString() };
       if (input.title !== undefined) patch.title = input.title;
@@ -264,6 +280,58 @@ export function materialApprovalsService(
       const [result] = await hydrate([updated]);
       if (!result) throw new NotFoundError("Material approval");
       return result;
+    },
+
+    /**
+     * Resubmission: a new Pending request carrying the same material detail
+     * (amended where the requester says so) and pointing back at the decided
+     * one it replaces, so the approver can see the chain.
+     */
+    async resubmit(
+      projectId: string,
+      approvalId: string,
+      input: ResubmitMaterialApprovalInput,
+      userId: string,
+    ): Promise<MaterialApproval> {
+      const existing = await requireRow(projectId, approvalId);
+      if (existing.status === "Pending") {
+        throw new ConflictError("This request is still awaiting a decision — there is nothing to resubmit");
+      }
+      const details = (await repository.detailsFor([existing.id])).get(existing.id);
+      const previous = toDetails(details);
+      const id = generateId("apr");
+      const row = await repository.create(
+        {
+          id,
+          project_id: projectId,
+          title: input.title ?? `${existing.title} (resubmission)`,
+          description: input.description ?? existing.description,
+          description_html: input.descriptionHtml ?? existing.description_html,
+          status: "Pending",
+          due_date: input.dueDate ?? existing.due_date,
+          submitted_by_id: userId,
+          requested_reviewer_id: input.requestedReviewerId ?? existing.requested_reviewer_id,
+          document_id: null,
+          document_version_id: null,
+          source_markup_id: null,
+          resubmitted_from_id: existing.id,
+        },
+        {
+          approval_id: id,
+          material_name: input.materialName ?? previous.materialName,
+          specification: input.specification ?? previous.specification,
+          quantity: input.quantity ?? previous.quantity,
+          unit: input.unit ?? previous.unit,
+          supplier: input.supplier ?? previous.supplier,
+          needed_by: input.neededBy ?? previous.neededBy,
+          phase_id: input.phaseId ?? previous.phaseId,
+          activity_id: input.activityId ?? previous.activityId,
+        },
+      );
+      notifyApprovalReviewer(deps, row.requested_reviewer_id, projectId, row.title, userId);
+      const [created] = await hydrate([row]);
+      if (!created) throw new NotFoundError("Material approval");
+      return created;
     },
 
     async remove(projectId: string, approvalId: string): Promise<void> {

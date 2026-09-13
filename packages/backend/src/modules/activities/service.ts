@@ -1,20 +1,24 @@
 import { BadRequestError, ConflictError, NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { toIso, toIsoOrNull } from "../../lib/dates.ts";
-import { buildMspdiXml, type MspdiTask } from "../panda-ai/programme/mspdi-writer.ts";
+import {
+  countWorkingDays,
+  DEFAULT_CALENDAR,
+  type WorkingCalendar,
+} from "../../lib/working-days.ts";
+import { programmeToMspdiXml } from "./programme-export.ts";
+import { buildDelay } from "./delay-mapper.ts";
 import type {
   Activity,
   ActivityDelay,
-  ActivityDelayRow,
   ActivityDependency,
   ActivityRow,
+  ActivityStatus,
   CreateActivityInput,
   DelayReasonRow,
-  RaiseDelayInput,
-  ResolveDelayInput,
   UpdateActivityInput,
 } from "./types.ts";
-import type { ActivitiesRepository } from "./repository.ts";
+import type { ActivitiesRepository, ActivityUpdatePatch } from "./repository.ts";
 import type { NotificationsService } from "../notifications/service.ts";
 
 interface Actor {
@@ -24,34 +28,31 @@ interface Actor {
 
 export interface ActivitiesDeps {
   notifications?: NotificationsService;
+  /** The project's working calendar; durations are working days, not calendar days. */
+  calendarFor?(projectId: string): Promise<WorkingCalendar>;
 }
 
-function buildDelay(
-  row: ActivityDelayRow,
-  reason: DelayReasonRow | undefined,
-): ActivityDelay {
-  return {
-    id: row.id,
-    activityId: row.activity_id,
-    reasonCode: row.reason_code,
-    reasonName: reason?.name ?? row.reason_code,
-    reasonCategory: reason?.category ?? "Other",
-    description: row.description,
-    descriptionHtml: row.description_html,
-    startedAt: toIso(row.started_at),
-    resolvedAt: toIsoOrNull(row.resolved_at),
-    costImpact: Number(row.cost_impact),
-    currency: row.currency,
-    preventionNotes: row.prevention_notes,
-    recordedBy: row.recorded_by_id ? { id: row.recorded_by_id, name: null } : null,
-    createdAt: toIso(row.created_at),
-  };
+/**
+ * Status follows the facts on site, it never lags behind them: an activity with
+ * an actual finish is Completed (and 100%), one with an actual start is in
+ * progress. Cancelled is a decision, so it is never overwritten.
+ */
+export function deriveStatus(
+  current: ActivityStatus,
+  actualStart: unknown,
+  actualEnd: unknown,
+): ActivityStatus {
+  if (current === "Cancelled") return current;
+  if (actualEnd) return "Completed";
+  if (actualStart) return "InProgress";
+  return current === "Completed" ? "Planned" : current;
 }
 
 function buildActivity(
   row: ActivityRow,
   phaseName: string | null,
   delays: ActivityDelay[],
+  calendar: WorkingCalendar,
 ): Activity {
   const hasOpenDelay = delays.some((d) => d.resolvedAt === null);
   return {
@@ -86,6 +87,7 @@ function buildActivity(
     baselineEndAt: toIsoOrNull(row.baseline_end_at),
     isMilestone: Boolean(row.is_milestone),
     source: row.source,
+    durationWorkingDays: countWorkingDays(row.planned_start_at, row.planned_end_at, calendar),
     delays,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -104,6 +106,8 @@ export function activitiesService(
   soleRealBuildingId: (projectId: string) => Promise<string | undefined> = async () => undefined,
   deps: ActivitiesDeps = {},
 ) {
+  const calendarFor = deps.calendarFor ?? (async () => DEFAULT_CALENDAR);
+
   function notifyAssignee(
     assigneeId: string | null | undefined,
     projectId: string,
@@ -171,75 +175,37 @@ export function activitiesService(
   }
 
   async function buildOne(row: ActivityRow): Promise<Activity> {
-    const [phases, delayRows] = await Promise.all([
+    const [phases, delayRows, calendar] = await Promise.all([
       loadPhaseMap(row.project_id),
       repository.delaysForActivity(row.id),
+      calendarFor(row.project_id),
     ]);
     const reasons = await loadReasonMap(delayRows.map((d) => d.reason_code));
     const delays = delayRows.map((d) => buildDelay(d, reasons.get(d.reason_code)));
-    return buildActivity(row, row.phase_id ? phases.get(row.phase_id) ?? null : null, delays);
+    return buildActivity(
+      row,
+      row.phase_id ? phases.get(row.phase_id) ?? null : null,
+      delays,
+      calendar,
+    );
   }
 
   return {
-    /**
-     * Renders the project's schedule as Microsoft Project XML (MSPDI), the
-     * mirror of the programme importer. MS Project keys tasks by integer UID
-     * while activities use string ids, so ids are numbered in schedule order
-     * and dependencies resolved through that map — a predecessor pointing at an
-     * activity outside this project (or a stale id) is dropped rather than
-     * emitted as a dangling link, which MS Project rejects the file for.
-     */
     async exportProgrammeXml(
       projectId: string,
       projectName: string,
       buildingId?: string,
     ): Promise<string> {
-      const activities = await this.listByProject(projectId, buildingId);
-      const ordered = [...activities].sort(
-        (a, b) => Date.parse(a.plannedStartAt) - Date.parse(b.plannedStartAt),
-      );
-
-      const uidById = new Map<string, number>();
-      ordered.forEach((activity, index) => uidById.set(activity.id, index + 1));
-
-      const tasks: MspdiTask[] = ordered.map((activity) => ({
-        uid: uidById.get(activity.id)!,
-        name: activity.name,
-        outlineLevel: activity.outlineLevel ?? 1,
-        outlineNumber: activity.wbsCode,
-        start: new Date(activity.plannedStartAt),
-        finish: new Date(activity.plannedEndAt),
-        durationDays: activity.durationDays,
-        percentComplete: Math.round(activity.percentComplete),
-        isMilestone: activity.isMilestone,
-        isSummary: activity.isSummary,
-        predecessors: activity.predecessors.flatMap((dep) => {
-          const uid = uidById.get(dep.activityId);
-          return uid === undefined
-            ? []
-            : [{ uid, type: dep.type, lagDays: dep.lagDays }];
-        }),
-      }));
-
-      const times = ordered.flatMap((a) => [
-        Date.parse(a.plannedStartAt),
-        Date.parse(a.plannedEndAt),
-      ]);
-
-      return buildMspdiXml({
-        name: projectName,
-        start: times.length ? new Date(Math.min(...times)) : null,
-        finish: times.length ? new Date(Math.max(...times)) : null,
-        tasks,
-      });
+      return programmeToMspdiXml(projectName, await this.listByProject(projectId, buildingId));
     },
 
     async listByProject(projectId: string, buildingId?: string): Promise<Activity[]> {
       const rows = await repository.listByProject(projectId, buildingId);
       if (rows.length === 0) return [];
-      const [phases, delayRows] = await Promise.all([
+      const [phases, delayRows, calendar] = await Promise.all([
         loadPhaseMap(projectId),
         repository.delaysForActivities(rows.map((r) => r.id)),
+        calendarFor(projectId),
       ]);
       const reasons = await loadReasonMap(delayRows.map((d) => d.reason_code));
 
@@ -255,6 +221,7 @@ export function activitiesService(
           row,
           row.phase_id ? phases.get(row.phase_id) ?? null : null,
           delaysByActivity.get(row.id) ?? [],
+          calendar,
         ),
       );
     },
@@ -280,7 +247,9 @@ export function activitiesService(
         phase_id: input.phaseId ?? null,
         name: input.name,
         activity_type: input.activityType,
-        location: input.location ?? null,
+        // Location is optional on the form; an empty box is "no location", not
+        // an empty string the schema then rejects.
+        location: input.location?.trim() ? input.location.trim() : null,
         status: input.status ?? "Planned",
         planned_start_at: input.plannedStartAt,
         planned_end_at: input.plannedEndAt,
@@ -325,11 +294,13 @@ export function activitiesService(
         }
       }
 
-      const patch: Parameters<typeof repository.update>[1] = {};
+      const patch: ActivityUpdatePatch = {};
       if (input.name !== undefined) patch.name = input.name;
       if (input.activityType !== undefined) patch.activity_type = input.activityType;
       if (input.phaseId !== undefined) patch.phase_id = input.phaseId;
-      if (input.location !== undefined) patch.location = input.location;
+      if (input.location !== undefined) {
+        patch.location = input.location?.trim() ? input.location.trim() : null;
+      }
       if (input.status !== undefined) patch.status = input.status;
       if (input.plannedStartAt !== undefined) patch.planned_start_at = input.plannedStartAt;
       if (input.plannedEndAt !== undefined) patch.planned_end_at = input.plannedEndAt;
@@ -342,6 +313,21 @@ export function activitiesService(
       if (input.predecessors !== undefined) patch.predecessors = JSON.stringify(input.predecessors);
       if (input.percentComplete !== undefined) patch.percent_complete = input.percentComplete;
       if (input.isMilestone !== undefined) patch.is_milestone = input.isMilestone;
+
+      // Actual dates drive status, not the other way round: an activity with an
+      // actual finish is complete, whatever the dropdown still says.
+      const actualStart =
+        input.actualStartAt !== undefined ? input.actualStartAt : existing.actual_start_at;
+      const actualEnd = input.actualEndAt !== undefined ? input.actualEndAt : existing.actual_end_at;
+      if (input.actualStartAt !== undefined || input.actualEndAt !== undefined) {
+        const derived = deriveStatus(input.status ?? existing.status, actualStart, actualEnd);
+        if (derived !== existing.status || input.status !== undefined) patch.status = derived;
+        if (derived === "Completed" && input.percentComplete === undefined) {
+          patch.percent_complete = 100;
+        }
+      } else if (input.status === "Completed" && input.percentComplete === undefined) {
+        patch.percent_complete = 100;
+      }
 
       const updated = await repository.update(activityId, patch);
       if (!updated) throw new ConflictError("Activity update failed");
@@ -369,62 +355,20 @@ export function activitiesService(
       await enqueueRecompute(projectId);
     },
 
-    async raiseDelay(
-      projectId: string,
-      activityId: string,
-      input: RaiseDelayInput,
-      actor: Actor,
-    ): Promise<ActivityDelay> {
+    /** The programme's audit trail for one activity — every shift, with days and actor. */
+    async listEvents(projectId: string, activityId: string) {
       await loadProjectActivity(projectId, activityId);
-
-      const reason = await repository.findReasonByCode(input.reasonCode);
-      if (!reason) throw new BadRequestError("Unknown delay reason code");
-
-      const row = await repository.createDelay({
-        id: generateId("delay"),
-        activity_id: activityId,
-        reason_code: input.reasonCode,
-        description: input.description ?? null,
-        description_html: input.descriptionHtml ?? null,
-        started_at: input.startedAt,
-        cost_impact: input.costImpact ?? 0,
-        currency: input.currency ?? "NGN",
-        prevention_notes: input.preventionNotes ?? null,
-        recorded_by_id: actor.id,
-      });
-      return buildDelay(row, reason);
-    },
-
-    async resolveDelay(
-      projectId: string,
-      activityId: string,
-      delayId: string,
-      input: ResolveDelayInput,
-    ): Promise<ActivityDelay> {
-      await loadProjectActivity(projectId, activityId);
-
-      const existing = await repository.findDelayById(delayId);
-      if (!existing || existing.activity_id !== activityId) {
-        throw new NotFoundError("Delay");
-      }
-      if (existing.resolved_at) {
-        throw new ConflictError("Delay is already resolved");
-      }
-      if (new Date(input.resolvedAt) < new Date(existing.started_at)) {
-        throw new BadRequestError("resolvedAt cannot be before startedAt");
-      }
-
-      const patch: Parameters<typeof repository.resolveDelay>[1] = {
-        resolved_at: input.resolvedAt,
-      };
-      if (input.preventionNotes !== undefined) {
-        patch.prevention_notes = input.preventionNotes;
-      }
-
-      const row = await repository.resolveDelay(delayId, patch);
-      if (!row) throw new ConflictError("Delay resolve failed");
-      const reason = await repository.findReasonByCode(row.reason_code);
-      return buildDelay(row, reason);
+      const rows = await repository.eventsForActivity(activityId);
+      return rows.map((row) => ({
+        id: row.id,
+        activityId: row.activity_id,
+        kind: row.kind,
+        summary: row.summary,
+        daysDelta: Number(row.days_delta ?? 0),
+        delayId: row.delay_id,
+        actorId: row.actor_id,
+        createdAt: toIso(row.created_at),
+      }));
     },
 
     listReasons() {

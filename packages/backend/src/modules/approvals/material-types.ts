@@ -1,4 +1,9 @@
-import type { Approval, ApprovalComment, ApprovalStatus } from "./types.ts";
+import type { Approval, ApprovalComment, ApprovalRow, ApprovalStatus } from "./types.ts";
+
+/** Material approvals carry the resubmission chain; client approvals do not. */
+export interface MaterialApprovalRow extends ApprovalRow {
+  resubmitted_from_id: string | null;
+}
 
 export interface MaterialApprovalDetailRow {
   approval_id: string;
@@ -30,7 +35,10 @@ export interface MaterialApprovalDetails {
   activityName: string | null;
 }
 
-export interface MaterialApproval extends Approval, MaterialApprovalDetails {}
+export interface MaterialApproval extends Approval, MaterialApprovalDetails {
+  /** The decided request this one replaces, when it is a resubmission. */
+  resubmittedFromId: string | null;
+}
 
 export interface MaterialApprovalDetail extends MaterialApproval {
   comments: ApprovalComment[];
@@ -53,6 +61,22 @@ export interface CreateMaterialApprovalInput {
   documentId?: string | null;
   documentVersionId?: string | null;
   sourceMarkupId?: string | null;
+}
+
+export interface ResubmitMaterialApprovalInput {
+  title?: string;
+  materialName?: string;
+  specification?: string | null;
+  quantity?: number;
+  unit?: string;
+  supplier?: string | null;
+  neededBy?: string | null;
+  phaseId?: string | null;
+  activityId?: string | null;
+  description?: string | null;
+  descriptionHtml?: string | null;
+  dueDate?: string | null;
+  requestedReviewerId?: string | null;
 }
 
 export interface UpdateMaterialApprovalInput {

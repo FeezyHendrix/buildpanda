@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { canProjectPermission } from "../../lib/authorization.ts";
 import { dailyLogsRepository } from "./repository.ts";
 import { dailyLogsService } from "./service.ts";
+import { dailyLogCoverage, dailyLogCoverageDeps } from "./coverage.ts";
 import { dailyReportService } from "./report.ts";
 import { periodReportService } from "./period-report.ts";
 import { REPORT_PERIODS, type ReportPeriod } from "../../lib/report-period.ts";
@@ -71,6 +72,26 @@ const linkActivityBody = {
   properties: {
     activityId: { type: "string", minLength: 1, maxLength: 100 },
     hoursLogged: { type: "number", minimum: 0, maximum: 5000 },
+    postUpdate: { type: "boolean" },
+  },
+} as const;
+
+const coverageSchema = {
+  type: "object",
+  properties: {
+    from: { type: ["string", "null"] },
+    to: { type: ["string", "null"] },
+    workingDays: { type: "integer" },
+    daysLogged: { type: "integer" },
+    daysMissed: { type: "integer" },
+    missedDates: { type: "array", items: { type: "string" } },
+    calendar: {
+      type: "object",
+      properties: {
+        workingDays: { type: "array", items: { type: "integer" } },
+        holidays: { type: "array", items: { type: "string" } },
+      },
+    },
   },
 } as const;
 
@@ -154,12 +175,32 @@ const dailyLogRoutes: FastifyPluginAsync = async (fastify) => {
 
   const periodReports = periodReportService(fastify.db, { logs: service });
 
+  const coverageDeps = dailyLogCoverageDeps(fastify.db, dailyLogsRepository(fastify.db));
+
   fastify.get<{ Params: { id: string }; Querystring: { from?: string; to?: string; buildingId?: string } }>(
     "/projects/:id/daily-logs",
     { schema: { params: projectIdParams, querystring: listQuery } },
     async (request) => {
       const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
       return service.listDays(project.id, request.query.from, request.query.to, request.query.buildingId);
+    },
+  );
+
+  // The calendar-aware coverage figure the Overview and the missed-days chip
+  // read: working days on the project's own calendar, from the works start, to
+  // yesterday, with no live log.
+  fastify.get<{ Params: { id: string }; Querystring: { buildingId?: string } }>(
+    "/projects/:id/daily-logs/coverage",
+    {
+      schema: {
+        params: projectIdParams,
+        querystring: { type: "object", additionalProperties: false, properties: { buildingId: { type: "string", minLength: 1, maxLength: 100 } } } as const,
+        response: { 200: coverageSchema },
+      },
+    },
+    async (request) => {
+      const project = await request.requireProjectPermission(request.params.id, "dailyLog", "view");
+      return dailyLogCoverage(coverageDeps, project.id, request.query.buildingId);
     },
   );
 

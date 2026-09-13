@@ -34,6 +34,8 @@ export interface TransactionRow {
   reference: string | null;
   receipt_file_id: string | null;
   stage_id: string | null;
+  credit: boolean;
+  recoverable: boolean;
   created_by_id: string | null;
   created_at: Date | string;
   updated_at: Date | string;
@@ -69,6 +71,12 @@ export interface Transaction {
   receiptFileId: string | null;
   stageId: string | null;
   stageName: string | null;
+  /** A refund or credit note against this category, not an outlay. */
+  credit: boolean;
+  /** A refundable outlay — a plant-hire deposit, a bond — not final cost. */
+  recoverable: boolean;
+  /** Dated before the project started: legitimate, but not recoverable under the contract. */
+  preContract: boolean;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
@@ -130,6 +138,8 @@ export interface CreateTransactionInput {
   reference?: string | null;
   receiptFileId?: string | null;
   stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface EditTransactionInput {
@@ -142,6 +152,8 @@ export interface EditTransactionInput {
   reference?: string | null;
   receiptFileId?: string | null;
   stageId?: string | null;
+  credit?: boolean;
+  recoverable?: boolean;
 }
 
 export interface CreateCustomCategoryInput {

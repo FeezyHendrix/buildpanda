@@ -63,6 +63,7 @@ export function categoryDisplay(
 export function toTransaction(
   row: TransactionRowWithUser,
   customIndex: Map<string, CustomCategoryRow>,
+  projectStartDate: string | null = null,
 ): Transaction {
   const display = categoryDisplay(row.category, row.category_type, customIndex);
   return {
@@ -81,6 +82,11 @@ export function toTransaction(
     receiptFileId: row.receipt_file_id,
     stageId: row.stage_id ?? null,
     stageName: row.stage_name ?? null,
+    credit: Boolean(row.credit),
+    recoverable: Boolean(row.recoverable),
+    // Spend before site possession is real spend, but it sits outside the
+    // contract — a QS needs to see which costs those are, not be stopped.
+    preContract: projectStartDate !== null && asIsoDay(row.transacted_at) < projectStartDate,
     createdById: row.created_by_id,
     createdByName: row.created_by_name,
     createdAt: asIsoDateTime(row.created_at),

@@ -11,8 +11,46 @@ export type Tone = "brand" | "orange" | "green" | "purple" | "amber" | "red" | "
 export const AI_UPDATE_CADENCES = ["off", "daily", "weekly", "both"] as const;
 export type AiUpdateCadence = (typeof AI_UPDATE_CADENCES)[number];
 
+/** What kind of works this is. A civils job is not a house with roads attached. */
+export const PROJECT_TYPES = ["building", "renovation", "civil", "other"] as const;
+export type ProjectTypeCode = (typeof PROJECT_TYPES)[number];
+
 export interface ProjectSettings {
   aiUpdateCadence: AiUpdateCadence;
+}
+
+/**
+ * The contract frame and the working calendar — everything the schedule,
+ * missed-day and EOT maths measures against, and none of it editable before.
+ */
+export interface ProjectProfile {
+  name: string;
+  address: string;
+  startDate: string | null;
+  completionDate: string | null;
+  revisedCompletionDate: string | null;
+  clientName: string | null;
+  contractorEntity: string | null;
+  projectType: ProjectTypeCode | null;
+  /** Day-of-week numbers the site works (0 = Sunday … 6 = Saturday). */
+  workingDays: number[];
+  /** `yyyy-mm-dd` dates the site is closed. */
+  holidays: string[];
+  aiUpdateCadence: AiUpdateCadence;
+}
+
+export interface UpdateProjectProfileInput {
+  name?: string;
+  address?: string;
+  startDate?: string | null;
+  completionDate?: string | null;
+  revisedCompletionDate?: string | null;
+  clientName?: string | null;
+  contractorEntity?: string | null;
+  projectType?: ProjectTypeCode | null;
+  workingDays?: number[];
+  holidays?: string[];
+  aiUpdateCadence?: AiUpdateCadence;
 }
 
 export interface ProjectPhase {
@@ -65,6 +103,14 @@ export interface ProjectRow {
   budget_max: string | null;
   setup: ProjectSetup | null;
   ai_update_cadence: AiUpdateCadence;
+  start_date: string | null;
+  completion_date: string | null;
+  revised_completion_date: string | null;
+  client_name: string | null;
+  contractor_entity: string | null;
+  project_type: ProjectTypeCode | null;
+  working_days: unknown;
+  holidays: unknown;
   created_at: Date | string;
   updated_at: Date | string;
 }

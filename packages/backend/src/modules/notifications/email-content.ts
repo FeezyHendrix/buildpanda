@@ -67,6 +67,17 @@ const PRESENTATION: Record<NotificationType, TypePresentation> = {
   material_negative_stock: { eyebrow: "Negative stock", accent: "warning", ctaLabel: "View Materials" },
   material_low_stock: { eyebrow: "Low stock", accent: "warning", ctaLabel: "View Materials" },
   material_reorder_created: { eyebrow: "Reorder created", accent: "brand", ctaLabel: "View Materials" },
+  invoice_sent: { eyebrow: "Certificate issued", accent: "brand", ctaLabel: "View Certificate" },
+  invoice_queried: { eyebrow: "Invoice queried", accent: "warning", ctaLabel: "View Query" },
+  invoice_approved: { eyebrow: "Invoice certified", accent: "success", ctaLabel: "View Certificate" },
+  invoice_paid: { eyebrow: "Payment recorded", accent: "success", ctaLabel: "View Payment" },
+  invoice_paid_late: { eyebrow: "Paid after the due date", accent: "warning", ctaLabel: "View Payment" },
+  invoice_voided: { eyebrow: "Certificate voided", accent: "danger", ctaLabel: "View Certificate" },
+  change_request_submitted: { eyebrow: "Change submitted", accent: "brand", ctaLabel: "View Change" },
+  change_request_approved: { eyebrow: "Change approved", accent: "success", ctaLabel: "View Change" },
+  change_request_rejected: { eyebrow: "Change rejected", accent: "danger", ctaLabel: "View Change" },
+  eot_submitted: { eyebrow: "EOT claim submitted", accent: "brand", ctaLabel: "View Claim" },
+  eot_decided: { eyebrow: "EOT claim decided", accent: "brand", ctaLabel: "View Claim" },
 };
 
 const GENERIC: TypePresentation = {

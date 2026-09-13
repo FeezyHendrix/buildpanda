@@ -21,6 +21,8 @@ function row(overrides: Partial<RiskFactorRow> = {}): RiskFactorRow {
     mitigation: "Dewatering pump on site before excavation.",
     status: "open",
     review_date: null,
+  linked_activity_id: null,
+  closed_at: null,
     origin: "ai",
     confirmed_by: null,
     confirmed_at: null,

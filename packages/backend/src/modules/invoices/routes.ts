@@ -5,6 +5,16 @@ import { materialsEquipmentRepository } from "../materials-equipment/repository.
 import { materialsEquipmentService } from "../materials-equipment/service.ts";
 import { materialsLedgerRepository } from "../materials-ledger/repository.ts";
 import { materialsLedgerService } from "../materials-ledger/service.ts";
+import { contractsRepository } from "../contracts/repository.ts";
+import { toContractTerms } from "../finances/contract-terms.ts";
+import { financesRepository } from "../finances/repository.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
+import invoiceCertificateRoutes from "./certificate-routes.ts";
+import { createInvoiceBody, editInvoiceBody, sendInvoiceBody } from "./invoice-schemas.ts";
+import { invoiceCertificateRepository } from "./certificate-repository.ts";
+import { invoiceCertificateService } from "./certificate.ts";
+import { invoiceNotifier } from "./invoice-notifier.ts";
 import { INVOICE_EMAIL_QUEUE, type InvoiceEmailJobData } from "./invoice-send-job.ts";
 import { invoiceMaterialSyncer } from "./invoice-material-sync.ts";
 import { renderInvoicePdf } from "./invoice-pdf.ts";
@@ -12,7 +22,6 @@ import { invoicesRepository } from "./repository.ts";
 import { invoicesScanService } from "./scan-service.ts";
 import { invoicesService } from "./service.ts";
 import {
-  INVOICE_WORKFLOW_STATUSES,
   type CreateInvoiceInput,
   type EditInvoiceInput,
   type SendInvoiceInput,
@@ -48,110 +57,6 @@ const allocationsBody = {
   },
 } as const;
 
-const statusSchema = {
-  type: "string",
-  enum: INVOICE_WORKFLOW_STATUSES,
-} as const;
-
-const invoiceTypeSchema = {
-  type: "string",
-  enum: ["progress", "final", "variation", "vendor", "material"],
-} as const;
-
-const partySchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    name: { type: ["string", "null"], maxLength: 200 },
-    address: { type: ["string", "null"], maxLength: 500 },
-    tin: { type: ["string", "null"], maxLength: 100 },
-    firsNumber: { type: ["string", "null"], maxLength: 100 },
-    email: { type: ["string", "null"], maxLength: 200 },
-    bank: {
-      type: ["object", "null"],
-      additionalProperties: false,
-      properties: {
-        accountName: { type: ["string", "null"], maxLength: 200 },
-        accountNumber: { type: ["string", "null"], maxLength: 100 },
-        bankName: { type: ["string", "null"], maxLength: 200 },
-      },
-    },
-  },
-} as const;
-
-const lineItemSchema = {
-  type: "object",
-  required: ["description"],
-  additionalProperties: false,
-  properties: {
-    description: { type: "string", minLength: 1, maxLength: 1000 },
-    quantity: { type: "number", exclusiveMinimum: 0 },
-    unit: { type: "string", maxLength: 50 },
-    unitRate: { type: "number", minimum: 0 },
-    budgetCategoryId: { type: "string", minLength: 1 },
-    isVariation: { type: "boolean" },
-  },
-} as const;
-
-const createInvoiceBody = {
-  type: "object",
-  required: ["vendorName", "trade"],
-  additionalProperties: false,
-  properties: {
-    vendorName: { type: "string", minLength: 1, maxLength: 200 },
-    trade: { type: "string", minLength: 1, maxLength: 120 },
-    number: { type: "string", maxLength: 100 },
-    status: statusSchema,
-    amount: { type: "number", minimum: 0 },
-    retainagePercentage: { type: "number", minimum: 0, maximum: 100 },
-    invoiceType: invoiceTypeSchema,
-    currency: { type: "string", minLength: 1, maxLength: 10 },
-    vatRate: { type: "number", minimum: 0, maximum: 100 },
-    whtRate: { type: "number", minimum: 0, maximum: 100 },
-    retentionRate: { type: "number", minimum: 0, maximum: 100 },
-    issueDate: { type: "string", maxLength: 30 },
-    dueDate: { type: "string", maxLength: 30 },
-    notes: { type: "string", maxLength: 2000 },
-    fromParty: { ...partySchema, type: ["object", "null"] },
-    toParty: { ...partySchema, type: ["object", "null"] },
-    recipientEmail: { type: "string", maxLength: 200 },
-    ccEmails: { type: "array", items: { type: "string", maxLength: 200 } },
-    bccEmails: { type: "array", items: { type: "string", maxLength: 200 } },
-    poReferenceId: { type: "string", minLength: 1 },
-    paymentClaimId: { type: "string", minLength: 1 },
-    milestonePaymentId: { type: "string", minLength: 1 },
-    contractReference: { type: "string", maxLength: 200 },
-    paymentTerms: { type: "string", maxLength: 1000 },
-    paymentInstructions: { type: "string", maxLength: 2000 },
-    coverNote: { type: "string", maxLength: 4000 },
-    headerText: { type: "string", maxLength: 2000 },
-    footerText: { type: "string", maxLength: 2000 },
-    sourceFileId: { type: "string", maxLength: 100 },
-    lineItems: { type: "array", items: lineItemSchema },
-  },
-} as const;
-
-const editInvoiceBody = {
-  type: "object",
-  additionalProperties: false,
-  minProperties: 1,
-  properties: createInvoiceBody.properties,
-} as const;
-
-const sendInvoiceBody = {
-  type: "object",
-  required: ["recipientEmail"],
-  additionalProperties: false,
-  properties: {
-    recipientEmail: { type: "string", minLength: 1, maxLength: 200 },
-    cc: { type: "array", items: { type: "string", maxLength: 200 } },
-    bcc: { type: "array", items: { type: "string", maxLength: 200 } },
-    coverNote: { type: "string", maxLength: 4000 },
-    headerText: { type: "string", maxLength: 2000 },
-    footerText: { type: "string", maxLength: 2000 },
-  },
-} as const;
-
 const scanInvoiceBody = {
   type: "object",
   required: ["fileId"],
@@ -162,8 +67,33 @@ const scanInvoiceBody = {
 } as const;
 
 const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
-  const service = invoicesService(invoicesRepository(fastify.db));
   const repository = invoicesRepository(fastify.db);
+  const contracts = contractsRepository(fastify.db);
+  // A receivable certificate bills against the main contract unless it names
+  // another one, so the contract waterfall can actually see it.
+  const service = invoicesService(repository, {
+    mainContractId: async (projectId) => (await contracts.findMain(projectId))?.id ?? null,
+  });
+  const finances = financesRepository(fastify.db);
+  const notifier = invoiceNotifier(
+    notificationsService(notificationsRepository(fastify.db), fastify.queue),
+    fastify.db,
+  );
+  const certificates = invoiceCertificateService({
+    invoices: repository,
+    certificates: invoiceCertificateRepository(fastify.db),
+    terms: async (projectId) => {
+      const row = await finances.findSummary(projectId);
+      return row ? toContractTerms(row) : null;
+    },
+    adjustedContract: async (projectId) => {
+      const row = await finances.findSummary(projectId);
+      return row ? Number(row.contract_sum) + Number(row.variations_total) : 0;
+    },
+    onEvent: (projectId, invoice, type, actor, reason) =>
+      notifier.statusChanged(projectId, invoice, type, actor, reason),
+  });
+  await fastify.register(invoiceCertificateRoutes);
   const scanService = invoicesScanService(fastify.db);
   const materialSyncer = invoiceMaterialSyncer({
     db: fastify.db,
@@ -250,7 +180,19 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
           "finances", "approve",
         );
       }
-      return service.edit(project.id, request.params.invoiceId, request.body);
+      const before = await repository.findById(request.params.invoiceId);
+      const invoice = await service.edit(project.id, request.params.invoiceId, request.body);
+      const row = await repository.findById(invoice.id);
+      if (row && before && status !== undefined && row.status !== before.status) {
+        await certificates.logStatusChange(
+          row,
+          status === "Approved" ? "approved" : "sent",
+          { id: user.id, name: user.name },
+          before.status,
+          row.status,
+        );
+      }
+      return invoice;
     },
   );
 
@@ -265,6 +207,8 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
         "finances",
         "view",
       );
+      // A certificate with money recorded against it is voided, never deleted.
+      await certificates.assertRemovable(project.id, request.params.invoiceId);
       await service.remove(project.id, request.params.invoiceId);
       return reply.status(204).send();
     },
@@ -298,7 +242,19 @@ const invoiceRoutes: FastifyPluginAsync = async (fastify) => {
         "finances",
         "view",
       );
+      const before = await repository.findById(request.params.invoiceId);
       const invoice = await service.markSent(project.id, request.params.invoiceId, request.body);
+      const sentRow = await repository.findById(invoice.id);
+      if (sentRow && before) {
+        const user = request.requireAuth();
+        await certificates.logStatusChange(
+          sentRow,
+          "sent",
+          { id: user.id, name: user.name },
+          before.status,
+          sentRow.status,
+        );
+      }
       await fastify.queue.enqueue<InvoiceEmailJobData>(INVOICE_EMAIL_QUEUE, "send", {
         invoiceId: invoice.id,
         recipientEmail: invoice.recipientEmail ?? request.body.recipientEmail,

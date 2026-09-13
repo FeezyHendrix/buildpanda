@@ -88,6 +88,10 @@ export interface StageScheduleOfValue {
   periodPercent: number;
   periodAmount: number;
   toDateAmount: number;
+  /** A month later than the current one: a projection, not work done. */
+  forecast?: boolean;
+  /** False for a forecast month and for one already certified. See `period-lock.ts`. */
+  claimable?: boolean;
 }
 
 /** The two inputs `periodBilling` needs from a schedule-of-values line. */
@@ -107,6 +111,8 @@ export interface PeriodBillingLine {
 
 export interface UpdateScheduleProgressBody {
   percentComplete: number | null;
+  /** Required to record a month that has not happened yet. See `period-lock.ts`. */
+  forecast?: boolean;
 }
 
 export interface StageScheduleOfValueRow {

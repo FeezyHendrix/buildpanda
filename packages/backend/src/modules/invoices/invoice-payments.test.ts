@@ -49,13 +49,30 @@ function invoiceRow(over: Partial<InvoiceRow> = {}): InvoiceRow {
     viewed_at: null,
     pdf_storage_key: null,
     billing_period: "2026-09",
+    contract_id: "con_1",
+    direction: "receivable",
+    counterparty: "Lagos State Ministry of Works",
+    advance_recovery: "0.00",
+    voided_at: null,
+    voided_by_id: null,
+    void_reason: null,
     created_at: "2026-09-01T00:00:00.000Z",
     ...over,
   };
 }
 
 function payment(id: string, invoiceId: string, amount: string): InvoicePaymentRow {
-  return { id, invoice_id: invoiceId, amount, method: "Bank Transfer", paid_at: "2026-09-10", note: null, created_at: "t" };
+  return {
+    id,
+    invoice_id: invoiceId,
+    amount,
+    method: "Bank Transfer",
+    paid_at: "2026-09-10",
+    note: null,
+    credit: false,
+    recorded_by_id: null,
+    created_at: "t",
+  };
 }
 
 const first = toInvoice(invoiceRow(), [payment("pay_1", "inv_1", "400000.00")], []);

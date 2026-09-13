@@ -76,6 +76,8 @@ export function toRiskFactor(row: RiskFactorRow): RiskFactor {
     mitigation: row.mitigation,
     status: row.status,
     reviewDate: toDateOnly(row.review_date),
+    linkedActivityId: row.linked_activity_id ?? null,
+    closedAt: toIso(row.closed_at ?? null),
     origin: row.origin,
     editState: editStateOf(row),
     confirmedBy: row.confirmed_by,
@@ -107,8 +109,13 @@ function patchFromInput(input: EditRiskInput, existing: RiskFactorRow): RiskFact
   if (input.ownerId !== undefined) patch.owner_id = input.ownerId;
   if (input.ownerName !== undefined) patch.owner_name = input.ownerName;
   if (input.mitigation !== undefined) patch.mitigation = input.mitigation;
-  if (input.status !== undefined) patch.status = input.status;
+  if (input.status !== undefined) {
+    patch.status = input.status;
+    // Closing out or realising a risk stamps when it happened; reopening clears it.
+    patch.closed_at = input.status === "open" ? null : new Date();
+  }
   if (input.reviewDate !== undefined) patch.review_date = input.reviewDate;
+  if (input.linkedActivityId !== undefined) patch.linked_activity_id = input.linkedActivityId;
   const likelihood = input.likelihood !== undefined ? input.likelihood : existing.likelihood;
   const impact = input.impact !== undefined ? input.impact : existing.impact;
   if (input.severity !== undefined) patch.severity = input.severity;
@@ -150,6 +157,7 @@ export function risksService(repository: RisksRepository, deps: RisksDeps = {}) 
       mitigation: input.mitigation ?? null,
       status: input.status ?? "open",
       review_date: input.reviewDate ?? null,
+      linked_activity_id: input.linkedActivityId ?? null,
       origin,
     });
   }

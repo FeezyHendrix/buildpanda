@@ -13,6 +13,8 @@ export interface NewPurchaseOrderRecord {
   project_id: string;
   po_number: string;
   vendor_name: string;
+  supplier_id: string | null;
+  material_order_id: string | null;
   status: PurchaseOrderStatus;
   order_date: string | null;
   expected_date: string | null;
@@ -23,9 +25,16 @@ export interface NewPurchaseOrderRecord {
 export interface PurchaseOrderUpdatePatch {
   po_number?: string;
   vendor_name?: string;
+  supplier_id?: string | null;
   status?: PurchaseOrderStatus;
   order_date?: string | null;
   expected_date?: string | null;
+  issued_at?: string | null;
+  issued_by_id?: string | null;
+  cancel_reason?: string | null;
+  cancelled_at?: string | null;
+  closed_at?: string | null;
+  over_receipt?: boolean;
   notes?: string | null;
   stage_id?: string | null;
 }
@@ -56,6 +65,18 @@ export function purchaseOrdersRepository(db: Knex) {
       return withStage(db)
         .where("purchase_orders.id", id)
         .first() as unknown as Promise<PurchaseOrderRowWithStage | undefined>;
+    },
+
+    findByNumber(projectId: string, poNumber: string): Promise<PurchaseOrderRow | undefined> {
+      return db<PurchaseOrderRow>("purchase_orders")
+        .where({ project_id: projectId, po_number: poNumber })
+        .first();
+    },
+
+    /** Every PO number already used on the project, for allocating the next. */
+    async listNumbers(projectId: string): Promise<string[]> {
+      const rows = await db("purchase_orders").where({ project_id: projectId }).select("po_number");
+      return (rows as Array<{ po_number: string }>).map((r) => r.po_number);
     },
 
     // Money committed to suppliers per stage: only POs that have actually been
@@ -105,6 +126,35 @@ export function purchaseOrdersRepository(db: Knex) {
         if (!row) return undefined;
         await trx("purchase_order_items").where({ purchase_order_id: id }).delete();
         if (items.length > 0) await trx("purchase_order_items").insert(items);
+        return row;
+      });
+    },
+
+    /** Status-only move: the lines are untouched, which is the point of an action. */
+    async transition(id: string, patch: PurchaseOrderUpdatePatch): Promise<PurchaseOrderRow | undefined> {
+      const [row] = await db<PurchaseOrderRow>("purchase_orders")
+        .where({ id })
+        .update(patch)
+        .returning("*");
+      return row;
+    },
+
+    /** Receipt quantities and the resulting status, applied together. */
+    async applyReceipt(
+      id: string,
+      received: Array<{ itemId: string; receivedQuantity: number }>,
+      patch: PurchaseOrderUpdatePatch,
+    ): Promise<PurchaseOrderRow | undefined> {
+      return db.transaction(async (trx) => {
+        for (const line of received) {
+          await trx("purchase_order_items")
+            .where({ id: line.itemId, purchase_order_id: id })
+            .update({ received_quantity: String(line.receivedQuantity) });
+        }
+        const [row] = await trx<PurchaseOrderRow>("purchase_orders")
+          .where({ id })
+          .update(patch)
+          .returning("*");
         return row;
       });
     },

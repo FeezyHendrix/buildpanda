@@ -3,6 +3,8 @@ import type { FastifyPluginAsync } from "fastify";
 import { NotFoundError } from "../../lib/errors.ts";
 import { generateId } from "../../lib/ids.ts";
 import { idParams as projectIdParams } from "../../lib/schemas.ts";
+import { notificationsRepository } from "../notifications/repository.ts";
+import { notificationsService } from "../notifications/service.ts";
 
 export type PermitStatus = "NotStarted" | "Applied" | "Approved" | "Rejected" | "Expired";
 
@@ -158,6 +160,42 @@ function toPatch(input: PermitInput): Record<string, unknown> {
 
 const permitRoutes: FastifyPluginAsync = async (fastify) => {
   const db: Knex = fastify.db;
+  const notifications = notificationsService(notificationsRepository(fastify.db), fastify.queue);
+
+  /**
+   * A permit entered already expired, or edited into expiry, is news NOW — not
+   * at the next overnight sweep. Work that needs that permit is happening
+   * today, so the site team and the owner hear about it on save.
+   */
+  function notifyIfExpired(projectId: string, permit: Permit, actorId: string): void {
+    if (permit.urgency !== "expired" && permit.urgency !== "expiringSoon") return;
+    const expired = permit.urgency === "expired";
+    void db("project_participants")
+      .where({ project_id: projectId, status: "active" })
+      .whereNotNull("user_id")
+      .pluck<string[]>("user_id")
+      .then(async (participantIds) => {
+        const project = await db("projects")
+          .where({ id: projectId })
+          .select("owner_id")
+          .first<{ owner_id: string | null }>();
+        const recipients = new Set(participantIds);
+        if (project?.owner_id) recipients.add(project.owner_id);
+        recipients.delete(actorId);
+        await Promise.all(
+          [...recipients].map((userId) =>
+            notifications.notify(userId, expired ? "permit_expired" : "permit_expiring", {
+              title: expired ? "A permit has expired" : "A permit is expiring soon",
+              body: expired
+                ? `${permit.title} expired on ${permit.expiryDate}`
+                : `${permit.title} expires on ${permit.expiryDate} (${permit.daysUntilExpiry} days)`,
+              projectId,
+            }),
+          ),
+        );
+      })
+      .catch(() => undefined);
+  }
 
   fastify.get<{ Params: { id: string } }>(
     "/projects/:id/permits",
@@ -196,7 +234,9 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
       };
       await db("permits").insert(record);
       const row = await db<PermitRow>("permits").where({ id: record.id }).first();
-      return reply.status(201).send(toPermit(row!));
+      const permit = toPermit(row!);
+      notifyIfExpired(project.id, permit, request.requireAuth().id);
+      return reply.status(201).send(permit);
     },
   );
 
@@ -223,7 +263,9 @@ const permitRoutes: FastifyPluginAsync = async (fastify) => {
         .where({ id: request.params.permitId })
         .update({ ...patch, updated_at: new Date().toISOString() });
       const row = await db<PermitRow>("permits").where({ id: request.params.permitId }).first();
-      return toPermit(row!);
+      const permit = toPermit(row!);
+      notifyIfExpired(project.id, permit, request.requireAuth().id);
+      return permit;
     },
   );
 
