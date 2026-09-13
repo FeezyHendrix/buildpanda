@@ -164,7 +164,10 @@ export function OverviewKpis({ project }: { project: Project }) {
   ].join(" · ");
 
   return (
-    <section className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+    // Six across needs a genuinely wide screen. On a laptop it left each card
+    // ~135px of text width, which is narrower than the figures it has to hold,
+    // so the strip runs three-up until there is room for six.
+    <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
       <div data-tour="construction-progress">
         <KpiCard
           label="Construction progress"

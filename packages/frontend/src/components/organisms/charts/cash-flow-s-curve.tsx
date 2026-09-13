@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { ChartCard } from "@/components/molecules/chart-card";
-import { formatCurrency, formatWholeCurrency } from "@/lib/formatters";
+import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
 import type { CashFlowPoint } from "@/hooks/use-reporting-snapshot";
 
 interface CashFlowSCurveProps {
@@ -77,7 +77,7 @@ export function CashFlowSCurve({
   return (
     <ChartCard title="Cash Flow (S-Curve)" isLoading={isLoading} isEmpty={isEmpty}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 20, bottom: 20 }}>
+        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
           <XAxis
             dataKey="formattedPeriod"
@@ -86,12 +86,15 @@ export function CashFlowSCurve({
             axisLine={false}
             dy={10}
           />
+          {/* Axis ticks are compact ("₦850M"): the full figure needs ~110px and
+              the default 60px axis was clipping the leading digit, so a tick
+              read "₦,000,000". Exact figures are in the tooltip. */}
           <YAxis
-            tickFormatter={(val) => formatWholeCurrency(val, currency)}
+            tickFormatter={(val) => formatCompactCurrency(val, currency)}
             tick={{ fontSize: 12, fill: "#6B7280" }}
             tickLine={false}
             axisLine={false}
-            dx={-10}
+            width={72}
           />
           <Tooltip
             contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
