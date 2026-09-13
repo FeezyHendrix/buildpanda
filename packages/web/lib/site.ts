@@ -2,9 +2,9 @@ export const site = {
   name: "BuildPanda",
   domain: "buildpanda.io",
   url: "https://buildpanda.io",
-  tagline: "The Construction OS for modern builders, from first enquiry to final handover.",
+  tagline: "Run every project from estimate to handover, on one system.",
   description:
-    "BuildPanda is the Construction OS that runs your entire build. Win the work with proposals and accurate estimates, convert a signed proposal into a live project, then run it with a live schedule, documents, inspections and a payment record that traces back to work that was signed off.",
+    "BuildPanda is the software contractors, developers and project managers run their builds on: estimates and proposals, programme and delays, inspections, and payment certificates that trace to work that was signed off. If you would rather not run the site yourself, we will build it for you.",
   // Configure these for the live site.
   email: "hello@buildpanda.ai",
   phones: ["+234 810 991 8957", "+234 906 545 7397"],
